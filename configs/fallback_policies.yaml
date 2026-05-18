@@ -1,0 +1,55 @@
+# IVGS Phase 1 — Fallback Policies
+# Executed by FallbackManager after all retry attempts are exhausted
+
+version: "1.0"
+
+stage_fallbacks:
+  transcript:
+    primary:
+      strategy: alternative_model
+      model: "whisper-base"        # Lighter model if whisper-large fails
+    secondary:
+      strategy: cached_result      # Return most recent successful transcript
+    final:
+      strategy: mark_failed        # Surface error to caller
+
+  storyboard:
+    primary:
+      strategy: simplified_prompt  # Strip advanced directives, retry once
+    final:
+      strategy: mark_failed
+
+  image_generation:
+    primary:
+      strategy: lower_resolution   # 512x512 instead of 1024x1024
+    secondary:
+      strategy: alternative_model
+      model: "sdxl-turbo"
+    final:
+      strategy: placeholder_image
+      asset: "static/fallback_image.png"
+
+  tts:
+    primary:
+      strategy: alternative_voice
+      voice_id: "default_en_us"
+    final:
+      strategy: silent_audio       # 3-second silence placeholder
+
+  talking_head:
+    primary:
+      strategy: skip_stage         # Compose without talking-head overlay
+    final:
+      strategy: mark_failed
+
+  motion_graphics:
+    primary:
+      strategy: skip_stage
+    final:
+      strategy: mark_failed
+
+  composition:
+    primary:
+      strategy: lower_quality      # Reduce bitrate / resolution
+    final:
+      strategy: mark_failed

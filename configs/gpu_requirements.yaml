@@ -1,0 +1,52 @@
+# IVGS Phase 1 — GPU Requirements per Task Type
+# vram_gb: minimum VRAM required (GPU Scheduler enforces this)
+# preferred_tier: preferred GPU class (A100 > A40 > A10G > T4)
+
+version: "1.0"
+
+task_gpu_requirements:
+  image_generation:
+    vram_gb: 16
+    preferred_tier: A40
+    compute_capability_min: "8.0"
+    multi_gpu: false
+    estimated_duration_s: 45
+
+  talking_head:
+    vram_gb: 12
+    preferred_tier: A10G
+    compute_capability_min: "7.5"
+    multi_gpu: false
+    estimated_duration_s: 90
+
+  motion_graphics:
+    vram_gb: 8
+    preferred_tier: A10G
+    compute_capability_min: "7.5"
+    multi_gpu: false
+    estimated_duration_s: 60
+
+  composition:
+    vram_gb: 6
+    preferred_tier: T4
+    compute_capability_min: "7.0"
+    multi_gpu: false
+    estimated_duration_s: 120
+
+gpu_tiers:
+  A100:
+    vram_gb: 80
+    hourly_rate_usd: 3.50
+    priority: 1
+  A40:
+    vram_gb: 48
+    hourly_rate_usd: 1.80
+    priority: 2
+  A10G:
+    vram_gb: 24
+    hourly_rate_usd: 0.75
+    priority: 3
+  T4:
+    vram_gb: 16
+    hourly_rate_usd: 0.35
+    priority: 4

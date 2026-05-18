@@ -1,0 +1,97 @@
+version: "3.9"
+
+# Phase 1 overlay — adds GPU Scheduler and updates API/workers
+# Deploy on node-01 alongside the base docker-compose.yml
+
+networks:
+  ivgs-net:
+    external: true  # Use the existing ivgs-net network from base compose
+
+services:
+
+  # ── GPU Scheduler ────────────────────────────────────────────────
+  ivgs-scheduler:
+    image: ghcr.io/ivgs/ivgs-scheduler:${IMAGE_TAG:-latest}
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.scheduler
+    restart: always
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: "postgresql://ivgs:${POSTGRES_PASSWORD}@node-01:5432/ivgs"
+      REDIS_URL: "redis://node-01:6379/1"
+      LOG_LEVEL: "info"
+      PORT: "8001"
+      VRAM_HEADROOM_PCT: "0.10"
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      - ivgs-api  # Ensure API (and DB) is up first
+
+  # ── API updates for Phase 1 ──────────────────────────────────────
+  ivgs-api:
+    environment:
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      CHECKPOINT_ENABLED: "true"
+      RETRY_MAX_DEFAULT: "4"
+      COST_CEILING_USD: "10.0"
+      IDEMPOTENCY_TTL: "86400"
+      FALLBACK_ENABLED: "true"
+    # Merge with existing ivgs-api service definition
+
+  # ── Worker updates for Phase 1 ───────────────────────────────────
+  ivgs-worker-02:
+    environment:
+      HEARTBEAT_INTERVAL: "30"
+      CHECKPOINT_ENABLED: "true"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      NODE_ID: "node-02"
+
+  ivgs-worker-03:
+    environment:
+      HEARTBEAT_INTERVAL: "30"
+      CHECKPOINT_ENABLED: "true"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      NODE_ID: "node-03"
+
+  ivgs-worker-04:
+    environment:
+      HEARTBEAT_INTERVAL: "30"
+      CHECKPOINT_ENABLED: "true"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      NODE_ID: "node-04"
+
+  ivgs-worker-05:
+    environment:
+      HEARTBEAT_INTERVAL: "30"
+      CHECKPOINT_ENABLED: "true"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      NODE_ID: "node-05"
+
+  ivgs-worker-06:
+    environment:
+      HEARTBEAT_INTERVAL: "30"
+      CHECKPOINT_ENABLED: "true"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+      NODE_ID: "node-06"
+
+  # ── Celery Beat for Phase 1 heartbeat schedule ───────────────────
+  ivgs-celery-beat:
+    image: ghcr.io/ivgs/ivgs-api:${IMAGE_TAG:-latest}
+    command: celery -A app.workers.celeryconfig:celery_app beat --loglevel=info
+    restart: always
+    environment:
+      DATABASE_URL: "postgresql://ivgs:${POSTGRES_PASSWORD}@node-01:5432/ivgs"
+      REDIS_URL: "redis://node-01:6379/0"
+      GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+    networks:
+      - ivgs-net
+    depends_on:
+      - ivgs-scheduler

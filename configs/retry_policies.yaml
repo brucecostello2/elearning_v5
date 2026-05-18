@@ -1,0 +1,74 @@
+# IVGS Phase 1 — Retry Policies
+# Strategy: "exponential" | "linear" | "fixed"
+# jitter: add random 0..jitter_max_s seconds to each delay
+
+version: "1.0"
+
+default_policy:
+  max_attempts: 4
+  strategy: exponential
+  base_delay_s: 2.0
+  max_delay_s: 60.0
+  jitter_max_s: 3.0
+  retryable_exceptions:
+    - "TimeoutError"
+    - "CeleryWorkerLostError"
+    - "redis.exceptions.ConnectionError"
+    - "sqlalchemy.exc.OperationalError"
+    - "httpx.ConnectError"
+    - "httpx.ReadTimeout"
+
+stage_policies:
+  transcript:
+    max_attempts: 4
+    strategy: exponential
+    base_delay_s: 2.0
+    max_delay_s: 30.0
+    jitter_max_s: 2.0
+
+  storyboard:
+    max_attempts: 3
+    strategy: exponential
+    base_delay_s: 3.0
+    max_delay_s: 45.0
+
+  image_generation:
+    max_attempts: 5
+    strategy: exponential
+    base_delay_s: 5.0
+    max_delay_s: 120.0
+    # GPU OOM is transient — retryable
+    retryable_exceptions:
+      - "torch.cuda.OutOfMemoryError"
+      - "RuntimeError"   # wraps CUDA errors
+
+  tts:
+    max_attempts: 4
+    strategy: exponential
+    base_delay_s: 2.0
+    max_delay_s: 30.0
+
+  talking_head:
+    max_attempts: 3
+    strategy: exponential
+    base_delay_s: 10.0
+    max_delay_s: 120.0
+
+  motion_graphics:
+    max_attempts: 3
+    strategy: exponential
+    base_delay_s: 5.0
+    max_delay_s: 60.0
+
+  composition:
+    max_attempts: 3
+    strategy: exponential
+    base_delay_s: 5.0
+    max_delay_s: 90.0
+
+# Errors that should NEVER be retried (fail immediately)
+non_retryable_patterns:
+  - "PermissionError"
+  - "FileNotFoundError"
+  - "InvalidJobError"
+  - "BudgetExceededError"

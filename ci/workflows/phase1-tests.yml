@@ -1,0 +1,171 @@
+name: IVGS Phase 1 Tests
+
+on:
+  push:
+    branches: [main, release/v4*]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs on new pushes to the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.11"
+  DATABASE_URL: "postgresql://ivgs:testpass@localhost:5432/ivgs_test"
+  REDIS_URL: "redis://localhost:6379/0"
+  GPU_SCHEDULER_URL: "http://localhost:8001"
+  CHECKPOINT_ENABLED: "true"
+  SECRET_KEY: "test-secret-key-not-for-production-use"
+
+jobs:
+  # ── Job 1: API unit + integration tests ────────────────────────────────────
+  api-tests:
+    name: API Tests
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: ivgs_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install API dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run Alembic migrations
+        run: alembic -c alembic/alembic.ini upgrade head
+
+      - name: Run API tests with coverage
+        run: |
+          pytest app/tests/ \
+            -v \
+            --cov=app \
+            --cov-report=xml:coverage-api.xml \
+            --cov-report=term-missing \
+            -x
+
+      - name: Upload API coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-api
+          path: coverage-api.xml
+
+  # ── Job 2: GPU Scheduler tests ──────────────────────────────────────────────
+  scheduler-tests:
+    name: Scheduler Tests
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: ivgs_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install Scheduler dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r scheduler/requirements.txt
+          pip install pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run Scheduler tests with coverage
+        run: |
+          pytest scheduler/tests/ \
+            -v \
+            --cov=scheduler \
+            --cov-report=xml:coverage-scheduler.xml \
+            -x
+
+      - name: Upload Scheduler coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-scheduler
+          path: coverage-scheduler.xml
+
+  # ── Job 3: Worker task tests ────────────────────────────────────────────────
+  worker-tests:
+    name: Worker Tests
+    runs-on: ubuntu-22.04
+
+    services:
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+
+      - name: Run Worker tests
+        run: |
+          pytest app/workers/tests/ \
+            -v \
+            --cov=app/workers \
+            --cov-report=xml:coverage-workers.xml \
+            -x
+
+      - name: Upload Worker coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-workers
+          path: coverage-workers.xml

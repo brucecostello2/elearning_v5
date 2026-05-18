@@ -1,0 +1,53 @@
+# IVGS Phase 1 — Stage Timeout Defaults
+# All values in seconds unless noted
+# Override per-deployment: TIMEOUT_OVERRIDE_TRANSCRIPT=120
+
+version: "1.0"
+
+stage_timeouts:
+  transcript:
+    default: 90
+    max:     300
+    warn_at: 60      # emit WARNING log if stage exceeds this
+
+  storyboard:
+    default: 120
+    max:     480
+    warn_at: 90
+
+  image_generation:
+    default: 180
+    max:     600
+    warn_at: 120
+
+  tts:
+    default: 90
+    max:     300
+    warn_at: 60
+
+  talking_head:
+    default: 300
+    max:     900
+    warn_at: 200
+
+  motion_graphics:
+    default: 240
+    max:     720
+    warn_at: 180
+
+  composition:
+    default: 360
+    max:     1200
+    warn_at: 270
+
+  # Orchestrator-level (entire pipeline)
+  pipeline_total:
+    default: 1800
+    max:     3600
+    warn_at: 1500
+
+# Scheduler-specific timeouts
+scheduler:
+  gpu_acquire_timeout: 60      # seconds to wait for a free GPU slot
+  admission_check_timeout: 5   # seconds for cost/vram admission check
+  heartbeat_silence_limit: 90  # mark node offline after this many seconds
