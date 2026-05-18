@@ -1,0 +1,40 @@
+FROM node:20-slim
+
+# Install Chromium dependencies for Remotion headless rendering
+RUN apt-get update && apt-get install -y \
+    chromium \
+    libgbm-dev \
+    libasound2 \
+    libatk1.0-0 \
+    libatk-bridge2.0-0 \
+    libcups2 \
+    libxkbcommon0 \
+    libxcomposite1 \
+    libxrandr2 \
+    libxdamage1 \
+    libxfixes3 \
+    libxshmfence1 \
+    libpango-1.0-0 \
+    libcairo2 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+ENV REMOTION_CHROME_PATH=/usr/bin/chromium
+
+WORKDIR /app
+
+# Copy package files and install dependencies
+COPY infra/remotion/package*.json ./
+RUN npm ci --production
+
+# Copy templates and render server
+COPY infra/remotion/templates/ ./templates/
+COPY infra/remotion/server.js ./
+
+EXPOSE 3002
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:3002/health || exit 1
+
+CMD ["node", "server.js"]

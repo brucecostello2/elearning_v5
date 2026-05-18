@@ -1,0 +1,68 @@
+# AI video model configuration for Phase 3
+# Controls VRAM requirements, max duration, supported resolutions, and timeouts.
+# Used by: cogvideox_service.py, wan21_service.py, video_fallback_chain.py
+
+models:
+  cogvideox_5b:
+    vram_mb: 24576              # 24 GB
+    max_duration_s: 60
+    native_fps: 8
+    supported_resolutions:
+      - "480p"                  # 854x480
+      - "720p"                  # 1280x720
+      - "1080p"                 # 1920x1080
+    default_resolution: "720p"
+    timeout_s: 1800
+    num_inference_steps: 50
+    guidance_scale: 6.0
+
+  cogvideox_2b:
+    vram_mb: 14336              # 14 GB
+    max_duration_s: 30
+    native_fps: 8
+    supported_resolutions:
+      - "480p"
+      - "720p"
+    default_resolution: "720p"
+    timeout_s: 900
+    num_inference_steps: 40
+    guidance_scale: 5.5
+
+  wan21_t2v:
+    vram_mb: 16384              # 16 GB
+    max_duration_s: 30
+    native_fps: 16
+    supported_resolutions:
+      - "480p"
+      - "720p"
+    default_resolution: "720p"
+    timeout_s: 900
+    num_inference_steps: 40
+    guidance_scale: 5.0
+
+  wan21_i2v:
+    vram_mb: 16384              # Image-to-video variant
+    max_duration_s: 15
+    native_fps: 16
+    supported_resolutions:
+      - "480p"
+      - "720p"
+    default_resolution: "480p"
+    timeout_s: 600
+
+# Scene type → preferred model mapping
+scene_type_defaults:
+  action:         cogvideox_5b
+  broll:          cogvideox_2b
+  talking_head:   wan21_t2v
+  transition:     wan21_t2v
+  interview:      cogvideox_2b
+  title_card:     wan21_t2v
+  product_demo:   cogvideox_5b
+
+# Node eligibility (based on VRAM)
+node_eligibility:
+  # Nodes with 24+ GB VRAM (node-04, node-05, node-06)
+  cogvideox_5b_nodes: ["node-04", "node-05", "node-06"]
+  # Nodes with 16+ GB VRAM (node-02 through node-06)
+  general_ai_nodes: ["node-02", "node-03", "node-04", "node-05", "node-06"]

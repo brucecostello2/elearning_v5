@@ -1,0 +1,90 @@
+# Phase 3 Docker Compose overlay — extends Phase 1+2 base.
+# Usage: docker-compose -f docker-compose.base.yml \
+#          -f infra/docker-compose.phase2.yml \
+#          -f infra/docker-compose.phase3.yml up -d
+
+version: '3.9'
+
+services:
+  # Remotion rendering service
+  ivgs-remotion:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.remotion
+    image: ivgs-remotion:phase3
+    container_name: ivgs-remotion
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    volumes:
+      - workdir:/mnt/workdir
+    environment:
+      - NODE_ENV=production
+      - WORKDIR=/mnt/workdir
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Montreal Forced Aligner service (containerized)
+  ivgs-mfa:
+    image: mmcauliffe/montreal-forced-aligner:3.0
+    container_name: ivgs-mfa
+    restart: unless-stopped
+    volumes:
+      - workdir:/mnt/workdir
+      - mfa-models:/opt/mfa/pretrained_models
+    environment:
+      - MFA_ROOT=/opt/mfa
+    networks:
+      - ivgs-net
+
+  # Update GPU workers to include Phase 3 model support
+  ivgs-worker-gpu:
+    extends:
+      service: ivgs-worker-gpu
+    environment:
+      - COGVIDEOX_MODEL_PATH=${COGVIDEOX_MODEL_PATH}
+      - WAN21_MODEL_PATH=${WAN21_MODEL_PATH}
+      - SYNCNET_MODEL_PATH=${SYNCNET_MODEL_PATH}
+      - WHISPER_MODEL=large-v3
+      - REMOTION_SERVICE_URL=http://ivgs-remotion:3002
+      - MFA_PATH=/opt/mfa
+    volumes:
+      - ai-models:/opt/ai-models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Update API to know about Phase 3 services
+  ivgs-api:
+    extends:
+      service: ivgs-api
+    environment:
+      - REMOTION_SERVICE_URL=http://ivgs-remotion:3002
+      - COGVIDEOX_MODEL_PATH=${COGVIDEOX_MODEL_PATH}
+      - WAN21_MODEL_PATH=${WAN21_MODEL_PATH}
+      - SYNCNET_MODEL_PATH=${SYNCNET_MODEL_PATH}
+      - MFA_PATH=/opt/mfa
+
+volumes:
+  workdir:
+    external: true
+  ai-models:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${AI_MODELS_HOST_PATH:-/mnt/ai-models}
+  mfa-models:
+
+networks:
+  ivgs-net:
+    external: true

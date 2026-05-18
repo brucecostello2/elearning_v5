@@ -1,0 +1,62 @@
+# Multi-language localization configuration
+# Controls supported languages, TTS voice mappings, translation settings.
+
+translation:
+  provider: openai_gpt4
+  model: gpt-4o
+  temperature: 0.3
+  max_tokens: 8192
+  preserve_markers:
+    - "[PAUSE:"
+    - "[EMPHASIS:"
+    - "[SLOW:"
+    - "[FAST:"
+
+tts:
+  default_provider: openai
+  model: tts-1-hd
+  # Default voice per language (overridable per-job in localization_configs)
+  voice_map:
+    es: nova       # Spanish
+    fr: alloy      # French
+    de: echo       # German
+    ja: shimmer    # Japanese
+    zh: onyx       # Chinese (Mandarin)
+    pt: fable      # Portuguese
+    ko: nova       # Korean
+    ar: alloy      # Arabic
+    hi: shimmer    # Hindi
+    it: echo       # Italian
+
+caption_alignment:
+  aligner: mfa                 # Options: mfa, gentle, whisper_fallback
+  whisper_fallback: true       # Fall back to Whisper word timestamps if MFA fails
+  lead_time_ms: 200            # Caption appears 200ms before word
+  group_size: 6                # Words per caption block
+  max_drift_ms: 100            # Flag as "drifted" if max drift exceeds this
+  review_threshold_ratio: 0.90 # Flag for human review if STT match < 90%
+
+quality_thresholds:
+  tts_min_snr_db: 20
+  localized_video_min_quality: 0.65  # Lower than source due to recomposition
+
+# Languages enabled for Phase 3 MVP
+enabled_languages:
+  - code: es
+    name: Spanish
+    status: ga      # Generally available
+  - code: fr
+    name: French
+    status: ga
+  - code: de
+    name: German
+    status: ga
+  - code: ja
+    name: Japanese
+    status: beta
+  - code: zh
+    name: Chinese
+    status: beta
+  - code: pt
+    name: Portuguese
+    status: beta

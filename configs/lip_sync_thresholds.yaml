@@ -1,0 +1,21 @@
+# Lip sync validation thresholds for Phase 3
+# Used by: lip_sync_validator.py, lip_sync_validation_task.py
+
+syncnet:
+  model: syncnet_v2
+  acceptance_threshold: 0.85      # Scores >= this → auto-approve
+  retry_threshold: 0.70           # Scores 0.70–0.85 → retry generation
+  # Scores < retry_threshold → fallback to static avatar + waveform
+
+  regeneration_max_attempts: 2    # Max talking-head retries before fallback
+  frozen_frame_max_consecutive: 5 # More than this → flag for review
+
+fallback:
+  # Applied when all retries exhausted
+  strategy: static_avatar_waveform
+  waveform_color: "#e07800"
+  waveform_style: "bars"          # Options: bars, line, circular
+
+scoring_models:
+  primary: syncnet_v2
+  heuristic_score_on_unavailable: 0.75  # Assumed pass when SyncNet not loaded

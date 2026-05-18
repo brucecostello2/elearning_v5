@@ -1,0 +1,121 @@
+name: Phase 3 Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ivgs-api/app/services/cogvideox_service.py'
+      - 'ivgs-api/app/services/wan21_service.py'
+      - 'ivgs-api/app/services/video_fallback_chain.py'
+      - 'ivgs-api/app/services/localization_service.py'
+      - 'ivgs-api/app/services/lip_sync_validator.py'
+      - 'ivgs-api/app/services/caption_reconciliation.py'
+      - 'ivgs-api/app/services/advanced_motion_graphics.py'
+      - 'ivgs-workers/tasks/ai_video_generation_task.py'
+      - 'ivgs-workers/tasks/localization_task.py'
+      - 'ivgs-workers/tasks/lip_sync_validation_task.py'
+      - 'ivgs-workers/tasks/caption_alignment_task.py'
+      - 'ivgs-api/migrations/versions/011_*.py'
+      - 'ivgs-api/migrations/versions/012_*.py'
+      - 'ivgs-api/migrations/versions/013_*.py'
+      - 'ivgs-api/migrations/versions/014_*.py'
+      - 'infra/remotion/**'
+
+jobs:
+  phase3-tests:
+    runs-on: ubuntu-latest
+    # Note: GPU tests use mocked models (no actual CUDA required in CI)
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ivgs_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+        ports: ["5432:5432"]
+      redis:
+        image: redis:7
+        ports: ["6379:6379"]
+      rabbitmq:
+        image: rabbitmq:3-management
+        ports: ["5672:5672", "15672:15672"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          pip install -r ivgs-api/requirements.txt
+          pip install -r ivgs-workers/requirements.txt
+          pip install pytest pytest-asyncio pytest-mock
+
+      - name: Set up Node.js for Remotion tests
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Remotion dependencies
+        working-directory: infra/remotion
+        run: npm ci
+
+      - name: Run Alembic migrations 011-014
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+        run: |
+          cd ivgs-api
+          alembic upgrade 011_ai_video_generation
+          alembic upgrade 012_localization
+          alembic upgrade 013_lip_sync_scores
+          alembic upgrade 014_caption_alignment
+
+      - name: Lint (ruff)
+        run: ruff check ivgs-api/ ivgs-workers/ --select=E,F,W,I
+
+      - name: Type check (mypy)
+        run: |
+          mypy ivgs-api/app/services/cogvideox_service.py \
+               ivgs-api/app/services/localization_service.py \
+               ivgs-api/app/services/lip_sync_validator.py \
+               --ignore-missing-imports
+
+      - name: Unit tests — AI video service (mocked model)
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest ivgs-api/tests/test_cogvideox_service.py -v
+
+      - name: Unit tests — Localization service
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          OPENAI_API_KEY: "sk-test-ci-mock"
+        run: pytest ivgs-api/tests/test_localization_service.py -v
+
+      - name: Unit tests — Lip sync validator (test fixtures)
+        run: pytest ivgs-api/tests/test_lip_sync_validator.py -v
+
+      - name: Unit tests — Caption reconciliation
+        run: pytest ivgs-api/tests/test_caption_reconciliation.py -v
+
+      - name: Unit tests — Video fallback chain
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+        run: pytest ivgs-api/tests/test_video_fallback_chain.py -v
+
+      - name: Remotion template build test
+        working-directory: infra/remotion
+        run: npx remotion bundle templates/title-card/index.tsx
+
+      - name: Worker task registration test
+        env:
+          CELERY_BROKER_URL: amqp://guest:guest@localhost:5672
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest ivgs-workers/tests/test_phase3_tasks.py -v
