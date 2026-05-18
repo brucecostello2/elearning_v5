@@ -1,0 +1,112 @@
+{
+  "vhosts": [{"name": "/"}],
+  "exchanges": [
+    {
+      "name": "ivgs.dlx",
+      "vhost": "/",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "default",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "ivgs.dlx",
+        "x-dead-letter-routing-key": "default.dlq",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "default.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "gpu_image",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "ivgs.dlx",
+        "x-dead-letter-routing-key": "gpu_image.dlq",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "gpu_image.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "gpu_video",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "ivgs.dlx",
+        "x-dead-letter-routing-key": "gpu_video.dlq",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "gpu_video.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "gpu_tts",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "ivgs.dlx",
+        "x-dead-letter-routing-key": "gpu_tts.dlq",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "gpu_tts.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "composition",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-dead-letter-exchange": "ivgs.dlx",
+        "x-dead-letter-routing-key": "composition.dlq",
+        "x-message-ttl": 86400000
+      }
+    },
+    {
+      "name": "composition.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {"source":"ivgs.dlx","vhost":"/","destination":"default.dlq","destination_type":"queue","routing_key":"default.dlq","arguments":{}},
+    {"source":"ivgs.dlx","vhost":"/","destination":"gpu_image.dlq","destination_type":"queue","routing_key":"gpu_image.dlq","arguments":{}},
+    {"source":"ivgs.dlx","vhost":"/","destination":"gpu_video.dlq","destination_type":"queue","routing_key":"gpu_video.dlq","arguments":{}},
+    {"source":"ivgs.dlx","vhost":"/","destination":"gpu_tts.dlq","destination_type":"queue","routing_key":"gpu_tts.dlq","arguments":{}},
+    {"source":"ivgs.dlx","vhost":"/","destination":"composition.dlq","destination_type":"queue","routing_key":"composition.dlq","arguments":{}}
+  ]
+}

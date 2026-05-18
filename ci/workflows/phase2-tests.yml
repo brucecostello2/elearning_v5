@@ -1,0 +1,117 @@
+name: Phase 2 Tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ivgs-api/**'
+      - 'ivgs-workers/**'
+      - 'ivgs-scheduler/**'
+      - 'ivgs-dashboard/**'
+      - 'infra/**'
+      - 'configs/**'
+
+jobs:
+  # ─── API: DLQ, Manifest, Quality endpoints ────────────────────────────────
+  api-phase2-tests:
+    name: API Phase 2 Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ivgs_test
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install dependencies
+        run: pip install -r ivgs-api/requirements.txt pytest pytest-asyncio httpx
+      - name: Run Phase 1 migrations
+        working-directory: ivgs-api
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+        run: alembic upgrade 005
+      - name: Run Phase 2 migrations
+        working-directory: ivgs-api
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+        run: alembic upgrade 010
+      - name: Run DLQ service tests
+        working-directory: ivgs-api
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/test_dlq_service.py tests/test_dlq_routes.py -v
+      - name: Run Manifest service tests
+        working-directory: ivgs-api
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/test_manifest_service.py tests/test_timeline_authority.py -v
+      - name: Run Quality validation tests
+        working-directory: ivgs-api
+        run: pytest tests/test_quality_validator.py tests/test_corruption_detector.py -v
+
+  # ─── Workers: Segment render, DLQ processor, Supervisor ───────────────────
+  worker-phase2-tests:
+    name: Worker Phase 2 Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: ivgs_test
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+      redis:
+        image: redis:7
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install ffmpeg
+        run: sudo apt-get install -y ffmpeg
+      - name: Install dependencies
+        run: pip install -r ivgs-workers/requirements.txt pytest pytest-mock celery
+      - name: Run DLQ processor tests
+        working-directory: ivgs-workers
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          REDIS_URL: redis://localhost:6379/0
+        run: pytest tests/test_dlq_processor_task.py tests/test_worker_supervisor_task.py -v
+      - name: Run segment render tests
+        working-directory: ivgs-workers
+        env:
+          DATABASE_URL: postgresql://ivgs:test@localhost:5432/ivgs_test
+          REDIS_URL: redis://localhost:6379/0
+          WORKDIR: /tmp/ivgs_test_workdir
+        run: pytest tests/test_segment_render_task.py tests/test_manifest_generation_task.py -v
+
+  # ─── Scheduler: Load balancer, Priority queue ─────────────────────────────
+  scheduler-phase2-tests:
+    name: Scheduler Phase 2 Tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7
+        options: --health-cmd "redis-cli ping" --health-interval 10s
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.11'}
+      - name: Install dependencies
+        run: pip install -r ivgs-scheduler/requirements.txt pytest
+      - name: Run load balancer tests
+        working-directory: ivgs-scheduler
+        env:
+          REDIS_URL: redis://localhost:6379/1
+        run: pytest tests/test_load_balancer.py tests/test_model_concurrency.py tests/test_priority_queue.py -v

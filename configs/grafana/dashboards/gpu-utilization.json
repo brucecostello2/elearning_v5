@@ -1,0 +1,38 @@
+{
+  "title": "IVGS GPU Fleet",
+  "uid": "ivgs-gpu-fleet",
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1, "type": "gauge", "title": "Fleet Average GPU Utilization",
+      "gridPos": {"x":0,"y":0,"w":6,"h":4},
+      "targets": [{"expr": "avg(ivgs_gpu_util_pct)", "legendFormat": "Avg Util%"}],
+      "fieldConfig": {"defaults": {"unit":"percent","min":0,"max":100,"thresholds":{"steps":[{"color":"red","value":0},{"color":"yellow","value":30},{"color":"green","value":70}]}}}
+    },
+    {
+      "id": 2, "type": "table", "title": "Per-GPU Status",
+      "gridPos": {"x":0,"y":4,"w":24,"h":8},
+      "targets": [
+        {"expr": "ivgs_gpu_util_pct", "legendFormat": "GPU Util %", "instant": true},
+        {"expr": "ivgs_gpu_vram_used_mb", "legendFormat": "VRAM Used MB", "instant": true},
+        {"expr": "ivgs_gpu_temperature_celsius", "legendFormat": "Temp °C", "instant": true}
+      ]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "GPU Utilization Over Time",
+      "gridPos": {"x":0,"y":12,"w":24,"h":8},
+      "targets": [{"expr": "ivgs_gpu_util_pct", "legendFormat": "{{hostname}}:{{gpu_index}}"}]
+    },
+    {
+      "id": 4, "type": "heatmap", "title": "Model Residency Heatmap",
+      "gridPos": {"x":0,"y":20,"w":12,"h":6},
+      "targets": [{"expr": "ivgs_gpu_models_loaded", "legendFormat": "{{model}}@{{hostname}}"}]
+    },
+    {
+      "id": 5, "type": "timeseries", "title": "Job Throughput by GPU",
+      "gridPos": {"x":12,"y":20,"w":12,"h":6},
+      "targets": [{"expr": "rate(ivgs_gpu_jobs_completed_total[5m])", "legendFormat": "{{hostname}}:{{gpu_index}}"}]
+    }
+  ]
+}

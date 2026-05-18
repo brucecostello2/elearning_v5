@@ -1,0 +1,86 @@
+groups:
+  - name: ivgs_reliability
+    interval: 30s
+    rules:
+      # DLQ depth alert — fires when pending DLQ messages exceed threshold
+      - alert: DLQHighCount
+        expr: ivgs_dlq_pending_count > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "DLQ depth high: {{ $value }} pending messages"
+          description: >
+            Dead-letter queue has {{ $value }} pending messages for
+            more than 5 minutes. Investigate via DLQDashboard.
+            Action: review categories, replay transient failures,
+            escalate config/resource errors.
+
+      # GPU utilization alert — fires when fleet is underutilized
+      - alert: GPUUtilizationLow
+        expr: avg(ivgs_gpu_util_pct) < 30
+        for: 15m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "GPU fleet underutilized: avg {{ $value | humanize }}%"
+          description: >
+            GPU fleet average utilization below 30% for 15 minutes.
+            Check job queue depth and scheduler configuration.
+
+      # Worker heartbeat alert — fires when a worker stops reporting
+      - alert: WorkerDown
+        expr: time() - ivgs_worker_last_heartbeat_seconds > 120
+        for: 0m
+        labels:
+          severity: critical
+          team: ops
+        annotations:
+          summary: "Worker {{ $labels.worker_id }} not reporting"
+          description: >
+            Worker {{ $labels.worker_id }} on {{ $labels.hostname }}
+            has not sent a heartbeat for {{ $value | humanizeDuration }}.
+            May have crashed or lost network. Jobs reassigned automatically.
+
+      # Job failure rate alert
+      - alert: JobFailureRateHigh
+        expr: >
+          rate(ivgs_jobs_failed_total[15m]) /
+          (rate(ivgs_jobs_completed_total[15m]) + rate(ivgs_jobs_failed_total[15m])) > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          team: engineering
+        annotations:
+          summary: "Job failure rate: {{ $value | humanizePercentage }}"
+          description: >
+            IVGS job failure rate exceeds 10% over last 15 minutes.
+            Phase 2 target is <5%. Check DLQ dashboard and recent
+            failure categories.
+
+      # Render queue backlog alert
+      - alert: RenderQueueBacklog
+        expr: ivgs_render_segments_pending > 20
+        for: 10m
+        labels:
+          severity: warning
+          team: ops
+        annotations:
+          summary: "Render segment backlog: {{ $value }} pending"
+          description: >
+            More than 20 render segments have been pending for 10+ minutes.
+            Composition workers may be overwhelmed or stuck.
+            Check segment status via /api/v1/jobs/{id}/segments.
+
+      # GPU temperature warning
+      - alert: GPUOvertemperature
+        expr: ivgs_gpu_temperature_celsius > 88
+        for: 2m
+        labels:
+          severity: warning
+          team: infra
+        annotations:
+          summary: "GPU {{ $labels.gpu_index }} on {{ $labels.hostname }} overtemp"
+          description: "GPU temperature {{ $value }}°C exceeds 88°C threshold."

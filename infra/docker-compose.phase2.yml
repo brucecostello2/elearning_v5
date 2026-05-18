@@ -1,0 +1,115 @@
+# Phase 2 Docker Compose overlay
+# Apply on top of Phase 1:
+#   docker compose -f docker-compose.base.yml \
+#     -f docker-compose.phase1.yml \
+#     -f docker-compose.phase2.yml up -d
+#
+# Adds: Prometheus, Grafana, RabbitMQ management, Celery Beat
+
+version: "3.9"
+
+services:
+  # ─── Prometheus ───────────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: ivgs-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks:
+      - ivgs_net
+
+  # ─── Grafana ──────────────────────────────────────────────────────────────
+  grafana:
+    image: grafana/grafana:10.2.0
+    container_name: ivgs-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-ivgs-grafana}
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+      - GF_FEATURE_TOGGLES_ENABLE=publicDashboards
+    volumes:
+      - ./configs/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - ivgs_net
+
+  # ─── Node Exporter (host metrics) ─────────────────────────────────────────
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: ivgs-node-exporter
+    restart: unless-stopped
+    pid: host
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - ivgs_net
+
+  # ─── RabbitMQ with management plugin ──────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: ivgs-rabbitmq
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-ivgs}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-changeme}
+    volumes:
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - ivgs_net
+
+  # ─── Celery Beat (Phase 2 periodic tasks) ─────────────────────────────────
+  ivgs-celery-beat-p2:
+    image: ghcr.io/ivgs/ivgs-workers:${IMAGE_TAG:-latest}
+    container_name: ivgs-celery-beat-p2
+    restart: unless-stopped
+    command: celery -A app.celery_app beat --loglevel=info --scheduler=redbeat.RedBeatScheduler
+    environment:
+      - DATABASE_URL=postgresql://ivgs:${POSTGRES_PASSWORD}@node-01:5432/ivgs
+      - REDIS_URL=redis://node-01:6379/0
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-ivgs}:${RABBITMQ_PASS}@node-01:5672/
+      - WORKDIR=/mnt/workdir
+    volumes:
+      - workdir:/mnt/workdir
+    depends_on:
+      - rabbitmq
+      - prometheus
+    networks:
+      - ivgs_net
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  rabbitmq_data:
+  workdir:
+    external: true
+
+networks:
+  ivgs_net:
+    external: true

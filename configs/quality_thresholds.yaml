@@ -1,0 +1,31 @@
+# Quality scoring thresholds for IVGS v4 Phase 2
+# These thresholds control when assets are auto-approved, flagged for
+# human review, or automatically rejected for regeneration.
+#
+# Decision logic:
+#   score >= auto_approve  → approved (proceed downstream)
+#   score >= auto_reject   → flagged  (human review queue)
+#   score <  auto_reject   → rejected (trigger regeneration)
+
+image:
+  clip_threshold: 0.75       # Minimum CLIP similarity to prompt
+  safety_threshold: 0.95     # Content safety floor (near-zero violation tolerance)
+  auto_approve: 0.90         # Scores >= 90% skip review queue
+  auto_reject: 0.70          # Scores < 70% trigger automatic regeneration
+  min_resolution_px: 512     # Minimum width AND height in pixels
+
+video:
+  frame_consistency: 0.80    # Frame-to-frame consistency score (0-1)
+  artifact_threshold: 0.05   # Maximum artifact ratio before quality penalty
+  auto_approve: 0.85
+  auto_reject: 0.65
+
+audio:
+  min_snr_db: 20             # Minimum signal-to-noise ratio in dB
+  max_clipping_pct: 0.01     # Maximum fraction of clipped samples (1%)
+  auto_approve: 0.90
+  auto_reject: 0.70
+
+# Global
+max_regen_attempts: 2        # Max regeneration cycles before job fails
+flag_review_timeout_hours: 4  # SLA for human review of flagged assets
