@@ -1,0 +1,61 @@
+name: Phase 4 Tests
+
+on:
+  pull_request:
+    paths: ["app/services/**", "app/tasks/**", "migrations/**"]
+  push:
+    branches: [main, release/*]
+
+jobs:
+  phase4-unit:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ivgs
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: ivgs_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ivgs:testpass@localhost:5432/ivgs_test
+      SEAWEEDFS_MASTER_URL: http://localhost:9333
+      SEAWEEDFS_FILER_URL: http://localhost:8888
+      NAS_BACKUP_PATH: /tmp/test-backup
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-test.txt
+
+      - name: Start SeaweedFS mock
+        run: |
+          # Use weed-mock Docker image for unit test isolation
+          docker run -d --name weed-mock -p 9333:9333 -p 8888:8888 \
+            chrislusf/seaweedfs:latest server -dir=/tmp/weed-data
+          sleep 3
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+
+      - name: Run Phase 4 unit tests
+        run: |
+          pytest tests/phase4/ -v \
+            --cov=app/services \
+            --cov=app/tasks \
+            --cov-report=term-missing \
+            -k "not integration"
+
+      - name: Lint Phase 4 services
+        run: |
+          ruff check app/services/seaweedfs_client.py \
+            app/services/retention_service.py \
+            app/services/tier_migration_service.py \
+            app/services/backup_service.py

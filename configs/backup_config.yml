@@ -1,0 +1,31 @@
+# NAS Backup Configuration — replaces all S3 backup bucket settings
+
+nas:
+  mount_path: "/mnt/backup"          # NAS mounted on all cluster nodes via NFS/SMB
+  nas_host: "10.10.0.7"              # Dedicated NAS server (outside cluster)
+  nas_share: "/volume1/ivgs-backup"  # NAS export path
+  mount_options: "vers=3,async,rsize=131072,wsize=131072"
+
+backup:
+  root_dir: "/mnt/backup/ivgs"
+  incremental_schedule: "0 2 * * *"  # Daily 02:00 UTC
+  full_schedule: "0 2 * * 0"         # Weekly (Sunday) 02:00 UTC — overrides incremental
+  retention_days: 30                  # Rotate snapshots older than 30 days
+  hard_link_dedup: true               # Use --link-dest for incremental rsync savings
+  verify_on_complete: true            # SHA-256 check pg_dump after each backup
+
+sources:
+  - path: "/mnt/workdir"
+    description: "Active render workdir"
+  - path: "/etc/ivgs"
+    description: "Application config files"
+
+database:
+  dump_compress_level: 9
+  dump_format: "custom"               # pg_restore compatible
+  pre_dump_checkpoint: true           # pg_checkpoint before dump for clean snapshot
+
+alerting:
+  notify_on_failure: true
+  notify_on_success: false
+  alert_endpoint: "${ALERT_WEBHOOK_URL}"

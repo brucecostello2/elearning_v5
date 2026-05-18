@@ -1,0 +1,41 @@
+(key panel definitions){
+  "title": "IVGS Storage Capacity — SeaweedFS",
+  "uid": "ivgs-storage-capacity",
+  "tags": ["ivgs", "storage", "seaweedfs"],
+  "panels": [
+    {
+      "type": "gauge",
+      "title": "HOT Tier Utilisation",
+      "targets": [{
+        "expr": "ivgs_tier_used_bytes{tier=\"hot\"} / (ivgs_tier_used_bytes{tier=\"hot\"} + ivgs_tier_free_bytes{tier=\"hot\"}) * 100"
+      }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": { "steps": [
+            {"color": "green", "value": 0},
+            {"color": "yellow", "value": 75},
+            {"color": "red", "value": 90}
+          ]}
+        }
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Storage Used Per Tier (GB)",
+      "targets": [
+        {"expr": "ivgs_tier_used_bytes{tier=\"hot\"} / 1073741824", "legendFormat": "HOT"},
+        {"expr": "ivgs_tier_used_bytes{tier=\"warm\"} / 1073741824", "legendFormat": "WARM"},
+        {"expr": "ivgs_tier_used_bytes{tier=\"cold\"} / 1073741824", "legendFormat": "COLD"},
+        {"expr": "ivgs_tier_used_bytes{tier=\"archive\"} / 1073741824", "legendFormat": "ARCHIVE"}
+      ],
+      "fieldConfig": {"defaults": {"unit": "GB"}}
+    },
+    {
+      "type": "stat",
+      "title": "Deduplication Ratio",
+      "targets": [{"expr": "ivgs_dedup_ratio"}],
+      "fieldConfig": {"defaults": {"unit": "percent"}}
+    }
+  ]
+}

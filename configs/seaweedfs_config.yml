@@ -1,0 +1,69 @@
+# SeaweedFS Cluster Configuration
+# All nodes: node-01 (10.10.0.1) through node-06 (10.10.0.6)
+# Zero cloud dependencies.
+
+master:
+  address: "node-01:9333"
+  default_replication: "001"           # 1 replica — add "011" for 2 copies
+  volume_size_limit_mb: 30000          # 30 GB per volume file
+  volume_preallocate: false
+  heartbeat_interval: "5s"
+  check_interval: "15s"
+  pulse_seconds: 5
+
+filer:
+  address: "node-01:8888"
+  master: "node-01:9333"
+  default_replica_placement: "001"
+  dir_listing_limit: 1000
+  # Store filer metadata in PostgreSQL for consistency
+  postgres:
+    hostname: "node-01"
+    port: 5432
+    database: "ivgs_seaweedfs"
+    username: "ivgs"
+    password: "${POSTGRES_PASSWORD}"
+    sslmode: "disable"
+    connection_max_idle: 5
+    connection_max_open: 20
+
+volumes:
+  # HOT tier: NVMe SSDs on node-02 — for active/recent renders
+  - node: "node-02"
+    port: 8080
+    dir: "/mnt/nvme/seaweedfs/volumes"
+    collection: "hot"
+    max_volumes: 20
+    index: "leveldb"
+    compaction_mbps: 40
+
+  # WARM tier: SSD on node-03 — completed renders < 30 days
+  - node: "node-03"
+    port: 8081
+    dir: "/mnt/ssd/seaweedfs/volumes"
+    collection: "warm"
+    max_volumes: 50
+    index: "leveldb"
+    compaction_mbps: 20
+
+  # COLD tier: HDD on node-04 — archived renders 30-180 days
+  - node: "node-04"
+    port: 8082
+    dir: "/mnt/hdd/seaweedfs/volumes"
+    collection: "cold"
+    max_volumes: 100
+    index: "leveldb"
+    compaction_mbps: 10
+
+  # ARCHIVE tier: Slow HDD on node-05 — long-term > 180 days
+  - node: "node-05"
+    port: 8083
+    dir: "/mnt/archive/seaweedfs/volumes"
+    collection: "archive"
+    max_volumes: 200
+    index: "leveldb"
+    compaction_mbps: 5
+
+monitoring:
+  metrics_port: 9325          # Prometheus metrics endpoint on master
+  enable_prometheus: true

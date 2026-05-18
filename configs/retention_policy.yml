@@ -1,0 +1,40 @@
+# Default tier transition age thresholds per project type.
+# These are seeded into the retention_policies table on first deploy.
+# Override per-project via /api/v1/retention/policies.
+
+policies:
+  global_default:
+    hot_days: 7                # Keep in HOT (NVMe) for 7 days after creation
+    warm_days: 30              # Move to WARM (SSD) — stay for 30 days
+    cold_days: 180             # Move to COLD (HDD) — stay for 180 days
+    delete_after_days: 365     # Move to ARCHIVE at day 180, delete at day 365
+    preserve_on_download: true # Reset to HOT when user downloads
+
+  # Demo/free-tier projects — aggressive tiering to save NVMe space
+  free_tier:
+    hot_days: 1
+    warm_days: 7
+    cold_days: 30
+    delete_after_days: 90
+    preserve_on_download: false
+
+  # Long-form productions — generous retention for enterprise clients
+  enterprise_production:
+    hot_days: 30
+    warm_days: 90
+    cold_days: 365
+    delete_after_days: null    # Never auto-delete
+    preserve_on_download: true
+
+  # Short-form social media — rapid tiering, low retention
+  social_media:
+    hot_days: 2
+    warm_days: 14
+    cold_days: 60
+    delete_after_days: 180
+    preserve_on_download: true
+
+tier_thresholds:
+  # Capacity alerts (applies to all tiers)
+  warning_pct: 75      # Alert at 75% full
+  critical_pct: 90     # Alert at 90% full — trigger expansion runbook

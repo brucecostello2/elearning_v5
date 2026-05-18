@@ -1,0 +1,29 @@
+# Default per-project storage quotas.
+# Referenced by QuotaService._get_or_create_quota().
+# All values in bytes. No cloud billing — purely local capacity.
+
+tiers:
+  free:
+    max_bytes: 53687091200       # 50 GB
+    soft_limit: false            # Hard block on exceed
+    description: "Free tier — shared SeaweedFS pool"
+
+  standard:
+    max_bytes: 536870912000      # 500 GB
+    soft_limit: false
+    description: "Standard plan — dedicated SSD/HDD allocation"
+
+  enterprise:
+    max_bytes: 5497558138880     # 5 TB
+    soft_limit: true             # Warn but allow; ops team notified
+    description: "Enterprise — full cluster allocation negotiated"
+
+  custom:
+    max_bytes: null              # Set per-project via API
+    soft_limit: true
+    description: "Custom allocation — set via /api/v1/quotas/set"
+
+alerts:
+  warning_threshold: 0.75
+  critical_threshold: 0.90
+  check_interval_seconds: 3600   # Hourly quota enforcement task
