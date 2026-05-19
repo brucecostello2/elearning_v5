@@ -1,6 +1,6 @@
 # IVGS v5 — Celery Workers (ivgs-workers)
 # Python 3.12 slim, GPU-ready base layer, non-root execution
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential libpq-dev ffmpeg \
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --prefix=/install \
     -r /build/worker-requirements.txt
 
 # --- Runtime stage ---
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 ffmpeg curl \
