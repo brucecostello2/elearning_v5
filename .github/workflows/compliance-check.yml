@@ -1,0 +1,92 @@
+# =============================================================================
+# IVGS v5 — Compliance Audit CI
+# =============================================================================
+# Spec reference: §15.3 Table 15-2 Row 4 — CI Compliance Audit
+#                 Appendix F.2 — Prohibited Dependency Scanner
+#                 §18.3 — Prohibited Actions
+#
+# Trigger: All branches, all repos
+# Action: Fail build on any violation
+# =============================================================================
+
+name: Compliance Audit
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  compliance-scan:
+    name: "Prohibited Dependency Scan (§F.2)"
+    runs-on: [self-hosted, linux, x64, ivgs-infra]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: "Rule 1: Prohibited environment variables"
+        run: |
+          echo "Scanning for prohibited env vars..."
+          if grep -rE \
+            "OPENAI_API_KEY|ANTHROPIC_API_KEY|ELEVENLABS_API_KEY|DID_API_KEY|SYNTHESIA_API_KEY" \
+            --include="*.env*" --include="*.yml" --include="*.yaml" --include="*.py" \
+            --exclude-dir=".git" \
+            --exclude="compliance_scanner.py" \
+            --exclude="compliance-check.yml" \
+            . ; then
+            echo "::error::PROHIBITED environment variables found!"
+            exit 1
+          fi
+          echo "✓ No prohibited env vars found"
+
+      - name: "Rule 2: Prohibited pip packages"
+        run: |
+          echo "Scanning for prohibited pip packages..."
+          if grep -rE \
+            "^openai|^anthropic|^elevenlabs|^did-client|^synthesia" \
+            requirements*.txt pyproject.toml 2>/dev/null ; then
+            echo "::error::PROHIBITED pip packages found!"
+            exit 1
+          fi
+          echo "✓ No prohibited pip packages found"
+
+      - name: "Rule 3: Prohibited API endpoints"
+        run: |
+          echo "Scanning for prohibited API endpoints..."
+          if grep -rE \
+            "api\.openai\.com|api\.anthropic\.com|api\.elevenlabs\.io|api\.d-id\.com" \
+            --include="*.py" --include="*.ts" --include="*.js" \
+            --exclude-dir=".git" \
+            --exclude="compliance_scanner.py" \
+            --exclude="compliance-check.yml" \
+            . ; then
+            echo "::error::PROHIBITED API endpoints found!"
+            exit 1
+          fi
+          echo "✓ No prohibited API endpoints found"
+
+      - name: "Rule 4: Prohibited import patterns"
+        run: |
+          echo "Scanning for prohibited imports..."
+          if grep -rE \
+            "^import openai|^from openai|^import anthropic|^from anthropic|^import elevenlabs|^from elevenlabs" \
+            --include="*.py" \
+            --exclude-dir=".git" \
+            --exclude="compliance_scanner.py" \
+            --exclude="compliance-check.yml" \
+            . ; then
+            echo "::error::PROHIBITED imports found!"
+            exit 1
+          fi
+          echo "✓ No prohibited imports found"
+
+      - name: "Run full compliance scanner"
+        run: python scripts/compliance_scanner.py .
+
+      - name: "Compliance check summary"
+        if: always()
+        run: echo "✓ All compliance checks passed — §F.2 satisfied"

@@ -1,0 +1,39 @@
+# =============================================================
+# IVGS v5 — SeaweedFS Filer Configuration (node-01:8888)
+# Uses PostgreSQL as metadata store
+# =============================================================
+
+[filer]
+  ip = "0.0.0.0"
+  port = 8888
+  port.readonly = 0
+  defaultReplicaPlacement = "000"
+  maxMB = 32
+  dirListLimit = 1000
+  cipher = false
+
+# PostgreSQL-backed metadata store for filer directory listings
+[filer.options]
+  recursive_delete = false
+  max_file_name_length = 255
+
+[postgres2]
+  enabled = true
+  createTable = """
+    CREATE TABLE IF NOT EXISTS "%s" (
+      dirhash   BIGINT,
+      name      VARCHAR(65535),
+      directory VARCHAR(65535),
+      meta      bytea,
+      PRIMARY KEY (dirhash, name)
+    )
+  """
+  hostname = "10.10.0.1"
+  port = 5432
+  username = "ivgs"
+  password = "CHANGE_ME_DB_PASSWORD"
+  database = "ivgs_filer"
+  sslmode = "disable"
+  connection_max_idle = 2
+  connection_max_open = 100
+  connection_max_lifetime_seconds = 0

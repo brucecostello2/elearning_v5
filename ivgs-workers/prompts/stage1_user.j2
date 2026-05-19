@@ -1,0 +1,25 @@
+{# IVGS v5 — Stage 1 User Prompt: Transcript Refinement
+   Per §9.4, the following variables are available:
+     {{ project_title }}         — Video title from projects.name
+     {{ project_description }}   — Project description
+     {{ target_audience }}       — Configured audience level
+     {{ max_duration_seconds }}  — From projects.max_runtime_seconds
+     {{ transcript_text }}       — Raw transcript text to refine
+     {{ sequence_order }}        — Current transcript sequence index
+     {{ total_transcripts }}     — Total number of transcript segments
+     {{ language_code }}         — BCP-47 language code
+#}
+Please refine the following transcript segment for an educational video production.
+
+## Project Context
+
+- **Video Title**: {{ project_title }}
+{% if project_description %}- **Description**: {{ project_description }}
+{% endif %}- **Target Audience**: {{ target_audience }}
+- **Language**: {{ language_code }}
+- **Maximum Video Duration**: {{ max_duration_seconds }} seconds (~{{ (max_duration_seconds / 60) | round(1) }} minutes)
+- **Segment**: {{ sequence_order }} of {{ total_transcripts }}
+{% if total_transcripts > 1 %}- **Narration Budget for This Segment**: ~{{ (max_duration_seconds / total_transcripts) | round(0) | int }} seconds
+{% endif %}
+
+## Raw Transcript

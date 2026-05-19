@@ -1,0 +1,362 @@
+# =============================================================================
+# IVGS v5 — Composition & Render Configuration
+# =============================================================================
+# Central configuration for Stages 6-8: talking head, prototype draft, final render.
+# Referenced by worker tasks, FFmpeg client, Remotion client, and validators.
+# Per §6.1 Stages 6-8, Table 6-2, Table 6-3 of the Functional Specification.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 6: Talking Head Rendering
+# ---------------------------------------------------------------------------
+talking_head_render:
+  # LatentSync (primary)
+  latentsync:
+    node: "node-04"
+    api_url: "http://node-04:8300"
+    vram_mb: 16384
+    output_fps: 30
+    alignment_threshold: 0.85
+    timeout_seconds: 600
+    max_retries: 2
+    backoff_sequence: [30, 90]
+    default_mode: "full_screen"
+    face_enhance: true
+    lip_sync_strength: 1.0
+
+  # SadTalker (fallback)
+  sadtalker:
+    node: "node-04"
+    api_url: "http://node-04:8301"
+    vram_mb: 8192
+    output_fps: 30
+    timeout_seconds: 300
+    max_retries: 1
+    backoff_sequence: [30]
+
+  # Output specifications
+  output:
+    width: 1920
+    height: 1080
+    fps: 30
+    container: "mp4"
+    video_codec: "h264"
+    audio_codec: "aac"
+
+  # Storage paths (§7.1.7)
+  storage:
+    base_path: "/ivgs/talking-heads"
+    pattern: "{project_id}/{language_code}.mp4"
+
+# ---------------------------------------------------------------------------
+# Stage 7: Prototype Draft Assembly
+# ---------------------------------------------------------------------------
+prototype_draft:
+  # FFmpeg composition (node-06 primary, node-05 overflow)
+  compositor:
+    primary_node: "node-06"
+    overflow_node: "node-05"
+    ffmpeg_path: "ffmpeg"
+    ffprobe_path: "ffprobe"
+    hardware_accel: null  # null, "cuda", "vaapi"
+    timeout_seconds: 900
+
+  # Render profile
+  profile:
+    width: 1280
+    height: 720
+    video_codec: "libx264"
+    audio_codec: "aac"
+    crf: 23
+    fps: 30
+    preset: "fast"
+    pixel_format: "yuv420p"
+    audio_bitrate: "128k"
+    audio_sample_rate: 48000
+    audio_channels: 2
+
+  # Layer configuration (Table 6-3)
+  layers:
+    background:
+      position: "full_frame"
+      scale_mode: "fit"  # fit, fill, stretch
+      background_color: [0, 0, 0]  # Black letterbox
+
+    talking_head:
+      default_position: "bottom_right"
+      default_scale: 0.25
+      margin_px: 20
+      chroma_key: null  # Optional chroma key color
+
+    lower_third:
+      enabled: true
+      position: "bottom"
+      height_fraction: 0.2
+      render_composition: "LowerThird"
+      font_family: "Noto Sans"
+      font_size: 24  # At 720p
+      background_color: "rgba(0, 0, 0, 0.7)"
+      text_color: "#FFFFFF"
+      accent_color: "#4A90D9"
+      animation_duration_frames: 30
+      hold_duration_frames: 120
+
+    captions:
+      enabled: true
+      font_family: "Noto Sans"
+      font_size: 24  # At 720p (Table 6-3: 36pt@1080p scaled)
+      primary_color: "&HFFFFFF"
+      outline_color: "&H000000"
+      outline_width: 2
+      shadow: 1
+      alignment: 2  # Bottom center
+      margin_vertical: 30
+
+    audio:
+      normalize: true
+      target_loudness: -16  # LUFS
+
+  # Storage paths
+  storage:
+    base_path: "/ivgs/drafts"
+    pattern: "{project_id}/draft_720p_{language_code}.mp4"
+
+# ---------------------------------------------------------------------------
+# Stage 8: Final Render (Segment-Based)
+# ---------------------------------------------------------------------------
+final_render:
+  # Segment planning
+  segments:
+    min_duration_seconds: 10.0
+    max_duration_seconds: 30.0
+    prefer_scene_boundaries: true
+    max_retries_per_segment: 2
+
+  # 1080p profile (Table 6-2)
+  profile_1080p:
+    width: 1920
+    height: 1080
+    video_codec: "libx264"
+    audio_codec: "aac"
+    crf: 18
+    fps: 30
+    video_bitrate: "8M"
+    vbv_maxrate: "8M"
+    vbv_bufsize: "16M"
+    audio_bitrate: "192k"
+    audio_sample_rate: 48000
+    audio_channels: 2
+    preset: "medium"
+    pixel_format: "yuv420p"
+    movflags: "+faststart"
+    timeout_seconds: 900
+
+  # 4K profile (Table 6-2)
+  profile_4k:
+    width: 3840
+    height: 2160
+    video_codec: "libx265"
+    audio_codec: "aac"
+    crf: 20
+    fps: 30
+    video_bitrate: "20M"
+    vbv_maxrate: "20M"
+    vbv_bufsize: "40M"
+    audio_bitrate: "256k"
+    audio_sample_rate: 48000
+    audio_channels: 2
+    preset: "medium"
+    pixel_format: "yuv420p10le"
+    movflags: "+faststart"
+    timeout_seconds: 1200
+
+  # Caption burn-in specifications (§7.1.6)
+  captions:
+    font_family: "Noto Sans"
+    font_size_1080p: 36
+    font_size_4k: 72
+    primary_color: "&HFFFFFF"
+    outline_color: "&H000000"
+    outline_width: 2
+    shadow: 1
+    alignment: 2
+    margin_vertical: 40
+
+  # Concat assembly
+  concat:
+    verify_checksums: true
+    timeout_seconds: 600
+
+  # Storage paths
+  storage:
+    base_path: "/ivgs/final"
+    renders_pattern: "{project_id}/renders/{language_code}/final_{profile}.mp4"
+    captions_pattern: "{project_id}/captions/{language_code}.srt"
+
+# ---------------------------------------------------------------------------
+# Remotion Configuration (§7.1.8)
+# ---------------------------------------------------------------------------
+remotion:
+  server:
+    node: "node-06"
+    base_url: "http://node-06:3100"
+    timeout_seconds: 300
+    max_concurrent_renders: 4
+
+  compositions:
+    LowerThird:
+      width: 1920
+      height: 1080
+      fps: 30
+      default_duration_frames: 150
+      output_format: "webm"
+      codec: "vp9"
+      pixel_format: "yuva420p"
+      crf: 18
+
+    TitleCard:
+      width: 1920
+      height: 1080
+      fps: 30
+      default_duration_frames: 150
+      output_format: "mp4"
+      codec: "h264"
+      pixel_format: "yuv420p"
+      crf: 18
+
+    KenBurns:
+      width: 1920
+      height: 1080
+      fps: 30
+      default_duration_frames: 240
+      output_format: "mp4"
+      codec: "h264"
+      pixel_format: "yuv420p"
+      crf: 18
+
+    KeyTermOverlay:
+      width: 1920
+      height: 1080
+      fps: 30
+      default_duration_frames: 120
+      output_format: "webm"
+      codec: "vp9"
+      pixel_format: "yuva420p"
+      crf: 18
+
+    SceneTransition:
+      width: 1920
+      height: 1080
+      fps: 30
+      default_duration_frames: 30
+      output_format: "webm"
+      codec: "vp9"
+      pixel_format: "yuva420p"
+      crf: 18
+
+# ---------------------------------------------------------------------------
+# Video Generation (CogVideoX / Wan2.1) — Phase 7 additions
+# ---------------------------------------------------------------------------
+video_generation:
+  cogvideox_5b:
+    node: "node-02"
+    api_url: "http://node-02:8200"
+    fallback_url: "http://node-03:8200"
+    vram_mb: 24576
+    max_clip_seconds: 6
+    resolution:
+      width: 854
+      height: 480
+    fps: 8
+    timeout_seconds: 1800
+    max_retries: 2
+    backoff_sequence: [30, 90]
+    guidance_scale: 7.5
+    num_inference_steps: 50
+
+  cogvideox_2b:
+    node: "node-02"
+    api_url: "http://node-02:8201"
+    fallback_url: "http://node-03:8201"
+    vram_mb: 14336
+    max_clip_seconds: 6
+    resolution:
+      width: 854
+      height: 480
+    fps: 8
+    timeout_seconds: 900
+    max_retries: 2
+    backoff_sequence: [30, 90]
+
+  wan21:
+    nodes: ["node-02", "node-03"]
+    api_url: "http://node-02:8210"
+    fallback_url: "http://node-03:8210"
+    vram_mb: 16384
+    max_clip_seconds: 5
+    resolution:
+      width: 1280
+      height: 720
+    fps: 30
+    timeout_seconds: 30
+    max_retries: 2
+    backoff_sequence: [10, 30]
+    guidance_scale: 7.5
+
+  # Prompt generation via vLLM
+  prompt_llm:
+    model: "mistralai/Mistral-Small-24B-Instruct-2501"
+    node: "node-04"
+    base_url: "http://node-04:8000"
+    max_tokens: 256
+    temperature: 0.7
+
+  # Storage paths
+  storage:
+    base_path: "/ivgs/videos"
+    pattern: "{project_id}/{scene_id}/clip.mp4"
+
+# ---------------------------------------------------------------------------
+# Quality Validation — Composition Stage (§11.1, §11.2)
+# ---------------------------------------------------------------------------
+quality_validation:
+  lipsync:
+    approve_threshold: 0.90
+    flag_threshold: 0.85
+    reject_threshold: 0.85
+    duration_tolerance_seconds: 0.5
+
+  corruption:
+    duration_tolerance: 0.10
+    frame_count_tolerance: 0.05
+    verify_checksums_before_concat: true
+
+  video_output:
+    allowed_video_codecs: ["h264", "h265", "hevc"]
+    allowed_audio_codecs: ["aac", "pcm_s16le", "pcm_s24le"]
+    min_bitrate_kbps: 500
+    max_bitrate_kbps: 50000
+
+# ---------------------------------------------------------------------------
+# Fallback Chains — Composition (§6.3)
+# ---------------------------------------------------------------------------
+fallback_chains:
+  talking_head:
+    - strategy: "latentsync"
+      description: "LatentSync primary lip-sync"
+      vram_mb: 16384
+    - strategy: "sadtalker"
+      description: "SadTalker fallback lip-sync"
+      vram_mb: 8192
+
+  video:
+    - strategy: "cogvideox_5b"
+      description: "CogVideoX 5B high quality"
+    - strategy: "cogvideox_2b"
+      description: "CogVideoX 2B lower VRAM"
+    - strategy: "wan21"
+      description: "Wan2.1 fast short clips"
+    - strategy: "animated_still"
+      description: "Ken Burns pan/zoom fallback"
+    - strategy: "static_image"
+      description: "Static image last resort"

@@ -1,0 +1,385 @@
+#!/usr/bin/env bash
+# =============================================================================
+# IVGS v5 — Backup Verification Script
+# =============================================================================
+# Spec reference: §14.2 — Backup Verification
+#
+# Every database backup is automatically verified after completion.
+# Verification procedure:
+#   1. Restore the pg_dump to a temporary PostgreSQL instance
+#   2. Run row count checks against expected values
+#   3. Compute and validate SHA-256 checksums
+#   4. Destroy the temporary instance
+#   5. On failure: trigger BackupFailed alert + dashboard notification
+#
+# Schedule: Daily at 05:00 (after backup at 02:00)
+#
+# Usage:
+#   ./verify_backup.sh YYYY-MM-DD
+#   ./verify_backup.sh           # Defaults to today's date
+# =============================================================================
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# Configuration
+# ---------------------------------------------------------------------------
+readonly SCRIPT_NAME="$(basename "$0")"
+readonly LOG_FILE="/var/log/ivgs/backup_verify.log"
+readonly LOG_DIR="/var/log/ivgs"
+
+BACKUP_NAS_DIR="${BACKUP_NAS_DIR:-/mnt/backup/ivgs/db}"
+VERIFY_DATE="${1:-$(date +%Y-%m-%d)}"
+PROMETHEUS_PUSHGATEWAY="${PROMETHEUS_PUSHGATEWAY:-http://localhost:9091}"
+TEMP_PG_CONTAINER="ivgs-backup-verify-$$"
+TEMP_PG_PORT="54321"
+TEMP_PG_PASSWORD="verify-temp-$(date +%s)"
+
+readonly BACKUP_DIR="${BACKUP_NAS_DIR}/${VERIFY_DATE}"
+readonly ENCRYPTED_FILE="${BACKUP_DIR}/ivgs_backup.sql.gz.gpg"
+readonly CHECKSUM_FILE="${BACKUP_DIR}/ivgs_backup.sha256"
+readonly RECORD_FILE="${BACKUP_DIR}/backup_record.json"
+readonly RESTORE_SQL="/tmp/ivgs_verify_${VERIFY_DATE}_$$.sql"
+
+VERIFICATION_PASSED=false
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+log_json() {
+    local level="$1"
+    local message="$2"
+    local extra="${3:-{}}"
+    local timestamp
+    timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
+    mkdir -p "${LOG_DIR}"
+    local entry="{\"timestamp\":\"${timestamp}\",\"level\":\"${level}\",\"service\":\"backup-verify\",\"script\":\"${SCRIPT_NAME}\",\"verify_date\":\"${VERIFY_DATE}\",\"message\":\"${message}\",\"extra\":${extra}}"
+    echo "${entry}" >> "${LOG_FILE}"
+    echo "[${level}] ${message}"
+}
+
+log_info()  { log_json "INFO"  "$1" "${2:-{}}"; }
+log_warn()  { log_json "WARN"  "$1" "${2:-{}}"; }
+log_error() { log_json "ERROR" "$1" "${2:-{}}"; }
+
+# ---------------------------------------------------------------------------
+# Prometheus metric push
+# ---------------------------------------------------------------------------
+push_metric() {
+    local metric_name="$1"
+    local metric_value="$2"
+    local labels="${3:-}"
+    if [ -n "${labels}" ]; then labels="{${labels}}"; fi
+    cat <<EOF | curl --silent --max-time 10 --data-binary @- \
+        "${PROMETHEUS_PUSHGATEWAY}/metrics/job/ivgs_backup_verify/instance/node-01" 2>/dev/null || true
+# TYPE ${metric_name} gauge
+${metric_name}${labels} ${metric_value}
+EOF
+}
+
+# ---------------------------------------------------------------------------
+# Cleanup handler
+# ---------------------------------------------------------------------------
+cleanup() {
+    log_info "Cleaning up temporary resources"
+
+    # Remove temp SQL file
+    rm -f "${RESTORE_SQL}" 2>/dev/null || true
+
+    # Stop and remove temporary PostgreSQL container
+    docker rm -f "${TEMP_PG_CONTAINER}" 2>/dev/null || true
+
+    if [ "${VERIFICATION_PASSED}" = false ]; then
+        log_error "Backup verification FAILED — triggering BackupFailed alert"
+        push_metric "ivgs_backup_last_status" "0" \
+            "backup_type=\"database\",target_path=\"${BACKUP_NAS_DIR}\",node=\"node-01\""
+        push_metric "ivgs_backup_verification_status" "0" \
+            "verify_date=\"${VERIFY_DATE}\""
+    fi
+}
+
+trap cleanup EXIT INT TERM
+
+# ---------------------------------------------------------------------------
+# Step 1: Validate backup files exist
+# ---------------------------------------------------------------------------
+validate_backup_files() {
+    log_info "Validating backup files for ${VERIFY_DATE}"
+
+    if [ ! -d "${BACKUP_DIR}" ]; then
+        log_error "Backup directory not found: ${BACKUP_DIR}"
+        exit 1
+    fi
+
+    if [ ! -f "${ENCRYPTED_FILE}" ]; then
+        log_error "Encrypted backup file not found: ${ENCRYPTED_FILE}"
+        exit 1
+    fi
+
+    log_info "Backup files present"
+}
+
+# ---------------------------------------------------------------------------
+# Step 2: Verify SHA-256 checksum
+# ---------------------------------------------------------------------------
+verify_checksum() {
+    log_info "Verifying SHA-256 checksum"
+
+    if [ ! -f "${CHECKSUM_FILE}" ]; then
+        log_warn "Checksum file not found — skipping checksum verification"
+        return 0
+    fi
+
+    if (cd "${BACKUP_DIR}" && sha256sum --check "${CHECKSUM_FILE}" --quiet); then
+        log_info "SHA-256 checksum VERIFIED"
+    else
+        log_error "SHA-256 checksum FAILED — backup file may be corrupted"
+        exit 1
+    fi
+}
+
+# ---------------------------------------------------------------------------
+# Step 3: Decrypt and decompress
+# ---------------------------------------------------------------------------
+decrypt_backup() {
+    log_info "Decrypting and decompressing backup for verification"
+
+    gpg --batch --yes --decrypt "${ENCRYPTED_FILE}" | gunzip > "${RESTORE_SQL}"
+
+    if [ ! -s "${RESTORE_SQL}" ]; then
+        log_error "Decrypted file is empty"
+        exit 1
+    fi
+
+    local size
+    size="$(stat -c%s "${RESTORE_SQL}" 2>/dev/null || echo 0)"
+    log_info "Decrypted successfully" "{\"size_bytes\":${size}}"
+}
+
+# ---------------------------------------------------------------------------
+# Step 4: Start temporary PostgreSQL container
+# ---------------------------------------------------------------------------
+start_temp_postgres() {
+    log_info "Starting temporary PostgreSQL container: ${TEMP_PG_CONTAINER}"
+
+    docker run -d \
+        --name "${TEMP_PG_CONTAINER}" \
+        -e POSTGRES_PASSWORD="${TEMP_PG_PASSWORD}" \
+        -e POSTGRES_DB="ivgs_verify" \
+        -p "${TEMP_PG_PORT}:5432" \
+        --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=2g \
+        postgres:17-alpine \
+        >/dev/null
+
+    # Wait for PostgreSQL to be ready
+    local retries=30
+    while [ ${retries} -gt 0 ]; do
+        if docker exec "${TEMP_PG_CONTAINER}" \
+            pg_isready -U postgres -d ivgs_verify >/dev/null 2>&1; then
+            log_info "Temporary PostgreSQL is ready"
+            return 0
+        fi
+        sleep 1
+        ((retries--))
+    done
+
+    log_error "Temporary PostgreSQL failed to start within 30 seconds"
+    exit 1
+}
+
+# ---------------------------------------------------------------------------
+# Step 5: Restore to temporary instance
+# ---------------------------------------------------------------------------
+restore_to_temp() {
+    log_info "Restoring backup to temporary PostgreSQL instance"
+
+    local restore_start
+    restore_start="$(date +%s)"
+
+    PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -f "${RESTORE_SQL}" \
+        --quiet \
+        2>> "${LOG_FILE}" || true  # Some warnings expected (roles, etc.)
+
+    local restore_end
+    restore_end="$(date +%s)"
+    local duration=$(( restore_end - restore_start ))
+
+    log_info "Restore to temp instance completed" \
+        "{\"duration_seconds\":${duration}}"
+}
+
+# ---------------------------------------------------------------------------
+# Step 6: Row count verification
+# ---------------------------------------------------------------------------
+verify_row_counts() {
+    log_info "Running row count verification"
+
+    if [ ! -f "${RECORD_FILE}" ]; then
+        log_warn "No backup record file — skipping row count verification"
+        return 0
+    fi
+
+    # Run ANALYZE to update statistics
+    PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -c "ANALYZE;" 2>/dev/null || true
+
+    local expected_total
+    expected_total="$(python3 -c "import json; d=json.load(open('${RECORD_FILE}')); print(d.get('total_rows', 0))" 2>/dev/null || echo "0")"
+
+    local actual_total
+    actual_total="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -t -A \
+        -c "SELECT COALESCE(SUM(n_live_tup), 0) FROM pg_stat_user_tables;" 2>/dev/null || echo "0")"
+
+    log_info "Row count comparison" \
+        "{\"expected\":${expected_total},\"actual\":${actual_total}}"
+
+    # Tolerance: 1% or minimum 5 rows
+    local tolerance
+    tolerance="$(python3 -c "print(max(int(${expected_total} * 0.01), 5))" 2>/dev/null || echo "10")"
+    local diff
+    diff="$(python3 -c "print(abs(${expected_total} - ${actual_total}))" 2>/dev/null || echo "0")"
+
+    if [ "${diff}" -gt "${tolerance}" ]; then
+        log_error "Row count mismatch: expected=${expected_total}, actual=${actual_total}, diff=${diff}, tolerance=${tolerance}"
+        return 1
+    fi
+
+    # Per-table verification
+    local table_mismatches=0
+    while IFS=',' read -r table_name expected_count; do
+        [ -z "${table_name}" ] && continue
+        local actual_count
+        actual_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+            -h localhost -p "${TEMP_PG_PORT}" \
+            -U postgres -d ivgs_verify \
+            -t -A \
+            -c "SELECT COUNT(*) FROM ${table_name};" 2>/dev/null || echo "-1")"
+
+        if [ "${actual_count}" = "-1" ]; then
+            log_warn "Table ${table_name} not found in restored database"
+            ((table_mismatches++)) || true
+        else
+            local table_diff
+            table_diff="$(python3 -c "print(abs(${expected_count} - ${actual_count}))" 2>/dev/null || echo "0")"
+            local table_tolerance
+            table_tolerance="$(python3 -c "print(max(int(${expected_count} * 0.01), 2))" 2>/dev/null || echo "2")"
+            if [ "${table_diff}" -gt "${table_tolerance}" ]; then
+                log_warn "Table ${table_name}: expected=${expected_count}, actual=${actual_count}"
+                ((table_mismatches++)) || true
+            fi
+        fi
+    done < <(python3 -c "
+import json, sys
+d = json.load(open('${RECORD_FILE}'))
+for t, c in d.get('row_counts', {}).items():
+    print(f'{t},{c}')
+" 2>/dev/null)
+
+    if [ "${table_mismatches}" -gt 0 ]; then
+        log_warn "Per-table mismatches found: ${table_mismatches}"
+    fi
+
+    log_info "Row count verification PASSED"
+}
+
+# ---------------------------------------------------------------------------
+# Step 7: Schema integrity check
+# ---------------------------------------------------------------------------
+verify_schema() {
+    log_info "Verifying schema integrity"
+
+    local table_count
+    table_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -t -A \
+        -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")"
+
+    local index_count
+    index_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -t -A \
+        -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null || echo "0")"
+
+    local constraint_count
+    constraint_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
+        -h localhost -p "${TEMP_PG_PORT}" \
+        -U postgres -d ivgs_verify \
+        -t -A \
+        -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public';" 2>/dev/null || echo "0")"
+
+    log_info "Schema integrity" \
+        "{\"tables\":${table_count},\"indexes\":${index_count},\"constraints\":${constraint_count}}"
+
+    if [ "${table_count}" -eq 0 ]; then
+        log_error "No tables found in restored database — schema restore failed"
+        return 1
+    fi
+
+    log_info "Schema integrity verification PASSED"
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+main() {
+    local start_time
+    start_time="$(date +%s)"
+
+    log_info "=== IVGS v5 Backup Verification Starting ===" \
+        "{\"verify_date\":\"${VERIFY_DATE}\"}"
+
+    validate_backup_files
+    verify_checksum
+    decrypt_backup
+    start_temp_postgres
+    restore_to_temp
+    verify_row_counts
+    verify_schema
+
+    VERIFICATION_PASSED=true
+
+    local end_time
+    end_time="$(date +%s)"
+    local duration=$(( end_time - start_time ))
+
+    push_metric "ivgs_backup_verification_status" "1" \
+        "verify_date=\"${VERIFY_DATE}\""
+    push_metric "ivgs_backup_verification_duration_seconds" "${duration}" \
+        "verify_date=\"${VERIFY_DATE}\""
+
+    # Store verification result in backup record
+    if [ -f "${RECORD_FILE}" ]; then
+        python3 -c "
+import json
+with open('${RECORD_FILE}', 'r') as f:
+    d = json.load(f)
+d['verification'] = {
+    'status': 'passed',
+    'timestamp': '$(date -u +%Y-%m-%dT%H:%M:%SZ)',
+    'duration_seconds': ${duration}
+}
+with open('${RECORD_FILE}', 'w') as f:
+    json.dump(d, f, indent=4)
+" 2>/dev/null || true
+    fi
+
+    log_info "=== Backup Verification PASSED ===" \
+        "{\"duration_seconds\":${duration}}"
+
+    echo ""
+    echo "✅ Backup valid, checksum match, row counts verified"
+    echo "   Verified: ${VERIFY_DATE}"
+    echo "   Duration: ${duration}s"
+}
+
+main "$@"

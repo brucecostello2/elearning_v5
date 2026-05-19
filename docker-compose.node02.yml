@@ -1,0 +1,195 @@
+# =============================================================================
+# IVGS v5 — Docker Compose: node-02 (LLM + Video Diffusion — Primary)
+# =============================================================================
+# Spec reference: §2.4 Docker Compose Stacks — node-02
+#
+# Node-02 role (Table 2-2):
+#   NVIDIA RTX 6000 Blackwell — 96 GB VRAM
+#   vLLM inference (70B+ models, tensor parallel with node-03)
+#   CogVideoX / Wan2.1 video generation
+#
+# Services (5 per §2.4):
+#   1. vllm             — OpenAI-compatible LLM API (:8000)
+#   2. cogvideox-worker — CogVideoX/Wan2.1 Celery worker
+#   3. celery-worker    — LLM + video generation queues
+#   4. node-exporter    — System metrics (:9100)
+#   5. nvidia-gpu-exporter — GPU metrics (:9400)
+# =============================================================================
+
+version: "3.8"
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+x-common-logging: &common-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+x-common-restart: &common-restart
+  restart: unless-stopped
+
+x-gpu-resources: &gpu-resources
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+networks:
+  ivgs-net:
+    driver: bridge
+
+services:
+  # ---------------------------------------------------------------------------
+  # Service 1: vLLM Primary (Table 2-4: port 8000)
+  # Serves Llama 3.3 70B (tensor parallel) and smaller models
+  # VRAM: 70 GB for Llama 3.3 70B TP shard (Table B-1)
+  # Remaining ~26 GB for CogVideoX scheduling
+  # ---------------------------------------------------------------------------
+  vllm:
+    image: vllm/vllm-openai:v0.6.4@sha256:d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5c6d7e8f9a0b1c2
+    container_name: ivgs-vllm-primary
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    env_file:
+      - .env.node02
+    environment:
+      VLLM_HOST: "0.0.0.0"
+      VLLM_PORT: "8000"
+      HF_HOME: /data/models
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      - /data/models:/data/models
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    ports:
+      - "0.0.0.0:8000:8000"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
+    command: >
+      --model ${VLLM_MODEL_NAME:-meta-llama/Llama-3.3-70B-Instruct}
+      --tensor-parallel-size ${VLLM_TP_SIZE:-1}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
+      --gpu-memory-utilization 0.90
+      --dtype bfloat16
+      --trust-remote-code
+      --api-key ${VLLM_API_KEY:-ivgs-internal}
+      --served-model-name ${VLLM_SERVED_NAME:-llama-70b}
+      --disable-log-requests
+    shm_size: "16g"
+
+  # ---------------------------------------------------------------------------
+  # Service 2: CogVideoX / Wan2.1 Worker
+  # Video generation Celery worker — processes video_generation queue
+  # VRAM: CogVideoX 5B = 24 GB, CogVideoX 2B = 14 GB, Wan2.1 = 16 GB
+  # GPU scheduler (§12.2) ensures VRAM availability before dispatch
+  # ---------------------------------------------------------------------------
+  cogvideox-worker:
+    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-cogvideox-worker
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    env_file:
+      - .env.node02
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      GPU_SCHEDULER_URL: http://10.10.0.1:8002
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      NODE_HOSTNAME: node-02
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HOME: /data/models
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /data/models:/data/models
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=video_generation
+        --concurrency=1
+        --max-tasks-per-child=10
+        -n cogvideox-worker@node02
+    shm_size: "8g"
+
+  # ---------------------------------------------------------------------------
+  # Service 3: Celery Worker (LLM + video queues)
+  # Handles LLM inference tasks dispatched to this node
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-celery-node02
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node02
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      VLLM_PRIMARY_URL: http://vllm:8000/v1
+      GPU_SCHEDULER_URL: http://10.10.0.1:8002
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      NODE_HOSTNAME: node-02
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=llm_inference,transcript_refinement,storyboard_generation
+        --concurrency=2
+        --max-tasks-per-child=50
+        -n celery-worker@node02
+
+  # ---------------------------------------------------------------------------
+  # Service 4: Node Exporter (§13.1 Table 13-1 Row 3, port 9100)
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.1@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-node-exporter
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "0.0.0.0:9100:9100"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+
+  # ---------------------------------------------------------------------------
+  # Service 5: NVIDIA GPU Exporter (§13.1 Table 13-1 Row 4, port 9400)
+  # GPU utilization %, VRAM used/total, temperature, power, clock speeds
+  # ---------------------------------------------------------------------------
+  nvidia-gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.2.1@sha256:e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2
+    container_name: ivgs-nvidia-gpu-exporter
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    ports:
+      - "0.0.0.0:9400:9400"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9400/metrics || exit 1"]

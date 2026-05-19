@@ -1,0 +1,96 @@
+# IVGS v5 — Dependabot Configuration (§19.5)
+# Automated security update PRs for Python, Docker, and npm dependencies
+
+version: 2
+updates:
+  # Python dependencies (API)
+  - package-ecosystem: "pip"
+    directory: "/ivgs-api"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    reviewers:
+      - "brucecostello2"
+    labels:
+      - "dependencies"
+      - "security"
+    commit-message:
+      prefix: "deps(api)"
+    # Only patch/minor updates (non-breaking)
+    versioning-strategy: "increase-if-necessary"
+
+  # Python dependencies (Workers)
+  - package-ecosystem: "pip"
+    directory: "/ivgs-workers"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(workers)"
+
+  # Python dependencies (Scheduler)
+  - package-ecosystem: "pip"
+    directory: "/ivgs-scheduler"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "deps(scheduler)"
+
+  # Docker base images
+  - package-ecosystem: "docker"
+    directory: "/ivgs-api"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+    commit-message:
+      prefix: "deps(docker)"
+
+  - package-ecosystem: "docker"
+    directory: "/ivgs-workers"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "docker"
+    directory: "/ivgs-frontend"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "docker"
+
+  # npm dependencies (Frontend)
+  - package-ecosystem: "npm"
+    directory: "/ivgs-frontend"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "deps(frontend)"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(actions)"

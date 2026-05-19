@@ -1,0 +1,43 @@
+# =============================================================================
+# IVGS v5 — Grafana Datasource Provisioning
+# =============================================================================
+# Spec reference: §13.2 — Grafana Dashboards (REQUIRED)
+#
+# Provisioning file is mounted into Grafana container at:
+#   /etc/grafana/provisioning/datasources/prometheus.yml
+#
+# This configures Prometheus as the default datasource so that all
+# provisioned dashboards can resolve their queries without manual setup.
+# =============================================================================
+
+apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    orgId: 1
+    uid: prometheus-ivgs
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      timeInterval: "15s"
+      exemplarTraceIdDestinations:
+        - name: traceID
+          datasourceUid: jaeger
+      incrementalQuerying: true
+      incrementalQueryOverlapWindow: "10m"
+      queryTimeout: "60s"
+      manageAlerts: true
+      prometheusType: Prometheus
+      prometheusVersion: "2.51.0"
+      cacheLevel: "High"
+      disableRecordingRules: false
+      sigV4Auth: false
+    version: 1

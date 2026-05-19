@@ -1,0 +1,340 @@
+# =============================================================================
+# IVGS v5 — Prometheus Alert Rules
+# =============================================================================
+# Spec reference: §13.3 Table 13-3 — Prometheus Alert Rules
+#
+# Alert inventory (11 rules):
+#   Critical (immediate action required):
+#     1. GPUOvertemperature   — GPU temp >85°C for 2min
+#     2. WorkerDown           — Worker heartbeat missing for 5min
+#     3. DLQHighCount         — DLQ messages >10 for 5min
+#     4. JobFailureRateHigh   — Job failure rate >10% for 15min
+#     5. BackupFailed         — Last backup status = failed (instant)
+#
+#   Warning (investigation required):
+#     6. GPUUtilizationLow    — Fleet avg GPU util <30% for 15min
+#     7. RenderQueueBacklog   — Pending render segments >20 for 5min
+#     8. GPUVRAMHigh          — VRAM utilization >90% for 5min
+#     9. NodeHighCPU          — CPU utilization >85% for 5min
+#    10. NodeHighRAM          — RAM utilization >90% for 5min
+#
+#   Informational:
+#    11. StorageQuotaAlert    — User quota >80% full for 1hr
+# =============================================================================
+
+groups:
+  # =========================================================================
+  # Group 1: Critical Alerts — Require Immediate Action
+  # =========================================================================
+  - name: ivgs_critical_alerts
+    interval: 15s
+    rules:
+      # -----------------------------------------------------------------------
+      # Alert 1: GPUOvertemperature (Table 13-3 Row 1)
+      # Condition: GPU temperature >85°C
+      # Duration: 2 minutes
+      # Severity: Critical
+      # Action: Page on-call; consider draining node
+      # -----------------------------------------------------------------------
+      - alert: GPUOvertemperature
+        expr: |
+          nvidia_gpu_temperature_celsius > 85
+            or
+          intel_gpu_temperature_celsius > 85
+        for: 2m
+        labels:
+          severity: critical
+          team: infrastructure
+          component: gpu
+        annotations:
+          summary: "GPU overtemperature on {{ $labels.node }} ({{ $labels.gpu_model }})"
+          description: >-
+            GPU temperature on node {{ $labels.node }} has exceeded 85°C
+            threshold. Current temperature: {{ $value | printf "%.1f" }}°C.
+            GPU model: {{ $labels.gpu_model }}.
+            This sustained temperature may cause thermal throttling or hardware
+            damage. Consider draining the node and investigating cooling.
+          action: "Page on-call engineer. Consider draining node via POST /drain/{{ $labels.node }}."
+          runbook: "docs/runbooks/gpu-overtemperature.md"
+          dashboard: "https://i.ytimg.com/vi/5WcfzHtfvuo/sddefault.jpg $labels.node }}"
+
+      # -----------------------------------------------------------------------
+      # Alert 2: WorkerDown (Table 13-3 Row 2)
+      # Condition: Worker heartbeat missing
+      # Duration: 5 minutes
+      # Severity: Critical
+      # Action: Auto-reschedule jobs; alert ops
+      # -----------------------------------------------------------------------
+      - alert: WorkerDown
+        expr: |
+          time() - ivgs_worker_last_heartbeat_timestamp > 300
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+          component: worker
+        annotations:
+          summary: "Worker {{ $labels.worker_id }} on {{ $labels.node }} is down"
+          description: >-
+            Worker {{ $labels.worker_id }} on node {{ $labels.node }} has not
+            sent a heartbeat in over 5 minutes. Last heartbeat was
+            {{ $value | printf "%.0f" }} seconds ago. Any active jobs on this
+            worker should be automatically rescheduled by the GPU scheduler.
+          action: "Auto-reschedule active jobs. Investigate worker process on {{ $labels.node }}."
+          runbook: "docs/runbooks/worker-down.md"
+
+      # -----------------------------------------------------------------------
+      # Alert 3: DLQHighCount (Table 13-3 Row 3)
+      # Condition: DLQ messages >10
+      # Duration: 5 minutes
+      # Severity: Critical
+      # Action: Alert ops for investigation
+      # -----------------------------------------------------------------------
+      - alert: DLQHighCount
+        expr: |
+          ivgs_dlq_message_count > 10
+        for: 5m
+        labels:
+          severity: critical
+          team: operations
+          component: dlq
+        annotations:
+          summary: "DLQ message count is {{ $value }} (threshold: 10)"
+          description: >-
+            The Dead Letter Queue contains {{ $value }} unresolved messages,
+            exceeding the threshold of 10. This indicates persistent pipeline
+            failures that have exhausted all retry and fallback attempts.
+            Investigate the error patterns and root causes immediately.
+          action: "Review DLQ entries via GET /api/v1/dlq/messages. Check error_category distribution."
+          runbook: "docs/runbooks/dlq-high-count.md"
+          dashboard: "https://grafana.com/media/docs/grafana-cloud/screenshot-faro-errors_overview.png"
+
+      # -----------------------------------------------------------------------
+      # Alert 4: JobFailureRateHigh (Table 13-3 Row 4)
+      # Condition: Job failure rate >10%
+      # Duration: 15 minutes
+      # Severity: Critical
+      # Action: Investigate pipeline errors
+      # -----------------------------------------------------------------------
+      - alert: JobFailureRateHigh
+        expr: |
+          (
+            sum(rate(ivgs_pipeline_jobs_failed_total[5m]))
+            /
+            clamp_min(sum(rate(ivgs_pipeline_jobs_total[5m])), 0.001)
+          ) * 100 > 10
+        for: 15m
+        labels:
+          severity: critical
+          team: operations
+          component: pipeline
+        annotations:
+          summary: "Pipeline job failure rate is {{ $value | printf \"%.1f\" }}% (threshold: 10%)"
+          description: >-
+            The pipeline job failure rate over the past 5 minutes has exceeded
+            10%, sustained for 15 minutes. Current rate: {{ $value | printf "%.1f" }}%.
+            This may indicate a systemic issue such as a model crash, resource
+            exhaustion, or infrastructure degradation.
+          action: "Check pipeline stage error distribution. Review recent DLQ entries for patterns."
+          runbook: "docs/runbooks/job-failure-rate-high.md"
+          dashboard: "https://docs.netscaler.com/en-us/citrix-adc/media/grafana-dashboard.png"
+
+      # -----------------------------------------------------------------------
+      # Alert 5: BackupFailed (Table 13-3 Row 11)
+      # Condition: Last backup status = failed
+      # Duration: instant (no 'for' — fires immediately)
+      # Severity: Critical
+      # Action: Alert ops immediately
+      # -----------------------------------------------------------------------
+      - alert: BackupFailed
+        expr: |
+          ivgs_backup_last_status == 0
+        labels:
+          severity: critical
+          team: infrastructure
+          component: backup
+        annotations:
+          summary: "Backup failed for {{ $labels.backup_type }} on {{ $labels.node }}"
+          description: >-
+            The last {{ $labels.backup_type }} backup completed with a failure
+            status. Backup target: {{ $labels.target_path }}. This is a critical
+            data protection issue that must be investigated immediately.
+            Check backup logs at /var/log/ivgs/backup.log for details.
+          action: "Investigate backup failure. Check disk space, GPG keys, and network connectivity to NAS."
+          runbook: "docs/runbooks/backup-failed.md"
+
+  # =========================================================================
+  # Group 2: Warning Alerts — Require Investigation
+  # =========================================================================
+  - name: ivgs_warning_alerts
+    interval: 15s
+    rules:
+      # -----------------------------------------------------------------------
+      # Alert 6: GPUUtilizationLow (Table 13-3 Row 5)
+      # Condition: Fleet avg GPU util <30%
+      # Duration: 15 minutes
+      # Severity: Warning
+      # Action: Review queue backlog
+      # -----------------------------------------------------------------------
+      - alert: GPUUtilizationLow
+        expr: |
+          avg(nvidia_gpu_utilization_pct) < 30
+        for: 15m
+        labels:
+          severity: warning
+          team: operations
+          component: gpu
+        annotations:
+          summary: "Fleet average GPU utilization is {{ $value | printf \"%.1f\" }}% (threshold: 30%)"
+          description: >-
+            The average GPU utilization across the NVIDIA fleet has been below
+            30% for 15 minutes. Current average: {{ $value | printf "%.1f" }}%.
+            This may indicate underutilization, a queue starvation issue,
+            or a scheduler problem preventing job dispatch.
+          action: "Review queue backlogs via GET /fleet. Check if scheduler is dispatching jobs."
+          runbook: "docs/runbooks/gpu-utilization-low.md"
+          dashboard: "https://lh7-us.googleusercontent.com/7QbIMIhexpC9-7WFX8HJEZMlsgSJqMA2MkILUZs5DZmgsB0OgphCGaO6xNumeqYdPs1rx2Il2V7FFjfk9dhWBCYVTkpkhBEwrzEJgnlvmBG_oBgY_Nk8x4pT6UY7nOvAehxfBtRLn8YlAE_FvDWyjww"
+
+      # -----------------------------------------------------------------------
+      # Alert 7: RenderQueueBacklog (Table 13-3 Row 6)
+      # Condition: Pending render segments >20
+      # Duration: 5 minutes
+      # Severity: Warning
+      # Action: Consider scaling workers
+      # -----------------------------------------------------------------------
+      - alert: RenderQueueBacklog
+        expr: |
+          ivgs_render_queue_pending_segments > 20
+        for: 5m
+        labels:
+          severity: warning
+          team: operations
+          component: pipeline
+        annotations:
+          summary: "Render queue backlog is {{ $value }} segments (threshold: 20)"
+          description: >-
+            There are {{ $value }} pending render segments in the queue,
+            exceeding the threshold of 20. This backlog has persisted for
+            5 minutes. Rendering may be bottlenecked by available GPU capacity
+            on nodes 05 and 06.
+          action: "Consider scaling Remotion/FFmpeg workers. Check node-05 and node-06 capacity."
+          runbook: "docs/runbooks/render-queue-backlog.md"
+
+      # -----------------------------------------------------------------------
+      # Alert 8: GPUVRAMHigh (Table 13-3 Row 7)
+      # Condition: VRAM utilization >90%
+      # Duration: 5 minutes
+      # Severity: Warning
+      # Action: Check for reservation leaks
+      # -----------------------------------------------------------------------
+      - alert: GPUVRAMHigh
+        expr: |
+          (nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          component: gpu
+        annotations:
+          summary: "VRAM utilization >90% on {{ $labels.node }} ({{ $value | printf \"%.1f\" }}%)"
+          description: >-
+            VRAM utilization on node {{ $labels.node }} ({{ $labels.gpu_model }})
+            has exceeded 90% for 5 minutes. Current usage:
+            {{ $value | printf "%.1f" }}%. This may indicate a VRAM reservation
+            leak (expired reservations not released) or oversized model loading.
+          action: "Check gpu_reservations table for expired entries. Verify model VRAM budgets per Appendix B."
+          runbook: "docs/runbooks/gpu-vram-high.md"
+          dashboard: "https://mintcdn.com/coreweave-dbfa0e8d/bmSvzayNAcGFdaNU/observability/managed-grafana/_media/cabinet-visualizer-overview.png?fit=max&auto=format&n=bmSvzayNAcGFdaNU&q=85&s=922ff184b0634c315815a69784d3f780 $labels.node }}"
+
+      # -----------------------------------------------------------------------
+      # Alert 9: NodeHighCPU (Table 13-3 Row 8)
+      # Condition: CPU utilization >85%
+      # Duration: 5 minutes
+      # Severity: Warning
+      # Action: Identify runaway process
+      # -----------------------------------------------------------------------
+      - alert: NodeHighCPU
+        expr: |
+          (
+            1 - avg by (instance, node) (
+              rate(node_cpu_seconds_total{mode="idle"}[5m])
+            )
+          ) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          component: system
+        annotations:
+          summary: "High CPU utilization on {{ $labels.node }}: {{ $value | printf \"%.1f\" }}%"
+          description: >-
+            CPU utilization on node {{ $labels.node }} has been above 85%
+            for 5 minutes. Current utilization: {{ $value | printf "%.1f" }}%.
+            This may be caused by a runaway process, excessive concurrent
+            tasks, or a resource leak.
+          action: "SSH to {{ $labels.node }} and run 'top -bn1 | head -20' to identify the process."
+          runbook: "docs/runbooks/node-high-cpu.md"
+
+      # -----------------------------------------------------------------------
+      # Alert 10: NodeHighRAM (Table 13-3 Row 9)
+      # Condition: RAM utilization >90%
+      # Duration: 5 minutes
+      # Severity: Warning
+      # Action: Check for memory leaks
+      # -----------------------------------------------------------------------
+      - alert: NodeHighRAM
+        expr: |
+          (
+            1 - (
+              node_memory_MemAvailable_bytes
+              /
+              node_memory_MemTotal_bytes
+            )
+          ) * 100 > 90
+        for: 5m
+        labels:
+          severity: warning
+          team: infrastructure
+          component: system
+        annotations:
+          summary: "High RAM utilization on {{ $labels.node }}: {{ $value | printf \"%.1f\" }}%"
+          description: >-
+            RAM utilization on node {{ $labels.node }} has been above 90%
+            for 5 minutes. Current utilization: {{ $value | printf "%.1f" }}%.
+            Available memory: {{ with printf "node_memory_MemAvailable_bytes{node='%s'}" $labels.node | query }}{{ . | first | value | humanize }}{{ end }}.
+            This may indicate a memory leak in a worker process or insufficient
+            RAM allocation for the workload.
+          action: "Check process memory usage: 'ps aux --sort=-%mem | head -20' on {{ $labels.node }}."
+          runbook: "docs/runbooks/node-high-ram.md"
+
+  # =========================================================================
+  # Group 3: Informational Alerts
+  # =========================================================================
+  - name: ivgs_info_alerts
+    interval: 60s
+    rules:
+      # -----------------------------------------------------------------------
+      # Alert 11: StorageQuotaAlert (Table 13-3 Row 10)
+      # Condition: User quota >80% full
+      # Duration: 1 hour
+      # Severity: Info
+      # Action: Notify user via dashboard
+      # -----------------------------------------------------------------------
+      - alert: StorageQuotaAlert
+        expr: |
+          (ivgs_user_storage_used_bytes / ivgs_user_storage_quota_bytes) * 100 > 80
+        for: 1h
+        labels:
+          severity: info
+          team: operations
+          component: storage
+        annotations:
+          summary: "Storage quota >80% for user {{ $labels.user_id }}"
+          description: >-
+            User {{ $labels.user_id }} ({{ $labels.username }}) has used
+            {{ $value | printf "%.1f" }}% of their storage quota.
+            Used: {{ with printf "ivgs_user_storage_used_bytes{user_id='%s'}" $labels.user_id | query }}{{ . | first | value | humanize1024 }}{{ end }}.
+            Quota: {{ with printf "ivgs_user_storage_quota_bytes{user_id='%s'}" $labels.user_id | query }}{{ . | first | value | humanize1024 }}{{ end }}.
+            The user should be notified via dashboard to manage their storage.
+          action: "Notify user via dashboard notification. Review retention policies."
+          runbook: "docs/runbooks/storage-quota-alert.md"

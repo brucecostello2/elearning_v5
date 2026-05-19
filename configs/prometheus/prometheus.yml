@@ -1,0 +1,221 @@
+# =============================================================================
+# IVGS v5 — Prometheus Configuration
+# =============================================================================
+# Spec reference: §13.1 Table 13-1 — Prometheus Scrape Targets
+#
+# Scrape interval: 15 seconds (per §13.1)
+# Retention: 30 days (per §13.1)
+# Targets:
+#   1. ivgs-api          — node-01:8000/metrics
+#   2. ivgs-scheduler    — node-01:8001/metrics
+#   3. node-exporter     — all nodes :9100/metrics
+#   4. nvidia-gpu-exporter — nodes 02-05 :9400/metrics
+#   5. intel-gpu-exporter  — node-06:9401/metrics
+#   6. postgres-exporter   — node-01:9187/metrics
+#   7. redis-exporter      — node-01:9121/metrics
+# =============================================================================
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+  external_labels:
+    cluster: "ivgs-v5"
+    environment: "production"
+
+rule_files:
+  - "/etc/prometheus/alert_rules.yml"
+
+# ---------------------------------------------------------------------------
+# Scrape Target Group 1: IVGS API (§13.1 Row 1)
+# Metrics: API request latency, pipeline job counts, DLQ size,
+#          quality score distributions
+# ---------------------------------------------------------------------------
+scrape_configs:
+  - job_name: "ivgs-api"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-01:8000"
+        labels:
+          service: "ivgs-api"
+          node: "node-01"
+          component: "api"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 2: IVGS GPU Scheduler (§13.1 Row 2, §12.4 Table 12-3)
+  # Metrics: GPU queue depth, wait time, rejection rate, circuit breaker state,
+  #          ivgs_scheduler_queue_depth, ivgs_scheduler_wait_time_seconds,
+  #          ivgs_scheduler_rejection_total, ivgs_scheduler_circuit_breaker_state,
+  #          ivgs_gpu_vram_used_mb, ivgs_gpu_utilization_pct
+  # ---------------------------------------------------------------------------
+  - job_name: "ivgs-scheduler"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-01:8001"
+        labels:
+          service: "ivgs-scheduler"
+          node: "node-01"
+          component: "scheduler"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 3: Node Exporter — All 6 Nodes (§13.1 Row 3)
+  # Metrics: CPU, RAM, disk I/O, network I/O per node
+  # ---------------------------------------------------------------------------
+  - job_name: "node-exporter"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-01:9100"
+        labels:
+          node: "node-01"
+          role: "infrastructure"
+      - targets:
+          - "node-02:9100"
+        labels:
+          node: "node-02"
+          role: "llm-primary"
+          gpu: "rtx-6000-blackwell"
+      - targets:
+          - "node-03:9100"
+        labels:
+          node: "node-03"
+          role: "llm-secondary"
+          gpu: "rtx-6000-blackwell"
+      - targets:
+          - "node-04:9100"
+        labels:
+          node: "node-04"
+          role: "image-tts-talking-head"
+          gpu: "rtx-5000-pro-blackwell"
+      - targets:
+          - "node-05:9100"
+        labels:
+          node: "node-05"
+          role: "image-utility"
+          gpu: "rtx-5080"
+      - targets:
+          - "node-06:9100"
+        labels:
+          node: "node-06"
+          role: "remotion-compositor"
+          gpu: "intel-b70-pro"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 4: NVIDIA GPU Exporter — Nodes 02-05 (§13.1 Row 4)
+  # Metrics: GPU utilization %, VRAM used/total, temperature, power draw,
+  #          clock speeds
+  # ---------------------------------------------------------------------------
+  - job_name: "nvidia-gpu-exporter"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-02:9400"
+        labels:
+          node: "node-02"
+          gpu_model: "RTX 6000 Blackwell"
+          vram_total_gb: "96"
+      - targets:
+          - "node-03:9400"
+        labels:
+          node: "node-03"
+          gpu_model: "RTX 6000 Blackwell"
+          vram_total_gb: "96"
+      - targets:
+          - "node-04:9400"
+        labels:
+          node: "node-04"
+          gpu_model: "RTX 5000 Pro Blackwell"
+          vram_total_gb: "48"
+      - targets:
+          - "node-05:9400"
+        labels:
+          node: "node-05"
+          gpu_model: "RTX 5080"
+          vram_total_gb: "16"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 5: Intel GPU Exporter — Node 06 (§13.1 Row 5)
+  # Metrics: Intel GPU utilization, memory, power
+  # ---------------------------------------------------------------------------
+  - job_name: "intel-gpu-exporter"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-06:9401"
+        labels:
+          node: "node-06"
+          gpu_model: "Intel B70 Pro"
+          vram_total_gb: "32"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 6: PostgreSQL Exporter (§13.1 Row 6)
+  # Metrics: Connection pool, query latency, deadlock count, table bloat
+  # ---------------------------------------------------------------------------
+  - job_name: "postgres-exporter"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-01:9187"
+        labels:
+          service: "postgresql"
+          node: "node-01"
+          component: "database"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 7: Redis Exporter (§13.1 Row 7)
+  # Metrics: Memory used, keyspace hits/misses, connected clients,
+  #          queue lengths
+  # ---------------------------------------------------------------------------
+  - job_name: "redis-exporter"
+    metrics_path: "/metrics"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-01:9121"
+        labels:
+          service: "redis"
+          node: "node-01"
+          component: "cache-broker"
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: instance
+        regex: "(.+):\\d+"
+        replacement: "${1}"

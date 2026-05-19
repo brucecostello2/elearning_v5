@@ -1,0 +1,45 @@
+
+### Field Specifications
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| scene_index | integer | YES | 0-based sequential scene number |
+| narration_text | string | YES | Verbatim narration text for this scene (from refined transcript) |
+| visual_description | string | YES | Detailed visual description for media generation AI (see guidelines below) |
+| media_type | string | YES | One of: "image", "video_clip", "animation" |
+| duration_seconds | number | YES | Scene duration in seconds (3–60 range) |
+| scene_title | string | no | Short descriptive title for the scene |
+| transition | string | no | Transition to next scene: "cut", "dissolve", "fade", "wipe" |
+
+### Media Type Selection
+
+Choose `media_type` based on the content:
+- **"image"**: Static concepts, definitions, landscapes, portraits, diagrams, infographics. Best for: establishing shots, concept illustration, data summaries.
+- **"video_clip"**: Action, process, demonstration, movement. Best for: showing how things work, physical processes, before/after transformations.
+- **"animation"**: Data visualization, flowcharts, process diagrams, animated transitions, code execution. Best for: step-by-step processes, data trends, abstract concepts.
+
+### Visual Description Guidelines
+
+Write visual descriptions as if briefing an image generation AI. Include:
+1. **Subject**: What is the main focus of the visual?
+2. **Setting/Background**: Where does this take place?
+3. **Style**: Photorealistic, illustration, diagram, infographic, etc.
+4. **Composition**: Camera angle, framing, focal point
+5. **Color Palette**: Dominant colors or mood
+6. **Key Details**: Specific elements that must be present
+7. **DO NOT** include text-in-image (titles, labels) — those are overlaid separately
+
+### Pacing Rules
+
+- Aim for **150 words per minute** narration pace
+- Each scene should be **10–30 seconds** of narration
+- Total scene durations should sum to approximately the target video duration
+- Allow 1–2 seconds of visual breathing room between narration-heavy scenes
+
+### Scene Flow
+
+- Open with an engaging establishing scene
+- Build complexity gradually (scaffolding approach)
+- Include periodic summary/recap scenes for longer content
+- End with a clear conclusion or call-to-action scene
+- Transitions should feel natural: avoid abrupt topic jumps

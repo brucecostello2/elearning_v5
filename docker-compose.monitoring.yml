@@ -1,0 +1,314 @@
+# =============================================================================
+# IVGS v5 — Monitoring Stack Docker Compose
+# =============================================================================
+# Spec reference: §13.5 Table 13-4 — Monitoring Component Status in v5
+#
+# Required components (per Table 13-4):
+#   - Prometheus 2.51+       (REQUIRED)
+#   - Grafana                (REQUIRED — changed from OPTIONAL in v3)
+#   - node-exporter 1.7+     (REQUIRED — all nodes)
+#   - postgres-exporter      (REQUIRED — node-01)
+#   - redis-exporter          (REQUIRED — node-01)
+#
+# GPU exporters (nvidia-gpu-exporter, intel-gpu-exporter) run on their
+# respective GPU nodes via the node-specific docker-compose files and are
+# scraped remotely by Prometheus via the scrape config.
+#
+# Network: monitoring_net (bridge, 172.28.0.0/16)
+# External networks: ivgs_default (shared with Phase 1 infrastructure)
+# =============================================================================
+
+version: "3.8"
+
+networks:
+  monitoring_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+  ivgs_default:
+    external: true
+
+volumes:
+  prometheus_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/prometheus
+  grafana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /var/lib/grafana
+
+services:
+  # ---------------------------------------------------------------------------
+  # Prometheus 2.51+ (§13.1, §13.5 Table 13-4)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: ivgs-prometheus
+    hostname: prometheus
+    restart: unless-stopped
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--storage.tsdb.retention.size=50GB"
+      - "--storage.tsdb.min-block-duration=2h"
+      - "--storage.tsdb.max-block-duration=36h"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+      - "--web.external-url=http://node-01:9090"
+      - "--log.level=info"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.28.0.10
+      ivgs_default: {}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4G
+        reservations:
+          cpus: "0.5"
+          memory: 1G
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      com.ivgs.service: "prometheus"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§13.1"
+
+  # ---------------------------------------------------------------------------
+  # Grafana (§13.2, §13.5 Table 13-4)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: ivgs-grafana
+    hostname: grafana
+    restart: unless-stopped
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-ivgs-admin-2026}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+      - GF_SERVER_ROOT_URL=http://node-01:3000
+      - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/pipeline_overview.json
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+      - GF_LOG_LEVEL=info
+      - GF_LOG_MODE=console
+      - GF_ALERTING_ENABLED=true
+      - GF_UNIFIED_ALERTING_ENABLED=true
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/provisioning/datasources/prometheus.yml:/etc/grafana/provisioning/datasources/prometheus.yml:ro
+      - ./configs/grafana/provisioning/dashboards/dashboard.yml:/etc/grafana/provisioning/dashboards/dashboard.yml:ro
+      - ./configs/grafana/dashboards/pipeline_overview.json:/var/lib/grafana/dashboards/pipeline_overview.json:ro
+      - ./configs/grafana/dashboards/gpu_fleet_utilization.json:/var/lib/grafana/dashboards/gpu_fleet_utilization.json:ro
+    ports:
+      - "3000:3000"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.28.0.11
+      ivgs_default: {}
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+        reservations:
+          cpus: "0.25"
+          memory: 256M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+    labels:
+      com.ivgs.service: "grafana"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§13.2"
+
+  # ---------------------------------------------------------------------------
+  # Node Exporter 1.7+ (§13.5 Table 13-4)
+  # Runs on node-01; other nodes run their own instances
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: ivgs-node-exporter
+    hostname: node-exporter
+    restart: unless-stopped
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+      - "--collector.netclass.ignored-devices=^(veth.*|br.*|docker.*|lo)$$"
+      - "--collector.textfile.directory=/var/lib/node_exporter/textfile_collector"
+      - "--web.listen-address=:9100"
+      - "--web.telemetry-path=/metrics"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector:ro
+    ports:
+      - "9100:9100"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.28.0.12
+    pid: host
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9100/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "node-exporter"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§13.5"
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL Exporter (§13.1 Table 13-1 Row 6)
+  # Metrics: Connection pool, query latency, deadlock count, table bloat
+  # ---------------------------------------------------------------------------
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.15.0
+    container_name: ivgs-postgres-exporter
+    hostname: postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}?sslmode=disable
+      - PG_EXPORTER_DISABLE_DEFAULT_METRICS=false
+      - PG_EXPORTER_DISABLE_SETTINGS_METRICS=false
+      - PG_EXPORTER_AUTO_DISCOVER_DATABASES=false
+      - PG_EXPORTER_EXTEND_QUERY_PATH=/etc/postgres_exporter/queries.yml
+    volumes:
+      - ./configs/prometheus/postgres_queries.yml:/etc/postgres_exporter/queries.yml:ro
+    ports:
+      - "9187:9187"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.28.0.13
+      ivgs_default: {}
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9187/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "postgres-exporter"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§13.1"
+
+  # ---------------------------------------------------------------------------
+  # Redis Exporter (§13.1 Table 13-1 Row 7)
+  # Metrics: Memory used, keyspace hits/misses, connected clients,
+  #          queue lengths
+  # ---------------------------------------------------------------------------
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.58.0
+    container_name: ivgs-redis-exporter
+    hostname: redis-exporter
+    restart: unless-stopped
+    environment:
+      - REDIS_ADDR=redis://redis:6379
+      - REDIS_EXPORTER_CHECK_KEYS=ivgs:queue:*
+      - REDIS_EXPORTER_CHECK_SINGLE_KEYS=ivgs:dlq:count,ivgs:active_jobs
+      - REDIS_EXPORTER_INCL_SYSTEM_METRICS=true
+      - REDIS_EXPORTER_WEB_LISTEN_ADDRESS=:9121
+      - REDIS_EXPORTER_WEB_TELEMETRY_PATH=/metrics
+    ports:
+      - "9121:9121"
+    networks:
+      monitoring_net:
+        ipv4_address: 172.28.0.14
+      ivgs_default: {}
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
+        reservations:
+          cpus: "0.1"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "redis-exporter"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§13.1"

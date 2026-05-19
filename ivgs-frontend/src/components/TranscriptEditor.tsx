@@ -1,0 +1,173 @@
+"use client";
+
+import React, { useMemo } from "react";
+
+/**
+ * §8.1.3 Table 8-2 — Transcript Side-by-Side Diff Editor
+ *
+ * Displays original text and refined text side by side.
+ * In read-only mode: visual diff highlighting (additions in green, deletions in red).
+ * In edit mode: editable textarea for the refined text.
+ */
+
+interface TranscriptEditorProps {
+  originalText: string;
+  refinedText: string;
+  onChange?: (text: string) => void;
+  readOnly?: boolean;
+}
+
+interface DiffLine {
+  type: "unchanged" | "added" | "removed";
+  text: string;
+}
+
+/**
+ * Simple line-by-line diff algorithm for visual comparison.
+ * Not a full Myers diff — sufficient for transcript comparison.
+ */
+function computeLineDiff(
+  original: string,
+  refined: string
+): { left: DiffLine[]; right: DiffLine[] } {
+  const origLines = original.split("\n");
+  const refLines = refined.split("\n");
+  const left: DiffLine[] = [];
+  const right: DiffLine[] = [];
+
+  const maxLen = Math.max(origLines.length, refLines.length);
+
+  for (let i = 0; i < maxLen; i++) {
+    const origLine = i < origLines.length ? origLines[i] : undefined;
+    const refLine = i < refLines.length ? refLines[i] : undefined;
+
+    if (origLine !== undefined && refLine !== undefined) {
+      if (origLine === refLine) {
+        left.push({ type: "unchanged", text: origLine });
+        right.push({ type: "unchanged", text: refLine });
+      } else {
+        left.push({ type: "removed", text: origLine });
+        right.push({ type: "added", text: refLine });
+      }
+    } else if (origLine !== undefined) {
+      left.push({ type: "removed", text: origLine });
+      right.push({ type: "unchanged", text: "" });
+    } else if (refLine !== undefined) {
+      left.push({ type: "unchanged", text: "" });
+      right.push({ type: "added", text: refLine });
+    }
+  }
+
+  return { left, right };
+}
+
+export default function TranscriptEditor({
+  originalText,
+  refinedText,
+  onChange,
+  readOnly = true,
+}: TranscriptEditorProps): React.ReactElement {
+  const diff = useMemo(
+    () => computeLineDiff(originalText, refinedText),
+    [originalText, refinedText]
+  );
+
+  const getDiffBgClass = (type: DiffLine["type"]): string => {
+    switch (type) {
+      case "added":
+        return "bg-green-900/20";
+      case "removed":
+        return "bg-red-900/20";
+      default:
+        return "";
+    }
+  };
+
+  const getDiffTextClass = (type: DiffLine["type"]): string => {
+    switch (type) {
+      case "added":
+        return "text-green-300";
+      case "removed":
+        return "text-red-300 line-through";
+      default:
+        return "text-gray-300";
+    }
+  };
+
+  if (!readOnly && onChange) {
+    // Edit mode: original (read-only) | refined (editable textarea)
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div>
+          <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+            Original
+          </h4>
+          <div className="p-4 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
+            {originalText}
+          </div>
+        </div>
+        <div>
+          <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+            Refined (editing)
+          </h4>
+          <textarea
+            value={refinedText}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-full p-4 bg-gray-900 border border-blue-600 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[200px] max-h-[500px]"
+            rows={Math.max(10, refinedText.split("\n").length)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Read-only diff view
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div>
+        <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+          Original
+        </h4>
+        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+          {diff.left.map((line, idx) => (
+            <div
+              key={idx}
+              className={`flex px-4 py-0.5 text-sm font-mono ${getDiffBgClass(
+                line.type
+              )}`}
+            >
+              <span className="w-8 text-right text-gray-600 text-xs mr-3 select-none">
+                {idx + 1}
+              </span>
+              <span className={getDiffTextClass(line.type)}>
+                {line.text || "\u00A0"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div>
+        <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+          Refined
+        </h4>
+        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+          {diff.right.map((line, idx) => (
+            <div
+              key={idx}
+              className={`flex px-4 py-0.5 text-sm font-mono ${getDiffBgClass(
+                line.type
+              )}`}
+            >
+              <span className="w-8 text-right text-gray-600 text-xs mr-3 select-none">
+                {idx + 1}
+              </span>
+              <span className={getDiffTextClass(line.type)}>
+                {line.text || "\u00A0"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -1,0 +1,96 @@
+# IVGS v5 — Quality Thresholds (§11.1 Table 11-1)
+# Quality scoring approve/flag/reject thresholds
+
+quality_thresholds:
+  image:
+    clip_score:
+      description: "CLIP similarity between prompt and generated image"
+      approve_threshold: 0.25
+      flag_threshold: 0.18
+      reject_threshold: 0.10
+      weight: 0.4
+
+    resolution_check:
+      description: "Image matches target resolution"
+      approve_threshold: 1.0
+      flag_threshold: 0.9
+      reject_threshold: 0.0
+      weight: 0.2
+
+    artifact_detection:
+      description: "No visual artifacts detected"
+      approve_threshold: 0.95
+      flag_threshold: 0.80
+      reject_threshold: 0.50
+      weight: 0.2
+
+    content_safety:
+      description: "Self-hosted classifier score"
+      approve_threshold: 0.98
+      flag_threshold: 0.90
+      reject_threshold: 0.50
+      weight: 0.2
+
+  audio:
+    snr:
+      description: "Signal-to-Noise Ratio in dB"
+      approve_threshold: 20.0
+      flag_threshold: 15.0
+      reject_threshold: 10.0
+      unit: "dB"
+      weight: 0.4
+
+    clipping:
+      description: "Audio clipping percentage"
+      approve_threshold: 0.01   # < 1%
+      flag_threshold: 0.03      # < 3%
+      reject_threshold: 0.05    # < 5%
+      weight: 0.3
+
+    duration_accuracy:
+      description: "Duration within 10% of expected"
+      approve_threshold: 0.90
+      flag_threshold: 0.80
+      reject_threshold: 0.50
+      weight: 0.3
+
+  video:
+    resolution_match:
+      description: "Output resolution matches target"
+      approve_threshold: 1.0
+      flag_threshold: 0.9
+      reject_threshold: 0.0
+      weight: 0.3
+
+    fps_check:
+      description: "Framerate matches target (24 fps)"
+      approve_threshold: 24.0
+      flag_threshold: 20.0
+      reject_threshold: 15.0
+      weight: 0.2
+
+    codec_check:
+      description: "Correct codec (H.264 for 1080p, H.265 for 4K)"
+      approve_threshold: 1.0
+      reject_threshold: 0.0
+      weight: 0.2
+
+    corruption_check:
+      description: "FFprobe validation passes"
+      approve_threshold: 1.0
+      reject_threshold: 0.0
+      weight: 0.3
+
+  talking_head:
+    lip_sync_score:
+      description: "LatentSync alignment score"
+      approve_threshold: 0.85
+      flag_threshold: 0.70
+      reject_threshold: 0.50
+      weight: 1.0
+
+# Overall decision rules
+decision_rules:
+  approved: "All weighted scores above approve_threshold"
+  flagged: "Any score between flag_threshold and approve_threshold"
+  rejected: "Any score below reject_threshold"

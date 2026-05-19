@@ -1,0 +1,344 @@
+# ===========================================================================
+# IVGS v5 — Worker Infrastructure Docker Compose
+# ===========================================================================
+# Deploys Celery workers across GPU nodes per §6.4 Table 6-7.
+#
+# Usage:
+#   docker compose -f docker-compose.workers.yml up -d
+#   docker compose -f docker-compose.workers.yml up -d worker-llm-node02
+#
+# Node mapping (§6.4):
+#   node-01: Beat scheduler + default queue worker
+#   node-02: gpu_llm + gpu_video worker (Llama 3.3 70B primary)
+#   node-03: gpu_llm + gpu_video worker (Llama 3.3 70B secondary)
+#   node-04: gpu_llm + gpu_image + gpu_tts + gpu_talking_head
+#   node-05: gpu_image + composition (overflow)
+#   node-06: composition (primary)
+# ===========================================================================
+
+version: "3.9"
+
+x-worker-common: &worker-common
+  build:
+    context: .
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  env_file:
+    - .env
+  environment:
+    IVGS_CELERY_BROKER_URL: "redis://redis:6379/0"
+    IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@postgres:5432/ivgs_results"
+    IVGS_API_BASE_URL: "http://ivgs-api:8000"
+    IVGS_GPU_SCHEDULER_URL: "http://ivgs-scheduler:8001"
+    IVGS_LOG_LEVEL: "INFO"
+    IVGS_LOG_FORMAT: "json"
+  volumes:
+    - worker-logs:/var/log/ivgs
+  networks:
+    - ivgs-internal
+  depends_on:
+    redis:
+      condition: service_healthy
+    postgres:
+      condition: service_healthy
+
+services:
+  # =========================================================================
+  # Redis broker
+  # =========================================================================
+  redis:
+    image: redis:7.4-alpine
+    container_name: ivgs-redis
+    command: >
+      redis-server
+      --maxmemory 2gb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --save 60 1000
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ivgs-internal
+
+  # =========================================================================
+  # PostgreSQL result backend
+  # =========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ivgs-postgres-results
+    environment:
+      POSTGRES_DB: ivgs_results
+      POSTGRES_USER: ivgs
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-ivgs_secure_pass}"
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-results-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ivgs -d ivgs_results"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ivgs-internal
+
+  # =========================================================================
+  # Celery Beat scheduler (node-01)
+  # =========================================================================
+  celery-beat:
+    <<: *worker-common
+    container_name: ivgs-celery-beat
+    hostname: node-01-beat
+    command: >
+      celery -A celery_app.celery_app beat
+      --loglevel=INFO
+      --schedule=/tmp/ivgs-celerybeat-schedule
+    environment:
+      IVGS_NODE_HOSTNAME: "node-01"
+      IVGS_NODE_ID: "node-01"
+      IVGS_WORKER_ID: "node-01-beat"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+  # =========================================================================
+  # Default queue worker (node-01)
+  # =========================================================================
+  worker-default:
+    <<: *worker-common
+    container_name: ivgs-worker-default
+    hostname: node-01-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=4
+      --queues=default
+      --hostname=worker-default@node-01
+      --max-tasks-per-child=200
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-01"
+      IVGS_NODE_ID: "node-01"
+      IVGS_WORKER_CONCURRENCY: "4"
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 4G
+
+  # =========================================================================
+  # GPU LLM worker — node-02 (primary Llama 3.3 70B)
+  # =========================================================================
+  worker-llm-node02:
+    <<: *worker-common
+    container_name: ivgs-worker-llm-02
+    hostname: node-02-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=1
+      --queues=gpu_llm,gpu_video
+      --hostname=worker-llm@node-02
+      --max-tasks-per-child=50
+      --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-02"
+      IVGS_NODE_ID: "node-02"
+      IVGS_WORKER_CONCURRENCY: "1"
+      IVGS_GPU_INDICES: "0"
+      IVGS_VLLM_PRIMARY_URL: "http://node-02:8000"
+      NVIDIA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # =========================================================================
+  # GPU LLM worker — node-03 (secondary Llama 3.3 70B)
+  # =========================================================================
+  worker-llm-node03:
+    <<: *worker-common
+    container_name: ivgs-worker-llm-03
+    hostname: node-03-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=1
+      --queues=gpu_llm,gpu_video
+      --hostname=worker-llm@node-03
+      --max-tasks-per-child=50
+      --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-03"
+      IVGS_NODE_ID: "node-03"
+      IVGS_WORKER_CONCURRENCY: "1"
+      IVGS_GPU_INDICES: "0"
+      IVGS_VLLM_PRIMARY_URL: "http://node-03:8000"
+      NVIDIA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # =========================================================================
+  # GPU multi-purpose worker — node-04
+  # Queues: gpu_llm, gpu_image, gpu_tts, gpu_talking_head
+  # =========================================================================
+  worker-gpu-node04:
+    <<: *worker-common
+    container_name: ivgs-worker-gpu-04
+    hostname: node-04-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=1
+      --queues=gpu_llm,gpu_image,gpu_tts,gpu_talking_head
+      --hostname=worker-gpu@node-04
+      --max-tasks-per-child=50
+      --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-04"
+      IVGS_NODE_ID: "node-04"
+      IVGS_WORKER_CONCURRENCY: "1"
+      IVGS_GPU_INDICES: "0"
+      IVGS_VLLM_MIDSIZE_URL: "http://node-04:8000"
+      NVIDIA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # =========================================================================
+  # GPU image + composition overflow — node-05
+  # =========================================================================
+  worker-gpu-node05:
+    <<: *worker-common
+    container_name: ivgs-worker-gpu-05
+    hostname: node-05-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=1
+      --queues=gpu_image,composition
+      --hostname=worker-gpu@node-05
+      --max-tasks-per-child=50
+      --prefetch-multiplier=1
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-05"
+      IVGS_NODE_ID: "node-05"
+      IVGS_WORKER_CONCURRENCY: "1"
+      IVGS_GPU_INDICES: "0"
+      NVIDIA_VISIBLE_DEVICES: "0"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 32G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # =========================================================================
+  # Composition worker — node-06 (Intel GPU)
+  # =========================================================================
+  worker-composition-node06:
+    <<: *worker-common
+    container_name: ivgs-worker-comp-06
+    hostname: node-06-worker
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=INFO
+      --concurrency=2
+      --queues=composition
+      --hostname=worker-comp@node-06
+      --max-tasks-per-child=100
+      --without-gossip
+      --without-mingle
+    environment:
+      IVGS_NODE_HOSTNAME: "node-06"
+      IVGS_NODE_ID: "node-06"
+      IVGS_WORKER_CONCURRENCY: "2"
+    deploy:
+      resources:
+        limits:
+          cpus: "8"
+          memory: 16G
+
+  # =========================================================================
+  # Flower monitoring (optional)
+  # =========================================================================
+  flower:
+    <<: *worker-common
+    container_name: ivgs-flower
+    hostname: flower
+    command: >
+      celery -A celery_app.celery_app flower
+      --port=5555
+      --broker_api=redis://redis:6379/0
+      --basic-auth=${FLOWER_USER:-admin}:${FLOWER_PASSWORD:-ivgs_flower}
+    ports:
+      - "5555:5555"
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 512M
+
+# ===========================================================================
+# Volumes
+# ===========================================================================
+volumes:
+  redis-data:
+    driver: local
+  postgres-results-data:
+    driver: local
+  worker-logs:
+    driver: local
+
+# ===========================================================================
+# Networks
+# ===========================================================================
+networks:
+  ivgs-internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

@@ -1,0 +1,24 @@
+
+## Decision Rules
+
+1. **full_frame**: Use when the scene is primarily the presenter talking
+   (e.g., introduction, conclusion, direct explanation).
+
+2. **pip** (Picture-in-Picture): Use when the scene has rich visual
+   content (diagrams, charts, demonstrations) that should be the
+   primary focus. Place the talking head in a corner.
+
+3. **chroma_key**: Use for green-screen scenarios where the presenter
+   should be composited over the scene background.
+
+4. **pip_position**: Choose the corner that has the least visual
+   information in the scene image to avoid occlusion.
+
+5. **pip_scale**: Default 0.25 (25% of frame). Increase to 0.35 for
+   important speaking moments; decrease to 0.20 for data-heavy scenes.
+
+6. **face_enhance**: Enable for standard scenes. Disable only if
+   artistic/stylized rendering is desired.
+
+7. **lip_sync_strength**: Default 1.0. Reduce to 0.8 for very fast
+   speech or animated styles.

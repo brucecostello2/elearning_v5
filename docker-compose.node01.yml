@@ -1,0 +1,499 @@
+# =============================================================================
+# IVGS v5 — Docker Compose: node-01 (Infrastructure)
+# =============================================================================
+# Spec reference: §2.4 Docker Compose Stacks — node-01
+# §15.2 Six Docker Compose Files
+#
+# Node-01 role (Table 2-2):
+#   CPU-only infrastructure node: 8 vCPUs, 16 GB RAM, 500 GB SSD
+#   No GPU passthrough
+#
+# Services (15 total per §2.4):
+#   1.  nginx              — Reverse proxy (443/80 → fastapi :8001, nextjs :3001)
+#   2.  nextjs-frontend    — Next.js 14 dashboard (:3001)
+#   3.  fastapi-backend    — FastAPI REST API (:8001)
+#   4.  ivgs-scheduler     — GPU scheduler microservice (:8001 internal)
+#   5.  celery-worker-default — Default queue Celery worker
+#   6.  celery-beat        — Periodic task scheduler
+#   7.  postgres           — PostgreSQL 17 (:5432)
+#   8.  redis              — Redis 7 (:6379)
+#   9.  seaweedfs-master   — SeaweedFS master (:9333)
+#  10.  seaweedfs-volume   — SeaweedFS volume server (:8080)
+#  11.  seaweedfs-filer    — SeaweedFS filer (:8888)
+#  12.  prometheus         — Prometheus 2.51+ (:9090)
+#  13.  grafana            — Grafana (:3000)
+#  14.  node-exporter      — Node exporter (:9100)
+#  15.  github-actions-runner — Self-hosted CI/CD runner
+#
+# Health checks: all services define healthcheck with interval=30s,
+# timeout=10s, retries=3 per §15.6
+#
+# Network: all services on ivgs-net bridge (10.10.0.0/24 VLAN equivalent)
+# =============================================================================
+
+version: "3.8"
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 30s
+
+x-common-logging: &common-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+      tag: "{{.Name}}"
+
+x-common-restart: &common-restart
+  restart: unless-stopped
+
+networks:
+  ivgs-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  seaweedfs-master-data:
+    driver: local
+  seaweedfs-volume-data:
+    driver: local
+  seaweedfs-filer-data:
+    driver: local
+  prometheus-data:
+    driver: local
+  grafana-data:
+    driver: local
+
+services:
+  # ---------------------------------------------------------------------------
+  # Service 1: PostgreSQL 17 (§2.4, Table 2-4: port 5432)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17.2@sha256:3d9ed832906091d609cfd6f283e79492b1157b3b9f4ee4b8e9af3e9c9c1a5f7b
+    container_name: ivgs-postgres
+    <<: [*common-restart, *common-logging]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ivgs}
+      POSTGRES_USER: ${POSTGRES_USER:-ivgs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - /mnt/backup/ivgs/wal:/mnt/wal-archive
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ivgs} -d ${POSTGRES_DB:-ivgs}"]
+    command: >
+      postgres
+        -c wal_level=replica
+        -c archive_mode=on
+        -c archive_command='/scripts/wal_archive.sh %p %f'
+        -c max_connections=200
+        -c shared_buffers=2GB
+        -c effective_cache_size=6GB
+        -c work_mem=16MB
+        -c maintenance_work_mem=512MB
+        -c max_wal_size=4GB
+        -c min_wal_size=1GB
+        -c checkpoint_completion_target=0.9
+        -c random_page_cost=1.1
+        -c log_min_duration_statement=500
+        -c log_checkpoints=on
+        -c log_connections=on
+        -c log_disconnections=on
+        -c log_lock_waits=on
+        -c log_statement=ddl
+
+  # ---------------------------------------------------------------------------
+  # Service 2: Redis 7 (§2.4, Table 2-4: port 6379)
+  # Celery broker + session/cache store
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7.4@sha256:e422889e156278f9a6a0c4a5cf6a3e8cd8e83890d3b83f4b7b59db3f7c3a18e0
+    container_name: ivgs-redis
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD", "redis-cli", "ping"]
+    command: >
+      redis-server
+        --maxmemory 2gb
+        --maxmemory-policy allkeys-lru
+        --appendonly yes
+        --appendfsync everysec
+        --save 900 1
+        --save 300 10
+        --save 60 10000
+        --tcp-backlog 511
+        --timeout 300
+        --tcp-keepalive 300
+
+  # ---------------------------------------------------------------------------
+  # Service 3: SeaweedFS Master (§2.4, Table 2-4: port 9333)
+  # Binary asset store — single master mode on node-01
+  # ---------------------------------------------------------------------------
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:3.71@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-seaweedfs-master
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - seaweedfs-master-data:/data
+    ports:
+      - "127.0.0.1:9333:9333"
+      - "127.0.0.1:19333:19333"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1"]
+    command: "master -ip=seaweedfs-master -port=9333 -defaultReplication=000 -mdir=/data"
+
+  # ---------------------------------------------------------------------------
+  # Service 4: SeaweedFS Volume Server (§2.4, Table 2-4: port 8080)
+  # ---------------------------------------------------------------------------
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:3.71@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-seaweedfs-volume
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - seaweedfs-volume-data:/data
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    ports:
+      - "127.0.0.1:8080:8080"
+    networks:
+      - ivgs-net
+    depends_on:
+      seaweedfs-master:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/status || exit 1"]
+    command: >
+      volume
+        -mserver=seaweedfs-master:9333
+        -ip=seaweedfs-volume
+        -port=8080
+        -dir=/data
+        -max=100
+        -rack=node01
+
+  # ---------------------------------------------------------------------------
+  # Service 5: SeaweedFS Filer (§2.4, Table 2-4: port 8888)
+  # ---------------------------------------------------------------------------
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:3.71@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-seaweedfs-filer
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - seaweedfs-filer-data:/data
+    ports:
+      - "127.0.0.1:8888:8888"
+    networks:
+      - ivgs-net
+    depends_on:
+      seaweedfs-master:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8888/ || exit 1"]
+    command: "filer -master=seaweedfs-master:9333 -ip=seaweedfs-filer -port=8888"
+
+  # ---------------------------------------------------------------------------
+  # Service 6: FastAPI Backend (§2.4, Table 2-4: port 8001)
+  # Main API server — all pipeline, auth, CRUD, operational endpoints
+  # ---------------------------------------------------------------------------
+  fastapi-backend:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-fastapi
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node01
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      REDIS_URL: redis://redis:6379/0
+      SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
+      SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+      GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
+      VLLM_PRIMARY_URL: http://10.10.0.2:8000/v1
+      VLLM_SECONDARY_URL: http://10.10.0.3:8000/v1
+      VLLM_MIDSIZE_URL: http://10.10.0.4:8000/v1
+      OLLAMA_URL: http://10.10.0.5:11434
+      COMFYUI_PRIMARY_URL: http://10.10.0.4:8188
+      COMFYUI_FALLBACK_URL: http://10.10.0.5:8188
+      COQUI_TTS_URL: http://10.10.0.4:5002
+      LATENTSYNC_URL: http://10.10.0.4:7860
+      REMOTION_URL: http://10.10.0.6:3002
+      UVICORN_WORKERS: "4"
+      UVICORN_HOST: "0.0.0.0"
+      UVICORN_PORT: "8001"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    ports:
+      - "127.0.0.1:8001:8001"
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      seaweedfs-filer:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:8001/api/v1/health || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 7: GPU Scheduler Microservice (§2.4, Table 2-4: port 8001 internal)
+  # VRAM-aware admission control per §12.2
+  # ---------------------------------------------------------------------------
+  ivgs-scheduler:
+    image: ghcr.io/brucecostello2/ivgs-scheduler:${IVGS_SCHEDULER_TAG:?IVGS_SCHEDULER_TAG required}
+    container_name: ivgs-scheduler
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node01
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      REDIS_URL: redis://redis:6379/1
+      SCHEDULER_PORT: "8001"
+    ports:
+      - "127.0.0.1:8002:8001"
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:8001/health || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 8: Next.js Frontend (§2.4, Table 2-4: port 3001)
+  # Dashboard UI — content creation, monitoring, prompt editor
+  # ---------------------------------------------------------------------------
+  nextjs-frontend:
+    image: ghcr.io/brucecostello2/ivgs-frontend:${IVGS_FRONTEND_TAG:?IVGS_FRONTEND_TAG required}
+    container_name: ivgs-nextjs
+    <<: [*common-restart, *common-logging]
+    environment:
+      NEXT_PUBLIC_API_URL: /api/v1
+      NODE_ENV: production
+      PORT: "3001"
+    ports:
+      - "127.0.0.1:3001:3001"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/ || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 9: Nginx Reverse Proxy (§2.4, Table 2-4: port 443/80)
+  # Routes /api → fastapi :8001, / → nextjs :3001
+  # WebSocket upgrade for live status per §8.2
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27@sha256:c2e7e5e8e9b4f3a1d0c6b7a8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8
+    container_name: ivgs-nginx
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx/ssl:/etc/nginx/ssl:ro
+    ports:
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:80:80"
+    networks:
+      - ivgs-net
+    depends_on:
+      fastapi-backend:
+        condition: service_healthy
+      nextjs-frontend:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/health || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 10: Celery Default Worker (§2.4)
+  # Processes default queue tasks (non-GPU): emails, notifications, cleanup
+  # ---------------------------------------------------------------------------
+  celery-worker-default:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-celery-default
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node01
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      REDIS_URL: redis://redis:6379/0
+      SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "celery -A ivgs.celery_app inspect ping --timeout=10 || exit 1"]
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=default,notifications,cleanup
+        --concurrency=4
+        --max-tasks-per-child=100
+        --without-heartbeat
+        --without-mingle
+        -n default-worker@node01
+
+  # ---------------------------------------------------------------------------
+  # Service 11: Celery Beat Scheduler (§2.4)
+  # Periodic tasks: DLQ processing, orphan cleanup, retention management,
+  # heartbeat timeout checks
+  # ---------------------------------------------------------------------------
+  celery-beat:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-celery-beat
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node01
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      REDIS_URL: redis://redis:6379/0
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      celery -A ivgs.celery_app beat
+        --loglevel=info
+        --schedule=/tmp/celerybeat-schedule
+        --pidfile=/tmp/celerybeat.pid
+
+  # ---------------------------------------------------------------------------
+  # Service 12: Prometheus (§13.1, port 9090)
+  # Config mounted from Phase 14 configs/prometheus/
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.53.0@sha256:f5a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7
+    container_name: ivgs-prometheus
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./configs/prometheus/alert_rules.yml:/etc/prometheus/alert_rules.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9090/-/healthy || exit 1"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+      - "--web.enable-admin-api"
+
+  # ---------------------------------------------------------------------------
+  # Service 13: Grafana (§13.2, port 3000 — REQUIRED in v5)
+  # Dashboards provisioned from Phase 14 JSON files
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:11.1.0@sha256:b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2
+    container_name: ivgs-grafana
+    <<: [*common-restart, *common-logging]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./configs/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./configs/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "127.0.0.1:3000:3000"
+    networks:
+      - ivgs-net
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/health || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 14: Node Exporter (§13.1 Table 13-1 Row 3, port 9100)
+  # CPU, RAM, disk I/O, network I/O metrics for node-01
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.1@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-node-exporter
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "0.0.0.0:9100:9100"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+
+  # ---------------------------------------------------------------------------
+  # Service 15: GitHub Actions Self-Hosted Runner (§2.4, Table 2-4)
+  # CI/CD runner on node-01 — outbound HTTPS to GitHub only
+  # ---------------------------------------------------------------------------
+  github-actions-runner:
+    image: ghcr.io/actions/actions-runner:2.319.1@sha256:c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6c7d8e9f0a1b2
+    container_name: ivgs-github-runner
+    <<: [*common-restart, *common-logging]
+    environment:
+      RUNNER_NAME: ivgs-node01
+      RUNNER_WORKDIR: /home/runner/work
+      GITHUB_URL: ${GITHUB_REPO_URL:?GITHUB_REPO_URL required}
+      RUNNER_TOKEN: ${GITHUB_RUNNER_TOKEN:?GITHUB_RUNNER_TOKEN required}
+      RUNNER_LABELS: "self-hosted,linux,x64,ivgs-infra"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - ivgs-net

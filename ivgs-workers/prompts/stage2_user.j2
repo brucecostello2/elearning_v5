@@ -1,0 +1,43 @@
+{# IVGS v5 — Stage 2 User Prompt: Storyboard Generation
+   Variables per §9.4:
+     {{ project_title }}         — Video title
+     {{ project_description }}   — Project description
+     {{ target_audience }}       — Audience level
+     {{ max_duration_seconds }}  — Target duration
+     {{ total_runtime_seconds }} — Same as max_duration_seconds
+     {{ combined_transcript }}   — All refined transcripts concatenated
+     {{ transcript_count }}      — Number of transcript segments
+     {{ target_scene_count }}    — Optional hint for desired scene count
+     {{ language_code }}         — BCP-47 language code
+#}
+Generate a detailed storyboard for the following educational video production.
+
+## Project Details
+
+- **Title**: {{ project_title }}
+{% if project_description %}- **Description**: {{ project_description }}
+{% endif %}- **Target Audience**: {{ target_audience }}
+- **Language**: {{ language_code }}
+- **Target Duration**: {{ max_duration_seconds }} seconds (~{{ (max_duration_seconds / 60) | round(1) }} minutes)
+- **Source Segments**: {{ transcript_count }}
+{% if target_scene_count %}- **Suggested Scene Count**: ~{{ target_scene_count }} scenes (you may adjust based on content)
+{% else %}- **Suggested Scene Count**: Determine the optimal number based on content density (typically 1 scene per 10-20 seconds of narration)
+{% endif %}
+
+## Refined Transcript
+
+The following is the refined narration transcript, organized by segment order:
+
+{{ combined_transcript }}
+
+## Storyboard Generation Instructions
+
+1. Divide the transcript into logical scenes based on topic boundaries and natural pause points
+2. Each scene should contain a coherent narrative unit (one concept, one explanation, one example)
+3. Write detailed `visual_description` fields that an image/video generation AI can use directly
+4. Choose `media_type` based on content: "image" for static concepts, "video_clip" for processes/actions, "animation" for data/diagrams
+5. Ensure `duration_seconds` for each scene matches the narration length (~150 words/minute)
+6. Total duration across all scenes should be approximately {{ max_duration_seconds }} seconds
+7. Include smooth transitions between scenes
+
+Output ONLY the JSON object with a "scenes" array. No other text.
