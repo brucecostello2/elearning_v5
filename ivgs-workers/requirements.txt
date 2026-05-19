@@ -11,7 +11,7 @@ redis==5.2.1
 kombu==5.4.2
 
 # --- PostgreSQL Result Backend ---
-psycopg2-binary==2.9.10
+psycopg2-binary==2.9.12
 SQLAlchemy==2.0.36
 
 # --- HTTP Client (vLLM, API calls) ---
