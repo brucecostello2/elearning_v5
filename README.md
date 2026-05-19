@@ -12,18 +12,18 @@
 
 IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation:
 
-| Node | IP | Role | GPU |
-|------|------|------|-----|
-| node-01 | 10.10.0.1 | Frontend, API, DB, Monitoring | — (CPU only) |
-| node-02 | 10.10.0.2 | vLLM (Llama 3.1 70B), FLUX.1 Dev | 2× A6000 |
-| node-03 | 10.10.0.3 | CogVideoX-5B, Wav2Lip | 2× A6000 |
-| node-04 | 10.10.0.4 | Coqui TTS, Whisper, WhisperX | 1× A6000 |
-| node-05 | 10.10.0.5 | Ollama (fallback), Kokoro TTS | 1× RTX 4090 |
-| node-06 | 10.10.0.6 | Celery workers, GPU Scheduler | 1× RTX 4090 |
+| Node | IP | Role | GPU | VRAM |
+|------|------|------|-----|------|
+| node-01 | 10.10.0.1 | Frontend, API, DB, Redis, Prometheus, Grafana, GPU Scheduler, CI/CD | — (CPU only) | — |
+| node-02 | 10.10.0.2 | vLLM (Llama 3.3 70B TP), CogVideoX/Wan2.1 | NVIDIA RTX 6000 Blackwell | 96 GB |
+| node-03 | 10.10.0.3 | vLLM (Qwen2.5 72B TP), CogVideoX/Wan2.1 | NVIDIA RTX 6000 Blackwell | 96 GB |
+| node-04 | 10.10.0.4 | ComfyUI (FLUX.1 Dev), XTTS v2, WhisperX, LatentSync, vLLM Mistral 24B | NVIDIA RTX 5000 Pro Blackwell | 48 GB |
+| node-05 | 10.10.0.5 | ComfyUI (SDXL/SD3.5 fallback), Ollama, FFmpeg | NVIDIA RTX 5080 | 16 GB |
+| node-06 | 10.10.0.6 | Remotion renderer, FFmpeg overflow, Celery overflow | Intel B70 Pro | 32 GB |
 
 ## 8-Stage Pipeline (§6.1)
 
-1. **Transcript Refinement** — vLLM (Llama 3.1 70B)
+1. **Transcript Refinement** — vLLM (Llama 3.3 70B)
 2. **Storyboard Generation** — vLLM structured output
 3. **Media Generation** — FLUX.1 Dev (images), CogVideoX/Wan2.1 (video)
 4. **Composition Manifest** — Automated scene assembly
@@ -36,10 +36,10 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation:
 
 | Layer | Technology |
 |-------|-----------|
-| Backend API | FastAPI, Python 3.11, SQLAlchemy, Alembic |
+| Backend API | FastAPI, Python 3.12+, SQLAlchemy, Alembic |
 | Workers | Celery 5.4, Redis 7 (broker) |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
-| Database | PostgreSQL 17 + TimescaleDB |
+| Database | PostgreSQL 15+ |
 | Storage | SeaweedFS (hot/warm/cold tiers) |
 | Monitoring | Prometheus, Grafana, Loki, AlertManager |
 | Deployment | Docker Compose (per-node) |
@@ -66,14 +66,14 @@ docker compose exec ivgs-api python scripts/seed_data.py
 
 # 6. Access
 #   API:      http://localhost:8001/docs
-#   Frontend: http://localhost:3000
+#   Frontend: http://localhost:3001
 ```
 
 ## Project Structure
 
 ```
 /ivgs/
-├── ivgs-api/              # FastAPI backend (Python 3.11)
+├── ivgs-api/              # FastAPI backend (Python 3.12+)
 │   ├── app/
 │   │   ├── api/v1/        # REST + WebSocket endpoints
 │   │   ├── models/        # SQLAlchemy ORM models
@@ -81,7 +81,7 @@ docker compose exec ivgs-api python scripts/seed_data.py
 │   │   ├── services/      # Business logic layer
 │   │   ├── middleware/     # CORS, auth, rate limiting
 │   │   └── main.py        # FastAPI application entry
-│   ├── migrations/        # Alembic migrations (0001-0017)
+│   ├── migrations/        # Alembic migrations (0001-0014)
 │   └── tests/
 ├── ivgs-workers/          # Celery task workers
 │   ├── clients/           # AI model HTTP clients (ABC-based)
@@ -109,7 +109,7 @@ docker compose exec ivgs-api python scripts/seed_data.py
 
 - **§7.2 Self-Hosted Mandate:** All AI inference is local. Cloud API keys are prohibited and detected by CI.
 - **§19.1 Provider Abstraction:** All AI clients inherit from ABC interfaces (`LLMProvider`, `ImageProvider`, `TTSProvider`, `VideoProvider`, `STTProvider`).
-- **§16.1 Authentication:** JWT-based with RBAC (Admin, Editor, Viewer roles).
+- **§16.1 Authentication:** JWT-based with RBAC (Admin, Operator, Viewer roles).
 - **§14.1 Backup:** Automated daily backups with GPG encryption and NAS storage.
 - **§13.x Monitoring:** Full observability stack with Prometheus, Grafana, Loki, and AlertManager.
 
@@ -138,8 +138,8 @@ pytest tests/ -v
 python scripts/compliance_scanner.py /ivgs/
 
 # Lint & type check
+ruff check .
 black --check .
-flake8 .
 mypy ivgs-api/ ivgs-workers/
 ```
 
