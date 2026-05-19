@@ -1,0 +1,205 @@
+# =============================================================
+# IVGS v5 — Base Docker Compose for Local Development
+# Starts PostgreSQL 17, Redis 7, SeaweedFS (master+volume+filer)
+# =============================================================
+version: "3.8"
+
+networks:
+  ivgs-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  seaweedfs_master_data:
+  seaweedfs_hot_data:
+  seaweedfs_warm_data:
+  seaweedfs_filer_data:
+
+services:
+  # ---------------------------------------------------------------
+  # PostgreSQL 17 with TimescaleDB
+  # ---------------------------------------------------------------
+  postgres:
+    image: timescale/timescaledb:latest-pg17
+    container_name: ivgs-postgres
+    environment:
+      POSTGRES_USER: ivgs
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ivgs_dev_password}
+      POSTGRES_DB: ivgs
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./configs/postgres.conf:/etc/postgresql/postgresql.conf:ro
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ivgs -d ivgs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Create the filer metadata database
+  postgres-init:
+    image: timescale/timescaledb:latest-pg17
+    container_name: ivgs-postgres-init
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ivgs
+      PGPASSWORD: ${POSTGRES_PASSWORD:-ivgs_dev_password}
+    entrypoint: >
+      sh -c "
+        psql -tc \"SELECT 1 FROM pg_database WHERE datname='ivgs_filer'\" | grep -q 1 ||
+        psql -c 'CREATE DATABASE ivgs_filer;' &&
+        psql -d ivgs -c 'CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";' &&
+        psql -d ivgs -c 'CREATE EXTENSION IF NOT EXISTS timescaledb;'
+      "
+    networks:
+      - ivgs-net
+    restart: "no"
+
+  # ---------------------------------------------------------------
+  # Redis 7
+  # ---------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: ivgs-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./configs/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --requirepass ${REDIS_PASSWORD:-ivgs_dev_password}
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ivgs_dev_password}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # SeaweedFS Master
+  # ---------------------------------------------------------------
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: ivgs-seaweedfs-master
+    ports:
+      - "9333:9333"
+      - "19333:19333"
+    volumes:
+      - seaweedfs_master_data:/data/seaweedfs/master
+      - ./configs/seaweedfs/master.toml:/etc/seaweedfs/master.toml:ro
+    command: master -mdir=/data/seaweedfs/master -ip=seaweedfs-master -port=9333
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:9333/dir/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # SeaweedFS Volume Server
+  # ---------------------------------------------------------------
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: ivgs-seaweedfs-volume
+    depends_on:
+      seaweedfs-master:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - seaweedfs_hot_data:/data/seaweedfs/hot
+      - seaweedfs_warm_data:/data/seaweedfs/warm
+    command: >
+      volume
+      -mserver=seaweedfs-master:9333
+      -ip=seaweedfs-volume
+      -port=8080
+      -dir=/data/seaweedfs/hot
+      -dir.idx=/data/seaweedfs/warm
+      -max=200
+      -compactionMBps=50
+      -minFreeSpacePercent=5
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # SeaweedFS Filer
+  # ---------------------------------------------------------------
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: ivgs-seaweedfs-filer
+    depends_on:
+      seaweedfs-master:
+        condition: service_healthy
+      seaweedfs-volume:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    volumes:
+      - seaweedfs_filer_data:/data/seaweedfs/filer
+      - ./configs/seaweedfs/filer.toml:/etc/seaweedfs/filer.toml:ro
+    command: >
+      filer
+      -master=seaweedfs-master:9333
+      -ip=seaweedfs-filer
+      -port=8888
+    networks:
+      - ivgs-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8888/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------
+  # API Service (for running migrations and dev)
+  # ---------------------------------------------------------------
+  api:
+    build:
+      context: .
+      dockerfile: ivgs-api/Dockerfile
+    container_name: ivgs-api
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://ivgs:${POSTGRES_PASSWORD:-ivgs_dev_password}@postgres:5432/ivgs
+      REDIS_URL: redis://:${REDIS_PASSWORD:-ivgs_dev_password}@redis:6379/0
+      SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
+      SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev_only_secret_change_in_production_64chars_minimum!!}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      NODE_HOSTNAME: node-01
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./shared:/app/shared:ro
+      - ./ivgs-api:/app:ro
+    networks:
+      - ivgs-net
+    restart: unless-stopped

@@ -1,0 +1,592 @@
+"""
+IVGS v5 — Celery Beat Periodic Tasks
+========================================
+
+Celery Beat task definitions per §6.4.
+
+Schedule (from specification):
+- DLQ processing:        every 5 minutes
+- Heartbeat supervision: every 30 seconds
+- Orphan cleanup:        daily at 02:00 UTC
+- Retention migration:   daily at 03:00 UTC
+- Backup verification:   daily at 04:00 UTC
+
+All periodic tasks run on the 'default' queue (node-01) per Table 6-7.
+
+Celery Beat configuration:
+- task_acks_late = True
+- worker_prefetch_multiplier = 1
+- task_reject_on_worker_lost = True
+
+Integration:
+- DLQService.process_pending_messages() — auto-replay transient failures
+- OrphanCleanupService.run_cleanup() — 3 scan types + quarantine
+- RetentionService.run_migration() — tier transitions
+- HeartbeatSupervisor — dead worker detection (60s threshold)
+- BackupVerifier — integrity verification of most recent backup
+"""
+
+from __future__ import annotations
+
+import asyncio
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+import structlog
+from celery import shared_task
+from celery.schedules import crontab
+
+logger = structlog.get_logger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Celery Beat Schedule Configuration
+# ---------------------------------------------------------------------------
+
+def get_beat_schedule() -> dict[str, dict[str, Any]]:
+    """
+    Return the Celery Beat schedule configuration per §6.4.
+
+    This is registered in the Celery app configuration:
+        app.conf.beat_schedule = get_beat_schedule()
+
+    Returns:
+        Dict of task schedules keyed by task name.
+    """
+    return {
+        # DLQ processing — every 5 minutes
+        "dlq-processing-every-5-minutes": {
+            "task": "ivgs_workers.tasks.periodic_tasks.process_dlq",
+            "schedule": 300.0,  # 5 minutes in seconds
+            "options": {
+                "queue": "default",
+                "expires": 280,  # expire before next run
+            },
+        },
+        # Heartbeat supervision — every 30 seconds
+        "heartbeat-supervision-every-30-seconds": {
+            "task": "ivgs_workers.tasks.periodic_tasks.supervise_heartbeats",
+            "schedule": 30.0,
+            "options": {
+                "queue": "default",
+                "expires": 25,
+            },
+        },
+        # Orphan cleanup — daily at 02:00 UTC
+        "orphan-cleanup-daily": {
+            "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
+            "schedule": crontab(hour=2, minute=0),
+            "options": {
+                "queue": "default",
+                "expires": 3600,  # 1 hour to complete
+            },
+        },
+        # Retention migration — daily at 03:00 UTC
+        "retention-migration-daily": {
+            "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
+            "schedule": crontab(hour=3, minute=0),
+            "options": {
+                "queue": "default",
+                "expires": 3600,
+            },
+        },
+        # Backup verification — daily at 04:00 UTC
+        "backup-verification-daily": {
+            "task": "ivgs_workers.tasks.periodic_tasks.verify_latest_backup",
+            "schedule": crontab(hour=4, minute=0),
+            "options": {
+                "queue": "default",
+                "expires": 3600,
+            },
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
+# DLQ Processing Task
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.process_dlq",
+    bind=True,
+    max_retries=0,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=240,
+    soft_time_limit=220,
+)
+def process_dlq(self: Any) -> dict[str, Any]:
+    """
+    Periodic DLQ processing — runs every 5 minutes per §6.4.
+
+    Auto-replays transient failures younger than 1 hour.
+    Flags stale messages older than 24 hours.
+
+    Returns:
+        Dict with processing statistics.
+    """
+    task_log = logger.bind(
+        task_name="process_dlq",
+        celery_task_id=self.request.id,
+    )
+    task_log.info("dlq_processing_started")
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            from ivgs_workers.services.dlq_service import DLQService
+            from ivgs_workers.config import get_db_session_factory
+
+            dlq_service = DLQService(
+                db_session_factory=get_db_session_factory(),
+                celery_app=self.app,
+            )
+
+            result = loop.run_until_complete(
+                dlq_service.process_pending_messages(
+                    auto_replay_transient=True,
+                    max_auto_replays=10,
+                )
+            )
+
+            task_log.info(
+                "dlq_processing_completed",
+                auto_replayed=result["auto_replayed"],
+                flagged_stale=result["flagged_stale"],
+                total_pending=result["total_pending"],
+            )
+
+            return result
+
+        finally:
+            loop.close()
+
+    except Exception as exc:
+        task_log.error("dlq_processing_failed", error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat Supervision Task
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.supervise_heartbeats",
+    bind=True,
+    max_retries=0,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=25,
+    soft_time_limit=20,
+)
+def supervise_heartbeats(self: Any) -> dict[str, Any]:
+    """
+    Heartbeat supervision — runs every 30 seconds per §6.2.
+
+    Checks worker heartbeats. Workers missing > 60 seconds are marked
+    'suspected_dead'. Workers missing > 120 seconds are marked
+    'confirmed_dead' and their active jobs are rescheduled.
+
+    Returns:
+        Dict with supervision statistics.
+    """
+    task_log = logger.bind(
+        task_name="supervise_heartbeats",
+        celery_task_id=self.request.id,
+    )
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            from ivgs_workers.config import get_db_session_factory
+            from sqlalchemy import text
+
+            db_factory = get_db_session_factory()
+            now = datetime.now(timezone.utc)
+            suspected_threshold = now - timedelta(seconds=60)
+            confirmed_threshold = now - timedelta(seconds=120)
+
+            async def _supervise() -> dict[str, Any]:
+                suspected_count = 0
+                confirmed_count = 0
+                rescheduled_jobs: list[str] = []
+
+                async with db_factory() as session:
+                    # Mark suspected_dead (60s threshold)
+                    result = await session.execute(
+                        text(
+                            "UPDATE worker_heartbeats "
+                            "SET status = 'suspected_dead' "
+                            "WHERE status = 'alive' "
+                            "AND last_heartbeat_at < :threshold "
+                            "RETURNING worker_id"
+                        ),
+                        {"threshold": suspected_threshold},
+                    )
+                    suspected_rows = result.fetchall()
+                    suspected_count = len(suspected_rows)
+
+                    for row in suspected_rows:
+                        task_log.warning(
+                            "worker_suspected_dead",
+                            worker_id=row[0],
+                        )
+
+                    # Mark confirmed_dead (120s threshold)
+                    result = await session.execute(
+                        text(
+                            "UPDATE worker_heartbeats "
+                            "SET status = 'confirmed_dead' "
+                            "WHERE status = 'suspected_dead' "
+                            "AND last_heartbeat_at < :threshold "
+                            "RETURNING worker_id, current_job_id"
+                        ),
+                        {"threshold": confirmed_threshold},
+                    )
+                    confirmed_rows = result.fetchall()
+                    confirmed_count = len(confirmed_rows)
+
+                    for row in confirmed_rows:
+                        worker_id = row[0]
+                        job_id = row[1]
+
+                        task_log.error(
+                            "worker_confirmed_dead",
+                            worker_id=worker_id,
+                            current_job_id=str(job_id) if job_id else None,
+                        )
+
+                        # Reschedule active job via GPU scheduler
+                        if job_id:
+                            rescheduled_jobs.append(str(job_id))
+                            await session.execute(
+                                text(
+                                    "UPDATE render_jobs "
+                                    "SET status = 'pending', "
+                                    "node_id = NULL "
+                                    "WHERE id = :job_id "
+                                    "AND status = 'running'"
+                                ),
+                                {"job_id": str(job_id)},
+                            )
+
+                    await session.commit()
+
+                return {
+                    "suspected_dead": suspected_count,
+                    "confirmed_dead": confirmed_count,
+                    "rescheduled_jobs": rescheduled_jobs,
+                    "checked_at": now.isoformat(),
+                }
+
+            result = loop.run_until_complete(_supervise())
+
+            if result["suspected_dead"] > 0 or result["confirmed_dead"] > 0:
+                task_log.info(
+                    "heartbeat_supervision_completed",
+                    **result,
+                )
+
+            return result
+
+        finally:
+            loop.close()
+
+    except Exception as exc:
+        task_log.error("heartbeat_supervision_failed", error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Orphan Cleanup Task
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
+    bind=True,
+    max_retries=1,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=3600,
+    soft_time_limit=3300,
+)
+def run_orphan_cleanup(self: Any) -> dict[str, Any]:
+    """
+    Orphan cleanup — runs daily at 02:00 UTC per §10.6.
+
+    Executes OrphanCleanupService.run_cleanup() which performs
+    3 scan types, quarantine, and permanent deletion.
+
+    Returns:
+        CleanupReport as dict.
+    """
+    task_log = logger.bind(
+        task_name="run_orphan_cleanup",
+        celery_task_id=self.request.id,
+    )
+    task_log.info("orphan_cleanup_started")
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            from ivgs_workers.services.orphan_cleanup import (
+                OrphanCleanupService,
+            )
+            from ivgs_workers.config import get_db_session_factory
+
+            service = OrphanCleanupService(
+                db_session_factory=get_db_session_factory(),
+            )
+
+            report = loop.run_until_complete(service.run_cleanup())
+            loop.run_until_complete(service.close())
+
+            result = report.model_dump(mode="json")
+
+            task_log.info(
+                "orphan_cleanup_completed",
+                type1=report.type1_seaweedfs_without_db,
+                type2=report.type2_db_without_seaweedfs,
+                type3=report.type3_zero_reference_count,
+                quarantined=report.newly_quarantined,
+                deleted=report.permanently_deleted,
+                duration_seconds=report.duration_seconds,
+            )
+
+            return result
+
+        finally:
+            loop.close()
+
+    except Exception as exc:
+        task_log.error("orphan_cleanup_failed", error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Retention Migration Task
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.run_retention_migration",
+    bind=True,
+    max_retries=1,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=3600,
+    soft_time_limit=3300,
+)
+def run_retention_migration(self: Any) -> dict[str, Any]:
+    """
+    Retention tier migration — runs daily at 03:00 UTC per §10.3.
+
+    Executes RetentionService.run_migration() which scans assets and
+    transitions eligible assets between storage tiers.
+
+    Returns:
+        MigrationReport as dict.
+    """
+    task_log = logger.bind(
+        task_name="run_retention_migration",
+        celery_task_id=self.request.id,
+    )
+    task_log.info("retention_migration_started")
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            from ivgs_workers.services.retention_migration import (
+                RetentionService,
+            )
+            from ivgs_workers.config import get_db_session_factory
+
+            service = RetentionService(
+                db_session_factory=get_db_session_factory(),
+            )
+
+            report = loop.run_until_complete(service.run_migration())
+            loop.run_until_complete(service.close())
+
+            result = report.model_dump(mode="json")
+
+            task_log.info(
+                "retention_migration_completed",
+                scanned=report.assets_scanned,
+                transitions=report.transitions_performed,
+                deleted=report.assets_deleted,
+                preserved=report.assets_preserved,
+                duration_seconds=report.duration_seconds,
+            )
+
+            return result
+
+        finally:
+            loop.close()
+
+    except Exception as exc:
+        task_log.error("retention_migration_failed", error=str(exc))
+        raise
+
+
+# ---------------------------------------------------------------------------
+# Backup Verification Task
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.verify_latest_backup",
+    bind=True,
+    max_retries=1,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=3600,
+    soft_time_limit=3300,
+)
+def verify_latest_backup(self: Any) -> dict[str, Any]:
+    """
+    Backup verification — runs daily at 04:00 UTC per §6.4.
+
+    Verifies the integrity of the most recent backup by checking:
+    - Backup file exists at recorded path
+    - File size matches recorded size
+    - SHA-256 checksum matches verification_checksum
+    - Updates backup_records table with verification result
+
+    Returns:
+        Verification result dict.
+    """
+    task_log = logger.bind(
+        task_name="verify_latest_backup",
+        celery_task_id=self.request.id,
+    )
+    task_log.info("backup_verification_started")
+
+    try:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+        try:
+            from ivgs_workers.config import get_db_session_factory
+            from sqlalchemy import text
+            import hashlib
+
+            db_factory = get_db_session_factory()
+
+            async def _verify() -> dict[str, Any]:
+                async with db_factory() as session:
+                    # Get most recent backup record
+                    result = await session.execute(
+                        text(
+                            "SELECT id, backup_type, backup_path, "
+                            "size_bytes, verification_checksum "
+                            "FROM backup_records "
+                            "WHERE status = 'completed' "
+                            "ORDER BY completed_at DESC LIMIT 1"
+                        )
+                    )
+                    row = result.fetchone()
+
+                    if row is None:
+                        task_log.warning("no_backup_records_found")
+                        return {
+                            "status": "no_backups",
+                            "message": "No completed backups found",
+                        }
+
+                    backup_id = str(row[0])
+                    backup_type = row[1]
+                    backup_path = row[2]
+                    expected_size = row[3]
+                    expected_checksum = row[4]
+
+                    # Verify file exists and check size
+                    import os
+
+                    if not os.path.exists(backup_path):
+                        verification_result = "failed"
+                        failure_reason = "Backup file not found"
+                    else:
+                        actual_size = os.path.getsize(backup_path)
+
+                        if expected_size and actual_size != expected_size:
+                            verification_result = "failed"
+                            failure_reason = (
+                                f"Size mismatch: expected {expected_size}, "
+                                f"got {actual_size}"
+                            )
+                        elif expected_checksum:
+                            # Compute SHA-256
+                            sha256 = hashlib.sha256()
+                            with open(backup_path, "rb") as f:
+                                for chunk in iter(
+                                    lambda: f.read(8192), b""
+                                ):
+                                    sha256.update(chunk)
+                            actual_checksum = sha256.hexdigest()
+
+                            if actual_checksum != expected_checksum:
+                                verification_result = "failed"
+                                failure_reason = "Checksum mismatch"
+                            else:
+                                verification_result = "verified"
+                                failure_reason = ""
+                        else:
+                            verification_result = "verified"
+                            failure_reason = ""
+
+                    # Update backup record
+                    now = datetime.now(timezone.utc)
+                    await session.execute(
+                        text(
+                            "UPDATE backup_records "
+                            "SET verified_at = :now, "
+                            "status = CASE "
+                            "  WHEN :result = 'verified' THEN 'verified' "
+                            "  ELSE 'verification_failed' END "
+                            "WHERE id = :id"
+                        ),
+                        {
+                            "now": now,
+                            "result": verification_result,
+                            "id": backup_id,
+                        },
+                    )
+                    await session.commit()
+
+                    if verification_result == "failed":
+                        task_log.error(
+                            "backup_verification_failed",
+                            backup_id=backup_id,
+                            backup_type=backup_type,
+                            reason=failure_reason,
+                        )
+                    else:
+                        task_log.info(
+                            "backup_verification_passed",
+                            backup_id=backup_id,
+                            backup_type=backup_type,
+                        )
+
+                    return {
+                        "backup_id": backup_id,
+                        "backup_type": backup_type,
+                        "verification_result": verification_result,
+                        "failure_reason": failure_reason,
+                        "verified_at": now.isoformat(),
+                    }
+
+            return loop.run_until_complete(_verify())
+
+        finally:
+            loop.close()
+
+    except Exception as exc:
+        task_log.error("backup_verification_failed", error=str(exc))
+        raise

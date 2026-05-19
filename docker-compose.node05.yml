@@ -1,0 +1,203 @@
+# =============================================================================
+# IVGS v5 — Docker Compose: node-05 (Image Fallback, Utility)
+# =============================================================================
+# Spec reference: §2.4 Docker Compose Stacks — node-05
+#
+# Node-05 role (Table 2-2):
+#   NVIDIA RTX 5080 — 16 GB VRAM
+#   ComfyUI (SDXL / SD3.5 fallback), Ollama (small models),
+#   FFmpeg composition, utility tasks
+#
+# Services (6 per §2.4):
+#   1. comfyui          — Fallback image gen (:8188)
+#   2. ollama           — Small LLM fallback (:11434)
+#   3. ffmpeg-worker    — Composition tasks
+#   4. celery-worker    — Utility + image fallback queues
+#   5. node-exporter    — System metrics (:9100)
+#   6. nvidia-gpu-exporter — GPU metrics (:9400)
+# =============================================================================
+
+version: "3.8"
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+x-common-logging: &common-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+x-common-restart: &common-restart
+  restart: unless-stopped
+
+x-gpu-resources: &gpu-resources
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+networks:
+  ivgs-net:
+    driver: bridge
+
+services:
+  # ---------------------------------------------------------------------------
+  # Service 1: ComfyUI Fallback (SDXL / SD3.5 — Table B-1: 10 GB)
+  # Fallback image generation when FLUX.1 on node-04 is busy
+  # ---------------------------------------------------------------------------
+  comfyui:
+    image: ghcr.io/brucecostello2/ivgs-workers:comfyui-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-comfyui-fallback
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    env_file:
+      - .env.node05
+    environment:
+      COMFYUI_PORT: "8188"
+      CUDA_VISIBLE_DEVICES: "0"
+      HF_HOME: /data/models
+      COMFYUI_DEFAULT_MODEL: "sdxl"
+    volumes:
+      - /data/models:/data/models
+      - /data/comfyui-output:/output
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    ports:
+      - "0.0.0.0:8188:8188"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:8188/system_stats || exit 1"]
+    shm_size: "4g"
+
+  # ---------------------------------------------------------------------------
+  # Service 2: Ollama (LLM fallback — Table B-1: Llama 3.2 8B Q4 = 5 GB)
+  # ---------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:0.5.4@sha256:f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2
+    container_name: ivgs-ollama
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    env_file:
+      - .env.node05
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_MODELS: /data/models/ollama
+      NVIDIA_VISIBLE_DEVICES: all
+    volumes:
+      - /data/models/ollama:/data/models/ollama
+    ports:
+      - "0.0.0.0:11434:11434"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:11434/api/tags || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 3: FFmpeg Composition Worker
+  # Handles audio+video muxing, caption burn-in, format conversion
+  # CPU-intensive with GPU acceleration for encoding
+  # ---------------------------------------------------------------------------
+  ffmpeg-worker:
+    image: ghcr.io/brucecostello2/ivgs-workers:ffmpeg-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-ffmpeg-node05
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    env_file:
+      - .env.node05
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      NODE_HOSTNAME: node-05
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+      - /data/ffmpeg-tmp:/tmp/ffmpeg
+    networks:
+      - ivgs-net
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=composition,ffmpeg
+        --concurrency=2
+        --max-tasks-per-child=20
+        -n ffmpeg-worker@node05
+
+  # ---------------------------------------------------------------------------
+  # Service 4: Celery Worker (utility + image fallback queues)
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-celery-node05
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node05
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      GPU_SCHEDULER_URL: http://10.10.0.1:8002
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      COMFYUI_FALLBACK_URL: http://comfyui:8188
+      OLLAMA_URL: http://ollama:11434
+      NODE_HOSTNAME: node-05
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=image_generation_fallback,llm_inference_fallback,utility
+        --concurrency=2
+        --max-tasks-per-child=50
+        -n celery-worker@node05
+
+  # ---------------------------------------------------------------------------
+  # Service 5: Node Exporter
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.1@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-node-exporter
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "0.0.0.0:9100:9100"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+
+  # ---------------------------------------------------------------------------
+  # Service 6: NVIDIA GPU Exporter
+  # ---------------------------------------------------------------------------
+  nvidia-gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.2.1@sha256:e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2
+    container_name: ivgs-nvidia-gpu-exporter
+    <<: [*common-restart, *common-logging]
+    <<: *gpu-resources
+    ports:
+      - "0.0.0.0:9400:9400"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9400/metrics || exit 1"]

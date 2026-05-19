@@ -1,0 +1,173 @@
+# =============================================================================
+# IVGS v5 — Docker Compose: node-06 (Intel GPU, Remotion, Overflow)
+# =============================================================================
+# Spec reference: §2.4 Docker Compose Stacks — node-06
+#
+# Node-06 role (Table 2-2):
+#   Intel B70 Pro — 32 GB (Intel GPU)
+#   Remotion renderer (lower-thirds, animations, Ken Burns effects)
+#   FFmpeg overflow composition, Celery overflow workers
+#
+# Services (5 per §2.4):
+#   1. remotion-renderer — Programmatic video (:3002)
+#   2. ffmpeg-worker     — Overflow composition
+#   3. celery-worker     — Composition + overflow queues
+#   4. node-exporter     — System metrics (:9100)
+#   5. intel-gpu-exporter — Intel GPU metrics (:9401)
+# =============================================================================
+
+version: "3.8"
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 60s
+
+x-common-logging: &common-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+x-common-restart: &common-restart
+  restart: unless-stopped
+
+networks:
+  ivgs-net:
+    driver: bridge
+
+services:
+  # ---------------------------------------------------------------------------
+  # Service 1: Remotion Renderer (Table 2-4: port 3002)
+  # React-based programmatic video generation
+  # Lower-thirds, animations, Ken Burns effects, title cards
+  # Uses Intel GPU for hardware-accelerated encoding via oneAPI/IPEX
+  # ---------------------------------------------------------------------------
+  remotion-renderer:
+    image: ghcr.io/brucecostello2/ivgs-workers:remotion-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-remotion
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node06
+    environment:
+      REMOTION_PORT: "3002"
+      NODE_ENV: production
+      REMOTION_CONCURRENCY: "2"
+      INTEL_GPU_DEVICE: "/dev/dri/renderD128"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+      - /data/remotion-output:/output
+    ports:
+      - "0.0.0.0:3002:3002"
+    networks:
+      - ivgs-net
+    devices:
+      - /dev/dri:/dev/dri
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "curl -sf http://localhost:3002/health || exit 1"]
+
+  # ---------------------------------------------------------------------------
+  # Service 2: FFmpeg Overflow Worker
+  # Handles composition overflow from node-05
+  # Uses Intel GPU (QSV) for hardware-accelerated encoding
+  # ---------------------------------------------------------------------------
+  ffmpeg-worker:
+    image: ghcr.io/brucecostello2/ivgs-workers:ffmpeg-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-ffmpeg-node06
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node06
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      NODE_HOSTNAME: node-06
+      FFMPEG_HWACCEL: "qsv"
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+      - /data/ffmpeg-tmp:/tmp/ffmpeg
+    networks:
+      - ivgs-net
+    devices:
+      - /dev/dri:/dev/dri
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=composition_overflow,ffmpeg_overflow
+        --concurrency=2
+        --max-tasks-per-child=20
+        -n ffmpeg-worker@node06
+
+  # ---------------------------------------------------------------------------
+  # Service 3: Celery Worker (composition + overflow queues)
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    container_name: ivgs-celery-node06
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node06
+    environment:
+      REDIS_URL: redis://10.10.0.1:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      GPU_SCHEDULER_URL: http://10.10.0.1:8002
+      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      REMOTION_URL: http://remotion-renderer:3002
+      NODE_HOSTNAME: node-06
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    command: >
+      celery -A ivgs.celery_app worker
+        --loglevel=info
+        --queues=remotion,final_composition,overflow
+        --concurrency=3
+        --max-tasks-per-child=30
+        -n celery-worker@node06
+
+  # ---------------------------------------------------------------------------
+  # Service 4: Node Exporter
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.1@sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+    container_name: ivgs-node-exporter
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "0.0.0.0:9100:9100"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+
+  # ---------------------------------------------------------------------------
+  # Service 5: Intel GPU Exporter (§13.1 Table 13-1 Row 5, port 9401)
+  # Intel GPU utilization, memory, power metrics
+  # ---------------------------------------------------------------------------
+  intel-gpu-exporter:
+    image: ghcr.io/brucecostello2/ivgs-workers:intel-gpu-exporter-${IVGS_WORKERS_TAG:-latest}
+    container_name: ivgs-intel-gpu-exporter
+    <<: [*common-restart, *common-logging]
+    devices:
+      - /dev/dri:/dev/dri
+    ports:
+      - "0.0.0.0:9401:9401"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9401/metrics || exit 1"]

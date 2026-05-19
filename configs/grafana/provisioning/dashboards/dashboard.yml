@@ -1,0 +1,28 @@
+# =============================================================================
+# IVGS v5 — Grafana Dashboard Provisioning
+# =============================================================================
+# Spec reference: §13.2 Table 13-2 — Required Grafana Dashboards
+#
+# Provisioning file mounted at:
+#   /etc/grafana/provisioning/dashboards/dashboard.yml
+#
+# Dashboard JSON files are mounted at:
+#   /var/lib/grafana/dashboards/
+#
+# Two mandatory dashboards per Table 13-2:
+#   1. pipeline_overview.json    — Pipeline Overview
+#   2. gpu_fleet_utilization.json — GPU Fleet Utilization
+# =============================================================================
+
+apiVersion: 1
+
+providers:
+  - name: "IVGS v5 Dashboards"
+    orgId: 1
+    type: file
+    disableDeletion: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

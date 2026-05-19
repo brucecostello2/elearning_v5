@@ -1,0 +1,304 @@
+# =============================================================================
+# IVGS v5 — Media Generation Configuration
+# =============================================================================
+# Central configuration for Stages 3-5: image, voiceover, talking head.
+# Referenced by worker tasks and validation utilities.
+# Per §6, §7, §11 of the Functional Specification.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Stage 3: Image Generation
+# ---------------------------------------------------------------------------
+image_generation:
+  # FLUX.1 Schnell (primary - rapid prototyping)
+  flux_schnell:
+    model_file: "flux1-schnell-fp8.safetensors"
+    node: "node-04"
+    comfyui_url: "http://node-04:8188"
+    vram_mb: 16384
+    resolution:
+      width: 1024
+      height: 1024
+    steps: 4
+    cfg_scale: 1.0
+    sampler: "euler"
+    scheduler: "simple"
+    timeout_seconds: 60
+    max_retries: 2
+    backoff_sequence: [10, 30]
+
+  # FLUX.1 Dev (high quality)
+  flux_dev:
+    model_file: "flux1-dev-fp8.safetensors"
+    node: "node-04"
+    comfyui_url: "http://node-04:8188"
+    vram_mb: 24576
+    resolution:
+      width: 1024
+      height: 1024
+    steps: 50
+    cfg_scale: 3.5
+    sampler: "euler"
+    scheduler: "simple"
+    timeout_seconds: 300
+    max_retries: 2
+    backoff_sequence: [10, 30]
+
+  # SDXL 1.0 (fallback)
+  sdxl:
+    model_file: "sd_xl_base_1.0.safetensors"
+    node: "node-05"
+    comfyui_url: "http://node-05:8188"
+    vram_mb: 10240
+    resolution:
+      width: 1024
+      height: 1024
+    steps: 30
+    cfg_scale: 7.0
+    sampler: "dpmpp_2m"
+    scheduler: "karras"
+    timeout_seconds: 180
+    max_retries: 2
+    backoff_sequence: [10, 30]
+
+  # CogVideoX 5B (video keyframes)
+  cogvideox_5b:
+    node: "node-02"
+    api_url: "http://node-02:8200"
+    fallback_url: "http://node-03:8200"
+    vram_mb: 24576
+    max_clip_seconds: 6
+    resolution:
+      width: 854
+      height: 480
+    fps: 8
+    timeout_seconds: 1800
+    max_retries: 2
+    backoff_sequence: [30, 90]
+
+  # Output specifications
+  output:
+    target_width: 1920
+    target_height: 1080
+    format: "PNG"
+    quality: 95
+    maintain_aspect_ratio: true
+    background_color: [0, 0, 0]
+
+  # Prompt generation
+  prompt_llm:
+    model: "mistralai/Mistral-Small-24B-Instruct-2501"
+    node: "node-04"
+    base_url: "http://node-04:8000"
+    max_tokens: 512
+    temperature: 0.7
+
+  # Storage paths (SeaweedFS)
+  storage:
+    base_path: "/ivgs/images"
+    pattern: "{project_id}/scenes/{scene_id}/image_{variant}.png"
+
+# ---------------------------------------------------------------------------
+# Stage 4: Voiceover Synthesis
+# ---------------------------------------------------------------------------
+voiceover_synthesis:
+  # Coqui XTTS v2 (primary)
+  coqui_xtts:
+    node: "node-04"
+    api_url: "http://node-04:5002"
+    vram_mb: 8192
+    supported_languages:
+      - "en-US"
+      - "en-GB"
+      - "es-ES"
+      - "fr-FR"
+      - "de-DE"
+      - "zh-CN"
+      - "ja-JP"
+      - "ar-SA"
+    default_temperature: 0.75
+    default_speed: 1.0
+    timeout_seconds: 120
+    max_retries: 3
+    backoff_sequence: [10, 30, 90]
+
+  # Kokoro TTS (fallback, English-only)
+  kokoro_tts:
+    node: "node-04"
+    api_url: "http://node-04:5003"
+    vram_mb: 4096
+    supported_languages:
+      - "en-US"
+      - "en-GB"
+    timeout_seconds: 60
+    max_retries: 2
+    backoff_sequence: [10, 30]
+
+  # Output specifications (§7.1.5)
+  output:
+    format: "WAV"
+    sample_rate: 48000
+    bit_depth: 24
+    channels: 1  # mono
+    normalize: true
+
+  # Storage paths
+  storage:
+    base_path: "/ivgs/audio"
+    pattern: "{project_id}/{scene_id}/{language_code}.wav"
+
+# ---------------------------------------------------------------------------
+# Stage 5: Talking Head Generation
+# ---------------------------------------------------------------------------
+talking_head:
+  # LatentSync (primary)
+  latentsync:
+    node: "node-04"
+    api_url: "http://node-04:8300"
+    vram_mb: 16384
+    output_fps: 30
+    alignment_threshold: 0.85
+    timeout_seconds: 600
+    max_retries: 2
+    backoff_sequence: [30, 90]
+    default_mode: "pip"
+    default_pip_position: "bottom_right"
+    default_pip_scale: 0.25
+    face_enhance: true
+    lip_sync_strength: 1.0
+
+  # SadTalker (fallback)
+  sadtalker:
+    node: "node-04"
+    api_url: "http://node-04:8301"
+    vram_mb: 8192
+    output_fps: 30
+    timeout_seconds: 300
+    max_retries: 1
+    backoff_sequence: [30]
+
+  # Output specifications
+  output:
+    width: 1920
+    height: 1080
+    fps: 30
+    video_codec: "h264"
+    audio_codec: "aac"
+    container: "mp4"
+    crf: 23
+    preset: "medium"
+
+  # Storage paths (§7.1.7)
+  storage:
+    base_path: "/ivgs/talking-heads"
+    pattern: "{project_id}/{scene_id}.mp4"
+
+# ---------------------------------------------------------------------------
+# Quality Validation Thresholds (§11.1 Table 11-1)
+# ---------------------------------------------------------------------------
+quality_thresholds:
+  image:
+    clip_score_approved: 0.25
+    clip_score_flagged: 0.18
+    min_resolution: [512, 512]
+    max_resolution: [4096, 4096]
+    allowed_formats: ["PNG", "JPEG", "WEBP"]
+    min_file_size_bytes: 10240
+    max_file_size_bytes: 52428800
+    blank_pixel_threshold: 0.95
+
+  audio:
+    min_snr_db: 20.0
+    snr_flagged_db: 25.0
+    max_clipping_pct: 1.0
+    clipping_flagged_pct: 0.5
+    max_silence_seconds: 3.0
+    expected_sample_rate: 48000
+    expected_bit_depth: 24
+    expected_channels: 1
+
+  video:
+    allowed_video_codecs: ["h264", "h265", "hevc"]
+    allowed_audio_codecs: ["aac", "pcm_s16le", "pcm_s24le"]
+    allowed_fps: [24, 25, 30]
+    min_bitrate_kbps: 500
+    max_bitrate_kbps: 50000
+    alignment_score_threshold: 0.85
+
+# ---------------------------------------------------------------------------
+# GPU VRAM Requirements (Appendix B)
+# ---------------------------------------------------------------------------
+gpu_requirements:
+  flux_schnell:
+    vram_mb: 16384
+    node: "node-04"
+  flux_dev:
+    vram_mb: 24576
+    node: "node-04"
+  sdxl:
+    vram_mb: 10240
+    node: "node-05"
+  cogvideox_5b:
+    vram_mb: 24576
+    nodes: ["node-02", "node-03"]
+  cogvideox_2b:
+    vram_mb: 14336
+    nodes: ["node-02", "node-03"]
+  coqui_xtts_v2:
+    vram_mb: 8192
+    node: "node-04"
+  kokoro_tts:
+    vram_mb: 4096
+    node: "node-04"
+  latentsync:
+    vram_mb: 16384
+    node: "node-04"
+  sadtalker:
+    vram_mb: 8192
+    node: "node-04"
+  whisperx:
+    vram_mb: 4096
+    node: "node-04"
+
+# ---------------------------------------------------------------------------
+# Asset Deduplication
+# ---------------------------------------------------------------------------
+deduplication:
+  enabled: true
+  hash_algorithm: "sha256"
+  check_before_upload: true
+  api_endpoint: "/api/v1/assets"
+
+# ---------------------------------------------------------------------------
+# Fallback Chain (§6.3 Table 6-6)
+# ---------------------------------------------------------------------------
+fallback_chains:
+  image:
+    - strategy: "flux_dev"
+      description: "FLUX.1 Dev high-quality generation"
+    - strategy: "flux_schnell"
+      description: "FLUX.1 Schnell rapid generation"
+    - strategy: "sdxl"
+      description: "SDXL 1.0 fallback"
+
+  video:
+    - strategy: "cogvideox_5b"
+      description: "CogVideoX 5B AI video"
+    - strategy: "cogvideox_2b"
+      description: "CogVideoX 2B fallback"
+    - strategy: "animated_still"
+      description: "Ken Burns pan/zoom on image"
+    - strategy: "static_image"
+      description: "Static image only"
+
+  tts:
+    - strategy: "coqui_xtts_v2"
+      description: "Coqui XTTS v2 primary"
+    - strategy: "kokoro_tts"
+      description: "Kokoro TTS English fallback"
+
+  talking_head:
+    - strategy: "latentsync"
+      description: "LatentSync primary"
+    - strategy: "sadtalker"
+      description: "SadTalker fallback"

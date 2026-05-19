@@ -1,0 +1,75 @@
+/*
+ * IVGS v5 — Global Styles
+ *
+ * Tailwind CSS directives with custom utility layers.
+ * Dark theme primary — matches IVGS operational aesthetic.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Custom scrollbar for dark theme */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgb(17 24 39); /* gray-900 */
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgb(55 65 81); /* gray-700 */
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(75 85 99); /* gray-600 */
+  }
+
+  /* Selection color */
+  ::selection {
+    background-color: rgb(76 110 245 / 0.3); /* ivgs-600 */
+    color: white;
+  }
+
+  /* Focus ring utility */
+  *:focus-visible {
+    outline: 2px solid rgb(76 110 245); /* ivgs-600 */
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Common card pattern */
+  .card {
+    @apply rounded-xl border border-gray-800 bg-gray-900 p-4 shadow-sm;
+  }
+
+  /* State badge base */
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-draft {
+    @apply bg-gray-700/50 text-gray-300;
+  }
+
+  .badge-progress {
+    @apply bg-ivgs-900/50 text-ivgs-300;
+  }
+
+  .badge-review {
+    @apply bg-yellow-900/50 text-yellow-300;
+  }
+
+  .badge-complete {
+    @apply bg-green-900/50 text-green-300;
+  }
+
+  .badge-error {
+    @apply bg-red-900/50 text-red-300;
+  }
+}

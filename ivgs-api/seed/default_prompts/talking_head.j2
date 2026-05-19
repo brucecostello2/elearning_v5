@@ -1,0 +1,10 @@
+Talking head lip-sync configuration.
+
+Target Language: {{ target_language | default("en-US") }}
+Quality Threshold: alignment_score > 0.85
+
+Settings:
+- Background handling: blur (default)
+- Frame rate: 30 fps
+- Resolution: match source clip
+- Lip-sync engine: LatentSync (primary), SadTalker (fallback)

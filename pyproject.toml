@@ -1,0 +1,50 @@
+# ============================================================
+# IVGS v5 — Python Project Configuration
+# ============================================================
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | node_modules
+  | migrations
+  | __pycache__
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+known_first_party = ["shared", "ivgs_api", "ivgs_workers", "ivgs_scheduler"]
+
+[tool.flake8]
+max-line-length = 100
+exclude = [".git", "__pycache__", ".venv", "node_modules", "migrations"]
+ignore = ["E203", "W503", "E501"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["migrations/", "tests/", "node_modules/"]
+
+[tool.pytest.ini_options]
+testpaths = ["ivgs-api/tests", "ivgs-workers/tests", "ivgs-scheduler/tests", "tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "integration: Integration tests (require running services)",
+    "slow: Tests that take >10 seconds",
+    "gpu: Tests that require GPU access",
+]
+asyncio_mode = "auto"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv", "node_modules"]
+skips = ["B101"]  # Allow assert in tests

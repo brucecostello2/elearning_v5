@@ -1,0 +1,38 @@
+# IVGS v5 — Timeout Defaults (§6.2 Table 6-5)
+# Per-model timeout thresholds with warning intervals
+
+timeouts:
+  vllm_transcript:
+    timeout_seconds: 120
+    warning_at_seconds: [60, 90, 120]
+    description: "vLLM transcript refinement / storyboard generation"
+
+  comfyui_flux:
+    timeout_seconds: 300
+    warning_at_seconds: [150, 225, 300]
+    description: "ComfyUI / FLUX.1 Dev image generation"
+
+  cogvideox_5b:
+    timeout_seconds: 1800
+    warning_at_seconds: [900, 1350, 1800]
+    description: "CogVideoX 5B video generation"
+
+  wan21:
+    timeout_seconds: 30
+    warning_at_seconds: [15, 22, 30]
+    description: "Wan2.1 video generation (per segment)"
+
+  coqui_xtts:
+    timeout_seconds: 120
+    warning_at_seconds: [60, 90, 120]
+    description: "Coqui XTTS v2 / Kokoro TTS"
+
+  latentsync:
+    timeout_seconds: 600
+    warning_at_seconds: [300, 450, 600]
+    description: "LatentSync talking head rendering"
+
+  ffmpeg_composition:
+    timeout_seconds: 900
+    warning_at_seconds: [450, 675, 900]
+    description: "FFmpeg composition / rendering"
