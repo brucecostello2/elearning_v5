@@ -103,10 +103,30 @@ gpu_requirements:
     vram_mb: 8192   # 8 GB
     nodes: ["node-05"]
 
-# Node total VRAM (Appendix B Table B-2)
-node_vram:
-  node-02: 98304  # 96 GB
-  node-03: 98304  # 96 GB
-  node-04: 49152  # 48 GB
-  node-05: 16384  # 16 GB
-  node-06: 32768  # 32 GB (Intel GPU)
+# Node GPU Hardware (§3.2 Table 3-2, Appendix B Table B-2)
+node_hardware:
+  node-02:
+    gpu_model: "NVIDIA RTX 6000 Blackwell"
+    vram_mb: 98304          # 96 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-03:
+    gpu_model: "NVIDIA RTX 6000 Blackwell"
+    vram_mb: 98304          # 96 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-04:
+    gpu_model: "NVIDIA RTX 5000 Pro Blackwell"
+    vram_mb: 49152          # 48 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-05:
+    gpu_model: "NVIDIA RTX 5080"
+    vram_mb: 16384          # 16 GB
+    architecture: "Blackwell"
+    tdp_watts: 300
+  node-06:
+    gpu_model: "Intel Arc B70 Pro"
+    vram_mb: 32768          # 32 GB
+    architecture: "Battlemage"
+    tdp_watts: 150

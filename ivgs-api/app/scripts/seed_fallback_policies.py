@@ -3,7 +3,7 @@ IVGS v5 — Seed Fallback Policies
 ========================================
 
 Seeds default fallback policies into the fallback_policies table (Table 23)
-from configs/fallback_policies.yaml.
+from ivgs-api/config/fallback_policies.yaml.
 
 Scene types: action, talking_head, broll, title_card
 Strategy columns: level_1_strategy, level_2_strategy, level_3_strategy,
@@ -30,7 +30,7 @@ import yaml
 logger = structlog.get_logger(__name__)
 
 # Path to fallback policies YAML
-YAML_PATH = Path(__file__).resolve().parents[3] / "configs" / "fallback_policies.yaml"
+YAML_PATH = Path(__file__).resolve().parents[2] / "config" / "fallback_policies.yaml"
 
 # Valid values for validation
 VALID_SCENE_TYPES = {"action", "talking_head", "broll", "title_card"}
@@ -45,7 +45,7 @@ async def seed_fallback_policies(
     """
     Seed fallback policies from YAML into the database.
 
-    Reads configs/fallback_policies.yaml and inserts/upserts each
+    Reads ivgs-api/config/fallback_policies.yaml and inserts/upserts each
     policy into the fallback_policies table (Table 23).
 
     Args:

@@ -1,0 +1,8 @@
+{
+  "_comment": "FLUX.1 Dev workflow for ComfyUI — populate from ComfyUI workflow export after model setup",
+  "spec_reference": "§7.1.2 Table B-1",
+  "model": "flux1-dev-fp8.safetensors",
+  "node": "node-04",
+  "vram_mb": 24576,
+  "description": "Primary image generation model (24 GB VRAM on RTX 5000 Pro Blackwell)"
+}

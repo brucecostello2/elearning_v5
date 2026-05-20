@@ -1,0 +1,5 @@
+# IVGS v5 — Model Checksums
+# Generate after download: sha256sum -b <model_file> >> checksums.sha256
+# Verify: sha256sum -c checksums.sha256
+#
+# Checksums will be populated after first deployment model download.

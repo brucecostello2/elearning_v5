@@ -10,8 +10,8 @@
 #   /var/lib/grafana/dashboards/
 #
 # Two mandatory dashboards per Table 13-2:
-#   1. pipeline_overview.json    — Pipeline Overview
-#   2. gpu_fleet_utilization.json — GPU Fleet Utilization
+#   1. grafana-pipeline.json     — Pipeline Overview (Appendix A.1)
+#   2. grafana-gpu.json          — GPU Fleet Utilization (Appendix A.1)
 # =============================================================================
 
 apiVersion: 1

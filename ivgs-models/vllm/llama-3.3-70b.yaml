@@ -1,0 +1,13 @@
+# vLLM Serve Configuration — Llama 3.3 70B Instruct (§7.1.1)
+# Deployed on: node-02 + node-03 (tensor parallel across 2× RTX 6000 Blackwell 96GB)
+# VRAM: ~140 GB total (Table B-1)
+model: /mnt/ivgs-shared/models/llama-3.3-70b-instruct
+served-model-name: llama-3.3-70b
+tensor-parallel-size: 2
+max-model-len: 128000
+gpu-memory-utilization: 0.90
+dtype: auto
+host: 0.0.0.0
+port: 8000
+api-key: ""  # No auth on private VLAN (10.10.0.0/24)
+trust-remote-code: false

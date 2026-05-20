@@ -152,6 +152,23 @@ See [`docs/deployment/`](docs/deployment/) for per-node deployment guides.
 ./scripts/deploy-node.sh node-01
 ```
 
+## Git Workflow (§15.5)
+
+| Branch | Purpose | Protection |
+|--------|---------|-----------|
+| `main` | Production-ready; triggers CD pipeline | PR required, CI pass (including compliance audit), no direct push |
+| `develop` | Integration branch; triggers CI only | CI pass required |
+| `feature/*` | Feature branches from `develop` | No protection; PR into `develop` |
+| `hotfix/*` | Emergency fixes from `main` | PR into `main` with CI pass |
+
+### Branch Rules
+
+- All production changes flow through `develop` → PR → `main`
+- Hotfixes go directly to `main` via PR (emergency only)
+- Feature branches are deleted after merge
+- CI runs on all pushes to `main`, `develop`, `feature/**`, and `hotfix/**`
+- CD pipeline triggers only on push to `main`
+
 ## License
 
 **Private** — All rights reserved. Not for redistribution.

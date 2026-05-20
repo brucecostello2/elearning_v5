@@ -1,8 +1,9 @@
 """
-0001_initial_core — Create the 9 v3 core tables.
+0001_initial_core — Create core tables.
 
 Tables: users, projects, transcripts, storyboard_scenes, assets,
-        prompts, render_jobs, language_variants, audit_log
+        prompts, render_jobs, language_variants, audit_log,
+        rollback_points, prompt_tags, prompt_tag_associations
 
 Revision ID: 0001
 Revises: None
@@ -106,6 +107,7 @@ def upgrade() -> None:
             nullable=False, server_default="DRAFT"),
         sa.Column("hero_image_asset_id", UUID(as_uuid=True), nullable=True),
         sa.Column("talking_head_asset_id", UUID(as_uuid=True), nullable=True),
+        sa.Column("target_audience", sa.String(500), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False,
@@ -242,6 +244,8 @@ def upgrade() -> None:
         sa.Column("version", sa.Integer, nullable=False),
         sa.Column("is_active", sa.Boolean, nullable=False,
                   server_default="false"),
+        sa.Column("is_library_template", sa.Boolean, nullable=False,
+                  server_default="false"),
         sa.Column("created_by", sa.String(64), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
@@ -363,8 +367,66 @@ def upgrade() -> None:
         [sa.text("timestamp DESC")],
     )
 
+    # ===================================================================
+    # Table: rollback_points (§14.3 RollbackService)
+    # ===================================================================
+    op.create_table(
+        "rollback_points",
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("version_tag", sa.String(255), nullable=False),
+        sa.Column("alembic_revision", sa.String(255), nullable=False),
+        sa.Column("docker_image_tags", JSONB, nullable=False),
+        sa.Column("config_snapshot_path", sa.String(1024), nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+    )
+    op.create_index(
+        "ix_rollback_points_created_at",
+        "rollback_points",
+        ["created_at"],
+    )
+
+    # ===================================================================
+    # Table: prompt_tags (§9.5 Prompt Library)
+    # ===================================================================
+    op.create_table(
+        "prompt_tags",
+        sa.Column("id", sa.String(36), primary_key=True),
+        sa.Column("name", sa.String(100), unique=True, nullable=False),
+        sa.Column("created_at", sa.DateTime(timezone=True),
+                  server_default=sa.func.now()),
+    )
+
+    # ===================================================================
+    # Table: prompt_tag_associations (§9.5)
+    # ===================================================================
+    op.create_table(
+        "prompt_tag_associations",
+        sa.Column("prompt_id", sa.String(36),
+                  sa.ForeignKey("prompts.id", ondelete="CASCADE"),
+                  primary_key=True),
+        sa.Column("tag_id", sa.String(36),
+                  sa.ForeignKey("prompt_tags.id", ondelete="CASCADE"),
+                  primary_key=True),
+    )
+
+    # Seed default prompt tags (§9.5)
+    op.execute("""
+        INSERT INTO prompt_tags (id, name) VALUES
+        (gen_random_uuid()::text, 'healthcare'),
+        (gen_random_uuid()::text, 'technical-training'),
+        (gen_random_uuid()::text, 'compliance'),
+        (gen_random_uuid()::text, 'onboarding'),
+        (gen_random_uuid()::text, 'safety'),
+        (gen_random_uuid()::text, 'product-demo'),
+        (gen_random_uuid()::text, 'corporate')
+        ON CONFLICT (name) DO NOTHING
+    """)
+
 
 def downgrade() -> None:
+    op.drop_table("prompt_tag_associations")
+    op.drop_table("prompt_tags")
+    op.drop_table("rollback_points")
     op.drop_table("audit_log")
     op.drop_table("language_variants")
     op.drop_table("render_jobs")

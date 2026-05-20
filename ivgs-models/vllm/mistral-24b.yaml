@@ -1,0 +1,12 @@
+# vLLM Serve Configuration — Mistral Small 24B Instruct (§7.1.1)
+# Deployed on: node-04 (RTX 5000 Pro Blackwell 48GB)
+# VRAM: 48 GB (Table B-1)
+model: /mnt/ivgs-shared/models/mistral-small-24b
+served-model-name: mistral-24b
+tensor-parallel-size: 1
+max-model-len: 32000
+gpu-memory-utilization: 0.90
+dtype: auto
+host: 0.0.0.0
+port: 8000
+trust-remote-code: false

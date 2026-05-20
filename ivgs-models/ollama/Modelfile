@@ -1,0 +1,8 @@
+# Ollama model definitions for node-05 (RTX 5080, 16GB)
+# Models are pulled via `ollama pull` in download_models.sh
+# See: https://ollama.ai/library
+#
+# Configured models (§7.1.1):
+#   - llama3.2:8b    (~5 GB VRAM, quantized Q4)
+#   - phi3:medium    (~8 GB VRAM)
+#   - gemma2:9b      (~8 GB VRAM)

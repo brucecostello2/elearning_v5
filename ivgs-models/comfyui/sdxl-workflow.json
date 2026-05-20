@@ -1,0 +1,8 @@
+{
+  "_comment": "SDXL 1.0 workflow for ComfyUI — populate from ComfyUI workflow export after model setup",
+  "spec_reference": "§7.1.2 Table B-1",
+  "model": "stable-diffusion-xl-base-1.0",
+  "node": "node-05",
+  "vram_mb": 10240,
+  "description": "Fallback image generation model (10 GB VRAM on RTX 5080)"
+}

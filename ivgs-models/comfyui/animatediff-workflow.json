@@ -1,0 +1,8 @@
+{
+  "_comment": "AnimateDiff workflow for ComfyUI — populate from ComfyUI workflow export after model setup",
+  "spec_reference": "§7.1.2 Table B-1",
+  "model": "AnimateDiff",
+  "node": "node-04",
+  "vram_mb": 16384,
+  "description": "Animation generation (16 GB VRAM, requires FLUX.1 not loaded concurrently)"
+}

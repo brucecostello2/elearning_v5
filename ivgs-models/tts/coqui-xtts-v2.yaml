@@ -1,0 +1,22 @@
+# Coqui XTTS v2 Configuration (§7.1.3, §17.1)
+# Deployed on: node-04 (resident, 16GB VRAM)
+model_path: /mnt/ivgs-shared/models/xtts-v2
+host: 0.0.0.0
+port: 5002
+
+# Supported languages per §17.1 Table 17-1
+supported_languages:
+  - code: en
+    variants: [en-US, en-GB]
+  - code: es
+    variants: [es-ES]
+  - code: fr
+    variants: [fr-FR]
+  - code: de
+    variants: [de-DE]
+  - code: zh-cn
+    variants: [zh-CN]
+  - code: ja
+    variants: [ja-JP]
+  - code: ar
+    variants: [ar-SA]
