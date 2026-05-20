@@ -10,16 +10,42 @@
 
 ## Architecture Overview
 
-IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation:
+IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.2, §3.1–3.2):
 
-| Node | IP | Role | GPU | VRAM |
-|------|------|------|-----|------|
-| node-01 | 10.10.0.1 | Frontend, API, DB, Redis, Prometheus, Grafana, GPU Scheduler, CI/CD | — (CPU only) | — |
-| node-02 | 10.10.0.2 | vLLM (Llama 3.3 70B TP), CogVideoX/Wan2.1 | NVIDIA RTX 6000 Blackwell | 96 GB |
-| node-03 | 10.10.0.3 | vLLM (Qwen2.5 72B TP), CogVideoX/Wan2.1 | NVIDIA RTX 6000 Blackwell | 96 GB |
-| node-04 | 10.10.0.4 | ComfyUI (FLUX.1 Dev), XTTS v2, WhisperX, LatentSync, vLLM Mistral 24B | NVIDIA RTX 5000 Pro Blackwell | 48 GB |
-| node-05 | 10.10.0.5 | ComfyUI (SDXL/SD3.5 fallback), Ollama, FFmpeg | NVIDIA RTX 5080 | 16 GB |
-| node-06 | 10.10.0.6 | Remotion renderer, FFmpeg overflow, Celery overflow | Intel B70 Pro | 32 GB |
+#### GPU Allocations (Table 3-2)
+
+| Node | GPU | VRAM | Primary Models / Services |
+|------|-----|------|--------------------------|
+| node-01 | — (CPU only) | — | Infrastructure only (no GPU) |
+| node-02 | NVIDIA RTX 6000 Blackwell | 96 GB | vLLM — Llama 3.3 70B (tensor parallel w/ node-03), CogVideoX 5B, Wan2.1 |
+| node-03 | NVIDIA RTX 6000 Blackwell | 96 GB | vLLM — Qwen2.5 72B (tensor parallel w/ node-02), CogVideoX 5B, Wan2.1 |
+| node-04 | NVIDIA RTX 5000 Pro Blackwell | 48 GB | ComfyUI (FLUX.1 Dev, AnimateDiff), Coqui XTTS v2, Kokoro TTS, WhisperX, LatentSync, SadTalker, vLLM Mistral 24B |
+| node-05 | NVIDIA RTX 5080 | 16 GB | ComfyUI (SDXL / SD3.5 fallback), Ollama (small models), FFmpeg composition |
+| node-06 | Intel B70 Pro | 32 GB | Remotion renderer (lower-thirds, animations), FFmpeg overflow, Celery overflow workers |
+
+> NVIDIA driver ≥ 570.x, CUDA ≥ 12.4 (Blackwell). Intel oneAPI 2024.x on node-06.
+
+#### Proxmox VM Specifications (Tables 2-3 / 3-1)
+
+| Node | IP | vCPUs | RAM | Boot Disk | Data Disk | GPU Passthrough |
+|------|-----|-------|-----|-----------|-----------|-----------------|
+| node-01 | 10.10.0.1 | 8 | 16 GB | 500 GB SSD | — | None |
+| node-02 | 10.10.0.2 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#1) |
+| node-03 | 10.10.0.3 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
+| node-04 | 10.10.0.4 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
+| node-05 | 10.10.0.5 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 5080 16 GB |
+| node-06 | 10.10.0.6 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | Intel B70 Pro 32 GB |
+
+#### Node Roles (Table 2-2)
+
+| Node | Services |
+|------|----------|
+| node-01 | Nginx, Next.js frontend, FastAPI backend, PostgreSQL 17, SeaweedFS (master/volume/filer), Redis, Prometheus, Grafana, GPU Scheduler, CI/CD runner, Celery Beat, Celery default worker |
+| node-02 | vLLM (70B+ TP), CogVideoX/Wan2.1 worker, Celery worker, node-exporter, nvidia-gpu-exporter |
+| node-03 | vLLM (70B+ TP), CogVideoX/Wan2.1 worker, Celery worker, node-exporter, nvidia-gpu-exporter |
+| node-04 | vLLM (mid-size), ComfyUI, Coqui TTS, Kokoro TTS, WhisperX, LatentSync, SadTalker, Celery worker, node-exporter, nvidia-gpu-exporter |
+| node-05 | ComfyUI (SDXL/SD3.5), Ollama, FFmpeg worker, Celery worker, node-exporter, nvidia-gpu-exporter |
+| node-06 | Remotion renderer, FFmpeg worker, Celery worker, node-exporter, intel-gpu-exporter |
 
 ## 8-Stage Pipeline (§6.1)
 
@@ -39,7 +65,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation:
 | Backend API | FastAPI, Python 3.12+, SQLAlchemy, Alembic |
 | Workers | Celery 5.4, Redis 7 (broker) |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS |
-| Database | PostgreSQL 15+ |
+| Database | PostgreSQL 17 |
 | Storage | SeaweedFS (hot/warm/cold tiers) |
 | Monitoring | Prometheus, Grafana, Loki, AlertManager |
 | Deployment | Docker Compose (per-node) |
