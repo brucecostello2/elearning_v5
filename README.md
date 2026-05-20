@@ -29,7 +29,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 
 | Node | IP | vCPUs | RAM | Boot Disk | Data Disk | GPU Passthrough |
 |------|-----|-------|-----|-----------|-----------|-----------------|
-| node-01 | 10.10.0.1 | 8 | 16 GB | 500 GB SSD | — | None |
+| node-01 | 10.10.0.1 | 8 | 16 GB | 500 GB SSD | — *(see [Storage Topology](#storage-topology))* | None |
 | node-02 | 10.10.0.2 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#1) |
 | node-03 | 10.10.0.3 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
 | node-04 | 10.10.0.4 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
@@ -182,7 +182,66 @@ The frontend provides a drag-and-drop **AssetUploader** component with file vali
 | **Cold** | HDD | Archived projects, infrequent access |
 | **Archive** | Compressed HDD | Long-term retention |
 
-Files are organized as `/projects/{id}/{type}/{scene_id}/{language}/` with SHA-256 content-addressed deduplication.
+Files are organized under the `/ivgs/` filer namespace (see [Directory Structure](#seaweedfs-directory-structure) below) with SHA-256 content-addressed deduplication (§10.4).
+
+#### Storage Topology
+
+All SeaweedFS services (master, volume server, filer) run on **node-01** (10.10.0.1). The spec (§2.2 Table 2-3) lists no dedicated data disk for node-01 — storage uses Docker volumes on the 500 GB boot SSD plus the NFS shared volume.
+
+> **⚠️ TODO — Production Storage:** Define dedicated storage drives for node-01 before production deployment. The current Docker-volume-on-boot-disk configuration is suitable for development only. Production should provision separate SSD and HDD drives for Hot and Warm tiers respectively.
+
+##### Tier-to-Node Mapping
+
+| Tier | Storage Medium | SeaweedFS Component | Node | Mount Path | Volume Config | Duration |
+|------|---------------|-------------------|------|------------|---------------|----------|
+| **Hot** | SSD | Volume server (disk 1) | node-01 | `/data/seaweedfs/hot` | 200 max volumes, `diskType=ssd` | 0–30 days |
+| **Warm** | HDD | Volume server (disk 2) | node-01 | `/data/seaweedfs/warm` | 500 max volumes, `diskType=hdd` | 31–90 days |
+| **Cold** | NAS (rsync) | — (external to SeaweedFS) | NAS | `/mnt/backup/ivgs` | rsync from SeaweedFS, on-demand restore | 91–365 days |
+| **Archive** | NAS compressed | — (external to SeaweedFS) | NAS | `/mnt/backup/ivgs` | Compressed archive, manual restore | >365 days |
+
+##### SeaweedFS Service Ports
+
+| Service | Container | Port | Purpose |
+|---------|-----------|------|---------|
+| Master | `ivgs-seaweedfs-master` | 9333 | Volume assignment, cluster coordination |
+| Volume Server | `ivgs-seaweedfs-volume` | 8080 | Binary data storage (Hot + Warm disks) |
+| Filer | `ivgs-seaweedfs-filer` | 8888 | Path-based file access, POSIX-like API |
+
+##### Configuration Details
+
+- **Replication:** `defaultReplication=000` — no replication (single-node deployment). Change to `001` or higher for multi-node redundancy.
+- **Filer Metadata:** PostgreSQL-backed (`ivgs_filer` database on node-01:5432), configured in `configs/seaweedfs/filer.toml`.
+- **Volume Size Limit:** 30 GB per volume (`volumeSizeLimitMB=30000`), configured in `configs/seaweedfs/master.toml`.
+- **Upload Size Limit:** 1 GB per file (`fileSizeLimitMB=1024`), configured in `configs/seaweedfs/volume.toml`.
+- **Compaction:** 50 MB/s rate limit (`compactionMBps=50`), garbage threshold 30%.
+- **Free Space Guard:** Writes blocked below 5% free disk space (`minFreeSpacePercent=5`).
+- **NFS Shared Volume:** Mounted at `/mnt/ivgs-shared` on all nodes; used by workers and API for inter-node file access.
+- **Tier Migration:** `RetentionService` runs daily via Celery Beat, moving assets between tiers based on age thresholds (§10.3).
+
+##### SeaweedFS Directory Structure
+
+```
+/ivgs/
+├── uploads/        # Uploaded source files (transcripts, talking head clips)
+├── images/         # Generated scene images ({project_id}/scenes/{scene_id}/image_{variant}.png)
+├── videos/         # Generated video clips
+├── audio/          # TTS audio per scene per language ({project_id}/audio/{scene_id}/{language_code}.wav)
+├── talking-heads/  # Lip-synced talking head renders ({project_id}/talkinghead/{language_code}.mp4)
+├── animations/     # Remotion and AnimateDiff outputs
+├── drafts/         # 720p prototype drafts
+├── final/          # Final 1080p and 4K renders ({project_id}/renders/{language_code}/final_{resolution}.mp4)
+├── thumbnails/     # Hero images and project thumbnails
+└── captions/       # SRT and VTT caption files ({project_id}/captions/{language_code}.srt)
+```
+
+##### Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `configs/seaweedfs/master.toml` | Master server settings (replication, volume limits, garbage collection) |
+| `configs/seaweedfs/volume.toml` | Volume server settings (Hot/Warm disk definitions, compaction, upload limits) |
+| `configs/seaweedfs/filer.toml` | Filer settings (PostgreSQL metadata store connection) |
+| `shared/seaweedfs_client.py` | Async Python client (upload, download, delete, health check via httpx) |
 
 #### Asset API Endpoints
 
