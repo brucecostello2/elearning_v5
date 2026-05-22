@@ -229,6 +229,7 @@ export function useStoryboard(
       // Compute new order locally
       const newOrder = [...sortedScenes];
       const [movedScene] = newOrder.splice(sourceIndex, 1);
+      if (!movedScene) throw new Error("Invalid source index");
       newOrder.splice(destinationIndex, 0, movedScene);
 
       // Update scene_index values

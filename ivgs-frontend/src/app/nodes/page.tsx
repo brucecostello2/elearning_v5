@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import NodeCard from "@/components/NodeCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import StateBadge from "@/components/StateBadge";
 import type { NodeStatus } from "@/types/api";
 
 /**
@@ -207,13 +208,13 @@ export default function NodesPage(): React.ReactElement {
                 selectedNode.recent_jobs.length > 0 ? (
                   <div className="space-y-1">
                     {selectedNode.recent_jobs.map(
-                      (job: { id: string; project_name: string; stage: string; status: string }, idx: number) => (
+                      (job: { id: string; project_name?: string; stage?: string; status: string; name?: string }, idx: number) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between text-xs text-gray-400"
                         >
-                          <span>{job.project_name}</span>
-                          <span>{job.stage}</span>
+                          <span>{job.project_name ?? ''}</span>
+                          <span>{job.stage ?? ''}</span>
                           <StateBadge state={job.status} />
                         </div>
                       )

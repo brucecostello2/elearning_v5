@@ -324,18 +324,18 @@ export default function GPUNodeCard({
             </p>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-xs text-gray-900 font-mono">
-                {node.active_job.job_id.slice(0, 12)}…
+                {(node.active_job as import('@/types/monitoring').GPUActiveJob).job_id.slice(0, 12)}…
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                Stage: {node.active_job.stage} •{" "}
-                {node.active_job.model_name}
+                Stage: {(node.active_job as import('@/types/monitoring').GPUActiveJob).stage} •{" "}
+                {(node.active_job as import('@/types/monitoring').GPUActiveJob).model_name}
               </p>
-              {node.active_job.progress !== undefined && (
+              {(node.active_job as import('@/types/monitoring').GPUActiveJob).progress !== undefined && (
                 <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
                   <div
                     className="bg-blue-500 h-1 rounded-full"
                     style={{
-                      width: `${Math.min(node.active_job.progress, 100)}%`,
+                      width: `${Math.min((node.active_job as import('@/types/monitoring').GPUActiveJob).progress ?? 0, 100)}%`,
                     }}
                   />
                 </div>

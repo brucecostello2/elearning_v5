@@ -17,7 +17,7 @@ interface UseAssetsReturn {
 }
 
 const assetsFetcher = async (url: string): Promise<Asset[]> => {
-  const response = await apiClient.get<{ data: Asset[] }>(url);
+  const response = await apiClient.get<Asset[]>(url);
   return response.data;
 };
 
@@ -37,10 +37,9 @@ export function useAssets(projectId: string): UseAssetsReturn {
    * Upload a new asset (manual upload).
    */
   const uploadAsset = async (formData: FormData): Promise<Asset> => {
-    const response = await apiClient.post<{ data: Asset }>(
+    const response = await apiClient.upload<Asset>(
       `/api/v1/projects/${projectId}/assets`,
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      formData
     );
     mutate();
     return response.data;

@@ -58,7 +58,7 @@ const PIPELINE_STAGES: PipelineStage[] = [
 ];
 
 /** Human-readable labels for each pipeline stage */
-const STAGE_LABELS: Record<PipelineStage, string> = {
+const STAGE_LABELS: Record<string, string> = {
   TRANSCRIPT_REFINEMENT: "Transcript Refinement",
   STORYBOARD_GENERATION: "Storyboard Generation",
   MEDIA_GENERATION: "Media Generation",
@@ -70,7 +70,7 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
 };
 
 /** Color mapping for pipeline stage statuses */
-const STATUS_COLORS: Record<PipelineStageStatus, string> = {
+const STATUS_COLORS: Record<string, string> = {
   PENDING: "bg-gray-200 text-gray-700",
   RUNNING: "bg-blue-100 text-blue-800 animate-pulse",
   COMPLETE: "bg-green-100 text-green-800",

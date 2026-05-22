@@ -157,7 +157,8 @@ export default function VideoPlayer({
     if (!video) return;
     const tracks = video.textTracks;
     for (let i = 0; i < tracks.length; i++) {
-      tracks[i].mode = !subtitlesEnabled ? "showing" : "hidden";
+      const track = tracks[i];
+      if (track) track.mode = !subtitlesEnabled ? "showing" : "hidden";
     }
   }, [subtitlesEnabled]);
 

@@ -121,6 +121,7 @@ export default function TranscriptPage(): React.ReactElement {
       try {
         const reordered = [...(transcripts || [])];
         const [moved] = reordered.splice(dragIndex, 1);
+        if (!moved) return;
         reordered.splice(dropIndex, 0, moved);
 
         const orderMap = reordered.map((t, idx) => ({

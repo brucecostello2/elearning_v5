@@ -177,7 +177,7 @@ export default function NodeCard({
 
       {/* Active Job */}
       <div className="border-t border-gray-700 pt-3">
-        {node.active_job ? (
+        {node.active_job && typeof node.active_job === 'object' ? (
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
             <span className="text-xs text-gray-300 truncate flex-1">

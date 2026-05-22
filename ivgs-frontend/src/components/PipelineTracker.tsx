@@ -41,8 +41,8 @@ const PIPELINE_STAGES: PipelineStage[] = [
 
 interface StageStatus {
   stage_id: string;
-  status: "pending" | "running" | "complete" | "failed" | "skipped";
-  progress_percent: number;
+  status: string;
+  progress_percent?: number;
   fallback_level?: string;
   eta_seconds?: number;
 }
@@ -75,9 +75,9 @@ export default function PipelineTracker({
 
     // Use the most recent job's stage data
     const latestJob = jobs[0];
-    if (latestJob.stage_statuses) {
-      for (const ss of latestJob.stage_statuses) {
-        statusMap.set(ss.stage_id, ss);
+    if (latestJob?.stage_statuses) {
+      for (const [stageId, stageStatus] of Object.entries(latestJob.stage_statuses)) {
+        statusMap.set(stageId, { stage_id: stageId, status: stageStatus as string });
       }
     }
 

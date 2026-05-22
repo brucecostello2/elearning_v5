@@ -19,7 +19,7 @@ interface UseJobsReturn {
 }
 
 const jobsFetcher = async (url: string): Promise<RenderJob[]> => {
-  const response = await apiClient.get<{ data: RenderJob[] }>(url);
+  const response = await apiClient.get<RenderJob[]>(url);
   return response.data;
 };
 

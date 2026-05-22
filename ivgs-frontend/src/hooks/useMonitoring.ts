@@ -18,6 +18,77 @@ import type {
   User,
 } from "@/types/monitoring";
 
+// ── Response shape interfaces for SWR typing ──────────────────────────
+
+interface PipelineJobsResponse {
+  jobs?: PipelineJob[];
+  results?: Array<{ jobs?: PipelineJob[] }>;
+  [key: string]: unknown;
+}
+
+interface GPUNodesResponse {
+  nodes?: GPUNode[];
+  model_residency?: ModelResidencyEntry[];
+  [key: string]: unknown;
+}
+
+interface GPUUtilizationResponse {
+  summary?: Record<string, unknown>;
+  model_residency?: ModelResidencyEntry[];
+  history?: GPUUtilizationPoint[];
+  [key: string]: unknown;
+}
+
+interface DLQMessagesResponse {
+  messages?: DLQMessage[];
+  results?: DLQMessage[];
+  total?: number;
+  count?: number;
+  [key: string]: unknown;
+}
+
+interface QualityReviewResponse {
+  assets?: FlaggedAsset[];
+  results?: FlaggedAsset[];
+  total?: number;
+  count?: number;
+  [key: string]: unknown;
+}
+
+interface CompositionTimelineResponse {
+  manifest?: CompositionManifest;
+  segments?: TimelineSegment[];
+  render_progress?: number;
+  [key: string]: unknown;
+}
+
+interface StorageAnalyticsResponse {
+  tiers?: StorageTierData[];
+  tier_breakdown?: StorageTierData[];
+  dedup_savings?: { percent: number; bytes_saved: number; duplicate_count: number };
+  total_used?: number;
+  total_allocated?: number;
+  [key: string]: unknown;
+}
+
+interface StorageQuotasResponse {
+  quotas?: QuotaEntry[];
+  [key: string]: unknown;
+}
+
+interface RetentionReportResponse {
+  upcoming_migrations?: TierMigration[];
+  migrations?: TierMigration[];
+  orphan_assets?: OrphanAsset[];
+  orphans?: OrphanAsset[];
+  [key: string]: unknown;
+}
+
+interface UsersResponse {
+  users?: User[];
+  [key: string]: unknown;
+}
+
 /**
  * Phase 13 — Frontend Operational Monitoring Hooks
  *
@@ -46,10 +117,10 @@ import type {
  * Generic SWR fetcher using the API client.
  * Extracts data from Axios response.
  */
-const fetcher = async (url: string) => {
-  const response = await api.get(url);
+async function fetcher<T = unknown>(url: string): Promise<T> {
+  const response = await api.get<T>(url);
   return response.data;
-};
+}
 
 // ── Pipeline Monitoring Hooks ─────────────────────────────────────────
 
@@ -77,7 +148,7 @@ export function usePipelineJobs(filters: PipelineJobFilters = {}): {
   jobs: PipelineJob[] | undefined;
   isLoading: boolean;
   error: Error | undefined;
-  mutate: KeyedMutator<{ jobs: PipelineJob[] }>;
+  mutate: KeyedMutator<PipelineJobsResponse>;
 } {
   const params = new URLSearchParams();
   if (filters.state) params.set("state", filters.state);
@@ -95,10 +166,10 @@ export function usePipelineJobs(filters: PipelineJobFilters = {}): {
     dedupingInterval: 5_000,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
+  const { data, error, isLoading, mutate } = useSWR<PipelineJobsResponse>(key, fetcher, config);
 
   return {
-    jobs: data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? data,
+    jobs: data?.jobs ?? data?.results?.flatMap((p) => p.jobs ?? []) ?? (data as unknown as PipelineJob[]),
     isLoading,
     error,
     mutate,
@@ -124,7 +195,7 @@ export function usePipelineJobDetail(jobId: string | null): {
     revalidateOnFocus: true,
   };
 
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading } = useSWR<PipelineJobDetail>(
     jobId ? `/api/v1/jobs/${jobId}` : null,
     fetcher,
     config
@@ -161,21 +232,21 @@ export function useGPUFleetStatus(): {
     dedupingInterval: 3_000,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR<GPUNodesResponse>(
     "/api/v1/gpu/nodes",
     fetcher,
     config
   );
 
   /** Fetch fleet utilization summary in parallel */
-  const { data: fleetData } = useSWR(
+  const { data: fleetData } = useSWR<GPUUtilizationResponse>(
     "/api/v1/gpu/utilization",
     fetcher,
     config
   );
 
   return {
-    nodes: data?.nodes ?? data,
+    nodes: data?.nodes ?? (data as unknown as GPUNode[]),
     fleetSummary: fleetData?.summary ?? fleetData,
     modelResidency: fleetData?.model_residency ?? data?.model_residency,
     isLoading,
@@ -201,14 +272,14 @@ export function useGPUUtilizationHistory(): {
     dedupingInterval: 10_000,
   };
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading } = useSWR<GPUUtilizationResponse>(
     "/api/v1/gpu/utilization?history=30m",
     fetcher,
     config
   );
 
   return {
-    history: data?.history ?? data,
+    history: data?.history ?? (data as unknown as GPUUtilizationPoint[]),
     isLoading,
   };
 }
@@ -258,10 +329,10 @@ export function useDLQMessages(filters: DLQMessageFilters): {
     revalidateOnFocus: true,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
+  const { data, error, isLoading, mutate } = useSWR<DLQMessagesResponse>(key, fetcher, config);
 
   return {
-    messages: data?.messages ?? data?.results ?? data,
+    messages: data?.messages ?? data?.results ?? (data as unknown as DLQMessage[]),
     totalCount: data?.total ?? data?.count,
     isLoading,
     error,
@@ -286,7 +357,7 @@ export function useDLQAnalytics(): {
     dedupingInterval: 30_000,
   };
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading } = useSWR<DLQAnalyticsData>(
     "/api/v1/dlq/analytics",
     fetcher,
     config
@@ -336,10 +407,10 @@ export function useQualityReviewQueue(filters: QualityReviewFilters): {
     revalidateOnFocus: true,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
+  const { data, error, isLoading, mutate } = useSWR<QualityReviewResponse>(key, fetcher, config);
 
   return {
-    assets: data?.assets ?? data?.results ?? data,
+    assets: data?.assets ?? data?.results ?? (data as unknown as FlaggedAsset[]),
     totalCount: data?.total ?? data?.count,
     isLoading,
     error,
@@ -371,14 +442,14 @@ export function useCompositionTimeline(jobId: string | null): {
     revalidateOnFocus: true,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR<CompositionTimelineResponse>(
     jobId ? `/api/v1/jobs/${jobId}/manifest` : null,
     fetcher,
     config
   );
 
   return {
-    manifest: data?.manifest ?? data,
+    manifest: data?.manifest ?? (data as unknown as CompositionManifest),
     segments: data?.segments ?? data?.manifest?.segments,
     renderProgress: data?.render_progress,
     isLoading,
@@ -410,7 +481,7 @@ export function useStorageAnalytics(): {
     dedupingInterval: 30_000,
   };
 
-  const { data, error, isLoading } = useSWR(
+  const { data, error, isLoading } = useSWR<StorageAnalyticsResponse>(
     "/api/v1/retention/report",
     fetcher,
     config
@@ -444,14 +515,14 @@ export function useStorageQuotas(enabled: boolean): {
     dedupingInterval: 60_000,
   };
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading } = useSWR<StorageQuotasResponse>(
     enabled ? "/api/v1/quotas/user/all" : null,
     fetcher,
     config
   );
 
   return {
-    quotas: data?.quotas ?? data,
+    quotas: data?.quotas ?? (data as unknown as QuotaEntry[]),
     isLoading,
   };
 }
@@ -475,7 +546,7 @@ export function useRetentionReport(enabled: boolean): {
     dedupingInterval: 60_000,
   };
 
-  const { data, isLoading } = useSWR(
+  const { data, isLoading } = useSWR<RetentionReportResponse>(
     enabled
       ? "/api/v1/retention/report?include=migrations,orphans"
       : null,
@@ -511,14 +582,14 @@ export function useUsers(): {
     dedupingInterval: 5_000,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(
+  const { data, error, isLoading, mutate } = useSWR<UsersResponse>(
     "/api/v1/users",
     fetcher,
     config
   );
 
   return {
-    users: data?.users ?? data,
+    users: data?.users ?? (data as unknown as User[]),
     isLoading,
     error,
     mutate,

@@ -485,7 +485,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                               );
                               const intensity = allocation
                                 ? Math.min(
-                                    allocation.vram_mb /
+                                    (allocation.vram_mb ?? 0) /
                                       (nodes.find(
                                         (n: GPUNode) => n.node_id === nodeId
                                       )?.total_vram_mb || 1),
@@ -512,7 +512,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                                             : "rgb(59, 130, 246)",
                                       }}
                                     >
-                                      {(allocation.vram_mb / 1024).toFixed(1)}G
+                                      {((allocation.vram_mb ?? 0) / 1024).toFixed(1)}G
                                     </div>
                                   ) : (
                                     <span className="text-xs text-gray-300">

@@ -47,7 +47,7 @@ interface DLQTableProps {
 }
 
 /** Category badge colors per §6.2 failure categories */
-const CATEGORY_STYLES: Record<DLQCategory, string> = {
+const CATEGORY_STYLES: Record<string, string> = {
   TRANSIENT: "bg-blue-100 text-blue-800",
   CONFIG: "bg-purple-100 text-purple-800",
   EXTERNAL: "bg-amber-100 text-amber-800",

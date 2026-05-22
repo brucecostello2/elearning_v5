@@ -181,6 +181,7 @@ export default function NewProjectPage(): React.ReactElement {
       setTranscriptFiles((prev) => {
         const updated = [...prev];
         const [moved] = updated.splice(dragIndex, 1);
+        if (!moved) return prev;
         updated.splice(dropIndex, 0, moved);
         return updated.map((t, idx) => ({ ...t, order: idx }));
       });
@@ -410,7 +411,7 @@ export default function NewProjectPage(): React.ReactElement {
             accept={TALKING_HEAD_ACCEPT}
             maxSize={MAX_TALKING_HEAD_SIZE}
             onFileSelect={(files) => {
-              if (files && files.length > 0) setTalkingHeadFile(files[0]);
+              if (files && files.length > 0) setTalkingHeadFile(files[0] ?? null);
             }}
             selectedFile={talkingHeadFile}
             onRemove={() => setTalkingHeadFile(null)}
@@ -521,7 +522,7 @@ export default function NewProjectPage(): React.ReactElement {
           <AssetUploader
             accept={STORYBOARD_ACCEPT}
             onFileSelect={(files) => {
-              if (files && files.length > 0) setStoryboardFile(files[0]);
+              if (files && files.length > 0) setStoryboardFile(files[0] ?? null);
             }}
             selectedFile={storyboardFile}
             onRemove={() => setStoryboardFile(null)}

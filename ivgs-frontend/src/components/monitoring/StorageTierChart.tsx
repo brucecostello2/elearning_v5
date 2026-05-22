@@ -63,7 +63,7 @@ export default function StorageTierChart({
             backgroundColor: [tier.color, "#E5E7EB"],
             borderColor: ["white", "white"],
             borderWidth: 2,
-            cutout: "70%",
+            // cutout: "70%",
           },
         ],
       };

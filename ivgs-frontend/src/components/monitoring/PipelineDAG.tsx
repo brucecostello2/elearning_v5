@@ -37,7 +37,7 @@ interface PipelineDAGProps {
   /** Ordered list of pipeline stage identifiers */
   stages: PipelineStage[];
   /** Human-readable labels for each stage */
-  stageLabels: Record<PipelineStage, string>;
+  stageLabels: Record<string, string>;
   /** Checkpoint data for each stage (from job detail) */
   checkpoints: CheckpointData[] | null;
   /** Currently executing pipeline stage */
@@ -58,7 +58,7 @@ const NODE_Y = 48;
 const CONNECTOR_Y = NODE_Y + NODE_HEIGHT / 2;
 
 /** Status fill colors for DAG nodes */
-const NODE_FILL: Record<PipelineStageStatus, string> = {
+const NODE_FILL: Record<string, string> = {
   PENDING: "#F3F4F6",
   RUNNING: "#DBEAFE",
   COMPLETE: "#D1FAE5",
@@ -67,7 +67,7 @@ const NODE_FILL: Record<PipelineStageStatus, string> = {
 };
 
 /** Status stroke colors for DAG nodes */
-const NODE_STROKE: Record<PipelineStageStatus, string> = {
+const NODE_STROKE: Record<string, string> = {
   PENDING: "#D1D5DB",
   RUNNING: "#3B82F6",
   COMPLETE: "#10B981",
@@ -76,7 +76,7 @@ const NODE_STROKE: Record<PipelineStageStatus, string> = {
 };
 
 /** Fallback level colors */
-const FALLBACK_COLORS: Record<FallbackLevel, string> = {
+const FALLBACK_COLORS: Record<string, string> = {
   L1: "#10B981",
   L2: "#F59E0B",
   L3: "#F97316",
@@ -88,7 +88,7 @@ const FALLBACK_COLORS: Record<FallbackLevel, string> = {
  * Abbreviated stage names for compact node display.
  * Full names shown in tooltip.
  */
-const SHORT_LABELS: Record<PipelineStage, string> = {
+const SHORT_LABELS: Record<string, string> = {
   TRANSCRIPT_REFINEMENT: "Transcript",
   STORYBOARD_GENERATION: "Storyboard",
   MEDIA_GENERATION: "Media Gen",
@@ -166,9 +166,9 @@ export default function PipelineDAG({
         {nodePositions.slice(0, -1).map((pos, index) => {
           const nextPos = nodePositions[index + 1];
           const fromX = pos.x + NODE_WIDTH;
-          const toX = nextPos.x;
+          const toX = nextPos!.x;
           const fromStatus = getStageStatus(pos.stage);
-          const toStatus = getStageStatus(nextPos.stage);
+          const toStatus = getStageStatus(nextPos!.stage);
 
           /** Connector is active (animated) when transitioning between stages */
           const isActive =
@@ -176,7 +176,7 @@ export default function PipelineDAG({
             toStatus === "RUNNING";
 
           return (
-            <g key={`connector-${pos.stage}-${nextPos.stage}`}>
+            <g key={`connector-${pos.stage}-${nextPos!.stage}`}>
               {/* Background connector line */}
               <line
                 x1={fromX}
@@ -312,7 +312,7 @@ export default function PipelineDAG({
               )}
 
               {/* Retry count badge — shown if retries > 0 */}
-              {cp && cp.retry_count > 0 && (
+              {cp && (cp.retry_count ?? 0) > 0 && (
                 <g>
                   <circle
                     cx={pos.x + 8}

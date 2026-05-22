@@ -22,7 +22,7 @@ interface UseTranscriptsReturn {
 }
 
 const transcriptsFetcher = async (url: string): Promise<Transcript[]> => {
-  const response = await apiClient.get<{ data: Transcript[] }>(url);
+  const response = await apiClient.get<Transcript[]>(url);
   return response.data;
 };
 
@@ -45,7 +45,7 @@ export function useTranscripts(projectId: string): UseTranscriptsReturn {
     transcriptId: string,
     payload: { refined_text: string }
   ): Promise<Transcript> => {
-    const response = await apiClient.patch<{ data: Transcript }>(
+    const response = await apiClient.patch<Transcript>(
       `/api/v1/projects/${projectId}/transcripts/${transcriptId}`,
       payload
     );

@@ -217,7 +217,7 @@ export default function DLQDetailModal({
                   <pre className="text-xs text-gray-800 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
                     {detail.task_arguments
                       ? JSON.stringify(
-                          JSON.parse(detail.task_arguments),
+                          detail.task_arguments,
                           null,
                           2
                         )

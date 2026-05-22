@@ -14,7 +14,7 @@ interface UseNodesReturn {
 }
 
 const nodesFetcher = async (url: string): Promise<NodeStatus[]> => {
-  const response = await apiClient.get<{ data: NodeStatus[] }>(url);
+  const response = await apiClient.get<NodeStatus[]>(url);
   return response.data;
 };
 

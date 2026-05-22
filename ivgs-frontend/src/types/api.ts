@@ -27,9 +27,11 @@ export type ProjectState =
   | "FINAL_RENDER"
   | "COMPLETE"
   | "LOCALISATION"
-  | "ERROR";
+  | "ERROR"
+  | "IN_PROGRESS"
+  | "REVIEW";
 
-export type JobStatus = "pending" | "running" | "success" | "failed";
+export type JobStatus = "pending" | "running" | "success" | "failed" | "PENDING" | "RUNNING" | "SUCCESS" | "FAILED" | "IN_PROGRESS" | "QUEUED" | "ERROR";
 
 export type AssetType =
   | "image"
@@ -56,7 +58,26 @@ export type FallbackStrategy =
   | "zoom_pan"
   | "static_image";
 
-export type GpuNodeStatus = "online" | "offline" | "draining";
+/** Node status interface used by NodeCard and nodes page */
+export interface NodeStatus {
+  id: string;
+  node_name: string;
+  gpu_model: string;
+  is_online: boolean;
+  vram_total_mb: number;
+  vram_used_mb: number;
+  gpu_utilization_percent: number;
+  gpu_temperature_c: number;
+  gpu_power_draw_w: number;
+  gpu_tdp_w: number;
+  cpu_utilization_percent: number;
+  ram_utilization_percent: number;
+  active_job: { project_name: string; stage: string; id?: string } | string | null;
+  recent_jobs?: Array<{ id: string; status: string; name?: string; project_name?: string; stage?: string }>;
+  status: GpuNodeStatus;
+}
+
+export type GpuNodeStatus = "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
 
 export type WorkerHeartbeatStatus =
   | "alive"
@@ -65,7 +86,7 @@ export type WorkerHeartbeatStatus =
 
 export type ManifestStatus = "draft" | "locked" | "rendered" | "invalid";
 
-export type CheckpointStatus = "pending" | "complete" | "failed" | "skipped";
+export type CheckpointStatus = "pending" | "complete" | "failed" | "skipped" | "PENDING" | "COMPLETE" | "FAILED" | "SKIPPED";
 
 // ---------------------------------------------------------------------------
 // Auth Types (§5.1.1, §16.1)
@@ -118,6 +139,12 @@ export interface ProjectResponse {
   target_languages: string[];
   hero_image_url: string | null;
   current_job_id: string | null;
+  /** Draft video URL for prototype review */
+  draft_video_url?: string;
+  /** Language variants attached to this project */
+  language_variants?: LanguageVariantResponse[];
+  /** Render variants (alias for language_variants in render views) */
+  render_variants?: LanguageVariantResponse[];
 }
 
 export interface CreateProjectRequest {
@@ -176,6 +203,16 @@ export interface AssetResponse {
   quality_score: number | null;
   quality_decision: QualityDecision | null;
   created_at: string;
+  /** Computed URL for the asset (derived from storage_path) */
+  url?: string;
+  /** Computed thumbnail URL */
+  thumbnail_url?: string;
+  /** Display filename (derived from storage_path or metadata) */
+  filename?: string;
+  /** Scene label for display */
+  scene_label?: string;
+  /** Generation prompt used to create this asset */
+  generation_prompt?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +349,22 @@ export interface LanguageVariantResponse {
   state: string;
   final_render_1080p_url: string | null;
   final_render_4k_url: string | null;
+  /** Display language name */
+  language?: string;
+  /** Render status for this variant */
+  status?: string;
+  /** Progress percentage (0-100) */
+  progress_percent?: number;
+  /** Last update timestamp */
+  updated_at?: string;
+  /** 1080p render URL (shorthand) */
+  url_1080p?: string;
+  /** 4K render URL (shorthand) */
+  url_4k?: string;
+  /** SRT subtitle URL */
+  subtitle_srt_url?: string;
+  /** VTT subtitle URL */
+  subtitle_vtt_url?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -371,6 +424,8 @@ export type RenderJob = JobResponse & {
   assigned_node?: string;
   assigned_gpu?: string;
   duration_seconds?: number;
+  /** Per-stage status map for pipeline tracker */
+  stage_statuses?: Record<string, string>;
 };
 
 export type Transcript = TranscriptResponse & {
@@ -382,7 +437,12 @@ export type LanguageVariant = LanguageVariantResponse;
 
 export type RenderVariant = LanguageVariantResponse;
 
-export type VideoQuality = "1080p" | "4k" | "720p";
+export type VideoQualityLabel = "1080p" | "4k" | "720p";
+
+export interface VideoQuality {
+  label: string;
+  src: string;
+}
 
 export interface ProjectCreatePayload {
   name: string;

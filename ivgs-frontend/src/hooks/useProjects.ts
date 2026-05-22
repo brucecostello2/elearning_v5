@@ -21,12 +21,12 @@ interface UseProjectsReturn {
 }
 
 const projectsFetcher = async (url: string): Promise<Project[]> => {
-  const response = await apiClient.get<{ data: Project[] }>(url);
+  const response = await apiClient.get<Project[]>(url);
   return response.data;
 };
 
 const projectFetcher = async (url: string): Promise<Project> => {
-  const response = await apiClient.get<{ data: Project }>(url);
+  const response = await apiClient.get<Project>(url);
   return response.data;
 };
 
@@ -70,10 +70,9 @@ export function useProjects(projectId?: string): UseProjectsReturn {
    * Create a new project via multipart form upload.
    */
   const createProject = async (formData: FormData): Promise<Project> => {
-    const response = await apiClient.post<{ data: Project }>(
+    const response = await apiClient.upload<Project>(
       "/api/v1/projects",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      formData
     );
     listMutate();
     return response.data;
@@ -86,7 +85,7 @@ export function useProjects(projectId?: string): UseProjectsReturn {
     languageCode: string
   ): Promise<LanguageVariant> => {
     if (!projectId) throw new Error("Project ID required");
-    const response = await apiClient.post<{ data: LanguageVariant }>(
+    const response = await apiClient.post<LanguageVariant>(
       `/api/v1/projects/${projectId}/languages`,
       { language_code: languageCode }
     );

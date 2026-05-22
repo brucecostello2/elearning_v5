@@ -31,7 +31,7 @@ interface QualityReviewCardProps {
   /** Flagged asset data */
   asset: FlaggedAsset;
   /** Human-readable metric labels */
-  metricLabels: Record<QualityMetricType, string>;
+  metricLabels: Record<string, string>;
   /** Whether the user can act on this asset (RBAC check done by parent) */
   canAct: boolean;
   /** Whether an action is in progress for this card */
@@ -65,7 +65,7 @@ const getScoreBgColor = (score: number): string => {
  * Based on thresholds defined in the spec.
  */
 const getMetricStatus = (
-  metricType: QualityMetricType,
+  metricType: string,
   value: number
 ): "pass" | "warning" | "fail" => {
   switch (metricType) {
@@ -194,10 +194,11 @@ export default function QualityReviewCard({
         </div>
 
         {/* Per-metric breakdown */}
-        {asset.metrics && asset.metrics.length > 0 && (
+        {asset.metrics && Object.keys(asset.metrics).length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-medium text-gray-600">Metric Breakdown</p>
-            {asset.metrics.map((metric) => {
+            {Object.entries(asset.metrics).map(([metricType, metricValue]) => {
+              const metric = { type: metricType, value: metricValue };
               const status = getMetricStatus(metric.type, metric.value);
               return (
                 <div

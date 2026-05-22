@@ -93,19 +93,19 @@ function computeUnifiedDiff(
 
       // Output removed lines before the match
       while (oldIdx < matchedOldIdx) {
-        diff.push({ type: "remove", content: oldLines[oldIdx] });
+        diff.push({ type: "remove", content: oldLines[oldIdx] ?? "" });
         oldIdx++;
       }
 
       // Output the matched line
-      diff.push({ type: "same", content: newLines[newIdx] });
+      diff.push({ type: "same", content: newLines[newIdx] ?? "" });
       oldIdx = matchedOldIdx + 1;
       newIdx++;
     } else if (newIdx < newLines.length) {
-      diff.push({ type: "add", content: newLines[newIdx] });
+      diff.push({ type: "add", content: newLines[newIdx] ?? "" });
       newIdx++;
     } else if (oldIdx < oldLines.length) {
-      diff.push({ type: "remove", content: oldLines[oldIdx] });
+      diff.push({ type: "remove", content: oldLines[oldIdx] ?? "" });
       oldIdx++;
     }
   }

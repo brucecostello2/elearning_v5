@@ -15,17 +15,6 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
 
-  /*
-   * TypeScript strict checking is temporarily bypassed for production builds.
-   * The codebase has ~280 pre-existing type mismatches between component usage
-   * and type definitions. Type definitions (api.ts, monitoring.ts) are now
-   * correct; components need gradual alignment.
-   * TODO: Remove this once all TS2339/TS2367/TS2322 errors are resolved.
-   */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-
   /* API proxy rewrites for development */
   async rewrites() {
     const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";

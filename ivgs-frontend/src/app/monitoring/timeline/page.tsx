@@ -59,7 +59,7 @@ const TIMELINE_LAYERS: { id: TimelineLayer; label: string; color: string }[] = [
 ];
 
 /** Segment status colors matching §8.2.5 */
-const SEGMENT_STATUS_COLORS: Record<RenderSegmentStatus, string> = {
+const SEGMENT_STATUS_COLORS: Record<string, string> = {
   PENDING: "#D1D5DB",
   RENDERING: "#60A5FA",
   COMPLETE: "#34D399",
