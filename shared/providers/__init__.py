@@ -194,3 +194,67 @@ class STTProvider(ABC):
     ) -> STTResult:
         """Force-align a transcript to audio for word-level timestamps."""
         ...
+
+
+# ---------------------------------------------------------------------------
+# §6.2 Table 6-4: Talking Head Provider (LatentSync primary, SadTalker fallback)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class TalkingHeadParams:
+    """Parameters for talking head / lip-sync rendering."""
+    scene_image_path: str = ""          # 1920×1080 PNG from Stage 3
+    voiceover_audio_path: str = ""      # WAV 48kHz mono from Stage 4
+    reference_clip_path: str = ""       # User-uploaded MP4/MOV reference
+    output_width: int = 1920
+    output_height: int = 1080
+    output_fps: int = 30
+    alignment_threshold: float = 0.85   # §11.1 quality threshold
+    timeout_seconds: int = 600
+
+
+@dataclass
+class TalkingHeadResult:
+    """Result from a talking head rendering call."""
+    video_data: bytes
+    width: int = 1920
+    height: int = 1080
+    fps: int = 30
+    duration_seconds: float = 0.0
+    alignment_score: float = 0.0
+    model: str = ""
+    output_path: str = ""
+
+
+class TalkingHeadProvider(ABC):
+    """
+    Abstract interface for talking head / lip-sync providers (§6.2 Table 6-4).
+
+    Primary: LatentSync (12GB VRAM, node-04)
+    Fallback: SadTalker (8GB VRAM, node-04)
+
+    All pipeline code calls this interface; the concrete provider is selected
+    by the GPU scheduler based on VRAM availability and fallback policy.
+    """
+
+    @abstractmethod
+    async def render(
+        self, params: TalkingHeadParams
+    ) -> TalkingHeadResult:
+        """Render a talking head video with lip-sync from image + audio."""
+        ...
+
+    @abstractmethod
+    async def check_health(self) -> bool:
+        """Check if the provider service is reachable and healthy."""
+        ...
+
+    @abstractmethod
+    def vram_requirement_mb(self) -> int:
+        """Return VRAM requirement in megabytes for GPU scheduling."""
+        ...
+
+    @abstractmethod
+    def provider_name(self) -> str:
+        """Return human-readable provider name for logging/metrics."""
+        ...
