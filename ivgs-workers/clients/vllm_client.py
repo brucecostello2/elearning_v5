@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 from typing import AsyncIterator, Optional
@@ -9,6 +10,58 @@ import httpx
 from shared.providers import LLMProvider, LLMParams, LLMResponse
 
 logger = logging.getLogger("ivgs.workers.vllm")
+
+
+# ---------------------------------------------------------------------------
+# Exception hierarchy
+# ---------------------------------------------------------------------------
+
+class VLLMError(Exception):
+    """Base exception for all vLLM client errors."""
+
+
+class VLLMTimeoutError(VLLMError):
+    """Raised when a vLLM request exceeds the configured timeout."""
+
+
+class VLLMConnectionError(VLLMError):
+    """Raised when the client cannot reach any vLLM endpoint."""
+
+
+class VLLMRateLimitError(VLLMError):
+    """Raised when vLLM returns HTTP 429 (rate-limited)."""
+
+
+class VLLMInvalidResponseError(VLLMError):
+    """Raised when vLLM returns a response that cannot be parsed.
+
+    Attributes:
+        response_body: The raw response text that failed parsing.
+        status_code:   HTTP status code of the response, if available.
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid response from vLLM",
+        *,
+        response_body: str | None = None,
+        status_code: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.response_body = response_body
+        self.status_code = status_code
+
+
+class VLLMModelNotFoundError(VLLMError):
+    """Raised when the requested model is not loaded on the vLLM instance.
+
+    Typically corresponds to an HTTP 404 or a payload error indicating
+    the model name is not recognised by the server.
+    """
+
+
+class VLLMServerError(VLLMError):
+    """Raised when vLLM returns an HTTP 5xx server-side error."""
 
 
 class VLLMClient(LLMProvider):
@@ -74,15 +127,43 @@ class VLLMClient(LLMProvider):
                     usage=data.get("usage", {}),
                     finish_reason=data["choices"][0].get("finish_reason", "stop"),
                 )
-            except (httpx.HTTPError, httpx.TimeoutException, KeyError) as exc:
+            except httpx.TimeoutException as exc:
                 last_error = exc
-                logger.warning(
-                    "vLLM request failed",
-                    extra={"url": url, "error": str(exc)},
-                )
+                logger.warning("vLLM timeout", extra={"url": url, "error": str(exc)})
+                continue
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status == 429:
+                    raise VLLMRateLimitError(
+                        f"vLLM rate-limited at {url}"
+                    ) from exc
+                if status == 404:
+                    raise VLLMModelNotFoundError(
+                        f"Model not found on vLLM at {url}: {exc}"
+                    ) from exc
+                if 500 <= status < 600:
+                    raise VLLMServerError(
+                        f"vLLM server error ({status}) at {url}: {exc}"
+                    ) from exc
+                last_error = exc
+                logger.warning("vLLM HTTP error", extra={"url": url, "error": str(exc)})
+                continue
+            except KeyError as exc:
+                raise VLLMInvalidResponseError(
+                    f"Missing expected key in vLLM response: {exc}",
+                    response_body=response.text if response else None,
+                    status_code=response.status_code if response else None,
+                ) from exc
+            except httpx.HTTPError as exc:
+                last_error = exc
+                logger.warning("vLLM request failed", extra={"url": url, "error": str(exc)})
                 continue
 
-        raise ConnectionError(
+        if isinstance(last_error, httpx.TimeoutException):
+            raise VLLMTimeoutError(
+                f"All vLLM endpoints timed out: {last_error}"
+            ) from last_error
+        raise VLLMConnectionError(
             f"All vLLM endpoints exhausted: {last_error}"
         ) from last_error
 
@@ -113,6 +194,46 @@ class VLLMClient(LLMProvider):
                     delta = chunk["choices"][0].get("delta", {})
                     if content := delta.get("content"):
                         yield content
+
+    # ------------------------------------------------------------------
+    # Idempotency helper
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def compute_request_hash(
+        system_prompt: str,
+        user_prompt: str,
+        model: str,
+        temperature: float,
+        max_tokens: Optional[int] = None,
+    ) -> str:
+        """Return a deterministic SHA-256 hex digest for a request.
+
+        Used by pipeline tasks to detect duplicate LLM calls and skip
+        re-processing when idempotency checking is enabled.
+
+        Args:
+            system_prompt: The system-role prompt text.
+            user_prompt:   The user-role prompt text.
+            model:         Model identifier string (e.g. ``meta-llama/Llama-3.3-70B-Instruct``).
+            temperature:   Sampling temperature.
+            max_tokens:    Maximum output tokens (``None`` treated as ``0`` for hashing).
+
+        Returns:
+            64-character lowercase hex SHA-256 digest.
+        """
+        canonical = json.dumps(
+            {
+                "system_prompt": system_prompt,
+                "user_prompt": user_prompt,
+                "model": model,
+                "temperature": temperature,
+                "max_tokens": max_tokens if max_tokens is not None else 0,
+            },
+            sort_keys=True,
+            ensure_ascii=True,
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:
