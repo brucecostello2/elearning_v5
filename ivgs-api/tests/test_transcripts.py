@@ -3,7 +3,6 @@ Transcript endpoint tests: upload, CRUD, reorder.
 """
 import io
 import pytest
-from uuid import uuid4
 from httpx import AsyncClient
 
 

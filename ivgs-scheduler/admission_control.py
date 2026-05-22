@@ -29,11 +29,8 @@ expired reservations are automatically released.
 
 from __future__ import annotations
 
-import time
-import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set
 
 import redis.asyncio as aioredis
 import structlog

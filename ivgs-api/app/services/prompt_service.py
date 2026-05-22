@@ -8,12 +8,11 @@ Per §9.1–9.4:
 - Prompt Playground test stub (real vLLM call in Phase 5)
 """
 import logging
-from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
 from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError, select_autoescape
-from sqlalchemy import select, func, and_, update
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prompt import Prompt

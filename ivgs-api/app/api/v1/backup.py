@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import subprocess
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
@@ -241,7 +240,6 @@ async def verify_backup(
 async def _run_backup(backup_id: str, backup_type: str, db) -> None:
     """Execute backup shell script and update record."""
     from sqlalchemy import text as sa_text
-    import os
 
     script_map = {
         "full_db": "/ivgs/ivgs-infra/scripts/backup.sh",
@@ -291,7 +289,7 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
                 },
             )
         await db.commit()
-    except Exception as exc:
+    except Exception as _exc:  # noqa: F841
         logger.exception("Backup task failed", extra={"backup_id": backup_id})
         await db.execute(
             sa_text(
@@ -335,7 +333,7 @@ async def _run_verification(backup_id: str, storage_path: str, db) -> None:
                 {"id": backup_id, "error": f"Verification failed: {stderr.decode()[:2000]}"},
             )
         await db.commit()
-    except Exception as exc:
+    except Exception as _exc:  # noqa: F841
         logger.exception("Verification failed", extra={"backup_id": backup_id})
 
 

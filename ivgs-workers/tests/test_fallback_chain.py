@@ -17,7 +17,7 @@ Test coverage:
 from __future__ import annotations
 
 import uuid
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -25,8 +25,6 @@ from ivgs_workers.services.fallback_chain import (
     DEFAULT_FALLBACK_POLICIES,
     FallbackChainService,
     FallbackLevel,
-    FallbackPolicy,
-    FallbackResult,
     FallbackStrategy,
     SceneType,
 )

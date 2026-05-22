@@ -15,13 +15,11 @@ Test suite for Stage 6 talking head rendering:
 from __future__ import annotations
 
 import struct
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from clients.latentsync_client import (
-    LatentSyncClient,
     LatentSyncError,
     LatentSyncResult,
 )
@@ -31,16 +29,10 @@ from tasks.talking_head_task import (
     Stage6Output,
     _concatenate_scene_audio,
     _render_with_latentsync,
-    render_talking_head,
 )
 from validators.lipsync_validator import (
     LipsyncDecision,
-    LipsyncValidationResult,
     LipsyncValidator,
-)
-from validators.corruption_detector import (
-    CorruptionDetector,
-    CorruptionValidationResult,
 )
 
 
@@ -216,7 +208,7 @@ class TestLatentSyncRender:
         mock_client.close = AsyncMock()
         mock_client_cls.return_value = mock_client
 
-        result = await _render_with_latentsync(
+        _result = await _render_with_latentsync(  # noqa: F841
             reference_clip_path="/tmp/ref.mp4",
             audio_path="/tmp/audio.wav",
             task_input=Stage6Input(
@@ -302,7 +294,7 @@ class TestAudioConcatenation:
             ),
         ]
 
-        result = await _concatenate_scene_audio(refs, mock_config, "/tmp")
+        result = await _concatenate_scene_audio(refs, mock_config, "/tmp")  # noqa: F841
 
         assert mock_download.call_count == 2
         mock_ffmpeg.concat_audio.assert_called_once()

@@ -26,8 +26,6 @@ Pipeline Stage 3 per §6.1:
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import os
 import time
 from datetime import datetime, timezone
@@ -40,32 +38,26 @@ from jinja2 import BaseLoader, Environment, select_autoescape
 from celery_app import IVGSBaseTask, celery_app
 from clients.flux_client import (
     FluxClient,
-    FluxError,
     FluxGenerationParams,
-    FluxGenerationResult,
     FluxModel,
-    MODEL_PRESETS,
 )
 from clients.cogvideox_client import (
     CogVideoXClient,
-    CogVideoXError,
     CogVideoXGenerationParams,
 )
-from clients.vllm_client import VLLMClient, VLLMError
+from clients.vllm_client import VLLMClient
 from config import WorkerConfig
 from models.task_result import (
     MediaType,
     PipelineStage,
     StageStatus,
-    StoryboardScene,
 )
 from utils.error_handler import (
-    classify_exception,
     save_checkpoint,
     update_job_status,
 )
-from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
-from utils.image_validator import ImageQualityDecision, ImageValidator
+from utils.gpu_utils import acquire_gpu_reservation
+from utils.image_validator import ImageValidator
 from utils.media_converter import (
     ImageConverter,
     check_duplicate_asset,
@@ -595,7 +587,7 @@ def generate_scene_images_task(
 
     # Idempotency check
     if config.enable_idempotency_check:
-        params_hash = self.compute_idempotency_hash({
+        _params_hash = self.compute_idempotency_hash({  # noqa: F841
             "stage": "image_generation",
             "project_id": task_input.project_id,
             "scenes": [s.scene_id for s in task_input.scenes],

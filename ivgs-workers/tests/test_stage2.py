@@ -20,17 +20,13 @@ import json
 import os
 import time
 from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
 from models.task_result import (
     MediaType,
-    PipelineJobContext,
-    PipelineStage,
-    RefinedTranscript,
     StageStatus,
-    StoryboardGenerationInput,
     StoryboardGenerationOutput,
     StoryboardScene,
     VLLMChoice,

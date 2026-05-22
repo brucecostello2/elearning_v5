@@ -35,7 +35,7 @@ import shutil
 import tempfile
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import httpx
 import structlog
@@ -45,7 +45,6 @@ from celery_app import IVGSBaseTask, celery_app
 from clients.ffmpeg_client import (
     CompositionTimeline,
     FFmpegClient,
-    FFmpegRenderResult,
     PiPPosition,
     RenderProfile,
     SceneLayer,

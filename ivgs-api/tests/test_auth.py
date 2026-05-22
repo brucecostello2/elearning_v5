@@ -4,11 +4,10 @@ Authentication endpoint tests.
 Covers: login, logout, refresh, token expiry, lockout, me endpoint.
 """
 import pytest
-import pytest_asyncio
 from httpx import AsyncClient
 
 from tests.conftest import create_test_user, make_auth_header
-from app.core.security import create_access_token, create_refresh_token
+from app.core.security import create_access_token
 
 
 # ===================================================================

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -26,7 +25,6 @@ from ivgs_workers.services.dlq_service import (
     DLQEntry,
     DLQReplayRequest,
     DLQReplayResult,
-    DLQResolution,
     DLQService,
     DLQStats,
     FailureCategory,

@@ -5,7 +5,7 @@ from typing import Optional
 
 import httpx
 
-from ivgs.shared.providers import TTSProvider, TTSParams, AudioResult
+from shared.providers import TTSProvider, TTSParams, AudioResult
 
 logger = logging.getLogger("ivgs.workers.coqui")
 

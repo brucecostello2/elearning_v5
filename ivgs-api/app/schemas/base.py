@@ -5,9 +5,7 @@ Base Pydantic v2 schemas used across all endpoints.
 - ErrorDetail / ErrorResponse: Standard error format per Appendix C.2
 - HealthResponse: Health check response format per §5.1.1
 """
-from datetime import datetime
-from typing import Any, Generic, List, Optional, TypeVar
-from uuid import UUID
+from typing import Generic, List, Optional, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 

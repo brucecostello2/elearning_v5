@@ -23,9 +23,7 @@ import pytest
 from ivgs_workers.services.retry_engine import (
     ExhaustionAction,
     RetryAttemptRecord,
-    RetryDecision,
     RetryEngine,
-    RetryPolicy,
     RETRY_POLICIES,
     StageType,
 )

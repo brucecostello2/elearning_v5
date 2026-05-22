@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import time
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict
 
 import redis.asyncio as aioredis
 import structlog

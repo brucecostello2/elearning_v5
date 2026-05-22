@@ -313,7 +313,7 @@ class OrphanCleanupService:
         orphan_count = 0
 
         async with self._db_session_factory() as session:
-            from sqlalchemy import select, text
+            from sqlalchemy import text
 
             result = await session.execute(
                 text(

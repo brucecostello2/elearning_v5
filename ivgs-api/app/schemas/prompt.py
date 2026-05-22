@@ -5,7 +5,7 @@ Includes: PromptCreate, PromptUpdate, PromptResponse, PromptTestRequest,
 PromptTestResponse, PromptRenderRequest.
 """
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator

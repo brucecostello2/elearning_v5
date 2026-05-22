@@ -39,7 +39,6 @@ from celery_app import IVGSBaseTask, celery_app
 from clients.vllm_client import (
     VLLMClient,
     VLLMError,
-    VLLMInvalidResponseError,
     VLLMTimeoutError,
 )
 from config import WorkerConfig
@@ -50,19 +49,15 @@ from models.task_result import (
     TranscriptRecord,
     TranscriptRefinementInput,
     TranscriptRefinementOutput,
-    VLLMMessage,
 )
 from utils.error_handler import (
-    classify_exception,
     compute_backoff_delay,
     save_checkpoint,
-    should_retry,
     update_job_status,
 )
 from utils.gpu_utils import (
     acquire_gpu_reservation,
     get_vram_requirement,
-    release_gpu_reservation,
 )
 
 logger = structlog.get_logger("ivgs.stage1.transcript")
@@ -286,7 +281,7 @@ def _resolve_prompts_from_api(
                     else prompts.get("items", [])
                 ):
                     text = p.get("prompt_text", "")
-                    scope = p.get("scope", p.get("source", ""))
+                    _scope = p.get("scope", p.get("source", ""))  # noqa: F841
                     if "system" in p.get("prompt_type", "").lower() or "system" in text[:100].lower():
                         system_prompt = text
                     else:

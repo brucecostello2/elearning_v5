@@ -42,7 +42,6 @@ from celery_app import IVGSBaseTask, celery_app
 from clients.ffmpeg_client import (
     CompositionTimeline,
     FFmpegClient,
-    FFmpegRenderResult,
     PiPPosition,
     RenderProfile,
     SceneLayer,
@@ -52,7 +51,6 @@ from clients.remotion_client import RemotionClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
 from services.caption_service import CaptionService
-from services.manifest_builder import ManifestBuilder, CompositionManifest
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.media_converter import compute_asset_sha256
 from validators.corruption_detector import CorruptionDetector

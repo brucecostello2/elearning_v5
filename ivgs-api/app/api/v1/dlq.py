@@ -20,7 +20,6 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.base import PaginatedResponse

@@ -29,7 +29,7 @@ Retry attempts stored in task_retries table (Table 13):
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional

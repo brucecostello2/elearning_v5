@@ -21,30 +21,21 @@ Covers:
 
 from __future__ import annotations
 
-import hashlib
-import json
-from datetime import datetime, timezone
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from clients.flux_client import (
     FluxClient,
-    FluxError,
-    FluxGenerationParams,
     FluxGenerationResult,
-    FluxModel,
     FluxTimeoutError,
 )
-from clients.cogvideox_client import CogVideoXClient, CogVideoXGenerationParams
+from clients.cogvideox_client import CogVideoXClient
 from tasks.stage3_images import (
     SceneImageInput,
     SceneImageResult,
     Stage3Input,
-    Stage3Output,
     _process_single_scene,
-    generate_scene_images_task,
 )
 from utils.image_validator import (
     ImageQualityDecision,

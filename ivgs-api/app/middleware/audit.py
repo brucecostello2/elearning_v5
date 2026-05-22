@@ -9,9 +9,6 @@ Fields: user_id, action_type, resource_type, resource_id,
 """
 import json
 import logging
-import uuid
-from datetime import datetime, timezone
-from io import BytesIO
 from typing import Optional
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint

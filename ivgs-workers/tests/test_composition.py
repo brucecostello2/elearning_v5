@@ -15,25 +15,17 @@ from __future__ import annotations
 
 import os
 import tempfile
-from typing import Any, Dict, List
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from clients.ffmpeg_client import (
     CompositionTimeline,
-    FFmpegClient,
-    FFmpegRenderResult,
-    PiPPosition,
-    RenderProfile,
-    SceneLayer,
     TimelineScene,
 )
-from services.caption_service import CaptionEntry, CaptionService
+from services.caption_service import CaptionService
 from services.manifest_builder import (
     CompositionManifest,
     ManifestBuilder,
-    ManifestSceneConfig,
 )
 from services.segment_planner import RenderSegment, SegmentPlanner
 from tasks.prototype_draft_task import (

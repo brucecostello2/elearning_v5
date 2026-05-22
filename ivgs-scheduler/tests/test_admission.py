@@ -16,16 +16,12 @@ Test coverage:
 
 from __future__ import annotations
 
-import asyncio
-import time
-from typing import Dict, Optional, Set
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from admission_control import (
     AdmissionController,
-    AdmissionResult,
     ReservationReleaseResult,
     VALID_STAGE_TRANSITIONS,
 )

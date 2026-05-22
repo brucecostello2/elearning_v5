@@ -15,9 +15,6 @@ Test coverage:
 
 from __future__ import annotations
 
-import asyncio
-import math
-from typing import Dict, Optional
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

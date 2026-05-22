@@ -16,16 +16,13 @@ Test coverage:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import time
-from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from scheduler import GpuCandidate, GpuScheduler, ScheduleResult, VramReservation
+from scheduler import GpuCandidate, GpuScheduler, ScheduleResult
 
 
 # ---------------------------------------------------------------------------

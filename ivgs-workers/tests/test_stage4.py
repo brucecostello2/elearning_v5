@@ -13,23 +13,18 @@ Test suite for Stage 4 voiceover task with mocked:
 from __future__ import annotations
 
 import struct
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from clients.coqui_client import (
     CoquiClient,
-    CoquiError,
-    CoquiSynthesisParams,
     CoquiSynthesisResult,
     CoquiTimeoutError,
 )
 from tasks.stage4_voiceover import (
     SceneVoiceoverInput,
-    SceneVoiceoverResult,
     Stage4Input,
-    Stage4Output,
     _process_single_voiceover,
 )
 from utils.audio_validator import (

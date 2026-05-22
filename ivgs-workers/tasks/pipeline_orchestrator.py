@@ -1,6 +1,13 @@
 """
-IVGS v5 — Pipeline Orchestrator
-==================================
+IVGS v5 — Pipeline Orchestrator (v1)
+=======================================
+
+.. deprecated:: 5.0.1
+   This is the v1 orchestrator. The v2 orchestrator
+   (pipeline_orchestrator_v2.py) adds composition manifest building,
+   parallel media dispatch, and enhanced checkpoint recovery.
+   Migrate to v2 for new features. v1 is retained for backward
+   compatibility with existing Celery Beat schedules and task references.
 
 Event-driven pipeline orchestration per §6.4:
 - Uses handle_stage_completion callbacks (NOT Celery chains)
@@ -27,10 +34,8 @@ User gates:
 
 from __future__ import annotations
 
-import json
 import time
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 import httpx
 import structlog
@@ -41,13 +46,8 @@ from models.task_result import (
     PipelineJobContext,
     PipelineStage,
     StageStatus,
-    TranscriptRefinementOutput,
-    StoryboardGenerationOutput,
-    STAGE_ORDER,
 )
 from utils.error_handler import (
-    route_to_dead_letter_queue,
-    save_checkpoint,
     update_job_status,
 )
 
@@ -286,7 +286,7 @@ def handle_stage_completion(
         }
 
     # Build input for next stage from previous stage output
-    job_context_dict = _build_context_from_output(
+    _job_context_dict = _build_context_from_output(  # noqa: F841
         stage_output_dict, next_stage
     )
     task_input = _build_stage_input(next_stage, None, config, stage_output_dict)

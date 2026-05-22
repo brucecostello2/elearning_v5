@@ -15,7 +15,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
 from app.core.rbac import require_admin
-from app.models.user import User
 from app.schemas.base import PaginatedResponse
 from app.schemas.user import UserCreate, UserUpdate, UserResponse
 from app.services import user_service

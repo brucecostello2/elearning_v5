@@ -18,13 +18,10 @@ Test coverage:
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
-import json
 import os
 import tempfile
-from typing import Optional, Tuple
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 

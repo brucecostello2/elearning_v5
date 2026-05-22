@@ -17,7 +17,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.project import Project
-from app.models.storyboard_scene import StoryboardScene
 from app.models.render_job import RenderJob
 from app.models.language_variant import LanguageVariant
 from app.models.user import User

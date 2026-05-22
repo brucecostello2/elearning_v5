@@ -33,7 +33,6 @@ from typing import Any, Optional
 import structlog
 from pydantic import BaseModel, Field
 from sqlalchemy import select, update, func
-from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = structlog.get_logger(__name__)
 

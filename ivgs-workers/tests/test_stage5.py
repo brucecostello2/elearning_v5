@@ -11,24 +11,18 @@ Test suite for Stage 5 talking head task with mocked:
 
 from __future__ import annotations
 
-from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from clients.latentsync_client import (
     LatentSyncClient,
-    LatentSyncError,
-    LatentSyncMode,
-    LatentSyncParams,
     LatentSyncResult,
     LatentSyncTimeoutError,
 )
 from tasks.stage5_talking_head import (
     SceneTalkingHeadInput,
-    SceneTalkingHeadResult,
     Stage5Input,
-    Stage5Output,
     _process_single_talking_head,
 )
 from utils.video_validator import (

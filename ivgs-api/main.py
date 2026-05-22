@@ -10,7 +10,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from shared.config import settings
 from shared.database import check_db_connection, dispose_engine
 from shared.redis_client import redis_client
 from shared.seaweedfs_client import seaweedfs_client

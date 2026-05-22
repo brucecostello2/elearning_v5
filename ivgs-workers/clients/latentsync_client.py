@@ -58,27 +58,22 @@ class LatentSyncError(Exception):
 
 class LatentSyncConnectionError(LatentSyncError):
     """LatentSync server unreachable."""
-    pass
 
 
 class LatentSyncTimeoutError(LatentSyncError):
     """LatentSync rendering timed out."""
-    pass
 
 
 class LatentSyncRenderError(LatentSyncError):
     """LatentSync rendering failed."""
-    pass
 
 
 class LatentSyncAlignmentError(LatentSyncError):
     """Lip-sync alignment score below threshold."""
-    pass
 
 
 class LatentSyncDownloadError(LatentSyncError):
     """Failed to download rendered video."""
-    pass
 
 
 # ---------------------------------------------------------------------------

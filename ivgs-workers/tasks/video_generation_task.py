@@ -27,7 +27,6 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
-import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -56,7 +55,7 @@ from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
 from utils.media_converter import check_duplicate_asset, compute_asset_sha256
-from utils.video_validator import VideoQualityDecision, VideoValidator
+from utils.video_validator import VideoValidator
 
 logger = structlog.get_logger("ivgs.video_generation")
 
@@ -387,7 +386,7 @@ async def _process_single_video(
         result.fallback_level = fallback_level
 
         # 4. Validate
-        validator = VideoValidator()
+        _validator = VideoValidator()  # noqa: F841
         sha256 = compute_asset_sha256(video_data)
         result.sha256_hash = sha256
         result.file_size_bytes = len(video_data)

@@ -5,7 +5,6 @@ All environment variables from Appendix A.2 of the v5 specification.
 Loaded from .env file or environment at import time.
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):

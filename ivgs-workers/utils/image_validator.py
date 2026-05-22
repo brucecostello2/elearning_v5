@@ -22,8 +22,6 @@ from __future__ import annotations
 
 import hashlib
 import io
-import logging
-import struct
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple

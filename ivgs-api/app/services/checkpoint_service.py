@@ -5,11 +5,10 @@ Per §5.2.4 — provides access to pipeline checkpoint data for
 monitoring and resume-from-failure capability.
 """
 import logging
-from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.checkpoint import PipelineCheckpoint

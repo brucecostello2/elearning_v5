@@ -26,7 +26,6 @@ Processing:
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import os
 import tempfile
@@ -52,7 +51,6 @@ from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
 from utils.media_converter import compute_asset_sha256
-from utils.video_validator import VideoQualityDecision, VideoValidator
 from validators.lipsync_validator import LipsyncValidator
 from validators.corruption_detector import CorruptionDetector
 

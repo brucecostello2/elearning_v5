@@ -30,7 +30,7 @@ async def main(username: str, password: str, role: str) -> None:
             return
 
         user = await create_user(db, username=username, password=password, role=role)
-        print(f"User created successfully:")
+        print("User created successfully:")
         print(f"  Username: {user.username}")
         print(f"  Role:     {user.role}")
         print(f"  ID:       {user.id}")

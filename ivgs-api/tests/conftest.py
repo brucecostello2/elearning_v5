@@ -11,7 +11,6 @@ import asyncio
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 import pytest_asyncio
@@ -24,7 +23,7 @@ from sqlalchemy.ext.asyncio import (
 
 from shared.database import Base, get_session
 from shared.redis_client import redis_client
-from app.core.security import hash_password, create_access_token, create_refresh_token
+from app.core.security import hash_password, create_access_token
 
 
 # ---------------------------------------------------------------------------

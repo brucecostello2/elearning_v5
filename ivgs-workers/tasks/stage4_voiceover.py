@@ -24,8 +24,6 @@ Pipeline Stage 4 (Audio Generation) per §6.1:
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import os
 import time
 from datetime import datetime, timezone
@@ -38,17 +36,15 @@ from jinja2 import BaseLoader, Environment, select_autoescape
 from celery_app import IVGSBaseTask, celery_app
 from clients.coqui_client import (
     CoquiClient,
-    CoquiError,
     CoquiSynthesisParams,
-    CoquiSynthesisResult,
     SUPPORTED_LANGUAGES,
 )
 from clients.vllm_client import VLLMClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
-from utils.audio_validator import AudioQualityDecision, AudioValidator
+from utils.audio_validator import AudioValidator
 from utils.error_handler import save_checkpoint, update_job_status
-from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
+from utils.gpu_utils import acquire_gpu_reservation
 from utils.media_converter import (
     AudioConverter,
     check_duplicate_asset,

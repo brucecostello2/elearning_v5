@@ -31,27 +31,22 @@ logger = structlog.get_logger("ivgs.media_converter")
 
 class MediaConversionError(Exception):
     """Media conversion failed."""
-    pass
 
 
 class FFmpegNotFoundError(MediaConversionError):
     """FFmpeg binary not found."""
-    pass
 
 
 class ImageConversionError(MediaConversionError):
     """Image conversion/resize failed."""
-    pass
 
 
 class AudioConversionError(MediaConversionError):
     """Audio conversion/normalization failed."""
-    pass
 
 
 class VideoConversionError(MediaConversionError):
     """Video conversion/transcoding failed."""
-    pass
 
 
 # ---------------------------------------------------------------------------

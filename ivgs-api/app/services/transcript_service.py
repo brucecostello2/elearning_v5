@@ -12,17 +12,15 @@ import hashlib
 import io
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, delete
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.transcript import Transcript
 from app.models.asset import Asset
-from app.models.project import Project
 from shared.seaweedfs_client import seaweedfs_client
-from shared.models.enums import ProjectState
 
 logger = logging.getLogger(__name__)
 

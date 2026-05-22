@@ -9,7 +9,6 @@ Limits:
 Uses Redis sliding window counters.
 """
 import logging
-import time
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request

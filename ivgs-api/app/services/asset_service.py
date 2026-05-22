@@ -10,7 +10,7 @@ Per §5.1.5, §10.1–10.4:
 import hashlib
 import logging
 from datetime import datetime, timezone
-from typing import AsyncGenerator, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from uuid import UUID
 
 from sqlalchemy import select, func, and_

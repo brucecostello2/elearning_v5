@@ -26,8 +26,6 @@ Pipeline Stage 5 (Talking Head Render) per §6.1:
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import os
 import time
 from datetime import datetime, timezone
@@ -40,22 +38,20 @@ from jinja2 import BaseLoader, Environment, select_autoescape
 from celery_app import IVGSBaseTask, celery_app
 from clients.latentsync_client import (
     LatentSyncClient,
-    LatentSyncError,
     LatentSyncMode,
     LatentSyncParams,
-    LatentSyncResult,
 )
 from clients.vllm_client import VLLMClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
-from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
+from utils.gpu_utils import acquire_gpu_reservation
 from utils.media_converter import (
     VideoConverter,
     check_duplicate_asset,
     compute_asset_sha256,
 )
-from utils.video_validator import VideoQualityDecision, VideoValidator
+from utils.video_validator import VideoValidator
 
 logger = structlog.get_logger("ivgs.stage5.talking_head")
 

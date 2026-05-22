@@ -4,7 +4,6 @@ Language variant service: CRUD for localization targets.
 Per §5.1.8 — manages language variant records and retry.
 """
 import logging
-from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 

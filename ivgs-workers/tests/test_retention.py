@@ -16,7 +16,6 @@ Test coverage:
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

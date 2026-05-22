@@ -41,26 +41,21 @@ from clients.vllm_client import (
 )
 from config import WorkerConfig
 from models.task_result import (
-    MediaType,
     PipelineStage,
     RefinedTranscript,
     StageStatus,
     StoryboardGenerationInput,
     StoryboardGenerationOutput,
     StoryboardScene,
-    VLLMMessage,
 )
 from utils.error_handler import (
-    classify_exception,
     compute_backoff_delay,
     save_checkpoint,
-    should_retry,
     update_job_status,
 )
 from utils.gpu_utils import (
     acquire_gpu_reservation,
     get_vram_requirement,
-    release_gpu_reservation,
 )
 
 logger = structlog.get_logger("ivgs.stage2.storyboard")

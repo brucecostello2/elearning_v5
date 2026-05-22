@@ -23,18 +23,15 @@ SHA-256 checksums computed post-render for integrity verification.
 
 from __future__ import annotations
 
-import asyncio
 import hashlib
 import json
 import os
-import shlex
 import shutil
 import subprocess
 import tempfile
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import structlog
@@ -62,27 +59,22 @@ class FFmpegError(Exception):
 
 class FFmpegNotFoundError(FFmpegError):
     """FFmpeg binary not found on system."""
-    pass
 
 
 class FFmpegTimeoutError(FFmpegError):
     """FFmpeg process timed out."""
-    pass
 
 
 class FFmpegCompositionError(FFmpegError):
     """FFmpeg composition/render failed."""
-    pass
 
 
 class FFmpegConcatError(FFmpegError):
     """FFmpeg concat demuxer operation failed."""
-    pass
 
 
 class FFmpegProbeError(FFmpegError):
     """FFprobe analysis failed."""
-    pass
 
 
 # ---------------------------------------------------------------------------
@@ -575,7 +567,7 @@ class FFmpegClient:
         )
 
         # Execute
-        result = self._run_ffmpeg(cmd, timeout=timeout)
+        _result = self._run_ffmpeg(cmd, timeout=timeout)  # noqa: F841
         elapsed = time.monotonic() - start_time
 
         # Compute SHA-256
@@ -635,7 +627,7 @@ class FFmpegClient:
         """
         start_time = time.monotonic()
         profile = timeline.profile
-        config = RENDER_PROFILES[profile]
+        _config = RENDER_PROFILES[profile]  # noqa: F841
         timeout = timeout or self._default_timeout
 
         if output_path is None:

@@ -24,10 +24,9 @@ Caption grouping strategy:
 
 from __future__ import annotations
 
-import os
 import re
 from datetime import timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import structlog
 

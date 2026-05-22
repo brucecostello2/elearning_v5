@@ -18,9 +18,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from celery import shared_task
 
-from ivgs.shared.providers import LLMParams, TTSParams
+from shared.providers import LLMParams, TTSParams
 from ivgs_workers.celery_app import app
 from ivgs_workers.config import WorkerConfig
 from ivgs_workers.utils.provider_factory import (
@@ -56,7 +55,7 @@ def translate_transcripts(
 
     async def _translate():
         from sqlalchemy import text as sa_text
-        from ivgs.shared.database import get_async_session
+        from shared.database import get_async_session
 
         provider = get_llm_provider(config)
 
@@ -87,7 +86,7 @@ def translate_transcripts(
                     temperature=0.3,
                     max_tokens=4096,
                 )
-                result = await provider.generate(row.refined_text, params)
+                _result = await provider.generate(row.refined_text, params)  # noqa: F841
 
                 # Insert translated transcript
                 import uuid
@@ -138,8 +137,8 @@ def generate_localized_tts(
 
     async def _generate_tts():
         from sqlalchemy import text as sa_text
-        from ivgs.shared.database import get_async_session
-        from ivgs.shared.seaweedfs_client import SeaweedFSClient
+        from shared.database import get_async_session
+        from shared.seaweedfs_client import SeaweedFSClient
 
         tts_provider = get_tts_provider(config)
         seaweedfs = SeaweedFSClient(config.SEAWEEDFS_FILER_URL)
@@ -224,7 +223,7 @@ def render_localized_talking_head(
 
     async def _render():
         from sqlalchemy import text as sa_text
-        from ivgs.shared.database import get_async_session
+        from shared.database import get_async_session
         from ivgs_workers.clients.latentsync_client import LatentSyncClient
 
         latentsync = LatentSyncClient(base_url=config.LATENTSYNC_URL)
@@ -247,7 +246,7 @@ def render_localized_talking_head(
                 raise RuntimeError(f"No original talking head found for project {project_id}")
 
             # Render lip-sync with new audio
-            result = await latentsync.render(
+            result = await latentsync.render(  # noqa: F841
                 video_path=original_th.seaweedfs_path,
                 audio_asset_ids=audio_asset_ids,
                 output_path=f"/ivgs/talking-heads/{project_id}/{language_code}.mp4",
@@ -340,7 +339,7 @@ def localized_final_composition(
 
     async def _compose():
         from sqlalchemy import text as sa_text
-        from ivgs.shared.database import get_async_session
+        from shared.database import get_async_session
         from ivgs_workers.clients.ffmpeg_client import FFmpegClient
 
         ffmpeg = FFmpegClient()

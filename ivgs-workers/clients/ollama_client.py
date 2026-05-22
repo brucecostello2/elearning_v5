@@ -15,7 +15,7 @@ from typing import AsyncIterator, Optional
 
 import httpx
 
-from ivgs.shared.providers import LLMProvider, LLMParams, LLMResponse
+from shared.providers import LLMProvider, LLMParams, LLMResponse
 
 logger = logging.getLogger("ivgs.workers.ollama")
 

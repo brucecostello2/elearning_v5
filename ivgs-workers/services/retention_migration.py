@@ -28,8 +28,7 @@ SeaweedFS tier mapping per §10.3:
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any
 
@@ -515,7 +514,7 @@ class RetentionService:
 
         try:
             # Move file with tier assignment
-            response = await client.post(
+            _response = await client.post(  # noqa: F841
                 f"{self._seaweedfs_filer_url}{storage_path}",
                 headers={
                     "X-Seaweedfs-Replication": replication,

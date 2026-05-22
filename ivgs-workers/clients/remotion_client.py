@@ -58,22 +58,18 @@ class RemotionError(Exception):
 
 class RemotionConnectionError(RemotionError):
     """Remotion server unreachable."""
-    pass
 
 
 class RemotionTimeoutError(RemotionError):
     """Remotion render timed out."""
-    pass
 
 
 class RemotionRenderError(RemotionError):
     """Remotion render failed."""
-    pass
 
 
 class RemotionDownloadError(RemotionError):
     """Failed to download rendered asset from Remotion."""
-    pass
 
 
 # ---------------------------------------------------------------------------

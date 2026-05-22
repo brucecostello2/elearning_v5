@@ -109,7 +109,7 @@ async def stream_job_status(
     await websocket.accept()
 
     import redis.asyncio as aioredis
-    from ivgs.shared.config import settings
+    from shared.config import settings
 
     redis_client = aioredis.from_url(settings.REDIS_URL)
 

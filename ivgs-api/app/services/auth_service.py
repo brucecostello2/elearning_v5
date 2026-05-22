@@ -13,14 +13,13 @@ from typing import Optional
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.user import User
 from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
     decode_token,
 )
-from app.core.auth import blacklist_token, blacklist_all_user_tokens
+from app.core.auth import blacklist_token
 from app.services.user_service import get_user_by_username
 from shared.config import settings
 from shared.redis_client import redis_client
@@ -31,13 +30,11 @@ logger = logging.getLogger(__name__)
 class AuthenticationError(Exception):
     """Raised when login credentials are invalid."""
 
-    pass
 
 
 class TokenError(Exception):
     """Raised when refresh token is invalid or expired."""
 
-    pass
 
 
 async def login(

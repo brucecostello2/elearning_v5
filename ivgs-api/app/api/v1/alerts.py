@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 from fastapi import APIRouter, Request
 
@@ -30,7 +29,7 @@ async def alertmanager_webhook(request: Request):
 
     # Publish to Redis for dashboard WebSocket consumers
     import redis.asyncio as aioredis
-    from ivgs.shared.config import settings
+    from shared.config import settings
     import json
 
     redis_client = aioredis.from_url(settings.REDIS_URL)

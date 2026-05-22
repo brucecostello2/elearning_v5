@@ -6,7 +6,7 @@ from typing import Optional
 
 import httpx
 
-from ivgs.shared.providers import VideoProvider, VideoParams, VideoResult
+from shared.providers import VideoProvider, VideoParams, VideoResult
 
 logger = logging.getLogger("ivgs.workers.cogvideox")
 

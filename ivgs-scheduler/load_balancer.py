@@ -22,7 +22,7 @@ import math
 import random
 import time
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 import redis.asyncio as aioredis
 import structlog

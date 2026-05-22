@@ -13,20 +13,11 @@ Test suite for video clip generation:
 
 from __future__ import annotations
 
-from typing import Any, Dict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from clients.cogvideox_client import (
-    CogVideoXClient,
-    CogVideoXError,
-    CogVideoXGenerationParams,
-    CogVideoXGenerationResult,
-)
 from clients.wan21_client import (
-    Wan21Client,
-    Wan21Error,
     Wan21GenerationParams,
     Wan21GenerationResult,
 )

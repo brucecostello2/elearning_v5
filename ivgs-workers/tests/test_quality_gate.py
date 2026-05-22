@@ -17,17 +17,12 @@ Test coverage:
 
 from __future__ import annotations
 
-import asyncio
-import json
-from typing import Any, Dict, List, Optional
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from services.quality_gate import (
     GateAction,
-    GateDecision,
-    ProjectGateStatus,
     QualityGateService,
 )
 from services.quality_validator import (

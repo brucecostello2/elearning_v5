@@ -39,7 +39,6 @@ import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from prometheus_client import (
     CONTENT_TYPE_LATEST,
     generate_latest,
@@ -895,32 +894,26 @@ async def prometheus_metrics() -> Response:
 
 class PhaseGateError(Exception):
     """Phase gate check failure per §12.2 Check #1."""
-    pass
 
 
 class NoCapacityError(Exception):
     """No GPU capacity available per §12.2 Check #2."""
-    pass
 
 
 class ConcurrencyLimitError(Exception):
     """Concurrency limit exceeded per §12.2 Check #3."""
-    pass
 
 
 class CircuitBreakerOpenError(Exception):
     """Circuit breaker is open per §12.2 Check #4."""
-    pass
 
 
 class NodeNotFoundError(Exception):
     """GPU node not found in registry."""
-    pass
 
 
 class ReservationNotFoundError(Exception):
     """VRAM reservation not found."""
-    pass
 
 
 # ---------------------------------------------------------------------------

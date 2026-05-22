@@ -11,7 +11,6 @@ Implements §5.2.5:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -19,7 +18,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
@@ -83,7 +82,7 @@ async def get_manifest(
     current_user: User = Depends(get_current_user),
 ) -> ManifestResponse:
     """GET /api/v1/jobs/{id}/manifest — Get composition manifest with timeline JSON."""
-    result = await db.execute(
+    _result = await db.execute(  # noqa: F841
         select("*").select_from(
             __import__("sqlalchemy").text("composition_manifests")
         ).where(

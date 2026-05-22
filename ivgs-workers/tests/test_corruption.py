@@ -17,7 +17,6 @@ from __future__ import annotations
 import os
 import struct
 import tempfile
-from typing import Any
 
 import pytest
 
@@ -90,7 +89,7 @@ def minimal_wav_file(temp_dir) -> str:
 @pytest.fixture
 def empty_file(temp_dir) -> str:
     path = os.path.join(temp_dir, "empty.mp4")
-    with open(path, "wb") as f:
+    with open(path, "wb"):
         pass
     return path
 

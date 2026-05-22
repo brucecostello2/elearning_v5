@@ -7,7 +7,7 @@ from typing import Optional
 
 import httpx
 
-from ivgs.shared.providers import ImageProvider, ImageParams, ImageResult
+from shared.providers import ImageProvider, ImageParams, ImageResult
 
 logger = logging.getLogger("ivgs.workers.flux")
 

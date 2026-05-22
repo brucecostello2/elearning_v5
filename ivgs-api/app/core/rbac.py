@@ -11,7 +11,6 @@ Usage:
     async def admin_endpoint(): ...
 """
 import logging
-from functools import wraps
 
 from fastapi import Depends, HTTPException, status
 

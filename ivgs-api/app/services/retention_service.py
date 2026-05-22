@@ -6,10 +6,10 @@ on asset distribution across storage tiers.
 """
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, update
+from sqlalchemy import select, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.retention_policy import RetentionPolicy

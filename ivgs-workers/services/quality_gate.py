@@ -29,12 +29,10 @@ Redis key structure:
 from __future__ import annotations
 
 import json
-import time
-import uuid
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import Any, Callable, Dict, List, Optional
 
 import redis.asyncio as aioredis
 import structlog

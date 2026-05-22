@@ -15,7 +15,6 @@ Heartbeats include GPU temperature, memory usage, and utilization.
 
 from __future__ import annotations
 
-import asyncio
 import os
 import threading
 import time
@@ -328,7 +327,7 @@ def start_heartbeat_loop(
 
     Returns the thread handle for cleanup.
     """
-    global _heartbeat_thread, _heartbeat_stop_event
+    global _heartbeat_thread  # noqa: F824 — _heartbeat_stop_event is module-level
     _heartbeat_stop_event.clear()
 
     def _loop() -> None:
@@ -407,14 +406,11 @@ class GpuReservationError(Exception):
 
 class GpuNoCapacityError(GpuReservationError):
     """No GPU capacity available."""
-    pass
 
 
 class GpuAdmissionError(GpuReservationError):
     """Admission control rejected the request."""
-    pass
 
 
 class GpuCircuitBreakerError(GpuReservationError):
     """Circuit breaker is open for target GPU."""
-    pass

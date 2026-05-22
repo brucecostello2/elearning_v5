@@ -21,11 +21,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import struct
 import subprocess
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 import structlog
 
@@ -165,7 +164,7 @@ class CorruptionDetector:
             s for s in probe_data.get("streams", [])
             if s.get("codec_type") == "video"
         ]
-        audio_streams = [
+        _audio_streams = [  # noqa: F841
             s for s in probe_data.get("streams", [])
             if s.get("codec_type") == "audio"
         ]
