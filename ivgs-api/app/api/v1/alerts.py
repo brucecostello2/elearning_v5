@@ -8,7 +8,7 @@ from fastapi import APIRouter, Request
 
 logger = logging.getLogger("ivgs.api.alerts")
 
-router = APIRouter(prefix="/api/v1/alerts", tags=["alerts"])
+router = APIRouter(tags=["Alerts"])
 
 
 @router.post("/webhook")

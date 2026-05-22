@@ -26,7 +26,7 @@ from app.models.user import User
 
 logger = logging.getLogger("ivgs.api.manifests")
 
-router = APIRouter(prefix="/api/v1/jobs", tags=["manifests"])
+router = APIRouter(tags=["Manifests"])
 
 
 # ---------------------------------------------------------------------------

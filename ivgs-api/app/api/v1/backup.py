@@ -24,7 +24,7 @@ from app.models.user import User
 
 logger = logging.getLogger("ivgs.api.backup")
 
-router = APIRouter(prefix="/api/v1/backup", tags=["backup"])
+router = APIRouter(tags=["Backup"])
 
 
 # ---------------------------------------------------------------------------
