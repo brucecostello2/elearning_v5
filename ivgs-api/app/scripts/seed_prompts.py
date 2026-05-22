@@ -58,14 +58,14 @@ async def seed_prompts() -> None:
                 )
             )
             if existing.scalar_one_or_none():
-                logger.info(f"Skipping {prompt_type}: active global prompt already exists")
+                logger.info("Skipping %s: active global prompt already exists", prompt_type)
                 skipped += 1
                 continue
 
             # Read template file
             template_path = SEED_DIR / filename
             if not template_path.exists():
-                logger.warning(f"Template file not found: {template_path}")
+                logger.warning("Template file not found: %s", template_path)
                 continue
 
             prompt_text = template_path.read_text(encoding="utf-8").strip()
@@ -83,10 +83,10 @@ async def seed_prompts() -> None:
             )
             db.add(prompt)
             seeded += 1
-            logger.info(f"Seeded global prompt: {prompt_type} (v1)")
+            logger.info("Seeded global prompt: %s (v1)", prompt_type)
 
         await db.commit()
-        logger.info(f"Prompt seeding complete: {seeded} created, {skipped} skipped")
+        logger.info("Prompt seeding complete: %s created, %s skipped", seeded, skipped)
 
 
 if __name__ == "__main__":

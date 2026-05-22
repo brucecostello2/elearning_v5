@@ -140,7 +140,7 @@ class ProjectService:
 
         await self.db.commit()
         await self.db.refresh(project)
-        logger.info(f"Project created: id={project.id} name={project.name!r} by={current_user.username}")
+        logger.info("Project created: id=%s name=%s by=%s", project.id, repr(project.name), current_user.username)
         return await self._to_response(project)
 
     async def update_project(
@@ -161,7 +161,7 @@ class ProjectService:
         project.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(project)
-        logger.info(f"Project updated: id={project.id} fields={list(update_data.keys())}")
+        logger.info("Project updated: id=%s fields=%s", project.id, list(update_data.keys()))
         return await self._to_response(project)
 
     async def delete_project(
@@ -180,7 +180,7 @@ class ProjectService:
 
         await self.db.delete(project)
         await self.db.commit()
-        logger.info(f"Project deleted: id={project_id} by={current_user.username}")
+        logger.info("Project deleted: id=%s by=%s", project_id, current_user.username)
         return True
 
     async def transition_state(

@@ -32,7 +32,7 @@ async def _check_service(check_fn, service_name: str) -> ServiceStatus:
         )
     except Exception as e:
         latency_ms = round((time.monotonic() - start) * 1000, 2)
-        logger.error(f"Health check failed for {service_name}: {e}")
+        logger.error("Health check failed for %s: %s", service_name, e)
         return ServiceStatus(status="disconnected", latency_ms=latency_ms)
 
 

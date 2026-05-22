@@ -139,7 +139,7 @@ class TranscriptService:
                 try:
                     extracted_text = extractor(content)
                 except Exception as e:
-                    logger.error(f"Text extraction failed for {filename}: {e}")
+                    logger.error("Text extraction failed for %s: %s", filename, e)
                     extracted_text = None
             else:
                 # Try plain text fallback
@@ -210,7 +210,7 @@ class TranscriptService:
         transcript.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(transcript)
-        logger.info(f"Transcript updated: id={transcript_id}")
+        logger.info("Transcript updated: id=%s", transcript_id)
         return transcript
 
     async def delete_transcript(
@@ -225,7 +225,7 @@ class TranscriptService:
 
         await self.db.delete(transcript)
         await self.db.commit()
-        logger.info(f"Transcript deleted: id={transcript_id} from project={project_id}")
+        logger.info("Transcript deleted: id=%s from project=%s", transcript_id, project_id)
         return True
 
     async def reorder_transcripts(

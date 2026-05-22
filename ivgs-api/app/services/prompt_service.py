@@ -332,7 +332,7 @@ class PromptService:
             rendered = self.render_template(prompt_text, template_variables)
 
         # Stub response — real vLLM call in Phase 5
-        logger.info(f"Prompt Playground test: model={model_id} prompt_length={len(rendered)}")
+        logger.info("Prompt Playground test: model=%s prompt_length=%s", model_id, len(rendered))
         return {
             "rendered_prompt": rendered,
             "model_id": model_id,

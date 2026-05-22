@@ -47,7 +47,7 @@ async def create_user(
     await db.flush()
     await db.refresh(user)
 
-    logger.info(f"User created: username={username} role={role} id={user.id}")
+    logger.info("User created: username=%s role=%s id=%s", username, role, user.id)
     return user
 
 
@@ -112,7 +112,7 @@ async def update_user(
 
     if password is not None:
         user.password_hash = hash_password(password)
-        logger.info(f"User password changed: user={user.username}")
+        logger.info("User password changed: user=%s", user.username)
 
     if is_active is not None:
         user.is_active = is_active
@@ -133,6 +133,6 @@ async def delete_user(db: AsyncSession, user: User) -> None:
     Audit log entries referencing this user will have user_id set to NULL
     (per ON DELETE SET NULL foreign key).
     """
-    logger.info(f"User deleted: username={user.username} id={user.id}")
+    logger.info("User deleted: username=%s id=%s", user.username, user.id)
     await db.delete(user)
     await db.flush()

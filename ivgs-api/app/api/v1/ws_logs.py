@@ -85,7 +85,7 @@ async def stream_node_logs(
         await read_output()
 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket disconnected for node {node_id}")
+        logger.info("WebSocket disconnected for node %s", node_id)
     except Exception as exc:
         logger.exception(f"Log streaming error for {node_id}: {exc}")
         try:
@@ -135,7 +135,7 @@ async def stream_job_status(
                 await websocket.send_json({"type": "heartbeat", "job_id": job_id})
 
     except WebSocketDisconnect:
-        logger.info(f"Job status WebSocket disconnected for {job_id}")
+        logger.info("Job status WebSocket disconnected for %s", job_id)
     except Exception as exc:
         logger.exception(f"Job status streaming error: {exc}")
     finally:

@@ -193,4 +193,4 @@ class AuditMiddleware(BaseHTTPMiddleware):
 
         except Exception as e:
             # Audit failures must not break the request
-            logger.error(f"Audit logging failed: {e}", exc_info=True)
+            logger.error("Audit logging failed: %s", e, exc_info=True)

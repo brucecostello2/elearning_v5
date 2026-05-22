@@ -59,15 +59,15 @@ async def login(
     user = await get_user_by_username(db, username)
 
     if user is None:
-        logger.warning(f"Login failed: user not found — username={username}")
+        logger.warning("Login failed: user not found — username=%s", username)
         raise AuthenticationError("Invalid username or password")
 
     if not user.is_active:
-        logger.warning(f"Login failed: account inactive — username={username}")
+        logger.warning("Login failed: account inactive — username=%s", username)
         raise AuthenticationError("Account is deactivated")
 
     if not verify_password(password, user.password_hash):
-        logger.warning(f"Login failed: invalid password — username={username}")
+        logger.warning("Login failed: invalid password — username=%s", username)
         raise AuthenticationError("Invalid username or password")
 
     # Generate token pair
@@ -91,7 +91,7 @@ async def login(
     user.last_login_at = datetime.now(timezone.utc)
     await db.flush()
 
-    logger.info(f"Login successful: username={username} user_id={user.id}")
+    logger.info("Login successful: username=%s user_id=%s", username, user.id)
 
     return {
         "access_token": access_token,
@@ -186,7 +186,7 @@ async def refresh_tokens(refresh_token_str: str) -> dict:
         ttl = settings.REFRESH_TOKEN_EXPIRE_DAYS * 86400
         await redis_client.set(new_refresh_key, user_id, ex=ttl)
 
-    logger.info(f"Token refresh successful: user_id={user_id}")
+    logger.info("Token refresh successful: user_id=%s", user_id)
 
     return {
         "access_token": new_access_token,

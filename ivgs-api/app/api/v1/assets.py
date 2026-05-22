@@ -188,7 +188,7 @@ async def regenerate_asset(
     await db.commit()
     await db.refresh(job)
 
-    logger.info(f"Asset regeneration queued: asset={asset_id} job={job.id}")
+    logger.info("Asset regeneration queued: asset=%s job=%s", asset_id, job.id)
     return JobResponse.model_validate(job)
 
 

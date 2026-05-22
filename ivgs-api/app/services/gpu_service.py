@@ -147,7 +147,7 @@ class GpuService:
 
         await self.db.commit()
         await self.db.refresh(node)
-        logger.info(f"GPU node updated: id={node_id} fields={list(update_data.keys())}")
+        logger.info("GPU node updated: id=%s fields=%s", node_id, list(update_data.keys()))
         return await self._to_response(node)
 
     async def drain_node(self, node_id: UUID) -> Optional[GpuNodeResponse]:

@@ -206,7 +206,7 @@ class AssetService:
         # Download from SeaweedFS
         content = await seaweedfs_client.download(asset.seaweedfs_path)
         if content is None:
-            logger.error(f"SeaweedFS download failed: path={asset.seaweedfs_path}")
+            logger.error("SeaweedFS download failed: path=%s", asset.seaweedfs_path)
             return None
 
         # Extract filename from path
@@ -240,10 +240,10 @@ class AssetService:
             try:
                 await seaweedfs_client.delete(asset.seaweedfs_path)
             except Exception as e:
-                logger.error(f"SeaweedFS delete failed: path={asset.seaweedfs_path} error={e}")
+                logger.error("SeaweedFS delete failed: path=%s error=%s", asset.seaweedfs_path, e)
 
         # Delete from database
         await self.db.delete(asset)
         await self.db.commit()
-        logger.info(f"Asset deleted: id={asset_id}")
+        logger.info("Asset deleted: id=%s", asset_id)
         return True

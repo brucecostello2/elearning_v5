@@ -65,7 +65,7 @@ class StoryboardService:
         self.db.add(scene)
         await self.db.commit()
         await self.db.refresh(scene)
-        logger.info(f"Scene created: id={scene.id} project={project_id} index={scene_index}")
+        logger.info("Scene created: id=%s project=%s index=%s", scene.id, project_id, scene_index)
         return scene
 
     async def update_scene(
@@ -94,7 +94,7 @@ class StoryboardService:
         scene.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(scene)
-        logger.info(f"Scene updated: id={scene_id}")
+        logger.info("Scene updated: id=%s", scene_id)
         return scene
 
     async def delete_scene(
@@ -107,7 +107,7 @@ class StoryboardService:
 
         await self.db.delete(scene)
         await self.db.commit()
-        logger.info(f"Scene deleted: id={scene_id} from project={project_id}")
+        logger.info("Scene deleted: id=%s from project=%s", scene_id, project_id)
         return True
 
     async def reorder_scenes(

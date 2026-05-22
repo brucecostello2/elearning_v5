@@ -88,7 +88,7 @@ class LanguageService:
 
         await self.db.commit()
         await self.db.refresh(variant)
-        logger.info(f"Language variant created: {language_code} for project={project_id}")
+        logger.info("Language variant created: %s for project=%s", language_code, project_id)
         return variant
 
     async def retry_variant(

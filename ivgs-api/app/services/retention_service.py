@@ -88,7 +88,7 @@ class RetentionService:
         await self.db.commit()
         await self.db.refresh(policy)
 
-        logger.info(f"Retention policy created: id={policy.id} name={policy.name!r}")
+        logger.info("Retention policy created: id=%s name=%s", policy.id, repr(policy.name))
         return RetentionPolicyResponse.model_validate(policy)
 
     async def update_policy(

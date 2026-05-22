@@ -81,7 +81,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if bucket == "login":
             lockout_key = f"ratelimit:lockout:{client_ip}"
             if await redis_client.exists(lockout_key):
-                logger.warning(f"Rate limit lockout active for IP={client_ip}")
+                logger.warning("Rate limit lockout active for IP=%s", client_ip)
                 return JSONResponse(
                     status_code=429,
                     content={

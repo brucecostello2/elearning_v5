@@ -25,7 +25,7 @@ async def main(username: str, password: str, role: str) -> None:
     async with get_db_context() as db:
         existing = await get_user_by_username(db, username)
         if existing:
-            logger.info(f"User '{username}' already exists — skipping creation")
+            logger.info("User '%s' already exists — skipping creation", username)
             print(f"User '{username}' already exists.")
             return
 
@@ -51,5 +51,5 @@ if __name__ == "__main__":
     try:
         asyncio.run(main(args.username, args.password, args.role))
     except Exception as e:
-        logger.error(f"Failed to create admin user: {e}")
+        logger.error("Failed to create admin user: %s", e)
         sys.exit(1)

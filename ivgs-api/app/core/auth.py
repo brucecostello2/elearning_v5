@@ -127,7 +127,7 @@ async def blacklist_token(jti: str, expire_seconds: int = 3600) -> None:
     """
     blacklist_key = f"token:blacklist:{jti}"
     await redis_client.set(blacklist_key, "1", ex=expire_seconds)
-    logger.info(f"Token blacklisted: jti={jti} for {expire_seconds}s")
+    logger.info("Token blacklisted: jti=%s for %ss", jti, expire_seconds)
 
 
 async def blacklist_all_user_tokens(user_id: str) -> None:
@@ -139,4 +139,4 @@ async def blacklist_all_user_tokens(user_id: str) -> None:
     invalidation_key = f"user:invalidated_before:{user_id}"
     now_ts = str(int(__import__("time").time()))
     await redis_client.set(invalidation_key, now_ts, ex=86400 * 8)
-    logger.info(f"All tokens invalidated for user_id={user_id}")
+    logger.info("All tokens invalidated for user_id=%s", user_id)

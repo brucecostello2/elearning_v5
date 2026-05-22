@@ -38,7 +38,7 @@ class ErrorHandlerMiddleware(BaseHTTPMiddleware):
             return response
 
         except RequestValidationError as e:
-            logger.warning(f"Validation error: {e.errors()}")
+            logger.warning("Validation error: %s", e.errors())
             return JSONResponse(
                 status_code=422,
                 content={

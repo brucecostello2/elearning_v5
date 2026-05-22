@@ -86,7 +86,7 @@ async def auth_logout(
     access_token = auth_header.replace("Bearer ", "") if auth_header else ""
 
     await logout(access_token=access_token)
-    logger.info(f"User logged out: username={current_user.username}")
+    logger.info("User logged out: username=%s", current_user.username)
     return LogoutResponse()
 
 

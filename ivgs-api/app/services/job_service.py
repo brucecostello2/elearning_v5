@@ -73,7 +73,7 @@ class JobService:
         await self.db.commit()
         await self.db.refresh(job)
 
-        logger.info(f"Job cancelled: id={job_id}")
+        logger.info("Job cancelled: id=%s", job_id)
 
         # Phase 5: revoke Celery task
         # if job.celery_task_id:

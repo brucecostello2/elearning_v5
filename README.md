@@ -466,6 +466,31 @@ See [`docs/deployment/`](docs/deployment/) for per-node deployment guides.
 - CI runs on all pushes to `main`, `develop`, `feature/**`, and `hotfix/**`
 - CD pipeline triggers only on push to `main`
 
+## Security
+
+### Self-Hosted Mandate (§1.3.3)
+All AI inference runs on local GPU hardware. **Zero cloud API dependencies.**
+A CI compliance scanner (`compliance-check.yml`) rejects any PR that introduces
+imports of `openai`, `anthropic`, `elevenlabs`, `d-id`, or similar cloud SDKs.
+
+### Environment Secrets
+- Copy `.env.template` → `.env` before deployment
+- **Replace ALL `CHANGE_ME_*` values** with strong random secrets
+- Generate secrets with:
+  ```bash
+  python3 -c "import secrets; print(secrets.token_hex(64))"    # JWT_SECRET_KEY
+  python3 -c "import secrets; print(secrets.token_urlsafe(32))" # DATABASE password
+  ```
+- `.env` files are `.gitignore`-d — never commit real secrets
+
+### Security Audit Status (v5.0.1)
+- ✅ 0 HIGH-severity Bandit findings (Jinja2 XSS fixed with `select_autoescape`)
+- ✅ All SQL queries use parameterized execution (no string interpolation)
+- ✅ No hardcoded credentials in source code
+- ✅ Non-root Docker containers (`USER ivgs`)
+- ✅ HEALTHCHECK directives on all containers
+- ⚠️ 20 MEDIUM-severity Bandit findings (B104 bind 0.0.0.0, B108 /tmp usage — expected in containers)
+
 ## License
 
 **Private** — All rights reserved. Not for redistribution.
