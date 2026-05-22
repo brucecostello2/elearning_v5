@@ -196,7 +196,7 @@ services:
       LOG_FORMAT: ${LOG_FORMAT:-json}
       NODE_HOSTNAME: node-01
     ports:
-      - "8000:8000"
+      - "8001:8001"
     volumes:
       - ./shared:/app/shared:ro
       - ./ivgs-api:/app:ro

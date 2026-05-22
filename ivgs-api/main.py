@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from shared.database import check_db_connection, dispose_engine
 from shared.redis_client import redis_client
@@ -53,7 +54,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="IVGS v5 API",
     description="Instructional Video Generation System — Version 5.0",
-    version="5.0.0",
+    version="5.1.0",
     lifespan=lifespan,
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
@@ -63,7 +64,10 @@ app = FastAPI(
 # --- Middleware stack (order matters: outermost first) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "http://localhost:3001",
+        f"http://{os.environ.get('FRONTEND_HOST', 'localhost')}:3001",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -94,7 +98,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
-        port=8000,
+        port=int(os.environ.get("UVICORN_PORT", "8001")),
         reload=False,
         log_config=None,
     )

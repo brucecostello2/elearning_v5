@@ -94,3 +94,4 @@ models/
 *.so
 *.dylib
 ivgs-frontend/tsconfig.tsbuildinfo
+.logs/
