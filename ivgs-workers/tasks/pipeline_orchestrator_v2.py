@@ -104,19 +104,19 @@ STAGE_TASK_MAP: Dict[str, str] = {
         "tasks.stage3_images.generate_scene_images"  # Animations via same Stage 3
     ),
     PipelineStage.COMPOSITION_MANIFEST.value: (
-        "tasks.pipeline_orchestrator_v2.build_composition_manifest"
+        "tasks.stage4_manifest.build_composition_manifest"
     ),
     PipelineStage.TTS_AUDIO.value: (
-        "tasks.stage4_voiceover.synthesize_voiceover"
+        "tasks.stage5_voiceover.synthesize_voiceover"
     ),
     PipelineStage.TALKING_HEAD_RENDER.value: (
-        "tasks.talking_head_task.render_talking_head"
+        "tasks.stage6_talking_head.render_talking_head"
     ),
     PipelineStage.PROTOTYPE_DRAFT.value: (
-        "tasks.prototype_draft_task.assemble_prototype_draft"
+        "tasks.stage7_prototype_draft.assemble_prototype_draft"
     ),
     PipelineStage.FINAL_RENDER.value: (
-        "tasks.final_render_task.render_final"
+        "tasks.stage8_final_render.render_final"
     ),
 }
 

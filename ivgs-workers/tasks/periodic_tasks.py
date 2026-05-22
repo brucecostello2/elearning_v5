@@ -29,12 +29,27 @@ Integration:
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Tuple
 
 import structlog
 from celery import shared_task
 from celery.schedules import crontab
+
+
+def _parse_retention_cron(cron_expr: str) -> Tuple[int, int]:
+    """
+    Parse a standard 5-field cron expression into (minute, hour) for crontab().
+
+    Only minute and hour are extracted; day/month/weekday default to '*'.
+    Format: "minute hour day month weekday"
+    Example: "0 2 * * *" → (0, 2)
+    """
+    parts = cron_expr.strip().split()
+    minute = int(parts[0]) if len(parts) > 0 and parts[0] != "*" else 0
+    hour = int(parts[1]) if len(parts) > 1 and parts[1] != "*" else 0
+    return minute, hour
 
 logger = structlog.get_logger(__name__)
 
@@ -81,10 +96,13 @@ def get_beat_schedule() -> dict[str, dict[str, Any]]:
                 "expires": 3600,  # 1 hour to complete
             },
         },
-        # Retention migration — daily at 03:00 UTC
+        # Retention migration — configurable via RETENTION_JOB_CRON env (default: daily 02:00 UTC)
         "retention-migration-daily": {
             "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
-            "schedule": crontab(hour=3, minute=0),
+            "schedule": crontab(
+                minute=_parse_retention_cron(os.environ.get("RETENTION_JOB_CRON", "0 2 * * *"))[0],
+                hour=_parse_retention_cron(os.environ.get("RETENTION_JOB_CRON", "0 2 * * *"))[1],
+            ),
             "options": {
                 "queue": "default",
                 "expires": 3600,

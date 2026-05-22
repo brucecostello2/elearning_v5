@@ -11,7 +11,7 @@ from pydantic import BaseModel
 
 from app.api.deps import get_current_user, get_db, require_admin
 
-router = APIRouter(prefix="/api/v1/quotas", tags=["quotas"])
+router = APIRouter(tags=["Quotas"])
 
 
 class QuotaResponse(BaseModel):

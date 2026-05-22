@@ -47,7 +47,7 @@ services:
   # Redis broker
   # =========================================================================
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4.2-alpine3.20
     container_name: ivgs-redis
     command: >
       redis-server
@@ -71,7 +71,7 @@ services:
   # PostgreSQL result backend
   # =========================================================================
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.6-alpine3.20
     container_name: ivgs-postgres-results
     environment:
       POSTGRES_DB: ivgs_results

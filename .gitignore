@@ -81,7 +81,9 @@ logs/
 *.onnx
 *.pt
 *.pth
-models/
+# ML model weight files (not ORM models in app/models/)
+/models/
+!**/app/models/
 
 # Backup files
 *.bak
@@ -94,3 +96,6 @@ models/
 *.so
 *.dylib
 ivgs-frontend/tsconfig.tsbuildinfo
+.logs/
+.next/
+ivgs-frontend/.next/

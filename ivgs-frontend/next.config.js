@@ -3,8 +3,8 @@
 /*
  * IVGS v5 — Next.js Configuration
  *
- * API proxy: /api/v1/* → http://node-01:8000/api/v1/*
- * Scheduler proxy: /scheduler/* → http://node-01:8001/*
+ * API proxy: /api/v1/* → http://node-01:8001/api/v1/*
+ * Scheduler proxy: /scheduler/* → http://node-01:8002/*
  *
  * Per §8: Dashboard served on node-01 via Nginx.
  * In development, rewrites proxy API requests to avoid CORS.
@@ -28,9 +28,9 @@ const nextConfig = {
 
   /* API proxy rewrites for development */
   async rewrites() {
-    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
     const schedulerBaseUrl =
-      process.env.NEXT_PUBLIC_SCHEDULER_URL || "http://localhost:8001";
+      process.env.NEXT_PUBLIC_SCHEDULER_URL || "http://localhost:8002";
 
     return [
       {
