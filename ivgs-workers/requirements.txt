@@ -12,7 +12,7 @@ kombu==5.4.2
 
 # --- PostgreSQL Result Backend ---
 psycopg2-binary==2.9.10
-SQLAlchemy==2.0.36
+SQLAlchemy==2.0.35
 
 # --- HTTP Client (vLLM, API calls) ---
 httpx==0.28.1
