@@ -93,3 +93,4 @@ models/
 # Compiled
 *.so
 *.dylib
+ivgs-frontend/tsconfig.tsbuildinfo

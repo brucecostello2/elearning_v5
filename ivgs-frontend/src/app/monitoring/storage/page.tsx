@@ -70,7 +70,7 @@ const STORAGE_TIERS: { id: StorageTier; label: string; color: string; descriptio
   },
 ];
 
-export default function StorageAnalyticsPage(): React.ReactElement {
+export default function StorageAnalyticsPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();

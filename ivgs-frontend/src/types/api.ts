@@ -350,3 +350,43 @@ export interface PaginatedResponse<T> {
   per_page: number;
   total_pages: number;
 }
+
+// ---------------------------------------------------------------------------
+// Convenience Type Aliases
+// ---------------------------------------------------------------------------
+// Components import these short names; they map to the *Response interfaces.
+
+export type Project = ProjectResponse & {
+  /** Populated by joined query — display name of creator */
+  created_by_name?: string;
+};
+
+export type Asset = AssetResponse;
+
+export type RenderJob = JobResponse & {
+  /** Computed fields added by the API for pipeline views */
+  current_stage?: string;
+  has_checkpoint?: boolean;
+  checkpoint_data?: Record<string, unknown>;
+  assigned_node?: string;
+  assigned_gpu?: string;
+  duration_seconds?: number;
+};
+
+export type Transcript = TranscriptResponse & {
+  /** Alias used in hooks */
+  filename?: string;
+};
+
+export type LanguageVariant = LanguageVariantResponse;
+
+export type RenderVariant = LanguageVariantResponse;
+
+export type VideoQuality = "1080p" | "4k" | "720p";
+
+export interface ProjectCreatePayload {
+  name: string;
+  description?: string;
+  max_runtime_seconds?: number;
+  target_languages?: string[];
+}

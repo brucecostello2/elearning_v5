@@ -1,0 +1,260 @@
+/**
+ * IVGS v5 — Monitoring & Admin Type Definitions
+ *
+ * Types consumed by monitoring dashboards, DLQ views, GPU fleet status,
+ * pipeline visualizations, storage analytics, and admin user management.
+ *
+ * Spec references: §8.1–8.3, §10.1, §11.1, §13.1, §16.2
+ */
+
+// ────────────────────────────────────────────────────────────────────────────
+// User & Admin (§16.2)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type UserRole = "admin" | "operator" | "viewer";
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  created_at: string;
+  last_login: string | null;
+}
+
+export interface CreateUserPayload {
+  username: string;
+  password: string;
+  role: UserRole;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Pipeline (§8.2.1, §6.1)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type PipelineStage =
+  | "TRANSCRIPT_REFINEMENT"
+  | "STORYBOARD_GENERATION"
+  | "MEDIA_GENERATION"
+  | "MANIFEST_GENERATION"
+  | "AUDIO_GENERATION"
+  | "TALKING_HEAD_RENDER"
+  | "PROTOTYPE_DRAFT"
+  | "FINAL_RENDER"
+  | "LOCALISATION";
+
+export type PipelineStageStatus =
+  | "pending"
+  | "running"
+  | "complete"
+  | "failed"
+  | "skipped";
+
+export type FallbackLevel = "none" | "provider" | "model" | "full";
+
+export interface CheckpointData {
+  stage: PipelineStage;
+  status: PipelineStageStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  fallback_level: FallbackLevel;
+  error_message?: string;
+}
+
+export interface PipelineJob {
+  id: string;
+  project_name: string;
+  status: string;
+  progress: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  estimated_completion: string | null;
+  fallback_level: FallbackLevel;
+}
+
+export interface PipelineJobDetail {
+  id: string;
+  status: string;
+  current_stage: PipelineStage | null;
+  error_stage: PipelineStage | null;
+  error_message: string | null;
+  fallback_level: FallbackLevel;
+  checkpoints: CheckpointData[];
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// GPU Fleet (§8.2.2)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface GPUNode {
+  node_id: string;
+  status: "online" | "offline" | "draining";
+  utilization_pct: number;
+  total_vram_mb: number;
+  used_vram_mb: number;
+  temperature_c: number;
+  tdp_watts: number;
+  cpu_percent: number;
+  ram_percent: number;
+  active_job: string | null;
+  queued_jobs: number;
+}
+
+export interface GPUUtilizationPoint {
+  timestamp: string;
+  node_id: string;
+  utilization_pct: number;
+  vram_used_mb: number;
+  temperature_c: number;
+}
+
+export interface ModelResidencyEntry {
+  node_id: string;
+  model_name: string;
+  loaded_at: string;
+  vram_mb: number;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Dead Letter Queue (§10.1)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type DLQCategory =
+  | "transient"
+  | "config"
+  | "external"
+  | "resource"
+  | "unknown";
+
+export interface DLQMessage {
+  id: string;
+  task_name: string;
+  error_message: string;
+  category: DLQCategory;
+  retry_count: number;
+  entered_dlq_at: string;
+}
+
+export interface DLQResolutionEntry {
+  action: string;
+  reason: string;
+  performed_by: string;
+  performed_at: string;
+  result: string;
+}
+
+export interface DLQMessageDetail {
+  id: string;
+  task_name: string;
+  category: DLQCategory;
+  retry_count: number;
+  entered_dlq_at: string;
+  traceback: string;
+  task_arguments: Record<string, unknown>;
+  resolution_history: DLQResolutionEntry[];
+}
+
+export interface DLQAnalyticsData {
+  category_counts: Record<DLQCategory, number>;
+  top_tasks: Array<{ task_name: string; count: number }>;
+  trend_data: Array<{ date: string; count: number }>;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Quality (§11.1)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type QualityDecision = "approved" | "flagged" | "rejected";
+
+export type QualityMetricType =
+  | "aesthetic"
+  | "safety"
+  | "consistency"
+  | "technical";
+
+export interface FlaggedAsset {
+  asset_id: string;
+  project_name: string;
+  scene_index: number;
+  asset_type: string;
+  thumbnail_url: string;
+  quality_score: number;
+  safety_score: number;
+  metrics: Record<QualityMetricType, number>;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Composition Timeline (§13.1)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type ManifestLockStatus = "draft" | "locked" | "rendered" | "invalid";
+
+export type RenderSegmentStatus =
+  | "pending"
+  | "rendering"
+  | "complete"
+  | "failed";
+
+export type TimelineLayer =
+  | "video"
+  | "audio"
+  | "overlay"
+  | "transition"
+  | "subtitle";
+
+export interface TimelineSegment {
+  id: string;
+  layer: TimelineLayer;
+  start_seconds: number;
+  duration_seconds: number;
+  asset_id: string;
+  status: RenderSegmentStatus;
+}
+
+export interface CompositionManifest {
+  id: string;
+  project_id: string;
+  status: ManifestLockStatus;
+  scene_count: number;
+  total_duration_seconds: number;
+  segments: TimelineSegment[];
+  locked_at: string | null;
+  rendered_at: string | null;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Storage Analytics (§14.1)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type StorageTier = "hot" | "warm" | "cold" | "archive";
+
+export interface StorageTierData {
+  tier: StorageTier;
+  used_bytes: number;
+  total_bytes: number;
+  asset_count: number;
+}
+
+export interface QuotaEntry {
+  user_id: string;
+  username: string;
+  used_bytes: number;
+  quota_bytes: number;
+}
+
+export interface TierMigration {
+  asset_id: string;
+  project_name: string;
+  current_tier: StorageTier;
+  target_tier: StorageTier;
+  size_bytes: number;
+  scheduled_at: string;
+}
+
+export interface OrphanAsset {
+  seaweedfs_fid: string;
+  path: string;
+  size_bytes: number;
+  last_modified: string;
+  reason: string;
+}

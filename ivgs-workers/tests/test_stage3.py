@@ -176,8 +176,7 @@ class TestStage3ImageGeneration:
             content="A modern classroom, natural lighting, high quality, 8K\nNEGATIVE: blurry, dark"
         )
 
-        mock_validator = Ma
-gicMock(spec=ImageValidator)
+        mock_validator = MagicMock(spec=ImageValidator)
         mock_validator.validate.return_value = mock_validation_result
 
         with patch(

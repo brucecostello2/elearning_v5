@@ -56,7 +56,7 @@ const DLQ_CATEGORIES: { value: DLQCategory | "ALL"; label: string }[] = [
 /** Page size options for pagination */
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
 
-export default function DLQDashboardPage(): React.ReactElement {
+export default function DLQDashboardPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();

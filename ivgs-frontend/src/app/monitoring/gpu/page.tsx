@@ -69,7 +69,7 @@ const GPU_LABELS: Record<string, string> = {
 /** View mode for the page */
 type GPUViewMode = "cards" | "heatmap";
 
-export default function GPUFleetStatusPage(): React.ReactElement {
+export default function GPUFleetStatusPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();

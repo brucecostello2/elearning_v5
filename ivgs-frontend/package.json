@@ -2,7 +2,7 @@
   "name": "ivgs-frontend",
   "version": "5.0.0",
   "private": true,
-  "description": "IVGS v5 Dashboard — Next.js 14 unified content creation and operational monitoring",
+  "description": "IVGS v5 Dashboard \u2014 Next.js 14 unified content creation and operational monitoring",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
@@ -13,17 +13,22 @@
     "format:check": "prettier --check 'src/**/*.{ts,tsx,css}'"
   },
   "dependencies": {
-    "next": "14.2.15",
-    "react": "18.3.1",
-    "react-dom": "18.3.1",
+    "chart.js": "4.4.4",
     "clsx": "2.1.1",
     "date-fns": "3.6.0",
     "lucide-react": "0.441.0",
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-beautiful-dnd": "13.1.1",
+    "react-chartjs-2": "5.2.0",
+    "react-dom": "18.3.1",
+    "swr": "2.2.5",
     "zod": "3.23.8"
   },
   "devDependencies": {
     "@types/node": "20.16.10",
     "@types/react": "18.3.11",
+    "@types/react-beautiful-dnd": "13.1.8",
     "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.20",
     "eslint": "8.57.1",

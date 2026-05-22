@@ -73,7 +73,7 @@ const ASSET_TYPE_FILTERS = [
   { value: "TALKING_HEAD", label: "Talking Heads" },
 ] as const;
 
-export default function QualityReviewPage(): React.ReactElement {
+export default function QualityReviewPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();

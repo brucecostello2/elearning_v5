@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+
 import { useAuth } from "@/hooks/useAuth";
 import { useCompositionTimeline } from "@/hooks/useMonitoring";
 import TimelineEditor from "@/components/monitoring/TimelineEditor";
@@ -64,7 +66,7 @@ const SEGMENT_STATUS_COLORS: Record<RenderSegmentStatus, string> = {
   FAILED: "#F87171",
 };
 
-export default function CompositionTimelinePage(): React.ReactElement {
+function CompositionTimelinePageInner(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();
@@ -660,5 +662,13 @@ export default function CompositionTimelinePage(): React.ReactElement {
         </div>
       </div>
     </ErrorBoundary>
+  );
+}
+
+export default function CompositionTimelinePage(): React.ReactElement {
+  return (
+    <Suspense fallback={<LoadingSpinner size="lg" label="Loading timeline..." />}>
+      <CompositionTimelinePageInner />
+    </Suspense>
   );
 }

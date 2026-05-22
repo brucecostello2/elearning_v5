@@ -10,6 +10,8 @@ import { clsx } from "clsx";
 interface LoadingSpinnerProps {
   size?: "sm" | "md" | "lg";
   className?: string;
+  /** Optional label displayed below the spinner */
+  label?: string;
 }
 
 const SIZE_CLASSES = {
@@ -21,8 +23,10 @@ const SIZE_CLASSES = {
 export function LoadingSpinner({
   size = "md",
   className,
+  label,
 }: LoadingSpinnerProps) {
   return (
+    <>
     <svg
       className={clsx("animate-spin text-ivgs-400", SIZE_CLASSES[size], className)}
       xmlns="http://www.w3.org/2000/svg"
@@ -44,5 +48,9 @@ export function LoadingSpinner({
         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
       />
     </svg>
+    {label && <span className="mt-2 text-sm text-gray-400">{label}</span>}
+    </>
   );
 }
+
+export default LoadingSpinner;

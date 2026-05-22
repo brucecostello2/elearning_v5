@@ -127,3 +127,36 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     </ToastContext.Provider>
   );
 }
+
+// ── Standalone Toast component (for pages that manage their own toast state) ──
+
+interface StandaloneToastProps {
+  message: string;
+  type: ToastType;
+  onClose: () => void;
+}
+
+function Toast({ message, type, onClose }: StandaloneToastProps) {
+  return (
+    <div
+      className={clsx(
+        "pointer-events-auto flex animate-slide-up items-center gap-2 rounded-lg border px-4 py-3 text-sm shadow-lg",
+        TOAST_STYLES[type],
+      )}
+    >
+      {TOAST_ICONS[type]}
+      <span>{message}</span>
+      <button
+        onClick={onClose}
+        className="ml-2 opacity-60 transition-opacity hover:opacity-100"
+        aria-label="Dismiss"
+      >
+        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+export default Toast;

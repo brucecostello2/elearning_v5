@@ -29,9 +29,17 @@ import type { Project, ProjectState } from "@/types/api";
 /** All possible project states for filter dropdown */
 const PROJECT_STATES: ProjectState[] = [
   "DRAFT",
-  "IN_PROGRESS",
-  "REVIEW",
+  "TRANSCRIPT_REFINEMENT",
+  "STORYBOARD_GENERATION",
+  "MEDIA_GENERATION",
+  "MANIFEST_GENERATION",
+  "AUDIO_GENERATION",
+  "TALKING_HEAD_RENDER",
+  "PROTOTYPE_DRAFT",
+  "USER_REVIEW",
+  "FINAL_RENDER",
   "COMPLETE",
+  "LOCALISATION",
   "ERROR",
 ];
 

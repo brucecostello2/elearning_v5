@@ -51,7 +51,7 @@ const USER_ROLES: { value: UserRole; label: string; description: string }[] = [
   },
 ];
 
-export default function UserManagementPage(): React.ReactElement {
+export default function UserManagementPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user: currentUser } = useAuth();
   const router = useRouter();

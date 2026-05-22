@@ -87,7 +87,7 @@ const JOB_STATE_FILTERS = [
   { value: "PENDING", label: "Pending" },
 ] as const;
 
-export default function PipelineMonitoringPage(): React.ReactElement {
+export default function PipelineMonitoringPage(): React.ReactElement | null {
   // ── Auth Guard ──────────────────────────────────────────────────────
   const { user } = useAuth();
   const router = useRouter();

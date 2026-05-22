@@ -570,8 +570,7 @@ def build_composition_manifest(
             checkpoint_data={
                 "manifest_id": manifest_id,
                 "scene_count": manifest.scene_count,
-                "total_duration": manifest.tota
-l_duration_seconds,
+                "total_duration": manifest.total_duration_seconds,
             },
         )
 
