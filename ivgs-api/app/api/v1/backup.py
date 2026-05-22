@@ -99,6 +99,9 @@ async def list_backup_records(
         where_clauses.append("status = :status_filter")
         params["status_filter"] = status_filter
 
+    # SECURITY NOTE: where_clauses contains only hardcoded column comparisons
+    # with :named_param placeholders. Actual values are in params dict and
+    # passed to execute() separately — this is parameterized, not injectable.
     where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
 
     # Count total

@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 import structlog
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader, Environment, select_autoescape
 
 from celery_app import IVGSBaseTask, celery_app
 from clients.flux_client import (
@@ -74,7 +74,7 @@ from utils.media_converter import (
 
 logger = structlog.get_logger("ivgs.stage3.images")
 
-jinja_env = Environment(loader=BaseLoader(), autoescape=False)
+jinja_env = Environment(loader=BaseLoader(), autoescape=select_autoescape(default_for_string=False, default=False))
 
 
 # ---------------------------------------------------------------------------

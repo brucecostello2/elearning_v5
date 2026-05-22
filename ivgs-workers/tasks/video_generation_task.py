@@ -34,7 +34,7 @@ from typing import Any, Dict, List, Optional
 
 import httpx
 import structlog
-from jinja2 import BaseLoader, Environment
+from jinja2 import BaseLoader, Environment, select_autoescape
 from pydantic import BaseModel, Field
 
 from celery_app import IVGSBaseTask, celery_app
@@ -60,7 +60,7 @@ from utils.video_validator import VideoQualityDecision, VideoValidator
 
 logger = structlog.get_logger("ivgs.video_generation")
 
-jinja_env = Environment(loader=BaseLoader(), autoescape=False)
+jinja_env = Environment(loader=BaseLoader(), autoescape=select_autoescape(default_for_string=False, default=False))
 
 
 # ---------------------------------------------------------------------------

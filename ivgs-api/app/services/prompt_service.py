@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import Dict, List, Optional
 from uuid import UUID
 
-from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError
+from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError, select_autoescape
 from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 jinja_env = Environment(
     loader=BaseLoader(),
     undefined=__import__("jinja2").DebugUndefined,
-    autoescape=False,
+    autoescape=select_autoescape(default_for_string=False, default=False),
 )
 
 # Template variables available per §9.4

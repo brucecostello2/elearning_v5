@@ -30,7 +30,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 import structlog
-from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError
+from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError, select_autoescape
 
 from celery_app import IVGSBaseTask, celery_app
 from clients.vllm_client import (
@@ -67,7 +67,7 @@ logger = structlog.get_logger("ivgs.stage2.storyboard")
 
 jinja_env = Environment(
     loader=BaseLoader(),
-    autoescape=False,
+    autoescape=select_autoescape(default_for_string=False, default=False),
     keep_trailing_newline=True,
 )
 
