@@ -21,7 +21,7 @@ services:
   # PostgreSQL 17 with TimescaleDB
   # ---------------------------------------------------------------
   postgres:
-    image: timescale/timescaledb:latest-pg17
+    image: timescale/timescaledb:2.18.0-pg17
     container_name: ivgs-postgres
     environment:
       POSTGRES_USER: ivgs
@@ -45,7 +45,7 @@ services:
 
   # Create the filer metadata database
   postgres-init:
-    image: timescale/timescaledb:latest-pg17
+    image: timescale/timescaledb:2.18.0-pg17
     container_name: ivgs-postgres-init
     depends_on:
       postgres:
@@ -90,7 +90,7 @@ services:
   # SeaweedFS Master
   # ---------------------------------------------------------------
   seaweedfs-master:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:3.80
     container_name: ivgs-seaweedfs-master
     ports:
       - "9333:9333"
@@ -112,7 +112,7 @@ services:
   # SeaweedFS Volume Server
   # ---------------------------------------------------------------
   seaweedfs-volume:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:3.80
     container_name: ivgs-seaweedfs-volume
     depends_on:
       seaweedfs-master:
@@ -145,7 +145,7 @@ services:
   # SeaweedFS Filer
   # ---------------------------------------------------------------
   seaweedfs-filer:
-    image: chrislusf/seaweedfs:latest
+    image: chrislusf/seaweedfs:3.80
     container_name: ivgs-seaweedfs-filer
     depends_on:
       seaweedfs-master:

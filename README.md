@@ -483,13 +483,42 @@ imports of `openai`, `anthropic`, `elevenlabs`, `d-id`, or similar cloud SDKs.
   ```
 - `.env` files are `.gitignore`-d — never commit real secrets
 
-### Security Audit Status (v5.0.1)
+### Security Audit Status (v5.1.0)
 - ✅ 0 HIGH-severity Bandit findings (Jinja2 XSS fixed with `select_autoescape`)
 - ✅ All SQL queries use parameterized execution (no string interpolation)
 - ✅ No hardcoded credentials in source code
 - ✅ Non-root Docker containers (`USER ivgs`)
 - ✅ HEALTHCHECK directives on all containers
 - ⚠️ 20 MEDIUM-severity Bandit findings (B104 bind 0.0.0.0, B108 /tmp usage — expected in containers)
+
+## Changelog
+
+### v5.1.0 — Full Spec Compliance Remediation (2026-05-22)
+
+**Security & Critical Fixes:**
+- Removed self-registration page (`/register`) — admin-only user creation per §5.1.9/§16
+- Fixed service ports: FastAPI 8000→8001, Frontend 3000→3001 per spec §3.1
+- Consolidated duplicate gallery routes: `/gallery` merged into root `/` per §8.1.1
+- CORS updated from hardcoded to environment-configurable origins
+
+**Architecture Refactoring:**
+- Created `TalkingHeadProvider` ABC in `shared/providers/` (§6.2 Table 6-4)
+- Added `SadTalkerClient` as fallback talking head provider (§7.1.8)
+- Moved all docker-compose files to `ivgs-infra/` per spec §15.2
+- Fixed pipeline stage numbering (8 stages 1–8, was 5 stages with off-by-one)
+- Created missing `stage4_manifest.py` (Composition Manifest Generation)
+
+**Complete Implementations:**
+- Created `PromptTag` ORM model + association table for Prompt Library (§9.5)
+- Created 8 missing ORM models: WorkerHeartbeat, TaskRetry, CompositionManifest,
+  RenderSegment, GpuMetricsHistory, StorageQuota, BackupRecord, FallbackPolicy
+- Registered all 20 API route modules (was only 3: health, auth, users)
+- Made retention job timing configurable via `RETENTION_JOB_CRON` env var
+
+**Code Quality:**
+- Enabled Mypy strict mode in `pyproject.toml`
+- Pinned all Docker base images (no `:latest` tags)
+- Fixed `.gitignore` pattern that was excluding ORM model files
 
 ## License
 

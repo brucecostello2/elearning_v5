@@ -159,7 +159,7 @@ services:
   # Intel GPU utilization, memory, power metrics
   # ---------------------------------------------------------------------------
   intel-gpu-exporter:
-    image: ghcr.io/brucecostello2/ivgs-workers:intel-gpu-exporter-${IVGS_WORKERS_TAG:-latest}
+    image: ghcr.io/brucecostello2/ivgs-workers:intel-gpu-exporter-${IVGS_WORKERS_TAG:-v5.1.0}
     container_name: ivgs-intel-gpu-exporter
     <<: [*common-restart, *common-logging]
     devices:

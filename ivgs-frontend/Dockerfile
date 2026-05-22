@@ -1,6 +1,6 @@
 # IVGS v5 — Next.js 14 Frontend (ivgs-frontend)
 # Node 20 alpine, multi-stage build
-FROM node:20-alpine AS builder
+FROM node:20.18-alpine3.20 AS builder
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ COPY ivgs-frontend/ ./
 RUN npm run build
 
 # --- Runtime stage ---
-FROM node:20-alpine
+FROM node:20.18-alpine3.20
 
 RUN addgroup -S ivgs && adduser -S ivgs -G ivgs
 
