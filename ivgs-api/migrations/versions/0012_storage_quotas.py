@@ -6,6 +6,7 @@ Revises: 0011
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0012"
@@ -24,7 +25,7 @@ def upgrade() -> None:
         sa.Column("max_bytes", sa.BigInteger, nullable=False),
         sa.Column("current_bytes", sa.BigInteger, nullable=False,
                   server_default="0"),
-        sa.Column("tier", sa.Enum(
+        sa.Column("tier", postgresql.ENUM(
             "hot", "warm", "cold", "archived", "deleted",
             name="storage_tier", create_type=False),
             nullable=True),

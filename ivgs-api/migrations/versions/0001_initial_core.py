@@ -10,6 +10,7 @@ Revises: None
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB, INET
 
 revision = "0001"
@@ -24,52 +25,88 @@ def upgrade() -> None:
 
     # --- ENUM types ---
     op.execute("""
-        CREATE TYPE project_state AS ENUM (
+DO $$ BEGIN
+CREATE TYPE project_state AS ENUM (
             'DRAFT', 'TRANSCRIPT_REFINEMENT', 'STORYBOARD_GENERATION',
             'MEDIA_GENERATION', 'MANIFEST_GENERATION', 'AUDIO_GENERATION',
             'TALKING_HEAD_RENDER', 'PROTOTYPE_DRAFT', 'USER_REVIEW',
             'FINAL_RENDER', 'COMPLETE', 'LOCALISATION', 'ERROR'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE asset_type AS ENUM (
+DO $$ BEGIN
+CREATE TYPE asset_type AS ENUM (
             'image', 'video', 'audio', 'document', 'talking_head', 'final_render'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE media_type AS ENUM ('image', 'video_clip', 'animation')
-    """)
+DO $$ BEGIN
+CREATE TYPE media_type AS ENUM ('image', 'video_clip', 'animation');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE prompt_type AS ENUM (
+DO $$ BEGIN
+CREATE TYPE prompt_type AS ENUM (
             'master', 'transcript_refinement', 'storyboard_generation',
             'image_generation', 'video_generation', 'animation_generation',
             'tts_voice', 'talking_head', 'composition', 'translation'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE user_role AS ENUM ('admin', 'operator', 'viewer')
-    """)
+DO $$ BEGIN
+CREATE TYPE user_role AS ENUM ('admin', 'operator', 'viewer');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE job_status AS ENUM ('pending', 'running', 'success', 'failed')
-    """)
+DO $$ BEGIN
+CREATE TYPE job_status AS ENUM ('pending', 'running', 'success', 'failed');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE job_type AS ENUM (
+DO $$ BEGIN
+CREATE TYPE job_type AS ENUM (
             'transcript_refinement', 'storyboard_generation',
             'image_generation', 'video_generation', 'animation_generation',
             'tts_audio', 'talking_head_render', 'prototype_draft',
             'final_render', 'localisation'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE language_variant_state AS ENUM (
+DO $$ BEGIN
+CREATE TYPE language_variant_state AS ENUM (
             'pending', 'processing', 'complete', 'failed'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE storage_tier AS ENUM (
+DO $$ BEGIN
+CREATE TYPE storage_tier AS ENUM (
             'hot', 'warm', 'cold', 'archived', 'deleted'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
+    op.execute("""
+DO $$ BEGIN
+CREATE TYPE failure_category AS ENUM (
+    'transient', 'config', 'external', 'resource'
+);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
+
 
     # ===================================================================
     # Table 6: users (§4.1)
@@ -80,7 +117,7 @@ def upgrade() -> None:
                   server_default=sa.text("uuid_generate_v4()")),
         sa.Column("username", sa.String(64), unique=True, nullable=False),
         sa.Column("password_hash", sa.String(255), nullable=False),
-        sa.Column("role", sa.Enum("admin", "operator", "viewer",
+        sa.Column("role", postgresql.ENUM("admin", "operator", "viewer",
                                   name="user_role", create_type=False),
                   nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
@@ -98,7 +135,7 @@ def upgrade() -> None:
         sa.Column("name", sa.String(255), nullable=False),
         sa.Column("description", sa.Text, nullable=True),
         sa.Column("max_runtime_seconds", sa.Integer, nullable=True),
-        sa.Column("state", sa.Enum(
+        sa.Column("state", postgresql.ENUM(
             "DRAFT", "TRANSCRIPT_REFINEMENT", "STORYBOARD_GENERATION",
             "MEDIA_GENERATION", "MANIFEST_GENERATION", "AUDIO_GENERATION",
             "TALKING_HEAD_RENDER", "PROTOTYPE_DRAFT", "USER_REVIEW",
@@ -125,7 +162,7 @@ def upgrade() -> None:
                   sa.ForeignKey("projects.id", ondelete="CASCADE"),
                   nullable=False),
         sa.Column("scene_id", UUID(as_uuid=True), nullable=True),
-        sa.Column("asset_type", sa.Enum(
+        sa.Column("asset_type", postgresql.ENUM(
             "image", "video", "audio", "document", "talking_head", "final_render",
             name="asset_type", create_type=False),
             nullable=False),
@@ -137,7 +174,7 @@ def upgrade() -> None:
         sa.Column("language_code", sa.String(10), nullable=True),
         sa.Column("generation_prompt_id", UUID(as_uuid=True), nullable=True),
         # v4 additions
-        sa.Column("storage_tier", sa.Enum(
+        sa.Column("storage_tier", postgresql.ENUM(
             "hot", "warm", "cold", "archived", "deleted",
             name="storage_tier", create_type=False),
             nullable=False, server_default="hot"),
@@ -195,7 +232,7 @@ def upgrade() -> None:
         sa.Column("scene_index", sa.Integer, nullable=False),
         sa.Column("narration_text", sa.Text, nullable=True),
         sa.Column("visual_description", sa.Text, nullable=True),
-        sa.Column("media_type", sa.Enum(
+        sa.Column("media_type", postgresql.ENUM(
             "image", "video_clip", "animation",
             name="media_type", create_type=False),
             nullable=True),
@@ -234,7 +271,7 @@ def upgrade() -> None:
         sa.Column("scene_id", UUID(as_uuid=True),
                   sa.ForeignKey("storyboard_scenes.id", ondelete="CASCADE"),
                   nullable=True),
-        sa.Column("prompt_type", sa.Enum(
+        sa.Column("prompt_type", postgresql.ENUM(
             "master", "transcript_refinement", "storyboard_generation",
             "image_generation", "video_generation", "animation_generation",
             "tts_voice", "talking_head", "composition", "translation",
@@ -285,7 +322,7 @@ def upgrade() -> None:
                   sa.ForeignKey("projects.id", ondelete="CASCADE"),
                   nullable=False),
         sa.Column("celery_task_id", sa.String(255), nullable=True),
-        sa.Column("job_type", sa.Enum(
+        sa.Column("job_type", postgresql.ENUM(
             "transcript_refinement", "storyboard_generation",
             "image_generation", "video_generation", "animation_generation",
             "tts_audio", "talking_head_render", "prototype_draft",
@@ -293,7 +330,7 @@ def upgrade() -> None:
             name="job_type", create_type=False),
             nullable=False),
         sa.Column("node_id", sa.String(32), nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "pending", "running", "success", "failed",
             name="job_status", create_type=False),
             nullable=False, server_default="pending"),
@@ -304,9 +341,9 @@ def upgrade() -> None:
         sa.Column("retry_count", sa.Integer, nullable=False,
                   server_default="0"),
         sa.Column("max_retries", sa.Integer, nullable=True),
-        sa.Column("failure_category", sa.Enum(
+        sa.Column("failure_category", postgresql.ENUM(
             "transient", "config", "external", "resource",
-            name="failure_category", create_type=True),
+            name="failure_category", create_type=False),
             nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False,
                   server_default=sa.text("now()")),
@@ -323,9 +360,9 @@ def upgrade() -> None:
                   sa.ForeignKey("projects.id", ondelete="CASCADE"),
                   nullable=False),
         sa.Column("language_code", sa.String(10), nullable=False),
-        sa.Column("state", sa.Enum(
+        sa.Column("state", postgresql.ENUM(
             "pending", "processing", "complete", "failed",
-            name="language_variant_state", create_type=True),
+            name="language_variant_state", create_type=False),
             nullable=False, server_default="pending"),
         sa.Column("final_render_1080p_id", UUID(as_uuid=True),
                   sa.ForeignKey("assets.id", ondelete="SET NULL"),

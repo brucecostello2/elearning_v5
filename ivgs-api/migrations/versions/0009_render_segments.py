@@ -6,6 +6,7 @@ Revises: 0008
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0009"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE segment_status AS ENUM (
+DO $$ BEGIN
+CREATE TYPE segment_status AS ENUM (
             'pending', 'rendering', 'complete', 'failed'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "render_segments",
@@ -33,7 +37,7 @@ def upgrade() -> None:
         sa.Column("end_ms", sa.Integer, nullable=False),
         sa.Column("output_path", sa.String(1024), nullable=True),
         sa.Column("output_checksum", sa.String(64), nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "pending", "rendering", "complete", "failed",
             name="segment_status", create_type=False),
             nullable=False, server_default="pending"),

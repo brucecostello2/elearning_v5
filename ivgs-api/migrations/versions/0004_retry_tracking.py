@@ -6,6 +6,7 @@ Revises: 0003
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0004"
@@ -24,7 +25,7 @@ def upgrade() -> None:
                   nullable=False),
         sa.Column("stage_name", sa.String(64), nullable=True),
         sa.Column("attempt_number", sa.Integer, nullable=False),
-        sa.Column("failure_type", sa.Enum(
+        sa.Column("failure_type", postgresql.ENUM(
             "transient", "config", "external", "resource",
             name="failure_category", create_type=False),
             nullable=True),

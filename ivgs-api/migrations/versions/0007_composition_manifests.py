@@ -6,6 +6,7 @@ Revises: 0006
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 revision = "0007"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE manifest_status AS ENUM (
+DO $$ BEGIN
+CREATE TYPE manifest_status AS ENUM (
             'draft', 'locked', 'rendered', 'invalid'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "composition_manifests",
@@ -35,7 +39,7 @@ def upgrade() -> None:
         sa.Column("framerate", sa.Integer, nullable=True),
         sa.Column("audio_sample_rate", sa.Integer, nullable=True),
         sa.Column("timeline", JSONB, nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "draft", "locked", "rendered", "invalid",
             name="manifest_status", create_type=False),
             nullable=False, server_default="draft"),

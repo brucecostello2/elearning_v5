@@ -6,6 +6,7 @@ Revises: 0007
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 revision = "0008"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE quality_decision AS ENUM (
+DO $$ BEGIN
+CREATE TYPE quality_decision AS ENUM (
             'approved', 'flagged', 'rejected'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "asset_quality_scores",
@@ -31,7 +35,7 @@ def upgrade() -> None:
         sa.Column("quality_score", sa.Float, nullable=True),
         sa.Column("safety_score", sa.Float, nullable=True),
         sa.Column("scoring_details", JSONB, nullable=True),
-        sa.Column("decision", sa.Enum(
+        sa.Column("decision", postgresql.ENUM(
             "approved", "flagged", "rejected",
             name="quality_decision", create_type=False),
             nullable=False),
