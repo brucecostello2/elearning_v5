@@ -21,6 +21,9 @@ from __future__ import annotations
 import asyncio
 import sys
 from pathlib import Path
+
+# Add /app to sys.path so 'shared' package is importable (mirrors seed_prompts.py)
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from typing import Any
 
 import structlog
@@ -98,8 +101,8 @@ async def seed_fallback_policies(
 
     # Get DB session factory
     if db_session_factory is None:
-        from ivgs_api.app.database import get_async_session_factory
-        db_session_factory = get_async_session_factory()
+        from shared.database import async_session_factory
+        db_session_factory = async_session_factory
 
     # Seed policies
     inserted = 0

@@ -40,7 +40,8 @@ SEED_DIR = Path(__file__).resolve().parent.parent.parent / "seed" / "default_pro
 
 async def seed_prompts() -> None:
     """Seed default global prompts from template files."""
-    from sqlalchemy import select
+    from sqlalchemy import select, cast
+    from sqlalchemy.dialects.postgresql import ENUM as PgEnum
     from app.models.prompt import Prompt
 
     async with async_session_factory() as db:
@@ -51,7 +52,7 @@ async def seed_prompts() -> None:
             # Check if a global prompt already exists for this type
             existing = await db.execute(
                 select(Prompt).where(
-                    Prompt.prompt_type == prompt_type,
+                    Prompt.prompt_type == cast(prompt_type, Prompt.prompt_type.type),
                     Prompt.project_id.is_(None),
                     Prompt.scene_id.is_(None),
                     Prompt.is_active.is_(True),
