@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from typing import List, Optional
 from uuid import UUID
 
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.retention_policy import RetentionPolicy
@@ -156,7 +156,7 @@ class RetentionService:
         total_result = await self.db.execute(
             select(func.count(), func.coalesce(func.sum(Asset.file_size_bytes), 0))
             .select_from(Asset)
-            .where(Asset.storage_tier != "deleted")
+            .where(Asset.storage_tier.cast(String) != "deleted")
         )
         total_row = total_result.first()
         total_assets = total_row[0] if total_row else 0
@@ -169,7 +169,7 @@ class RetentionService:
                 func.count().label("cnt"),
                 func.coalesce(func.sum(Asset.file_size_bytes), 0).label("total_size"),
             )
-            .where(Asset.storage_tier != "deleted")
+            .where(Asset.storage_tier.cast(String) != "deleted")
             .group_by(Asset.storage_tier)
             .order_by(Asset.storage_tier)
         )

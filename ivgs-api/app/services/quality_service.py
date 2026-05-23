@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.quality_score import AssetQualityScore
@@ -92,7 +92,7 @@ class QualityService:
         """
         query = (
             select(AssetQualityScore)
-            .where(AssetQualityScore.decision == "flagged")
+            .where(AssetQualityScore.decision.cast(String) == "flagged")
         )
 
         count_query = select(func.count()).select_from(query.subquery())
