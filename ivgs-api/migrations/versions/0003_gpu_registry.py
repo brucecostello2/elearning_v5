@@ -6,6 +6,7 @@ Revises: 0002
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "0003"
@@ -16,13 +17,19 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE gpu_node_status AS ENUM ('online', 'offline', 'draining')
-    """)
+DO $$ BEGIN
+CREATE TYPE gpu_node_status AS ENUM ('online', 'offline', 'draining');
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
     op.execute("""
-        CREATE TYPE reservation_status AS ENUM (
+DO $$ BEGIN
+CREATE TYPE reservation_status AS ENUM (
             'reserved', 'active', 'released', 'expired'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     # --- gpu_nodes ---
     op.create_table(
@@ -34,7 +41,7 @@ def upgrade() -> None:
         sa.Column("gpu_model", sa.String(128), nullable=True),
         sa.Column("total_vram_mb", sa.Integer, nullable=True),
         sa.Column("compute_capability", sa.String(16), nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "online", "offline", "draining",
             name="gpu_node_status", create_type=False),
             nullable=False, server_default="online"),
@@ -59,7 +66,7 @@ def upgrade() -> None:
                   nullable=False),
         sa.Column("reserved_vram_mb", sa.Integer, nullable=False),
         sa.Column("model_name", sa.String(128), nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "reserved", "active", "released", "expired",
             name="reservation_status", create_type=False),
             nullable=False, server_default="reserved"),

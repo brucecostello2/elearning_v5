@@ -6,6 +6,7 @@ Revises: 0004
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 revision = "0005"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE heartbeat_status AS ENUM (
+DO $$ BEGIN
+CREATE TYPE heartbeat_status AS ENUM (
             'alive', 'suspected_dead', 'confirmed_dead'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "worker_heartbeats",
@@ -35,7 +39,7 @@ def upgrade() -> None:
         sa.Column("heartbeat_data", JSONB, nullable=True),
         sa.Column("last_heartbeat_at", sa.DateTime(timezone=True),
                   nullable=False, server_default=sa.text("now()")),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "alive", "suspected_dead", "confirmed_dead",
             name="heartbeat_status", create_type=False),
             nullable=False, server_default="alive"),

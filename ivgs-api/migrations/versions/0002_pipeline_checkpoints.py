@@ -6,6 +6,7 @@ Revises: 0001
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 revision = "0002"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE checkpoint_status AS ENUM (
+DO $$ BEGIN
+CREATE TYPE checkpoint_status AS ENUM (
             'pending', 'complete', 'failed', 'skipped'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "pipeline_checkpoints",
@@ -33,7 +37,7 @@ def upgrade() -> None:
         sa.Column("checkpoint_data", JSONB, nullable=True),
         sa.Column("output_refs", JSONB, nullable=True),
         sa.Column("version_fingerprint", sa.String(128), nullable=True),
-        sa.Column("status", sa.Enum(
+        sa.Column("status", postgresql.ENUM(
             "pending", "complete", "failed", "skipped",
             name="checkpoint_status", create_type=False),
             nullable=False, server_default="pending"),

@@ -6,6 +6,7 @@ Revises: 0005
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 revision = "0006"
@@ -16,10 +17,13 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute("""
-        CREATE TYPE dlq_resolution AS ENUM (
+DO $$ BEGIN
+CREATE TYPE dlq_resolution AS ENUM (
             'replayed', 'discarded', 'escalated'
-        )
-    """)
+        );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$
+""")
 
     op.create_table(
         "dead_letter_messages",
@@ -32,7 +36,7 @@ def upgrade() -> None:
         sa.Column("exception_type", sa.String(255), nullable=True),
         sa.Column("exception_message", sa.Text, nullable=True),
         sa.Column("traceback", sa.Text, nullable=True),
-        sa.Column("failure_category", sa.Enum(
+        sa.Column("failure_category", postgresql.ENUM(
             "transient", "config", "external", "resource",
             name="failure_category", create_type=False),
             nullable=True),
@@ -41,7 +45,7 @@ def upgrade() -> None:
                   server_default=sa.text("now()")),
         sa.Column("reviewed_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("reviewed_by", sa.String(64), nullable=True),
-        sa.Column("resolution", sa.Enum(
+        sa.Column("resolution", postgresql.ENUM(
             "replayed", "discarded", "escalated",
             name="dlq_resolution", create_type=False),
             nullable=True),
