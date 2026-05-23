@@ -98,7 +98,7 @@ export function usePipelineJobs(filters: PipelineJobFilters = {}): {
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
 
   return {
-    jobs: data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? data,
+    jobs: data?.data ?? data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? (Array.isArray(data) ? data : []),
     isLoading,
     error,
     mutate,

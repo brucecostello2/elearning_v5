@@ -63,7 +63,7 @@ export function usePipelineSummary(): {
   );
 
   const jobs: PipelineJob[] | undefined =
-    data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? data;
+    data?.data ?? data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? (Array.isArray(data) ? data : []);
 
   const summary: PipelineSummary = {
     total: jobs?.length ?? 0,
