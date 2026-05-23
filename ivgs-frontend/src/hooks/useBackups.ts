@@ -63,7 +63,7 @@ export function useBackupRecords(filters: BackupRecordFilters): {
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
 
   return {
-    records: data?.records ?? data?.results ?? data?.items ?? data,
+    records: data?.data ?? data?.records ?? data?.results ?? data?.items ?? data,
     totalCount: data?.total ?? data?.count ?? data?.total_count,
     isLoading,
     error,

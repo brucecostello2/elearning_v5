@@ -175,8 +175,8 @@ export function useGPUFleetStatus(): {
   );
 
   return {
-    nodes: data?.nodes ?? data,
-    fleetSummary: fleetData?.summary ?? fleetData,
+    nodes: data?.data ?? data?.nodes ?? data,
+    fleetSummary: fleetData ?? null,
     modelResidency: fleetData?.model_residency ?? data?.model_residency,
     isLoading,
     error,
@@ -261,7 +261,7 @@ export function useDLQMessages(filters: DLQMessageFilters): {
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
 
   return {
-    messages: data?.messages ?? data?.results ?? data,
+    messages: data?.data ?? data?.messages ?? data?.results ?? data,
     totalCount: data?.total ?? data?.count,
     isLoading,
     error,
@@ -339,7 +339,7 @@ export function useQualityReviewQueue(filters: QualityReviewFilters): {
   const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
 
   return {
-    assets: data?.assets ?? data?.results ?? data,
+    assets: data?.data ?? data?.assets ?? data?.results ?? data,
     totalCount: data?.total ?? data?.count,
     isLoading,
     error,
@@ -518,7 +518,7 @@ export function useUsers(): {
   );
 
   return {
-    users: data?.users ?? data,
+    users: data?.data ?? data?.users ?? data,
     isLoading,
     error,
     mutate,
