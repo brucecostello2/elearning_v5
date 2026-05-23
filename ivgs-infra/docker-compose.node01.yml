@@ -344,7 +344,7 @@ services:
   # Processes default queue tasks (non-GPU): emails, notifications, cleanup
   # ---------------------------------------------------------------------------
   celery-worker-default:
-    image: ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
     container_name: ivgs-celery-default
     <<: [*common-restart, *common-logging]
     env_file:
@@ -352,6 +352,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
     volumes:
@@ -383,7 +385,7 @@ services:
   # heartbeat timeout checks
   # ---------------------------------------------------------------------------
   celery-beat:
-    image: ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
     container_name: ivgs-celery-beat
     <<: [*common-restart, *common-logging]
     env_file:
@@ -391,6 +393,8 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
     volumes:
       - /mnt/ivgs-shared:/ivgs
     networks:
