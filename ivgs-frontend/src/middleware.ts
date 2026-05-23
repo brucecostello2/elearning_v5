@@ -55,11 +55,13 @@ export function middleware(request: NextRequest): NextResponse {
    *
    * In production with httpOnly cookies, uncomment the redirect:
    */
-  if (token === undefined && process.env.NODE_ENV === "production") {
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
-  }
+  /*
+   * v5.2.2: localStorage-based auth means middleware cannot see the
+   * token (it lives in the browser only). Client-side AuthContext +
+   * route layouts handle the redirect. Re-enable this block once the
+   * backend sets ivgs_access_token as an httpOnly cookie (§16.1).
+   */
+  void token; // intentionally unused until cookie-based auth lands
 
   return NextResponse.next();
 }
