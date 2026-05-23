@@ -93,12 +93,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
       if (userData) {
         setUser(userData);
       }
+      setIsLoading(false);
     } else if (token && isTokenExpired(token)) {
-      /* Token expired — attempt refresh */
-      void refreshToken();
+      /* Token expired — attempt refresh; keep isLoading=true until done */
+      void refreshToken().finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ------------------------------------------------------------------ */
