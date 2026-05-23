@@ -258,3 +258,59 @@ export interface OrphanAsset {
   last_modified: string;
   reason: string;
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// Backup Management (§14)
+// ────────────────────────────────────────────────────────────────────────────
+
+export type BackupType = "full_db" | "wal" | "asset" | "config" | "vm_snapshot";
+
+export type BackupStatus = "success" | "failed" | "in_progress" | "pending";
+
+export type VerificationStatus = "verified" | "failed" | "pending";
+
+export interface BackupRecord {
+  id: string;
+  type: BackupType;
+  started_at: string;
+  completed_at: string | null;
+  status: BackupStatus;
+  size_bytes: number;
+  duration_seconds: number | null;
+  verification_checksum: string | null;
+  verification_status: VerificationStatus;
+  target_path: string;
+  error_message: string | null;
+}
+
+export interface BackupTriggerPayload {
+  type: BackupType;
+}
+
+export interface RollbackPoint {
+  id: string;
+  version_tag: string;
+  created_at: string;
+  alembic_revision: string;
+  docker_image_tags: Record<string, string>;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Retention Policies (§10.4)
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface RetentionPolicy {
+  id: string;
+  name: string;
+  source_tier: StorageTier;
+  target_tier: StorageTier | "delete";
+  threshold_days: number;
+  auto_execute: boolean;
+  last_run_at: string | null;
+  assets_affected: number;
+}
+
+export interface RetentionPolicyUpdate {
+  threshold_days?: number;
+  auto_execute?: boolean;
+}
