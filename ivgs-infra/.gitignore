@@ -1,0 +1,9 @@
+
+# Local backups / pre-fix snapshots
+*.bak.*
+*.pre-fix-*
+
+# SSL keys & certs - never commit
+configs/nginx/ssl/*.key
+configs/nginx/ssl/*.crt
+configs/nginx/ssl/*.pem
