@@ -438,7 +438,7 @@ END $$
     # ===================================================================
     op.create_table(
         "prompt_tag_associations",
-        sa.Column("prompt_id", sa.String(36),
+        sa.Column("prompt_id", UUID(as_uuid=True),
                   sa.ForeignKey("prompts.id", ondelete="CASCADE"),
                   primary_key=True),
         sa.Column("tag_id", sa.String(36),
