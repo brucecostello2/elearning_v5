@@ -21,13 +21,15 @@ interface UseProjectsReturn {
 }
 
 const projectsFetcher = async (url: string): Promise<Project[]> => {
-  const response = await apiClient.get<{ data: Project[] }>(url);
-  return response.data;
+  const response = await apiClient.get<{ data: Project[]; total: number; page: number; per_page: number; pages: number; has_more: boolean }>(url);
+  // API returns { data: [...], total, page, ... } — unwrap the array.
+  return response.data.data;
 };
 
 const projectFetcher = async (url: string): Promise<Project> => {
   const response = await apiClient.get<{ data: Project }>(url);
-  return response.data;
+  // API returns { data: { ...project } } — unwrap.
+  return response.data.data;
 };
 
 export function useProjects(projectId?: string): UseProjectsReturn {
