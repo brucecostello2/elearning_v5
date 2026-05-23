@@ -1,0 +1,20 @@
+# =============================================================
+# IVGS v5 — SeaweedFS Master Configuration (node-01:9333)
+# =============================================================
+
+[master]
+  port = 9333
+  ip = "0.0.0.0"
+  mdir = "/data/seaweedfs/master"
+  defaultReplication = "000"
+  volumeSizeLimitMB = 30000
+  volumePreallocate = false
+  pulseSeconds = 5
+  garbageThreshold = 0.3
+
+[master.maintenance]
+  scripts = ""
+  sleep_minutes = 17
+
+[master.sequencer]
+  type = "raft"
