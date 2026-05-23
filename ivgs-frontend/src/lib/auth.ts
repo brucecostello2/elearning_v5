@@ -22,6 +22,17 @@ import type { UserRole } from "@/types/api";
 
 const ACCESS_TOKEN_KEY = "ivgs_access_token";
 const REFRESH_TOKEN_KEY = "ivgs_refresh_token";
+const COOKIE_MAX_AGE = 86400; // 24h — keep in sync with access-token JWT exp
+
+/**
+ * Mirror the access token to a cookie so the Next.js middleware (which runs
+ * server-side and cannot read localStorage) can see that the user is
+ * authenticated and skip the redirect-to-/login.
+ */
+function writeAccessCookie(value: string, maxAge: number): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${ACCESS_TOKEN_KEY}=${value}; path=/; max-age=${maxAge}; SameSite=Lax`;
+}
 
 /* Role hierarchy per §16.2 Table 16-2 */
 const ROLE_HIERARCHY: Record<UserRole, number> = {
@@ -51,12 +62,14 @@ export function setTokens(
   if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  writeAccessCookie(accessToken, COOKIE_MAX_AGE);
 }
 
 export function clearTokens(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_TOKEN_KEY);
   localStorage.removeItem(REFRESH_TOKEN_KEY);
+  writeAccessCookie("", 0);
 }
 
 export function hasStoredTokens(): boolean {

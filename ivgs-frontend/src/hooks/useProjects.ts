@@ -22,12 +22,12 @@ interface UseProjectsReturn {
 
 const projectsFetcher = async (url: string): Promise<Project[]> => {
   const response = await apiClient.get<{ data: Project[] }>(url);
-  return response.data;
+  return response.data.data;
 };
 
 const projectFetcher = async (url: string): Promise<Project> => {
   const response = await apiClient.get<{ data: Project }>(url);
-  return response.data;
+  return response.data.data;
 };
 
 export function useProjects(projectId?: string): UseProjectsReturn {
@@ -76,7 +76,7 @@ export function useProjects(projectId?: string): UseProjectsReturn {
       { headers: { "Content-Type": "multipart/form-data" } }
     );
     listMutate();
-    return response.data;
+    return response.data.data;
   };
 
   /**
@@ -91,7 +91,7 @@ export function useProjects(projectId?: string): UseProjectsReturn {
       { language_code: languageCode }
     );
     detailMutate();
-    return response.data;
+    return response.data.data;
   };
 
   /**
