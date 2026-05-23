@@ -56,26 +56,39 @@ const PROJECT_SECTIONS: SidebarSection[] = [
   },
 ];
 
-/* Admin sidebar — per §8.2 and §8.3 */
+/* Admin sidebar — per §8.3 (administrative functions) */
 const ADMIN_SECTIONS: SidebarSection[] = [
+  {
+    title: "Administration",
+    minRole: "admin",
+    items: [
+      { label: "Overview", href: "/admin", minRole: "admin" },
+      { label: "User Management", href: "/admin/users", minRole: "admin" },
+      { label: "Backup Management", href: "/admin/backups", minRole: "admin" },
+      { label: "Retention Policies", href: "/admin/retention", minRole: "admin" },
+    ],
+  },
+];
+
+/* Monitoring sidebar — per §8.2 (operational monitoring) */
+const MONITORING_SECTIONS: SidebarSection[] = [
   {
     title: "Monitoring",
     minRole: "operator",
     items: [
-      { label: "Pipeline Tracker", href: "/admin/pipeline", minRole: "operator" },
-      { label: "GPU Fleet", href: "/admin/gpu", minRole: "operator" },
-      { label: "Dead Letter Queue", href: "/admin/dlq", minRole: "admin" },
-      { label: "Quality Review", href: "/admin/quality", minRole: "operator" },
+      { label: "Dashboard", href: "/monitoring", minRole: "operator" },
+      { label: "Pipeline Tracker", href: "/monitoring/pipeline", minRole: "operator" },
+      { label: "GPU Fleet", href: "/monitoring/gpu", minRole: "operator" },
+      { label: "Dead Letter Queue", href: "/monitoring/dlq", minRole: "admin" },
+      { label: "Quality Review", href: "/monitoring/quality", minRole: "operator" },
+      { label: "Timeline Editor", href: "/monitoring/timeline", minRole: "operator" },
     ],
   },
   {
-    title: "Operations",
+    title: "Analytics",
     minRole: "admin",
     items: [
-      { label: "Storage Analytics", href: "/admin/storage", minRole: "admin" },
-      { label: "User Management", href: "/admin/users", minRole: "admin" },
-      { label: "Backup Management", href: "/admin/backups", minRole: "admin" },
-      { label: "Retention Policies", href: "/admin/retention", minRole: "admin" },
+      { label: "Storage Analytics", href: "/monitoring/storage", minRole: "admin" },
     ],
   },
 ];
@@ -91,7 +104,7 @@ function hasAccess(userRole: UserRole, minRole: UserRole): boolean {
 }
 
 interface SidebarProps {
-  context: "project" | "admin";
+  context: "project" | "admin" | "monitoring";
   projectId?: string;
 }
 
@@ -101,8 +114,13 @@ export function Sidebar({ context, projectId }: SidebarProps) {
 
   if (!user) return null;
 
-  const sections =
-    context === "project" ? PROJECT_SECTIONS : ADMIN_SECTIONS;
+  const sectionMap: Record<string, SidebarSection[]> = {
+    project: PROJECT_SECTIONS,
+    admin: ADMIN_SECTIONS,
+    monitoring: MONITORING_SECTIONS,
+  };
+
+  const sections = sectionMap[context] ?? ADMIN_SECTIONS;
 
   return (
     <aside className="w-56 shrink-0 border-r border-gray-800 bg-gray-950 py-4">
