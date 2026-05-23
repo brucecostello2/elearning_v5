@@ -222,7 +222,7 @@ services:
   # Main API server — all pipeline, auth, CRUD, operational endpoints
   # ---------------------------------------------------------------------------
   fastapi-backend:
-    image: ghcr.io/brucecostello2/ivgs-api:v5.1.1-fixed
+    image: ghcr.io/brucecostello2/ivgs-api:v5.1.3
     container_name: ivgs-fastapi
     <<: [*common-restart, *common-logging]
     env_file:

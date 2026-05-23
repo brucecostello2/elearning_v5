@@ -28,7 +28,7 @@ from app.services.asset_service import AssetService
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/projects", tags=["Projects"])
+router = APIRouter(tags=["Projects"])
 
 
 @router.get(

@@ -99,3 +99,4 @@ ivgs-frontend/tsconfig.tsbuildinfo
 .logs/
 .next/
 ivgs-frontend/.next/
+ivgs-infra/.env.node01.backup-*
