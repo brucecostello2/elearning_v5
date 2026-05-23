@@ -40,7 +40,7 @@ def upgrade() -> None:
         VALUES
             ('standard', 30, 90, 365, NULL, NULL, 'all', true),
             ('long-term', 90, 180, 730, NULL, NULL, 'all', false),
-            ('compliance', 365, 730, NULL, NULL, NULL, 'all', false)
+            ('compliance', 365, 730, 3650, NULL, NULL, 'all', false)
     """)
 
 

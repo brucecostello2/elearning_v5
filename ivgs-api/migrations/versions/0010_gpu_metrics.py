@@ -1,7 +1,8 @@
 """
-0010_gpu_metrics — Table 19: gpu_metrics_history (TimescaleDB hypertable)
+0010_gpu_metrics — Table 19: gpu_metrics_history (daily partitioned)
 
-Partitioned daily with 30-day retention via TimescaleDB.
+Partitioned daily using PostgreSQL 17 native declarative partitioning.
+30-day retention enforced via Celery Beat periodic task (retention_policies).
 
 Revision ID: 0010
 Revises: 0009
@@ -17,46 +18,51 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "gpu_metrics_history",
-        sa.Column("id", UUID(as_uuid=True),
-                  server_default=sa.text("uuid_generate_v4()")),
-        sa.Column("gpu_node_id", UUID(as_uuid=True),
-                  sa.ForeignKey("gpu_nodes.id", ondelete="CASCADE"),
-                  nullable=False),
-        sa.Column("gpu_util_pct", sa.Float, nullable=True),
-        sa.Column("mem_util_pct", sa.Float, nullable=True),
-        sa.Column("temperature_c", sa.Float, nullable=True),
-        sa.Column("power_draw_w", sa.Float, nullable=True),
-        sa.Column("active_job_count", sa.Integer, nullable=True),
-        sa.Column("queue_depth", sa.Integer, nullable=True),
-        sa.Column("recorded_at", sa.DateTime(timezone=True), nullable=False,
-                  server_default=sa.text("now()")),
-    )
-
-    # Convert to TimescaleDB hypertable partitioned by recorded_at
+    # Create parent partitioned table (RANGE on recorded_at, daily)
     op.execute("""
-        SELECT create_hypertable(
-            'gpu_metrics_history',
-            'recorded_at',
-            chunk_time_interval => INTERVAL '1 day',
-            if_not_exists => TRUE
-        )
+        CREATE TABLE gpu_metrics_history (
+            id          UUID NOT NULL DEFAULT uuid_generate_v4(),
+            gpu_node_id UUID NOT NULL,
+            gpu_util_pct        FLOAT,
+            mem_util_pct        FLOAT,
+            temperature_c       FLOAT,
+            power_draw_w        FLOAT,
+            active_job_count    INTEGER,
+            queue_depth         INTEGER,
+            recorded_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            FOREIGN KEY (gpu_node_id) REFERENCES gpu_nodes(id) ON DELETE CASCADE
+        ) PARTITION BY RANGE (recorded_at)
     """)
 
-    # 30-day automatic retention policy
+    # Create index on the partitioned table
     op.execute("""
-        SELECT add_retention_policy(
-            'gpu_metrics_history',
-            INTERVAL '30 days',
-            if_not_exists => TRUE
-        )
+        CREATE INDEX ix_gpu_metrics_history_gpu_node_recorded
+        ON gpu_metrics_history (gpu_node_id, recorded_at DESC)
+    """)
+
+    # Pre-create partitions: current month ± 1 month (enough for initial deployment)
+    # Celery Beat periodic task will create future partitions and drop old ones
+    op.execute("""
+        DO $$ DECLARE
+            start_date DATE;
+            end_date   DATE;
+            partition_name TEXT;
+        BEGIN
+            FOR i IN -1..2 LOOP
+                start_date := date_trunc('day', NOW()) + (i || ' days')::INTERVAL;
+                end_date   := start_date + INTERVAL '1 day';
+                partition_name := 'gpu_metrics_history_'
+                    || to_char(start_date, 'YYYY_MM_DD');
+                EXECUTE format(
+                    'CREATE TABLE IF NOT EXISTS %I
+                     PARTITION OF gpu_metrics_history
+                     FOR VALUES FROM (%L) TO (%L)',
+                    partition_name, start_date, end_date
+                );
+            END LOOP;
+        END $$;
     """)
 
 
 def downgrade() -> None:
-    # Remove retention policy first
-    op.execute("""
-        SELECT remove_retention_policy('gpu_metrics_history', if_exists => TRUE)
-    """)
-    op.drop_table("gpu_metrics_history")
+    op.execute("DROP TABLE IF EXISTS gpu_metrics_history CASCADE")
