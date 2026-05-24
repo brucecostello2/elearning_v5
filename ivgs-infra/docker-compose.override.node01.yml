@@ -1,7 +1,14 @@
 # Per-node override applied at compose time.
-# - rollback-storage volume: bind mount for /ivgs (rollback service data on this host).
-# NOTE: pull_policy intentionally NOT set here; nodes pull from GHCR by default.
 services:
   fastapi-backend:
     volumes:
       - /opt/ivgs/rollback-storage:/ivgs
+  nextjs-frontend:
+    # Image healthcheck uses curl which is not installed in the slim image.
+    # Override with wget (present in the image) hitting 127.0.0.1 explicitly.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
