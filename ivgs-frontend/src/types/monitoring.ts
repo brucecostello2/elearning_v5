@@ -47,9 +47,14 @@ export type PipelineStageStatus =
   | "running"
   | "complete"
   | "failed"
-  | "skipped";
+  | "skipped"
+  | "PENDING"
+  | "RUNNING"
+  | "COMPLETE"
+  | "FAILED"
+  | "SKIPPED";
 
-export type FallbackLevel = "none" | "provider" | "model" | "full";
+export type FallbackLevel = "none" | "provider" | "model" | "full" | "L1" | "L2" | "L3" | "L4" | "DLQ";
 
 export interface CheckpointData {
   stage: PipelineStage;
@@ -58,6 +63,8 @@ export interface CheckpointData {
   completed_at: string | null;
   fallback_level: FallbackLevel;
   error_message?: string;
+  retry_count?: number;
+  node_id?: string;
 }
 
 export interface PipelineJob {
@@ -88,16 +95,19 @@ export interface PipelineJobDetail {
 
 export interface GPUNode {
   node_id: string;
-  status: "online" | "offline" | "draining";
+  status: "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
   utilization_pct: number;
   total_vram_mb: number;
   used_vram_mb: number;
   temperature_c: number;
   tdp_watts: number;
+  power_draw_watts?: number;
   cpu_percent: number;
   ram_percent: number;
-  active_job: string | null;
+  active_job: any;
+  active_jobs?: any[];
   queued_jobs: number;
+  allocations?: any[];
 }
 
 export interface GPUUtilizationPoint {
@@ -113,6 +123,7 @@ export interface ModelResidencyEntry {
   model_name: string;
   loaded_at: string;
   vram_mb: number;
+  allocations?: any[];
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -124,7 +135,12 @@ export type DLQCategory =
   | "config"
   | "external"
   | "resource"
-  | "unknown";
+  | "unknown"
+  | "TRANSIENT"
+  | "CONFIG"
+  | "EXTERNAL"
+  | "RESOURCE"
+  | "UNKNOWN";
 
 export interface DLQMessage {
   id: string;
@@ -170,7 +186,14 @@ export type QualityMetricType =
   | "aesthetic"
   | "safety"
   | "consistency"
-  | "technical";
+  | "technical"
+  | "CLIP_SCORE"
+  | "SNR"
+  | "FRAME_CONSISTENCY"
+  | "LIP_SYNC_SCORE"
+  | "RESOLUTION_CHECK"
+  | "DURATION_CHECK"
+  | "SAFETY_SCORE";
 
 export interface FlaggedAsset {
   asset_id: string;
@@ -180,27 +203,47 @@ export interface FlaggedAsset {
   thumbnail_url: string;
   quality_score: number;
   safety_score: number;
-  metrics: Record<QualityMetricType, number>;
+  metrics: Record<string, number>;
+  project_owner_id?: string;
+  score_id?: string;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
 // Composition Timeline (§13.1)
 // ────────────────────────────────────────────────────────────────────────────
 
-export type ManifestLockStatus = "draft" | "locked" | "rendered" | "invalid";
+export type ManifestLockStatus =
+  | "draft"
+  | "locked"
+  | "rendered"
+  | "invalid"
+  | "DRAFT"
+  | "LOCKED"
+  | "RENDERED"
+  | "INVALID"
+  | "UNKNOWN";
 
 export type RenderSegmentStatus =
   | "pending"
   | "rendering"
   | "complete"
-  | "failed";
+  | "failed"
+  | "PENDING"
+  | "RENDERING"
+  | "COMPLETE"
+  | "FAILED";
 
 export type TimelineLayer =
   | "video"
   | "audio"
   | "overlay"
   | "transition"
-  | "subtitle";
+  | "subtitle"
+  | "BACKGROUND"
+  | "TALKING_HEAD"
+  | "LOWER_THIRD"
+  | "CAPTIONS"
+  | "AUDIO";
 
 export interface TimelineSegment {
   id: string;
@@ -209,6 +252,9 @@ export interface TimelineSegment {
   duration_seconds: number;
   asset_id: string;
   status: RenderSegmentStatus;
+  render_started_at?: string;
+  render_completed_at?: string;
+  progress?: number;
 }
 
 export interface CompositionManifest {
@@ -218,6 +264,7 @@ export interface CompositionManifest {
   scene_count: number;
   total_duration_seconds: number;
   segments: TimelineSegment[];
+  scenes?: any[];
   locked_at: string | null;
   rendered_at: string | null;
 }
@@ -226,13 +273,15 @@ export interface CompositionManifest {
 // Storage Analytics (§14.1)
 // ────────────────────────────────────────────────────────────────────────────
 
-export type StorageTier = "hot" | "warm" | "cold" | "archive";
+export type StorageTier = "hot" | "warm" | "cold" | "archive" | "HOT" | "WARM" | "COLD" | "ARCHIVE";
 
 export interface StorageTierData {
   tier: StorageTier;
   used_bytes: number;
   total_bytes: number;
   asset_count: number;
+  used?: number;
+  allocated?: number;
 }
 
 export interface QuotaEntry {

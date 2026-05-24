@@ -27,9 +27,11 @@ export type ProjectState =
   | "FINAL_RENDER"
   | "COMPLETE"
   | "LOCALISATION"
-  | "ERROR";
+  | "ERROR"
+  | "IN_PROGRESS"
+  | "REVIEW";
 
-export type JobStatus = "pending" | "running" | "success" | "failed";
+export type JobStatus = "pending" | "running" | "success" | "failed" | "PENDING" | "RUNNING" | "IN_PROGRESS" | "QUEUED" | "SUCCESS" | "FAILED" | "ERROR";
 
 export type AssetType =
   | "image"
@@ -56,7 +58,10 @@ export type FallbackStrategy =
   | "zoom_pan"
   | "static_image";
 
-export type GpuNodeStatus = "online" | "offline" | "draining";
+export type GpuNodeStatus = "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
+
+/** Legacy alias used by some components */
+export type NodeStatus = GpuNodeResponse;
 
 export type WorkerHeartbeatStatus =
   | "alive"
@@ -176,6 +181,11 @@ export interface AssetResponse {
   quality_score: number | null;
   quality_decision: QualityDecision | null;
   created_at: string;
+  url?: string;
+  filename?: string;
+  scene_label?: string;
+  generation_prompt?: string;
+  thumbnail_url?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -312,6 +322,14 @@ export interface LanguageVariantResponse {
   state: string;
   final_render_1080p_url: string | null;
   final_render_4k_url: string | null;
+  language?: string;
+  status?: string;
+  progress_percent?: number;
+  updated_at?: string;
+  url_1080p?: string;
+  url_4k?: string;
+  subtitle_vtt_url?: string;
+  subtitle_srt_url?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -359,6 +377,9 @@ export interface PaginatedResponse<T> {
 export type Project = ProjectResponse & {
   /** Populated by joined query — display name of creator */
   created_by_name?: string;
+  language_variants?: LanguageVariantResponse[];
+  render_variants?: LanguageVariantResponse[];
+  draft_video_url?: string;
 };
 
 export type Asset = AssetResponse;
@@ -371,6 +392,7 @@ export type RenderJob = JobResponse & {
   assigned_node?: string;
   assigned_gpu?: string;
   duration_seconds?: number;
+  stage_statuses?: Record<string, unknown>;
 };
 
 export type Transcript = TranscriptResponse & {
@@ -382,7 +404,10 @@ export type LanguageVariant = LanguageVariantResponse;
 
 export type RenderVariant = LanguageVariantResponse;
 
-export type VideoQuality = "1080p" | "4k" | "720p";
+export interface VideoQuality {
+  label: string;
+  src: string;
+}
 
 export interface ProjectCreatePayload {
   name: string;
