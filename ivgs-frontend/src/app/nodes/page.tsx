@@ -7,6 +7,7 @@ import NodeCard from "@/components/NodeCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import type { NodeStatus } from "@/types/api";
+import StateBadge from "@/components/StateBadge";
 
 /**
  * §8.1.5 Node Monitor Page

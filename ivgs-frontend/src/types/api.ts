@@ -279,6 +279,19 @@ export interface GpuNodeResponse {
   current_job: string | null;
   current_stage: string | null;
   last_heartbeat_at: string;
+  /* Computed / aliased fields used by components */
+  node_name?: string;
+  is_online?: boolean;
+  vram_total_mb?: number;
+  vram_used_mb?: number;
+  gpu_utilization_percent?: number;
+  gpu_power_draw_w?: number;
+  gpu_tdp_w?: number;
+  cpu_utilization_percent?: number;
+  ram_utilization_percent?: number;
+  active_job?: any;
+  active_jobs?: any[];
+  recent_jobs?: any[];
 }
 
 // ---------------------------------------------------------------------------

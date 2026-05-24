@@ -235,10 +235,10 @@ export default function JobsPage(): React.ReactElement {
                                   Last Checkpoint
                                 </span>
                                 <p className="text-gray-400 text-xs mt-0.5">
-                                  Stage: {job.checkpoint_data.stage} | Progress:{" "}
-                                  {job.checkpoint_data.progress}% | Saved:{" "}
+                                  Stage: {String(job.checkpoint_data.stage)} | Progress:{" "}
+                                  {String(job.checkpoint_data.progress)}% | Saved:{" "}
                                   {new Date(
-                                    job.checkpoint_data.saved_at
+                                    String(job.checkpoint_data.saved_at)
                                   ).toLocaleString()}
                                 </p>
                               </div>

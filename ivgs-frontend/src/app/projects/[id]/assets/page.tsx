@@ -68,7 +68,7 @@ export default function AssetsPage(): React.ReactElement {
       const q = searchQuery.toLowerCase();
       result = result.filter(
         (a: Asset) =>
-          a.filename.toLowerCase().includes(q) ||
+          a.filename?.toLowerCase().includes(q) ||
           a.scene_label?.toLowerCase().includes(q) ||
           a.generation_prompt?.toLowerCase().includes(q)
       );

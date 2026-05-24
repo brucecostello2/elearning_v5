@@ -63,6 +63,7 @@ export default function StorageTierChart({
             backgroundColor: [tier.color, "#E5E7EB"],
             borderColor: ["white", "white"],
             borderWidth: 2,
+            // @ts-expect-error — cutout is valid for doughnut but not in dataset-level types
             cutout: "70%",
           },
         ],

@@ -250,7 +250,7 @@ export default function LanguagesPage(): React.ReactElement {
                       {variant.language_code.toUpperCase()}
                     </td>
                     <td className="px-5 py-3">
-                      <StateBadge state={variant.status} />
+                      <StateBadge state={variant.status ?? variant.state} />
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">

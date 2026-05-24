@@ -48,8 +48,8 @@ export default function NodeCard({
 
   /** VRAM usage percentage */
   const vramPercent =
-    node.vram_total_mb > 0
-      ? (node.vram_used_mb / node.vram_total_mb) * 100
+    node.vram_total_mb! > 0
+      ? (node.vram_used_mb! / node.vram_total_mb!) * 100
       : 0;
 
   /** VRAM bar color */
@@ -100,8 +100,8 @@ export default function NodeCard({
         <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
           <span>VRAM</span>
           <span>
-            {(node.vram_used_mb / 1024).toFixed(1)} /{" "}
-            {(node.vram_total_mb / 1024).toFixed(1)} GB
+            {(node.vram_used_mb! / 1024).toFixed(1)} /{" "}
+            {(node.vram_total_mb! / 1024).toFixed(1)} GB
           </span>
         </div>
         <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -154,7 +154,7 @@ export default function NodeCard({
             <div
               className="h-full bg-cyan-500 rounded-full transition-all"
               style={{
-                width: `${Math.min(node.cpu_utilization_percent, 100)}%`,
+                width: `${Math.min(node.cpu_utilization_percent ?? 0, 100)}%`,
               }}
             />
           </div>
@@ -168,7 +168,7 @@ export default function NodeCard({
             <div
               className="h-full bg-purple-500 rounded-full transition-all"
               style={{
-                width: `${Math.min(node.ram_utilization_percent, 100)}%`,
+                width: `${Math.min(node.ram_utilization_percent ?? 0, 100)}%`,
               }}
             />
           </div>

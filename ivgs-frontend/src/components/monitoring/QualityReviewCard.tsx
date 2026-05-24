@@ -31,7 +31,7 @@ interface QualityReviewCardProps {
   /** Flagged asset data */
   asset: FlaggedAsset;
   /** Human-readable metric labels */
-  metricLabels: Record<QualityMetricType, string>;
+  metricLabels: Partial<Record<QualityMetricType, string>>;
   /** Whether the user can act on this asset (RBAC check done by parent) */
   canAct: boolean;
   /** Whether an action is in progress for this card */
@@ -194,10 +194,10 @@ export default function QualityReviewCard({
         </div>
 
         {/* Per-metric breakdown */}
-        {asset.metrics && asset.metrics.length > 0 && (
+        {asset.metrics && (Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics)).length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-medium text-gray-600">Metric Breakdown</p>
-            {asset.metrics.map((metric) => {
+            {(Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics).map(([k, v]: [string, any]) => ({ type: k, value: v }))).map((metric: any) => {
               const status = getMetricStatus(metric.type, metric.value);
               return (
                 <div
@@ -206,7 +206,7 @@ export default function QualityReviewCard({
                     rounded text-xs ${METRIC_STATUS_BG[status]}`}
                 >
                   <span className="text-gray-700">
-                    {metricLabels[metric.type] || metric.type}
+                    {(metricLabels as Record<string, string>)[metric.type] || metric.type}
                   </span>
                   <span className={`font-mono font-medium ${METRIC_STATUS_COLORS[status]}`}>
                     {typeof metric.value === "number"

@@ -44,7 +44,7 @@ import type {
  */
 
 /** Quality metric type labels for display */
-const METRIC_LABELS: Record<QualityMetricType, string> = {
+const METRIC_LABELS: Partial<Record<QualityMetricType, string>> = {
   CLIP_SCORE: "CLIP Score",
   SNR: "Signal-to-Noise",
   FRAME_CONSISTENCY: "Frame Consistency",
@@ -397,9 +397,9 @@ export default function QualityReviewPage(): React.ReactElement | null {
                       metricLabels={METRIC_LABELS}
                       canAct={canActOnAsset(asset)}
                       isProcessing={actionInProgress === asset.score_id}
-                      onApprove={() => handleApprove(asset.score_id)}
+                      onApprove={() => handleApprove(asset.score_id!)}
                       onReject={(reason) =>
-                        handleReject(asset.score_id, reason)
+                        handleReject(asset.score_id!, reason)
                       }
                     />
                   ))}

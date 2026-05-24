@@ -203,7 +203,7 @@ export interface FlaggedAsset {
   thumbnail_url: string;
   quality_score: number;
   safety_score: number;
-  metrics: Record<string, number>;
+  metrics: any;
   project_owner_id?: string;
   score_id?: string;
 }
