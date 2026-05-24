@@ -220,7 +220,7 @@ export const apiClient = {
     return request<T>(url, { method: "GET" });
   },
 
-  post: <T>(path: string, body?: unknown): Promise<ApiResponse<T>> => {
+  post: <T>(path: string, body?: unknown, _config?: Record<string, unknown>): Promise<ApiResponse<T>> => {
     return request<T>(path, {
       method: "POST",
       body: body ? JSON.stringify(body) : undefined,

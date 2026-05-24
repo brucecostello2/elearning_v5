@@ -229,7 +229,7 @@ export function useStoryboard(
       // Compute new order locally
       const newOrder = [...sortedScenes];
       const [movedScene] = newOrder.splice(sourceIndex, 1);
-      newOrder.splice(destinationIndex, 0, movedScene);
+      newOrder.splice(destinationIndex, 0, movedScene!);
 
       // Update scene_index values
       const reorderedScenes = newOrder.map(

@@ -18,7 +18,7 @@ interface UseJobsReturn {
   resumeJob: (jobId: string) => Promise<void>;
 }
 
-const jobsFetcher = async (url: string): Promise<RenderJob[]> => {
+const jobsFetcher = async (url: string): Promise<any> => {
   const response = await apiClient.get<{ data: RenderJob[] }>(url);
   return response.data;
 };
