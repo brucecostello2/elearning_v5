@@ -70,7 +70,7 @@ function getPromptsKey(options: UsePromptsOptions): string | null {
     return `/api/v1/projects/${options.projectId}/prompts`;
   }
   if (options.tier) {
-    return `/api/v1/prompts?tier=${options.tier}`;
+    return `/api/v1/prompts?prompt_type=${encodeURIComponent(options.tier)}`;
   }
   return null;
 }
