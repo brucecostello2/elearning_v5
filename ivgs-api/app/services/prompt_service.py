@@ -12,7 +12,7 @@ from typing import Dict, List, Optional
 from uuid import UUID
 
 from jinja2 import Environment, BaseLoader, TemplateSyntaxError, UndefinedError, select_autoescape
-from sqlalchemy import select, func, update
+from sqlalchemy import select, func, update, String
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prompt import Prompt
@@ -58,7 +58,7 @@ class PromptService:
             Prompt.scene_id.is_(None),
         )
         if prompt_type:
-            query = query.where(Prompt.prompt_type == prompt_type)
+            query = query.where(Prompt.prompt_type.cast(String) == prompt_type)
         query = query.order_by(Prompt.prompt_type, Prompt.version.desc())
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -74,7 +74,7 @@ class PromptService:
             Prompt.scene_id.is_(None),
         )
         if prompt_type:
-            query = query.where(Prompt.prompt_type == prompt_type)
+            query = query.where(Prompt.prompt_type.cast(String) == prompt_type)
         query = query.order_by(Prompt.prompt_type, Prompt.version.desc())
         result = await self.db.execute(query)
         return list(result.scalars().all())
@@ -125,7 +125,7 @@ class PromptService:
         if scene_id:
             result = await self.db.execute(
                 select(Prompt).where(
-                    Prompt.prompt_type == prompt_type,
+                    Prompt.prompt_type.cast(String) == prompt_type,
                     Prompt.project_id == project_id,
                     Prompt.scene_id == scene_id,
                     Prompt.is_active.is_(True),
@@ -138,7 +138,7 @@ class PromptService:
         # Tier 2: Project-level
         result = await self.db.execute(
             select(Prompt).where(
-                Prompt.prompt_type == prompt_type,
+                Prompt.prompt_type.cast(String) == prompt_type,
                 Prompt.project_id == project_id,
                 Prompt.scene_id.is_(None),
                 Prompt.is_active.is_(True),
@@ -151,7 +151,7 @@ class PromptService:
         # Tier 3: Global
         result = await self.db.execute(
             select(Prompt).where(
-                Prompt.prompt_type == prompt_type,
+                Prompt.prompt_type.cast(String) == prompt_type,
                 Prompt.project_id.is_(None),
                 Prompt.scene_id.is_(None),
                 Prompt.is_active.is_(True),
@@ -177,7 +177,7 @@ class PromptService:
         3. Create new version with is_active=True
         """
         # Determine scope filter
-        scope_filter = [Prompt.prompt_type == prompt_type]
+        scope_filter = [Prompt.prompt_type.cast(String) == prompt_type]
         if scene_id:
             scope_filter.append(Prompt.scene_id == scene_id)
             scope_filter.append(Prompt.project_id == project_id)
@@ -239,7 +239,7 @@ class PromptService:
             return None
 
         # Build scope filter
-        scope_filter = [Prompt.prompt_type == prompt.prompt_type]
+        scope_filter = [Prompt.prompt_type.cast(String) == prompt.prompt_type]
         if prompt.scene_id:
             scope_filter.append(Prompt.scene_id == prompt.scene_id)
             scope_filter.append(Prompt.project_id == prompt.project_id)
@@ -275,7 +275,7 @@ class PromptService:
         scene_id: Optional[UUID] = None,
     ) -> List[Prompt]:
         """Get version history for a prompt type+scope."""
-        scope_filter = [Prompt.prompt_type == prompt_type]
+        scope_filter = [Prompt.prompt_type.cast(String) == prompt_type]
         if scene_id:
             scope_filter.append(Prompt.scene_id == scene_id)
             scope_filter.append(Prompt.project_id == project_id)
@@ -395,7 +395,7 @@ class PromptService:
             return False
 
         # Build scope filter to delete all versions for this type+scope
-        scope_filter = [Prompt.prompt_type == prompt.prompt_type]
+        scope_filter = [Prompt.prompt_type.cast(String) == prompt.prompt_type]
         if prompt.scene_id:
             scope_filter.append(Prompt.scene_id == prompt.scene_id)
             scope_filter.append(Prompt.project_id == prompt.project_id)
