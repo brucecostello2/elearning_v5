@@ -17,7 +17,7 @@ import type { BackupRecord } from "@/types/monitoring";
 
 // ── SWR Fetcher ───────────────────────────────────────────────────────
 
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<any> => {
   const response = await api.get(url);
   return response.data;
 };
