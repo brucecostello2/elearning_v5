@@ -192,7 +192,7 @@ class RetentionService:
             hot_assets_result = await self.db.execute(
                 select(Asset)
                 .where(
-                    Asset.storage_tier == "hot",
+                    Asset.storage_tier.cast(String) == "hot",
                     Asset.preserve_flag.is_(False),
                     Asset.created_at.isnot(None),
                 )

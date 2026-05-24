@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, DateTime, text
+from sqlalchemy import String, DateTime, text, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,12 @@ class User(Base):
     role: Mapped[str] = mapped_column(
         String(16), nullable=False,
         doc="One of: admin, operator, viewer (PostgreSQL ENUM user_role)",
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("true"),
+        doc="Per Alembic 0015 — soft-disable flag for users.",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
