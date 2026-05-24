@@ -164,7 +164,7 @@ services:
       - ivgs-net
     healthcheck:
       <<: *common-healthcheck
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9333/cluster/status || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:9333/cluster/status || exit 1"]
     command: "master -ip=seaweedfs-master -port=9333 -defaultReplication=000 -mdir=/data"
 
   # ---------------------------------------------------------------------------
@@ -231,6 +231,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
@@ -341,7 +343,7 @@ services:
   # Processes default queue tasks (non-GPU): emails, notifications, cleanup
   # ---------------------------------------------------------------------------
   celery-worker-default:
-    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
     container_name: ivgs-celery-default
     <<: [*common-restart, *common-logging]
     env_file:
@@ -349,6 +351,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
     volumes:
@@ -362,9 +366,9 @@ services:
         condition: service_healthy
     healthcheck:
       <<: *common-healthcheck
-      test: ["CMD-SHELL", "celery -A ivgs.celery_app inspect ping --timeout=10 || exit 1"]
+      test: ["CMD-SHELL", "celery -A celery_app inspect ping --timeout=5 --destination default-worker@node01 | grep -q pong || exit 1"]
     command: >
-      celery -A ivgs.celery_app worker
+      celery -A celery_app worker
         --loglevel=info
         --queues=default,notifications,cleanup
         --concurrency=4
@@ -379,7 +383,7 @@ services:
   # heartbeat timeout checks
   # ---------------------------------------------------------------------------
   celery-beat:
-    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
     container_name: ivgs-celery-beat
     <<: [*common-restart, *common-logging]
     env_file:
@@ -387,6 +391,8 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
     networks:
       - ivgs-net
     depends_on:
@@ -395,7 +401,7 @@ services:
       redis:
         condition: service_healthy
     command: >
-      celery -A ivgs.celery_app beat
+      celery -A celery_app beat
         --loglevel=info
         --schedule=/tmp/celerybeat-schedule
         --pidfile=/tmp/celerybeat.pid
