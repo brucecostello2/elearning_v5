@@ -125,7 +125,7 @@ export default function PromptLibrary({
    * Filter library entries by search and category.
    */
   const filteredEntries = useMemo<PromptLibraryEntry[]>(() => {
-    if (!libraryEntries) return [];
+    if (!Array.isArray(libraryEntries)) return [];
 
     let result = [...libraryEntries];
 
@@ -154,10 +154,10 @@ export default function PromptLibrary({
    * Category counts for badges.
    */
   const categoryCounts = useMemo<Record<string, number>>(() => {
-    const counts: Record<string, number> = { ALL: libraryEntries?.length ?? 0 };
+    const counts: Record<string, number> = { ALL: Array.isArray(libraryEntries) ? libraryEntries.length : 0 };
     LIBRARY_CATEGORIES.forEach((cat) => {
       counts[cat.id] =
-        libraryEntries?.filter((entry) => entry.prompt_type === cat.id)
+        (Array.isArray(libraryEntries) ? libraryEntries : []).filter((entry) => entry.prompt_type === cat.id)
           .length ?? 0;
     });
     return counts;
