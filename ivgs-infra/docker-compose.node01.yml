@@ -308,7 +308,7 @@ services:
       - ivgs-net
     healthcheck:
       <<: *common-healthcheck
-      test: ["CMD-SHELL", "curl -sf http://localhost:3001/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/ || exit 1"]
 
   # ---------------------------------------------------------------------------
   # Service 9: Nginx Reverse Proxy (§2.4, Table 2-4: port 443/80)
