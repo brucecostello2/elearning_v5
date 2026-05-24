@@ -124,7 +124,7 @@ export default function PromptPlayground({
   const [promptText, setPromptText] = useState<string>("");
   const [systemPrompt, setSystemPrompt] = useState<string>("");
   const [selectedModelId, setSelectedModelId] = useState<string>(
-    AVAILABLE_MODELS[0]!.id
+    AVAILABLE_MODELS[0]?.id ?? "llama-3.3-70b"
   );
   const [params, setParams] = useState<PlaygroundParameters>({
     ...DEFAULT_PARAMS,
@@ -136,7 +136,7 @@ export default function PromptPlayground({
   // ── Comparison Mode ──────────────────────────────────────────────────
   const [comparisonMode, setComparisonMode] = useState<boolean>(false);
   const [comparisonModelId, setComparisonModelId] = useState<string>(
-    AVAILABLE_MODELS[1]!.id
+    AVAILABLE_MODELS[1]?.id ?? "mistral-7b"
   );
   const [comparisonResponse, setComparisonResponse] =
     useState<PlaygroundResponse | null>(null);
