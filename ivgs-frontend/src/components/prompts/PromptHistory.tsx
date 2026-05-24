@@ -94,8 +94,6 @@ function computeUnifiedDiff(
       // Output removed lines before the match
       while (oldIdx < matchedOldIdx) {
         diff.push({ type: "remove", content: oldLines[oldIdx] ?? "" });
-        diff.push({ type: "remove", content: oldLines[oldIdx]! });
->>>>>>> a4227f7 (fix(frontend+backend): resolve all prompt-related TypeScript errors)
         oldIdx++;
       }
 
@@ -107,8 +105,7 @@ function computeUnifiedDiff(
       diff.push({ type: "add", content: newLines[newIdx]! });
       newIdx++;
     } else if (oldIdx < oldLines.length) {
-      diff.push({ type: "remove", content: oldLines[oldIdx]! });
->>>>>>> a4227f7 (fix(frontend+backend): resolve all prompt-related TypeScript errors)
+      diff.push({ type: "remove", content: oldLines[oldIdx] ?? "" });
       oldIdx++;
     }
   }
