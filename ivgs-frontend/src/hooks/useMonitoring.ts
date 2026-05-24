@@ -46,7 +46,7 @@ import type {
  * Generic SWR fetcher using the API client.
  * Extracts data from Axios response.
  */
-const fetcher = async (url: string) => {
+const fetcher = async (url: string): Promise<any> => {
   const response = await api.get(url);
   return response.data;
 };
