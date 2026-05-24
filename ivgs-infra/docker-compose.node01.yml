@@ -224,11 +224,12 @@ services:
   fastapi-backend:
     image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
     container_name: ivgs-fastapi
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8001", "--workers", "4"]
     <<: [*common-restart, *common-logging]
     env_file:
       - .env.node01
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
@@ -273,7 +274,7 @@ services:
     env_file:
       - .env.node01
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/1
       SCHEDULER_PORT: "8001"
     ports:
@@ -346,7 +347,7 @@ services:
     env_file:
       - .env.node01
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
@@ -384,7 +385,7 @@ services:
     env_file:
       - .env.node01
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
     networks:
       - ivgs-net

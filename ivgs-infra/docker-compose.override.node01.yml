@@ -1,0 +1,7 @@
+# Per-node override applied at compose time.
+# - rollback-storage volume: bind mount for /ivgs (rollback service data on this host).
+# NOTE: pull_policy intentionally NOT set here; nodes pull from GHCR by default.
+services:
+  fastapi-backend:
+    volumes:
+      - /opt/ivgs/rollback-storage:/ivgs
