@@ -26,7 +26,7 @@ import type { RetentionPolicy, StorageTier } from "@/types/monitoring";
  * RBAC: Admin only (per §8.3 Table 8-3)
  */
 
-const TIER_LABELS: Record<StorageTier | "delete", string> = {
+const TIER_LABELS: Partial<Record<StorageTier | "delete", string>> = {
   hot: "Hot (SSD)",
   warm: "Warm (HDD)",
   cold: "Cold (NAS)",
@@ -34,7 +34,7 @@ const TIER_LABELS: Record<StorageTier | "delete", string> = {
   delete: "Delete",
 };
 
-const TIER_COLORS: Record<StorageTier | "delete", string> = {
+const TIER_COLORS: Partial<Record<StorageTier | "delete", string>> = {
   hot: "text-red-400 bg-red-900/20",
   warm: "text-orange-400 bg-orange-900/20",
   cold: "text-blue-400 bg-blue-900/20",

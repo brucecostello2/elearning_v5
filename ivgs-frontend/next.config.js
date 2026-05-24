@@ -22,9 +22,9 @@ const nextConfig = {
    * correct; components need gradual alignment.
    * TODO: Remove this once all TS2339/TS2367/TS2322 errors are resolved.
    */
-  typescript: {
+  /* typescript: {
     ignoreBuildErrors: true,
-  },
+  }, */
 
   /* API proxy rewrites for development */
   async rewrites() {

@@ -75,8 +75,8 @@ export default function PipelineTracker({
 
     // Use the most recent job's stage data
     const latestJob = jobs[0];
-    if (latestJob.stage_statuses) {
-      for (const ss of latestJob.stage_statuses) {
+    if (latestJob?.stage_statuses) {
+      for (const ss of Object.values(latestJob.stage_statuses) as any[]) {
         statusMap.set(ss.stage_id, ss);
       }
     }

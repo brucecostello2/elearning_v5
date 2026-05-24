@@ -1,6 +1,9 @@
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
-import type { NodeStatus } from "@/types/api";
+import type { GpuNodeResponse } from "@/types/api";
+
+/** Legacy alias — components reference NodeStatus but backend uses GpuNodeResponse */
+type NodeStatus = GpuNodeResponse;
 
 /**
  * §8.1.5 Node Monitor — Node status polling hook.
@@ -13,7 +16,7 @@ interface UseNodesReturn {
   error: Error | undefined;
 }
 
-const nodesFetcher = async (url: string): Promise<NodeStatus[]> => {
+const nodesFetcher = async (url: string): Promise<any> => {
   const response = await apiClient.get<{ data: NodeStatus[] }>(url);
   return response.data;
 };

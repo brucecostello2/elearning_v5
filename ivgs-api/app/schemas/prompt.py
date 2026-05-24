@@ -46,6 +46,29 @@ class PromptCreate(BaseModel):
         return v
 
 
+class PromptUpdate(BaseModel):
+    """
+    Schema for updating a prompt (creating new version per §9.3).
+
+    Separate from PromptCreate because prompt_type is determined by the
+    existing prompt being updated, not by the caller.
+
+    Used for:
+    - PUT /api/v1/prompts/{id}
+    """
+
+    prompt_text: str = Field(
+        min_length=1,
+        max_length=50000,
+        description="Updated Jinja2 prompt content",
+    )
+    change_note: str = Field(
+        min_length=1,
+        max_length=500,
+        description="Required description of changes",
+    )
+
+
 class PromptResponse(BaseModel):
     """Full prompt response with scope and version info."""
 
@@ -65,10 +88,11 @@ class PromptResponse(BaseModel):
 
 
 class PromptVersionHistory(BaseModel):
-    """Summary of a prompt version for version history listing."""
+    """Prompt version for version history listing (includes text for diff)."""
 
     id: UUID
     version: int
+    prompt_text: str
     is_active: bool
     created_by: Optional[str] = None
     created_at: datetime

@@ -41,7 +41,7 @@ export default function RendersPage(): React.ReactElement {
 
   /** Available languages from variants */
   const availableLanguages = useMemo<string[]>(
-    () => variants.map((v) => v.language),
+    () => variants.map((v) => v.language).filter((l): l is string => !!l),
     [variants]
   );
 

@@ -55,25 +55,10 @@ interface UsePromptsOptions {
   sceneId?: string;
 }
 
-/** Prompts API response shape */
-interface PromptsResponse {
-  prompts: PromptRecord[];
-}
-
-/** Versions API response shape */
-interface VersionsResponse {
-  versions: PromptVersion[];
-}
-
-/** Library API response shape */
-interface LibraryResponse {
-  entries: PromptLibraryEntry[];
-}
-
-/** SWR fetcher */
+/** SWR fetcher — backend returns bare array, not wrapped object */
 async function fetchPrompts(url: string): Promise<PromptRecord[]> {
-  const response = await api.get<PromptsResponse>(url);
-  return response.data.prompts;
+  const response = await api.get<PromptRecord[]>(url);
+  return response.data;
 }
 
 /** Build cache key based on options */
@@ -85,7 +70,7 @@ function getPromptsKey(options: UsePromptsOptions): string | null {
     return `/api/v1/projects/${options.projectId}/prompts`;
   }
   if (options.tier) {
-    return `/api/v1/prompts?tier=${options.tier}`;
+    return `/api/v1/prompts?prompt_type=${encodeURIComponent(options.tier)}`;
   }
   return null;
 }
@@ -104,8 +89,8 @@ interface UsePromptsReturn {
   /** Update an existing prompt (creates new version per §9.3) */
   updatePrompt: (
     promptId: string,
-    templateContent: string,
-    metadata?: Record<string, unknown>
+    promptText: string,
+    changeNote?: string
   ) => Promise<PromptRecord>;
   /** Delete a prompt */
   deletePrompt: (promptId: string) => Promise<void>;
@@ -163,8 +148,8 @@ export function usePrompts(options: UsePromptsOptions): UsePromptsReturn {
   } = useSWR<PromptLibraryEntry[], Error>(
     "/api/v1/prompts/library",
     async (url: string): Promise<PromptLibraryEntry[]> => {
-      const response = await api.get<LibraryResponse>(url);
-      return response.data.entries;
+      const response = await api.get<PromptLibraryEntry[]>(url);
+      return response.data;
     },
     {
       revalidateOnFocus: false,
@@ -203,14 +188,14 @@ export function usePrompts(options: UsePromptsOptions): UsePromptsReturn {
   const updatePrompt = useCallback(
     async (
       promptId: string,
-      templateContent: string,
-      metadata?: Record<string, unknown>
+      promptText: string,
+      changeNote?: string
     ): Promise<PromptRecord> => {
       const response = await api.put<PromptRecord>(
         `/api/v1/prompts/${promptId}`,
         {
-          template_content: templateContent,
-          metadata,
+          prompt_text: promptText,
+          change_note: changeNote,
         }
       );
       await mutate(); // Revalidate cache
@@ -243,10 +228,10 @@ export function usePrompts(options: UsePromptsOptions): UsePromptsReturn {
    */
   const getVersionHistory = useCallback(
     async (promptId: string): Promise<PromptVersion[]> => {
-      const response = await api.get<VersionsResponse>(
+      const response = await api.get<PromptVersion[]>(
         `/api/v1/prompts/${promptId}/versions`
       );
-      return response.data.versions;
+      return response.data;
     },
     []
   );

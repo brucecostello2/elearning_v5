@@ -12,11 +12,11 @@ interface UseAssetsReturn {
   isLoading: boolean;
   error: Error | undefined;
   mutate: KeyedMutator<Asset[]>;
-  uploadAsset: (formData: FormData) => Promise<Asset>;
+  uploadAsset: (formData: FormData) => Promise<any>;
   regenerateAsset: (assetId: string) => Promise<void>;
 }
 
-const assetsFetcher = async (url: string): Promise<Asset[]> => {
+const assetsFetcher = async (url: string): Promise<any> => {
   const response = await apiClient.get<{ data: Asset[] }>(url);
   return response.data;
 };
@@ -36,7 +36,7 @@ export function useAssets(projectId: string): UseAssetsReturn {
   /**
    * Upload a new asset (manual upload).
    */
-  const uploadAsset = async (formData: FormData): Promise<Asset> => {
+  const uploadAsset = async (formData: FormData): Promise<any> => {
     const response = await apiClient.post<{ data: Asset }>(
       `/api/v1/projects/${projectId}/assets`,
       formData,

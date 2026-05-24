@@ -148,9 +148,9 @@ export default function TalkingHeadPage(): React.ReactElement {
                         Lip-sync: {(asset.quality_score * 100).toFixed(1)}%
                       </span>
                     )}
-                  {asset.metadata?.duration && (
+                  {asset.metadata?.duration != null && (
                     <span className="text-xs text-gray-500">
-                      Duration: {asset.metadata.duration}s
+                      Duration: {String(asset.metadata.duration)}s
                     </span>
                   )}
                 </div>

@@ -156,16 +156,15 @@ export default function PromptsPage(): React.ReactElement {
     async (
       promptType: PromptType,
       templateContent: string,
-      metadata?: Record<string, unknown>
+      changeNote?: string
     ): Promise<void> => {
       if (selectedPrompt) {
-        await updatePrompt(selectedPrompt.id, templateContent, metadata);
+        await updatePrompt(selectedPrompt.id, templateContent, changeNote);
       } else {
         await createPrompt({
           prompt_type: promptType,
-          tier: "GLOBAL" as PromptTier,
-          template_content: templateContent,
-          metadata,
+          prompt_text: templateContent,
+          change_note: changeNote || "Initial version",
         });
       }
       setCurrentView("manager");

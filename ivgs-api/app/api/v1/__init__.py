@@ -23,6 +23,8 @@ from app.api.v1.jobs import project_job_router, job_router
 # --- Prompt routers (§9) ---
 from app.api.v1.prompts import (
     global_router as prompts_global_router,
+    library_router as prompts_library_router,
+    playground_router as prompts_playground_router,
     project_prompt_router,
     scene_prompt_router,
 )
@@ -72,9 +74,11 @@ api_v1_router.include_router(assets_router)            # prefix built into route
 api_v1_router.include_router(job_router)               # prefix built into router
 
 # Prompts (§9)
-api_v1_router.include_router(prompts_global_router)    # /prompts
-api_v1_router.include_router(project_prompt_router)    # /projects/{id}/prompts
-api_v1_router.include_router(scene_prompt_router)      # /projects/{id}/scenes/{sid}/prompts
+api_v1_router.include_router(prompts_library_router)    # /prompts/library  (MUST be before /prompts)
+api_v1_router.include_router(prompts_global_router)     # /prompts
+api_v1_router.include_router(prompts_playground_router)  # /playground
+api_v1_router.include_router(project_prompt_router)     # /projects/{id}/prompts
+api_v1_router.include_router(scene_prompt_router)       # /projects/{id}/scenes/{sid}/prompts
 
 # Quality
 api_v1_router.include_router(job_quality_router)       # prefix built into router

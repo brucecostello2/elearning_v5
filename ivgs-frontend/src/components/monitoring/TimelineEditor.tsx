@@ -41,7 +41,7 @@ interface TimelineEditorProps {
   /** Layer definitions with IDs, labels, and colors */
   layers: { id: TimelineLayer; label: string; color: string }[];
   /** Color mapping for segment statuses */
-  segmentStatusColors: Record<RenderSegmentStatus, string>;
+  segmentStatusColors: Partial<Record<RenderSegmentStatus, string>>;
   /** Current zoom level (1.0 = 100%) */
   zoomLevel: number;
   /** Pan offset in pixels */

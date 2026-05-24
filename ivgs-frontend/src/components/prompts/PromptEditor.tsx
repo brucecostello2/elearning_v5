@@ -267,7 +267,7 @@ interface PromptEditorProps {
   onSave: (
     promptType: PromptType,
     templateContent: string,
-    metadata?: Record<string, unknown>
+    changeNote?: string
   ) => Promise<void>;
   /** Cancel callback */
   onCancel: () => void;
@@ -347,16 +347,12 @@ export default function PromptEditor({
 }: PromptEditorProps): React.ReactElement {
   // ── State ────────────────────────────────────────────────────────────
   const [templateContent, setTemplateContent] = useState<string>(
-    existingPrompt?.template_content ?? DEFAULT_TEMPLATES[promptType] ?? ""
+    existingPrompt?.prompt_text ?? DEFAULT_TEMPLATES[promptType] ?? ""
   );
   const [description, setDescription] = useState<string>(
-    (existingPrompt?.metadata as Record<string, string>)?.description ?? ""
+    existingPrompt?.change_note ?? ""
   );
-  const [tags, setTags] = useState<string>(
-    ((existingPrompt?.metadata as Record<string, string[]>)?.tags ?? []).join(
-      ", "
-    )
-  );
+  const [tags, setTags] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -436,21 +432,12 @@ export default function PromptEditor({
     setIsSaving(true);
 
     try {
-      const metadata: Record<string, unknown> = {};
-      if (description.trim()) {
-        metadata.description = description.trim();
-      }
-      if (tags.trim()) {
-        metadata.tags = tags
-          .split(",")
-          .map((t) => t.trim())
-          .filter(Boolean);
-      }
+      const changeNote = description.trim() || undefined;
 
       await onSave(
         promptType,
         templateContent,
-        Object.keys(metadata).length > 0 ? metadata : undefined
+        changeNote
       );
     } catch (err: unknown) {
       const message =

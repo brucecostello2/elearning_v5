@@ -314,9 +314,9 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                               (t: StorageTierData) => t.tier === tier.id
                             );
                             const usagePercent =
-                              data && data.allocated > 0
+                              data && (data.allocated ?? 0) > 0
                                 ? Math.round(
-                                    (data.used / data.allocated) * 100
+                                    (data.used! / data.allocated!) * 100
                                   )
                                 : 0;
 

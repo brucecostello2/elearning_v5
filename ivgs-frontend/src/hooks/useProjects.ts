@@ -15,8 +15,8 @@ interface UseProjectsReturn {
   isLoading: boolean;
   error: Error | undefined;
   mutate: KeyedMutator<Project[] | Project>;
-  createProject: (formData: FormData) => Promise<Project>;
-  addLanguage: (languageCode: string) => Promise<LanguageVariant>;
+  createProject: (formData: FormData) => Promise<any>;
+  addLanguage: (languageCode: string) => Promise<any>;
   retryLanguage: (languageCode: string) => Promise<void>;
 }
 
@@ -71,7 +71,7 @@ export function useProjects(projectId?: string): UseProjectsReturn {
   /**
    * Create a new project via multipart form upload.
    */
-  const createProject = async (formData: FormData): Promise<Project> => {
+  const createProject = async (formData: FormData): Promise<any> => {
     const response = await apiClient.post<{ data: Project }>(
       "/api/v1/projects",
       formData,
@@ -86,7 +86,7 @@ export function useProjects(projectId?: string): UseProjectsReturn {
    */
   const addLanguage = async (
     languageCode: string
-  ): Promise<LanguageVariant> => {
+  ): Promise<any> => {
     if (!projectId) throw new Error("Project ID required");
     const response = await apiClient.post<{ data: LanguageVariant }>(
       `/api/v1/projects/${projectId}/languages`,

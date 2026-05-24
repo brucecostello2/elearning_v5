@@ -209,7 +209,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
       0
     );
     const activeJobs = nodes.reduce(
-      (sum: number, n: GPUNode) => sum + (n.active_jobs || 0),
+      (sum: number, n: GPUNode) => sum + (Array.isArray(n.active_jobs) ? n.active_jobs.length : Number(n.active_jobs) || 0),
       0
     );
     const queuedJobs = nodes.reduce(

@@ -67,8 +67,24 @@ class Prompt(Base):
         lazy="selectin",
     )
 
+    @property
+    def scope(self) -> str:
+        """
+        Compute prompt scope from project_id and scene_id per §9.1.
+
+        Returns:
+            "SCENE" if scene_id is set
+            "PROJECT" if project_id is set (and scene_id is None)
+            "GLOBAL" if both are None
+        """
+        if self.scene_id is not None:
+            return "SCENE"
+        elif self.project_id is not None:
+            return "PROJECT"
+        return "GLOBAL"
+
     def __repr__(self) -> str:
         return (
             f"<Prompt id={self.id} type={self.prompt_type} "
-            f"v{self.version} active={self.is_active}>"
+            f"v{self.version} active={self.is_active} scope={self.scope}>"
         )
