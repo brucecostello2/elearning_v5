@@ -164,7 +164,7 @@ export default function PromptsPage(): React.ReactElement {
         await createPrompt({
           prompt_type: promptType,
           tier: "GLOBAL" as PromptTier,
-          template_content: templateContent,
+          prompt_text: templateContent,
           metadata,
         });
       }

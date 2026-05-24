@@ -143,7 +143,7 @@ export default function PromptLibrary({
         (entry) =>
           entry.name.toLowerCase().includes(query) ||
           entry.description?.toLowerCase().includes(query) ||
-          entry.template_content.toLowerCase().includes(query) ||
+          entry.prompt_text.toLowerCase().includes(query) ||
           entry.tags.some((tag) => tag.toLowerCase().includes(query))
       );
     }
@@ -169,7 +169,7 @@ export default function PromptLibrary({
    */
   const handleApply = useCallback(
     (entry: PromptLibraryEntry): void => {
-      onApplyTemplate(entry.template_content, entry.prompt_type);
+      onApplyTemplate(entry.prompt_text, entry.prompt_type);
     },
     [onApplyTemplate]
   );
@@ -309,8 +309,8 @@ export default function PromptLibrary({
 
               {/* Preview snippet */}
               <div className="p-2 bg-gray-900 rounded text-[10px] text-gray-500 font-mono max-h-16 overflow-hidden">
-                {entry.template_content.slice(0, 150)}
-                {entry.template_content.length > 150 ? "…" : ""}
+                {entry.prompt_text.slice(0, 150)}
+                {entry.prompt_text.length > 150 ? "…" : ""}
               </div>
 
               {/* Actions */}
@@ -370,7 +370,7 @@ export default function PromptLibrary({
           </div>
           <div className="p-4">
             <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
-              {selectedEntry.template_content}
+              {selectedEntry.prompt_text}
             </pre>
           </div>
           <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-end gap-2">

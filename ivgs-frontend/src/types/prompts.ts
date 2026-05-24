@@ -58,26 +58,23 @@ export interface PromptRecord {
   /** Prompt type per Table 9-2 */
   prompt_type: PromptType;
 
-  /** Tier at which this prompt is defined */
-  tier: PromptTier;
+  /** Scope at which this prompt is defined (maps to backend `scope`) */
+  scope: PromptTier;
 
-  /** Project ID (null for GLOBAL tier) */
+  /** Project ID (null for GLOBAL scope) */
   project_id: string | null;
 
-  /** Scene ID (null for GLOBAL and PROJECT tiers) */
+  /** Scene ID (null for GLOBAL and PROJECT scopes) */
   scene_id: string | null;
 
-  /** Jinja2 template content */
-  template_content: string;
+  /** Jinja2 prompt content (maps to backend `prompt_text`) */
+  prompt_text: string;
 
   /** Whether this is the active version */
   is_active: boolean;
 
   /** Version number (auto-incremented per prompt_type per scope) */
-  version_number: number;
-
-  /** Optional metadata (description, tags, etc.) */
-  metadata: Record<string, unknown> | null;
+  version: number;
 
   /** User ID of the creator */
   created_by: string;
@@ -85,8 +82,8 @@ export interface PromptRecord {
   /** ISO 8601 creation timestamp */
   created_at: string;
 
-  /** ISO 8601 last update timestamp */
-  updated_at: string;
+  /** Optional change note describing this version */
+  change_note: string | null;
 }
 
 // ─── Prompt Version ─────────────────────────────────────────────────────
@@ -99,32 +96,20 @@ export interface PromptVersion {
   /** Unique version identifier (UUID) */
   id: string;
 
-  /** Parent prompt ID */
-  prompt_id: string;
-
   /** Version number */
-  version_number: number;
-
-  /** Jinja2 template content for this version */
-  template_content: string;
+  version: number;
 
   /** Whether this version is currently active */
   is_active: boolean;
 
-  /** Optional change description */
-  change_description: string | null;
-
   /** User ID who created this version */
-  created_by: string;
-
-  /** Display name of the creator */
-  created_by_name: string | null;
-
-  /** Optional metadata */
-  metadata: Record<string, unknown> | null;
+  created_by: string | null;
 
   /** ISO 8601 creation timestamp */
   created_at: string;
+
+  /** Optional change note describing this version */
+  change_note: string | null;
 }
 
 // ─── Template Variables ─────────────────────────────────────────────────
@@ -157,20 +142,11 @@ export interface PromptCreatePayload {
   /** Prompt type */
   prompt_type: PromptType;
 
-  /** Tier at which to create the prompt */
-  tier: PromptTier;
+  /** Jinja2 prompt content */
+  prompt_text: string;
 
-  /** Jinja2 template content */
-  template_content: string;
-
-  /** Project ID (required for PROJECT and SCENE tiers) */
-  project_id?: string;
-
-  /** Scene ID (required for SCENE tier) */
-  scene_id?: string;
-
-  /** Optional metadata */
-  metadata?: Record<string, unknown>;
+  /** Required description of changes */
+  change_note: string;
 }
 
 /**
@@ -178,14 +154,11 @@ export interface PromptCreatePayload {
  * PUT /api/v1/prompts/{id}
  */
 export interface PromptUpdatePayload {
-  /** Updated Jinja2 template content */
-  template_content: string;
+  /** Updated Jinja2 prompt content */
+  prompt_text: string;
 
-  /** Optional change description for version history */
-  change_description?: string;
-
-  /** Optional metadata update */
-  metadata?: Record<string, unknown>;
+  /** Required description of changes */
+  change_note: string;
 }
 
 /**
@@ -350,29 +323,38 @@ export interface PlaygroundSavePayload {
  * explicitly promoted to active.
  */
 export interface PromptLibraryEntry {
-  /** Unique library entry ID */
+  /** Unique library entry ID (UUID) */
   id: string;
-
-  /** Human-readable template name */
-  name: string;
-
-  /** Optional description */
-  description: string | null;
 
   /** Prompt type this template is designed for */
   prompt_type: PromptType;
 
-  /** Jinja2 template content */
-  template_content: string;
+  /** Scope (typically GLOBAL for library templates) */
+  scope: PromptTier;
 
-  /** Category tags (e.g., "healthcare", "compliance") */
-  tags: string[];
+  /** Jinja2 prompt content */
+  prompt_text: string;
+
+  /** Version number */
+  version: number;
+
+  /** Whether this version is currently active */
+  is_active: boolean;
+
+  /** Project ID (null for GLOBAL) */
+  project_id: string | null;
+
+  /** Scene ID (null for GLOBAL/PROJECT) */
+  scene_id: string | null;
 
   /** User who added this to the library */
   created_by: string;
 
   /** ISO 8601 creation timestamp */
   created_at: string;
+
+  /** Optional change note */
+  change_note: string | null;
 }
 
 /**

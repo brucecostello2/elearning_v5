@@ -191,8 +191,8 @@ export default function PromptHistory({
   const diff = useMemo(() => {
     if (!selectedVersion || !compareVersion) return null;
     return computeUnifiedDiff(
-      compareVersion.template_content,
-      selectedVersion.template_content
+      compareVersion.prompt_text,
+      selectedVersion.prompt_text
     );
   }, [selectedVersion, compareVersion]);
 
@@ -206,8 +206,8 @@ export default function PromptHistory({
       if (!version) return;
 
       const confirmed = window.confirm(
-        `Roll back to version ${version.version_number}? ` +
-          `This will create a new version with the content from v${version.version_number}.`
+        `Roll back to version ${version.version}? ` +
+          `This will create a new version with the content from v${version.version}.`
       );
       if (!confirmed) return;
 
@@ -296,7 +296,7 @@ export default function PromptHistory({
               {prompt.prompt_type}
             </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              Tier: {prompt.tier} · {versions.length} version
+              Tier: {prompt.scope} · {versions.length} version
               {versions.length !== 1 ? "s" : ""}
             </p>
           </div>
@@ -364,7 +364,7 @@ export default function PromptHistory({
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium text-white">
-                        v{version.version_number}
+                        v{version.version}
                       </span>
                       {version.is_active && (
                         <span className="px-1.5 py-0.5 bg-green-900/30 text-green-400 text-[10px] rounded-full font-medium">
@@ -377,9 +377,9 @@ export default function PromptHistory({
                     </span>
                   </div>
 
-                  {version.change_description && (
+                  {version.change_note && (
                     <p className="text-xs text-gray-400 mb-2">
-                      {version.change_description}
+                      {version.change_note}
                     </p>
                   )}
 
@@ -428,11 +428,11 @@ export default function PromptHistory({
           <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
             <div className="flex items-center gap-3 text-xs">
               <span className="text-red-400">
-                − v{compareVersion.version_number}
+                − v{compareVersion.version}
               </span>
               <span className="text-gray-500">→</span>
               <span className="text-green-400">
-                + v{selectedVersion.version_number}
+                + v{selectedVersion.version}
               </span>
             </div>
           </div>
@@ -469,16 +469,16 @@ export default function PromptHistory({
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
             <span className="text-xs text-gray-400">
-              v{selectedVersion.version_number} — Full Content
+              v{selectedVersion.version} — Full Content
             </span>
             <span className="text-xs text-gray-500">
-              {selectedVersion.template_content.length} chars ·{" "}
-              {selectedVersion.template_content.split("\n").length} lines
+              {selectedVersion.prompt_text.length} chars ·{" "}
+              {selectedVersion.prompt_text.split("\n").length} lines
             </span>
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
             <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
-              {selectedVersion.template_content}
+              {selectedVersion.prompt_text}
             </pre>
           </div>
         </div>
