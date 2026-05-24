@@ -88,10 +88,11 @@ class PromptResponse(BaseModel):
 
 
 class PromptVersionHistory(BaseModel):
-    """Summary of a prompt version for version history listing."""
+    """Prompt version for version history listing (includes text for diff)."""
 
     id: UUID
     version: int
+    prompt_text: str
     is_active: bool
     created_by: Optional[str] = None
     created_at: datetime

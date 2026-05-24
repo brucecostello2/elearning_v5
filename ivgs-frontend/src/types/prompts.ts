@@ -99,6 +99,9 @@ export interface PromptVersion {
   /** Version number */
   version: number;
 
+  /** Jinja2 prompt content for this version (for diff display) */
+  prompt_text: string;
+
   /** Whether this version is currently active */
   is_active: boolean;
 

@@ -129,10 +129,10 @@ export default function PromptLibrary({
 
     let result = [...libraryEntries];
 
-    // Category filter
+    // Category filter — match on prompt_type
     if (selectedCategory !== "ALL") {
       result = result.filter((entry) =>
-        entry.tags.includes(selectedCategory)
+        entry.prompt_type === selectedCategory
       );
     }
 
@@ -141,10 +141,9 @@ export default function PromptLibrary({
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(
         (entry) =>
-          entry.name.toLowerCase().includes(query) ||
-          entry.description?.toLowerCase().includes(query) ||
-          entry.prompt_text.toLowerCase().includes(query) ||
-          entry.tags.some((tag) => tag.toLowerCase().includes(query))
+          entry.prompt_type.toLowerCase().includes(query) ||
+          entry.change_note?.toLowerCase().includes(query) ||
+          entry.prompt_text.toLowerCase().includes(query)
       );
     }
 
@@ -158,7 +157,7 @@ export default function PromptLibrary({
     const counts: Record<string, number> = { ALL: libraryEntries?.length ?? 0 };
     LIBRARY_CATEGORIES.forEach((cat) => {
       counts[cat.id] =
-        libraryEntries?.filter((entry) => entry.tags.includes(cat.id))
+        libraryEntries?.filter((entry) => entry.prompt_type === cat.id)
           .length ?? 0;
     });
     return counts;
@@ -274,38 +273,19 @@ export default function PromptLibrary({
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
                 <h4 className="text-sm font-medium text-white">
-                  {entry.name}
+                  {entry.prompt_type.replace(/_/g, " ")}
                 </h4>
                 <span className="text-xs text-gray-500 font-mono ml-2 whitespace-nowrap">
-                  {entry.prompt_type}
+                  v{entry.version} · {entry.scope}
                 </span>
               </div>
 
-              {/* Description */}
-              {entry.description && (
+              {/* Change note */}
+              {entry.change_note && (
                 <p className="text-xs text-gray-400 mb-3 line-clamp-2">
-                  {entry.description}
+                  {entry.change_note}
                 </p>
               )}
-
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1 mb-3">
-                {entry.tags.map((tag) => {
-                  const cat = LIBRARY_CATEGORIES.find(
-                    (c) => c.id === tag
-                  );
-                  return (
-                    <span
-                      key={tag}
-                      className={`px-1.5 py-0.5 text-[10px] rounded-full border ${
-                        cat?.color ?? "bg-gray-700 text-gray-400 border-gray-600"
-                      }`}
-                    >
-                      {cat?.icon ?? "🏷️"} {tag}
-                    </span>
-                  );
-                })}
-              </div>
 
               {/* Preview snippet */}
               <div className="p-2 bg-gray-900 rounded text-[10px] text-gray-500 font-mono max-h-16 overflow-hidden">
@@ -347,7 +327,7 @@ export default function PromptLibrary({
         <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
           <div className="flex items-center justify-between px-4 py-3 bg-gray-900/50 border-b border-gray-700">
             <h3 className="text-sm font-medium text-white">
-              {selectedEntry.name}
+              {selectedEntry.prompt_type.replace(/_/g, " ")}
             </h3>
             <button
               onClick={() => setSelectedEntry(null)}
