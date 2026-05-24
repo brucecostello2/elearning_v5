@@ -347,7 +347,7 @@ export default function PromptEditor({
 }: PromptEditorProps): React.ReactElement {
   // ── State ────────────────────────────────────────────────────────────
   const [templateContent, setTemplateContent] = useState<string>(
-    existingPrompt?.template_content ?? DEFAULT_TEMPLATES[promptType] ?? ""
+    existingPrompt?.prompt_text ?? DEFAULT_TEMPLATES[promptType] ?? ""
   );
   const [description, setDescription] = useState<string>(
     (existingPrompt?.metadata as Record<string, string>)?.description ?? ""

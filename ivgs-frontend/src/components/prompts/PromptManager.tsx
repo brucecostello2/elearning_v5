@@ -267,7 +267,7 @@ export default function PromptManager({
                   <td className="px-4 py-3">
                     {prompt ? (
                       <span className="text-sm text-gray-300">
-                        v{prompt.version_number}
+                        v{prompt.version}
                       </span>
                     ) : (
                       <span className="text-sm text-gray-500">—</span>
