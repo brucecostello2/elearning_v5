@@ -348,3 +348,109 @@ class PromptService:
                 "total_tokens": len(rendered.split()),
             },
         }
+
+    # ── New methods for missing CRUD endpoints ───────────────────────
+
+    async def get_prompt_by_id(self, prompt_id: UUID) -> Optional[Prompt]:
+        """Get a single prompt by ID."""
+        result = await self.db.execute(
+            select(Prompt).where(Prompt.id == prompt_id)
+        )
+        return result.scalar_one_or_none()
+
+    async def update_prompt(
+        self,
+        prompt_id: UUID,
+        prompt_text: str,
+        change_note: str,
+        created_by: str,
+    ) -> Optional[Prompt]:
+        """
+        Update a prompt by creating a new version (per §9.3).
+
+        Preserves the original prompt's type, project_id, and scene_id.
+        """
+        existing = await self.get_prompt_by_id(prompt_id)
+        if existing is None:
+            return None
+
+        return await self.create_prompt(
+            prompt_type=existing.prompt_type,
+            prompt_text=prompt_text,
+            change_note=change_note,
+            created_by=created_by,
+            project_id=existing.project_id,
+            scene_id=existing.scene_id,
+        )
+
+    async def delete_prompt(self, prompt_id: UUID) -> bool:
+        """
+        Delete a prompt and all its versions for the given type+scope.
+
+        After deletion, the system falls back to the parent tier.
+        Returns True if deleted, False if not found.
+        """
+        prompt = await self.get_prompt_by_id(prompt_id)
+        if prompt is None:
+            return False
+
+        # Build scope filter to delete all versions for this type+scope
+        scope_filter = [Prompt.prompt_type == prompt.prompt_type]
+        if prompt.scene_id:
+            scope_filter.append(Prompt.scene_id == prompt.scene_id)
+            scope_filter.append(Prompt.project_id == prompt.project_id)
+        elif prompt.project_id:
+            scope_filter.append(Prompt.project_id == prompt.project_id)
+            scope_filter.append(Prompt.scene_id.is_(None))
+        else:
+            scope_filter.append(Prompt.project_id.is_(None))
+            scope_filter.append(Prompt.scene_id.is_(None))
+
+        from sqlalchemy import delete as sql_delete
+        await self.db.execute(sql_delete(Prompt).where(*scope_filter))
+        await self.db.commit()
+
+        logger.info(
+            "Prompt deleted: type=%s scope=%s",
+            prompt.prompt_type, prompt.scope,
+        )
+        return True
+
+    async def resolve_single_prompt(
+        self,
+        prompt_type: str,
+        project_id: Optional[UUID] = None,
+        scene_id: Optional[UUID] = None,
+    ) -> Optional[Prompt]:
+        """
+        Public wrapper around _resolve_single for the /resolve API endpoint.
+
+        Resolves the effective prompt for a single type through the 3-tier
+        hierarchy: Scene → Project → Global.
+        """
+        return await self._resolve_single(project_id, scene_id, prompt_type)
+
+    async def list_library_prompts(self) -> List[Prompt]:
+        """List all library template prompts (is_library_template=True)."""
+        result = await self.db.execute(
+            select(Prompt)
+            .where(Prompt.is_library_template.is_(True))
+            .order_by(Prompt.prompt_type, Prompt.created_at.desc())
+        )
+        return list(result.scalars().all())
+
+    async def remove_from_library(self, prompt_id: UUID) -> bool:
+        """
+        Remove a prompt from the library (set is_library_template=False).
+
+        Returns True if updated, False if not found.
+        """
+        prompt = await self.get_prompt_by_id(prompt_id)
+        if prompt is None:
+            return False
+
+        prompt.is_library_template = False
+        await self.db.commit()
+        await self.db.refresh(prompt)
+        logger.info("Prompt removed from library: id=%s", prompt_id)
+        return True
