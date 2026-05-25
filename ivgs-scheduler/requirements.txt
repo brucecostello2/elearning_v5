@@ -1,7 +1,7 @@
 # IVGS v5 — GPU Scheduler Dependencies (pinned)
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
-sqlalchemy==2.0.35
+sqlalchemy==2.0.49
 asyncpg==0.30.0
 psycopg2-binary==2.9.10
 pydantic==2.10.4
