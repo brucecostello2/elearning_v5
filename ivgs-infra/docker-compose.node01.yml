@@ -186,7 +186,7 @@ services:
         condition: service_healthy
     healthcheck:
       <<: *common-healthcheck
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/status || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://seaweedfs-volume:8080/status || exit 1"]
     command: >
       volume
         -mserver=seaweedfs-master:9333
@@ -214,7 +214,7 @@ services:
         condition: service_healthy
     healthcheck:
       <<: *common-healthcheck
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8888/ || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://seaweedfs-filer:8888/ || exit 1"]
     command: "filer -master=seaweedfs-master:9333 -ip=seaweedfs-filer -port=8888"
 
   # ---------------------------------------------------------------------------
