@@ -1,0 +1,123 @@
+# =============================================================================
+# Phase 14 Verification Procedure
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# 1. Start monitoring stack
+# ---------------------------------------------------------------------------
+cd /opt/ivgs
+docker-compose -f docker-compose.monitoring.yml up -d
+
+# Wait for all services to be healthy
+sleep 30
+
+# ---------------------------------------------------------------------------
+# 2. Verify Prometheus targets (expect 7+ target groups, all UP)
+# ---------------------------------------------------------------------------
+curl -s http://localhost:9090/api/v1/targets | \
+  jq '[.data.activeTargets[] | .scrapePool] | unique | length'
+# Expected: 7 (ivgs-api, ivgs-scheduler, node-exporter, nvidia-gpu-exporter,
+#               intel-gpu-exporter, postgres-exporter, redis-exporter)
+
+curl -s http://localhost:9090/api/v1/targets | \
+  jq '[.data.activeTargets[] | select(.health != "up")] | length'
+# Expected: 0 (all targets healthy)
+
+# ---------------------------------------------------------------------------
+# 3. Verify alert rules (expect 11 rules loaded)
+# ---------------------------------------------------------------------------
+curl -s http://localhost:9090/api/v1/rules | \
+  jq '[.data.groups[].rules[]] | length'
+# Expected: 11
+
+curl -s http://localhost:9090/api/v1/rules | \
+  jq '[.data.groups[].rules[] | .name]'
+# Expected: ["GPUOvertemperature", "WorkerDown", "DLQHighCount",
+#            "JobFailureRateHigh", "BackupFailed", "GPUUtilizationLow",
+#            "RenderQueueBacklog", "GPUVRAMHigh", "NodeHighCPU",
+#            "NodeHighRAM", "StorageQuotaAlert"]
+
+# ---------------------------------------------------------------------------
+# 4. Verify Grafana dashboards
+# ---------------------------------------------------------------------------
+# Pipeline Overview dashboard
+curl -s -u admin:admin http://localhost:3000/api/dashboards/uid/pipeline-overview | \
+  jq '.dashboard.title'
+# Expected: "Pipeline Overview"
+
+curl -s -u admin:admin http://localhost:3000/api/dashboards/uid/pipeline-overview | \
+  jq '[.dashboard.panels[] | select(.type != "row")] | length'
+# Expected: 8 (all 8 panels per Table 13-2)
+
+# GPU Fleet Utilization dashboard
+curl -s -u admin:admin http://localhost:3000/api/dashboards/uid/gpu-fleet | \
+  jq '.dashboard.title'
+# Expected: "GPU Fleet Utilization"
+
+curl -s -u admin:admin http://localhost:3000/api/dashboards/uid/gpu-fleet | \
+  jq '[.dashboard.panels[] | select(.type != "row")] | length'
+# Expected: 6 (all 6 panels per Table 13-2)
+
+# ---------------------------------------------------------------------------
+# 5. Verify Grafana datasource
+# ---------------------------------------------------------------------------
+curl -s -u admin:admin http://localhost:3000/api/datasources | \
+  jq '.[0].name'
+# Expected: "Prometheus"
+
+# ---------------------------------------------------------------------------
+# 6. Test backup script
+# ---------------------------------------------------------------------------
+# Ensure environment is set
+export POSTGRES_PASSWORD="your_password"
+export BACKUP_GPG_RECIPIENT="ivgs-backup@example.com"
+
+./scripts/backup.sh
+ls -la /mnt/backup/ivgs/db/$(date +%Y-%m-%d)/
+# Expected: ivgs_backup.sql.gz.gpg, ivgs_backup.sha256, backup_record.json
+
+# ---------------------------------------------------------------------------
+# 7. Test backup verification
+# ---------------------------------------------------------------------------
+./scripts/verify_backup.sh $(date +%Y-%m-%d)
+# Expected: "✅ Backup valid, checksum match, row counts verified"
+
+# ---------------------------------------------------------------------------
+# 8. Test restore (dry run)
+# ---------------------------------------------------------------------------
+./scripts/restore.sh $(date +%Y-%m-%d) --dry-run
+# Expected: All 8 steps previewed without execution
+
+# ---------------------------------------------------------------------------
+# 9. Verify cron schedule
+# ---------------------------------------------------------------------------
+crontab -l | grep -c ivgs
+# Expected: 5 (backup, asset, config, verify, log rotation)
+
+# ---------------------------------------------------------------------------
+# 10. Verify Docker Compose services health
+# ---------------------------------------------------------------------------
+docker-compose -f docker-compose.monitoring.yml ps
+# Expected: All 5 services running and healthy
+#   - ivgs-prometheus      (healthy)
+#   - ivgs-grafana         (healthy)
+#   - ivgs-node-exporter   (healthy)
+#   - ivgs-postgres-exporter (healthy)
+#   - ivgs-redis-exporter   (healthy)
+
+# ---------------------------------------------------------------------------
+# 11. Verify WAL archive script
+# ---------------------------------------------------------------------------
+# Create test WAL file and verify archival
+echo "test" > /tmp/test_wal_segment
+./scripts/wal_archive.sh /tmp/test_wal_segment test_wal_segment
+ls -la /mnt/backup/ivgs/wal/test_wal_segment
+# Expected: file exists with matching checksum
+rm -f /mnt/backup/ivgs/wal/test_wal_segment /tmp/test_wal_segment
+
+# ---------------------------------------------------------------------------
+# 12. Verify config backup script
+# ---------------------------------------------------------------------------
+./scripts/config_backup.sh
+ls -la /mnt/backup/ivgs/config/$(date +%Y-%m-%d)/
+# Expected: encrypted config archive and checksum file
