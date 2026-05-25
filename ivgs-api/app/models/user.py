@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, DateTime, text, Boolean
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -31,8 +31,13 @@ class User(Base):
         String(255), nullable=False,
     )
     role: Mapped[str] = mapped_column(
-        String(16), nullable=False,
-        doc="One of: admin, operator, viewer (PostgreSQL ENUM user_role)",
+        PG_ENUM("admin", "operator", "viewer",
+                name="user_role", create_type=False),
+        nullable=False,
+        doc="One of: admin, operator, viewer (PostgreSQL ENUM user_role). "
+            "Declared as PG_ENUM to match migration 0001 line 121; prior "
+            "String(16) declaration caused INSERT-time DatatypeMismatchError "
+            "(asyncpg sends VARCHAR, column requires user_role).",
     )
     is_active: Mapped[bool] = mapped_column(
         Boolean,
