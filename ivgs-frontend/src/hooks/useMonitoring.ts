@@ -425,12 +425,22 @@ export function useStorageAnalytics(): {
     error,
   };
 }
-
 /**
  * useStorageQuotas — Fetches per-user quota utilization.
  *
  * Admin-only. Polls every 120 seconds.
- * Source: GET /api/v1/quotas/user/all (admin endpoint)
+ *
+ * Implementation note: the API does not expose a bulk
+ * /api/v1/quotas/user/all endpoint. This hook fetches the user list
+ * from /api/v1/users and then issues a parallel quota lookup per user
+ * against /api/v1/quotas/user/{user_id}. Users with no quota record
+ * (404 from the quota endpoint) are reported with used_bytes=0 and
+ * quota_bytes=0 so the row still appears in the admin table.
+ *
+ * Trade-off: per-user fetch errors are swallowed and reported as
+ * empty quota rows. If individual quota endpoints start returning
+ * 500s, those failures will be silent. Phase F backlog item:
+ * surface fetch errors per row in the admin UI.
  *
  * @param enabled - Whether to fetch (false for non-admin users)
  * @returns Quota entries, loading state
@@ -443,15 +453,37 @@ export function useStorageQuotas(enabled: boolean): {
     refreshInterval: 120_000,
     dedupingInterval: 60_000,
   };
-
-  const { data, isLoading } = useSWR(
-    enabled ? "/api/v1/quotas/user/all" : null,
-    fetcher,
+  const { data, isLoading } = useSWR<QuotaEntry[]>(
+    enabled ? "/api/v1/quotas/user/aggregated" : null,
+    async (): Promise<QuotaEntry[]> => {
+      const usersResp = await fetcher("/api/v1/users");
+      const users: User[] = usersResp?.data ?? [];
+      const entries = await Promise.all(
+        users.map(async (u): Promise<QuotaEntry> => {
+          try {
+            const quota = await fetcher(`/api/v1/quotas/user/${u.id}`);
+            return {
+              user_id: u.id,
+              username: u.username,
+              used_bytes: quota?.used_bytes ?? 0,
+              quota_bytes: quota?.quota_bytes ?? 0,
+            };
+          } catch {
+            return {
+              user_id: u.id,
+              username: u.username,
+              used_bytes: 0,
+              quota_bytes: 0,
+            };
+          }
+        })
+      );
+      return entries;
+    },
     config
   );
-
   return {
-    quotas: data?.quotas ?? data,
+    quotas: data,
     isLoading,
   };
 }
