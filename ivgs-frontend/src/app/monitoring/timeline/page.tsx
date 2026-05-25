@@ -147,7 +147,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
         }
       );
@@ -189,7 +189,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
         }
       );
@@ -237,7 +237,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
             },
             body: JSON.stringify({ segment_id: segmentId }),
           }

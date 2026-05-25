@@ -128,7 +128,7 @@ export default function UserManagementPage(): React.ReactElement | null {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
         },
         body: JSON.stringify(createForm),
       });
@@ -177,7 +177,7 @@ export default function UserManagementPage(): React.ReactElement | null {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
           body: JSON.stringify({ role: newRole }),
         });
@@ -223,7 +223,7 @@ export default function UserManagementPage(): React.ReactElement | null {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
           body: JSON.stringify({ password: newPassword }),
         });
@@ -276,7 +276,7 @@ export default function UserManagementPage(): React.ReactElement | null {
         const response = await fetch(`/api/v1/users/${userId}`, {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
         });
 

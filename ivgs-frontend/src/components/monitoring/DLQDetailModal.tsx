@@ -59,7 +59,7 @@ export default function DLQDetailModal({
       try {
         const response = await fetch(`/api/v1/dlq/messages/${messageId}`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+            Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
           },
         });
 

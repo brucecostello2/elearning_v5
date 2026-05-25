@@ -131,7 +131,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
             },
           }
         );
@@ -175,7 +175,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+              Authorization: `Bearer ${localStorage.getItem("ivgs_access_token")}`,
             },
             body: JSON.stringify({ reason: reason || "Quality below threshold" }),
           }
