@@ -99,3 +99,7 @@ ivgs-frontend/tsconfig.tsbuildinfo
 .logs/
 .next/
 ivgs-frontend/.next/
+
+# Runtime data directories (never track, never clean)
+rollback-storage/
+ivgs-infra/configs/grafana/
