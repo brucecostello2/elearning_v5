@@ -110,7 +110,7 @@ export default function NodesPage(): React.ReactElement {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {nodes.map((node: NodeStatus) => (
               <NodeCard
-                key={node.id}
+                key={node.node_id}
                 node={node}
                 onClick={isAdmin ? handleNodeClick : undefined}
                 showDetailHint={isAdmin}
@@ -133,7 +133,7 @@ export default function NodesPage(): React.ReactElement {
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    {selectedNode.node_hostname}
+                    {selectedNode.hostname}
                   </h3>
                   <p className="text-sm text-gray-400">
                     {selectedNode.gpu_model ?? "Unknown GPU"} — {selectedNode.status.charAt(0).toUpperCase() + selectedNode.status.slice(1)}
@@ -180,7 +180,7 @@ export default function NodesPage(): React.ReactElement {
                   className="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <a
-                  href={`/api/v1/nodes/${selectedNode.node_hostname}/logs/download`}
+                  href={`/api/v1/nodes/${selectedNode.hostname}/logs/download`}
                   download
                   className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 text-sm transition-colors"
                 >
@@ -192,7 +192,7 @@ export default function NodesPage(): React.ReactElement {
               <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-950 font-mono text-xs text-gray-300 min-h-[300px]">
                 <p className="text-gray-600 italic">
                   Live log streaming via WebSocket — connect to
-                  ws://node-01:8000/api/v1/nodes/{selectedNode.node_hostname}/logs/stream
+                  ws://node-01:8000/api/v1/nodes/{selectedNode.hostname}/logs/stream
                 </p>
                 <p className="text-gray-600 mt-2">
                   [Log output will appear here in real-time]
@@ -202,7 +202,7 @@ export default function NodesPage(): React.ReactElement {
               {/* Historical Jobs */}
               <div className="px-6 py-4 border-t border-gray-700">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">
-                  Recent Jobs on {selectedNode.node_hostname}
+                  Recent Jobs on {selectedNode.hostname}
                 </h4>
                 <p className="text-xs text-gray-600 italic">
                   Per-node job history not yet available. Pending Phase H multi-node

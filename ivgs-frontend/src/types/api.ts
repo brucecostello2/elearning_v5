@@ -61,7 +61,38 @@ export type FallbackStrategy =
 export type GpuNodeStatus = "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
 
 /** Legacy alias used by some components */
-export type NodeStatus = GpuNodeResponse;
+/**
+ * NodeStatus - response from GET /api/v1/nodes (Phase 3 stub per spec section 5.1.7).
+ *
+ * NOT the same shape as GpuNodeResponse. The /api/v1/nodes endpoint serves
+ * static topology from a hardcoded NODE_TOPOLOGY dict in ivgs-api/app/api/v1/nodes.py.
+ * Phase 8 GPU scheduler will replace the stub with real metrics; until then this
+ * shape is what the wire actually emits.
+ *
+ * Key differences from GpuNodeResponse:
+ *   - node_id is a string ("node-01"), not a UUID
+ *   - hostname is the field name (not node_hostname)
+ *   - status is currently always "online" (stub)
+ *   - power_draw_w / last_heartbeat_at only present on the single-node detail endpoint
+ *   - services array is present (not on GpuNodeResponse)
+ *   - active_jobs is present but always empty in current stub
+ */
+export interface NodeStatus {
+  node_id: string;
+  hostname: string;
+  status: GpuNodeStatus;
+  role: string;
+  gpu_model: string | null;
+  total_vram_mb: number;
+  used_vram_mb: number;
+  gpu_utilization_pct: number;
+  temperature_c: number;
+  services: string[];
+  active_jobs: unknown[];
+  // Optional fields - only present on /api/v1/nodes/{node_id} detail endpoint
+  power_draw_w?: number;
+  last_heartbeat_at?: string | null;
+}
 
 export type WorkerHeartbeatStatus =
   | "alive"

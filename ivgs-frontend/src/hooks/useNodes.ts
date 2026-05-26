@@ -1,9 +1,6 @@
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
-import type { GpuNodeResponse } from "@/types/api";
-
-/** Legacy alias — components reference NodeStatus but backend uses GpuNodeResponse */
-type NodeStatus = GpuNodeResponse;
+import type { NodeStatus } from "@/types/api";
 
 /**
  * §8.1.5 Node Monitor — Node status polling hook.
