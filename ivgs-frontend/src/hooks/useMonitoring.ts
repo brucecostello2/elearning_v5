@@ -5,6 +5,7 @@ import type {
   PipelineJobDetail,
   GPUNode,
   GPUUtilizationPoint,
+  GPUUtilizationHistoryResponse,
   ModelResidencyEntry,
   DLQMessage,
   DLQAnalyticsData,
@@ -185,31 +186,56 @@ export function useGPUFleetStatus(): {
 }
 
 /**
- * useGPUUtilizationHistory — Fetches GPU utilization history (last 30 min).
+ * useGPUUtilizationHistory - Fetches GPU utilization time-series.
  *
- * Source: GET /api/v1/gpu/utilization?history=30m
- * Returns time-series data for the fleet utilization chart.
+ * Source: GET /api/v1/gpu/utilization/history?range=<range>
+ * Per GPU Fleet Monitoring Spec v1.1 section 6.2.
  *
- * @returns Utilization history data points
+ * Returns time-series data for the spec 8.2.2 fleet utilization chart.
+ * Distinguishes three states:
+ *   - history: GPUUtilizationPoint[] - successful response (possibly empty)
+ *   - error: Error - request failed (could be 413 if range too large)
+ *   - isLoading: true - request in flight
+ *
+ * Empty array is a SUCCESSFUL state, not an error. Callers must render
+ * an empty-data UI state when history.length === 0.
+ *
+ * @param range - Time range (e.g. "30m", "1h", "24h"). Defaults to "30m"
+ *                per spec 8.2.2 ("last 30 minutes"). Hard-capped at 5000
+ *                points per response (Spec v1.1 section 3.3); larger ranges
+ *                may return 413, surfaced via the `error` return.
  */
-export function useGPUUtilizationHistory(): {
+export function useGPUUtilizationHistory(range: string = "30m"): {
   history: GPUUtilizationPoint[] | undefined;
   isLoading: boolean;
+  error: Error | undefined;
 } {
   const config: SWRConfiguration = {
     refreshInterval: 30_000,
     dedupingInterval: 10_000,
+    errorRetryCount: 3,
+    errorRetryInterval: 5_000,
+    // Don't retry on 4xx - they won't fix themselves
+    shouldRetryOnError: (err: Error) => {
+      const status = (err as any)?.status;
+      return !(typeof status === "number" && status >= 400 && status < 500);
+    },
   };
 
-  const { data, isLoading } = useSWR(
-    "/api/v1/gpu/utilization?history=30m",
+  const { data, error, isLoading } = useSWR<GPUUtilizationHistoryResponse>(
+    `/api/v1/gpu/utilization/history?range=${encodeURIComponent(range)}`,
     fetcher,
     config
   );
 
+  // Strict-unwrap: only return history if it's actually an array.
+  // Defensive against API shape changes or middleware envelope wrapping.
+  const history = Array.isArray(data?.history) ? data!.history : undefined;
+
   return {
-    history: data?.history ?? data,
+    history,
     isLoading,
+    error,
   };
 }
 

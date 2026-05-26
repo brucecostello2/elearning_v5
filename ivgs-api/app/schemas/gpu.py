@@ -18,6 +18,7 @@ class GpuNodeCreate(BaseModel):
     gpu_index: int = Field(ge=0, description="GPU device index")
     gpu_model: Optional[str] = Field(default=None, max_length=255, description="GPU model name")
     total_vram_mb: Optional[int] = Field(default=None, ge=0, description="Total VRAM in megabytes")
+    power_tdp_w: Optional[int] = Field(default=None, ge=0, description="GPU thermal design power in watts (spec C.4)")
     compute_capability: Optional[str] = Field(
         default=None, max_length=32, description="CUDA compute capability string"
     )
@@ -28,6 +29,7 @@ class GpuNodeUpdate(BaseModel):
 
     gpu_model: Optional[str] = Field(default=None, max_length=255)
     total_vram_mb: Optional[int] = Field(default=None, ge=0)
+    power_tdp_w: Optional[int] = Field(default=None, ge=0, description="GPU thermal design power in watts (spec C.4)")
     compute_capability: Optional[str] = Field(default=None, max_length=32)
     status: Optional[str] = Field(
         default=None,
@@ -80,6 +82,7 @@ class GpuNodeResponse(BaseModel):
     gpu_utilization_pct: float = 0.0
     temperature_c: float = 0.0
     power_draw_w: float = 0.0
+    power_tdp_w: Optional[int] = None  # Spec C.4; added per Spec v1.1 amendment 4
     compute_capability: Optional[str] = None
     status: str
     registered_at: datetime
@@ -119,3 +122,50 @@ class GpuFleetSummary(BaseModel):
     fleet_utilization_pct: float = 0.0
     active_reservations: int = 0
     nodes: List[GpuNodeSummary] = []
+
+
+# ----------------------------------------------------------------------------
+# History endpoint schemas - added per GPU Fleet Monitoring Spec v1.1
+# ----------------------------------------------------------------------------
+
+
+class GpuUtilizationPoint(BaseModel):
+    """Single time-series GPU utilization measurement per spec 4.2 Table 19.
+
+    Mirrors gpu_metrics_history storage layer field naming. Additionally
+    carries node_hostname (JOINed from gpu_nodes) so chart consumers can
+    correlate history points to display names without a second round-trip.
+
+    Field naming mirrors gpu_metrics_history rather than GpuNodeResponse
+    (the snapshot endpoint), per GPU Fleet Monitoring Spec v1.1 sec 3.4.
+    """
+
+    gpu_node_id: UUID
+    node_hostname: str
+    recorded_at: datetime
+    gpu_util_pct: Optional[float] = None
+    mem_util_pct: Optional[float] = None
+    temperature_c: Optional[float] = None
+    power_draw_w: Optional[float] = None
+    active_job_count: Optional[int] = None
+    queue_depth: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GpuUtilizationHistoryResponse(BaseModel):
+    """Response envelope for GET /api/v1/gpu/utilization/history.
+
+    Returns time-series points within the requested range, ordered by
+    (gpu_node_id, recorded_at). Empty when no nodes are registered or
+    no workers have written heartbeat metrics in the requested window.
+
+    Hard-capped at 5000 points per Spec v1.1 sec 3.3. Over-cap responses
+    return HTTP 413 rather than truncating silently.
+    """
+
+    history: List[GpuUtilizationPoint] = Field(default_factory=list)
+    range: str
+    point_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)

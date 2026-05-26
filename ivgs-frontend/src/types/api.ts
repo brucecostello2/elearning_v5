@@ -264,34 +264,60 @@ export interface DLQMessageResponse {
 // GPU Node Types (§5.2.2, Table 11)
 // ---------------------------------------------------------------------------
 
+/**
+ * GpuNodeResponse - matches backend ivgs-api app/schemas/gpu.py:GpuNodeResponse exactly.
+ *
+ * Per IVGS v5 Functional Specification Appendix C.4 and GPU Fleet Monitoring
+ * Spec v1.1 section 6.0 (defect #7 resolution).
+ *
+ * No optional/aliased fields. Components access these exact names.
+ * The three previous competing naming conventions (backend-matching,
+ * frontend-aliased, per-component-invented) are eliminated.
+ */
 export interface GpuNodeResponse {
   id: string;
   node_hostname: string;
   gpu_index: number;
-  gpu_model: string;
-  total_vram_mb: number;
+  gpu_model: string | null;
+  total_vram_mb: number | null;
+  used_vram_mb: number;
   available_vram_mb: number;
-  compute_capability: string;
-  status: GpuNodeStatus;
   gpu_utilization_pct: number;
-  gpu_temperature_c: number;
+  temperature_c: number;
   power_draw_w: number;
-  current_job: string | null;
-  current_stage: string | null;
-  last_heartbeat_at: string;
-  /* Computed / aliased fields used by components */
-  node_name?: string;
-  is_online?: boolean;
-  vram_total_mb?: number;
-  vram_used_mb?: number;
-  gpu_utilization_percent?: number;
-  gpu_power_draw_w?: number;
-  gpu_tdp_w?: number;
-  cpu_utilization_percent?: number;
-  ram_utilization_percent?: number;
-  active_job?: any;
-  active_jobs?: any[];
-  recent_jobs?: any[];
+  power_tdp_w: number | null;
+  compute_capability: string | null;
+  status: GpuNodeStatus;
+  registered_at: string;
+  last_heartbeat_at: string | null;
+  active_jobs: ActiveJobSummary[];
+  reservations: GpuReservationResponse[];
+}
+
+/**
+ * ActiveJobSummary - matches backend ActiveJobSummary in schemas/gpu.py.
+ * Was previously a string | null (current_job) on the frontend type;
+ * backend has always provided a structured list.
+ */
+export interface ActiveJobSummary {
+  job_id: string;
+  project_name: string | null;
+  stage: string | null;
+  started_at: string | null;
+}
+
+/**
+ * GpuReservationResponse - matches backend GpuReservationResponse in schemas/gpu.py.
+ */
+export interface GpuReservationResponse {
+  id: string;
+  gpu_node_id: string;
+  job_id: string;
+  reserved_vram_mb: number;
+  model_name: string | null;
+  status: string;
+  reserved_at: string;
+  expires_at: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -4,17 +4,28 @@ import React from "react";
 import type { NodeStatus } from "@/types/api";
 
 /**
- * §8.1.5 Node Monitor — Node Card
+ * Node Monitor — Node Card (spec section 8.1.5)
  *
  * Each card shows:
- *   - Node name, online/offline status
+ *   - Node hostname, status (online/offline/draining)
  *   - GPU model
  *   - VRAM total/used (progress bar)
  *   - GPU utilization %
- *   - GPU temperature: green <70°C / amber 70–85°C / red >85°C
- *   - GPU power draw vs TDP
- *   - CPU/RAM mini-bars
- *   - Current active job
+ *   - GPU temperature: green <70 C / amber 70-85 C / red >85 C
+ *   - GPU power draw vs TDP (when TDP known)
+ *   - Current active job (first of active_jobs[])
+ *
+ * Field naming matches backend GpuNodeResponse exactly per
+ * IVGS v5 Functional Specification Appendix C.4 and GPU Fleet Monitoring
+ * Spec v1.1 section 6.0. No optional aliased fields.
+ *
+ * CPU and RAM utilization are not surfaced because the backend
+ * does not collect them per spec section 4.2 Table 19.
+ *
+ * Renders backend values directly. Status badge reflects node.status;
+ * live metrics render what backend returns regardless of state. When
+ * Phase 8 GPU Scheduler populates real-time values, this component
+ * displays them with no code change.
  */
 
 interface NodeCardProps {
@@ -28,28 +39,16 @@ export default function NodeCard({
   onClick,
   showDetailHint = false,
 }: NodeCardProps): React.ReactElement {
-  /**
-   * GPU temperature color coding per §8.1.5:
-   *   green  < 70°C
-   *   amber  70–85°C
-   *   red    > 85°C
-   */
   const getTempColor = (temp: number): string => {
     if (temp < 70) return "text-green-400";
     if (temp <= 85) return "text-yellow-400";
     return "text-red-400";
   };
 
-  const getTempBgColor = (temp: number): string => {
-    if (temp < 70) return "bg-green-500";
-    if (temp <= 85) return "bg-yellow-500";
-    return "bg-red-500";
-  };
-
-  /** VRAM usage percentage */
+  /** VRAM usage percentage (null-safe; 0 when total unknown) */
   const vramPercent =
-    node.vram_total_mb! > 0
-      ? (node.vram_used_mb! / node.vram_total_mb!) * 100
+    node.total_vram_mb && node.total_vram_mb > 0
+      ? (node.used_vram_mb / node.total_vram_mb) * 100
       : 0;
 
   /** VRAM bar color */
@@ -60,6 +59,31 @@ export default function NodeCard({
       ? "bg-yellow-500"
       : "bg-blue-500";
 
+  /** Status badge color triple (dot, badge bg, badge text) */
+  const statusStyles =
+    node.status === "online"
+      ? {
+          dot: "bg-green-400 animate-pulse",
+          badge: "bg-green-900/30 text-green-400",
+        }
+      : node.status === "draining"
+      ? {
+          dot: "bg-yellow-400",
+          badge: "bg-yellow-900/30 text-yellow-400",
+        }
+      : {
+          dot: "bg-red-500",
+          badge: "bg-red-900/30 text-red-400",
+        };
+
+  const statusLabel =
+    node.status.charAt(0).toUpperCase() + node.status.slice(1);
+
+  const activeJob =
+    node.active_jobs && node.active_jobs.length > 0
+      ? node.active_jobs[0]
+      : null;
+
   return (
     <div
       className={`bg-gray-800 border border-gray-700 rounded-xl p-5 transition-all ${
@@ -69,39 +93,40 @@ export default function NodeCard({
       }`}
       onClick={onClick ? () => onClick(node) : undefined}
     >
-      {/* Header: Node name + status */}
+      {/* Header: Node hostname + status */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span
-            className={`w-2.5 h-2.5 rounded-full ${
-              node.is_online
-                ? "bg-green-400 animate-pulse"
-                : "bg-red-500"
-            }`}
+            className={`w-2.5 h-2.5 rounded-full ${statusStyles.dot}`}
           />
-          <h3 className="text-sm font-bold text-white">{node.node_name}</h3>
+          <h3 className="text-sm font-bold text-white">
+            {node.node_hostname}
+          </h3>
         </div>
         <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-            node.is_online
-              ? "bg-green-900/30 text-green-400"
-              : "bg-red-900/30 text-red-400"
-          }`}
+          className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusStyles.badge}`}
         >
-          {node.is_online ? "Online" : "Offline"}
+          {statusLabel}
         </span>
       </div>
 
       {/* GPU Model */}
-      <p className="text-xs text-gray-400 mb-3">{node.gpu_model}</p>
+      <p className="text-xs text-gray-400 mb-3">
+        {node.gpu_model ?? (
+          <span className="italic text-gray-600">Unknown GPU</span>
+        )}
+      </p>
 
       {/* VRAM Bar */}
       <div className="mb-3">
         <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
           <span>VRAM</span>
           <span>
-            {(node.vram_used_mb! / 1024).toFixed(1)} /{" "}
-            {(node.vram_total_mb! / 1024).toFixed(1)} GB
+            {node.total_vram_mb
+              ? `${(node.used_vram_mb / 1024).toFixed(1)} / ${(
+                  node.total_vram_mb / 1024
+                ).toFixed(1)} GB`
+              : "Unknown"}
           </span>
         </div>
         <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -118,7 +143,7 @@ export default function NodeCard({
         <div className="text-center">
           <span className="text-xs text-gray-500 block">Util</span>
           <span className="text-sm font-bold text-white">
-            {node.gpu_utilization_percent}%
+            {node.gpu_utilization_pct.toFixed(0)}%
           </span>
         </div>
 
@@ -126,11 +151,9 @@ export default function NodeCard({
         <div className="text-center">
           <span className="text-xs text-gray-500 block">Temp</span>
           <span
-            className={`text-sm font-bold ${getTempColor(
-              node.gpu_temperature_c
-            )}`}
+            className={`text-sm font-bold ${getTempColor(node.temperature_c)}`}
           >
-            {node.gpu_temperature_c}°C
+            {node.temperature_c.toFixed(0)} C
           </span>
         </div>
 
@@ -138,50 +161,20 @@ export default function NodeCard({
         <div className="text-center">
           <span className="text-xs text-gray-500 block">Power</span>
           <span className="text-sm font-bold text-white">
-            {node.gpu_power_draw_w}/{node.gpu_tdp_w}W
+            {node.power_tdp_w
+              ? `${node.power_draw_w.toFixed(0)}/${node.power_tdp_w}W`
+              : `${node.power_draw_w.toFixed(0)}W`}
           </span>
-        </div>
-      </div>
-
-      {/* CPU / RAM Mini-Bars */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
-        <div>
-          <div className="flex items-center justify-between text-[10px] text-gray-500 mb-0.5">
-            <span>CPU</span>
-            <span>{node.cpu_utilization_percent}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-cyan-500 rounded-full transition-all"
-              style={{
-                width: `${Math.min(node.cpu_utilization_percent ?? 0, 100)}%`,
-              }}
-            />
-          </div>
-        </div>
-        <div>
-          <div className="flex items-center justify-between text-[10px] text-gray-500 mb-0.5">
-            <span>RAM</span>
-            <span>{node.ram_utilization_percent}%</span>
-          </div>
-          <div className="w-full h-1.5 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-purple-500 rounded-full transition-all"
-              style={{
-                width: `${Math.min(node.ram_utilization_percent ?? 0, 100)}%`,
-              }}
-            />
-          </div>
         </div>
       </div>
 
       {/* Active Job */}
       <div className="border-t border-gray-700 pt-3">
-        {node.active_job ? (
+        {activeJob ? (
           <div className="flex items-center gap-2">
             <span className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-pulse" />
             <span className="text-xs text-gray-300 truncate flex-1">
-              {node.active_job.project_name} — {node.active_job.stage}
+              {activeJob.project_name ?? "—"} — {activeJob.stage ?? "—"}
             </span>
           </div>
         ) : (

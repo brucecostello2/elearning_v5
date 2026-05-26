@@ -34,6 +34,11 @@ class GpuNode(Base):
     total_vram_mb: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True,
     )
+    power_tdp_w: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+        doc="GPU thermal design power in watts. Per spec Appendix C.4. "
+            "Added by migration 0016 per GPU Fleet Monitoring Spec v1.1.",
+    )
     compute_capability: Mapped[Optional[str]] = mapped_column(
         String(16), nullable=True,
     )

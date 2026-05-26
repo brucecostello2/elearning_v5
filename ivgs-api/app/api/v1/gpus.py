@@ -30,6 +30,7 @@ from app.schemas.gpu import (
     GpuNodeResponse,
     GpuReservationResponse,
     GpuFleetSummary,
+    GpuUtilizationHistoryResponse,
 )
 from app.services.gpu_service import GpuService
 
@@ -215,3 +216,65 @@ async def get_gpu_utilization(
     """Fleet-wide GPU utilization summary with per-node breakdown."""
     service = GpuService(db)
     return await service.get_fleet_utilization()
+
+
+@router.get(
+    "/utilization/history",
+    response_model=GpuUtilizationHistoryResponse,
+    summary="GPU utilization time-series for the fleet chart (spec 8.2.2)",
+)
+async def get_gpu_utilization_history(
+    range: str = Query(
+        default="30m",
+        pattern=r"^\d+[mhdMHD]$",
+        description=(
+            "Time range for history query. Format <int><unit> where unit "
+            "is m (minutes), h (hours), or d (days). Maximum 30d per "
+            "retention policy. Examples: 30m, 1h, 24h, 7d. "
+            "Hard-capped at 5000 points per response - request smaller "
+            "range if 413 returned. Per GPU Fleet Monitoring Spec v1.1."
+        ),
+    ),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Time-series GPU utilization data for the spec 8.2.2 fleet chart.
+
+    Returns up to 30 days of history, ordered by (gpu_node_id, recorded_at).
+    Empty response (history=[], point_count=0) is the expected state when:
+      - No GPU nodes registered yet
+      - Nodes registered but workers have not produced heartbeats in range
+      - All nodes offline or drained
+
+    Empty response is NOT an error. Callers distinguish empty-success
+    from error states by HTTP status (200 vs 4xx/5xx).
+
+    Hard cap: 5000 points per response. Larger queries return 413.
+
+    RBAC: All authenticated users may read per spec 5.2.1.
+    """
+    service = GpuService(db)
+    try:
+        points = await service.get_utilization_history(range)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception(
+            "gpu_utilization_history_handler_error range=%s user=%s",
+            range, current_user.username,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": {
+                    "code": "INTERNAL_ERROR",
+                    "message": "Failed to retrieve GPU utilization history",
+                }
+            },
+        )
+
+    return GpuUtilizationHistoryResponse(
+        history=points,
+        range=range.lower(),
+        point_count=len(points),
+    )

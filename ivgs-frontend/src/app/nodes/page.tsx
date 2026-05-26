@@ -91,12 +91,12 @@ export default function NodesPage(): React.ReactElement {
           <div className="flex items-center gap-2 text-sm">
             <span className="flex items-center gap-1 text-green-400">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              {nodes?.filter((n: NodeStatus) => n.is_online).length || 0}{" "}
+              {nodes?.filter((n: NodeStatus) => n.status === "online").length || 0}{" "}
               online
             </span>
             <span className="text-gray-600">|</span>
             <span className="text-red-400">
-              {nodes?.filter((n: NodeStatus) => !n.is_online).length || 0}{" "}
+              {nodes?.filter((n: NodeStatus) => n.status !== "online").length || 0}{" "}
               offline
             </span>
           </div>
@@ -110,7 +110,7 @@ export default function NodesPage(): React.ReactElement {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {nodes.map((node: NodeStatus) => (
               <NodeCard
-                key={node.node_name}
+                key={node.id}
                 node={node}
                 onClick={isAdmin ? handleNodeClick : undefined}
                 showDetailHint={isAdmin}
@@ -133,10 +133,10 @@ export default function NodesPage(): React.ReactElement {
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
                 <div>
                   <h3 className="text-lg font-bold text-white">
-                    {selectedNode.node_name}
+                    {selectedNode.node_hostname}
                   </h3>
                   <p className="text-sm text-gray-400">
-                    {selectedNode.gpu_model} — {selectedNode.is_online ? "Online" : "Offline"}
+                    {selectedNode.gpu_model ?? "Unknown GPU"} — {selectedNode.status.charAt(0).toUpperCase() + selectedNode.status.slice(1)}
                   </p>
                 </div>
                 <button
@@ -180,7 +180,7 @@ export default function NodesPage(): React.ReactElement {
                   className="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <a
-                  href={`/api/v1/nodes/${selectedNode.node_name}/logs/download`}
+                  href={`/api/v1/nodes/${selectedNode.node_hostname}/logs/download`}
                   download
                   className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 text-sm transition-colors"
                 >
@@ -192,7 +192,7 @@ export default function NodesPage(): React.ReactElement {
               <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-950 font-mono text-xs text-gray-300 min-h-[300px]">
                 <p className="text-gray-600 italic">
                   Live log streaming via WebSocket — connect to
-                  ws://node-01:8000/api/v1/nodes/{selectedNode.node_name}/logs/stream
+                  ws://node-01:8000/api/v1/nodes/{selectedNode.node_hostname}/logs/stream
                 </p>
                 <p className="text-gray-600 mt-2">
                   [Log output will appear here in real-time]
@@ -202,27 +202,12 @@ export default function NodesPage(): React.ReactElement {
               {/* Historical Jobs */}
               <div className="px-6 py-4 border-t border-gray-700">
                 <h4 className="text-sm font-medium text-gray-400 mb-2">
-                  Recent Jobs on {selectedNode.node_name}
+                  Recent Jobs on {selectedNode.node_hostname}
                 </h4>
-                {selectedNode.recent_jobs &&
-                selectedNode.recent_jobs.length > 0 ? (
-                  <div className="space-y-1">
-                    {selectedNode.recent_jobs.map(
-                      (job: { id: string; project_name: string; stage: string; status: string }, idx: number) => (
-                        <div
-                          key={idx}
-                          className="flex items-center justify-between text-xs text-gray-400"
-                        >
-                          <span>{job.project_name}</span>
-                          <span>{job.stage}</span>
-                          <StateBadge state={job.status} />
-                        </div>
-                      )
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-600">No recent jobs.</p>
-                )}
+                <p className="text-xs text-gray-600 italic">
+                  Per-node job history not yet available. Pending Phase H multi-node
+                  deployment; see GPU Fleet Monitoring Spec v1.1 carry-forward.
+                </p>
               </div>
             </div>
           </div>

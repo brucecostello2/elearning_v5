@@ -5,46 +5,55 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import type { GPUNode } from "@/types/monitoring";
 
 /**
- * §8.2.2 GPU Fleet Status — Per-GPU Node Card
+ * GPU Fleet Status - Per-GPU Node Card (spec section 8.2.2)
  *
- * Displays comprehensive GPU metrics for a single node:
+ * Displays GPU metrics for a single node:
  * - GPU model name and compute capability
  * - VRAM usage: total/used (progress bar, color-coded by utilization)
- *   - Green: <70%, Amber: 70–90%, Red: >90%
- * - Temperature gauge per §8.1.5:
- *   - Green: <70°C, Amber: 70–85°C, Red: >85°C
+ *   - Green: <70%, Amber: 70-90%, Red: >90%
+ * - Temperature gauge per spec section 8.1.5:
+ *   - Green: <70 C, Amber: 70-85 C, Red: >85 C
  * - GPU utilization percentage with visual indicator
- * - Power draw vs TDP (Thermal Design Power)
- * - Active job: job ID, pipeline stage, progress
- * - CPU and RAM mini-bars for system resource context
- * - Node status badge: ONLINE / OFFLINE / DRAINING
- * - Drain toggle button (admin only per §5.2.1)
+ * - Power draw vs TDP (when TDP known)
+ * - Active job: job ID, project name, pipeline stage
+ * - Node status badge: online / offline / draining
+ * - Drain toggle button (admin only per spec 5.2.1)
+ *
+ * Field naming matches backend GpuNodeResponse exactly per
+ * IVGS v5 Functional Specification Appendix C.4 and GPU Fleet Monitoring
+ * Spec v1.1 section 6.0 (defect #6/#7 resolution).
+ *
+ * CPU, RAM, and queue-depth metrics are not surfaced because the backend
+ * does not collect them per spec 4.2 Table 19.
+ *
+ * active_job fields not on backend ActiveJobSummary (model_name, progress)
+ * are not surfaced. Per-job progress lives on RenderJob, not on the GPU
+ * snapshot - separate change request to add to ActiveJobSummary if needed.
  *
  * Data sourced from:
- * - GET /api/v1/gpu/nodes — node status and metrics
- * - nvidia-gpu-exporter metrics (§13.1 Table 13-1):
- *   ivgs_gpu_utilization_pct, ivgs_gpu_vram_used_mb
- * - node-exporter metrics: CPU, RAM
+ * - GET /api/v1/gpu/nodes (snapshot, this card)
+ * - GET /api/v1/gpu/utilization/history (time-series, sibling chart)
  */
 
 interface GPUNodeCardProps {
   /** GPU node data from the fleet status API */
   node: GPUNode;
-  /** Human-readable GPU label (e.g., "NVIDIA A6000 (48 GB)") */
+  /** Human-readable GPU label (e.g., "NVIDIA RTX 5000 Pro Blackwell (48 GB)") */
   gpuLabel: string;
   /** Whether the current user is admin (for drain toggle) */
   isAdmin: boolean;
   /** Whether a drain toggle is in progress for this node */
   isDraining: boolean;
-  /** Callback to toggle drain mode on this node */
+  /**
+   * Callback to toggle drain mode on this node.
+   * Receives node.id (UUID) - backend drain endpoint takes UUID.
+   */
   onDrainToggle: (nodeId: string) => void;
 }
 
 /**
- * Temperature color thresholds per §8.1.5 Node Monitor Page:
- * - green <70°C
- * - amber 70–85°C
- * - red >85°C
+ * Temperature color thresholds per spec section 8.1.5:
+ * green <70 C, amber 70-85 C, red >85 C
  */
 const getTemperatureColor = (tempC: number): string => {
   if (tempC >= 85) return "text-red-600";
@@ -60,9 +69,7 @@ const getTemperatureBarColor = (tempC: number): string => {
 
 /**
  * VRAM utilization color thresholds:
- * - Green: <70%
- * - Amber: 70–90%
- * - Red: >90% (per Table 13-3 GPUVRAMHigh alert)
+ * Green <70%, Amber 70-90%, Red >90% (per Table 13-3 GPUVRAMHigh)
  */
 const getVRAMColor = (percent: number): string => {
   if (percent >= 90) return "bg-red-500";
@@ -71,12 +78,12 @@ const getVRAMColor = (percent: number): string => {
 };
 
 /**
- * Node status badge colors
+ * Node status badge colors. Keys are lowercase per backend convention.
  */
 const STATUS_BADGE_STYLES: Record<string, string> = {
-  ONLINE: "bg-green-100 text-green-800",
-  OFFLINE: "bg-red-100 text-red-800",
-  DRAINING: "bg-amber-100 text-amber-800",
+  online: "bg-green-100 text-green-800",
+  offline: "bg-red-100 text-red-800",
+  draining: "bg-amber-100 text-amber-800",
 };
 
 export default function GPUNodeCard({
@@ -88,20 +95,26 @@ export default function GPUNodeCard({
 }: GPUNodeCardProps): React.ReactElement {
   // ── Computed Metrics ────────────────────────────────────────────────
 
-  /** VRAM utilization percentage */
+  /** VRAM utilization percentage (null-safe for unknown total) */
   const vramPercent = useMemo((): number => {
     if (!node.total_vram_mb || node.total_vram_mb === 0) return 0;
-    return Math.round(((node.used_vram_mb || 0) / node.total_vram_mb) * 100);
+    return Math.round((node.used_vram_mb / node.total_vram_mb) * 100);
   }, [node.total_vram_mb, node.used_vram_mb]);
 
-  /** Power draw percentage vs TDP */
+  /** Power draw percentage vs TDP (null-safe; 0 when TDP unknown) */
   const powerPercent = useMemo((): number => {
-    if (!node.tdp_watts || node.tdp_watts === 0) return 0;
-    return Math.round(((node.power_draw_watts || 0) / node.tdp_watts) * 100);
-  }, [node.power_draw_watts, node.tdp_watts]);
+    if (!node.power_tdp_w || node.power_tdp_w === 0) return 0;
+    return Math.round((node.power_draw_w / node.power_tdp_w) * 100);
+  }, [node.power_draw_w, node.power_tdp_w]);
 
-  /** Temperature with safe default */
-  const temperature = node.temperature_c ?? 0;
+  const statusLabel =
+    node.status.charAt(0).toUpperCase() + node.status.slice(1);
+
+  /** First active job (UI displays one at a time per spec section 8.2.2) */
+  const activeJob =
+    node.active_jobs && node.active_jobs.length > 0
+      ? node.active_jobs[0]
+      : null;
 
   /**
    * Format VRAM values to GB with one decimal place.
@@ -116,9 +129,9 @@ export default function GPUNodeCard({
     <div
       className={`bg-white rounded-lg border overflow-hidden transition-shadow
         hover:shadow-md ${
-          node.status === "OFFLINE"
+          node.status === "offline"
             ? "border-red-200 opacity-75"
-            : node.status === "DRAINING"
+            : node.status === "draining"
             ? "border-amber-200"
             : "border-gray-200"
         }`}
@@ -129,16 +142,16 @@ export default function GPUNodeCard({
           {/* Status dot */}
           <div
             className={`h-2.5 w-2.5 rounded-full ${
-              node.status === "ONLINE"
+              node.status === "online"
                 ? "bg-green-500"
-                : node.status === "DRAINING"
+                : node.status === "draining"
                 ? "bg-amber-500 animate-pulse"
                 : "bg-red-500"
             }`}
           />
           <div>
             <h3 className="text-sm font-semibold text-gray-900">
-              {node.node_id}
+              {node.node_hostname}
             </h3>
             <p className="text-xs text-gray-500">{gpuLabel}</p>
           </div>
@@ -151,30 +164,30 @@ export default function GPUNodeCard({
                 STATUS_BADGE_STYLES[node.status] || "bg-gray-100 text-gray-600"
               }`}
           >
-            {node.status}
+            {statusLabel}
           </span>
-          {/* Drain toggle — admin only */}
-          {isAdmin && node.total_vram_mb > 0 && (
+          {/* Drain toggle - admin only, only meaningful for nodes with a GPU */}
+          {isAdmin && (node.total_vram_mb ?? 0) > 0 && (
             <button
               type="button"
-              onClick={() => onDrainToggle(node.node_id)}
+              onClick={() => onDrainToggle(node.id)}
               disabled={isDraining}
               className={`px-2 py-1 text-xs font-medium rounded transition-colors
                 ${
-                  node.status === "DRAINING"
+                  node.status === "draining"
                     ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
                     : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
                 }
                 disabled:opacity-50 disabled:cursor-not-allowed`}
               title={
-                node.status === "DRAINING"
+                node.status === "draining"
                   ? "Click to undrain (resume scheduling)"
                   : "Click to drain (stop scheduling new jobs)"
               }
             >
               {isDraining ? (
                 <LoadingSpinner size="sm" />
-              ) : node.status === "DRAINING" ? (
+              ) : node.status === "draining" ? (
                 "Undrain"
               ) : (
                 "Drain"
@@ -187,13 +200,13 @@ export default function GPUNodeCard({
       {/* ── Card Body ────────────────────────────────────────────── */}
       <div className="p-4 space-y-3">
         {/* VRAM Usage */}
-        {node.total_vram_mb > 0 && (
+        {(node.total_vram_mb ?? 0) > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-gray-600">VRAM</span>
               <span className="text-xs text-gray-500">
-                {formatVRAM(node.used_vram_mb || 0)} /{" "}
-                {formatVRAM(node.total_vram_mb)}
+                {formatVRAM(node.used_vram_mb)} /{" "}
+                {formatVRAM(node.total_vram_mb!)}
               </span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
@@ -211,7 +224,7 @@ export default function GPUNodeCard({
         )}
 
         {/* GPU Utilization */}
-        {node.total_vram_mb > 0 && (
+        {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-600">
               GPU Utilization
@@ -221,19 +234,19 @@ export default function GPUNodeCard({
                 <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{
-                    width: `${Math.min(node.utilization_pct || 0, 100)}%`,
+                    width: `${Math.min(node.gpu_utilization_pct, 100)}%`,
                   }}
                 />
               </div>
               <span className="text-xs font-mono text-gray-700 w-10 text-right">
-                {node.utilization_pct ?? 0}%
+                {node.gpu_utilization_pct.toFixed(0)}%
               </span>
             </div>
           </div>
         )}
 
         {/* Temperature */}
-        {node.total_vram_mb > 0 && (
+        {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-600">
               Temperature
@@ -242,115 +255,51 @@ export default function GPUNodeCard({
               <div className="w-20 bg-gray-200 rounded-full h-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${getTemperatureBarColor(
-                    temperature
+                    node.temperature_c
                   )}`}
                   style={{
-                    width: `${Math.min((temperature / 100) * 100, 100)}%`,
+                    width: `${Math.min((node.temperature_c / 100) * 100, 100)}%`,
                   }}
                 />
               </div>
               <span
                 className={`text-xs font-mono w-12 text-right font-medium ${getTemperatureColor(
-                  temperature
+                  node.temperature_c
                 )}`}
               >
-                {temperature}°C
+                {node.temperature_c.toFixed(0)} C
               </span>
             </div>
           </div>
         )}
 
-        {/* Power Draw */}
-        {node.power_draw_watts !== undefined && node.tdp_watts && (
+        {/* Power Draw - shows draw alone if TDP not known */}
+        {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">
-              Power
-            </span>
+            <span className="text-xs font-medium text-gray-600">Power</span>
             <span className="text-xs text-gray-500">
-              {node.power_draw_watts}W / {node.tdp_watts}W TDP ({powerPercent}%)
+              {node.power_tdp_w
+                ? `${node.power_draw_w.toFixed(0)}W / ${node.power_tdp_w}W TDP (${powerPercent}%)`
+                : `${node.power_draw_w.toFixed(0)}W`}
             </span>
           </div>
         )}
-
-        {/* CPU / RAM Mini-bars */}
-        <div className="grid grid-cols-2 gap-3 pt-1 border-t border-gray-100">
-          <div>
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[10px] text-gray-500">CPU</span>
-              <span className="text-[10px] text-gray-500">
-                {node.cpu_percent ?? 0}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1">
-              <div
-                className={`h-1 rounded-full ${
-                  (node.cpu_percent ?? 0) > 85
-                    ? "bg-red-500"
-                    : "bg-blue-400"
-                }`}
-                style={{
-                  width: `${Math.min(node.cpu_percent ?? 0, 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-[10px] text-gray-500">RAM</span>
-              <span className="text-[10px] text-gray-500">
-                {node.ram_percent ?? 0}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-1">
-              <div
-                className={`h-1 rounded-full ${
-                  (node.ram_percent ?? 0) > 90
-                    ? "bg-red-500"
-                    : "bg-purple-400"
-                }`}
-                style={{
-                  width: `${Math.min(node.ram_percent ?? 0, 100)}%`,
-                }}
-              />
-            </div>
-          </div>
-        </div>
 
         {/* Active Job */}
-        {node.active_job && (
+        {activeJob && (
           <div className="pt-2 border-t border-gray-100">
             <p className="text-xs font-medium text-gray-600 mb-1">
               Active Job
             </p>
             <div className="bg-gray-50 rounded p-2">
               <p className="text-xs text-gray-900 font-mono">
-                {node.active_job.job_id.slice(0, 12)}…
+                {activeJob.job_id.slice(0, 12)}…
               </p>
               <p className="text-[10px] text-gray-500 mt-0.5">
-                Stage: {node.active_job.stage} •{" "}
-                {node.active_job.model_name}
+                {activeJob.project_name ?? "—"}
+                {activeJob.stage && ` • ${activeJob.stage}`}
               </p>
-              {node.active_job.progress !== undefined && (
-                <div className="mt-1 w-full bg-gray-200 rounded-full h-1">
-                  <div
-                    className="bg-blue-500 h-1 rounded-full"
-                    style={{
-                      width: `${Math.min(node.active_job.progress, 100)}%`,
-                    }}
-                  />
-                </div>
-              )}
             </div>
-          </div>
-        )}
-
-        {/* Queue Depth */}
-        {(node.queued_jobs ?? 0) > 0 && (
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">Queued Jobs</span>
-            <span className="font-medium text-amber-600">
-              {node.queued_jobs}
-            </span>
           </div>
         )}
       </div>

@@ -106,7 +106,8 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
   const {
     history,
     isLoading: historyLoading,
-  } = useGPUUtilizationHistory();
+    error: historyError,
+  } = useGPUUtilizationHistory("30m");
 
   // ── Handlers ────────────────────────────────────────────────────────
 
@@ -174,49 +175,43 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
         totalVRAM: 0,
         usedVRAM: 0,
         activeJobs: 0,
-        queuedJobs: 0,
       };
     }
 
     const onlineNodes = nodes.filter(
-      (n: GPUNode) => n.status === "ONLINE"
+      (n: GPUNode) => n.status === "online"
     ).length;
     const offlineNodes = nodes.filter(
-      (n: GPUNode) => n.status === "OFFLINE"
+      (n: GPUNode) => n.status === "offline"
     ).length;
     const drainingNodes = nodes.filter(
-      (n: GPUNode) => n.status === "DRAINING"
+      (n: GPUNode) => n.status === "draining"
     ).length;
 
     const gpuNodes = nodes.filter(
-      (n: GPUNode) => n.total_vram_mb > 0
+      (n: GPUNode) => (n.total_vram_mb ?? 0) > 0
     );
 
     const avgUtilization =
       gpuNodes.length > 0
         ? gpuNodes.reduce(
-            (sum: number, n: GPUNode) => sum + (n.utilization_pct || 0),
+            (sum: number, n: GPUNode) => sum + n.gpu_utilization_pct,
             0
           ) / gpuNodes.length
         : 0;
 
     const totalVRAM = gpuNodes.reduce(
-      (sum: number, n: GPUNode) => sum + n.total_vram_mb,
+      (sum: number, n: GPUNode) => sum + (n.total_vram_mb ?? 0),
       0
     );
     const usedVRAM = gpuNodes.reduce(
-      (sum: number, n: GPUNode) => sum + (n.used_vram_mb || 0),
+      (sum: number, n: GPUNode) => sum + n.used_vram_mb,
       0
     );
     const activeJobs = nodes.reduce(
-      (sum: number, n: GPUNode) => sum + (Array.isArray(n.active_jobs) ? n.active_jobs.length : Number(n.active_jobs) || 0),
+      (sum: number, n: GPUNode) => sum + n.active_jobs.length,
       0
     );
-    const queuedJobs = nodes.reduce(
-      (sum: number, n: GPUNode) => sum + (n.queued_jobs || 0),
-      0
-    );
-
     return {
       totalNodes: nodes.length,
       onlineNodes,
@@ -226,7 +221,6 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
       totalVRAM,
       usedVRAM,
       activeJobs,
-      queuedJobs,
     };
   }, [nodes]);
 
@@ -352,14 +346,6 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                 {fleetStats.activeJobs}
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-                Queued Jobs
-              </p>
-              <p className="mt-1 text-2xl font-bold text-amber-600">
-                {fleetStats.queuedJobs}
-              </p>
-            </div>
           </div>
         </div>
 
@@ -404,11 +390,11 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
                 {nodes.map((node: GPUNode) => (
                   <GPUNodeCard
-                    key={node.node_id}
+                    key={node.id}
                     node={node}
-                    gpuLabel={GPU_LABELS[node.node_id] || node.node_id}
+                    gpuLabel={GPU_LABELS[node.node_hostname] || node.node_hostname}
                     isAdmin={user?.role === "admin"}
-                    isDraining={drainingNodeId === node.node_id}
+                    isDraining={drainingNodeId === node.id}
                     onDrainToggle={handleDrainToggle}
                   />
                 ))}
@@ -423,14 +409,19 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                   <div className="flex justify-center py-8">
                     <LoadingSpinner size="md" />
                   </div>
-                ) : history ? (
+                ) : historyError ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded p-4 text-sm text-amber-800">
+                    Utilization history unavailable: {historyError.message}.
+                    The fleet snapshot above is unaffected.
+                  </div>
+                ) : history && history.length > 0 ? (
                   <GPUFleetChart
                     data={history}
                     nodes={nodes}
                   />
                 ) : (
                   <p className="text-sm text-gray-500 text-center py-8">
-                    No utilization history available.
+                    No utilization history available for the selected range.
                   </p>
                 )}
               </div>
@@ -487,7 +478,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                                 ? Math.min(
                                     allocation.vram_mb /
                                       (nodes.find(
-                                        (n: GPUNode) => n.node_id === nodeId
+                                        (n: GPUNode) => n.node_hostname === nodeId
                                       )?.total_vram_mb || 1),
                                     1
                                   )

@@ -72,16 +72,20 @@ export default function GPUFleetChart({
    * Each GPU node becomes a separate line dataset.
    */
   const chartData = useMemo((): ChartData<"line"> => {
-    if (!data || data.length === 0) {
+    // Hardened guard (Spec v1.1 sec 6.3): explicitly verify array shape.
+    // Previous guard (!data || data.length === 0) failed when data was an
+    // object instead of array, causing TypeError downstream.
+    if (!Array.isArray(data) || data.length === 0) {
       return { labels: [], datasets: [] };
     }
 
-    /** Extract unique timestamps for the x-axis, sorted chronologically */
+    // Extract unique timestamps. Field name: recorded_at per
+    // gpu_metrics_history storage model (Spec v1.1 sec 3.4).
     const timestamps = Array.from(
-      new Set(data.map((p) => p.timestamp))
+      new Set(data.map((p) => p.recorded_at))
     ).sort();
 
-    /** Format timestamps to HH:MM:SS for display */
+    // Format timestamps to HH:MM:SS for display
     const labels = timestamps.map((ts) => {
       try {
         return new Date(ts).toLocaleTimeString([], {
@@ -94,23 +98,30 @@ export default function GPUFleetChart({
       }
     });
 
-    /** Build dataset per GPU node */
-    const gpuNodes = nodes.filter((n) => n.total_vram_mb > 0);
+    // Build one dataset per GPU node. Filter to nodes with GPU capacity
+    // (total_vram_mb > 0). Node-01 has no GPU per spec sec 3.1; filtered.
+    const gpuNodes = nodes.filter((n) => (n.total_vram_mb ?? 0) > 0);
+
     const datasets = gpuNodes.map((node) => {
+      // JOIN history points to snapshot nodes by node_hostname (stable
+      // display identifier present on both sides). Per Spec v1.1 sec 6.3.
       const nodeData = timestamps.map((ts) => {
         const point = data.find(
-          (p) => p.timestamp === ts && p.node_id === node.node_id
+          (p) =>
+            p.recorded_at === ts &&
+            p.node_hostname === node.node_hostname
         );
-        return point?.utilization_pct ?? null;
+        return point?.gpu_util_pct ?? null;
       });
 
-      const colors = NODE_COLORS[node.node_id] || {
+      // NODE_COLORS is keyed by hostname ("node-02" etc.)
+      const colors = NODE_COLORS[node.node_hostname] || {
         line: "#6B7280",
         fill: "rgba(107, 114, 128, 0.1)",
       };
 
       return {
-        label: node.node_id,
+        label: node.node_hostname,
         data: nodeData,
         borderColor: colors.line,
         backgroundColor: colors.fill,
@@ -119,6 +130,12 @@ export default function GPUFleetChart({
         pointRadius: 1,
         pointHoverRadius: 4,
         borderWidth: 2,
+        // Dashed line for nodes with no data in the window - visual
+        // distinction from solid line of nulls.
+        ...(nodeData.every((v) => v === null) && {
+          borderDash: [4, 4],
+          fill: false,
+        }),
       };
     });
 

@@ -1,19 +1,22 @@
 """
-GPU service: node registry, reservation management, fleet utilization.
+GPU service: node registry, reservation management, fleet utilization,
+and time-series history (per GPU Fleet Monitoring Spec v1.1).
 
 Per §5.2.1 — manages GPU node lifecycle and VRAM reservation tracking.
 Actual GPU scheduling logic is in Phase 8 (GPU Scheduler microservice).
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
+from fastapi import HTTPException
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.gpu_node import GpuNode, GpuReservation
+from app.models.gpu_metrics_history import GpuMetricsHistory
 from app.models.render_job import RenderJob
 from app.models.project import Project
 from app.schemas.gpu import (
@@ -24,9 +27,16 @@ from app.schemas.gpu import (
     GpuFleetSummary,
     GpuNodeSummary,
     ActiveJobSummary,
+    GpuUtilizationPoint,
 )
 
 logger = logging.getLogger(__name__)
+
+# Maximum points returned in a single history response.
+# Per GPU Fleet Monitoring Spec v1.1 §3.3 / amendment 5.
+# A 30d range at 30-second collection x 5 nodes ~ 432,000 rows - protects
+# against unbounded responses. Returns 413 rather than silent truncation.
+MAX_HISTORY_POINTS = 5000
 
 
 class GpuService:
@@ -316,6 +326,7 @@ class GpuService:
             gpu_utilization_pct=0.0,
             temperature_c=0.0,
             power_draw_w=0.0,
+            power_tdp_w=node.power_tdp_w,
             compute_capability=node.compute_capability,
             status=node.status,
             registered_at=node.registered_at,
@@ -323,3 +334,185 @@ class GpuService:
             active_jobs=active_jobs,
             reservations=reservation_responses,
         )
+
+    # ------------------------------------------------------------------
+    # History endpoint per GPU Fleet Monitoring Spec v1.1
+    # ------------------------------------------------------------------
+
+    async def get_utilization_history(
+        self, range_str: str
+    ) -> List[GpuUtilizationPoint]:
+        """Time-series GPU metrics for the requested range per spec 8.2.2.
+
+        Returns rows from gpu_metrics_history JOINed with gpu_nodes to
+        include node_hostname for client-side correlation. Ordered by
+        (gpu_node_id, recorded_at) so consumers can group per-node series.
+
+        Range format: <int><unit> where unit in {m, h, d}.
+        Examples: "30m", "1h", "24h", "7d", "30d".
+
+        Hard cap at MAX_HISTORY_POINTS per Spec v1.1 amendment 5.
+        Raises HTTPException 413 if the query would exceed it. We do
+        NOT silently LIMIT - a truncated chart would be misleading.
+
+        Raises:
+            HTTPException 400 if range_str format is invalid
+            HTTPException 400 if range_str exceeds 30d retention boundary
+            HTTPException 413 if query would exceed MAX_HISTORY_POINTS
+        """
+        # Range parsing
+        if not range_str or len(range_str) < 2:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": (
+                            f"Invalid range format '{range_str}'; "
+                            f"expected <int><unit>"
+                        ),
+                        "details": [{"field": "range", "issue": "format"}],
+                    }
+                },
+            )
+
+        try:
+            amount = int(range_str[:-1])
+            unit = range_str[-1].lower()
+        except (ValueError, IndexError):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": (
+                            f"Invalid range '{range_str}'; "
+                            f"numeric prefix required"
+                        ),
+                    }
+                },
+            )
+
+        if amount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": f"Range must be positive; got '{range_str}'",
+                    }
+                },
+            )
+
+        unit_map = {"m": "minutes", "h": "hours", "d": "days"}
+        if unit not in unit_map:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": f"Unsupported range unit '{unit}'; use m/h/d",
+                    }
+                },
+            )
+
+        delta = timedelta(**{unit_map[unit]: amount})
+
+        # 30-day retention boundary per spec 4.2 Table 19
+        if delta > timedelta(days=30):
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": (
+                            f"Range '{range_str}' exceeds 30-day "
+                            f"retention boundary"
+                        ),
+                    }
+                },
+            )
+
+        cutoff = datetime.now(timezone.utc) - delta
+
+        # Pre-query count check (Spec v1.1 amendment 5)
+        count_query = (
+            select(func.count())
+            .select_from(GpuMetricsHistory)
+            .where(GpuMetricsHistory.recorded_at >= cutoff)
+        )
+        try:
+            count_result = await self.db.execute(count_query)
+            row_count = count_result.scalar() or 0
+        except Exception:
+            logger.exception(
+                "gpu_utilization_history_count_failed range=%s cutoff=%s",
+                range_str, cutoff.isoformat(),
+            )
+            raise
+
+        if row_count > MAX_HISTORY_POINTS:
+            raise HTTPException(
+                status_code=413,
+                detail={
+                    "error": {
+                        "code": "PAYLOAD_TOO_LARGE",
+                        "message": (
+                            f"Range '{range_str}' would return "
+                            f"{row_count} points, exceeding cap of "
+                            f"{MAX_HISTORY_POINTS}. Request a smaller range."
+                        ),
+                        "details": {
+                            "requested_points": row_count,
+                            "max_points": MAX_HISTORY_POINTS,
+                            "requested_range": range_str,
+                        },
+                    }
+                },
+            )
+
+        # Main query
+        query = (
+            select(
+                GpuMetricsHistory.gpu_node_id,
+                GpuNode.node_hostname,
+                GpuMetricsHistory.recorded_at,
+                GpuMetricsHistory.gpu_util_pct,
+                GpuMetricsHistory.mem_util_pct,
+                GpuMetricsHistory.temperature_c,
+                GpuMetricsHistory.power_draw_w,
+                GpuMetricsHistory.active_job_count,
+                GpuMetricsHistory.queue_depth,
+            )
+            .join(GpuNode, GpuMetricsHistory.gpu_node_id == GpuNode.id)
+            .where(GpuMetricsHistory.recorded_at >= cutoff)
+            .order_by(
+                GpuMetricsHistory.gpu_node_id,
+                GpuMetricsHistory.recorded_at,
+            )
+        )
+
+        try:
+            result = await self.db.execute(query)
+            rows = result.all()
+        except Exception:
+            logger.exception(
+                "gpu_utilization_history_query_failed range=%s cutoff=%s",
+                range_str, cutoff.isoformat(),
+            )
+            raise
+
+        return [
+            GpuUtilizationPoint(
+                gpu_node_id=r.gpu_node_id,
+                node_hostname=r.node_hostname,
+                recorded_at=r.recorded_at,
+                gpu_util_pct=r.gpu_util_pct,
+                mem_util_pct=r.mem_util_pct,
+                temperature_c=r.temperature_c,
+                power_draw_w=r.power_draw_w,
+                active_job_count=r.active_job_count,
+                queue_depth=r.queue_depth,
+            )
+            for r in rows
+        ]

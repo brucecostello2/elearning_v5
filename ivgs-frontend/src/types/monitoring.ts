@@ -93,29 +93,41 @@ export interface PipelineJobDetail {
 // GPU Fleet (§8.2.2)
 // ────────────────────────────────────────────────────────────────────────────
 
-export interface GPUNode {
-  node_id: string;
-  status: "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
-  utilization_pct: number;
-  total_vram_mb: number;
-  used_vram_mb: number;
-  temperature_c: number;
-  tdp_watts: number;
-  power_draw_watts?: number;
-  cpu_percent: number;
-  ram_percent: number;
-  active_job: any;
-  active_jobs?: any[];
-  queued_jobs: number;
-  allocations?: any[];
+// GPUNode is a re-export of GpuNodeResponse from the canonical API types
+// (rewritten per GPU Fleet Monitoring Spec v1.1 section 6.0 to match backend
+// exactly). There is one node shape across the app per spec Appendix C.4.
+// Previously this file defined a separate GPUNode with fields that did not
+// exist on the backend response (cpu_percent, ram_percent, tdp_watts,
+// queued_jobs, active_job singular). Aligned per Spec v1.1 section 6.1.
+export type { GpuNodeResponse as GPUNode } from "@/types/api";
+export type { ActiveJobSummary } from "@/types/api";
+
+/**
+ * Single time-series GPU utilization measurement.
+ *
+ * Field names mirror the backend gpu_metrics_history storage model
+ * (per GPU Fleet Monitoring Spec v1.1 section 3.4). All metric fields
+ * except gpu_node_id, node_hostname, and recorded_at are nullable.
+ */
+export interface GPUUtilizationPoint {
+  gpu_node_id: string;
+  node_hostname: string;
+  recorded_at: string;
+  gpu_util_pct: number | null;
+  mem_util_pct: number | null;
+  temperature_c: number | null;
+  power_draw_w: number | null;
+  active_job_count: number | null;
+  queue_depth: number | null;
 }
 
-export interface GPUUtilizationPoint {
-  timestamp: string;
-  node_id: string;
-  utilization_pct: number;
-  vram_used_mb: number;
-  temperature_c: number;
+/**
+ * Envelope returned by GET /api/v1/gpu/utilization/history.
+ */
+export interface GPUUtilizationHistoryResponse {
+  history: GPUUtilizationPoint[];
+  range: string;
+  point_count: number;
 }
 
 export interface ModelResidencyEntry {
