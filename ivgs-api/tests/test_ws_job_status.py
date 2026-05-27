@@ -13,6 +13,8 @@ import pytest
 from unittest.mock import patch, AsyncMock, MagicMock
 from starlette.testclient import TestClient
 
+AUTH_PATCH = "app.api.v1.ws_logs._authenticate_ws"
+
 
 @pytest.fixture
 def sync_client():
@@ -54,7 +56,6 @@ def _make_mock_redis(messages=None):
                 "type": "message",
                 "data": json.dumps(msg).encode(),
             }
-        # After all messages consumed, raise to break loop
         raise Exception("test messages exhausted")
 
     mock_pubsub.get_message = get_message_side_effect
@@ -75,11 +76,12 @@ def test_job_status_heartbeat(sync_client):
     """Should receive heartbeat when no pub/sub messages arrive."""
     mock_redis, mock_pubsub = _make_mock_redis(messages=[None])
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/job-abc/status") as ws:
-            data = ws.receive_json()
-            assert data["type"] == "heartbeat"
-            assert data["job_id"] == "job-abc"
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/job-abc/status") as ws:
+                data = ws.receive_json()
+                assert data["type"] == "heartbeat"
+                assert data["job_id"] == "job-abc"
 
 
 # ===================================================================
@@ -92,12 +94,13 @@ def test_job_status_receives_update(sync_client):
     update = {"status": "RUNNING", "progress": 42, "job_id": "job-xyz"}
     mock_redis, _ = _make_mock_redis(messages=[update])
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/job-xyz/status") as ws:
-            data = ws.receive_json()
-            assert data["status"] == "RUNNING"
-            assert data["progress"] == 42
-            assert data["job_id"] == "job-xyz"
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/job-xyz/status") as ws:
+                data = ws.receive_json()
+                assert data["status"] == "RUNNING"
+                assert data["progress"] == 42
+                assert data["job_id"] == "job-xyz"
 
 
 # ===================================================================
@@ -113,29 +116,26 @@ def test_job_status_terminates_on_complete(sync_client):
     ]
     mock_redis, _ = _make_mock_redis(messages=messages)
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/job-done/status") as ws:
-            data1 = ws.receive_json()
-            assert data1["status"] == "RUNNING"
-
-            data2 = ws.receive_json()
-            assert data2["status"] == "COMPLETE"
-
-            # Connection should close after COMPLETE — no more messages
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/job-done/status") as ws:
+                data1 = ws.receive_json()
+                assert data1["status"] == "RUNNING"
+                data2 = ws.receive_json()
+                assert data2["status"] == "COMPLETE"
 
 
 def test_job_status_terminates_on_error(sync_client):
     """WebSocket should close after receiving ERROR status."""
-    messages = [
-        {"status": "ERROR", "error": "GPU OOM"},
-    ]
+    messages = [{"status": "ERROR", "error": "GPU OOM"}]
     mock_redis, _ = _make_mock_redis(messages=messages)
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/job-err/status") as ws:
-            data = ws.receive_json()
-            assert data["status"] == "ERROR"
-            assert data["error"] == "GPU OOM"
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/job-err/status") as ws:
+                data = ws.receive_json()
+                assert data["status"] == "ERROR"
+                assert data["error"] == "GPU OOM"
 
 
 # ===================================================================
@@ -144,30 +144,21 @@ def test_job_status_terminates_on_error(sync_client):
 
 
 def test_job_status_redis_connection_error(sync_client):
-    """Should handle Redis connection failure gracefully.
-
-    When redis.asyncio.from_url() raises or the pub/sub connection fails,
-    the WebSocket should not crash with unhandled exception.
-    """
-    with patch(
-        "redis.asyncio.from_url",
-        side_effect=Exception("Redis connection refused"),
-    ):
-        # Connection should be accepted (websocket.accept() is before Redis)
-        # Then the error should be caught and connection closed gracefully
-        try:
-            with sync_client.websocket_connect("/api/v1/ws/jobs/job-fail/status") as ws:
-                # May receive nothing or an error message before close
-                try:
-                    data = ws.receive_json()
-                    # If we get data, it should be an error
-                    assert "error" in data or "type" in data
-                except Exception:
-                    # Connection closed — acceptable
-                    pass
-        except Exception:
-            # Connection may be rejected — also acceptable
-            pass
+    """Should handle Redis connection failure gracefully."""
+    with patch(AUTH_PATCH, return_value=True):
+        with patch(
+            "redis.asyncio.from_url",
+            side_effect=Exception("Redis connection refused"),
+        ):
+            try:
+                with sync_client.websocket_connect("/api/v1/ws/jobs/job-fail/status") as ws:
+                    try:
+                        data = ws.receive_json()
+                        assert "error" in data or "type" in data
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
 
 # ===================================================================
@@ -179,11 +170,11 @@ def test_job_status_subscribes_to_correct_channel(sync_client):
     """Should subscribe to Redis channel job:{job_id}:status."""
     mock_redis, mock_pubsub = _make_mock_redis(messages=[None])
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/my-job-42/status") as ws:
-            ws.receive_json()  # heartbeat
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/my-job-42/status") as ws:
+                ws.receive_json()
 
-    # Verify the correct channel was subscribed
     mock_pubsub.subscribe.assert_called_once_with("job:my-job-42:status")
 
 
@@ -192,10 +183,10 @@ def test_job_status_unsubscribes_on_close(sync_client):
     messages = [{"status": "COMPLETE", "progress": 100}]
     mock_redis, mock_pubsub = _make_mock_redis(messages=messages)
 
-    with patch("redis.asyncio.from_url", return_value=mock_redis):
-        with sync_client.websocket_connect("/api/v1/ws/jobs/cleanup-job/status") as ws:
-            ws.receive_json()  # COMPLETE
+    with patch(AUTH_PATCH, return_value=True):
+        with patch("redis.asyncio.from_url", return_value=mock_redis):
+            with sync_client.websocket_connect("/api/v1/ws/jobs/cleanup-job/status") as ws:
+                ws.receive_json()
 
-    # Verify cleanup
     mock_pubsub.unsubscribe.assert_called_once_with("job:cleanup-job:status")
     mock_redis.close.assert_called_once()

@@ -508,7 +508,7 @@ Commit: see git log for `fix: BUG-011`
 | **ID** | BUG-012 |
 | **Severity** | HIGH |
 | **Phase** | Phase 2 — WebSocket Tests |
-| **Status** | OPEN — awaiting operator approval |
+| **Status** | ✅ FIXED |
 | **File** | `app/api/v1/ws_logs.py` |
 | **Lines** | 59 (`stream_node_logs`), 109 (`stream_job_status`) |
 | **Test(s)** | `test_ws_connect_no_auth_rejected`, `test_ws_job_status_no_auth` |
@@ -529,15 +529,17 @@ with TestClient(app) as client:
 **Expected Behavior:**  
 WebSocket connections should validate a Bearer token (e.g., via `?token=JWT` query parameter or `Sec-WebSocket-Protocol` header) before calling `websocket.accept()`. Unauthenticated clients should receive close code 1008 (Policy Violation).
 
-**Proposed Fix:**  
-Add token validation before `websocket.accept()` in both endpoints:
-```python
-token = websocket.query_params.get("token")
-if not token or not validate_jwt(token):
-    await websocket.close(code=1008)
-    return
-await websocket.accept()
-```
+**Fix Applied:**  
+Added `_authenticate_ws()` helper function that validates JWT token from `?token=<JWT>` query
+parameter before `websocket.accept()`. The helper:
+1. Extracts token from query params
+2. Decodes and validates JWT (type=access, valid signature)
+3. Verifies user exists in DB and is active
+4. Closes with code 1008 (Policy Violation) on any failure
+
+Both `stream_node_logs` and `stream_job_status` now call `_authenticate_ws()` before accepting.
+
+Commit: see git log for `fix: BUG-012`
 
 ---
 
@@ -548,7 +550,7 @@ await websocket.accept()
 | **ID** | BUG-013 |
 | **Severity** | MEDIUM |
 | **Phase** | Phase 2 — WebSocket Tests |
-| **Status** | OPEN — awaiting operator approval |
+| **Status** | ✅ FIXED |
 | **File** | `app/api/v1/ws_logs.py` |
 | **Lines** | 63 (assignment), 96 (finally reference) |
 | **Test(s)** | `test_node_logs_ssh_failure`, `test_node_logs_subprocess_create_failure_cleanup` |
@@ -576,10 +578,10 @@ with patch("asyncio.create_subprocess_shell", side_effect=OSError("SSH failed"))
 **Expected Behavior:**  
 The error should be caught and an error message sent to the client. The `finally` block should not crash.
 
-**Proposed Fix:**  
-Initialize `process = None` before the `try` block:
+**Fix Applied:**  
+Initialized `process = None` before the `try` block:
 ```python
-process = None
+process = None  # Initialize before try block (BUG-013 fix)
 try:
     process = await asyncio.create_subprocess_shell(...)
     ...
@@ -587,6 +589,8 @@ finally:
     if process and process.returncode is None:
         process.terminate()
 ```
+
+Commit: see git log for `fix: BUG-013`
 
 ---
 

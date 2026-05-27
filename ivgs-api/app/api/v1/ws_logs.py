@@ -16,10 +16,53 @@ import logging
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from sqlalchemy import select
 
 logger = logging.getLogger("ivgs.api.ws")
 
 router = APIRouter(tags=["websocket"])
+
+
+async def _authenticate_ws(websocket: WebSocket) -> bool:
+    """Validate JWT token from WebSocket query parameter.
+
+    Expects ``?token=<JWT>`` on the WebSocket URL.  Returns *True* if the
+    token is valid and the user exists + is active, otherwise closes the
+    connection with code **1008** (Policy Violation) and returns *False*.
+    """
+    from app.core.security import decode_token
+    from shared.database import get_session
+    from app.models.user import User
+
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=1008, reason="Missing authentication token")
+        return False
+
+    payload = decode_token(token)
+    if payload is None or payload.get("type") != "access":
+        await websocket.close(code=1008, reason="Invalid authentication token")
+        return False
+
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
+        await websocket.close(code=1008, reason="Invalid token payload")
+        return False
+
+    # Verify user exists and is active
+    async for db in get_session():
+        try:
+            from uuid import UUID
+            result = await db.execute(select(User).where(User.id == UUID(user_id_str)))
+            user = result.scalar_one_or_none()
+            if user is None or not user.is_active:
+                await websocket.close(code=1008, reason="User not found or inactive")
+                return False
+        except Exception:
+            await websocket.close(code=1008, reason="Authentication error")
+            return False
+
+    return True
 
 # Node SSH connection map
 NODE_HOSTS = {
@@ -42,7 +85,10 @@ async def stream_node_logs(
     """
     WebSocket stream for live log output from a node.
     Streams docker logs from the specified node via SSH.
+    Requires JWT token via ``?token=<JWT>`` query parameter (BUG-012 fix).
     """
+    if not await _authenticate_ws(websocket):
+        return
     await websocket.accept()
 
     if node_id not in NODE_HOSTS:
@@ -59,6 +105,7 @@ async def stream_node_logs(
     else:
         cmd = f"ssh {host} '{docker_cmd} {tail}'"
 
+    process = None  # Initialize before try block (BUG-013 fix)
     try:
         process = await asyncio.create_subprocess_shell(
             cmd,
@@ -105,7 +152,10 @@ async def stream_job_status(
     """
     WebSocket stream for real-time job progress updates.
     Polls database for job status changes and pushes to client.
+    Requires JWT token via ``?token=<JWT>`` query parameter (BUG-012 fix).
     """
+    if not await _authenticate_ws(websocket):
+        return
     await websocket.accept()
 
     import redis.asyncio as aioredis
