@@ -594,4 +594,96 @@ Commit: see git log for `fix: BUG-013`
 
 ---
 
+## BUG-014: Backup Trigger RBAC Bypass — No-Op `require_admin` in `app/api/deps.py`
+
+| Field | Value |
+|---|---|
+| **Severity** | CRITICAL |
+| **Phase Found** | Phase 3 — API Endpoint Tests |
+| **Status** | Open (xfail) — awaiting operator approval |
+| **Affected Endpoint** | `POST /api/v1/backup/trigger` |
+| **Root Cause** | `app/api/v1/backup.py` imports `require_admin` from `app.api.deps` which contains a no-op stub (`async def require_admin(user=None): pass`) instead of the real RBAC dependency in `app.core.rbac` |
+
+**Description:**  
+The backup trigger endpoint is annotated with `Depends(require_admin)` but the import resolves to a placeholder in `app/api/deps.py` that performs no role check. As a result, **any authenticated user** (operator, viewer) — and even unauthenticated requests that pass body validation — can trigger a full database backup.
+
+**Reproduction:**
+```python
+# Operator should be denied but gets 200
+r = await client.post(
+    "/api/v1/backup/trigger",
+    json={"backup_type": "full_db"},
+    headers={"Authorization": f"Bearer {operator_token}"},
+)
+assert r.status_code == 200  # BUG: should be 403
+```
+
+**Expected Behavior:**  
+Only admin users should be able to trigger backups. Operators and viewers should receive 403 PERMISSION_DENIED.
+
+**Proposed Fix:**  
+Change the import in `app/api/v1/backup.py` line 22:
+```python
+# Before (broken):
+from app.api.deps import get_current_user, get_db, require_admin
+
+# After (fixed):
+from app.api.deps import get_current_user, get_db
+from app.core.rbac import require_admin
+```
+
+**xfail Tests:**
+- `tests/test_api_backup.py::TestTriggerBackup::test_trigger_backup_operator_denied`
+- `tests/test_api_backup.py::TestTriggerBackup::test_trigger_backup_unauthenticated`
+- `tests/test_api_rbac.py::TestRbacBackup::test_viewer_cannot_trigger_backup`
+- `tests/test_api_rbac.py::TestRbacBackup::test_operator_cannot_trigger_backup`
+
+---
+
+## BUG-015: Quotas RBAC Bypass — Same No-Op `require_admin` Issue
+
+| Field | Value |
+|---|---|
+| **Severity** | HIGH |
+| **Phase Found** | Phase 3 — API Endpoint Tests |
+| **Status** | Open (xfail) — awaiting operator approval |
+| **Affected Endpoint** | `PUT /api/v1/quotas/{entity_type}/{entity_id}` |
+| **Root Cause** | `app/api/v1/quotas.py` imports `require_admin` from `app.api.deps` (same no-op stub as BUG-014) |
+
+**Description:**  
+The quota-setting endpoint is annotated with `Depends(require_admin)` but uses the no-op placeholder, allowing any authenticated user to modify storage quotas.
+
+**Reproduction:**
+```python
+# Operator should be denied but gets 200/500
+r = await client.put(
+    "/api/v1/quotas/project/{project_id}",
+    json={"quota_bytes": 1073741824, "alert_threshold_pct": 80.0},
+    headers={"Authorization": f"Bearer {operator_token}"},
+)
+# BUG: should be 403 PERMISSION_DENIED
+```
+
+**Expected Behavior:**  
+Only admin users should be able to set quotas. Operators and viewers should receive 403 PERMISSION_DENIED.
+
+**Proposed Fix:**  
+Change the import in `app/api/v1/quotas.py`:
+```python
+# Before (broken):
+from app.api.deps import get_current_user, get_db, require_admin
+
+# After (fixed):
+from app.api.deps import get_current_user, get_db
+from app.core.rbac import require_admin
+```
+
+**Note:** The root cause for both BUG-014 and BUG-015 is the `require_admin` stub in `app/api/deps.py`. A comprehensive fix should either (a) remove the stub entirely and audit all imports, or (b) replace the stub with a proper re-export of `app.core.rbac.require_admin`.
+
+**xfail Tests:**
+- `tests/test_api_rbac.py::TestRbacQuotas::test_operator_cannot_set_quota`
+- `tests/test_api_rbac.py::TestRbacQuotas::test_viewer_cannot_set_quota`
+
+---
+
 **End of Document**
