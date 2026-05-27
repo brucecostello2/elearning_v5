@@ -1,0 +1,146 @@
+=== PHASE 0b: Testing All 5 Migrations ===
+Wed May 27 16:19:17 UTC 2026
+
+=== Current state ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+0014
+
+=== MIGRATION 1: users.is_active (0015) ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0014 -> 0015, 0015_add_users_is_active — Add is_active column to users table
+ is_active   | boolean   | NO          | true
+
+Downgrade test...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0015 -> 0014, 0015_add_users_is_active — Add is_active column to users table
+     0
+
+Re-upgrade...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0014 -> 0015, 0015_add_users_is_active — Add is_active column to users table
+✅ Migration 0015 PASSED
+
+=== MIGRATION 2: projects.created_by (0016) ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0015 -> 0016, 0016_add_projects_created_by — Add created_by column to projects table
+ created_by  | uuid      | YES
+
+Downgrade test...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0016 -> 0015, 0016_add_projects_created_by — Add created_by column to projects table
+     0
+
+Re-upgrade...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0015 -> 0016, 0016_add_projects_created_by — Add created_by column to projects table
+✅ Migration 0016 PASSED
+
+=== MIGRATION 3: asset_quality_scores.job_id (0017) ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0016 -> 0017, 0017_add_quality_scores_job_id — Add job_id column to asset_quality_scores
+ job_id      | uuid      | YES
+
+Downgrade test...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0017 -> 0016, 0017_add_quality_scores_job_id — Add job_id column to asset_quality_scores
+     0
+
+Re-upgrade...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0016 -> 0017, 0017_add_quality_scores_job_id — Add job_id column to asset_quality_scores
+✅ Migration 0017 PASSED
+
+=== MIGRATION 4: retention_policies.description (0018) ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0017 -> 0018, 0018_add_retention_policies_description — Add description to retention_policies
+ description | text      | YES
+
+Downgrade test...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0018 -> 0017, 0018_add_retention_policies_description — Add description to retention_policies
+     0
+
+Re-upgrade...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0017 -> 0018, 0018_add_retention_policies_description — Add description to retention_policies
+✅ Migration 0018 PASSED
+
+=== MIGRATION 5: prompt_tags.description (0019) ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0018 -> 0019, 0019_add_prompt_tags_description — Add description to prompt_tags
+ description | character varying | YES
+
+Downgrade test...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running downgrade 0019 -> 0018, 0019_add_prompt_tags_description — Add description to prompt_tags
+     0
+
+Re-upgrade...
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade 0018 -> 0019, 0019_add_prompt_tags_description — Add description to prompt_tags
+✅ Migration 0019 PASSED
+
+=== Final alembic state ===
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+0019 (head)
+ version_num 
+-------------
+ 0019
+(1 row)
+
+=== VERIFYING ALL 5 COLUMNS ===
+      table_name      | column_name |     data_type     | is_nullable | column_default 
+----------------------+-------------+-------------------+-------------+----------------
+ asset_quality_scores | job_id      | uuid              | YES         | 
+ projects             | created_by  | uuid              | YES         | 
+ prompt_tags          | description | character varying | YES         | 
+ retention_policies   | description | text              | YES         | 
+ users                | is_active   | boolean           | NO          | true
+(5 rows)
+
+
+=== Migration count ===
+Total: 19 (14 original + 5 new)
+
+=== RUNNING EXISTING TEST SUITE ===
+============================= test session starts ==============================
+platform linux -- Python 3.11.6, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/ubuntu/test_workspace
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-0.26.0, xdist-3.8.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 153 items
+
+tests/test_assets.py .........                                           [  5%]
+tests/test_auth.py ............                                          [ 13%]
+tests/test_checkpoint_api.py ...............                             [ 23%]
+tests/test_dlq_api.py ...............                                    [ 33%]
+tests/test_gpu_api.py .................                                  [ 44%]
+tests/test_health.py .....                                               [ 47%]
+tests/test_projects.py ................                                  [ 58%]
+tests/test_prompts.py ...........                                        [ 65%]
+tests/test_quality_api.py ...........                                    [ 72%]
+tests/test_retention_api.py ..............                               [ 81%]
+tests/test_rollback_probe.py ..                                          [ 83%]
+tests/test_storyboard.py ......                                          [ 86%]
+tests/test_transcripts.py ......                                         [ 90%]
+tests/test_users.py ..............                                       [100%]
+
+============================= 153 passed in 56.75s =============================
