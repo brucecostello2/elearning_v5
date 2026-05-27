@@ -79,14 +79,10 @@ class TestTriggerBackup:
         # May succeed (200/201/202) or fail if backup subsystem not configured
         assert r.status_code in (200, 201, 202, 500)
 
-    @pytest.mark.xfail(
-        reason="BUG-014: backup trigger uses no-op require_admin from app.api.deps",
-        strict=True,
-    )
     async def test_trigger_backup_operator_denied(
         self, client: AsyncClient, operator_token: str
     ):
-        """Operator should be denied — but BUG-014 bypasses RBAC."""
+        """Operator should be denied (BUG-014 fixed)."""
         r = await client.post(
             "/api/v1/backup/trigger",
             json={"backup_type": "full_db"},
@@ -106,12 +102,8 @@ class TestTriggerBackup:
         # Default backup_type="full_db" should be accepted
         assert r.status_code in (200, 201, 202, 500)
 
-    @pytest.mark.xfail(
-        reason="BUG-014: backup trigger uses no-op require_admin — unauthenticated gets 422 (body validation) instead of 401/403",
-        strict=True,
-    )
     async def test_trigger_backup_unauthenticated(self, client: AsyncClient):
-        """Should return 401/403 before body validation."""
+        """Should return 401/403 (BUG-014 fixed)."""
         r = await client.post(
             "/api/v1/backup/trigger",
             json={"backup_type": "full_db"},

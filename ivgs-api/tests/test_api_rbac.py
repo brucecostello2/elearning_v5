@@ -6,7 +6,7 @@ lower-privileged roles with 403 PERMISSION_DENIED.
 
 Admin-only endpoints (viewer AND operator must get 403):
   - POST/GET/PUT/DELETE /api/v1/users
-  - POST /api/v1/backup/trigger (BUG-014: bypassed — xfail)
+  - POST /api/v1/backup/trigger
   - POST/PUT /api/v1/retention/policies
   - POST/PUT /api/v1/gpu/nodes, POST /api/v1/gpu/nodes/{id}/drain
   - POST /api/v1/quality/{score_id}/approve|reject
@@ -66,10 +66,6 @@ class TestRbacUsers:
 # ── Admin-only: Backup Trigger (BUG-014) ─────────────────────────────
 
 class TestRbacBackup:
-    @pytest.mark.xfail(
-        reason="BUG-014: backup trigger uses no-op require_admin from app.api.deps",
-        strict=True,
-    )
     async def test_viewer_cannot_trigger_backup(self, client: AsyncClient, viewer_token: str):
         r = await client.post(
             "/api/v1/backup/trigger",
@@ -78,10 +74,6 @@ class TestRbacBackup:
         )
         assert r.status_code == 403
 
-    @pytest.mark.xfail(
-        reason="BUG-014: backup trigger uses no-op require_admin from app.api.deps",
-        strict=True,
-    )
     async def test_operator_cannot_trigger_backup(self, client: AsyncClient, operator_token: str):
         r = await client.post(
             "/api/v1/backup/trigger",
@@ -160,15 +152,8 @@ class TestRbacQuality:
 # ── Admin-only: Quotas ────────────────────────────────────────────────
 
 class TestRbacQuotas:
-    """Quotas at /api/v1/quotas/{entity_type}/{entity_id}.
-    
-    NOTE: BUG-015 — quotas also imports no-op require_admin from app.api.deps.
-    """
+    """Quotas at /api/v1/quotas/{entity_type}/{entity_id}."""
 
-    @pytest.mark.xfail(
-        reason="BUG-015: quotas uses no-op require_admin from app.api.deps",
-        strict=True,
-    )
     async def test_operator_cannot_set_quota(self, client: AsyncClient, operator_token: str):
         r = await client.put(
             f"/api/v1/quotas/project/{FAKE_UUID}",
@@ -177,10 +162,6 @@ class TestRbacQuotas:
         )
         assert r.status_code == 403
 
-    @pytest.mark.xfail(
-        reason="BUG-015: quotas uses no-op require_admin from app.api.deps",
-        strict=True,
-    )
     async def test_viewer_cannot_set_quota(self, client: AsyncClient, viewer_token: str):
         r = await client.put(
             f"/api/v1/quotas/project/{FAKE_UUID}",
