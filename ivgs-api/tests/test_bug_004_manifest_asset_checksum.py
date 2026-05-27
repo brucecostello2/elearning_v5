@@ -1,16 +1,10 @@
 """
-Test exposing BUG-004: sha256_hash → content_hash mismatch in manifests.
+Test for BUG-004: sha256_hash → content_hash mismatch (FIXED).
 
-Bug: app/api/v1/manifests.py lines 176, 201, 345, 354, 359
-  - Asset queries use ``sha256_hash`` but actual column is ``content_hash``
-  - Manifest generation and validation both crash with
-    ``UndefinedColumn: column "sha256_hash" does not exist``
-
-NOTE: BUG-003 (timeline_json) fires first in the generate flow, so this
-test isolates the asset-fetch step by seeding a manifest and testing
-the validate endpoint which queries assets independently.
+Fix: All sha256_hash references changed to content_hash in manifests.py
 """
 
+import json
 import pytest
 import uuid
 from datetime import datetime, timezone
@@ -20,18 +14,12 @@ from sqlalchemy import text
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="BUG-004: manifests.py validate uses sha256_hash — actual column is content_hash",
-    strict=True,
-)
 async def test_validate_manifest_uses_content_hash(
     client: AsyncClient,
     db_session,
     operator_token: str,
 ):
-    """POST /api/v1/manifests/{job_id}/manifest/validate should check asset
-    checksums, but the SQL selects ``sha256_hash`` which does not exist.
-    """
+    """POST /api/v1/manifests/{job_id}/manifest/validate should check checksums correctly."""
     project_id = str(uuid.uuid4())
     job_id = str(uuid.uuid4())
     manifest_id = str(uuid.uuid4())
@@ -44,14 +32,7 @@ async def test_validate_manifest_uses_content_hash(
     payload = decode_token(operator_token)
     user_id = payload["sub"]
 
-    # Seed user, project, job, scene, asset, manifest
-    await db_session.execute(
-        text(
-            "INSERT INTO users (id, username, password_hash, role, is_active, created_at) "
-            "VALUES (:id, :u, 'x', 'operator', true, :now)"
-        ),
-        {"id": user_id, "u": f"val_test_{uuid.uuid4().hex[:8]}", "now": now},
-    )
+    # User already created by operator_token fixture — just insert project data
     await db_session.execute(
         text(
             "INSERT INTO projects (id, name, state, created_by, created_at, updated_at) "
@@ -83,9 +64,6 @@ async def test_validate_manifest_uses_content_hash(
         ),
         {"id": asset_id, "pid": project_id, "sid": scene_id, "now": now},
     )
-
-    # Create manifest with timeline referencing the asset
-    import json
 
     timeline = {
         "version": "1.0",
@@ -121,10 +99,9 @@ async def test_validate_manifest_uses_content_hash(
         headers={"Authorization": f"Bearer {operator_token}"},
     )
 
-    # Should return validation results, but BUG-004 causes 500
-    assert response.status_code == 200, (
-        f"Expected 200 but got {response.status_code}. "
-        "BUG-004: SQL references sha256_hash instead of content_hash."
-    )
+    assert response.status_code == 200
     data = response.json()
-    assert "valid" in data
+    assert data["valid"] is True
+    assert data["total_assets_checked"] == 1
+    assert data["checksum_matches"] == 1
+    assert len(data["errors"]) == 0

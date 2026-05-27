@@ -1,13 +1,10 @@
 """
-Test exposing BUG-003: Wrong column names in manifests raw SQL.
+Test for BUG-003: Wrong column names in manifests raw SQL (FIXED).
 
-Bug: app/api/v1/manifests.py lines 99-100, 227-229
-  - SQL references ``timeline_json`` → actual column is ``timeline``
-  - SQL references ``scene_count`` → column does not exist
-  - SQL references ``created_at`` → column does not exist in composition_manifests
-
-Both GET and POST/generate endpoints crash with
-``UndefinedColumn: column "timeline_json" does not exist``.
+Fixes applied:
+- timeline_json → timeline in SQL
+- scene_count removed from SQL (computed from timeline JSON)
+- created_at removed from INSERT (not in composition_manifests)
 """
 
 import pytest
@@ -19,38 +16,23 @@ from sqlalchemy import text
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="BUG-003: manifests.py uses timeline_json/scene_count/created_at — columns don't exist",
-    strict=True,
-)
 async def test_get_manifest_uses_correct_column_names(
     client: AsyncClient,
     db_session,
     operator_token: str,
 ):
-    """GET /api/v1/manifests/{job_id}/manifest should succeed when
-    a manifest exists, but currently crashes because the raw SQL
-    references ``timeline_json`` instead of ``timeline``.
-    """
-    # Create project → render_job → composition_manifest using correct column names
+    """GET /api/v1/manifests/{job_id}/manifest should succeed with correct columns."""
     project_id = str(uuid.uuid4())
     job_id = str(uuid.uuid4())
     manifest_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
 
-    from app.models.user import User
     from app.core.security import decode_token
 
     payload = decode_token(operator_token)
     user_id = payload["sub"]
 
-    await db_session.execute(
-        text(
-            "INSERT INTO users (id, username, password_hash, role, is_active, created_at) "
-            "VALUES (:id, :u, 'x', 'operator', true, :now)"
-        ),
-        {"id": user_id, "u": f"manifest_test_{uuid.uuid4().hex[:8]}", "now": now},
-    )
+    # User already created by operator_token fixture — just insert project data
     await db_session.execute(
         text(
             "INSERT INTO projects (id, name, state, created_by, created_at, updated_at) "
@@ -73,7 +55,7 @@ async def test_get_manifest_uses_correct_column_names(
         {
             "id": manifest_id,
             "jid": job_id,
-            "tl": '{"version":"1.0","scenes":[]}',
+            "tl": '{"version":"1.0","scenes":[{"scene_index":1},{"scene_index":2}]}',
         },
     )
     await db_session.commit()
@@ -83,27 +65,22 @@ async def test_get_manifest_uses_correct_column_names(
         headers={"Authorization": f"Bearer {operator_token}"},
     )
 
-    # Should be 200, but BUG-003 causes 500 (UndefinedColumn)
-    assert response.status_code == 200, (
-        f"Expected 200 but got {response.status_code}. "
-        "BUG-003: raw SQL references timeline_json which does not exist."
-    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert data["status"] == "draft"
+    assert data["scene_count"] == 2  # computed from timeline JSON
+    assert "timeline_json" in data
+    assert data["timeline_json"]["version"] == "1.0"
 
 
 @pytest.mark.asyncio
-@pytest.mark.xfail(
-    reason="BUG-003: manifest/generate INSERT uses timeline_json/scene_count/created_at",
-    strict=True,
-)
 async def test_generate_manifest_uses_correct_column_names(
     client: AsyncClient,
     db_session,
     operator_token: str,
 ):
-    """POST /api/v1/manifests/{job_id}/manifest/generate should succeed,
-    but crashes because the INSERT references ``timeline_json`` and
-    ``scene_count`` — columns that don't exist.
-    """
+    """POST /api/v1/manifests/{job_id}/manifest/generate should succeed."""
     project_id = str(uuid.uuid4())
     job_id = str(uuid.uuid4())
     scene_id = str(uuid.uuid4())
@@ -114,13 +91,7 @@ async def test_generate_manifest_uses_correct_column_names(
     payload = decode_token(operator_token)
     user_id = payload["sub"]
 
-    await db_session.execute(
-        text(
-            "INSERT INTO users (id, username, password_hash, role, is_active, created_at) "
-            "VALUES (:id, :u, 'x', 'operator', true, :now)"
-        ),
-        {"id": user_id, "u": f"gen_test_{uuid.uuid4().hex[:8]}", "now": now},
-    )
+    # User already created by operator_token fixture — just insert project data
     await db_session.execute(
         text(
             "INSERT INTO projects (id, name, state, created_by, created_at, updated_at) "
@@ -152,8 +123,9 @@ async def test_generate_manifest_uses_correct_column_names(
         json={"render_params": None},
     )
 
-    # Should be 200/201, but BUG-003 causes 500
-    assert response.status_code in (200, 201), (
-        f"Expected 200/201 but got {response.status_code}. "
-        "BUG-003: INSERT references timeline_json/scene_count/created_at."
-    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["job_id"] == job_id
+    assert data["status"] == "draft"
+    assert data["scene_count"] == 1
+    assert data["total_duration_ms"] == 10000
