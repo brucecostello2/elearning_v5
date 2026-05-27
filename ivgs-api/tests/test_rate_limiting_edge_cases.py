@@ -116,22 +116,14 @@ async def test_rate_limit_window_does_not_reset_without_ttl(
 # ===================================================================
 
 
-@pytest.mark.xfail(
-    reason="BUG-011: Rate limiter does not catch Redis exceptions — unhandled error crashes request",
-    strict=True,
-)
 @pytest.mark.asyncio
 async def test_rate_limit_redis_incr_failure(
     client: AsyncClient, db_session, monkeypatch
 ):
-    """When Redis incr() fails, rate limiter should fail gracefully.
+    """When Redis is unavailable, rate limiter should fail open (BUG-011 FIXED).
 
-    BUG-011: The RateLimitMiddleware.dispatch() does not wrap Redis calls in
-    try/except. When Redis is unavailable, the exception propagates and
-    crashes the request with a 500/unhandled error instead of failing
-    open (allowing the request) or returning a structured 503.
-
-    Fix: Wrap Redis calls in try/except in rate_limit.py dispatch().
+    The RateLimitMiddleware.dispatch() now wraps Redis calls in try/except.
+    When Redis is down, the request is allowed through without rate limiting.
     """
     from shared.redis_client import redis_client
 
@@ -144,14 +136,14 @@ async def test_rate_limit_redis_incr_failure(
     monkeypatch.setattr(redis_client, "incr", failing_incr)
     monkeypatch.setattr(redis_client, "exists", failing_exists)
 
-    # Make a login request — middleware should handle the error gracefully
+    # Make a login request — middleware should fail open and let it through
     response = await client.post(
         "/api/v1/auth/login",
         json={"username": "nobody", "password": "wrong"},
     )
-    # Should fail open (allow request through) or return structured error
-    assert response.status_code in [401, 429, 503], \
-        f"Unexpected status {response.status_code} when Redis fails"
+    # Should fail open: request reaches auth handler → 401 (bad credentials)
+    assert response.status_code == 401, \
+        f"Expected 401 (fail open), got {response.status_code}"
 
 
 # ===================================================================

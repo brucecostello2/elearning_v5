@@ -474,7 +474,7 @@ current_bytes: Mapped[int] = mapped_column(
 | **Severity** | HIGH |
 | **Location** | `app/middleware/rate_limit.py:67-147` (dispatch method) |
 | **Test File** | `tests/test_rate_limiting_edge_cases.py::test_rate_limit_redis_incr_failure` |
-| **Status** | Documented, xfail test written |
+| **Status** | ✅ FIXED — Option A (Fail Open) applied 2026-05-27 |
 
 **Description:**  
 The `RateLimitMiddleware.dispatch()` method makes several `await redis_client.*()` calls (`.exists()`, `.incr()`, `.expire()`, `.set()`, `.delete()`) without any try/except error handling. When Redis is unavailable (connection refused, timeout, etc.), the exception propagates unhandled through the middleware stack, crashing the request.
@@ -492,11 +492,12 @@ current_count = await redis_client.incr(rate_key)  # crashes if Redis down
 - Effectively a full API outage caused by a Redis dependency failure
 - No graceful degradation — should either fail-open (allow requests) or return structured 503
 
-**Proposed Fix:**  
-Wrap Redis calls in `try/except Exception` blocks. On Redis failure:
-- Log the error at WARNING level
-- Allow the request through (fail-open pattern)
-- Or return `JSONResponse(503, {"error": {"code": "SERVICE_UNAVAILABLE", ...}})`
+**Fix Applied:**  
+Wrapped all Redis calls in `dispatch()` with two `try/except Exception` blocks:
+1. **Pre-request block** (lockout check + rate limit counter): on Redis failure, logs warning and allows request through
+2. **Post-request block** (login failure tracking): on Redis failure, logs warning but does not crash response
+
+Commit: see git log for `fix: BUG-011`
 
 ---
 
