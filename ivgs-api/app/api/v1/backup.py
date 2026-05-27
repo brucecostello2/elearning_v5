@@ -296,7 +296,7 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
                 "UPDATE backup_records SET status = 'failed', "
                 "error_message = :error WHERE id = :id"
             ),
-            {"id": backup_id, "error": str(exc)[:2000]},
+            {"id": backup_id, "error": str(_exc)[:2000]},
         )
         await db.commit()
 
