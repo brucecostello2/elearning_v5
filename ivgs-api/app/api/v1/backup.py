@@ -19,7 +19,8 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
-from app.api.deps import get_current_user, get_db, require_admin
+from app.api.deps import get_current_user, get_db
+from app.core.rbac import require_admin
 from app.models.user import User
 
 logger = logging.getLogger("ivgs.api.backup")
