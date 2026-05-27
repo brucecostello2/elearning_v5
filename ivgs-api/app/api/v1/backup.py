@@ -39,7 +39,7 @@ class BackupRecord(BaseModel):
     started_at: datetime
     completed_at: Optional[datetime] = None
     verification_checksum: Optional[str] = None
-    storage_path: Optional[str] = None
+    backup_path: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -138,7 +138,7 @@ async def list_backup_records(
             started_at=r.started_at,
             completed_at=r.completed_at,
             verification_checksum=r.verification_checksum,
-            storage_path=r.storage_path,
+            backup_path=r.backup_path,
             error_message=r.error_message,
         )
         for r in rows
@@ -224,7 +224,7 @@ async def verify_backup(
     await db.commit()
 
     # Launch verification in background
-    asyncio.create_task(_run_verification(backup_id, row.storage_path, db))
+    asyncio.create_task(_run_verification(backup_id, row.backup_path, db))
 
     return BackupVerifyResponse(
         id=backup_id,
@@ -260,18 +260,18 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
         if proc.returncode == 0:
             # Parse size from script output
             size_bytes = _parse_backup_size(stdout.decode())
-            storage_path = f"/mnt/backup/ivgs/db/{backup_id}"
+            backup_path = f"/mnt/backup/ivgs/db/{backup_id}"
 
             await db.execute(
                 sa_text(
                     "UPDATE backup_records SET status = 'completed', "
-                    "size_bytes = :size, storage_path = :path, "
+                    "size_bytes = :size, backup_path = :path, "
                     "completed_at = :completed_at WHERE id = :id"
                 ),
                 {
                     "id": backup_id,
                     "size": size_bytes,
-                    "path": storage_path,
+                    "path": backup_path,
                     "completed_at": datetime.now(timezone.utc),
                 },
             )
@@ -301,7 +301,7 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
         await db.commit()
 
 
-async def _run_verification(backup_id: str, storage_path: str, db) -> None:
+async def _run_verification(backup_id: str, backup_path: str, db) -> None:
     """Run backup verification: restore to temp DB, compare row counts, compute checksum."""
     from sqlalchemy import text as sa_text
     import hashlib
@@ -309,7 +309,7 @@ async def _run_verification(backup_id: str, storage_path: str, db) -> None:
     try:
         proc = await asyncio.create_subprocess_shell(
             f"/ivgs/ivgs-infra/scripts/verify_backup.sh --backup-id={backup_id} "
-            f"--path={storage_path}",
+            f"--path={backup_path}",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
