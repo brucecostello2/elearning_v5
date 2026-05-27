@@ -57,8 +57,8 @@ async def get_quota(
                               "message": f"No quota for {entity_type}/{entity_id}"}},
         )
 
-    used = row.used_bytes or 0
-    quota = row.quota_bytes or 0
+    used = row.current_bytes or 0
+    quota = row.max_bytes or 0
     available = max(0, quota - used)
     usage_pct = (used / quota * 100) if quota > 0 else 0.0
     alert_threshold = row.alert_threshold_pct or 80.0
@@ -88,10 +88,10 @@ async def set_quota(
 
     await db.execute(
         sa_text(
-            "INSERT INTO storage_quotas (entity_type, entity_id, quota_bytes, alert_threshold_pct) "
+            "INSERT INTO storage_quotas (entity_type, entity_id, max_bytes, alert_threshold_pct) "
             "VALUES (:et, :eid, :quota, :threshold) "
             "ON CONFLICT (entity_type, entity_id) "
-            "DO UPDATE SET quota_bytes = :quota, alert_threshold_pct = :threshold"
+            "DO UPDATE SET max_bytes = :quota, alert_threshold_pct = :threshold"
         ),
         {
             "et": entity_type,
