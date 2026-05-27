@@ -52,9 +52,7 @@ Both bugs share the same root cause: `app/api/deps.py` contains a placeholder `r
 ## Test Results
 
 ```
-Full Suite: 278 passed, 6 xfailed in ~122s
-Phase 3 Only: 75 passed, 6 xfailed
-Pre-existing: 203 passed (unchanged)
+After bug fixes: 284 passed, 0 xfailed, 0 failures in ~124s
 ```
 
 ## Test Metrics
@@ -62,10 +60,11 @@ Pre-existing: 203 passed (unchanged)
 | Metric | Value |
 |---|---|
 | New tests written | 81 |
-| Tests passing | 75 |
-| Tests xfail (bugs) | 6 |
+| Tests passing | 284 (all) |
+| Tests xfail | 0 |
 | Tests failing | 0 |
 | Bugs discovered | 2 (BUG-014, BUG-015) |
+| Bugs fixed | 2 (both operator-approved) |
 | Endpoints newly covered | ~25 |
 | Test files created | 6 |
 | Total test files | 32 |

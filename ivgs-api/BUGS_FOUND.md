@@ -600,7 +600,7 @@ Commit: see git log for `fix: BUG-013`
 |---|---|
 | **Severity** | CRITICAL |
 | **Phase Found** | Phase 3 — API Endpoint Tests |
-| **Status** | Open (xfail) — awaiting operator approval |
+| **Status** | ✅ FIXED (2026-05-27) |
 | **Affected Endpoint** | `POST /api/v1/backup/trigger` |
 | **Root Cause** | `app/api/v1/backup.py` imports `require_admin` from `app.api.deps` which contains a no-op stub (`async def require_admin(user=None): pass`) instead of the real RBAC dependency in `app.core.rbac` |
 
@@ -632,7 +632,11 @@ from app.api.deps import get_current_user, get_db
 from app.core.rbac import require_admin
 ```
 
-**xfail Tests:**
+**Fix Applied:**  
+Changed import in `app/api/v1/backup.py` line 22 from `app.api.deps` to `app.core.rbac`.
+Commit: see git log for `fix: BUG-014`
+
+**Verification Tests (all passing):**
 - `tests/test_api_backup.py::TestTriggerBackup::test_trigger_backup_operator_denied`
 - `tests/test_api_backup.py::TestTriggerBackup::test_trigger_backup_unauthenticated`
 - `tests/test_api_rbac.py::TestRbacBackup::test_viewer_cannot_trigger_backup`
@@ -646,7 +650,7 @@ from app.core.rbac import require_admin
 |---|---|
 | **Severity** | HIGH |
 | **Phase Found** | Phase 3 — API Endpoint Tests |
-| **Status** | Open (xfail) — awaiting operator approval |
+| **Status** | ✅ FIXED (2026-05-27) |
 | **Affected Endpoint** | `PUT /api/v1/quotas/{entity_type}/{entity_id}` |
 | **Root Cause** | `app/api/v1/quotas.py` imports `require_admin` from `app.api.deps` (same no-op stub as BUG-014) |
 
@@ -680,7 +684,11 @@ from app.core.rbac import require_admin
 
 **Note:** The root cause for both BUG-014 and BUG-015 is the `require_admin` stub in `app/api/deps.py`. A comprehensive fix should either (a) remove the stub entirely and audit all imports, or (b) replace the stub with a proper re-export of `app.core.rbac.require_admin`.
 
-**xfail Tests:**
+**Fix Applied:**  
+Changed import in `app/api/v1/quotas.py` from `app.api.deps` to `app.core.rbac`.
+Commit: see git log for `fix: BUG-015`
+
+**Verification Tests (all passing):**
 - `tests/test_api_rbac.py::TestRbacQuotas::test_operator_cannot_set_quota`
 - `tests/test_api_rbac.py::TestRbacQuotas::test_viewer_cannot_set_quota`
 
