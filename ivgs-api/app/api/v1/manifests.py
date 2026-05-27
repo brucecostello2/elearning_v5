@@ -54,7 +54,6 @@ class ManifestResponse(BaseModel):
     timeline_json: dict
     total_duration_ms: int
     scene_count: int
-    created_at: datetime
     locked_at: Optional[datetime] = None
 
 
@@ -86,10 +85,10 @@ async def get_manifest(
     row = (
         await db.execute(
             sa_text(
-                "SELECT id, job_id, status, timeline_json, total_duration_ms, "
-                "scene_count, created_at, locked_at "
+                "SELECT id, job_id, status, timeline, total_duration_ms, "
+                "locked_at "
                 "FROM composition_manifests WHERE job_id = :job_id "
-                "ORDER BY created_at DESC LIMIT 1"
+                "ORDER BY locked_at DESC NULLS LAST LIMIT 1"
             ),
             {"job_id": job_id},
         )
@@ -102,14 +101,19 @@ async def get_manifest(
                               "message": f"No manifest found for job {job_id}"}},
         )
 
+    timeline = (
+        __import__("json").loads(row.timeline)
+        if isinstance(row.timeline, str)
+        else (row.timeline or {})
+    )
+
     return ManifestResponse(
         id=str(row.id),
         job_id=str(row.job_id),
         status=row.status,
-        timeline_json=row.timeline_json,
-        total_duration_ms=row.total_duration_ms,
-        scene_count=row.scene_count,
-        created_at=row.created_at,
+        timeline_json=timeline,
+        total_duration_ms=row.total_duration_ms or 0,
+        scene_count=len(timeline.get("scenes", [])) if isinstance(timeline, dict) else 0,
         locked_at=row.locked_at,
     )
 
@@ -163,7 +167,7 @@ async def generate_manifest(
     assets = (
         await db.execute(
             sa_text(
-                "SELECT id, scene_id, asset_type, seaweedfs_fid, sha256_hash "
+                "SELECT id, scene_id, asset_type, seaweedfs_fid, content_hash "
                 "FROM assets WHERE project_id = :project_id"
             ),
             {"project_id": str(job_row.project_id)},
@@ -188,7 +192,7 @@ async def generate_manifest(
                 "layer_type": _asset_type_to_layer(asset.asset_type),
                 "asset_id": str(asset.id),
                 "seaweedfs_fid": asset.seaweedfs_fid,
-                "checksum": asset.sha256_hash,
+                "checksum": asset.content_hash,
                 "start_time_ms": current_time_ms,
                 "end_time_ms": current_time_ms + duration_ms,
             })
@@ -214,17 +218,14 @@ async def generate_manifest(
     await db.execute(
         sa_text(
             "INSERT INTO composition_manifests "
-            "(id, job_id, status, timeline_json, total_duration_ms, scene_count, created_at) "
-            "VALUES (:id, :job_id, 'draft', :timeline_json, :total_duration_ms, "
-            ":scene_count, :created_at)"
+            "(id, job_id, status, timeline, total_duration_ms) "
+            "VALUES (:id, :job_id, 'draft', :timeline, :total_duration_ms)"
         ),
         {
             "id": manifest_id,
             "job_id": job_id,
-            "timeline_json": __import__("json").dumps(timeline_json),
+            "timeline": __import__("json").dumps(timeline_json),
             "total_duration_ms": current_time_ms,
-            "scene_count": len(scenes),
-            "created_at": datetime.now(timezone.utc),
         },
     )
     await db.commit()
@@ -236,7 +237,6 @@ async def generate_manifest(
         timeline_json=timeline_json,
         total_duration_ms=current_time_ms,
         scene_count=len(scenes),
-        created_at=datetime.now(timezone.utc),
     )
 
 
@@ -253,7 +253,7 @@ async def lock_manifest(
         await db.execute(
             sa_text(
                 "SELECT id, status FROM composition_manifests "
-                "WHERE job_id = :job_id ORDER BY created_at DESC LIMIT 1"
+                "WHERE job_id = :job_id ORDER BY locked_at DESC NULLS LAST LIMIT 1"
             ),
             {"job_id": job_id},
         )
@@ -299,8 +299,8 @@ async def validate_manifest(
     row = (
         await db.execute(
             sa_text(
-                "SELECT id, timeline_json FROM composition_manifests "
-                "WHERE job_id = :job_id ORDER BY created_at DESC LIMIT 1"
+                "SELECT id, timeline FROM composition_manifests "
+                "WHERE job_id = :job_id ORDER BY locked_at DESC NULLS LAST LIMIT 1"
             ),
             {"job_id": job_id},
         )
@@ -314,9 +314,9 @@ async def validate_manifest(
         )
 
     timeline = (
-        __import__("json").loads(row.timeline_json)
-        if isinstance(row.timeline_json, str)
-        else row.timeline_json
+        __import__("json").loads(row.timeline)
+        if isinstance(row.timeline, str)
+        else (row.timeline or {})
     )
 
     errors: list[str] = []
@@ -332,7 +332,7 @@ async def validate_manifest(
 
             asset_row = (
                 await db.execute(
-                    sa_text("SELECT id, sha256_hash, seaweedfs_fid FROM assets WHERE id = :id"),
+                    sa_text("SELECT id, content_hash, seaweedfs_fid FROM assets WHERE id = :id"),
                     {"id": asset_id},
                 )
             ).fetchone()
@@ -341,12 +341,12 @@ async def validate_manifest(
                 errors.append(f"Asset {asset_id} referenced in manifest does not exist")
                 continue
 
-            if expected_checksum and asset_row.sha256_hash == expected_checksum:
+            if expected_checksum and asset_row.content_hash == expected_checksum:
                 checksum_ok += 1
             elif expected_checksum:
                 errors.append(
                     f"Checksum mismatch for asset {asset_id}: "
-                    f"expected {expected_checksum}, got {asset_row.sha256_hash}"
+                    f"expected {expected_checksum}, got {asset_row.content_hash}"
                 )
             else:
                 warnings.append(f"No checksum recorded for asset {asset_id}")
