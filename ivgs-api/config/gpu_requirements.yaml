@@ -1,0 +1,132 @@
+# IVGS v5 — GPU VRAM Requirements (Appendix B)
+# Per-model VRAM requirements for GPU scheduler bin-packing
+
+gpu_requirements:
+  llama_3_3_70b:
+    model_name: "meta-llama/Llama-3.3-70B-Instruct"
+    vram_mb: 71680  # 70 GB (tensor parallel across 2 GPUs)
+    nodes: ["node-02", "node-03"]
+    tensor_parallel: true
+    context_length: 128000
+
+  qwen2_5_72b:
+    model_name: "Qwen/Qwen2.5-72B-Instruct"
+    vram_mb: 71680  # 70 GB
+    nodes: ["node-02", "node-03"]
+    tensor_parallel: true
+    context_length: 128000
+
+  mistral_24b:
+    model_name: "mistralai/Mistral-Small-24B-Instruct"
+    vram_mb: 49152  # 48 GB
+    nodes: ["node-04"]
+    tensor_parallel: false
+    context_length: 32000
+
+  flux1_dev:
+    model_name: "flux1-dev-fp8.safetensors"
+    vram_mb: 24576  # 24 GB
+    nodes: ["node-04"]
+
+  flux1_schnell:
+    model_name: "flux1-schnell-fp8.safetensors"
+    vram_mb: 16384  # 16 GB
+    nodes: ["node-04"]
+
+  sdxl:
+    model_name: "stable-diffusion-xl-base-1.0"
+    vram_mb: 10240  # 10 GB
+    nodes: ["node-05"]
+
+  sd35_medium:
+    model_name: "stable-diffusion-3.5-medium"
+    vram_mb: 10240  # 10 GB
+    nodes: ["node-05"]
+
+  animatediff:
+    model_name: "AnimateDiff"
+    vram_mb: 16384  # 16 GB
+    nodes: ["node-04"]
+
+  cogvideox_5b:
+    model_name: "CogVideoX-5B"
+    vram_mb: 24576  # 24 GB
+    nodes: ["node-02", "node-03"]
+
+  cogvideox_2b:
+    model_name: "CogVideoX-2B"
+    vram_mb: 14336  # 14 GB
+    nodes: ["node-02", "node-03"]
+
+  wan21:
+    model_name: "Wan2.1"
+    vram_mb: 16384  # 16 GB
+    nodes: ["node-02", "node-03"]
+
+  coqui_xtts_v2:
+    model_name: "coqui/XTTS-v2"
+    vram_mb: 16384  # 16 GB
+    nodes: ["node-04"]
+
+  kokoro_tts:
+    model_name: "kokoro-tts"
+    vram_mb: 4096   # ~4 GB
+    nodes: ["node-04"]
+
+  latentsync:
+    model_name: "LatentSync"
+    vram_mb: 12288  # 12 GB
+    nodes: ["node-04"]
+
+  sadtalker:
+    model_name: "SadTalker"
+    vram_mb: 8192   # 8 GB
+    nodes: ["node-04"]
+
+  whisperx_large_v3:
+    model_name: "whisperx-large-v3"
+    vram_mb: 8192   # ~8 GB
+    nodes: ["node-04"]
+
+  ollama_llama32_8b:
+    model_name: "llama3.2:8b"
+    vram_mb: 8192   # 8 GB
+    nodes: ["node-05"]
+
+  ollama_phi3_medium:
+    model_name: "phi3:medium"
+    vram_mb: 8192   # 8 GB
+    nodes: ["node-05"]
+
+  ollama_gemma2_9b:
+    model_name: "gemma2:9b"
+    vram_mb: 8192   # 8 GB
+    nodes: ["node-05"]
+
+# Node GPU Hardware (§3.2 Table 3-2, Appendix B Table B-2)
+node_hardware:
+  node-02:
+    gpu_model: "NVIDIA RTX 6000 Blackwell"
+    vram_mb: 98304          # 96 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-03:
+    gpu_model: "NVIDIA RTX 6000 Blackwell"
+    vram_mb: 98304          # 96 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-04:
+    gpu_model: "NVIDIA RTX 5000 Pro Blackwell"
+    vram_mb: 49152          # 48 GB
+    architecture: "Blackwell"
+    tdp_watts: 350
+  node-05:
+    gpu_model: "NVIDIA RTX 5080"
+    vram_mb: 16384          # 16 GB
+    architecture: "Blackwell"
+    tdp_watts: 300
+  node-06:
+    gpu_model: "Intel Arc B70 Pro"
+    vram_mb: 32768          # 32 GB
+    architecture: "Battlemage"
+    tdp_watts: 150

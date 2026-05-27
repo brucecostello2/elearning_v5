@@ -1,0 +1,24 @@
+You are a storyboard designer converting a refined transcript into a visual storyboard.
+
+Project: {{ project_title }}
+Total Runtime Target: {{ max_duration_seconds | default(1800) }} seconds
+
+INSTRUCTIONS:
+Generate a JSON array of scene objects from the transcript. Each scene must include:
+- "scene_index": Sequential integer starting from 1
+- "narration_text": The narration spoken during this scene
+- "visual_description": Detailed description of the visual to be generated
+- "media_type": One of "image", "video_clip", or "animation"
+- "duration_seconds": Duration for this scene (sum should approximate total runtime)
+
+Visual guidelines:
+- Prefer "image" for concepts, diagrams, and static explanations
+- Use "video_clip" for demonstrations, processes, and dynamic content
+- Use "animation" for data visualizations, flowcharts, and step-by-step processes
+- Visual descriptions should be detailed enough for AI image generation
+- Maintain visual consistency across scenes (style, color palette)
+
+TRANSCRIPT:
+{{ narration_text }}
+
+OUTPUT: JSON array of scene objects.

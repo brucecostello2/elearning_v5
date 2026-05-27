@@ -1,0 +1,42 @@
+# IVGS v5 — Default Fallback Policies
+# Per §6.3 Table 6-6: Media Generation Fallback Chain
+#
+# Levels:
+#   L1 — AI Video:       CogVideoX 5B or Wan2.1 video clip generation
+#   L2 — Animated Still:  Ken Burns pan/zoom on generated image
+#   L3 — Static Pan/Zoom: Simple FFmpeg zoom and pan on static image
+#   L4 — Static Image:    Static image only, no motion (last resort)
+#
+# scene_type values: action, talking_head, broll, title_card
+# strategy values:   ai_video, animated_still, zoom_pan, static_image
+#
+# Configuration is stored in fallback_policies table (Table 23).
+
+fallback_policies:
+  # Action scenes — full fallback chain from AI video to static
+  - scene_type: action
+    level_1_strategy: ai_video
+    level_2_strategy: animated_still
+    level_3_strategy: zoom_pan
+    level_4_strategy: static_image
+
+  # Talking head scenes — same chain as action
+  - scene_type: talking_head
+    level_1_strategy: ai_video
+    level_2_strategy: animated_still
+    level_3_strategy: zoom_pan
+    level_4_strategy: static_image
+
+  # B-roll scenes — same chain as action
+  - scene_type: broll
+    level_1_strategy: ai_video
+    level_2_strategy: animated_still
+    level_3_strategy: zoom_pan
+    level_4_strategy: static_image
+
+  # Title card scenes — skip AI video (not appropriate for titles)
+  - scene_type: title_card
+    level_1_strategy: animated_still
+    level_2_strategy: zoom_pan
+    level_3_strategy: static_image
+    level_4_strategy: static_image

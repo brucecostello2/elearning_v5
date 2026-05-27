@@ -1,0 +1,39 @@
+# IVGS v5 — Retry Policies (§6.2 Table 6-4)
+# Per-task-type retry max attempts and backoff sequences
+
+retry_policies:
+  llm:
+    description: "LLM tasks (transcript refinement, storyboard generation)"
+    max_retries: 4
+    backoff_sequence_seconds: [5, 15, 45, 135]
+    on_exhaustion: "dlq"
+
+  image_generation:
+    description: "Image generation via ComfyUI"
+    max_retries: 3
+    backoff_sequence_seconds: [10, 30, 90]
+    on_exhaustion: "fallback_then_dlq"
+
+  video_generation:
+    description: "Video generation via CogVideoX / Wan2.1"
+    max_retries: 2
+    backoff_sequence_seconds: [30, 90]
+    on_exhaustion: "fallback_chain_then_dlq"
+
+  tts_audio:
+    description: "TTS audio generation"
+    max_retries: 3
+    backoff_sequence_seconds: [10, 30, 90]
+    on_exhaustion: "kokoro_fallback_then_dlq"
+
+  talking_head:
+    description: "Talking head rendering (LatentSync / SadTalker)"
+    max_retries: 2
+    backoff_sequence_seconds: [30, 90]
+    on_exhaustion: "sadtalker_fallback_then_dlq"
+
+  composition:
+    description: "FFmpeg composition and rendering"
+    max_retries: 2
+    backoff_sequence_seconds: [30, 90]
+    on_exhaustion: "dlq"
