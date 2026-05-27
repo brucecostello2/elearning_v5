@@ -1,0 +1,161 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.6, pytest-8.4.2, pluggy-1.6.0
+rootdir: /home/ubuntu/test_workspace
+configfile: pyproject.toml
+plugins: anyio-4.13.0, asyncio-0.26.0, xdist-3.8.0, cov-7.1.0
+asyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=session, asyncio_default_test_loop_scope=function
+collected 513 items
+
+tests/test_api_backup.py ...........                                     [  2%]
+tests/test_api_jobs.py .............                                     [  4%]
+tests/test_api_languages.py ............                                 [  7%]
+tests/test_api_nodes.py ........                                         [  8%]
+tests/test_api_pagination.py ...............                             [ 11%]
+tests/test_api_rbac.py ......................                            [ 15%]
+tests/test_assets.py .........                                           [ 17%]
+tests/test_auth.py ............                                          [ 19%]
+tests/test_bug_001_backup_error_handler.py .                             [ 20%]
+tests/test_bug_003_manifest_field_names.py ..                            [ 20%]
+tests/test_bug_004_manifest_asset_checksum.py .                          [ 20%]
+tests/test_bug_005_backup_field_names.py .                               [ 20%]
+tests/test_bug_009_quota_field_names.py ..                               [ 21%]
+tests/test_checkpoint_api.py ...............                             [ 24%]
+tests/test_critical_paths.py .................                           [ 27%]
+tests/test_dlq_api.py ...............                                    [ 30%]
+tests/test_gpu_api.py .................                                  [ 33%]
+tests/test_health.py .....                                               [ 34%]
+tests/test_projects.py ................                                  [ 37%]
+tests/test_prompts.py ...........                                        [ 39%]
+tests/test_quality_api.py ...........                                    [ 42%]
+tests/test_rate_limiting_basic.py .....                                  [ 43%]
+tests/test_rate_limiting_edge_cases.py .....                             [ 44%]
+tests/test_rate_limiting_lockout.py .....                                [ 45%]
+tests/test_retention_api.py ..............                               [ 47%]
+tests/test_rollback_probe.py ..                                          [ 48%]
+tests/test_service_asset.py ................                             [ 51%]
+tests/test_service_auth.py ...........                                   [ 53%]
+tests/test_service_checkpoint.py ..............                          [ 56%]
+tests/test_service_dlq.py ....................                           [ 60%]
+tests/test_service_gpu.py ....................                           [ 63%]
+tests/test_service_job.py ...........                                    [ 66%]
+tests/test_service_language.py ..........                                [ 68%]
+tests/test_service_project.py ...............                            [ 70%]
+tests/test_service_prompt.py ...........                                 [ 73%]
+tests/test_service_quality.py .....                                      [ 74%]
+tests/test_service_retention.py ....                                     [ 74%]
+tests/test_service_retention_extended.py ...............                 [ 77%]
+tests/test_service_rollback.py ...............                           [ 80%]
+tests/test_service_storyboard.py ..........                              [ 82%]
+tests/test_service_transcript.py ....................                    [ 86%]
+tests/test_service_user.py ...............                               [ 89%]
+tests/test_storyboard.py ......                                          [ 90%]
+tests/test_transcripts.py ......                                         [ 91%]
+tests/test_users.py ..............                                       [ 94%]
+tests/test_ws_connection.py ......                                       [ 95%]
+tests/test_ws_edge_cases.py .......                                      [ 97%]
+tests/test_ws_job_status.py .......                                      [ 98%]
+tests/test_ws_node_logs.py ........                                      [100%]
+
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.6-final-0 ________________
+
+Name                                    Stmts   Miss Branch BrPart  Cover   Missing
+-----------------------------------------------------------------------------------
+app/__init__.py                             0      0      0      0   100%
+app/api/__init__.py                         0      0      0      0   100%
+app/api/deps.py                             4      1      0      0    75%   13
+app/api/v1/__init__.py                     52      0      0      0   100%
+app/api/v1/alerts.py                       17     10      2      0    37%   17-42
+app/api/v1/assets.py                       69     25      8      0    57%   61, 108, 120-125, 135-144, 166-192, 208-209
+app/api/v1/auth.py                         35      3      0      0    91%   58-60
+app/api/v1/backup.py                      121     33     16      1    68%   114-117, 131, 148, 180-182, 207-230, 263-266, 307-338, 343-346
+app/api/v1/checkpoints.py                  62     27     14      0    46%   48-60, 64-76, 91, 93-103, 119, 121-134, 149-150, 152-172, 187, 189-199
+app/api/v1/dlq.py                          55     15      6      0    66%   74-75, 98-108, 125-145, 165-185
+app/api/v1/gpus.py                         59     16      8      0    64%   62-63, 102-112, 129-139, 156-166, 183-203
+app/api/v1/health.py                       34      7      4      1    74%   33-36, 61-64
+app/api/v1/jobs.py                         37      9      4      0    68%   44, 64-69, 82-92
+app/api/v1/languages.py                    37      8      2      0    74%   61-66, 85-95
+app/api/v1/manifests.py                   117     56     28      0    42%   97-110, 139-140, 159-160, 177-209, 233, 262-287, 309-331, 340-354, 369-379
+app/api/v1/nodes.py                        19      0      4      0   100%
+app/api/v1/projects.py                     72     30     14      0    49%   56-57, 96-101, 118-123, 139-140, 160-170, 189-233
+app/api/v1/prompts.py                      54      6      2      0    86%   95, 123-128, 212, 252
+app/api/v1/quality.py                      47     15      6      0    60%   51-61, 78-79, 106-126, 149-169
+app/api/v1/quotas.py                       36      8      2      0    74%   54-67
+app/api/v1/retention.py                    44     10      4      0    71%   65-66, 90-100, 118-138
+app/api/v1/rollback.py                     22      5      0      0    77%   28-29, 38-39, 44
+app/api/v1/storyboard.py                   46     11      6      0    67%   40-46, 69-74, 88-89, 111-116
+app/api/v1/transcripts.py                  57     17     12      0    58%   45-51, 76-100, 130-135, 149-150, 171-172
+app/api/v1/users.py                        53     17      8      0    59%   42, 81-83, 109-120, 144-145, 164-165, 169, 192-204, 208
+app/api/v1/ws_logs.py                     103     22     26      1    78%   47-65, 129-130, 135, 140-141, 188
+app/core/__init__.py                        0      0      0      0   100%
+app/core/auth.py                           49     12     12      3    69%   59, 72, 77, 90-91, 94-110, 117
+app/core/rbac.py                           16      0      2      0   100%
+app/core/security.py                       27      0      0      0   100%
+app/middleware/__init__.py                  0      0      0      0   100%
+app/middleware/audit.py                    88     10     34      7    86%   42->45, 51, 86, 95->103, 111, 119-122, 160->163, 172, 194-196
+app/middleware/error_handler.py            24      3      0      0    88%   41-42, 62
+app/middleware/rate_limit.py               76      7     32      4    90%   57->61, 59-60, 86-87, 149-151, 155->165
+app/models/__init__.py                     24      0      0      0   100%
+app/models/asset.py                        31      1      0      0    97%   97
+app/models/audit_log.py                    22      1      0      0    95%   58
+app/models/backup_record.py                22      0      0      0   100%
+app/models/checkpoint.py                   25      1      0      0    96%   69
+app/models/composition_manifest.py         23      0      0      0   100%
+app/models/dead_letter_queue.py            27      1      0      0    96%   78
+app/models/fallback_policy.py              17      0      0      0   100%
+app/models/gpu_metrics_history.py          19      0      0      0   100%
+app/models/gpu_node.py                     45      2      2      0    96%   84, 128
+app/models/language_variant.py             20      1      0      0    95%   59
+app/models/project.py                      27      1      0      0    96%   94
+app/models/prompt.py                       31      1      4      0    97%   80
+app/models/prompt_tag.py                   16      0      0      0   100%
+app/models/quality_score.py                23      1      0      0    96%   67
+app/models/render_job.py                   27      1      0      0    96%   83
+app/models/render_segment.py               20      0      0      0   100%
+app/models/retention_policy.py             24      1      0      0    96%   66
+app/models/storage_quota.py                19      0      0      0   100%
+app/models/storyboard_scene.py             23      1      0      0    96%   66
+app/models/task_retry.py                   19      0      0      0   100%
+app/models/transcript.py                   22      1      0      0    95%   61
+app/models/user.py                         19      1      0      0    95%   50
+app/models/worker_heartbeat.py             19      0      0      0   100%
+app/schemas/__init__.py                     0      0      0      0   100%
+app/schemas/asset.py                       36      0      0      0   100%
+app/schemas/auth.py                        18      0      0      0   100%
+app/schemas/base.py                        30      0      0      0   100%
+app/schemas/checkpoint.py                  40      0      0      0   100%
+app/schemas/dlq.py                         61      0      0      0   100%
+app/schemas/gpu.py                         71      0      0      0   100%
+app/schemas/language_variant.py            23      0      2      0   100%
+app/schemas/project.py                     47      0      6      1    98%   40->48
+app/schemas/prompt.py                      56      1      2      1    97%   43
+app/schemas/quality.py                     44      0      0      0   100%
+app/schemas/render_job.py                  19      0      0      0   100%
+app/schemas/retention.py                   68      0      4      0   100%
+app/schemas/storyboard.py                  53      4      8      1    89%   25-27, 86
+app/schemas/transcript.py                  32      7      4      0    69%   55-61
+app/schemas/user.py                        56      9     14      3    77%   41, 66->70, 69, 75-83
+app/scripts/__init__.py                     0      0      0      0   100%
+app/scripts/create_admin.py                32     32      4      0     0%   10-55
+app/scripts/seed_fallback_policies.py      66     66     22      0     0%   19-196
+app/scripts/seed_prompts.py                36     36      8      0     0%   10-93
+app/services/__init__.py                    0      0      0      0   100%
+app/services/asset_service.py              96      7     26      5    90%   70, 74, 76, 209-210, 239->246, 242-243
+app/services/auth_service.py               76      4     28      8    88%   85->91, 112->119, 121->130, 158, 163, 169, 172, 184->189
+app/services/checkpoint_service.py         67      1     22      2    97%   139->144, 147
+app/services/dlq_service.py               105      4     30      4    94%   59, 61, 191, 193
+app/services/gpu_service.py               137      4     44      7    92%   97->99, 99->101, 101->103, 236-239, 280->279, 285->279, 291->294
+app/services/job_service.py                37      0      4      0   100%
+app/services/language_service.py           44      7      8      1    85%   114-133
+app/services/project_service.py           136     16     44      6    86%   103->105, 113, 154-161, 164, 263-273, 278, 319->323, 325, 342
+app/services/prompt_service.py            117     39     30      5    61%   64, 72-80, 98-109, 126-136, 147-149, 160, 237-251, 261, 265-269, 280-281, 283-284, 313-314, 335->339
+app/services/quality_service.py            86     25     18      4    64%   44->47, 52, 61-66, 109-111, 116-119, 123-127, 164, 203-212, 217-235
+app/services/retention_service.py          75      0     22      0   100%
+app/services/rollback_service.py          104      5     22      3    94%   100-116, 234, 243, 246
+app/services/storyboard_service.py         79      9     22      6    83%   85->87, 88, 90, 92, 133->135, 135->137, 158-166, 170-177
+app/services/transcript_service.py        118     19     30      1    82%   30-36, 41-48, 141-143, 148-149, 206
+app/services/user_service.py               48      0      8      0   100%
+-----------------------------------------------------------------------------------
+TOTAL                                    4209    693    694     75    80%
+Coverage JSON written to file coverage.json
+======================= 513 passed in 210.03s (0:03:30) ========================
