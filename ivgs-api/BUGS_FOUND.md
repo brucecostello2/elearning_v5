@@ -501,4 +501,93 @@ Commit: see git log for `fix: BUG-011`
 
 ---
 
+## BUG-012 — WebSocket Endpoints Have No Authentication
+
+| Field | Value |
+|---|---|
+| **ID** | BUG-012 |
+| **Severity** | HIGH |
+| **Phase** | Phase 2 — WebSocket Tests |
+| **Status** | OPEN — awaiting operator approval |
+| **File** | `app/api/v1/ws_logs.py` |
+| **Lines** | 59 (`stream_node_logs`), 109 (`stream_job_status`) |
+| **Test(s)** | `test_ws_connect_no_auth_rejected`, `test_ws_job_status_no_auth` |
+
+**Description:**  
+Both WebSocket endpoints (`/ws/nodes/{node_id}/logs` and `/ws/jobs/{job_id}/status`) call `websocket.accept()` immediately without any authentication or authorization check. Any client can connect and:
+- Stream real-time Docker logs from any infrastructure node (contains sensitive system data)
+- Receive real-time job status updates for any job ID (may contain project details)
+
+**Reproduction:**
+```python
+# No auth headers, no token — connection is accepted
+with TestClient(app) as client:
+    with client.websocket_connect("/api/v1/ws/jobs/any-job/status") as ws:
+        data = ws.receive_json()  # Receives heartbeat — fully functional
+```
+
+**Expected Behavior:**  
+WebSocket connections should validate a Bearer token (e.g., via `?token=JWT` query parameter or `Sec-WebSocket-Protocol` header) before calling `websocket.accept()`. Unauthenticated clients should receive close code 1008 (Policy Violation).
+
+**Proposed Fix:**  
+Add token validation before `websocket.accept()` in both endpoints:
+```python
+token = websocket.query_params.get("token")
+if not token or not validate_jwt(token):
+    await websocket.close(code=1008)
+    return
+await websocket.accept()
+```
+
+---
+
+## BUG-013 — Unbound `process` Variable in Node Logs Finally Block
+
+| Field | Value |
+|---|---|
+| **ID** | BUG-013 |
+| **Severity** | MEDIUM |
+| **Phase** | Phase 2 — WebSocket Tests |
+| **Status** | OPEN — awaiting operator approval |
+| **File** | `app/api/v1/ws_logs.py` |
+| **Lines** | 63 (assignment), 96 (finally reference) |
+| **Test(s)** | `test_node_logs_ssh_failure`, `test_node_logs_subprocess_create_failure_cleanup` |
+
+**Description:**  
+In `stream_node_logs()`, the `process` variable is assigned on line 63 inside the `try` block:
+```python
+try:
+    process = await asyncio.create_subprocess_shell(...)  # line 63
+    ...
+finally:
+    if process and process.returncode is None:  # line 96 — NameError!
+        process.terminate()
+```
+
+If `create_subprocess_shell` raises an exception (e.g., SSH failure, permission denied), `process` is never assigned, and the `finally` block raises `UnboundLocalError: cannot access local variable 'process' before assignment`.
+
+**Reproduction:**
+```python
+with patch("asyncio.create_subprocess_shell", side_effect=OSError("SSH failed")):
+    with client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
+        # Raises UnboundLocalError instead of sending error message
+```
+
+**Expected Behavior:**  
+The error should be caught and an error message sent to the client. The `finally` block should not crash.
+
+**Proposed Fix:**  
+Initialize `process = None` before the `try` block:
+```python
+process = None
+try:
+    process = await asyncio.create_subprocess_shell(...)
+    ...
+finally:
+    if process and process.returncode is None:
+        process.terminate()
+```
+
+---
+
 **End of Document**
