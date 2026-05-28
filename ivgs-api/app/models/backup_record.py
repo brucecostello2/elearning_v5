@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, BigInteger, DateTime, text
+from sqlalchemy import String, Integer, BigInteger, DateTime, Text, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,3 +52,7 @@ class BackupRecord(Base):
     )
     verification_checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     retention_days: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    error_message: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        doc="Error details when backup operation fails (BUG-006 fix)",
+    )
