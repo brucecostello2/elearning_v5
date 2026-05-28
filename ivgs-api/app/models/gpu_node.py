@@ -68,6 +68,24 @@ class GpuNode(Base):
         ),
     )
 
+
+    @property
+    def used_vram_mb(self) -> int:
+        """Calculate used VRAM from active reservations."""
+        if not self.reservations:
+            return 0
+        return sum(
+            r.reserved_vram_mb
+            for r in self.reservations
+            if r.status in ("reserved", "active")
+        )
+
+    @property
+    def available_vram_mb(self) -> int:
+        """Calculate available VRAM."""
+        total = self.total_vram_mb or 0
+        return total - self.used_vram_mb
+
     def __repr__(self) -> str:
         return (
             f"<GpuNode id={self.id} host={self.node_hostname} "
