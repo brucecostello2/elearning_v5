@@ -210,18 +210,16 @@ async def verify_backup(
                               "message": f"Backup record {backup_id} not found"}},
         )
 
-    if row.status not in ("completed", "verified"):
+    if row.status != "success":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": {"code": "VALIDATION_ERROR",
-                              "message": f"Cannot verify backup in '{row.status}' state"}},
+                              "message": f"Cannot verify backup in '{row.status}' state; verify requires status='success'"}},
         )
 
-    await db.execute(
-        sa_text("UPDATE backup_records SET status = 'verifying' WHERE id = :id"),
-        {"id": backup_id},
-    )
-    await db.commit()
+    # Per BUG-API-BACKUP-STATUS fix: no DB status write here. The backup's
+    # status stays 'success'; populating verification_checksum in _run_verification
+    # serves as the indicator that verification completed.
 
     # Launch verification in background
     asyncio.create_task(_run_verification(backup_id, row.backup_path, db))
@@ -264,7 +262,7 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
 
             await db.execute(
                 sa_text(
-                    "UPDATE backup_records SET status = 'completed', "
+                    "UPDATE backup_records SET status = 'success', "
                     "size_bytes = :size, backup_path = :path, "
                     "completed_at = :completed_at WHERE id = :id"
                 ),
@@ -319,7 +317,7 @@ async def _run_verification(backup_id: str, backup_path: str, db) -> None:
             checksum = hashlib.sha256(stdout).hexdigest()
             await db.execute(
                 sa_text(
-                    "UPDATE backup_records SET status = 'verified', "
+                    "UPDATE backup_records SET "
                     "verification_checksum = :checksum WHERE id = :id"
                 ),
                 {"id": backup_id, "checksum": checksum},
