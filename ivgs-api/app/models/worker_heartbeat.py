@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -39,6 +39,8 @@ class WorkerHeartbeat(Base):
         server_default=text("now()"),
     )
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="alive",
+        PG_ENUM("alive", "suspected_dead", "confirmed_dead",
+                name="heartbeat_status", create_type=False),
+        nullable=False, server_default="alive",
         doc="heartbeat_status ENUM: alive | suspected_dead | confirmed_dead",
     )

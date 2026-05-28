@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import String, Integer, Boolean, DateTime, text
+from sqlalchemy import String, Text, Integer, Boolean, DateTime, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +26,9 @@ class RetentionPolicy(Base):
     )
     name: Mapped[str] = mapped_column(
         String(128), unique=True, nullable=False,
+    )
+    description: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
     )
     hot_days: Mapped[int] = mapped_column(
         Integer, nullable=False, server_default=text("30"),

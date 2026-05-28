@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -33,7 +33,9 @@ class LanguageVariant(Base):
         String(10), nullable=False,
     )
     state: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="pending",
+        PG_ENUM("pending", "processing", "complete", "failed",
+                name="language_variant_state", create_type=False),
+        nullable=False, server_default="pending",
         doc="PostgreSQL ENUM language_variant_state",
     )
     final_render_1080p_id: Mapped[Optional[uuid.UUID]] = mapped_column(

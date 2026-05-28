@@ -12,7 +12,7 @@ from typing import Optional
 from sqlalchemy import (
     String, Integer, Text, DateTime, ForeignKey, text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -35,14 +35,21 @@ class RenderJob(Base):
         String(255), nullable=True,
     )
     job_type: Mapped[str] = mapped_column(
-        String(32), nullable=False,
+        PG_ENUM("transcript_refinement", "storyboard_generation",
+                "image_generation", "video_generation", "animation_generation",
+                "tts_audio", "talking_head_render", "prototype_draft",
+                "final_render", "localisation",
+                name="job_type", create_type=False),
+        nullable=False,
         doc="PostgreSQL ENUM job_type — 10 values",
     )
     node_id: Mapped[Optional[str]] = mapped_column(
         String(32), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="pending",
+        PG_ENUM("pending", "running", "success", "failed",
+                name="job_status", create_type=False),
+        nullable=False, server_default="pending",
         doc="PostgreSQL ENUM job_status",
     )
     started_at: Mapped[Optional[datetime]] = mapped_column(
@@ -61,8 +68,16 @@ class RenderJob(Base):
         Integer, nullable=True,
     )
     failure_category: Mapped[Optional[str]] = mapped_column(
-        String(16), nullable=True,
+        PG_ENUM("transient", "config", "external", "resource",
+                name="failure_category", create_type=False),
+        nullable=True,
         doc="PostgreSQL ENUM failure_category",
+    )
+    resume_from_stage: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        doc="Stage name this resume job picked up from (BUG-CHECKPOINT-STAGE). "
+            "NULL for non-resume jobs. Free text, not an enum.",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

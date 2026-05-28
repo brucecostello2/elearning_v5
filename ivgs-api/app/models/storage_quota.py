@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, BigInteger, DateTime, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -36,7 +36,9 @@ class StorageQuota(Base):
         BigInteger, nullable=False, server_default=text("0"),
     )
     tier: Mapped[Optional[str]] = mapped_column(
-        String(32), nullable=True,
+        PG_ENUM("hot", "warm", "cold", "archived", "deleted",
+                name="storage_tier", create_type=False),
+        nullable=True,
         doc="storage_tier ENUM: hot | warm | cold | archived | deleted",
     )
     alert_threshold_pct: Mapped[int] = mapped_column(

@@ -12,7 +12,7 @@ from typing import Optional
 from sqlalchemy import (
     String, Integer, DateTime, ForeignKey, UniqueConstraint, text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -43,7 +43,9 @@ class GpuNode(Base):
         String(16), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="online",
+        PG_ENUM("online", "offline", "draining",
+                name="gpu_node_status", create_type=False),
+        nullable=False, server_default="online",
         doc="PostgreSQL ENUM gpu_node_status",
     )
     registered_at: Mapped[datetime] = mapped_column(
@@ -67,6 +69,24 @@ class GpuNode(Base):
             "node_hostname", "gpu_index", name="uq_gpu_nodes_host_index",
         ),
     )
+
+
+    @property
+    def used_vram_mb(self) -> int:
+        """Calculate used VRAM from active reservations."""
+        if not self.reservations:
+            return 0
+        return sum(
+            r.reserved_vram_mb
+            for r in self.reservations
+            if r.status in ("reserved", "active")
+        )
+
+    @property
+    def available_vram_mb(self) -> int:
+        """Calculate available VRAM."""
+        total = self.total_vram_mb or 0
+        return total - self.used_vram_mb
 
     def __repr__(self) -> str:
         return (
@@ -98,7 +118,9 @@ class GpuReservation(Base):
         String(128), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="reserved",
+        PG_ENUM("reserved", "active", "released", "expired",
+                name="reservation_status", create_type=False),
+        nullable=False, server_default="reserved",
         doc="PostgreSQL ENUM reservation_status",
     )
     reserved_at: Mapped[datetime] = mapped_column(

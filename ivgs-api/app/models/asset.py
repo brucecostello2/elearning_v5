@@ -13,7 +13,7 @@ from sqlalchemy import (
     String, BigInteger, Float, Integer, Boolean,
     DateTime, ForeignKey, text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -38,7 +38,9 @@ class Asset(Base):
         nullable=True,
     )
     asset_type: Mapped[str] = mapped_column(
-        String(32), nullable=False,
+        PG_ENUM("image", "video", "audio", "document", "talking_head",
+                "final_render", name="asset_type", create_type=False),
+        nullable=False,
         doc="PostgreSQL ENUM asset_type",
     )
     seaweedfs_fid: Mapped[Optional[str]] = mapped_column(
@@ -66,7 +68,9 @@ class Asset(Base):
     )
     # v4 tier columns
     storage_tier: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="hot",
+        PG_ENUM("hot", "warm", "cold", "archived", "deleted",
+                name="storage_tier", create_type=False),
+        nullable=False, server_default="hot",
         doc="PostgreSQL ENUM storage_tier",
     )
     tier_transition_at: Mapped[Optional[datetime]] = mapped_column(

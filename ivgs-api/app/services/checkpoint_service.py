@@ -146,10 +146,15 @@ class CheckpointService:
             else:
                 resume_stage = last_checkpoint.stage_name
 
-        # Create a new render job for the resume
+        # Create a new render job for the resume (BUG-CHECKPOINT-STAGE fix).
+        # job_type must be a valid job_type enum value; we use "final_render"
+        # as a neutral sentinel. The actual stage to resume from is recorded
+        # in the new resume_from_stage column (added by migration 0024) and
+        # consumed by the pipeline dispatcher (see commented Celery dispatch below).
         new_job = RenderJob(
             project_id=job.project_id,
-            job_type=resume_stage,
+            job_type="final_render",
+            resume_from_stage=resume_stage,
             status="pending",
         )
         self.db.add(new_job)

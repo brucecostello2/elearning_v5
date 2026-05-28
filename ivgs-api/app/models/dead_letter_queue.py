@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import String, Integer, Text, DateTime, text, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -44,7 +44,9 @@ class DeadLetterMessage(Base):
     )
     traceback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     failure_category: Mapped[Optional[str]] = mapped_column(
-        String(16), nullable=True,
+        PG_ENUM("transient", "config", "external", "resource",
+                name="failure_category", create_type=False),
+        nullable=True,
         doc="PostgreSQL ENUM failure_category",
     )
     retry_count_exhausted: Mapped[Optional[int]] = mapped_column(
@@ -62,7 +64,9 @@ class DeadLetterMessage(Base):
         String(64), nullable=True,
     )
     resolution: Mapped[Optional[str]] = mapped_column(
-        String(16), nullable=True,
+        PG_ENUM("replayed", "discarded", "escalated",
+                name="dlq_resolution", create_type=False),
+        nullable=True,
         doc="PostgreSQL ENUM dlq_resolution",
     )
 

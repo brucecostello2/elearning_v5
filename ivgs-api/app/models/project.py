@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Text, Integer, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -30,7 +30,11 @@ class Project(Base):
         Integer, nullable=True,
     )
     state: Mapped[str] = mapped_column(
-        String(32),
+        PG_ENUM("DRAFT", "TRANSCRIPT_REFINEMENT", "STORYBOARD_GENERATION",
+                "MEDIA_GENERATION", "MANIFEST_GENERATION", "AUDIO_GENERATION",
+                "TALKING_HEAD_RENDER", "PROTOTYPE_DRAFT", "USER_REVIEW",
+                "FINAL_RENDER", "COMPLETE", "LOCALISATION", "ERROR",
+                name="project_state", create_type=False),
         nullable=False,
         server_default="DRAFT",
         doc="PostgreSQL ENUM project_state — 13 values",
@@ -44,6 +48,11 @@ class Project(Base):
         UUID(as_uuid=True),
         ForeignKey("assets.id", ondelete="SET NULL"),
         nullable=True,
+    )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
     )
     target_audience: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True,

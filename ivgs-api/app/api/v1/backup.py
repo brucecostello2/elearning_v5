@@ -33,13 +33,13 @@ router = APIRouter(tags=["Backup"])
 
 class BackupRecord(BaseModel):
     id: str
-    backup_type: str  # full_db | wal | asset | config
-    status: str  # running | completed | failed | verifying | verified
+    backup_type: str  # full_database | wal_archive | asset_backup | config_backup | vm_snapshot
+    status: str  # pending | running | success | failed
     size_bytes: Optional[int] = None
     started_at: datetime
     completed_at: Optional[datetime] = None
     verification_checksum: Optional[str] = None
-    storage_path: Optional[str] = None
+    backup_path: Optional[str] = None
     error_message: Optional[str] = None
 
 
@@ -53,7 +53,7 @@ class BackupListResponse(BaseModel):
 
 
 class BackupTriggerRequest(BaseModel):
-    backup_type: str = "full_db"  # full_db | asset | config
+    backup_type: str = "full_database"  # full_database | asset_backup | config_backup
 
 
 class BackupTriggerResponse(BaseModel):
@@ -138,7 +138,7 @@ async def list_backup_records(
             started_at=r.started_at,
             completed_at=r.completed_at,
             verification_checksum=r.verification_checksum,
-            storage_path=r.storage_path,
+            backup_path=r.backup_path,
             error_message=r.error_message,
         )
         for r in rows
@@ -175,8 +175,13 @@ async def trigger_backup(
     )
     await db.commit()
 
-    # Launch backup in background
-    asyncio.create_task(_run_backup(backup_id, request.backup_type, db))
+    # Launch backup in background using an isolated session.
+    # NOTE: must NOT pass the request-scoped `db` here. The dependency
+    # cleanup closes the request session as soon as this handler returns;
+    # a fire-and-forget task using it races with close() and crashes with
+    # SQLAlchemy IllegalStateChangeError. The isolated wrapper acquires
+    # its own session from the factory. (BUG-API-BACKUP-TASK-SESSION)
+    asyncio.create_task(_run_backup_isolated(backup_id, request.backup_type))
 
     return BackupTriggerResponse(
         id=backup_id,
@@ -210,21 +215,21 @@ async def verify_backup(
                               "message": f"Backup record {backup_id} not found"}},
         )
 
-    if row.status not in ("completed", "verified"):
+    if row.status != "success":
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail={"error": {"code": "VALIDATION_ERROR",
-                              "message": f"Cannot verify backup in '{row.status}' state"}},
+                              "message": f"Cannot verify backup in '{row.status}' state; verify requires status='success'"}},
         )
 
-    await db.execute(
-        sa_text("UPDATE backup_records SET status = 'verifying' WHERE id = :id"),
-        {"id": backup_id},
-    )
-    await db.commit()
+    # Per BUG-API-BACKUP-STATUS fix: no DB status write here. The backup's
+    # status stays 'success'; populating verification_checksum in _run_verification
+    # serves as the indicator that verification completed.
 
-    # Launch verification in background
-    asyncio.create_task(_run_verification(backup_id, row.storage_path, db))
+    # Launch verification in background using an isolated session.
+    # Same lifecycle constraint as the trigger above — see
+    # _run_backup_isolated for the full rationale.
+    asyncio.create_task(_run_verification_isolated(backup_id, row.backup_path))
 
     return BackupVerifyResponse(
         id=backup_id,
@@ -236,18 +241,52 @@ async def verify_backup(
 # ---------------------------------------------------------------------------
 # Background tasks
 # ---------------------------------------------------------------------------
+#
+# Lifecycle note: the trigger and verify endpoints fire-and-forget these
+# tasks via asyncio.create_task. The endpoints' request-scoped DB session
+# is closed by the FastAPI dependency cleanup as soon as the response is
+# returned, so background tasks MUST NOT reuse the request's session.
+# The "_isolated" wrappers acquire a fresh session from the factory and
+# pass it to the work functions, which keep their (db) signatures so they
+# remain directly callable from tests.  (BUG-API-BACKUP-TASK-SESSION)
+
+async def _run_backup_isolated(backup_id: str, backup_type: str) -> None:
+    """Background-task wrapper: acquires its own session, calls _run_backup."""
+    from shared.database import async_session_factory
+    async with async_session_factory() as task_db:
+        try:
+            await _run_backup(backup_id, backup_type, task_db)
+        except Exception:
+            logger.exception(
+                "Background backup task failed",
+                extra={"backup_id": backup_id, "backup_type": backup_type},
+            )
+
+
+async def _run_verification_isolated(backup_id: str, backup_path: str) -> None:
+    """Background-task wrapper: acquires its own session, calls _run_verification."""
+    from shared.database import async_session_factory
+    async with async_session_factory() as task_db:
+        try:
+            await _run_verification(backup_id, backup_path, task_db)
+        except Exception:
+            logger.exception(
+                "Background verification task failed",
+                extra={"backup_id": backup_id},
+            )
+
 
 async def _run_backup(backup_id: str, backup_type: str, db) -> None:
     """Execute backup shell script and update record."""
     from sqlalchemy import text as sa_text
 
     script_map = {
-        "full_db": "/ivgs/ivgs-infra/scripts/backup.sh",
-        "asset": "/ivgs/ivgs-infra/scripts/backup.sh --assets-only",
-        "config": "/ivgs/ivgs-infra/scripts/backup.sh --config-only",
+        "full_database": "/ivgs/ivgs-infra/scripts/backup.sh",
+        "asset_backup": "/ivgs/ivgs-infra/scripts/backup.sh --assets-only",
+        "config_backup": "/ivgs/ivgs-infra/scripts/backup.sh --config-only",
     }
 
-    script_cmd = script_map.get(backup_type, script_map["full_db"])
+    script_cmd = script_map.get(backup_type, script_map["full_database"])
 
     try:
         proc = await asyncio.create_subprocess_shell(
@@ -260,18 +299,18 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
         if proc.returncode == 0:
             # Parse size from script output
             size_bytes = _parse_backup_size(stdout.decode())
-            storage_path = f"/mnt/backup/ivgs/db/{backup_id}"
+            backup_path = f"/mnt/backup/ivgs/db/{backup_id}"
 
             await db.execute(
                 sa_text(
-                    "UPDATE backup_records SET status = 'completed', "
-                    "size_bytes = :size, storage_path = :path, "
+                    "UPDATE backup_records SET status = 'success', "
+                    "size_bytes = :size, backup_path = :path, "
                     "completed_at = :completed_at WHERE id = :id"
                 ),
                 {
                     "id": backup_id,
                     "size": size_bytes,
-                    "path": storage_path,
+                    "path": backup_path,
                     "completed_at": datetime.now(timezone.utc),
                 },
             )
@@ -296,12 +335,12 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
                 "UPDATE backup_records SET status = 'failed', "
                 "error_message = :error WHERE id = :id"
             ),
-            {"id": backup_id, "error": str(exc)[:2000]},
+            {"id": backup_id, "error": str(_exc)[:2000]},
         )
         await db.commit()
 
 
-async def _run_verification(backup_id: str, storage_path: str, db) -> None:
+async def _run_verification(backup_id: str, backup_path: str, db) -> None:
     """Run backup verification: restore to temp DB, compare row counts, compute checksum."""
     from sqlalchemy import text as sa_text
     import hashlib
@@ -309,7 +348,7 @@ async def _run_verification(backup_id: str, storage_path: str, db) -> None:
     try:
         proc = await asyncio.create_subprocess_shell(
             f"/ivgs/ivgs-infra/scripts/verify_backup.sh --backup-id={backup_id} "
-            f"--path={storage_path}",
+            f"--path={backup_path}",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
@@ -319,7 +358,7 @@ async def _run_verification(backup_id: str, storage_path: str, db) -> None:
             checksum = hashlib.sha256(stdout).hexdigest()
             await db.execute(
                 sa_text(
-                    "UPDATE backup_records SET status = 'verified', "
+                    "UPDATE backup_records SET "
                     "verification_checksum = :checksum WHERE id = :id"
                 ),
                 {"id": backup_id, "checksum": checksum},
