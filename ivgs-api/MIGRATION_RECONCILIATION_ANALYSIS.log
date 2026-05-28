@@ -1,0 +1,351 @@
+================================================================================
+MIGRATION RECONCILIATION ANALYSIS — Sandbox vs Origin/Main
+================================================================================
+Analysis Date: 2026-05-27
+Scope: READ-ONLY analysis — no modifications, no recovery proposals
+Awaiting operator review and direction.
+
+Sandbox baseline commit: 634ec66 (derived from 0d73697 v5.1.0 merge)
+Sandbox working tree:    master HEAD 205afb5 (phases 0b/0c applied)
+Origin/main HEAD:        b1082d7
+Closest origin match:    0d73697 (v5.1.0 merge, 93.7% identity)
+
+================================================================================
+MIGRATION INVENTORY
+================================================================================
+
+  Sandbox baseline (634ec66):       0001-0014  (14 files)
+  Sandbox working tree (on disk):   0001-0022  (22 files, 0015-0022 from phases 0b/0c)
+  Origin/main HEAD (b1082d7):       0001-0016  (16 files)
+  Closest match (0d73697):          0001-0014  (14 files)
+
+  Key finding: Sandbox baseline 0001-0014 are BYTE-IDENTICAL to closest
+  match (0d73697). ALL differences in 0001-0013 are between closest match
+  and origin HEAD — introduced by origin's "hybrid ENUM fix" commits.
+
+================================================================================
+SECTION A: MIGRATIONS 0001-0014 (Shared Base)
+================================================================================
+
+Identity Status:
+  Sandbox baseline (634ec66) vs closest match (0d73697): ALL 14 IDENTICAL ✅
+  Sandbox baseline (634ec66) vs origin HEAD (b1082d7):   13 DIFFER, 1 identical
+  
+  0001-0013: ALL DIFFER between sandbox and origin HEAD
+  0014:      IDENTICAL between sandbox and origin HEAD
+
+Nature of 0001-0013 Differences:
+  The differences were introduced by two origin commits AFTER the v5.1.0 merge:
+  
+  Commit 6ee4229: "fix(migrations): hybrid ENUM fix - idempotent CREATE TYPE +
+                   postgresql.ENUM"
+    Changed 11 files (0001-0009, 0012, 0013)
+    +155 / -78 lines
+    
+  Commit dfd1947: "fix: hybrid ENUM migration fix v5.1.2"
+    Changed 3 files (0001, 0010, 0011)
+    +45 / -39 lines
+
+  The changes fall into TWO categories:
+
+  CATEGORY 1: ENUM Type Creation Syntax (cosmetic/behavioral)
+  ─────────────────────────────────────────────────────────────
+    Sandbox (v5.1.0):  Idempotent DO/EXCEPTION blocks
+      DO $$ BEGIN
+        CREATE TYPE x AS ENUM (...);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$
+    
+    Origin HEAD:        Direct CREATE TYPE (non-idempotent)
+      CREATE TYPE x AS ENUM (...)
+    
+    Impact: Both produce the same database schema on a CLEAN database.
+    The sandbox version is MORE ROBUST for re-runs (handles pre-existing types).
+    The origin version is SIMPLER but will fail if ENUMs already exist.
+
+  CATEGORY 2: ENUM Column Type Usage (sa.Enum → postgresql.ENUM)
+  ─────────────────────────────────────────────────────────────────
+    Sandbox (v5.1.0):  sa.Enum("value1", "value2", ...)
+    Origin HEAD:        postgresql.ENUM("value1", "value2", ..., create_type=False)
+    
+    Affected: ~10 ENUM columns across multiple tables
+    Impact: Same database schema produced. The postgresql.ENUM with
+    create_type=False is more explicit about PG-specific handling.
+    
+  CATEGORY 3: ONE ACTUAL SCHEMA DIFFERENCE in 0001
+  ──────────────────────────────────────────────────
+    Sandbox:  sa.Column("prompt_id", sa.String(36), ...)
+    Origin:   sa.Column("prompt_id", UUID(as_uuid=True), ...)
+    
+    Impact: Different column type for prompt_id in storyboard_scenes.
+    Sandbox uses String(36) (VARCHAR), Origin uses native UUID.
+    This is a REAL schema divergence — not just syntax.
+
+  Column count in 0001: IDENTICAL (103 columns in both versions)
+  Table count in 0001: IDENTICAL (12 tables in both versions)
+
+================================================================================
+SECTION B: MIGRATION 0015 — Functional Equivalence Analysis
+================================================================================
+
+  Sandbox file: 0015_add_users_is_active.py    (39 lines)
+  Origin file:  0015_add_user_is_active.py      (34 lines)
+  Note: Filenames differ slightly ("users" vs "user")
+
+  ┌────────────────────┬─────────────────────────────┬─────────────────────────────┐
+  │ Attribute          │ Sandbox                      │ Origin                       │
+  ├────────────────────┼─────────────────────────────┼─────────────────────────────┤
+  │ Revision ID        │ "0015"                       │ "0015"                       │
+  │ Down Revision      │ "0014"                       │ "0014"                       │
+  │ Target Table       │ "users"                      │ "users"                      │
+  │ Column Name        │ "is_active"                  │ "is_active"                  │
+  │ Column Type        │ sa.Boolean()                 │ sa.Boolean()                 │
+  │ Nullable           │ False                        │ False                        │
+  │ Server Default     │ sa.text("true")              │ sa.text("true")              │
+  │ Downgrade          │ drop_column("users",         │ drop_column("users",         │
+  │                    │   "is_active")               │   "is_active")               │
+  └────────────────────┴─────────────────────────────┴─────────────────────────────┘
+
+  VERDICT: ✅ FUNCTIONALLY EQUIVALENT
+
+  Both produce the exact same database change:
+    ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT true;
+
+  Differences are documentation only:
+    - Sandbox has ORM model cross-reference comments
+    - Origin references auth_service and soft-disable purpose
+    - Sandbox filename uses plural "users", origin uses singular "user"
+
+================================================================================
+SECTION C: MIGRATION 0016 — CONFLICT ZONE
+================================================================================
+
+  Sandbox file: 0016_add_projects_created_by.py   (adds created_by to projects)
+  Origin file:  0016_add_power_tdp_w.py            (adds power_tdp_w to gpu_nodes)
+  
+  ┌────────────────────┬─────────────────────────────┬─────────────────────────────┐
+  │ Attribute          │ Sandbox 0016                 │ Origin 0016                  │
+  ├────────────────────┼─────────────────────────────┼─────────────────────────────┤
+  │ Revision ID        │ "0016"                       │ "0016"                       │
+  │ Down Revision      │ "0015"                       │ "0015"                       │
+  │ Target Table       │ "projects"                   │ "gpu_nodes"                  │
+  │ Column Name        │ "created_by"                 │ "power_tdp_w"                │
+  │ Column Type        │ UUID(as_uuid=True)           │ sa.Integer()                 │
+  │ Nullable           │ True                         │ True                         │
+  │ FK                 │ users.id (CASCADE)           │ (none)                       │
+  │ Purpose            │ Track project creator         │ GPU power draw per spec C.4  │
+  └────────────────────┴─────────────────────────────┴─────────────────────────────┘
+
+  VERDICT: ❌ NOT EQUIVALENT — DIFFERENT PURPOSE, DIFFERENT TABLES
+
+  This is the primary REVISION CHAIN CONFLICT point.
+  Both claim revision "0016" with down_revision "0015".
+  They do completely unrelated things.
+
+  Sandbox has NO equivalent for origin's power_tdp_w:
+    - No migration adds power_tdp_w anywhere in sandbox 0001-0022
+    - The sandbox ORM model (app/models/gpu_node.py) does NOT define power_tdp_w
+    - The origin ORM model DOES define power_tdp_w
+  
+  Origin has NO equivalent for sandbox's created_by:
+    - Origin 0001-0016 do NOT add created_by to projects
+    - However, the origin ORM model may define it (this was one of the
+      forensic-identified schema additions in the sandbox)
+
+================================================================================
+SECTION D: SANDBOX MIGRATIONS 0017-0022 (Sandbox-Only)
+================================================================================
+
+  None of these exist in origin/main. All were created during sandbox
+  phases 0b and 0c to close schema gaps and fix bugs.
+
+  ┌──────┬────────────────────────────────────────┬──────────────────────┬───────────────────┐
+  │ Num  │ File Name                               │ Purpose              │ Table Affected     │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0017 │ 0017_add_quality_scores_job_id.py       │ Add job_id FK        │ asset_quality_     │
+  │      │                                         │ to render_jobs       │ scores             │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0018 │ 0018_add_retention_policies_             │ Add description      │ retention_         │
+  │      │ description.py                           │ column               │ policies           │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0019 │ 0019_add_prompt_tags_description.py     │ Add description      │ prompt_tags        │
+  │      │                                         │ column               │                    │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0020 │ 0020_add_backup_records_                 │ Add error_message    │ backup_records     │
+  │      │ error_message.py                         │ column (BUG-006)     │                    │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0021 │ 0021_add_quality_scores_                 │ Add review_notes     │ asset_quality_     │
+  │      │ review_notes.py                          │ column (BUG-007)     │                    │
+  │      │                                         │                      │ scores             │
+  ├──────┼────────────────────────────────────────┼──────────────────────┼───────────────────┤
+  │ 0022 │ 0022_add_storage_quotas_                 │ Add unique index     │ storage_quotas     │
+  │      │ unique_index.py                          │ (entity_type,        │                    │
+  │      │                                         │ entity_id)           │                    │
+  └──────┴────────────────────────────────────────┴──────────────────────┴───────────────────┘
+
+  Conflict Assessment for Each:
+
+  0017 (job_id on asset_quality_scores):
+    Origin status: NOT present in origin migrations
+    Origin model:  Need to verify if origin model has job_id
+    Conflict risk: LOW — additive column, no naming conflicts
+
+  0018 (description on retention_policies):
+    Origin status: NOT present in origin migrations
+    Origin model:  Sandbox added this column to ORM (forensic found)
+    Conflict risk: LOW — additive Text column, nullable
+
+  0019 (description on prompt_tags):
+    Origin status: NOT present in origin migrations
+    Conflict risk: LOW — additive String(256) column, nullable
+
+  0020 (error_message on backup_records):
+    Origin status: NOT present in origin migrations
+    Conflict risk: LOW — additive Text column, nullable
+
+  0021 (review_notes on asset_quality_scores):
+    Origin status: NOT present in origin migrations
+    Conflict risk: LOW — additive Text column, nullable
+
+  0022 (unique index on storage_quotas):
+    Origin status: NOT present in origin migrations
+    Conflict risk: LOW — additive index, but must verify origin doesn't
+    have a different unique constraint on same columns
+
+================================================================================
+SECTION E: COMPLETE RECONCILIATION TABLE
+================================================================================
+
+┌───────┬─────────────────────────────┬─────────────────────────────┬──────────────┬──────────────────────────────────────────┐
+│ Num   │ Sandbox Migration            │ Origin Migration             │ Equivalence  │ Notes                                     │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0001  │ 0001_initial_core.py        │ 0001_initial_core.py         │ PARTIAL ⚠️   │ Same 12 tables, 103 cols. Origin uses     │
+│       │                              │                              │              │ postgresql.ENUM + direct CREATE TYPE.     │
+│       │                              │                              │              │ ONE REAL DIFF: prompt_id String(36) vs    │
+│       │                              │                              │              │ UUID type.                                 │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0002  │ 0002_pipeline_checkpoints   │ 0002_pipeline_checkpoints    │ SYNTAX ⚠️    │ Same schema. ENUM creation syntax differs │
+│ -0009 │ through 0009_render_seg...  │ through 0009_render_seg...   │              │ (idempotent vs direct). No schema impact  │
+│       │                              │                              │              │ on clean install.                          │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0010  │ 0010_gpu_metrics.py         │ 0010_gpu_metrics.py          │ SYNTAX ⚠️    │ Same schema. ENUM fix applied.            │
+│ -0013 │ through 0013_backup_rec...  │ through 0013_backup_rec...   │              │                                           │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0014  │ 0014_fallback_policies.py   │ 0014_fallback_policies.py    │ IDENTICAL ✅ │ Byte-identical in both trees.             │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0015  │ 0015_add_users_is_active    │ 0015_add_user_is_active      │ EQUIVALENT ✅│ Same table, column, type, default,        │
+│       │                              │                              │              │ nullable. Only docstring/filename differ.  │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0016  │ 0016_add_projects_           │ 0016_add_power_tdp_w         │ CONFLICT ❌  │ DIFFERENT PURPOSE. Sandbox adds            │
+│       │ created_by                    │                              │              │ created_by→projects. Origin adds           │
+│       │                              │                              │              │ power_tdp_w→gpu_nodes.                     │
+│       │                              │                              │              │ BOTH needed. Chain must be reconciled.     │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0017  │ 0017_add_quality_scores_     │ (none)                       │ SANDBOX ONLY │ Adds job_id FK to asset_quality_scores.   │
+│       │ job_id                        │                              │              │ Phase 0a gap fix.                          │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0018  │ 0018_add_retention_          │ (none)                       │ SANDBOX ONLY │ Adds description to retention_policies.   │
+│       │ policies_description          │                              │              │ Phase 0a gap fix.                          │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0019  │ 0019_add_prompt_tags_        │ (none)                       │ SANDBOX ONLY │ Adds description to prompt_tags.          │
+│       │ description                   │                              │              │ Phase 0a gap fix.                          │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0020  │ 0020_add_backup_records_     │ (none)                       │ SANDBOX ONLY │ Adds error_message to backup_records.     │
+│       │ error_message                 │                              │              │ BUG-006 fix.                               │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0021  │ 0021_add_quality_scores_     │ (none)                       │ SANDBOX ONLY │ Adds review_notes to quality_scores.      │
+│       │ review_notes                  │                              │              │ BUG-007 fix.                               │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ 0022  │ 0022_add_storage_quotas_     │ (none)                       │ SANDBOX ONLY │ Adds unique index on storage_quotas.      │
+│       │ unique_index                  │                              │              │                                           │
+├───────┼─────────────────────────────┼─────────────────────────────┼──────────────┼──────────────────────────────────────────┤
+│ (gap) │ (none)                       │ 0016_add_power_tdp_w         │ ORIGIN ONLY  │ Sandbox MISSING. Adds power_tdp_w         │
+│       │                              │                              │              │ (Integer) to gpu_nodes. Model also missing │
+│       │                              │                              │              │ from sandbox ORM.                          │
+└───────┴─────────────────────────────┴─────────────────────────────┴──────────────┴──────────────────────────────────────────┘
+
+================================================================================
+SECTION F: KEY FINDINGS
+================================================================================
+
+1. MIGRATIONS 0001-0014: SANDBOX = CLOSEST MATCH (0d73697)
+   The sandbox baseline migrations are byte-identical to the v5.1.0 merge state.
+   All 13 differences vs origin HEAD were introduced by origin's post-merge ENUM
+   fix commits. This confirms the sandbox was derived from the v5.1.0 state.
+
+2. THE "HYBRID ENUM FIX" (0001-0013 differences)
+   Two types of changes:
+   a) ENUM creation: idempotent DO/EXCEPTION blocks → direct CREATE TYPE
+   b) Column type: sa.Enum() → postgresql.ENUM(create_type=False)
+   c) ONE REAL SCHEMA DIFF: prompt_id String(36) → UUID in storyboard_scenes
+   
+   On a CLEAN database (fresh install), both produce the same schema except
+   for the prompt_id type difference. On an EXISTING database with ENUMs
+   already created, the sandbox version (idempotent) is safer.
+
+3. MIGRATION 0015: FUNCTIONALLY EQUIVALENT
+   Both sandbox and origin add the same is_active Boolean column to users
+   with the same type, nullable, and default. Only documentation differs.
+
+4. MIGRATION 0016: REVISION CHAIN CONFLICT
+   This is the critical reconciliation point:
+   - Sandbox 0016 adds created_by to projects
+   - Origin 0016 adds power_tdp_w to gpu_nodes
+   - Both claim the same revision position
+   - BOTH changes are needed for complete functionality
+   - Reconciliation requires renumbering one chain
+
+5. SANDBOX 0017-0022: ALL ADDITIVE, LOW CONFLICT RISK
+   These are all simple column additions or index creation.
+   None conflict with existing origin schema.
+   All address genuine schema gaps or bug fixes.
+
+6. ORIGIN HAS power_tdp_w; SANDBOX DOES NOT
+   The sandbox is missing:
+   - Migration 0016_add_power_tdp_w.py
+   - ORM model column (gpu_node.py doesn't define power_tdp_w)
+   This is a genuine feature gap in the sandbox.
+
+================================================================================
+SECTION G: RECONCILIATION REQUIREMENTS
+================================================================================
+
+For reconciliation, the following would need to be addressed:
+
+REQUIREMENT 1: Decide which ENUM syntax to use
+  Option A: Keep sandbox's idempotent DO/EXCEPTION approach (safer for re-runs)
+  Option B: Adopt origin's direct CREATE TYPE + postgresql.ENUM (cleaner)
+  Impact: 13 migration files
+
+REQUIREMENT 2: Resolve prompt_id type (String(36) vs UUID)
+  This is a REAL schema difference in storyboard_scenes.
+  Must decide which type to use and ensure ORM model matches.
+
+REQUIREMENT 3: Resolve migration 0016 chain conflict
+  Option A: Keep sandbox 0016 (created_by), renumber origin's power_tdp_w
+  Option B: Keep origin 0016 (power_tdp_w), renumber sandbox's created_by
+  Option C: Merge into unified chain with new numbering
+  Either way, BOTH columns need to end up in the final schema.
+
+REQUIREMENT 4: Integrate sandbox 0017-0022 into origin chain
+  These need to be renumbered to come after whatever 0016 resolution is chosen.
+  All are additive and low-risk.
+
+REQUIREMENT 5: Add power_tdp_w to sandbox ORM model
+  If sandbox work continues, gpu_node.py needs the power_tdp_w column
+  added to match the origin model and migration.
+
+================================================================================
+ANALYSIS COMPLETE — NO MODIFICATIONS MADE
+================================================================================
+
+Summary:
+  - Migration 0015: ✅ Functionally equivalent (same DB change)
+  - Migration 0016: ❌ CONFLICT — different purposes, same revision number
+  - Migrations 0001-0013: ⚠️ Mostly syntax differences (ENUM handling),
+    plus ONE real schema diff (prompt_id type)
+  - Migrations 0017-0022: Sandbox-only, all additive, low conflict risk
+  - Origin 0016 (power_tdp_w): Missing from sandbox entirely
+
+No modifications made. No recovery proposals.
+Awaiting operator review and direction.
