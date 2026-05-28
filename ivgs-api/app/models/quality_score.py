@@ -9,7 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Optional
 
-from sqlalchemy import String, Float, DateTime, ForeignKey, text
+from sqlalchemy import String, Float, DateTime, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -27,6 +27,11 @@ class AssetQualityScore(Base):
     asset_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey("assets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("render_jobs.id", ondelete="CASCADE"),
         nullable=False,
     )
     quality_score: Mapped[Optional[float]] = mapped_column(
@@ -47,6 +52,10 @@ class AssetQualityScore(Base):
     )
     reviewed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True,
+    )
+    review_notes: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+        doc="Reviewer notes when approving or rejecting (BUG-007 fix)",
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

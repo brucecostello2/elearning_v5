@@ -45,6 +45,11 @@ class Project(Base):
         ForeignKey("assets.id", ondelete="SET NULL"),
         nullable=True,
     )
+    created_by: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     target_audience: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True,
     )
