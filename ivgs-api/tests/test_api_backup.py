@@ -76,8 +76,13 @@ class TestTriggerBackup:
             json={"backup_type": "full_database"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
-        # May succeed (200/201/202) or fail if backup subsystem not configured
-        assert r.status_code in (200, 201, 202, 500)
+        # Trigger must succeed (200/201/202); background subprocess may
+        # fail later but the response itself reflects the INSERT+launch step.
+        # Previously this list included 500 which hid BUG-API-BACKUP-TYPE
+        # and BUG-API-BACKUP-STATUS (both made every trigger 500 in prod).
+        assert r.status_code in (200, 201, 202), (
+            f"Trigger should return success; got {r.status_code}: {r.text[:200]}"
+        )
 
     async def test_trigger_backup_operator_denied(
         self, client: AsyncClient, operator_token: str
@@ -99,8 +104,11 @@ class TestTriggerBackup:
             json={},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
-        # Default backup_type="full_database" should be accepted
-        assert r.status_code in (200, 201, 202, 500)
+        # Default backup_type="full_database" should be accepted -> success.
+        # Strict assertion (no 500) per the BUG-API-BACKUP-TYPE postmortem.
+        assert r.status_code in (200, 201, 202), (
+            f"Empty-body trigger should accept default; got {r.status_code}: {r.text[:200]}"
+        )
 
     async def test_trigger_backup_unauthenticated(self, client: AsyncClient):
         """Should return 401/403 (BUG-014 fixed)."""

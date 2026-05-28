@@ -160,9 +160,13 @@ class TestCriticalPath5:
             json={"backup_type": "full_database"},
             headers=headers,
         )
-        # 200/202 = success, 500 = backup subprocess failed (expected in test env)
-        # Key assertion: endpoint exists, is admin-only, and processes the request
-        assert resp.status_code in (200, 202, 500)
+        # Trigger must succeed (200/202). Background subprocess may fail in the
+        # test env but that's a separate concern; the trigger response itself
+        # reports the INSERT+launch step. Previously this included 500 which
+        # hid BUG-API-BACKUP-TYPE and BUG-API-BACKUP-STATUS.
+        assert resp.status_code in (200, 202), (
+            f"Trigger should return success; got {resp.status_code}: {resp.text[:200]}"
+        )
 
     async def test_backup_verify_checksum_match(self, client: AsyncClient, db_session, admin_token):
         """Verify a backup — endpoint returns verification result."""
