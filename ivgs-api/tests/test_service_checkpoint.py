@@ -94,14 +94,6 @@ class TestCriticalPath8:
         assert result.total_stages == 1
         assert result.checkpoints[0].stage_name == "transcript_refinement"
 
-    @pytest.mark.xfail(
-        reason="BUG (production): checkpoint_service.resume_from_checkpoint uses "
-               "stage_name as job_type, but stage_order contains values "
-               "(media_generation, manifest_generation, audio_generation) that are "
-               "NOT valid job_type enum members. Crashes on resume for 3 of 8 "
-               "pipeline stages in production. Surfaced by real PostgreSQL; hidden "
-               "by SQLite. To be fixed in the production-bug pass."
-    )
     async def test_checkpoint_resume_from_latest(self, db_session):
         """Resume picks up from last completed stage."""
         uid = await _create_user(db_session)
