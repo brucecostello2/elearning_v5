@@ -263,3 +263,96 @@ class TestNodeReservations:
         svc = GpuService(db_session)
         result = await svc.get_node_reservations(uuid.uuid4())
         assert result is None
+
+
+# ===========================================================================
+# Coverage tests added for Step 2 (close-out): get_fleet_utilization status
+# branches + get_utilization_history validation branches.
+# ===========================================================================
+
+async def _set_node_status(db, node_id, status):
+    """Force a node's status field to a specific value (bypasses business logic)."""
+    await db.execute(
+        text("UPDATE gpu_nodes SET status = :s WHERE id = :id"),
+        {"s": status, "id": str(node_id)},
+    )
+    await db.commit()
+
+
+class TestFleetUtilizationStatusBranches:
+    """Cover the offline/draining branches in get_fleet_utilization (lines 246-249)."""
+
+    async def test_fleet_counts_nodes_in_all_states(self, db_session):
+        await _ensure_project(db_session)
+        svc = GpuService(db_session)
+        online_node = await _register_node(svc, hostname=f"fleet-on-{uuid.uuid4().hex[:6]}")
+        offline_node = await _register_node(svc, hostname=f"fleet-off-{uuid.uuid4().hex[:6]}")
+        draining_node = await _register_node(svc, hostname=f"fleet-drn-{uuid.uuid4().hex[:6]}")
+        await _set_node_status(db_session, offline_node.id, "offline")
+        await _set_node_status(db_session, draining_node.id, "draining")
+        summary = await svc.get_fleet_utilization()
+        assert summary.online_nodes >= 1
+        assert summary.offline_nodes >= 1
+        assert summary.draining_nodes >= 1
+
+
+class TestUtilizationHistoryValidation:
+    """Cover the 6 validation branches of get_utilization_history (lines 364-505)."""
+
+    async def test_empty_range_string_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("")
+        assert exc_info.value.status_code == 400
+
+    async def test_single_char_range_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("h")
+        assert exc_info.value.status_code == 400
+
+    async def test_non_numeric_prefix_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("abch")
+        assert exc_info.value.status_code == 400
+        assert "numeric prefix" in exc_info.value.detail["error"]["message"]
+
+    async def test_zero_amount_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("0h")
+        assert exc_info.value.status_code == 400
+        assert "positive" in exc_info.value.detail["error"]["message"]
+
+    async def test_negative_amount_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("-5h")
+        assert exc_info.value.status_code == 400
+
+    async def test_unsupported_unit_rejected(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("5y")
+        assert exc_info.value.status_code == 400
+        assert "unit" in exc_info.value.detail["error"]["message"].lower()
+
+    async def test_exceeds_30day_retention_boundary(self, db_session):
+        from fastapi import HTTPException
+        svc = GpuService(db_session)
+        with pytest.raises(HTTPException) as exc_info:
+            await svc.get_utilization_history("31d")
+        assert exc_info.value.status_code == 400
+        assert "30-day" in exc_info.value.detail["error"]["message"]
+
+    async def test_valid_range_returns_list(self, db_session):
+        svc = GpuService(db_session)
+        result = await svc.get_utilization_history("1h")
+        assert isinstance(result, list)
