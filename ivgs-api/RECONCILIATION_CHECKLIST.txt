@@ -1,0 +1,161 @@
+IVGS v5 — Reconciliation Porting Checklist
+============================================
+Reference: /home/ubuntu/RECONCILIATION_SPECIFICATION.md
+Date: 2026-05-27
+
+DECISIONS STATUS
+════════════════
+  Decision 1: ENUM Syntax            [ ] PENDING OPERATOR (default: use origin's — no action)
+  Decision 2: UUID for prompt_id     [✓] APPROVED — include defensive migration
+  Decision 3: Migration 0016 slot    [ ] PENDING OPERATOR (default: origin keeps 0016)
+  Decision 4: Migration renumbering  [✓] DOCUMENTED — sandbox 0016→0017 through 0022→0023
+  Decision 5: power_tdp_w in model   [ ] PENDING OPERATOR (default: yes, add to gpu_node.py)
+
+BONUS SCOPE
+════════════
+  Bonus 3.1: prompt_tags.id type fix [✓] APPROVED — migration 0025
+  Bonus 3.2: rollback_points.id      [ ] LOW PRIORITY — check ORM model first
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 1: SETUP
+════════════════════════════════════════════════════════════════════════════════
+  [ ] Clone brucecostello2/elearning_v5 (--depth=50)
+  [ ] Verify origin/main HEAD is b1082d7
+  [ ] Create branch: feature/sandbox-reconciliation
+  [ ] Configure git identity
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 2: PORT SOURCE FILES
+════════════════════════════════════════════════════════════════════════════════
+
+  Safe to copy (sandbox-only modifications):
+  [ ] app/models/project.py              — added created_by column
+  [ ] app/models/quality_score.py        — added job_id column
+  [ ] app/models/retention_policy.py     — added description column
+  [ ] app/models/backup_record.py        — added error_message (BUG-006)
+
+  Phase 0b/0c fixes (copy from sandbox working tree):
+  [ ] app/api/v1/backup.py               — bug fix modifications
+  [ ] app/api/v1/manifests.py            — field name corrections
+  [ ] app/api/v1/quotas.py               — endpoint fixes
+  [ ] app/api/v1/ws_logs.py              — WebSocket log endpoint
+  [ ] app/middleware/rate_limit.py        — rate limiting implementation
+
+  MANUAL MERGE required (compare both versions):
+  [ ] app/models/gpu_node.py             — add sandbox @property methods to origin
+  [ ] app/models/prompt.py               — add sandbox scope property to origin
+  [ ] app/models/user.py                 — verify is_active, merge other changes
+  [ ] app/api/v1/__init__.py             — merge route registration changes
+  [ ] app/api/deps.py                    — compare both versions
+  [ ] app/services/prompt_service.py     — add Jinja2 validation to origin
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 3: PORT TEST FILES
+════════════════════════════════════════════════════════════════════════════════
+  [ ] tests/conftest.py                  — complete rewrite (1271 lines)
+
+  New test files (35 — safe to copy):
+  [ ] test_api_backup.py                 [ ] test_service_asset.py
+  [ ] test_api_jobs.py                   [ ] test_service_auth.py
+  [ ] test_api_languages.py              [ ] test_service_checkpoint.py
+  [ ] test_api_nodes.py                  [ ] test_service_dlq.py
+  [ ] test_api_pagination.py             [ ] test_service_gpu.py
+  [ ] test_api_rbac.py                   [ ] test_service_job.py
+  [ ] test_bug_001_backup_error_handler  [ ] test_service_language.py
+  [ ] test_bug_003_manifest_field_names  [ ] test_service_project.py
+  [ ] test_bug_004_manifest_asset_check  [ ] test_service_prompt.py
+  [ ] test_bug_005_backup_field_names    [ ] test_service_quality.py
+  [ ] test_bug_009_quota_field_names     [ ] test_service_retention.py
+  [ ] test_critical_paths.py             [ ] test_service_retention_extended.py
+  [ ] test_rate_limiting_basic.py        [ ] test_service_rollback.py
+  [ ] test_rate_limiting_edge_cases.py   [ ] test_service_storyboard.py
+  [ ] test_rate_limiting_lockout.py      [ ] test_service_transcript.py
+                                         [ ] test_service_user.py
+  WebSocket tests:                       [ ] test_ws_connection.py
+  [ ] test_ws_edge_cases.py              [ ] test_ws_job_status.py
+  [ ] test_ws_node_logs.py
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 4: PORT AND RENUMBER MIGRATIONS
+════════════════════════════════════════════════════════════════════════════════
+
+  Copy and renumber (update revision + down_revision in each):
+  [ ] sandbox 0016 → 0017_add_projects_created_by.py        (rev=0017, down=0016)
+  [ ] sandbox 0017 → 0018_add_quality_scores_job_id.py      (rev=0018, down=0017)
+  [ ] sandbox 0018 → 0019_add_retention_policies_desc.py    (rev=0019, down=0018)
+  [ ] sandbox 0019 → 0020_add_prompt_tags_description.py    (rev=0020, down=0019)
+  [ ] sandbox 0020 → 0021_add_backup_records_error_msg.py   (rev=0021, down=0020)
+  [ ] sandbox 0021 → 0022_add_quality_scores_review.py      (rev=0022, down=0021)
+  [ ] sandbox 0022 → 0023_add_storage_quotas_unique.py      (rev=0023, down=0022)
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 5: CREATE NEW MIGRATIONS (BONUS SCOPE)
+════════════════════════════════════════════════════════════════════════════════
+  [ ] 0024_fix_prompt_tag_assoc_prompt_id_type.py   (Decision 2 — defensive UUID fix)
+  [ ] 0025_fix_prompt_tags_id_type.py               (Bonus 3.1 — PK + FK type fix)
+  [ ] 0026_fix_rollback_points_id_type.py           (Bonus 3.2 — if ORM uses UUID)
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 6: ORM MODEL CHANGES
+════════════════════════════════════════════════════════════════════════════════
+  [ ] gpu_node.py: add used_vram_mb @property (from sandbox)
+  [ ] gpu_node.py: add available_vram_mb @property (from sandbox)
+  [ ] gpu_node.py: verify power_tdp_w column exists (from origin)
+  [ ] Verify all models match their migrations (cross-reference)
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 7: VERIFY down_revision CHAIN
+════════════════════════════════════════════════════════════════════════════════
+  [ ] Run: grep "^revision\|^down_revision" migrations/versions/*.py | paste - -
+  [ ] Verify chain: None → 0001 → 0002 → ... → 0024 → 0025
+  [ ] No gaps, no forks, no orphans
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 8: VERIFICATION
+════════════════════════════════════════════════════════════════════════════════
+  [ ] All Python files pass syntax check (py_compile)
+  [ ] Migration chain validation script passes
+  [ ] pytest tests/ -v runs without import errors
+  [ ] Test results: target ≥153 passing (sandbox baseline)
+  [ ] ORM-migration consistency spot check
+
+════════════════════════════════════════════════════════════════════════════════
+PHASE 9: COMMIT AND PR
+════════════════════════════════════════════════════════════════════════════════
+  [ ] git add ivgs-api/
+  [ ] git status — review all changes
+  [ ] git commit with descriptive message
+  [ ] git push origin feature/sandbox-reconciliation
+  [ ] Create PR via Git_Tool (do NOT auto-merge)
+  [ ] PR description references reconciliation specification
+
+════════════════════════════════════════════════════════════════════════════════
+SUCCESS CRITERIA (Final Verification)
+════════════════════════════════════════════════════════════════════════════════
+  [ ] Migrations 0001–0025 chain is linear and complete
+  [ ] prompt_tag_associations.prompt_id is UUID (migration 0024)
+  [ ] prompt_tags.id is UUID (migration 0025)
+  [ ] gpu_nodes.power_tdp_w in model + migration
+  [ ] projects.created_by in model + migration
+  [ ] asset_quality_scores.job_id in model + migration
+  [ ] retention_policies.description in model + migration
+  [ ] backup_records.error_message in model + migration
+  [ ] asset_quality_scores.review_notes in model + migration
+  [ ] storage_quotas unique index in migration
+  [ ] conftest.py is 1271-line rewrite
+  [ ] 35 new test files present
+  [ ] All tests pass
+  [ ] PR created (not merged)
+
+════════════════════════════════════════════════════════════════════════════════
+KEY FILE LOCATIONS
+════════════════════════════════════════════════════════════════════════════════
+  Sandbox source:     /home/ubuntu/test_workspace/ivgs-api/
+  Target repo:        brucecostello2/elearning_v5
+  Target subdirectory: ivgs-api/
+  Specification:      /home/ubuntu/RECONCILIATION_SPECIFICATION.md
+  This checklist:     /home/ubuntu/RECONCILIATION_CHECKLIST.txt
+
+  Origin HEAD:        b1082d7
+  Sandbox baseline:   634ec66
+  Closest match:      0d73697 (v5.1.0 merge)
