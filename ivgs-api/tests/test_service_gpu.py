@@ -43,7 +43,7 @@ async def _create_reservation(db, node_id, vram_mb=4096, status="reserved"):
     await db.execute(
         text(
             "INSERT INTO render_jobs (id, project_id, job_type, status) "
-            "VALUES (:jid, (SELECT id FROM projects LIMIT 1), 'media_generation', 'running')"
+            "VALUES (:jid, (SELECT id FROM projects LIMIT 1), 'video_generation', 'running')"
         ),
         {"jid": str(job_id)},
     )

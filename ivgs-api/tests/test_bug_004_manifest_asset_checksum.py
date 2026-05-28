@@ -43,7 +43,7 @@ async def test_validate_manifest_uses_content_hash(
     await db_session.execute(
         text(
             "INSERT INTO render_jobs (id, project_id, job_type, status, created_at) "
-            "VALUES (:id, :pid, 'full_pipeline', 'completed', :now)"
+            "VALUES (:id, :pid, 'final_render', 'success', :now)"
         ),
         {"id": job_id, "pid": project_id, "now": now},
     )

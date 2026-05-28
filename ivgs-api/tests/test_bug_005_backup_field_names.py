@@ -27,7 +27,7 @@ async def test_list_backup_records_uses_correct_column_names(
         text(
             "INSERT INTO backup_records "
             "(id, backup_type, status, backup_path, error_message, started_at, completed_at) "
-            "VALUES (:id, 'full_db', 'completed', '/mnt/backup/test', NULL, :now, :now)"
+            "VALUES (:id, 'full_database', 'completed', '/mnt/backup/test', NULL, :now, :now)"
         ),
         {"id": backup_id, "now": now},
     )

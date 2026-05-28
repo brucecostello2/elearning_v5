@@ -798,8 +798,8 @@ async def job_with_checkpoints(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
-        status="completed",
+        job_type="final_render",
+        status="success",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(job)
@@ -814,7 +814,7 @@ async def job_with_checkpoints(db_session, operator_token) -> dict:
             stage_index=i,
             checkpoint_data={"progress": 100},
             output_refs={"asset_ids": [str(uuid.uuid4())]},
-            status="completed",
+            status="complete",
             created_at=datetime.now(timezone.utc),
             completed_at=datetime.now(timezone.utc),
         )
@@ -851,7 +851,7 @@ async def failed_job_with_checkpoints(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
+        job_type="final_render",
         status="failed",
         error_message="Out of memory during image generation",
         failure_category="transient",
@@ -867,7 +867,7 @@ async def failed_job_with_checkpoints(db_session, operator_token) -> dict:
         stage_index=0,
         checkpoint_data={"progress": 100},
         output_refs={"asset_ids": [str(uuid.uuid4())]},
-        status="completed",
+        status="complete",
         created_at=datetime.now(timezone.utc),
         completed_at=datetime.now(timezone.utc),
     )
@@ -911,7 +911,7 @@ async def running_job(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
+        job_type="final_render",
         status="running",
         started_at=datetime.now(timezone.utc),
         created_at=datetime.now(timezone.utc),
@@ -947,7 +947,7 @@ async def empty_job(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
+        job_type="final_render",
         status="pending",
         created_at=datetime.now(timezone.utc),
     )
@@ -970,7 +970,7 @@ async def dlq_messages(db_session) -> list:
     messages = []
     for i, (task, cat) in enumerate([
         ("image_generation", "transient"),
-        ("video_composition", "permanent"),
+        ("video_composition", "external"),
         ("image_generation", "transient"),
     ]):
         msg = DeadLetterMessage(
@@ -1134,8 +1134,8 @@ async def job_with_quality_scores(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
-        status="completed",
+        job_type="final_render",
+        status="success",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(job)
@@ -1193,8 +1193,8 @@ async def flagged_quality_scores(db_session, operator_token) -> list:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
-        status="completed",
+        job_type="final_render",
+        status="success",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(job)
@@ -1254,8 +1254,8 @@ async def approved_quality_score(db_session, operator_token) -> dict:
     job = RenderJob(
         id=uuid.uuid4(),
         project_id=project.id,
-        job_type="full_pipeline",
-        status="completed",
+        job_type="final_render",
+        status="success",
         created_at=datetime.now(timezone.utc),
     )
     db_session.add(job)

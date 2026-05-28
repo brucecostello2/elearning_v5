@@ -43,7 +43,7 @@ async def test_get_manifest_uses_correct_column_names(
     await db_session.execute(
         text(
             "INSERT INTO render_jobs (id, project_id, job_type, status, created_at) "
-            "VALUES (:id, :pid, 'full_pipeline', 'completed', :now)"
+            "VALUES (:id, :pid, 'final_render', 'success', :now)"
         ),
         {"id": job_id, "pid": project_id, "now": now},
     )
@@ -102,7 +102,7 @@ async def test_generate_manifest_uses_correct_column_names(
     await db_session.execute(
         text(
             "INSERT INTO render_jobs (id, project_id, job_type, status, created_at) "
-            "VALUES (:id, :pid, 'full_pipeline', 'pending', :now)"
+            "VALUES (:id, :pid, 'final_render', 'pending', :now)"
         ),
         {"id": job_id, "pid": project_id, "now": now},
     )

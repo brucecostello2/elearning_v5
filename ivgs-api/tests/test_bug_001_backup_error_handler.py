@@ -23,7 +23,7 @@ async def test_backup_error_handler_updates_status_on_exception(
     await db_session.execute(
         text(
             "INSERT INTO backup_records (id, backup_type, status, started_at) "
-            "VALUES (:id, 'full_db', 'running', :now)"
+            "VALUES (:id, 'full_database', 'running', :now)"
         ),
         {"id": backup_id, "now": datetime.now(timezone.utc)},
     )
@@ -32,7 +32,7 @@ async def test_backup_error_handler_updates_status_on_exception(
     from app.api.v1.backup import _run_backup
 
     with patch("asyncio.create_subprocess_shell", side_effect=OSError("disk full")):
-        await _run_backup(backup_id, "full_db", db_session)
+        await _run_backup(backup_id, "full_database", db_session)
 
     row = (
         await db_session.execute(
