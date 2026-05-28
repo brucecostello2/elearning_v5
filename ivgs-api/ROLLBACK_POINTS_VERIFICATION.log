@@ -1,0 +1,22 @@
+=== ROLLBACK_POINTS.ID TYPE VERIFICATION ===
+Date: 2026-05-28
+
+INVESTIGATION:
+1. No ORM model file exists (app/models/rollback_point.py) in EITHER tree
+2. RollbackService (app/services/rollback_service.py) uses a plain Python class:
+     class RollbackPoint:
+         def __init__(self, id: str, ...)
+   This is NOT a SQLAlchemy ORM model — it uses raw SQL via sa_text()
+3. Migration 0001 creates rollback_points table with:
+     sa.Column("id", sa.String(36), primary_key=True)
+   This is IDENTICAL in both sandbox (634ec66) and origin (b1082d7)
+4. No other migration touches rollback_points in either tree
+
+CONCLUSION: NOT NEEDED
+- There is no ORM model → no ORM/migration type mismatch possible
+- Both trees have identical String(36) in migration 0001
+- The service class uses plain str — consistent with String(36) column
+- No migration fix required for reconciliation
+
+NOTE: If future UUID standardization of rollback_points.id is desired,
+that would be a separate enhancement ticket, not a reconciliation fix.

@@ -21,7 +21,7 @@ PHASE 1: SETUP
 ════════════════════════════════════════════════════════════════════════════════
   [ ] Clone brucecostello2/elearning_v5 (--depth=50)
   [ ] Verify origin/main HEAD is b1082d7
-  [ ] Create branch: feature/sandbox-reconciliation
+  [ ] Create branch: feature/defect-8-test-restoration
   [ ] Configure git identity
 
 ════════════════════════════════════════════════════════════════════════════════
@@ -116,7 +116,7 @@ PHASE 8: VERIFICATION
   [ ] All Python files pass syntax check (py_compile)
   [ ] Migration chain validation script passes
   [ ] pytest tests/ -v runs without import errors
-  [ ] Test results: target ≥153 passing (sandbox baseline)
+  [ ] Test results: target ≥513 passing (prior session final count)
   [ ] ORM-migration consistency spot check
 
 ════════════════════════════════════════════════════════════════════════════════
@@ -125,7 +125,7 @@ PHASE 9: COMMIT AND PR
   [ ] git add ivgs-api/
   [ ] git status — review all changes
   [ ] git commit with descriptive message
-  [ ] git push origin feature/sandbox-reconciliation
+  [ ] git push origin feature/defect-8-test-restoration
   [ ] Create PR via Git_Tool (do NOT auto-merge)
   [ ] PR description references reconciliation specification
 
