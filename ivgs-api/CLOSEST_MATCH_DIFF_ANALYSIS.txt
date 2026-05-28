@@ -1,0 +1,45 @@
+Closest Match Analysis
+======================
+Sandbox baseline: 634ec66
+Closest commit in origin/main: 0d7369741c913e99dafce1e4f5dd69472e2cd576
+Match quality: 93.7% (133/142 common files identical)
+
+Commit details:
+  Hash:    0d7369741c913e99dafce1e4f5dd69472e2cd576
+  Author:  brucecostello2 <brucecostello2@users.noreply.github.com>
+  Date:    2026-05-22 19:42:09 +0000
+  Subject: Merge remediation/comprehensive-spec-compliance: IVGS v5.1.0 full spec compliance
+
+Files only in sandbox (2):
+  app/api/deps.py
+  tests/test_rollback_probe.py
+
+Files only in closest match (0):
+  (none)
+
+Files with different content (9):
+  app/api/v1/__init__.py         — removed prefix="/projects" from router include
+  app/models/gpu_node.py         — added used_vram_mb/available_vram_mb properties
+  app/models/project.py          — added created_by FK column
+  app/models/prompt.py           — added scope property
+  app/models/quality_score.py    — added job_id FK column
+  app/models/retention_policy.py — added description column
+  app/models/user.py             — added is_active column
+  app/services/prompt_service.py — added Jinja2 syntax validation
+  tests/conftest.py              — complete rewrite (Phase 2 stub → production suite)
+
+Files identical (133):
+  All remaining files match byte-for-byte between sandbox and closest match.
+
+Classification of Differences:
+  Schema column additions:  4 files (models)
+  Code enhancements:        4 files (models, services, router)
+  Test infrastructure:      1 file (conftest.py)
+  Sandbox-only artifacts:   2 files (deps.py, test_rollback_probe.py)
+  Total:                   11 files differ
+
+Interpretation:
+  The sandbox was derived from approximately the v5.1.0 merge state, then
+  independently modified with schema fixes, code improvements, and a complete
+  test infrastructure rewrite. It was NOT cloned (confirmed by disjoint git
+  histories) but rather files were copied into a git-init'd repository.
