@@ -33,8 +33,8 @@ router = APIRouter(tags=["Backup"])
 
 class BackupRecord(BaseModel):
     id: str
-    backup_type: str  # full_db | wal | asset | config
-    status: str  # running | completed | failed | verifying | verified
+    backup_type: str  # full_database | wal_archive | asset_backup | config_backup | vm_snapshot
+    status: str  # pending | running | success | failed
     size_bytes: Optional[int] = None
     started_at: datetime
     completed_at: Optional[datetime] = None
@@ -53,7 +53,7 @@ class BackupListResponse(BaseModel):
 
 
 class BackupTriggerRequest(BaseModel):
-    backup_type: str = "full_db"  # full_db | asset | config
+    backup_type: str = "full_database"  # full_database | asset_backup | config_backup
 
 
 class BackupTriggerResponse(BaseModel):
@@ -242,12 +242,12 @@ async def _run_backup(backup_id: str, backup_type: str, db) -> None:
     from sqlalchemy import text as sa_text
 
     script_map = {
-        "full_db": "/ivgs/ivgs-infra/scripts/backup.sh",
-        "asset": "/ivgs/ivgs-infra/scripts/backup.sh --assets-only",
-        "config": "/ivgs/ivgs-infra/scripts/backup.sh --config-only",
+        "full_database": "/ivgs/ivgs-infra/scripts/backup.sh",
+        "asset_backup": "/ivgs/ivgs-infra/scripts/backup.sh --assets-only",
+        "config_backup": "/ivgs/ivgs-infra/scripts/backup.sh --config-only",
     }
 
-    script_cmd = script_map.get(backup_type, script_map["full_db"])
+    script_cmd = script_map.get(backup_type, script_map["full_database"])
 
     try:
         proc = await asyncio.create_subprocess_shell(

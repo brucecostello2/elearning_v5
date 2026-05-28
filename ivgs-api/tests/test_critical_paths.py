@@ -157,7 +157,7 @@ class TestCriticalPath5:
         }
         resp = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
             headers=headers,
         )
         # 200/202 = success, 500 = backup subprocess failed (expected in test env)

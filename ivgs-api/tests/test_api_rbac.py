@@ -69,7 +69,7 @@ class TestRbacBackup:
     async def test_viewer_cannot_trigger_backup(self, client: AsyncClient, viewer_token: str):
         r = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
             headers=_auth(viewer_token),
         )
         assert r.status_code == 403
@@ -77,7 +77,7 @@ class TestRbacBackup:
     async def test_operator_cannot_trigger_backup(self, client: AsyncClient, operator_token: str):
         r = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
             headers=_auth(operator_token),
         )
         assert r.status_code == 403

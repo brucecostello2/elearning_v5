@@ -73,7 +73,7 @@ class TestTriggerBackup:
     ):
         r = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         # May succeed (200/201/202) or fail if backup subsystem not configured
@@ -85,7 +85,7 @@ class TestTriggerBackup:
         """Operator should be denied (BUG-014 fixed)."""
         r = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
             headers={"Authorization": f"Bearer {operator_token}"},
         )
         assert r.status_code == 403
@@ -93,20 +93,20 @@ class TestTriggerBackup:
     async def test_trigger_backup_empty_body_uses_default(
         self, client: AsyncClient, admin_token: str
     ):
-        """backup_type has default 'full_db', so {} body is valid."""
+        """backup_type has default 'full_database', so {} body is valid."""
         r = await client.post(
             "/api/v1/backup/trigger",
             json={},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
-        # Default backup_type="full_db" should be accepted
+        # Default backup_type="full_database" should be accepted
         assert r.status_code in (200, 201, 202, 500)
 
     async def test_trigger_backup_unauthenticated(self, client: AsyncClient):
         """Should return 401/403 (BUG-014 fixed)."""
         r = await client.post(
             "/api/v1/backup/trigger",
-            json={"backup_type": "full_db"},
+            json={"backup_type": "full_database"},
         )
         assert r.status_code in (401, 403)
 
