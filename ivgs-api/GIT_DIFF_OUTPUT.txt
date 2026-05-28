@@ -1,0 +1,1017 @@
+=== GIT DIFF --STAT OUTPUT ===
+ .abacus.donotdelete                                |    2 +-
+ .env.node01.template                               |   96 +
+ .env.node02.template                               |   44 +
+ .env.node03.template                               |   44 +
+ .env.node04.template                               |   57 +
+ .env.node05.template                               |   43 +
+ .env.node06.template                               |   43 +
+ .env.template                                      |   82 +
+ .github/dependabot.yml                             |   96 +
+ .github/workflows/cd-deploy.yml                    |  137 +
+ .github/workflows/ci.yml                           |  173 +
+ .github/workflows/compliance-check.yml             |   92 +
+ .gitignore                                         |  105 +-
+ .pre-commit-config.yaml                            |   53 +
+ DEPLOYMENT_SUMMARY.md                              |  186 +
+ README.md                                          |  525 ++
+ TEST_SUITE_WORKING_SOLUTION.docx                   |  Bin 15429 -> 0 bytes
+ TEST_SUITE_WORKING_SOLUTION.md                     |  162 -
+ TEST_SUITE_WORKING_SOLUTION.pdf                    |  Bin 58206 -> 0 bytes
+ configs/cron/backup_cron                           |  123 +
+ configs/nginx/nginx.conf                           |  205 +
+ configs/nginx/ssl/generate-certs.sh                |  139 +
+ configs/nginx/websocket.conf                       |   31 +
+ configs/postgres.conf                              |   55 +
+ configs/redis.conf                                 |   42 +
+ configs/seaweedfs/filer.toml                       |   39 +
+ configs/seaweedfs/master.toml                      |   20 +
+ configs/seaweedfs/volume.toml                      |   30 +
+ docs/GITHUB_AUDIT_REPORT.md                        |  250 +
+ docs/PRE_DEPLOYMENT_FIXES.md                       | 1707 ++++++
+ docs/adr/.gitkeep                                  |    0
+ docs/adr/ADR-001-self-hosted-only.md               |   17 +
+ docs/adr/ADR-002-port-conflict.md                  |   13 +
+ docs/adr/ADR-003-pipeline-stage-count.md           |   14 +
+ docs/adr/ADR-004-timescaledb.md                    |   13 +
+ docs/architecture/adr-001-self-hosted-mandate.md   |  111 +
+ docs/deployment/runbook.md                         |   56 +
+ docs/stage-numbering-map.md                        |   15 +
+ docs/troubleshooting/common_issues.md              |   28 +
+ ivgs-api/app/api/deps.py                           |   34 +-
+ ivgs-api/app/api/v1/__init__.py                    |   12 +-
+ ivgs-api/app/api/v1/gpus.py                        |   63 +
+ ivgs-api/app/api/v1/projects.py                    |    2 +-
+ ivgs-api/app/api/v1/prompts.py                     |  285 +-
+ ivgs-api/app/models/gpu_node.py                    |   22 +-
+ ivgs-api/app/models/project.py                     |    5 -
+ ivgs-api/app/models/prompt.py                      |   15 +-
+ ivgs-api/app/models/quality_score.py               |    5 -
+ ivgs-api/app/models/retention_policy.py            |    5 +-
+ ivgs-api/app/models/user.py                        |   22 +-
+ ivgs-api/app/schemas/gpu.py                        |   50 +
+ ivgs-api/app/schemas/prompt.py                     |   26 +-
+ ivgs-api/app/services/gpu_service.py               |  197 +-
+ ivgs-api/app/services/prompt_service.py            |  130 +-
+ ivgs-api/app/services/quality_service.py           |    4 +-
+ ivgs-api/app/services/retention_service.py         |    8 +-
+ ivgs-api/migrations/versions/0001_initial_core.py  |  111 +-
+ .../versions/0002_pipeline_checkpoints.py          |   12 +-
+ ivgs-api/migrations/versions/0003_gpu_registry.py  |   21 +-
+ .../migrations/versions/0004_retry_tracking.py     |    3 +-
+ .../migrations/versions/0005_worker_heartbeats.py  |   12 +-
+ .../migrations/versions/0006_dead_letter_queue.py  |   14 +-
+ .../versions/0007_composition_manifests.py         |   12 +-
+ .../migrations/versions/0008_quality_scores.py     |   12 +-
+ .../migrations/versions/0009_render_segments.py    |   12 +-
+ ivgs-api/migrations/versions/0010_gpu_metrics.py   |   80 +-
+ .../migrations/versions/0011_retention_policies.py |    2 +-
+ .../migrations/versions/0012_storage_quotas.py     |    3 +-
+ .../migrations/versions/0013_backup_records.py     |   23 +-
+ .../migrations/versions/0015_add_user_is_active.py |   34 +
+ .../migrations/versions/0016_add_power_tdp_w.py    |   43 +
+ ivgs-api/tests/conftest.py                         | 1167 +---
+ ivgs-api/tests/test_rollback_probe.py              |   40 -
+ ivgs-frontend/Dockerfile                           |   35 +
+ ivgs-frontend/next-env.d.ts                        |    5 +
+ ivgs-frontend/next.config.js                       |   69 +
+ ivgs-frontend/package-lock.json                    | 6220 ++++++++++++++++++++
+ ivgs-frontend/package.json                         |   46 +
+ ivgs-frontend/postcss.config.js                    |   13 +
+ ivgs-frontend/public/.gitkeep                      |    0
+ ivgs-frontend/src/app/admin/backups/page.tsx       |  398 ++
+ ivgs-frontend/src/app/admin/layout.tsx             |   59 +
+ ivgs-frontend/src/app/admin/page.tsx               |  150 +
+ ivgs-frontend/src/app/admin/retention/page.tsx     |  412 ++
+ ivgs-frontend/src/app/admin/users/page.tsx         |  795 +++
+ ivgs-frontend/src/app/globals.css                  |   75 +
+ ivgs-frontend/src/app/layout.tsx                   |   69 +
+ ivgs-frontend/src/app/login/page.tsx               |  164 +
+ ivgs-frontend/src/app/monitoring/dlq/page.tsx      |  622 ++
+ ivgs-frontend/src/app/monitoring/gpu/page.tsx      |  529 ++
+ ivgs-frontend/src/app/monitoring/layout.tsx        |   61 +
+ ivgs-frontend/src/app/monitoring/page.tsx          |  201 +
+ ivgs-frontend/src/app/monitoring/pipeline/page.tsx |  962 +++
+ ivgs-frontend/src/app/monitoring/quality/page.tsx  |  445 ++
+ ivgs-frontend/src/app/monitoring/storage/page.tsx  |  661 +++
+ ivgs-frontend/src/app/monitoring/timeline/page.tsx |  674 +++
+ ivgs-frontend/src/app/nodes/page.tsx               |  218 +
+ ivgs-frontend/src/app/page.tsx                     |  440 ++
+ .../src/app/projects/[id]/assets/page.tsx          |  311 +
+ ivgs-frontend/src/app/projects/[id]/audio/page.tsx |  341 ++
+ ivgs-frontend/src/app/projects/[id]/draft/page.tsx |  101 +
+ ivgs-frontend/src/app/projects/[id]/jobs/page.tsx  |  267 +
+ .../src/app/projects/[id]/languages/page.tsx       |  311 +
+ ivgs-frontend/src/app/projects/[id]/page.tsx       |  414 ++
+ .../src/app/projects/[id]/renders/page.tsx         |  242 +
+ .../src/app/projects/[id]/storyboard/page.tsx      |  604 ++
+ .../src/app/projects/[id]/talking-head/page.tsx    |  181 +
+ .../src/app/projects/[id]/transcript/page.tsx      |  300 +
+ ivgs-frontend/src/app/projects/new/page.tsx        |  593 ++
+ ivgs-frontend/src/app/prompts/page.tsx             |  425 ++
+ ivgs-frontend/src/components/AssetBrowser.tsx      |  318 +
+ ivgs-frontend/src/components/AssetUploader.tsx     |  275 +
+ ivgs-frontend/src/components/ErrorBoundary.tsx     |  109 +
+ ivgs-frontend/src/components/Footer.tsx            |   17 +
+ ivgs-frontend/src/components/Header.tsx            |  167 +
+ ivgs-frontend/src/components/LoadingSpinner.tsx    |   56 +
+ ivgs-frontend/src/components/NodeCard.tsx          |  168 +
+ ivgs-frontend/src/components/PipelineTracker.tsx   |  205 +
+ ivgs-frontend/src/components/ProjectCard.tsx       |  120 +
+ ivgs-frontend/src/components/ProjectModal.tsx      |  182 +
+ ivgs-frontend/src/components/ProtectedRoute.tsx    |  106 +
+ ivgs-frontend/src/components/Sidebar.tsx           |  172 +
+ ivgs-frontend/src/components/StateBadge.tsx        |   61 +
+ ivgs-frontend/src/components/Toast.tsx             |  162 +
+ ivgs-frontend/src/components/TranscriptEditor.tsx  |  173 +
+ ivgs-frontend/src/components/VideoPlayer.tsx       |  407 ++
+ .../src/components/monitoring/DLQAnalytics.tsx     |  284 +
+ .../src/components/monitoring/DLQDetailModal.tsx   |  359 ++
+ .../src/components/monitoring/DLQTable.tsx         |  338 ++
+ .../src/components/monitoring/GPUFleetChart.tsx    |  241 +
+ .../src/components/monitoring/GPUNodeCard.tsx      |  308 +
+ .../src/components/monitoring/PipelineDAG.tsx      |  351 ++
+ .../components/monitoring/QualityReviewCard.tsx    |  298 +
+ .../src/components/monitoring/StorageTierChart.tsx |  165 +
+ .../src/components/monitoring/TimelineEditor.tsx   |  362 ++
+ .../src/components/prompts/PromptEditor.tsx        |  671 +++
+ .../src/components/prompts/PromptHistory.tsx       |  488 ++
+ .../src/components/prompts/PromptLibrary.tsx       |  368 ++
+ .../src/components/prompts/PromptManager.tsx       |  385 ++
+ .../src/components/prompts/PromptPlayground.tsx    |  754 +++
+ .../src/components/storyboard/SceneCard.tsx        |  389 ++
+ .../src/components/storyboard/SceneEditModal.tsx   |  820 +++
+ .../src/components/storyboard/SceneTimeline.tsx    |  349 ++
+ .../src/components/storyboard/StoryboardEditor.tsx |  233 +
+ ivgs-frontend/src/contexts/AuthContext.tsx         |  268 +
+ ivgs-frontend/src/hooks/useAssets.ts               |   67 +
+ ivgs-frontend/src/hooks/useAuth.ts                 |   27 +
+ ivgs-frontend/src/hooks/useBackups.ts              |   72 +
+ ivgs-frontend/src/hooks/useJobs.ts                 |   66 +
+ ivgs-frontend/src/hooks/useMonitoring.ts           |  584 ++
+ ivgs-frontend/src/hooks/useNodes.ts                |   38 +
+ ivgs-frontend/src/hooks/usePipeline.ts             |   99 +
+ ivgs-frontend/src/hooks/useProjects.ts             |  122 +
+ ivgs-frontend/src/hooks/usePrompts.ts              |  359 ++
+ ivgs-frontend/src/hooks/useRetention.ts            |   98 +
+ ivgs-frontend/src/hooks/useStoryboard.ts           |  353 ++
+ ivgs-frontend/src/hooks/useTranscripts.ts          |   77 +
+ ivgs-frontend/src/hooks/useWebSocket.ts            |  274 +
+ ivgs-frontend/src/lib/api-client.ts                |  254 +
+ ivgs-frontend/src/lib/api.ts                       |   17 +
+ ivgs-frontend/src/lib/auth.ts                      |  134 +
+ ivgs-frontend/src/middleware.ts                    |   79 +
+ ivgs-frontend/src/types/api.ts                     |  487 ++
+ ivgs-frontend/src/types/index.ts                   |   67 +
+ ivgs-frontend/src/types/monitoring.ts              |  377 ++
+ ivgs-frontend/src/types/prompts.ts                 |  405 ++
+ ivgs-frontend/src/types/storyboard.ts              |  241 +
+ ivgs-frontend/tailwind.config.js                   |   89 +
+ ivgs-frontend/tsconfig.json                        |   33 +
+ ivgs-infra/.env.node01                             |   97 +
+ ivgs-infra/.gitignore                              |   12 +
+ ivgs-infra/configs/cron/backup_cron                |  123 +
+ ivgs-infra/configs/nginx/nginx.conf                |  205 +
+ ivgs-infra/configs/nginx/ssl/generate-certs.sh     |  139 +
+ ivgs-infra/configs/nginx/websocket.conf            |   31 +
+ ivgs-infra/configs/postgres.conf                   |   55 +
+ ivgs-infra/configs/prometheus/alert_rules.yml      |  340 ++
+ ivgs-infra/configs/prometheus/prometheus.yml       |  221 +
+ ivgs-infra/configs/redis.conf                      |   42 +
+ ivgs-infra/configs/seaweedfs/filer.toml            |   39 +
+ ivgs-infra/configs/seaweedfs/master.toml           |   20 +
+ ivgs-infra/configs/seaweedfs/volume.toml           |   30 +
+ ivgs-infra/docker-compose.base.yml                 |  205 +
+ ivgs-infra/docker-compose.monitoring.yml           |  314 +
+ ivgs-infra/docker-compose.node01.yml               |  506 ++
+ ivgs-infra/docker-compose.node02.yml               |  195 +
+ ivgs-infra/docker-compose.node03.yml               |  189 +
+ ivgs-infra/docker-compose.node04.yml               |  321 +
+ ivgs-infra/docker-compose.node05.yml               |  203 +
+ ivgs-infra/docker-compose.node06.yml               |  173 +
+ ivgs-infra/docker-compose.override.node01.yml      |   14 +
+ ivgs-infra/monitoring/alertmanager.yml             |   45 +
+ .../monitoring/grafana/dashboards/grafana-gpu.json |  477 ++
+ .../grafana/dashboards/grafana-pipeline.json       |  520 ++
+ .../grafana/provisioning/dashboards/dashboard.yml  |   28 +
+ .../provisioning/datasources/prometheus.yml        |   43 +
+ ivgs-infra/monitoring/prometheus/alert_rules.yml   |  340 ++
+ ivgs-infra/monitoring/prometheus/prometheus.yml    |  221 +
+ ivgs-infra/scripts/enforce_sha_tags.sh             |   43 +
+ ivgs-infra/scripts/v4_to_v5_migration.py           |  356 ++
+ ivgs-models/README.md                              |   41 +
+ ivgs-models/checksums.sha256                       |    5 +
+ ivgs-models/comfyui/animatediff-workflow.json      |    8 +
+ ivgs-models/comfyui/flux1-dev-workflow.json        |    8 +
+ ivgs-models/comfyui/sdxl-workflow.json             |    8 +
+ ivgs-models/download_models.sh                     |   87 +
+ ivgs-models/ollama/Modelfile                       |    8 +
+ ivgs-models/tts/coqui-xtts-v2.yaml                 |   22 +
+ ivgs-models/vllm/llama-3.3-70b.yaml                |   13 +
+ ivgs-models/vllm/mistral-24b.yaml                  |   12 +
+ ivgs-models/vllm/qwen2.5-72b.yaml                  |   12 +
+ ivgs-scheduler/Dockerfile                          |   42 +
+ ivgs-scheduler/__init__.py                         |    1 +
+ ivgs-scheduler/admission_control.py                |  512 ++
+ ivgs-scheduler/circuit_breaker.py                  |  349 ++
+ ivgs-scheduler/gpu_registry.py                     |  519 ++
+ ivgs-scheduler/load_balancer.py                    |  304 +
+ ivgs-scheduler/main.py                             |  938 +++
+ ivgs-scheduler/metrics.py                          |  184 +
+ ivgs-scheduler/model_concurrency.py                |  381 ++
+ ivgs-scheduler/priority_queue.py                   |  371 ++
+ ivgs-scheduler/requirements.txt                    |   12 +
+ ivgs-scheduler/scheduler.py                        |  537 ++
+ ivgs-scheduler/tests/__init__.py                   |    1 +
+ ivgs-scheduler/tests/test_admission.py             |  395 ++
+ ivgs-scheduler/tests/test_circuit_breaker.py       |  215 +
+ ivgs-scheduler/tests/test_load_balancer.py         |  240 +
+ ivgs-scheduler/tests/test_scheduler.py             |  542 ++
+ ivgs-workers/Dockerfile                            |   44 +
+ ivgs-workers/celery_app.py                         |  571 ++
+ ivgs-workers/clients/__init__.py                   |    1 +
+ ivgs-workers/clients/cogvideox_client.py           |  108 +
+ ivgs-workers/clients/coqui_client.py               |   86 +
+ ivgs-workers/clients/ffmpeg_client.py              |  941 +++
+ ivgs-workers/clients/flux_client.py                |  192 +
+ ivgs-workers/clients/kokoro_client.py              |   89 +
+ ivgs-workers/clients/latentsync_client.py          |  502 ++
+ ivgs-workers/clients/ollama_client.py              |  122 +
+ ivgs-workers/clients/remotion_client.py            |  539 ++
+ ivgs-workers/clients/sadtalker_client.py           |  367 ++
+ ivgs-workers/clients/safety_classifier.py          |   71 +
+ ivgs-workers/clients/vllm_client.py                |  240 +
+ ivgs-workers/clients/wan21_client.py               |   97 +
+ ivgs-workers/clients/whisperx_client.py            |  101 +
+ ivgs-workers/config.py                             |  332 ++
+ ivgs-workers/configs/__init__.py                   |    1 +
+ ivgs-workers/configs/composition.yml               |  362 ++
+ ivgs-workers/configs/media_generation.yml          |  304 +
+ ivgs-workers/docker-compose.workers.yml            |  344 ++
+ ivgs-workers/models/__init__.py                    |   43 +
+ ivgs-workers/models/task_result.py                 |  323 +
+ ivgs-workers/prompts/stage1_system.j2              |   55 +
+ ivgs-workers/prompts/stage1_user.j2                |   25 +
+ ivgs-workers/prompts/stage2_system.j2              |   45 +
+ ivgs-workers/prompts/stage2_user.j2                |   43 +
+ ivgs-workers/prompts/stage3_system.j2              |   50 +
+ ivgs-workers/prompts/stage4_system.j2              |   44 +
+ ivgs-workers/prompts/stage5_system.j2              |   24 +
+ ivgs-workers/requirements.txt                      |   53 +
+ ivgs-workers/services/__init__.py                  |   19 +
+ ivgs-workers/services/caption_service.py           |  272 +
+ ivgs-workers/services/dlq_service.py               |  754 +++
+ ivgs-workers/services/error_classifier.py          |  347 ++
+ ivgs-workers/services/fallback_chain.py            |  742 +++
+ ivgs-workers/services/manifest_builder.py          |  304 +
+ ivgs-workers/services/motion_graphics.py           |  613 ++
+ ivgs-workers/services/orphan_cleanup.py            |  753 +++
+ ivgs-workers/services/quality_gate.py              |  547 ++
+ ivgs-workers/services/quality_validator.py         | 1184 ++++
+ ivgs-workers/services/retention_migration.py       |  616 ++
+ ivgs-workers/services/retry_engine.py              |  461 ++
+ ivgs-workers/services/safety_classifier.py         |  379 ++
+ ivgs-workers/services/segment_planner.py           |  264 +
+ ivgs-workers/tasks/__init__.py                     |   50 +
+ ivgs-workers/tasks/localization_pipeline.py        |  407 ++
+ ivgs-workers/tasks/periodic_tasks.py               |  610 ++
+ ivgs-workers/tasks/pipeline_orchestrator.py        |  655 +++
+ ivgs-workers/tasks/pipeline_orchestrator_v2.py     |  973 +++
+ ivgs-workers/tasks/stage1_transcript.py            |  730 +++
+ ivgs-workers/tasks/stage2_storyboard.py            |  771 +++
+ ivgs-workers/tasks/stage3_images.py                |  720 +++
+ ivgs-workers/tasks/stage4_manifest.py              |  166 +
+ ivgs-workers/tasks/stage5_voiceover.py             |  618 ++
+ ivgs-workers/tasks/stage6_talking_head.py          |  664 +++
+ ivgs-workers/tasks/stage7_prototype_draft.py       |  575 ++
+ ivgs-workers/tasks/stage8_final_render.py          |  749 +++
+ ivgs-workers/tasks/talking_head_task.py            |  556 ++
+ ivgs-workers/tasks/video_generation_task.py        |  580 ++
+ ivgs-workers/tests/test_composition.py             |  487 ++
+ ivgs-workers/tests/test_corruption.py              |  206 +
+ ivgs-workers/tests/test_dlq_service.py             |  379 ++
+ ivgs-workers/tests/test_fallback_chain.py          |  244 +
+ ivgs-workers/tests/test_orphan_cleanup.py          |  182 +
+ ivgs-workers/tests/test_quality_gate.py            |  367 ++
+ ivgs-workers/tests/test_quality_validator.py       |  456 ++
+ ivgs-workers/tests/test_retention.py               |  223 +
+ ivgs-workers/tests/test_retry_engine.py            |  236 +
+ ivgs-workers/tests/test_stage1.py                  |  577 ++
+ ivgs-workers/tests/test_stage2.py                  |  484 ++
+ ivgs-workers/tests/test_stage3.py                  |  405 ++
+ ivgs-workers/tests/test_stage4.py                  |  278 +
+ ivgs-workers/tests/test_stage5.py                  |  296 +
+ ivgs-workers/tests/test_talking_head_task.py       |  327 +
+ ivgs-workers/tests/test_video_gen.py               |  308 +
+ ivgs-workers/utils/__init__.py                     |    1 +
+ ivgs-workers/utils/audio_validator.py              |  523 ++
+ ivgs-workers/utils/error_handler.py                |  447 ++
+ ivgs-workers/utils/gpu_utils.py                    |  416 ++
+ ivgs-workers/utils/image_validator.py              |  354 ++
+ ivgs-workers/utils/media_converter.py              |  529 ++
+ ivgs-workers/utils/video_validator.py              |  410 ++
+ ivgs-workers/validators/__init__.py                |    1 +
+ ivgs-workers/validators/corruption_detector.py     |  485 ++
+ ivgs-workers/validators/lipsync_validator.py       |  292 +
+ pyproject.toml                                     |   66 +-
+ scripts/backup.sh                                  |  439 ++
+ scripts/compliance_scanner.py                      |  236 +
+ scripts/config_backup.sh                           |  261 +
+ scripts/create_admin.py                            |  130 +
+ scripts/deploy-node.sh                             |  305 +
+ scripts/generate_docs.sh                           |   32 +
+ scripts/restore.sh                                 |  551 ++
+ scripts/seed_data.py                               |  292 +
+ scripts/verify_backup.sh                           |  385 ++
+ scripts/verify_spec_compliance.sh                  |  199 +
+ scripts/wal_archive.sh                             |  115 +
+ tests/__init__.py                                  |    1 +
+ tests/conftest.py                                  |   92 +
+ tests/e2e/test_localization.py                     |  123 +
+ tests/e2e/test_project_lifecycle.py                |  206 +
+ tests/integration/test_auth_integration.py         |  396 ++
+ tests/integration/test_dlq_integration.py          |  111 +
+ tests/integration/test_gpu_integration.py          |  168 +
+ tests/integration/test_pipeline_integration.py     |  221 +
+ tests/integration/test_projects_integration.py     |  240 +
+ tests/smoke/test_gpu_nodes.py                      |  211 +
+ tests/test_compliance_scanner.py                   |   97 +
+ 337 files changed, 85074 insertions(+), 1523 deletions(-)
+
+=== GIT DIFF --NAME-ONLY OUTPUT ===
+.abacus.donotdelete
+.env.node01.template
+.env.node02.template
+.env.node03.template
+.env.node04.template
+.env.node05.template
+.env.node06.template
+.env.template
+.github/dependabot.yml
+.github/workflows/cd-deploy.yml
+.github/workflows/ci.yml
+.github/workflows/compliance-check.yml
+.gitignore
+.pre-commit-config.yaml
+DEPLOYMENT_SUMMARY.md
+README.md
+TEST_SUITE_WORKING_SOLUTION.docx
+TEST_SUITE_WORKING_SOLUTION.md
+TEST_SUITE_WORKING_SOLUTION.pdf
+configs/cron/backup_cron
+configs/nginx/nginx.conf
+configs/nginx/ssl/generate-certs.sh
+configs/nginx/websocket.conf
+configs/postgres.conf
+configs/redis.conf
+configs/seaweedfs/filer.toml
+configs/seaweedfs/master.toml
+configs/seaweedfs/volume.toml
+docs/GITHUB_AUDIT_REPORT.md
+docs/PRE_DEPLOYMENT_FIXES.md
+docs/adr/.gitkeep
+docs/adr/ADR-001-self-hosted-only.md
+docs/adr/ADR-002-port-conflict.md
+docs/adr/ADR-003-pipeline-stage-count.md
+docs/adr/ADR-004-timescaledb.md
+docs/architecture/adr-001-self-hosted-mandate.md
+docs/deployment/runbook.md
+docs/stage-numbering-map.md
+docs/troubleshooting/common_issues.md
+ivgs-api/app/api/deps.py
+ivgs-api/app/api/v1/__init__.py
+ivgs-api/app/api/v1/gpus.py
+ivgs-api/app/api/v1/projects.py
+ivgs-api/app/api/v1/prompts.py
+ivgs-api/app/models/gpu_node.py
+ivgs-api/app/models/project.py
+ivgs-api/app/models/prompt.py
+ivgs-api/app/models/quality_score.py
+ivgs-api/app/models/retention_policy.py
+ivgs-api/app/models/user.py
+ivgs-api/app/schemas/gpu.py
+ivgs-api/app/schemas/prompt.py
+ivgs-api/app/services/gpu_service.py
+ivgs-api/app/services/prompt_service.py
+ivgs-api/app/services/quality_service.py
+ivgs-api/app/services/retention_service.py
+ivgs-api/migrations/versions/0001_initial_core.py
+ivgs-api/migrations/versions/0002_pipeline_checkpoints.py
+ivgs-api/migrations/versions/0003_gpu_registry.py
+ivgs-api/migrations/versions/0004_retry_tracking.py
+ivgs-api/migrations/versions/0005_worker_heartbeats.py
+ivgs-api/migrations/versions/0006_dead_letter_queue.py
+ivgs-api/migrations/versions/0007_composition_manifests.py
+ivgs-api/migrations/versions/0008_quality_scores.py
+ivgs-api/migrations/versions/0009_render_segments.py
+ivgs-api/migrations/versions/0010_gpu_metrics.py
+ivgs-api/migrations/versions/0011_retention_policies.py
+ivgs-api/migrations/versions/0012_storage_quotas.py
+ivgs-api/migrations/versions/0013_backup_records.py
+ivgs-api/migrations/versions/0015_add_user_is_active.py
+ivgs-api/migrations/versions/0016_add_power_tdp_w.py
+ivgs-api/tests/conftest.py
+ivgs-api/tests/test_rollback_probe.py
+ivgs-frontend/Dockerfile
+ivgs-frontend/next-env.d.ts
+ivgs-frontend/next.config.js
+ivgs-frontend/package-lock.json
+ivgs-frontend/package.json
+ivgs-frontend/postcss.config.js
+ivgs-frontend/public/.gitkeep
+ivgs-frontend/src/app/admin/backups/page.tsx
+ivgs-frontend/src/app/admin/layout.tsx
+ivgs-frontend/src/app/admin/page.tsx
+ivgs-frontend/src/app/admin/retention/page.tsx
+ivgs-frontend/src/app/admin/users/page.tsx
+ivgs-frontend/src/app/globals.css
+ivgs-frontend/src/app/layout.tsx
+ivgs-frontend/src/app/login/page.tsx
+ivgs-frontend/src/app/monitoring/dlq/page.tsx
+ivgs-frontend/src/app/monitoring/gpu/page.tsx
+ivgs-frontend/src/app/monitoring/layout.tsx
+ivgs-frontend/src/app/monitoring/page.tsx
+ivgs-frontend/src/app/monitoring/pipeline/page.tsx
+ivgs-frontend/src/app/monitoring/quality/page.tsx
+ivgs-frontend/src/app/monitoring/storage/page.tsx
+ivgs-frontend/src/app/monitoring/timeline/page.tsx
+ivgs-frontend/src/app/nodes/page.tsx
+ivgs-frontend/src/app/page.tsx
+ivgs-frontend/src/app/projects/[id]/assets/page.tsx
+ivgs-frontend/src/app/projects/[id]/audio/page.tsx
+ivgs-frontend/src/app/projects/[id]/draft/page.tsx
+ivgs-frontend/src/app/projects/[id]/jobs/page.tsx
+ivgs-frontend/src/app/projects/[id]/languages/page.tsx
+ivgs-frontend/src/app/projects/[id]/page.tsx
+ivgs-frontend/src/app/projects/[id]/renders/page.tsx
+ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx
+ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx
+ivgs-frontend/src/app/projects/[id]/transcript/page.tsx
+ivgs-frontend/src/app/projects/new/page.tsx
+ivgs-frontend/src/app/prompts/page.tsx
+ivgs-frontend/src/components/AssetBrowser.tsx
+ivgs-frontend/src/components/AssetUploader.tsx
+ivgs-frontend/src/components/ErrorBoundary.tsx
+ivgs-frontend/src/components/Footer.tsx
+ivgs-frontend/src/components/Header.tsx
+ivgs-frontend/src/components/LoadingSpinner.tsx
+ivgs-frontend/src/components/NodeCard.tsx
+ivgs-frontend/src/components/PipelineTracker.tsx
+ivgs-frontend/src/components/ProjectCard.tsx
+ivgs-frontend/src/components/ProjectModal.tsx
+ivgs-frontend/src/components/ProtectedRoute.tsx
+ivgs-frontend/src/components/Sidebar.tsx
+ivgs-frontend/src/components/StateBadge.tsx
+ivgs-frontend/src/components/Toast.tsx
+ivgs-frontend/src/components/TranscriptEditor.tsx
+ivgs-frontend/src/components/VideoPlayer.tsx
+ivgs-frontend/src/components/monitoring/DLQAnalytics.tsx
+ivgs-frontend/src/components/monitoring/DLQDetailModal.tsx
+ivgs-frontend/src/components/monitoring/DLQTable.tsx
+ivgs-frontend/src/components/monitoring/GPUFleetChart.tsx
+ivgs-frontend/src/components/monitoring/GPUNodeCard.tsx
+ivgs-frontend/src/components/monitoring/PipelineDAG.tsx
+ivgs-frontend/src/components/monitoring/QualityReviewCard.tsx
+ivgs-frontend/src/components/monitoring/StorageTierChart.tsx
+ivgs-frontend/src/components/monitoring/TimelineEditor.tsx
+ivgs-frontend/src/components/prompts/PromptEditor.tsx
+ivgs-frontend/src/components/prompts/PromptHistory.tsx
+ivgs-frontend/src/components/prompts/PromptLibrary.tsx
+ivgs-frontend/src/components/prompts/PromptManager.tsx
+ivgs-frontend/src/components/prompts/PromptPlayground.tsx
+ivgs-frontend/src/components/storyboard/SceneCard.tsx
+ivgs-frontend/src/components/storyboard/SceneEditModal.tsx
+ivgs-frontend/src/components/storyboard/SceneTimeline.tsx
+ivgs-frontend/src/components/storyboard/StoryboardEditor.tsx
+ivgs-frontend/src/contexts/AuthContext.tsx
+ivgs-frontend/src/hooks/useAssets.ts
+ivgs-frontend/src/hooks/useAuth.ts
+ivgs-frontend/src/hooks/useBackups.ts
+ivgs-frontend/src/hooks/useJobs.ts
+ivgs-frontend/src/hooks/useMonitoring.ts
+ivgs-frontend/src/hooks/useNodes.ts
+ivgs-frontend/src/hooks/usePipeline.ts
+ivgs-frontend/src/hooks/useProjects.ts
+ivgs-frontend/src/hooks/usePrompts.ts
+ivgs-frontend/src/hooks/useRetention.ts
+ivgs-frontend/src/hooks/useStoryboard.ts
+ivgs-frontend/src/hooks/useTranscripts.ts
+ivgs-frontend/src/hooks/useWebSocket.ts
+ivgs-frontend/src/lib/api-client.ts
+ivgs-frontend/src/lib/api.ts
+ivgs-frontend/src/lib/auth.ts
+ivgs-frontend/src/middleware.ts
+ivgs-frontend/src/types/api.ts
+ivgs-frontend/src/types/index.ts
+ivgs-frontend/src/types/monitoring.ts
+ivgs-frontend/src/types/prompts.ts
+ivgs-frontend/src/types/storyboard.ts
+ivgs-frontend/tailwind.config.js
+ivgs-frontend/tsconfig.json
+ivgs-infra/.env.node01
+ivgs-infra/.gitignore
+ivgs-infra/configs/cron/backup_cron
+ivgs-infra/configs/nginx/nginx.conf
+ivgs-infra/configs/nginx/ssl/generate-certs.sh
+ivgs-infra/configs/nginx/websocket.conf
+ivgs-infra/configs/postgres.conf
+ivgs-infra/configs/prometheus/alert_rules.yml
+ivgs-infra/configs/prometheus/prometheus.yml
+ivgs-infra/configs/redis.conf
+ivgs-infra/configs/seaweedfs/filer.toml
+ivgs-infra/configs/seaweedfs/master.toml
+ivgs-infra/configs/seaweedfs/volume.toml
+ivgs-infra/docker-compose.base.yml
+ivgs-infra/docker-compose.monitoring.yml
+ivgs-infra/docker-compose.node01.yml
+ivgs-infra/docker-compose.node02.yml
+ivgs-infra/docker-compose.node03.yml
+ivgs-infra/docker-compose.node04.yml
+ivgs-infra/docker-compose.node05.yml
+ivgs-infra/docker-compose.node06.yml
+ivgs-infra/docker-compose.override.node01.yml
+ivgs-infra/monitoring/alertmanager.yml
+ivgs-infra/monitoring/grafana/dashboards/grafana-gpu.json
+ivgs-infra/monitoring/grafana/dashboards/grafana-pipeline.json
+ivgs-infra/monitoring/grafana/provisioning/dashboards/dashboard.yml
+ivgs-infra/monitoring/grafana/provisioning/datasources/prometheus.yml
+ivgs-infra/monitoring/prometheus/alert_rules.yml
+ivgs-infra/monitoring/prometheus/prometheus.yml
+ivgs-infra/scripts/enforce_sha_tags.sh
+ivgs-infra/scripts/v4_to_v5_migration.py
+ivgs-models/README.md
+ivgs-models/checksums.sha256
+ivgs-models/comfyui/animatediff-workflow.json
+ivgs-models/comfyui/flux1-dev-workflow.json
+ivgs-models/comfyui/sdxl-workflow.json
+ivgs-models/download_models.sh
+ivgs-models/ollama/Modelfile
+ivgs-models/tts/coqui-xtts-v2.yaml
+ivgs-models/vllm/llama-3.3-70b.yaml
+ivgs-models/vllm/mistral-24b.yaml
+ivgs-models/vllm/qwen2.5-72b.yaml
+ivgs-scheduler/Dockerfile
+ivgs-scheduler/__init__.py
+ivgs-scheduler/admission_control.py
+ivgs-scheduler/circuit_breaker.py
+ivgs-scheduler/gpu_registry.py
+ivgs-scheduler/load_balancer.py
+ivgs-scheduler/main.py
+ivgs-scheduler/metrics.py
+ivgs-scheduler/model_concurrency.py
+ivgs-scheduler/priority_queue.py
+ivgs-scheduler/requirements.txt
+ivgs-scheduler/scheduler.py
+ivgs-scheduler/tests/__init__.py
+ivgs-scheduler/tests/test_admission.py
+ivgs-scheduler/tests/test_circuit_breaker.py
+ivgs-scheduler/tests/test_load_balancer.py
+ivgs-scheduler/tests/test_scheduler.py
+ivgs-workers/Dockerfile
+ivgs-workers/celery_app.py
+ivgs-workers/clients/__init__.py
+ivgs-workers/clients/cogvideox_client.py
+ivgs-workers/clients/coqui_client.py
+ivgs-workers/clients/ffmpeg_client.py
+ivgs-workers/clients/flux_client.py
+ivgs-workers/clients/kokoro_client.py
+ivgs-workers/clients/latentsync_client.py
+ivgs-workers/clients/ollama_client.py
+ivgs-workers/clients/remotion_client.py
+ivgs-workers/clients/sadtalker_client.py
+ivgs-workers/clients/safety_classifier.py
+ivgs-workers/clients/vllm_client.py
+ivgs-workers/clients/wan21_client.py
+ivgs-workers/clients/whisperx_client.py
+ivgs-workers/config.py
+ivgs-workers/configs/__init__.py
+ivgs-workers/configs/composition.yml
+ivgs-workers/configs/media_generation.yml
+ivgs-workers/docker-compose.workers.yml
+ivgs-workers/models/__init__.py
+ivgs-workers/models/task_result.py
+ivgs-workers/prompts/stage1_system.j2
+ivgs-workers/prompts/stage1_user.j2
+ivgs-workers/prompts/stage2_system.j2
+ivgs-workers/prompts/stage2_user.j2
+ivgs-workers/prompts/stage3_system.j2
+ivgs-workers/prompts/stage4_system.j2
+ivgs-workers/prompts/stage5_system.j2
+ivgs-workers/requirements.txt
+ivgs-workers/services/__init__.py
+ivgs-workers/services/caption_service.py
+ivgs-workers/services/dlq_service.py
+ivgs-workers/services/error_classifier.py
+ivgs-workers/services/fallback_chain.py
+ivgs-workers/services/manifest_builder.py
+ivgs-workers/services/motion_graphics.py
+ivgs-workers/services/orphan_cleanup.py
+ivgs-workers/services/quality_gate.py
+ivgs-workers/services/quality_validator.py
+ivgs-workers/services/retention_migration.py
+ivgs-workers/services/retry_engine.py
+ivgs-workers/services/safety_classifier.py
+ivgs-workers/services/segment_planner.py
+ivgs-workers/tasks/__init__.py
+ivgs-workers/tasks/localization_pipeline.py
+ivgs-workers/tasks/periodic_tasks.py
+ivgs-workers/tasks/pipeline_orchestrator.py
+ivgs-workers/tasks/pipeline_orchestrator_v2.py
+ivgs-workers/tasks/stage1_transcript.py
+ivgs-workers/tasks/stage2_storyboard.py
+ivgs-workers/tasks/stage3_images.py
+ivgs-workers/tasks/stage4_manifest.py
+ivgs-workers/tasks/stage5_voiceover.py
+ivgs-workers/tasks/stage6_talking_head.py
+ivgs-workers/tasks/stage7_prototype_draft.py
+ivgs-workers/tasks/stage8_final_render.py
+ivgs-workers/tasks/talking_head_task.py
+ivgs-workers/tasks/video_generation_task.py
+ivgs-workers/tests/test_composition.py
+ivgs-workers/tests/test_corruption.py
+ivgs-workers/tests/test_dlq_service.py
+ivgs-workers/tests/test_fallback_chain.py
+ivgs-workers/tests/test_orphan_cleanup.py
+ivgs-workers/tests/test_quality_gate.py
+ivgs-workers/tests/test_quality_validator.py
+ivgs-workers/tests/test_retention.py
+ivgs-workers/tests/test_retry_engine.py
+ivgs-workers/tests/test_stage1.py
+ivgs-workers/tests/test_stage2.py
+ivgs-workers/tests/test_stage3.py
+ivgs-workers/tests/test_stage4.py
+ivgs-workers/tests/test_stage5.py
+ivgs-workers/tests/test_talking_head_task.py
+ivgs-workers/tests/test_video_gen.py
+ivgs-workers/utils/__init__.py
+ivgs-workers/utils/audio_validator.py
+ivgs-workers/utils/error_handler.py
+ivgs-workers/utils/gpu_utils.py
+ivgs-workers/utils/image_validator.py
+ivgs-workers/utils/media_converter.py
+ivgs-workers/utils/video_validator.py
+ivgs-workers/validators/__init__.py
+ivgs-workers/validators/corruption_detector.py
+ivgs-workers/validators/lipsync_validator.py
+pyproject.toml
+scripts/backup.sh
+scripts/compliance_scanner.py
+scripts/config_backup.sh
+scripts/create_admin.py
+scripts/deploy-node.sh
+scripts/generate_docs.sh
+scripts/restore.sh
+scripts/seed_data.py
+scripts/verify_backup.sh
+scripts/verify_spec_compliance.sh
+scripts/wal_archive.sh
+tests/__init__.py
+tests/conftest.py
+tests/e2e/test_localization.py
+tests/e2e/test_project_lifecycle.py
+tests/integration/test_auth_integration.py
+tests/integration/test_dlq_integration.py
+tests/integration/test_gpu_integration.py
+tests/integration/test_pipeline_integration.py
+tests/integration/test_projects_integration.py
+tests/smoke/test_gpu_nodes.py
+tests/test_compliance_scanner.py
+
+=== GIT DIFF --NUMSTAT OUTPUT ===
+1	1	.abacus.donotdelete
+96	0	.env.node01.template
+44	0	.env.node02.template
+44	0	.env.node03.template
+57	0	.env.node04.template
+43	0	.env.node05.template
+43	0	.env.node06.template
+82	0	.env.template
+96	0	.github/dependabot.yml
+137	0	.github/workflows/cd-deploy.yml
+173	0	.github/workflows/ci.yml
+92	0	.github/workflows/compliance-check.yml
+103	2	.gitignore
+53	0	.pre-commit-config.yaml
+186	0	DEPLOYMENT_SUMMARY.md
+525	0	README.md
+-	-	TEST_SUITE_WORKING_SOLUTION.docx
+0	162	TEST_SUITE_WORKING_SOLUTION.md
+-	-	TEST_SUITE_WORKING_SOLUTION.pdf
+123	0	configs/cron/backup_cron
+205	0	configs/nginx/nginx.conf
+139	0	configs/nginx/ssl/generate-certs.sh
+31	0	configs/nginx/websocket.conf
+55	0	configs/postgres.conf
+42	0	configs/redis.conf
+39	0	configs/seaweedfs/filer.toml
+20	0	configs/seaweedfs/master.toml
+30	0	configs/seaweedfs/volume.toml
+250	0	docs/GITHUB_AUDIT_REPORT.md
+1707	0	docs/PRE_DEPLOYMENT_FIXES.md
+0	0	docs/adr/.gitkeep
+17	0	docs/adr/ADR-001-self-hosted-only.md
+13	0	docs/adr/ADR-002-port-conflict.md
+14	0	docs/adr/ADR-003-pipeline-stage-count.md
+13	0	docs/adr/ADR-004-timescaledb.md
+111	0	docs/architecture/adr-001-self-hosted-mandate.md
+56	0	docs/deployment/runbook.md
+15	0	docs/stage-numbering-map.md
+28	0	docs/troubleshooting/common_issues.md
+25	9	ivgs-api/app/api/deps.py
+8	4	ivgs-api/app/api/v1/__init__.py
+63	0	ivgs-api/app/api/v1/gpus.py
+1	1	ivgs-api/app/api/v1/projects.py
+279	6	ivgs-api/app/api/v1/prompts.py
+5	17	ivgs-api/app/models/gpu_node.py
+0	5	ivgs-api/app/models/project.py
+11	4	ivgs-api/app/models/prompt.py
+0	5	ivgs-api/app/models/quality_score.py
+1	4	ivgs-api/app/models/retention_policy.py
+15	7	ivgs-api/app/models/user.py
+50	0	ivgs-api/app/schemas/gpu.py
+25	1	ivgs-api/app/schemas/prompt.py
+195	2	ivgs-api/app/services/gpu_service.py
+116	14	ivgs-api/app/services/prompt_service.py
+2	2	ivgs-api/app/services/quality_service.py
+4	4	ivgs-api/app/services/retention_service.py
+74	37	ivgs-api/migrations/versions/0001_initial_core.py
+8	4	ivgs-api/migrations/versions/0002_pipeline_checkpoints.py
+14	7	ivgs-api/migrations/versions/0003_gpu_registry.py
+2	1	ivgs-api/migrations/versions/0004_retry_tracking.py
+8	4	ivgs-api/migrations/versions/0005_worker_heartbeats.py
+9	5	ivgs-api/migrations/versions/0006_dead_letter_queue.py
+8	4	ivgs-api/migrations/versions/0007_composition_manifests.py
+8	4	ivgs-api/migrations/versions/0008_quality_scores.py
+8	4	ivgs-api/migrations/versions/0009_render_segments.py
+43	37	ivgs-api/migrations/versions/0010_gpu_metrics.py
+1	1	ivgs-api/migrations/versions/0011_retention_policies.py
+2	1	ivgs-api/migrations/versions/0012_storage_quotas.py
+15	8	ivgs-api/migrations/versions/0013_backup_records.py
+34	0	ivgs-api/migrations/versions/0015_add_user_is_active.py
+43	0	ivgs-api/migrations/versions/0016_add_power_tdp_w.py
+55	1112	ivgs-api/tests/conftest.py
+0	40	ivgs-api/tests/test_rollback_probe.py
+35	0	ivgs-frontend/Dockerfile
+5	0	ivgs-frontend/next-env.d.ts
+69	0	ivgs-frontend/next.config.js
+6220	0	ivgs-frontend/package-lock.json
+46	0	ivgs-frontend/package.json
+13	0	ivgs-frontend/postcss.config.js
+0	0	ivgs-frontend/public/.gitkeep
+398	0	ivgs-frontend/src/app/admin/backups/page.tsx
+59	0	ivgs-frontend/src/app/admin/layout.tsx
+150	0	ivgs-frontend/src/app/admin/page.tsx
+412	0	ivgs-frontend/src/app/admin/retention/page.tsx
+795	0	ivgs-frontend/src/app/admin/users/page.tsx
+75	0	ivgs-frontend/src/app/globals.css
+69	0	ivgs-frontend/src/app/layout.tsx
+164	0	ivgs-frontend/src/app/login/page.tsx
+622	0	ivgs-frontend/src/app/monitoring/dlq/page.tsx
+529	0	ivgs-frontend/src/app/monitoring/gpu/page.tsx
+61	0	ivgs-frontend/src/app/monitoring/layout.tsx
+201	0	ivgs-frontend/src/app/monitoring/page.tsx
+962	0	ivgs-frontend/src/app/monitoring/pipeline/page.tsx
+445	0	ivgs-frontend/src/app/monitoring/quality/page.tsx
+661	0	ivgs-frontend/src/app/monitoring/storage/page.tsx
+674	0	ivgs-frontend/src/app/monitoring/timeline/page.tsx
+218	0	ivgs-frontend/src/app/nodes/page.tsx
+440	0	ivgs-frontend/src/app/page.tsx
+311	0	ivgs-frontend/src/app/projects/[id]/assets/page.tsx
+341	0	ivgs-frontend/src/app/projects/[id]/audio/page.tsx
+101	0	ivgs-frontend/src/app/projects/[id]/draft/page.tsx
+267	0	ivgs-frontend/src/app/projects/[id]/jobs/page.tsx
+311	0	ivgs-frontend/src/app/projects/[id]/languages/page.tsx
+414	0	ivgs-frontend/src/app/projects/[id]/page.tsx
+242	0	ivgs-frontend/src/app/projects/[id]/renders/page.tsx
+604	0	ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx
+181	0	ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx
+300	0	ivgs-frontend/src/app/projects/[id]/transcript/page.tsx
+593	0	ivgs-frontend/src/app/projects/new/page.tsx
+425	0	ivgs-frontend/src/app/prompts/page.tsx
+318	0	ivgs-frontend/src/components/AssetBrowser.tsx
+275	0	ivgs-frontend/src/components/AssetUploader.tsx
+109	0	ivgs-frontend/src/components/ErrorBoundary.tsx
+17	0	ivgs-frontend/src/components/Footer.tsx
+167	0	ivgs-frontend/src/components/Header.tsx
+56	0	ivgs-frontend/src/components/LoadingSpinner.tsx
+168	0	ivgs-frontend/src/components/NodeCard.tsx
+205	0	ivgs-frontend/src/components/PipelineTracker.tsx
+120	0	ivgs-frontend/src/components/ProjectCard.tsx
+182	0	ivgs-frontend/src/components/ProjectModal.tsx
+106	0	ivgs-frontend/src/components/ProtectedRoute.tsx
+172	0	ivgs-frontend/src/components/Sidebar.tsx
+61	0	ivgs-frontend/src/components/StateBadge.tsx
+162	0	ivgs-frontend/src/components/Toast.tsx
+173	0	ivgs-frontend/src/components/TranscriptEditor.tsx
+407	0	ivgs-frontend/src/components/VideoPlayer.tsx
+284	0	ivgs-frontend/src/components/monitoring/DLQAnalytics.tsx
+359	0	ivgs-frontend/src/components/monitoring/DLQDetailModal.tsx
+338	0	ivgs-frontend/src/components/monitoring/DLQTable.tsx
+241	0	ivgs-frontend/src/components/monitoring/GPUFleetChart.tsx
+308	0	ivgs-frontend/src/components/monitoring/GPUNodeCard.tsx
+351	0	ivgs-frontend/src/components/monitoring/PipelineDAG.tsx
+298	0	ivgs-frontend/src/components/monitoring/QualityReviewCard.tsx
+165	0	ivgs-frontend/src/components/monitoring/StorageTierChart.tsx
+362	0	ivgs-frontend/src/components/monitoring/TimelineEditor.tsx
+671	0	ivgs-frontend/src/components/prompts/PromptEditor.tsx
+488	0	ivgs-frontend/src/components/prompts/PromptHistory.tsx
+368	0	ivgs-frontend/src/components/prompts/PromptLibrary.tsx
+385	0	ivgs-frontend/src/components/prompts/PromptManager.tsx
+754	0	ivgs-frontend/src/components/prompts/PromptPlayground.tsx
+389	0	ivgs-frontend/src/components/storyboard/SceneCard.tsx
+820	0	ivgs-frontend/src/components/storyboard/SceneEditModal.tsx
+349	0	ivgs-frontend/src/components/storyboard/SceneTimeline.tsx
+233	0	ivgs-frontend/src/components/storyboard/StoryboardEditor.tsx
+268	0	ivgs-frontend/src/contexts/AuthContext.tsx
+67	0	ivgs-frontend/src/hooks/useAssets.ts
+27	0	ivgs-frontend/src/hooks/useAuth.ts
+72	0	ivgs-frontend/src/hooks/useBackups.ts
+66	0	ivgs-frontend/src/hooks/useJobs.ts
+584	0	ivgs-frontend/src/hooks/useMonitoring.ts
+38	0	ivgs-frontend/src/hooks/useNodes.ts
+99	0	ivgs-frontend/src/hooks/usePipeline.ts
+122	0	ivgs-frontend/src/hooks/useProjects.ts
+359	0	ivgs-frontend/src/hooks/usePrompts.ts
+98	0	ivgs-frontend/src/hooks/useRetention.ts
+353	0	ivgs-frontend/src/hooks/useStoryboard.ts
+77	0	ivgs-frontend/src/hooks/useTranscripts.ts
+274	0	ivgs-frontend/src/hooks/useWebSocket.ts
+254	0	ivgs-frontend/src/lib/api-client.ts
+17	0	ivgs-frontend/src/lib/api.ts
+134	0	ivgs-frontend/src/lib/auth.ts
+79	0	ivgs-frontend/src/middleware.ts
+487	0	ivgs-frontend/src/types/api.ts
+67	0	ivgs-frontend/src/types/index.ts
+377	0	ivgs-frontend/src/types/monitoring.ts
+405	0	ivgs-frontend/src/types/prompts.ts
+241	0	ivgs-frontend/src/types/storyboard.ts
+89	0	ivgs-frontend/tailwind.config.js
+33	0	ivgs-frontend/tsconfig.json
+97	0	ivgs-infra/.env.node01
+12	0	ivgs-infra/.gitignore
+123	0	ivgs-infra/configs/cron/backup_cron
+205	0	ivgs-infra/configs/nginx/nginx.conf
+139	0	ivgs-infra/configs/nginx/ssl/generate-certs.sh
+31	0	ivgs-infra/configs/nginx/websocket.conf
+55	0	ivgs-infra/configs/postgres.conf
+340	0	ivgs-infra/configs/prometheus/alert_rules.yml
+221	0	ivgs-infra/configs/prometheus/prometheus.yml
+42	0	ivgs-infra/configs/redis.conf
+39	0	ivgs-infra/configs/seaweedfs/filer.toml
+20	0	ivgs-infra/configs/seaweedfs/master.toml
+30	0	ivgs-infra/configs/seaweedfs/volume.toml
+205	0	ivgs-infra/docker-compose.base.yml
+314	0	ivgs-infra/docker-compose.monitoring.yml
+506	0	ivgs-infra/docker-compose.node01.yml
+195	0	ivgs-infra/docker-compose.node02.yml
+189	0	ivgs-infra/docker-compose.node03.yml
+321	0	ivgs-infra/docker-compose.node04.yml
+203	0	ivgs-infra/docker-compose.node05.yml
+173	0	ivgs-infra/docker-compose.node06.yml
+14	0	ivgs-infra/docker-compose.override.node01.yml
+45	0	ivgs-infra/monitoring/alertmanager.yml
+477	0	ivgs-infra/monitoring/grafana/dashboards/grafana-gpu.json
+520	0	ivgs-infra/monitoring/grafana/dashboards/grafana-pipeline.json
+28	0	ivgs-infra/monitoring/grafana/provisioning/dashboards/dashboard.yml
+43	0	ivgs-infra/monitoring/grafana/provisioning/datasources/prometheus.yml
+340	0	ivgs-infra/monitoring/prometheus/alert_rules.yml
+221	0	ivgs-infra/monitoring/prometheus/prometheus.yml
+43	0	ivgs-infra/scripts/enforce_sha_tags.sh
+356	0	ivgs-infra/scripts/v4_to_v5_migration.py
+41	0	ivgs-models/README.md
+5	0	ivgs-models/checksums.sha256
+8	0	ivgs-models/comfyui/animatediff-workflow.json
+8	0	ivgs-models/comfyui/flux1-dev-workflow.json
+8	0	ivgs-models/comfyui/sdxl-workflow.json
+87	0	ivgs-models/download_models.sh
+8	0	ivgs-models/ollama/Modelfile
+22	0	ivgs-models/tts/coqui-xtts-v2.yaml
+13	0	ivgs-models/vllm/llama-3.3-70b.yaml
+12	0	ivgs-models/vllm/mistral-24b.yaml
+12	0	ivgs-models/vllm/qwen2.5-72b.yaml
+42	0	ivgs-scheduler/Dockerfile
+1	0	ivgs-scheduler/__init__.py
+512	0	ivgs-scheduler/admission_control.py
+349	0	ivgs-scheduler/circuit_breaker.py
+519	0	ivgs-scheduler/gpu_registry.py
+304	0	ivgs-scheduler/load_balancer.py
+938	0	ivgs-scheduler/main.py
+184	0	ivgs-scheduler/metrics.py
+381	0	ivgs-scheduler/model_concurrency.py
+371	0	ivgs-scheduler/priority_queue.py
+12	0	ivgs-scheduler/requirements.txt
+537	0	ivgs-scheduler/scheduler.py
+1	0	ivgs-scheduler/tests/__init__.py
+395	0	ivgs-scheduler/tests/test_admission.py
+215	0	ivgs-scheduler/tests/test_circuit_breaker.py
+240	0	ivgs-scheduler/tests/test_load_balancer.py
+542	0	ivgs-scheduler/tests/test_scheduler.py
+44	0	ivgs-workers/Dockerfile
+571	0	ivgs-workers/celery_app.py
+1	0	ivgs-workers/clients/__init__.py
+108	0	ivgs-workers/clients/cogvideox_client.py
+86	0	ivgs-workers/clients/coqui_client.py
+941	0	ivgs-workers/clients/ffmpeg_client.py
+192	0	ivgs-workers/clients/flux_client.py
+89	0	ivgs-workers/clients/kokoro_client.py
+502	0	ivgs-workers/clients/latentsync_client.py
+122	0	ivgs-workers/clients/ollama_client.py
+539	0	ivgs-workers/clients/remotion_client.py
+367	0	ivgs-workers/clients/sadtalker_client.py
+71	0	ivgs-workers/clients/safety_classifier.py
+240	0	ivgs-workers/clients/vllm_client.py
+97	0	ivgs-workers/clients/wan21_client.py
+101	0	ivgs-workers/clients/whisperx_client.py
+332	0	ivgs-workers/config.py
+1	0	ivgs-workers/configs/__init__.py
+362	0	ivgs-workers/configs/composition.yml
+304	0	ivgs-workers/configs/media_generation.yml
+344	0	ivgs-workers/docker-compose.workers.yml
+43	0	ivgs-workers/models/__init__.py
+323	0	ivgs-workers/models/task_result.py
+55	0	ivgs-workers/prompts/stage1_system.j2
+25	0	ivgs-workers/prompts/stage1_user.j2
+45	0	ivgs-workers/prompts/stage2_system.j2
+43	0	ivgs-workers/prompts/stage2_user.j2
+50	0	ivgs-workers/prompts/stage3_system.j2
+44	0	ivgs-workers/prompts/stage4_system.j2
+24	0	ivgs-workers/prompts/stage5_system.j2
+53	0	ivgs-workers/requirements.txt
+19	0	ivgs-workers/services/__init__.py
+272	0	ivgs-workers/services/caption_service.py
+754	0	ivgs-workers/services/dlq_service.py
+347	0	ivgs-workers/services/error_classifier.py
+742	0	ivgs-workers/services/fallback_chain.py
+304	0	ivgs-workers/services/manifest_builder.py
+613	0	ivgs-workers/services/motion_graphics.py
+753	0	ivgs-workers/services/orphan_cleanup.py
+547	0	ivgs-workers/services/quality_gate.py
+1184	0	ivgs-workers/services/quality_validator.py
+616	0	ivgs-workers/services/retention_migration.py
+461	0	ivgs-workers/services/retry_engine.py
+379	0	ivgs-workers/services/safety_classifier.py
+264	0	ivgs-workers/services/segment_planner.py
+50	0	ivgs-workers/tasks/__init__.py
+407	0	ivgs-workers/tasks/localization_pipeline.py
+610	0	ivgs-workers/tasks/periodic_tasks.py
+655	0	ivgs-workers/tasks/pipeline_orchestrator.py
+973	0	ivgs-workers/tasks/pipeline_orchestrator_v2.py
+730	0	ivgs-workers/tasks/stage1_transcript.py
+771	0	ivgs-workers/tasks/stage2_storyboard.py
+720	0	ivgs-workers/tasks/stage3_images.py
+166	0	ivgs-workers/tasks/stage4_manifest.py
+618	0	ivgs-workers/tasks/stage5_voiceover.py
+664	0	ivgs-workers/tasks/stage6_talking_head.py
+575	0	ivgs-workers/tasks/stage7_prototype_draft.py
+749	0	ivgs-workers/tasks/stage8_final_render.py
+556	0	ivgs-workers/tasks/talking_head_task.py
+580	0	ivgs-workers/tasks/video_generation_task.py
+487	0	ivgs-workers/tests/test_composition.py
+206	0	ivgs-workers/tests/test_corruption.py
+379	0	ivgs-workers/tests/test_dlq_service.py
+244	0	ivgs-workers/tests/test_fallback_chain.py
+182	0	ivgs-workers/tests/test_orphan_cleanup.py
+367	0	ivgs-workers/tests/test_quality_gate.py
+456	0	ivgs-workers/tests/test_quality_validator.py
+223	0	ivgs-workers/tests/test_retention.py
+236	0	ivgs-workers/tests/test_retry_engine.py
+577	0	ivgs-workers/tests/test_stage1.py
+484	0	ivgs-workers/tests/test_stage2.py
+405	0	ivgs-workers/tests/test_stage3.py
+278	0	ivgs-workers/tests/test_stage4.py
+296	0	ivgs-workers/tests/test_stage5.py
+327	0	ivgs-workers/tests/test_talking_head_task.py
+308	0	ivgs-workers/tests/test_video_gen.py
+1	0	ivgs-workers/utils/__init__.py
+523	0	ivgs-workers/utils/audio_validator.py
+447	0	ivgs-workers/utils/error_handler.py
+416	0	ivgs-workers/utils/gpu_utils.py
+354	0	ivgs-workers/utils/image_validator.py
+529	0	ivgs-workers/utils/media_converter.py
+410	0	ivgs-workers/utils/video_validator.py
+1	0	ivgs-workers/validators/__init__.py
+485	0	ivgs-workers/validators/corruption_detector.py
+292	0	ivgs-workers/validators/lipsync_validator.py
+62	4	pyproject.toml
+439	0	scripts/backup.sh
+236	0	scripts/compliance_scanner.py
+261	0	scripts/config_backup.sh
+130	0	scripts/create_admin.py
+305	0	scripts/deploy-node.sh
+32	0	scripts/generate_docs.sh
+551	0	scripts/restore.sh
+292	0	scripts/seed_data.py
+385	0	scripts/verify_backup.sh
+199	0	scripts/verify_spec_compliance.sh
+115	0	scripts/wal_archive.sh
+1	0	tests/__init__.py
+92	0	tests/conftest.py
+123	0	tests/e2e/test_localization.py
+206	0	tests/e2e/test_project_lifecycle.py
+396	0	tests/integration/test_auth_integration.py
+111	0	tests/integration/test_dlq_integration.py
+168	0	tests/integration/test_gpu_integration.py
+221	0	tests/integration/test_pipeline_integration.py
+240	0	tests/integration/test_projects_integration.py
+211	0	tests/smoke/test_gpu_nodes.py
+97	0	tests/test_compliance_scanner.py

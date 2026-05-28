@@ -1,0 +1,941 @@
+=== INDEPENDENT VERIFICATION PROTOCOL ===
+Analysis Date: Thu May 28 00:19:58 UTC 2026
+
+Artifact 1: Raw MD5 Hash Evidence
+=================================
+
+Generating MD5 hashes for sandbox tree (634ec66)...
+Sandbox MD5 hashes generated: 144 files
+Generating MD5 hashes for origin tree (b1082d7)...
+Origin MD5 hashes generated: 145 files
+
+MD5 hash files created:
+  MD5_SANDBOX_634ec66.txt (144 hashes)
+  MD5_ORIGIN_b1082d7.txt (145 hashes)
+
+Sample from sandbox MD5 file (first 10):
+Dockerfile a67be4548c0861ce5504f4746c7c9304
+alembic.ini 772fb6fdeeda06f0930912d295395128
+app/__init__.py 30f0295b5085aa0f6429c95741253464
+app/api/__init__.py 80b628be2dbf7c278c88f5be6a8eada0
+app/api/deps.py 935477286346f0a278a8c13c114384d8
+app/api/v1/__init__.py bcd09efe0003968b3e2c19330b0e4aaa
+app/api/v1/alerts.py 4cc9d78e363dcfb805bc1301e05b4e1f
+app/api/v1/assets.py 98f3c5836aeea8e3237539de688c70fb
+app/api/v1/auth.py 24949069a634119808f2f2be24dd5c4d
+app/api/v1/backup.py f8c8f551e163bea525c4d8d113689038
+
+Sample from origin MD5 file (first 10):
+Dockerfile a67be4548c0861ce5504f4746c7c9304
+alembic.ini 772fb6fdeeda06f0930912d295395128
+app/__init__.py 30f0295b5085aa0f6429c95741253464
+app/api/__init__.py 80b628be2dbf7c278c88f5be6a8eada0
+app/api/deps.py 14cd1b835b8076fb6be142617d922cac
+app/api/v1/__init__.py e0cdc3f3340a3a3922befd28f52c3113
+app/api/v1/alerts.py 4cc9d78e363dcfb805bc1301e05b4e1f
+app/api/v1/assets.py 98f3c5836aeea8e3237539de688c70fb
+app/api/v1/auth.py 24949069a634119808f2f2be24dd5c4d
+app/api/v1/backup.py f8c8f551e163bea525c4d8d113689038
+
+=================================
+Artifact 2: Independent Git Verification
+=================================
+
+Method: git diff using internal SHA-1 hashing
+
+Test 1: git diff --stat 634ec66 b1082d7
+Expected: Empty output if trees are identical
+Actual output:
+---BEGIN OUTPUT---
+ .abacus.donotdelete                                |    2 +-
+ .env.node01.template                               |   96 +
+ .env.node02.template                               |   44 +
+ .env.node03.template                               |   44 +
+ .env.node04.template                               |   57 +
+ .env.node05.template                               |   43 +
+ .env.node06.template                               |   43 +
+ .env.template                                      |   82 +
+ .github/dependabot.yml                             |   96 +
+ .github/workflows/cd-deploy.yml                    |  137 +
+ .github/workflows/ci.yml                           |  173 +
+ .github/workflows/compliance-check.yml             |   92 +
+ .gitignore                                         |  105 +-
+ .pre-commit-config.yaml                            |   53 +
+ DEPLOYMENT_SUMMARY.md                              |  186 +
+ README.md                                          |  525 ++
+ TEST_SUITE_WORKING_SOLUTION.docx                   |  Bin 15429 -> 0 bytes
+ TEST_SUITE_WORKING_SOLUTION.md                     |  162 -
+ TEST_SUITE_WORKING_SOLUTION.pdf                    |  Bin 58206 -> 0 bytes
+ configs/cron/backup_cron                           |  123 +
+ configs/nginx/nginx.conf                           |  205 +
+ configs/nginx/ssl/generate-certs.sh                |  139 +
+ configs/nginx/websocket.conf                       |   31 +
+ configs/postgres.conf                              |   55 +
+ configs/redis.conf                                 |   42 +
+ configs/seaweedfs/filer.toml                       |   39 +
+ configs/seaweedfs/master.toml                      |   20 +
+ configs/seaweedfs/volume.toml                      |   30 +
+ docs/GITHUB_AUDIT_REPORT.md                        |  250 +
+ docs/PRE_DEPLOYMENT_FIXES.md                       | 1707 ++++++
+ docs/adr/.gitkeep                                  |    0
+ docs/adr/ADR-001-self-hosted-only.md               |   17 +
+ docs/adr/ADR-002-port-conflict.md                  |   13 +
+ docs/adr/ADR-003-pipeline-stage-count.md           |   14 +
+ docs/adr/ADR-004-timescaledb.md                    |   13 +
+ docs/architecture/adr-001-self-hosted-mandate.md   |  111 +
+ docs/deployment/runbook.md                         |   56 +
+ docs/stage-numbering-map.md                        |   15 +
+ docs/troubleshooting/common_issues.md              |   28 +
+ ivgs-api/app/api/deps.py                           |   34 +-
+ ivgs-api/app/api/v1/__init__.py                    |   12 +-
+ ivgs-api/app/api/v1/gpus.py                        |   63 +
+ ivgs-api/app/api/v1/projects.py                    |    2 +-
+ ivgs-api/app/api/v1/prompts.py                     |  285 +-
+ ivgs-api/app/models/gpu_node.py                    |   22 +-
+ ivgs-api/app/models/project.py                     |    5 -
+ ivgs-api/app/models/prompt.py                      |   15 +-
+ ivgs-api/app/models/quality_score.py               |    5 -
+ ivgs-api/app/models/retention_policy.py            |    5 +-
+ ivgs-api/app/models/user.py                        |   22 +-
+ ivgs-api/app/schemas/gpu.py                        |   50 +
+ ivgs-api/app/schemas/prompt.py                     |   26 +-
+ ivgs-api/app/services/gpu_service.py               |  197 +-
+ ivgs-api/app/services/prompt_service.py            |  130 +-
+ ivgs-api/app/services/quality_service.py           |    4 +-
+ ivgs-api/app/services/retention_service.py         |    8 +-
+ ivgs-api/migrations/versions/0001_initial_core.py  |  111 +-
+ .../versions/0002_pipeline_checkpoints.py          |   12 +-
+ ivgs-api/migrations/versions/0003_gpu_registry.py  |   21 +-
+ .../migrations/versions/0004_retry_tracking.py     |    3 +-
+ .../migrations/versions/0005_worker_heartbeats.py  |   12 +-
+ .../migrations/versions/0006_dead_letter_queue.py  |   14 +-
+ .../versions/0007_composition_manifests.py         |   12 +-
+ .../migrations/versions/0008_quality_scores.py     |   12 +-
+ .../migrations/versions/0009_render_segments.py    |   12 +-
+ ivgs-api/migrations/versions/0010_gpu_metrics.py   |   80 +-
+ .../migrations/versions/0011_retention_policies.py |    2 +-
+ .../migrations/versions/0012_storage_quotas.py     |    3 +-
+ .../migrations/versions/0013_backup_records.py     |   23 +-
+ .../migrations/versions/0015_add_user_is_active.py |   34 +
+ .../migrations/versions/0016_add_power_tdp_w.py    |   43 +
+ ivgs-api/tests/conftest.py                         | 1167 +---
+ ivgs-api/tests/test_rollback_probe.py              |   40 -
+ ivgs-frontend/Dockerfile                           |   35 +
+ ivgs-frontend/next-env.d.ts                        |    5 +
+ ivgs-frontend/next.config.js                       |   69 +
+ ivgs-frontend/package-lock.json                    | 6220 ++++++++++++++++++++
+ ivgs-frontend/package.json                         |   46 +
+ ivgs-frontend/postcss.config.js                    |   13 +
+ ivgs-frontend/public/.gitkeep                      |    0
+ ivgs-frontend/src/app/admin/backups/page.tsx       |  398 ++
+ ivgs-frontend/src/app/admin/layout.tsx             |   59 +
+ ivgs-frontend/src/app/admin/page.tsx               |  150 +
+ ivgs-frontend/src/app/admin/retention/page.tsx     |  412 ++
+ ivgs-frontend/src/app/admin/users/page.tsx         |  795 +++
+ ivgs-frontend/src/app/globals.css                  |   75 +
+ ivgs-frontend/src/app/layout.tsx                   |   69 +
+ ivgs-frontend/src/app/login/page.tsx               |  164 +
+ ivgs-frontend/src/app/monitoring/dlq/page.tsx      |  622 ++
+ ivgs-frontend/src/app/monitoring/gpu/page.tsx      |  529 ++
+ ivgs-frontend/src/app/monitoring/layout.tsx        |   61 +
+ ivgs-frontend/src/app/monitoring/page.tsx          |  201 +
+ ivgs-frontend/src/app/monitoring/pipeline/page.tsx |  962 +++
+ ivgs-frontend/src/app/monitoring/quality/page.tsx  |  445 ++
+ ivgs-frontend/src/app/monitoring/storage/page.tsx  |  661 +++
+ ivgs-frontend/src/app/monitoring/timeline/page.tsx |  674 +++
+ ivgs-frontend/src/app/nodes/page.tsx               |  218 +
+ ivgs-frontend/src/app/page.tsx                     |  440 ++
+ .../src/app/projects/[id]/assets/page.tsx          |  311 +
+ ivgs-frontend/src/app/projects/[id]/audio/page.tsx |  341 ++
+ ivgs-frontend/src/app/projects/[id]/draft/page.tsx |  101 +
+ ivgs-frontend/src/app/projects/[id]/jobs/page.tsx  |  267 +
+ .../src/app/projects/[id]/languages/page.tsx       |  311 +
+ ivgs-frontend/src/app/projects/[id]/page.tsx       |  414 ++
+ .../src/app/projects/[id]/renders/page.tsx         |  242 +
+ .../src/app/projects/[id]/storyboard/page.tsx      |  604 ++
+ .../src/app/projects/[id]/talking-head/page.tsx    |  181 +
+ .../src/app/projects/[id]/transcript/page.tsx      |  300 +
+ ivgs-frontend/src/app/projects/new/page.tsx        |  593 ++
+ ivgs-frontend/src/app/prompts/page.tsx             |  425 ++
+ ivgs-frontend/src/components/AssetBrowser.tsx      |  318 +
+ ivgs-frontend/src/components/AssetUploader.tsx     |  275 +
+ ivgs-frontend/src/components/ErrorBoundary.tsx     |  109 +
+ ivgs-frontend/src/components/Footer.tsx            |   17 +
+ ivgs-frontend/src/components/Header.tsx            |  167 +
+ ivgs-frontend/src/components/LoadingSpinner.tsx    |   56 +
+ ivgs-frontend/src/components/NodeCard.tsx          |  168 +
+ ivgs-frontend/src/components/PipelineTracker.tsx   |  205 +
+ ivgs-frontend/src/components/ProjectCard.tsx       |  120 +
+ ivgs-frontend/src/components/ProjectModal.tsx      |  182 +
+ ivgs-frontend/src/components/ProtectedRoute.tsx    |  106 +
+ ivgs-frontend/src/components/Sidebar.tsx           |  172 +
+ ivgs-frontend/src/components/StateBadge.tsx        |   61 +
+ ivgs-frontend/src/components/Toast.tsx             |  162 +
+ ivgs-frontend/src/components/TranscriptEditor.tsx  |  173 +
+ ivgs-frontend/src/components/VideoPlayer.tsx       |  407 ++
+ .../src/components/monitoring/DLQAnalytics.tsx     |  284 +
+ .../src/components/monitoring/DLQDetailModal.tsx   |  359 ++
+ .../src/components/monitoring/DLQTable.tsx         |  338 ++
+ .../src/components/monitoring/GPUFleetChart.tsx    |  241 +
+ .../src/components/monitoring/GPUNodeCard.tsx      |  308 +
+ .../src/components/monitoring/PipelineDAG.tsx      |  351 ++
+ .../components/monitoring/QualityReviewCard.tsx    |  298 +
+ .../src/components/monitoring/StorageTierChart.tsx |  165 +
+ .../src/components/monitoring/TimelineEditor.tsx   |  362 ++
+ .../src/components/prompts/PromptEditor.tsx        |  671 +++
+ .../src/components/prompts/PromptHistory.tsx       |  488 ++
+ .../src/components/prompts/PromptLibrary.tsx       |  368 ++
+ .../src/components/prompts/PromptManager.tsx       |  385 ++
+ .../src/components/prompts/PromptPlayground.tsx    |  754 +++
+ .../src/components/storyboard/SceneCard.tsx        |  389 ++
+ .../src/components/storyboard/SceneEditModal.tsx   |  820 +++
+ .../src/components/storyboard/SceneTimeline.tsx    |  349 ++
+ .../src/components/storyboard/StoryboardEditor.tsx |  233 +
+ ivgs-frontend/src/contexts/AuthContext.tsx         |  268 +
+ ivgs-frontend/src/hooks/useAssets.ts               |   67 +
+ ivgs-frontend/src/hooks/useAuth.ts                 |   27 +
+ ivgs-frontend/src/hooks/useBackups.ts              |   72 +
+ ivgs-frontend/src/hooks/useJobs.ts                 |   66 +
+ ivgs-frontend/src/hooks/useMonitoring.ts           |  584 ++
+ ivgs-frontend/src/hooks/useNodes.ts                |   38 +
+ ivgs-frontend/src/hooks/usePipeline.ts             |   99 +
+ ivgs-frontend/src/hooks/useProjects.ts             |  122 +
+ ivgs-frontend/src/hooks/usePrompts.ts              |  359 ++
+ ivgs-frontend/src/hooks/useRetention.ts            |   98 +
+ ivgs-frontend/src/hooks/useStoryboard.ts           |  353 ++
+ ivgs-frontend/src/hooks/useTranscripts.ts          |   77 +
+ ivgs-frontend/src/hooks/useWebSocket.ts            |  274 +
+ ivgs-frontend/src/lib/api-client.ts                |  254 +
+ ivgs-frontend/src/lib/api.ts                       |   17 +
+ ivgs-frontend/src/lib/auth.ts                      |  134 +
+ ivgs-frontend/src/middleware.ts                    |   79 +
+ ivgs-frontend/src/types/api.ts                     |  487 ++
+ ivgs-frontend/src/types/index.ts                   |   67 +
+ ivgs-frontend/src/types/monitoring.ts              |  377 ++
+ ivgs-frontend/src/types/prompts.ts                 |  405 ++
+ ivgs-frontend/src/types/storyboard.ts              |  241 +
+ ivgs-frontend/tailwind.config.js                   |   89 +
+ ivgs-frontend/tsconfig.json                        |   33 +
+ ivgs-infra/.env.node01                             |   97 +
+ ivgs-infra/.gitignore                              |   12 +
+ ivgs-infra/configs/cron/backup_cron                |  123 +
+ ivgs-infra/configs/nginx/nginx.conf                |  205 +
+ ivgs-infra/configs/nginx/ssl/generate-certs.sh     |  139 +
+ ivgs-infra/configs/nginx/websocket.conf            |   31 +
+ ivgs-infra/configs/postgres.conf                   |   55 +
+ ivgs-infra/configs/prometheus/alert_rules.yml      |  340 ++
+ ivgs-infra/configs/prometheus/prometheus.yml       |  221 +
+ ivgs-infra/configs/redis.conf                      |   42 +
+ ivgs-infra/configs/seaweedfs/filer.toml            |   39 +
+ ivgs-infra/configs/seaweedfs/master.toml           |   20 +
+ ivgs-infra/configs/seaweedfs/volume.toml           |   30 +
+ ivgs-infra/docker-compose.base.yml                 |  205 +
+ ivgs-infra/docker-compose.monitoring.yml           |  314 +
+ ivgs-infra/docker-compose.node01.yml               |  506 ++
+ ivgs-infra/docker-compose.node02.yml               |  195 +
+ ivgs-infra/docker-compose.node03.yml               |  189 +
+ ivgs-infra/docker-compose.node04.yml               |  321 +
+ ivgs-infra/docker-compose.node05.yml               |  203 +
+ ivgs-infra/docker-compose.node06.yml               |  173 +
+ ivgs-infra/docker-compose.override.node01.yml      |   14 +
+ ivgs-infra/monitoring/alertmanager.yml             |   45 +
+ .../monitoring/grafana/dashboards/grafana-gpu.json |  477 ++
+ .../grafana/dashboards/grafana-pipeline.json       |  520 ++
+ .../grafana/provisioning/dashboards/dashboard.yml  |   28 +
+ .../provisioning/datasources/prometheus.yml        |   43 +
+ ivgs-infra/monitoring/prometheus/alert_rules.yml   |  340 ++
+ ivgs-infra/monitoring/prometheus/prometheus.yml    |  221 +
+ ivgs-infra/scripts/enforce_sha_tags.sh             |   43 +
+ ivgs-infra/scripts/v4_to_v5_migration.py           |  356 ++
+ ivgs-models/README.md                              |   41 +
+ ivgs-models/checksums.sha256                       |    5 +
+ ivgs-models/comfyui/animatediff-workflow.json      |    8 +
+ ivgs-models/comfyui/flux1-dev-workflow.json        |    8 +
+ ivgs-models/comfyui/sdxl-workflow.json             |    8 +
+ ivgs-models/download_models.sh                     |   87 +
+ ivgs-models/ollama/Modelfile                       |    8 +
+ ivgs-models/tts/coqui-xtts-v2.yaml                 |   22 +
+ ivgs-models/vllm/llama-3.3-70b.yaml                |   13 +
+ ivgs-models/vllm/mistral-24b.yaml                  |   12 +
+ ivgs-models/vllm/qwen2.5-72b.yaml                  |   12 +
+ ivgs-scheduler/Dockerfile                          |   42 +
+ ivgs-scheduler/__init__.py                         |    1 +
+ ivgs-scheduler/admission_control.py                |  512 ++
+ ivgs-scheduler/circuit_breaker.py                  |  349 ++
+ ivgs-scheduler/gpu_registry.py                     |  519 ++
+ ivgs-scheduler/load_balancer.py                    |  304 +
+ ivgs-scheduler/main.py                             |  938 +++
+ ivgs-scheduler/metrics.py                          |  184 +
+ ivgs-scheduler/model_concurrency.py                |  381 ++
+ ivgs-scheduler/priority_queue.py                   |  371 ++
+ ivgs-scheduler/requirements.txt                    |   12 +
+ ivgs-scheduler/scheduler.py                        |  537 ++
+ ivgs-scheduler/tests/__init__.py                   |    1 +
+ ivgs-scheduler/tests/test_admission.py             |  395 ++
+ ivgs-scheduler/tests/test_circuit_breaker.py       |  215 +
+ ivgs-scheduler/tests/test_load_balancer.py         |  240 +
+ ivgs-scheduler/tests/test_scheduler.py             |  542 ++
+ ivgs-workers/Dockerfile                            |   44 +
+ ivgs-workers/celery_app.py                         |  571 ++
+ ivgs-workers/clients/__init__.py                   |    1 +
+ ivgs-workers/clients/cogvideox_client.py           |  108 +
+ ivgs-workers/clients/coqui_client.py               |   86 +
+ ivgs-workers/clients/ffmpeg_client.py              |  941 +++
+ ivgs-workers/clients/flux_client.py                |  192 +
+ ivgs-workers/clients/kokoro_client.py              |   89 +
+ ivgs-workers/clients/latentsync_client.py          |  502 ++
+ ivgs-workers/clients/ollama_client.py              |  122 +
+ ivgs-workers/clients/remotion_client.py            |  539 ++
+ ivgs-workers/clients/sadtalker_client.py           |  367 ++
+ ivgs-workers/clients/safety_classifier.py          |   71 +
+ ivgs-workers/clients/vllm_client.py                |  240 +
+ ivgs-workers/clients/wan21_client.py               |   97 +
+ ivgs-workers/clients/whisperx_client.py            |  101 +
+ ivgs-workers/config.py                             |  332 ++
+ ivgs-workers/configs/__init__.py                   |    1 +
+ ivgs-workers/configs/composition.yml               |  362 ++
+ ivgs-workers/configs/media_generation.yml          |  304 +
+ ivgs-workers/docker-compose.workers.yml            |  344 ++
+ ivgs-workers/models/__init__.py                    |   43 +
+ ivgs-workers/models/task_result.py                 |  323 +
+ ivgs-workers/prompts/stage1_system.j2              |   55 +
+ ivgs-workers/prompts/stage1_user.j2                |   25 +
+ ivgs-workers/prompts/stage2_system.j2              |   45 +
+ ivgs-workers/prompts/stage2_user.j2                |   43 +
+ ivgs-workers/prompts/stage3_system.j2              |   50 +
+ ivgs-workers/prompts/stage4_system.j2              |   44 +
+ ivgs-workers/prompts/stage5_system.j2              |   24 +
+ ivgs-workers/requirements.txt                      |   53 +
+ ivgs-workers/services/__init__.py                  |   19 +
+ ivgs-workers/services/caption_service.py           |  272 +
+ ivgs-workers/services/dlq_service.py               |  754 +++
+ ivgs-workers/services/error_classifier.py          |  347 ++
+ ivgs-workers/services/fallback_chain.py            |  742 +++
+ ivgs-workers/services/manifest_builder.py          |  304 +
+ ivgs-workers/services/motion_graphics.py           |  613 ++
+ ivgs-workers/services/orphan_cleanup.py            |  753 +++
+ ivgs-workers/services/quality_gate.py              |  547 ++
+ ivgs-workers/services/quality_validator.py         | 1184 ++++
+ ivgs-workers/services/retention_migration.py       |  616 ++
+ ivgs-workers/services/retry_engine.py              |  461 ++
+ ivgs-workers/services/safety_classifier.py         |  379 ++
+ ivgs-workers/services/segment_planner.py           |  264 +
+ ivgs-workers/tasks/__init__.py                     |   50 +
+ ivgs-workers/tasks/localization_pipeline.py        |  407 ++
+ ivgs-workers/tasks/periodic_tasks.py               |  610 ++
+ ivgs-workers/tasks/pipeline_orchestrator.py        |  655 +++
+ ivgs-workers/tasks/pipeline_orchestrator_v2.py     |  973 +++
+ ivgs-workers/tasks/stage1_transcript.py            |  730 +++
+ ivgs-workers/tasks/stage2_storyboard.py            |  771 +++
+ ivgs-workers/tasks/stage3_images.py                |  720 +++
+ ivgs-workers/tasks/stage4_manifest.py              |  166 +
+ ivgs-workers/tasks/stage5_voiceover.py             |  618 ++
+ ivgs-workers/tasks/stage6_talking_head.py          |  664 +++
+ ivgs-workers/tasks/stage7_prototype_draft.py       |  575 ++
+ ivgs-workers/tasks/stage8_final_render.py          |  749 +++
+ ivgs-workers/tasks/talking_head_task.py            |  556 ++
+ ivgs-workers/tasks/video_generation_task.py        |  580 ++
+ ivgs-workers/tests/test_composition.py             |  487 ++
+ ivgs-workers/tests/test_corruption.py              |  206 +
+ ivgs-workers/tests/test_dlq_service.py             |  379 ++
+ ivgs-workers/tests/test_fallback_chain.py          |  244 +
+ ivgs-workers/tests/test_orphan_cleanup.py          |  182 +
+ ivgs-workers/tests/test_quality_gate.py            |  367 ++
+ ivgs-workers/tests/test_quality_validator.py       |  456 ++
+ ivgs-workers/tests/test_retention.py               |  223 +
+ ivgs-workers/tests/test_retry_engine.py            |  236 +
+ ivgs-workers/tests/test_stage1.py                  |  577 ++
+ ivgs-workers/tests/test_stage2.py                  |  484 ++
+ ivgs-workers/tests/test_stage3.py                  |  405 ++
+ ivgs-workers/tests/test_stage4.py                  |  278 +
+ ivgs-workers/tests/test_stage5.py                  |  296 +
+ ivgs-workers/tests/test_talking_head_task.py       |  327 +
+ ivgs-workers/tests/test_video_gen.py               |  308 +
+ ivgs-workers/utils/__init__.py                     |    1 +
+ ivgs-workers/utils/audio_validator.py              |  523 ++
+ ivgs-workers/utils/error_handler.py                |  447 ++
+ ivgs-workers/utils/gpu_utils.py                    |  416 ++
+ ivgs-workers/utils/image_validator.py              |  354 ++
+ ivgs-workers/utils/media_converter.py              |  529 ++
+ ivgs-workers/utils/video_validator.py              |  410 ++
+ ivgs-workers/validators/__init__.py                |    1 +
+ ivgs-workers/validators/corruption_detector.py     |  485 ++
+ ivgs-workers/validators/lipsync_validator.py       |  292 +
+ pyproject.toml                                     |   66 +-
+ scripts/backup.sh                                  |  439 ++
+ scripts/compliance_scanner.py                      |  236 +
+ scripts/config_backup.sh                           |  261 +
+ scripts/create_admin.py                            |  130 +
+ scripts/deploy-node.sh                             |  305 +
+ scripts/generate_docs.sh                           |   32 +
+ scripts/restore.sh                                 |  551 ++
+ scripts/seed_data.py                               |  292 +
+ scripts/verify_backup.sh                           |  385 ++
+ scripts/verify_spec_compliance.sh                  |  199 +
+ scripts/wal_archive.sh                             |  115 +
+ tests/__init__.py                                  |    1 +
+ tests/conftest.py                                  |   92 +
+ tests/e2e/test_localization.py                     |  123 +
+ tests/e2e/test_project_lifecycle.py                |  206 +
+ tests/integration/test_auth_integration.py         |  396 ++
+ tests/integration/test_dlq_integration.py          |  111 +
+ tests/integration/test_gpu_integration.py          |  168 +
+ tests/integration/test_pipeline_integration.py     |  221 +
+ tests/integration/test_projects_integration.py     |  240 +
+ tests/smoke/test_gpu_nodes.py                      |  211 +
+ tests/test_compliance_scanner.py                   |   97 +
+ 337 files changed, 85074 insertions(+), 1523 deletions(-)
+---END OUTPUT---
+Exit code: 0
+Output line count: 338
+⚠️ RESULT: Non-empty output - trees have differences
+
+Test 2: git diff --name-only 634ec66 b1082d7
+Expected: Empty output if trees are identical
+Actual output:
+---BEGIN OUTPUT---
+.abacus.donotdelete
+.env.node01.template
+.env.node02.template
+.env.node03.template
+.env.node04.template
+.env.node05.template
+.env.node06.template
+.env.template
+.github/dependabot.yml
+.github/workflows/cd-deploy.yml
+.github/workflows/ci.yml
+.github/workflows/compliance-check.yml
+.gitignore
+.pre-commit-config.yaml
+DEPLOYMENT_SUMMARY.md
+README.md
+TEST_SUITE_WORKING_SOLUTION.docx
+TEST_SUITE_WORKING_SOLUTION.md
+TEST_SUITE_WORKING_SOLUTION.pdf
+configs/cron/backup_cron
+configs/nginx/nginx.conf
+configs/nginx/ssl/generate-certs.sh
+configs/nginx/websocket.conf
+configs/postgres.conf
+configs/redis.conf
+configs/seaweedfs/filer.toml
+configs/seaweedfs/master.toml
+configs/seaweedfs/volume.toml
+docs/GITHUB_AUDIT_REPORT.md
+docs/PRE_DEPLOYMENT_FIXES.md
+docs/adr/.gitkeep
+docs/adr/ADR-001-self-hosted-only.md
+docs/adr/ADR-002-port-conflict.md
+docs/adr/ADR-003-pipeline-stage-count.md
+docs/adr/ADR-004-timescaledb.md
+docs/architecture/adr-001-self-hosted-mandate.md
+docs/deployment/runbook.md
+docs/stage-numbering-map.md
+docs/troubleshooting/common_issues.md
+ivgs-api/app/api/deps.py
+ivgs-api/app/api/v1/__init__.py
+ivgs-api/app/api/v1/gpus.py
+ivgs-api/app/api/v1/projects.py
+ivgs-api/app/api/v1/prompts.py
+ivgs-api/app/models/gpu_node.py
+ivgs-api/app/models/project.py
+ivgs-api/app/models/prompt.py
+ivgs-api/app/models/quality_score.py
+ivgs-api/app/models/retention_policy.py
+ivgs-api/app/models/user.py
+ivgs-api/app/schemas/gpu.py
+ivgs-api/app/schemas/prompt.py
+ivgs-api/app/services/gpu_service.py
+ivgs-api/app/services/prompt_service.py
+ivgs-api/app/services/quality_service.py
+ivgs-api/app/services/retention_service.py
+ivgs-api/migrations/versions/0001_initial_core.py
+ivgs-api/migrations/versions/0002_pipeline_checkpoints.py
+ivgs-api/migrations/versions/0003_gpu_registry.py
+ivgs-api/migrations/versions/0004_retry_tracking.py
+ivgs-api/migrations/versions/0005_worker_heartbeats.py
+ivgs-api/migrations/versions/0006_dead_letter_queue.py
+ivgs-api/migrations/versions/0007_composition_manifests.py
+ivgs-api/migrations/versions/0008_quality_scores.py
+ivgs-api/migrations/versions/0009_render_segments.py
+ivgs-api/migrations/versions/0010_gpu_metrics.py
+ivgs-api/migrations/versions/0011_retention_policies.py
+ivgs-api/migrations/versions/0012_storage_quotas.py
+ivgs-api/migrations/versions/0013_backup_records.py
+ivgs-api/migrations/versions/0015_add_user_is_active.py
+ivgs-api/migrations/versions/0016_add_power_tdp_w.py
+ivgs-api/tests/conftest.py
+ivgs-api/tests/test_rollback_probe.py
+ivgs-frontend/Dockerfile
+ivgs-frontend/next-env.d.ts
+ivgs-frontend/next.config.js
+ivgs-frontend/package-lock.json
+ivgs-frontend/package.json
+ivgs-frontend/postcss.config.js
+ivgs-frontend/public/.gitkeep
+ivgs-frontend/src/app/admin/backups/page.tsx
+ivgs-frontend/src/app/admin/layout.tsx
+ivgs-frontend/src/app/admin/page.tsx
+ivgs-frontend/src/app/admin/retention/page.tsx
+ivgs-frontend/src/app/admin/users/page.tsx
+ivgs-frontend/src/app/globals.css
+ivgs-frontend/src/app/layout.tsx
+ivgs-frontend/src/app/login/page.tsx
+ivgs-frontend/src/app/monitoring/dlq/page.tsx
+ivgs-frontend/src/app/monitoring/gpu/page.tsx
+ivgs-frontend/src/app/monitoring/layout.tsx
+ivgs-frontend/src/app/monitoring/page.tsx
+ivgs-frontend/src/app/monitoring/pipeline/page.tsx
+ivgs-frontend/src/app/monitoring/quality/page.tsx
+ivgs-frontend/src/app/monitoring/storage/page.tsx
+ivgs-frontend/src/app/monitoring/timeline/page.tsx
+ivgs-frontend/src/app/nodes/page.tsx
+ivgs-frontend/src/app/page.tsx
+ivgs-frontend/src/app/projects/[id]/assets/page.tsx
+ivgs-frontend/src/app/projects/[id]/audio/page.tsx
+ivgs-frontend/src/app/projects/[id]/draft/page.tsx
+ivgs-frontend/src/app/projects/[id]/jobs/page.tsx
+ivgs-frontend/src/app/projects/[id]/languages/page.tsx
+ivgs-frontend/src/app/projects/[id]/page.tsx
+ivgs-frontend/src/app/projects/[id]/renders/page.tsx
+ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx
+ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx
+ivgs-frontend/src/app/projects/[id]/transcript/page.tsx
+ivgs-frontend/src/app/projects/new/page.tsx
+ivgs-frontend/src/app/prompts/page.tsx
+ivgs-frontend/src/components/AssetBrowser.tsx
+ivgs-frontend/src/components/AssetUploader.tsx
+ivgs-frontend/src/components/ErrorBoundary.tsx
+ivgs-frontend/src/components/Footer.tsx
+ivgs-frontend/src/components/Header.tsx
+ivgs-frontend/src/components/LoadingSpinner.tsx
+ivgs-frontend/src/components/NodeCard.tsx
+ivgs-frontend/src/components/PipelineTracker.tsx
+ivgs-frontend/src/components/ProjectCard.tsx
+ivgs-frontend/src/components/ProjectModal.tsx
+ivgs-frontend/src/components/ProtectedRoute.tsx
+ivgs-frontend/src/components/Sidebar.tsx
+ivgs-frontend/src/components/StateBadge.tsx
+ivgs-frontend/src/components/Toast.tsx
+ivgs-frontend/src/components/TranscriptEditor.tsx
+ivgs-frontend/src/components/VideoPlayer.tsx
+ivgs-frontend/src/components/monitoring/DLQAnalytics.tsx
+ivgs-frontend/src/components/monitoring/DLQDetailModal.tsx
+ivgs-frontend/src/components/monitoring/DLQTable.tsx
+ivgs-frontend/src/components/monitoring/GPUFleetChart.tsx
+ivgs-frontend/src/components/monitoring/GPUNodeCard.tsx
+ivgs-frontend/src/components/monitoring/PipelineDAG.tsx
+ivgs-frontend/src/components/monitoring/QualityReviewCard.tsx
+ivgs-frontend/src/components/monitoring/StorageTierChart.tsx
+ivgs-frontend/src/components/monitoring/TimelineEditor.tsx
+ivgs-frontend/src/components/prompts/PromptEditor.tsx
+ivgs-frontend/src/components/prompts/PromptHistory.tsx
+ivgs-frontend/src/components/prompts/PromptLibrary.tsx
+ivgs-frontend/src/components/prompts/PromptManager.tsx
+ivgs-frontend/src/components/prompts/PromptPlayground.tsx
+ivgs-frontend/src/components/storyboard/SceneCard.tsx
+ivgs-frontend/src/components/storyboard/SceneEditModal.tsx
+ivgs-frontend/src/components/storyboard/SceneTimeline.tsx
+ivgs-frontend/src/components/storyboard/StoryboardEditor.tsx
+ivgs-frontend/src/contexts/AuthContext.tsx
+ivgs-frontend/src/hooks/useAssets.ts
+ivgs-frontend/src/hooks/useAuth.ts
+ivgs-frontend/src/hooks/useBackups.ts
+ivgs-frontend/src/hooks/useJobs.ts
+ivgs-frontend/src/hooks/useMonitoring.ts
+ivgs-frontend/src/hooks/useNodes.ts
+ivgs-frontend/src/hooks/usePipeline.ts
+ivgs-frontend/src/hooks/useProjects.ts
+ivgs-frontend/src/hooks/usePrompts.ts
+ivgs-frontend/src/hooks/useRetention.ts
+ivgs-frontend/src/hooks/useStoryboard.ts
+ivgs-frontend/src/hooks/useTranscripts.ts
+ivgs-frontend/src/hooks/useWebSocket.ts
+ivgs-frontend/src/lib/api-client.ts
+ivgs-frontend/src/lib/api.ts
+ivgs-frontend/src/lib/auth.ts
+ivgs-frontend/src/middleware.ts
+ivgs-frontend/src/types/api.ts
+ivgs-frontend/src/types/index.ts
+ivgs-frontend/src/types/monitoring.ts
+ivgs-frontend/src/types/prompts.ts
+ivgs-frontend/src/types/storyboard.ts
+ivgs-frontend/tailwind.config.js
+ivgs-frontend/tsconfig.json
+ivgs-infra/.env.node01
+ivgs-infra/.gitignore
+ivgs-infra/configs/cron/backup_cron
+ivgs-infra/configs/nginx/nginx.conf
+ivgs-infra/configs/nginx/ssl/generate-certs.sh
+ivgs-infra/configs/nginx/websocket.conf
+ivgs-infra/configs/postgres.conf
+ivgs-infra/configs/prometheus/alert_rules.yml
+ivgs-infra/configs/prometheus/prometheus.yml
+ivgs-infra/configs/redis.conf
+ivgs-infra/configs/seaweedfs/filer.toml
+ivgs-infra/configs/seaweedfs/master.toml
+ivgs-infra/configs/seaweedfs/volume.toml
+ivgs-infra/docker-compose.base.yml
+ivgs-infra/docker-compose.monitoring.yml
+ivgs-infra/docker-compose.node01.yml
+ivgs-infra/docker-compose.node02.yml
+ivgs-infra/docker-compose.node03.yml
+ivgs-infra/docker-compose.node04.yml
+ivgs-infra/docker-compose.node05.yml
+ivgs-infra/docker-compose.node06.yml
+ivgs-infra/docker-compose.override.node01.yml
+ivgs-infra/monitoring/alertmanager.yml
+ivgs-infra/monitoring/grafana/dashboards/grafana-gpu.json
+ivgs-infra/monitoring/grafana/dashboards/grafana-pipeline.json
+ivgs-infra/monitoring/grafana/provisioning/dashboards/dashboard.yml
+ivgs-infra/monitoring/grafana/provisioning/datasources/prometheus.yml
+ivgs-infra/monitoring/prometheus/alert_rules.yml
+ivgs-infra/monitoring/prometheus/prometheus.yml
+ivgs-infra/scripts/enforce_sha_tags.sh
+ivgs-infra/scripts/v4_to_v5_migration.py
+ivgs-models/README.md
+ivgs-models/checksums.sha256
+ivgs-models/comfyui/animatediff-workflow.json
+ivgs-models/comfyui/flux1-dev-workflow.json
+ivgs-models/comfyui/sdxl-workflow.json
+ivgs-models/download_models.sh
+ivgs-models/ollama/Modelfile
+ivgs-models/tts/coqui-xtts-v2.yaml
+ivgs-models/vllm/llama-3.3-70b.yaml
+ivgs-models/vllm/mistral-24b.yaml
+ivgs-models/vllm/qwen2.5-72b.yaml
+ivgs-scheduler/Dockerfile
+ivgs-scheduler/__init__.py
+ivgs-scheduler/admission_control.py
+ivgs-scheduler/circuit_breaker.py
+ivgs-scheduler/gpu_registry.py
+ivgs-scheduler/load_balancer.py
+ivgs-scheduler/main.py
+ivgs-scheduler/metrics.py
+ivgs-scheduler/model_concurrency.py
+ivgs-scheduler/priority_queue.py
+ivgs-scheduler/requirements.txt
+ivgs-scheduler/scheduler.py
+ivgs-scheduler/tests/__init__.py
+ivgs-scheduler/tests/test_admission.py
+ivgs-scheduler/tests/test_circuit_breaker.py
+ivgs-scheduler/tests/test_load_balancer.py
+ivgs-scheduler/tests/test_scheduler.py
+ivgs-workers/Dockerfile
+ivgs-workers/celery_app.py
+ivgs-workers/clients/__init__.py
+ivgs-workers/clients/cogvideox_client.py
+ivgs-workers/clients/coqui_client.py
+ivgs-workers/clients/ffmpeg_client.py
+ivgs-workers/clients/flux_client.py
+ivgs-workers/clients/kokoro_client.py
+ivgs-workers/clients/latentsync_client.py
+ivgs-workers/clients/ollama_client.py
+ivgs-workers/clients/remotion_client.py
+ivgs-workers/clients/sadtalker_client.py
+ivgs-workers/clients/safety_classifier.py
+ivgs-workers/clients/vllm_client.py
+ivgs-workers/clients/wan21_client.py
+ivgs-workers/clients/whisperx_client.py
+ivgs-workers/config.py
+ivgs-workers/configs/__init__.py
+ivgs-workers/configs/composition.yml
+ivgs-workers/configs/media_generation.yml
+ivgs-workers/docker-compose.workers.yml
+ivgs-workers/models/__init__.py
+ivgs-workers/models/task_result.py
+ivgs-workers/prompts/stage1_system.j2
+ivgs-workers/prompts/stage1_user.j2
+ivgs-workers/prompts/stage2_system.j2
+ivgs-workers/prompts/stage2_user.j2
+ivgs-workers/prompts/stage3_system.j2
+ivgs-workers/prompts/stage4_system.j2
+ivgs-workers/prompts/stage5_system.j2
+ivgs-workers/requirements.txt
+ivgs-workers/services/__init__.py
+ivgs-workers/services/caption_service.py
+ivgs-workers/services/dlq_service.py
+ivgs-workers/services/error_classifier.py
+ivgs-workers/services/fallback_chain.py
+ivgs-workers/services/manifest_builder.py
+ivgs-workers/services/motion_graphics.py
+ivgs-workers/services/orphan_cleanup.py
+ivgs-workers/services/quality_gate.py
+ivgs-workers/services/quality_validator.py
+ivgs-workers/services/retention_migration.py
+ivgs-workers/services/retry_engine.py
+ivgs-workers/services/safety_classifier.py
+ivgs-workers/services/segment_planner.py
+ivgs-workers/tasks/__init__.py
+ivgs-workers/tasks/localization_pipeline.py
+ivgs-workers/tasks/periodic_tasks.py
+ivgs-workers/tasks/pipeline_orchestrator.py
+ivgs-workers/tasks/pipeline_orchestrator_v2.py
+ivgs-workers/tasks/stage1_transcript.py
+ivgs-workers/tasks/stage2_storyboard.py
+ivgs-workers/tasks/stage3_images.py
+ivgs-workers/tasks/stage4_manifest.py
+ivgs-workers/tasks/stage5_voiceover.py
+ivgs-workers/tasks/stage6_talking_head.py
+ivgs-workers/tasks/stage7_prototype_draft.py
+ivgs-workers/tasks/stage8_final_render.py
+ivgs-workers/tasks/talking_head_task.py
+ivgs-workers/tasks/video_generation_task.py
+ivgs-workers/tests/test_composition.py
+ivgs-workers/tests/test_corruption.py
+ivgs-workers/tests/test_dlq_service.py
+ivgs-workers/tests/test_fallback_chain.py
+ivgs-workers/tests/test_orphan_cleanup.py
+ivgs-workers/tests/test_quality_gate.py
+ivgs-workers/tests/test_quality_validator.py
+ivgs-workers/tests/test_retention.py
+ivgs-workers/tests/test_retry_engine.py
+ivgs-workers/tests/test_stage1.py
+ivgs-workers/tests/test_stage2.py
+ivgs-workers/tests/test_stage3.py
+ivgs-workers/tests/test_stage4.py
+ivgs-workers/tests/test_stage5.py
+ivgs-workers/tests/test_talking_head_task.py
+ivgs-workers/tests/test_video_gen.py
+ivgs-workers/utils/__init__.py
+ivgs-workers/utils/audio_validator.py
+ivgs-workers/utils/error_handler.py
+ivgs-workers/utils/gpu_utils.py
+ivgs-workers/utils/image_validator.py
+ivgs-workers/utils/media_converter.py
+ivgs-workers/utils/video_validator.py
+ivgs-workers/validators/__init__.py
+ivgs-workers/validators/corruption_detector.py
+ivgs-workers/validators/lipsync_validator.py
+pyproject.toml
+scripts/backup.sh
+scripts/compliance_scanner.py
+scripts/config_backup.sh
+scripts/create_admin.py
+scripts/deploy-node.sh
+scripts/generate_docs.sh
+scripts/restore.sh
+scripts/seed_data.py
+scripts/verify_backup.sh
+scripts/verify_spec_compliance.sh
+scripts/wal_archive.sh
+tests/__init__.py
+tests/conftest.py
+tests/e2e/test_localization.py
+tests/e2e/test_project_lifecycle.py
+tests/integration/test_auth_integration.py
+tests/integration/test_dlq_integration.py
+tests/integration/test_gpu_integration.py
+tests/integration/test_pipeline_integration.py
+tests/integration/test_projects_integration.py
+tests/smoke/test_gpu_nodes.py
+tests/test_compliance_scanner.py
+---END OUTPUT---
+Exit code: 0
+Files with differences: 337
+⚠️ RESULT: 337 files differ - trees have differences
+
+Saving complete git diff outputs to GIT_DIFF_OUTPUT.txt...
+GIT_DIFF_OUTPUT.txt created (1017 lines)
+
+=================================
+Artifact 3: File Count Reconciliation
+=================================
+
+Counting files in sandbox tree (634ec66)...
+Sandbox file count: 144
+Counting files in origin tree (b1082d7)...
+Origin file count: 145
+
+File count comparison:
+  Sandbox (634ec66): 144 files
+  Origin (b1082d7): 145 files
+  ⚠️ Counts DIFFER by 1 files
+
+Reconciliation with previous report:
+  Reported files compared: 92
+  Actual sandbox files: 144
+  Actual origin files: 145
+  ⚠️ Reported count does not match either tree
+
+Identifying files unique to each tree...
+  Files only in sandbox: 1
+  Files only in origin: 2
+
+Files only in sandbox (634ec66):
+tests/test_rollback_probe.py
+
+Files only in origin (b1082d7):
+migrations/versions/0015_add_user_is_active.py
+migrations/versions/0016_add_power_tdp_w.py
+
+=================================
+MD5 Cross-Comparison Analysis
+=================================
+
+First line of MD5_SANDBOX_634ec66.txt:
+Dockerfile a67be4548c0861ce5504f4746c7c9304
+
+Verifying path format in MD5 files...
+First path: 'Dockerfile'
+Paths are relative to ivgs-api/ (no prefix)
+
+Checking if files outside ivgs-api/ are present...
+
+
+NOTE: Both MD5 files are scoped to ivgs-api/ subtree
+(git ls-tree -r from ivgs-api/ CWD shows files relative to that directory)
+
+Sandbox MD5 file count: 144
+Origin MD5 file count: 145
+
+Common files (by path): 143
+Sandbox-only files: 1
+Origin-only files: 2
+
+Files only in sandbox:
+tests/test_rollback_probe.py
+
+Files only in origin:
+migrations/versions/0015_add_user_is_active.py
+migrations/versions/0016_add_power_tdp_w.py
+
+--- MD5 Hash Comparison of 143 Common Files ---
+
+MD5 Hash Comparison Results:
+  Identical hashes: 112 / 143
+  Different hashes: 31 / 143
+  Identity percentage: 78.3%
+
+Files with DIFFERENT MD5 hashes:
+❌ DIFFER app/api/deps.py  SANDBOX=935477286346f0a278a8c13c114384d8  ORIGIN=14cd1b835b8076fb6be142617d922cac
+❌ DIFFER app/api/v1/__init__.py  SANDBOX=bcd09efe0003968b3e2c19330b0e4aaa  ORIGIN=e0cdc3f3340a3a3922befd28f52c3113
+❌ DIFFER app/api/v1/gpus.py  SANDBOX=e3235141e3ba18df0a2c61d2ad196eaf  ORIGIN=6c08996d9ffdbbdef512e569bb83a329
+❌ DIFFER app/api/v1/projects.py  SANDBOX=04a43c3f223369ccbce1d0f28b9089b0  ORIGIN=7e787eddbc6c0ca13d344592a3e4a0ef
+❌ DIFFER app/api/v1/prompts.py  SANDBOX=c9714ac62fbc9e5c5870569003f3975b  ORIGIN=fb40d6875960470b2af984f57722340b
+❌ DIFFER app/models/gpu_node.py  SANDBOX=620b807e369c2908493b91adfd45f372  ORIGIN=b7f4c90991780ba44950545f3720eb55
+❌ DIFFER app/models/project.py  SANDBOX=387f8e5d94c1e668a08c43cb08179bee  ORIGIN=932023c6deaad5114651d7a93753196e
+❌ DIFFER app/models/prompt.py  SANDBOX=e469d4c4e0af83568084c47a8c01f4cb  ORIGIN=bae2dc1b982dcc7bdd8c6777d215bc62
+❌ DIFFER app/models/quality_score.py  SANDBOX=34e5dc7510e4ce43e2f4dabe194112f2  ORIGIN=ee68f58d3c04cd13800332a758417f27
+❌ DIFFER app/models/retention_policy.py  SANDBOX=c953d7142525ef561504049ae0b529a5  ORIGIN=32f6fcd63ea954e53d6282f2a30812b1
+❌ DIFFER app/models/user.py  SANDBOX=b0dd613ab241655590beb72e0470da71  ORIGIN=f81e236a495f61d4b7b2494e0b7f975b
+❌ DIFFER app/schemas/gpu.py  SANDBOX=68bdbe8c015039da77fa6583585a2985  ORIGIN=4fc8d4e60f8ad92658cb9852afbd4855
+❌ DIFFER app/schemas/prompt.py  SANDBOX=d14f48d6faa2faf0d2d5f710c8231de8  ORIGIN=fc1b26e2651517bfbe894d12013e0102
+❌ DIFFER app/services/gpu_service.py  SANDBOX=58c65c7ce6eb5a9e5d133577fdf0377b  ORIGIN=cbf725494ab7f2db5d607eba022986cd
+❌ DIFFER app/services/prompt_service.py  SANDBOX=7c3d7703f0688f5a9c1a852f4b3b0f31  ORIGIN=26b9d61d14c94c97d917507651b4b0b3
+❌ DIFFER app/services/quality_service.py  SANDBOX=75d8bc488753ca1a63b00337820a28ad  ORIGIN=eed697603173db02c28c7262b009d6f5
+❌ DIFFER app/services/retention_service.py  SANDBOX=5bb6443178d79661e75b8b18f1241627  ORIGIN=9a47ef510f5d7c1da64b1e3063074920
+❌ DIFFER migrations/versions/0001_initial_core.py  SANDBOX=5751fcc30ac720401296bddb3c59086f  ORIGIN=d0c1ac9a4aa50e172fe8b3a293371f4b
+❌ DIFFER migrations/versions/0002_pipeline_checkpoints.py  SANDBOX=24111b9ed10a39a9e2b2688177b36bcf  ORIGIN=99124468b335a20f36a2f7a73b2303bd
+❌ DIFFER migrations/versions/0003_gpu_registry.py  SANDBOX=9a7552176ceee0c071afe3afb2fe4ffe  ORIGIN=a20ef1c311efe881fff864415cff847b
+❌ DIFFER migrations/versions/0004_retry_tracking.py  SANDBOX=744876c977b390a94ff8f1833402dc78  ORIGIN=1787a1e53cffa4bcd2336ad46caf9910
+❌ DIFFER migrations/versions/0005_worker_heartbeats.py  SANDBOX=c00dbd954ba48d67da629e316b3aea8d  ORIGIN=d3699530eae09fe48349fb9a2de8e771
+❌ DIFFER migrations/versions/0006_dead_letter_queue.py  SANDBOX=9865bb6bda1a52bbb0eafe13f707da9d  ORIGIN=6eb34b1cd6ac1d98285dfb02bab43a28
+❌ DIFFER migrations/versions/0007_composition_manifests.py  SANDBOX=f0972c5b5354824bf29a488a95bfe8e0  ORIGIN=68647e4e21693911173d57a346b3966c
+❌ DIFFER migrations/versions/0008_quality_scores.py  SANDBOX=5a3f55da7d5b88fc856e454944acfd0c  ORIGIN=238ef71c5ac4c254ba03eef8156bd780
+❌ DIFFER migrations/versions/0009_render_segments.py  SANDBOX=ad94f9eee247b55988d58c22408573a4  ORIGIN=4aa0cee9590ba8ee75e790637854ea6f
+❌ DIFFER migrations/versions/0010_gpu_metrics.py  SANDBOX=4ef57f082c6e9b0ddad28c5c11992603  ORIGIN=8008e6191558b7d6ec42156b6e550622
+❌ DIFFER migrations/versions/0011_retention_policies.py  SANDBOX=3950cc400c2bd6875761fc9016390fa7  ORIGIN=d7fe30c3bd75588356228b9f6c76d77c
+❌ DIFFER migrations/versions/0012_storage_quotas.py  SANDBOX=1c7f7f8df64d3a81114f3efe9aaa71d8  ORIGIN=4633c64bc3e233393a8ea66898515258
+❌ DIFFER migrations/versions/0013_backup_records.py  SANDBOX=9148e8a548c69af6c13d4d6c330d8600  ORIGIN=263cef65b4b448be8db63eab5417505e
+❌ DIFFER tests/conftest.py  SANDBOX=6f8f01e6f3c91aff151c4a2f29b2a2f5  ORIGIN=1d1f9adbb309c1d96b6efc3ac5731776
+
+Full comparison saved to MD5_COMPARISON_RESULTS.txt
+
+================================================================================
+CROSS-METHOD VERIFICATION SUMMARY
+================================================================================
+Date: 2026-05-27
+Sandbox Commit: 634ec66
+Origin Commit:  b1082d7 (origin/main)
+Scope Note: Artifacts 1 & 3 are scoped to ivgs-api/ subtree only.
+            Artifact 2 covers the full monorepo tree.
+
+────────────────────────────────────────────────────────────────────────────────
+METHOD 1: MD5 CONTENT HASHING (ivgs-api/ scope)
+────────────────────────────────────────────────────────────────────────────────
+  Sandbox files hashed:     144
+  Origin files hashed:      145
+  Common files compared:    143
+  Identical (MD5 match):    112  (78.3%)
+  Different (MD5 mismatch): 31   (21.7%)
+  Sandbox-only files:       1    (tests/test_rollback_probe.py)
+  Origin-only files:        2    (migrations/versions/0015_add_user_is_active.py,
+                                  migrations/versions/0016_add_power_tdp_w.py)
+  VERDICT: ❌ NOT a 100% match
+
+────────────────────────────────────────────────────────────────────────────────
+METHOD 2: GIT DIFF SHA-1 COMPARISON (full repo scope)
+────────────────────────────────────────────────────────────────────────────────
+  git diff --stat lines:    338  (337 files + summary line)
+  git diff --name-only:     337 files differ
+  Lines added:              +85,074
+  Lines deleted:            -1,523
+  Note: This includes all monorepo services (ivgs-frontend, ivgs-workers,
+        ivgs-scheduler, infra/, shared/, etc.) — not just ivgs-api/.
+        Within ivgs-api/ scope, ~33 files differ (31 content + 2 origin-only).
+  VERDICT: ❌ NOT a 100% match
+
+────────────────────────────────────────────────────────────────────────────────
+METHOD 3: FILE COUNT RECONCILIATION (ivgs-api/ scope)
+────────────────────────────────────────────────────────────────────────────────
+  Sandbox file count:       144
+  Origin file count:        145
+  Net difference:           1 file
+  Sandbox-only:             1 file  (tests/test_rollback_probe.py)
+  Origin-only:              2 files (0015_add_user_is_active.py, 0016_add_power_tdp_w.py)
+  VERDICT: ❌ NOT a 100% match (file sets are not identical)
+
+────────────────────────────────────────────────────────────────────────────────
+CROSS-METHOD AGREEMENT
+────────────────────────────────────────────────────────────────────────────────
+  All three methods independently confirm the trees are NOT identical.
+  
+  Consistency check:
+  • Methods 1 & 3 agree on file counts: 144 sandbox / 145 origin ✅
+  • Methods 1 & 3 agree on unique files: 1 sandbox-only, 2 origin-only ✅
+  • Method 2 confirms divergence at full-repo level (337 files differ) ✅
+  • Method 1 provides granular detail: 31 of 143 common files have
+    different content (78.3% identity rate) ✅
+  
+  No contradictions found between methods.
+
+================================================================================
+DEFINITIVE CONCLUSION
+================================================================================
+
+  The claim of "100% match" between sandbox commit 634ec66 and
+  origin/main commit b1082d7 is REFUTED by independent verification.
+
+  Within the ivgs-api/ subtree:
+    • 78.3% of common files are identical (112 of 143)
+    • 21.7% of common files differ (31 of 143)
+    • File sets differ by 3 files (1 sandbox-only + 2 origin-only)
+
+  At full monorepo level:
+    • 337 files differ between the two commits
+    • +85,074 / -1,523 lines of change
+
+  The 31 differing files within ivgs-api/ include:
+    - 17 source code files (models, schemas, services, API routes)
+    - 13 migration files (0001 through 0013)
+    - 1 test infrastructure file (conftest.py)
+
+================================================================================
+ARTIFACTS PRODUCED
+================================================================================
+  1. MD5_SANDBOX_634ec66.txt   — 144 MD5 hashes (sandbox tree, ivgs-api/)
+  2. MD5_ORIGIN_b1082d7.txt    — 145 MD5 hashes (origin tree, ivgs-api/)
+  3. MD5_COMPARISON_RESULTS.txt — Per-file comparison of 143 common files
+  4. GIT_DIFF_OUTPUT.txt        — git diff --stat/--name-only/--numstat (1017 lines)
+  5. FILES_SANDBOX_ONLY.txt     — 1 sandbox-only file
+  6. FILES_ORIGIN_ONLY.txt      — 2 origin-only files
+  7. INDEPENDENT_VERIFICATION.log — This file (complete verification log)
+
+  All artifacts are READ-ONLY verification outputs. No source code was modified.
+  No recovery actions were taken. No pushes were made.
+
+================================================================================
+END OF INDEPENDENT BASELINE VERIFICATION
+================================================================================

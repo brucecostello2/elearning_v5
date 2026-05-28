@@ -1,0 +1,143 @@
+✅ MATCH  Dockerfile  MD5=a67be4548c0861ce5504f4746c7c9304
+✅ MATCH  alembic.ini  MD5=772fb6fdeeda06f0930912d295395128
+✅ MATCH  app/__init__.py  MD5=30f0295b5085aa0f6429c95741253464
+✅ MATCH  app/api/__init__.py  MD5=80b628be2dbf7c278c88f5be6a8eada0
+❌ DIFFER app/api/deps.py  SANDBOX=935477286346f0a278a8c13c114384d8  ORIGIN=14cd1b835b8076fb6be142617d922cac
+❌ DIFFER app/api/v1/__init__.py  SANDBOX=bcd09efe0003968b3e2c19330b0e4aaa  ORIGIN=e0cdc3f3340a3a3922befd28f52c3113
+✅ MATCH  app/api/v1/alerts.py  MD5=4cc9d78e363dcfb805bc1301e05b4e1f
+✅ MATCH  app/api/v1/assets.py  MD5=98f3c5836aeea8e3237539de688c70fb
+✅ MATCH  app/api/v1/auth.py  MD5=24949069a634119808f2f2be24dd5c4d
+✅ MATCH  app/api/v1/backup.py  MD5=f8c8f551e163bea525c4d8d113689038
+✅ MATCH  app/api/v1/checkpoints.py  MD5=8503b65c21afe991e6ce3ea91e9fbf81
+✅ MATCH  app/api/v1/dlq.py  MD5=b176cb41334aa6feae39b874f2920fff
+❌ DIFFER app/api/v1/gpus.py  SANDBOX=e3235141e3ba18df0a2c61d2ad196eaf  ORIGIN=6c08996d9ffdbbdef512e569bb83a329
+✅ MATCH  app/api/v1/health.py  MD5=aadf6561f9c1b28c426711a69abea708
+✅ MATCH  app/api/v1/jobs.py  MD5=b5375996c5e868c1196b67eedf5b7c39
+✅ MATCH  app/api/v1/languages.py  MD5=9e87d91d119a611f8aba16558cecdb17
+✅ MATCH  app/api/v1/manifests.py  MD5=a848bc96e7a7631dafe2842917a6d548
+✅ MATCH  app/api/v1/nodes.py  MD5=4684e887765a69f11b19083be1d888b7
+❌ DIFFER app/api/v1/projects.py  SANDBOX=04a43c3f223369ccbce1d0f28b9089b0  ORIGIN=7e787eddbc6c0ca13d344592a3e4a0ef
+❌ DIFFER app/api/v1/prompts.py  SANDBOX=c9714ac62fbc9e5c5870569003f3975b  ORIGIN=fb40d6875960470b2af984f57722340b
+✅ MATCH  app/api/v1/quality.py  MD5=10c6e5efcc65aaeed188938be4f75265
+✅ MATCH  app/api/v1/quotas.py  MD5=8a646db5b14691465bca1466becaae4f
+✅ MATCH  app/api/v1/retention.py  MD5=899d5ecbfe2c0f3462a9a57597aa47cd
+✅ MATCH  app/api/v1/rollback.py  MD5=761fb3c3a5816757a9aa4be91bbd830e
+✅ MATCH  app/api/v1/storyboard.py  MD5=2019fe8c50dca236a3f8bf9f5057ffd8
+✅ MATCH  app/api/v1/transcripts.py  MD5=520bb4e992c6c52f91be8982b078ffc8
+✅ MATCH  app/api/v1/users.py  MD5=e73fa01d8783f894e61d1b8ba1a2c82b
+✅ MATCH  app/api/v1/ws_logs.py  MD5=43e64f8ca33f8bd3e2d4f349af732cd7
+✅ MATCH  app/core/__init__.py  MD5=1d1064a56cf79fdbd1bc9d1e002db3f1
+✅ MATCH  app/core/auth.py  MD5=fb9723a2764ec6c60e4c0fdbb8382f95
+✅ MATCH  app/core/rbac.py  MD5=3fada08cdbf616f98c2259827f4502de
+✅ MATCH  app/core/security.py  MD5=58907128e5d6102c8f12df124db654f8
+✅ MATCH  app/middleware/__init__.py  MD5=b2d8137fd17dd651dbe936b4f7c6e10b
+✅ MATCH  app/middleware/audit.py  MD5=064b6f81814e4363d4711e0b74822138
+✅ MATCH  app/middleware/error_handler.py  MD5=68634a56a718cd835bb5c80fce787cf1
+✅ MATCH  app/middleware/rate_limit.py  MD5=c83e50aaab2d3d7c959aa12dc3f15870
+✅ MATCH  app/models/__init__.py  MD5=b2e7c297e02b651dde2de7b75d7fd14f
+✅ MATCH  app/models/asset.py  MD5=e7faf04cc406f5d06239dec5fe71ec47
+✅ MATCH  app/models/audit_log.py  MD5=e1404d855fec241567a7008ccdcd5890
+✅ MATCH  app/models/backup_record.py  MD5=0937c8755d1c88f22a9f1b99c57d8796
+✅ MATCH  app/models/checkpoint.py  MD5=5e1f8f5d0e7d5eecd75227518605ef3c
+✅ MATCH  app/models/composition_manifest.py  MD5=8589382b9b1fac8e289901514e92c040
+✅ MATCH  app/models/dead_letter_queue.py  MD5=8dab16e9f52aace6782a8d966bd65c3a
+✅ MATCH  app/models/fallback_policy.py  MD5=083669f11b6f2f52b54908992c0af5b4
+✅ MATCH  app/models/gpu_metrics_history.py  MD5=ced595ee725ae16135ba3d36822276de
+❌ DIFFER app/models/gpu_node.py  SANDBOX=620b807e369c2908493b91adfd45f372  ORIGIN=b7f4c90991780ba44950545f3720eb55
+✅ MATCH  app/models/language_variant.py  MD5=d9af81c26b179488e5eff9f32e7e755c
+❌ DIFFER app/models/project.py  SANDBOX=387f8e5d94c1e668a08c43cb08179bee  ORIGIN=932023c6deaad5114651d7a93753196e
+❌ DIFFER app/models/prompt.py  SANDBOX=e469d4c4e0af83568084c47a8c01f4cb  ORIGIN=bae2dc1b982dcc7bdd8c6777d215bc62
+✅ MATCH  app/models/prompt_tag.py  MD5=743fd810b445d9c13a4cad469a182a93
+❌ DIFFER app/models/quality_score.py  SANDBOX=34e5dc7510e4ce43e2f4dabe194112f2  ORIGIN=ee68f58d3c04cd13800332a758417f27
+✅ MATCH  app/models/render_job.py  MD5=3195a5fd54fb5d1d4bddd1f095d54aa3
+✅ MATCH  app/models/render_segment.py  MD5=15f62c6d6602ba004b5c8c3d7e5d5a66
+❌ DIFFER app/models/retention_policy.py  SANDBOX=c953d7142525ef561504049ae0b529a5  ORIGIN=32f6fcd63ea954e53d6282f2a30812b1
+✅ MATCH  app/models/storage_quota.py  MD5=3b252b8d47a3bccfbe2f925c3022d02d
+✅ MATCH  app/models/storyboard_scene.py  MD5=b182aa7470d493a28db70cd855659ece
+✅ MATCH  app/models/task_retry.py  MD5=1d4f07171dffbd83d64a7e20f9649b60
+✅ MATCH  app/models/transcript.py  MD5=035d07317b19fe28f281e0d04505b543
+❌ DIFFER app/models/user.py  SANDBOX=b0dd613ab241655590beb72e0470da71  ORIGIN=f81e236a495f61d4b7b2494e0b7f975b
+✅ MATCH  app/models/worker_heartbeat.py  MD5=6a49fb6c27766456eb2bab0cb222e4bd
+✅ MATCH  app/schemas/__init__.py  MD5=9e6d58a1a9904c48478472863d2f413a
+✅ MATCH  app/schemas/asset.py  MD5=30c09168311f4c7248123c9d3939fd16
+✅ MATCH  app/schemas/auth.py  MD5=b3ccca4b746ecd6dab7cd417094b0697
+✅ MATCH  app/schemas/base.py  MD5=82767a56e69a5224c7d18e69c6fac5e5
+✅ MATCH  app/schemas/checkpoint.py  MD5=5a58c1263dc3dea4bbc8b2a88fdd60ef
+✅ MATCH  app/schemas/dlq.py  MD5=bf75dfc85a707563dcb3cc54f99174b2
+❌ DIFFER app/schemas/gpu.py  SANDBOX=68bdbe8c015039da77fa6583585a2985  ORIGIN=4fc8d4e60f8ad92658cb9852afbd4855
+✅ MATCH  app/schemas/language_variant.py  MD5=0d0f9f40c747776c9dc5f944d46f9011
+✅ MATCH  app/schemas/project.py  MD5=0e15a627459392c05fe8c074d2c1109a
+❌ DIFFER app/schemas/prompt.py  SANDBOX=d14f48d6faa2faf0d2d5f710c8231de8  ORIGIN=fc1b26e2651517bfbe894d12013e0102
+✅ MATCH  app/schemas/quality.py  MD5=b8b2640c0f7b6a8eb29dc1e23a810ead
+✅ MATCH  app/schemas/render_job.py  MD5=7831ff86ff3afc1f75e074eee77fc764
+✅ MATCH  app/schemas/retention.py  MD5=5c2a66a355d7841e9c02efb70c8d0ddb
+✅ MATCH  app/schemas/storyboard.py  MD5=70018ca987a7a3377c41e62914498f88
+✅ MATCH  app/schemas/transcript.py  MD5=7ff9521cd6612f2fc7c53656ab6db133
+✅ MATCH  app/schemas/user.py  MD5=9072887c973f41a28efd9468226c2a47
+✅ MATCH  app/scripts/__init__.py  MD5=9f37080b08394ba200d8a3924cc68731
+✅ MATCH  app/scripts/create_admin.py  MD5=c09290278edf443240b966d7bad95f4c
+✅ MATCH  app/scripts/seed_fallback_policies.py  MD5=0727049ba668dd81433f34b242dc498a
+✅ MATCH  app/scripts/seed_prompts.py  MD5=f8216d1d00ec532389afda87ab110601
+✅ MATCH  app/services/__init__.py  MD5=550fc2512e37763213cac325c937abef
+✅ MATCH  app/services/asset_service.py  MD5=d4598a18fb25568f15a828994168d340
+✅ MATCH  app/services/auth_service.py  MD5=adc99552741a64d25a08493bf1739c68
+✅ MATCH  app/services/checkpoint_service.py  MD5=e050d38f61fe51a510679443ca30c6c3
+✅ MATCH  app/services/dlq_service.py  MD5=f9f503e82acd6a439c2b9a076e5416b6
+❌ DIFFER app/services/gpu_service.py  SANDBOX=58c65c7ce6eb5a9e5d133577fdf0377b  ORIGIN=cbf725494ab7f2db5d607eba022986cd
+✅ MATCH  app/services/job_service.py  MD5=c0d86e24bef317ba0353958f0ef0d6bd
+✅ MATCH  app/services/language_service.py  MD5=2fbb04c129419f523f5eadb62d47a7ff
+✅ MATCH  app/services/project_service.py  MD5=893100ae9c50200542fac7b28e4cbc85
+❌ DIFFER app/services/prompt_service.py  SANDBOX=7c3d7703f0688f5a9c1a852f4b3b0f31  ORIGIN=26b9d61d14c94c97d917507651b4b0b3
+❌ DIFFER app/services/quality_service.py  SANDBOX=75d8bc488753ca1a63b00337820a28ad  ORIGIN=eed697603173db02c28c7262b009d6f5
+❌ DIFFER app/services/retention_service.py  SANDBOX=5bb6443178d79661e75b8b18f1241627  ORIGIN=9a47ef510f5d7c1da64b1e3063074920
+✅ MATCH  app/services/rollback_service.py  MD5=7b21acc7270450768b03358cd4415519
+✅ MATCH  app/services/storyboard_service.py  MD5=f075534592d45c2ccfc6e23dc496161b
+✅ MATCH  app/services/transcript_service.py  MD5=fff276da43c79ff7e2a1c480f8239b76
+✅ MATCH  app/services/user_service.py  MD5=1b3e8033e31b0b2abb721f5ebc060735
+✅ MATCH  config/fallback_policies.yaml  MD5=5a1529560c3e52daa1fce81872f09e48
+✅ MATCH  config/gpu_requirements.yaml  MD5=f20397567129370141759aaed99e0ec0
+✅ MATCH  config/quality_thresholds.yaml  MD5=f5e6a50783af5674efd9183bf9118483
+✅ MATCH  config/retry_policies.yaml  MD5=b883b160bfec781257e0e2164d48726b
+✅ MATCH  config/timeout_defaults.yaml  MD5=4b30f35be33ef0454a6aaafe527788e5
+✅ MATCH  main.py  MD5=ae5dac2b3e1a6e6fe32d3d97a3a9eb91
+✅ MATCH  migrations/env.py  MD5=94b982819662654db8d4d3253a952b3a
+❌ DIFFER migrations/versions/0001_initial_core.py  SANDBOX=5751fcc30ac720401296bddb3c59086f  ORIGIN=d0c1ac9a4aa50e172fe8b3a293371f4b
+❌ DIFFER migrations/versions/0002_pipeline_checkpoints.py  SANDBOX=24111b9ed10a39a9e2b2688177b36bcf  ORIGIN=99124468b335a20f36a2f7a73b2303bd
+❌ DIFFER migrations/versions/0003_gpu_registry.py  SANDBOX=9a7552176ceee0c071afe3afb2fe4ffe  ORIGIN=a20ef1c311efe881fff864415cff847b
+❌ DIFFER migrations/versions/0004_retry_tracking.py  SANDBOX=744876c977b390a94ff8f1833402dc78  ORIGIN=1787a1e53cffa4bcd2336ad46caf9910
+❌ DIFFER migrations/versions/0005_worker_heartbeats.py  SANDBOX=c00dbd954ba48d67da629e316b3aea8d  ORIGIN=d3699530eae09fe48349fb9a2de8e771
+❌ DIFFER migrations/versions/0006_dead_letter_queue.py  SANDBOX=9865bb6bda1a52bbb0eafe13f707da9d  ORIGIN=6eb34b1cd6ac1d98285dfb02bab43a28
+❌ DIFFER migrations/versions/0007_composition_manifests.py  SANDBOX=f0972c5b5354824bf29a488a95bfe8e0  ORIGIN=68647e4e21693911173d57a346b3966c
+❌ DIFFER migrations/versions/0008_quality_scores.py  SANDBOX=5a3f55da7d5b88fc856e454944acfd0c  ORIGIN=238ef71c5ac4c254ba03eef8156bd780
+❌ DIFFER migrations/versions/0009_render_segments.py  SANDBOX=ad94f9eee247b55988d58c22408573a4  ORIGIN=4aa0cee9590ba8ee75e790637854ea6f
+❌ DIFFER migrations/versions/0010_gpu_metrics.py  SANDBOX=4ef57f082c6e9b0ddad28c5c11992603  ORIGIN=8008e6191558b7d6ec42156b6e550622
+❌ DIFFER migrations/versions/0011_retention_policies.py  SANDBOX=3950cc400c2bd6875761fc9016390fa7  ORIGIN=d7fe30c3bd75588356228b9f6c76d77c
+❌ DIFFER migrations/versions/0012_storage_quotas.py  SANDBOX=1c7f7f8df64d3a81114f3efe9aaa71d8  ORIGIN=4633c64bc3e233393a8ea66898515258
+❌ DIFFER migrations/versions/0013_backup_records.py  SANDBOX=9148e8a548c69af6c13d4d6c330d8600  ORIGIN=263cef65b4b448be8db63eab5417505e
+✅ MATCH  migrations/versions/0014_fallback_policies.py  MD5=8cb1a97a6559f0dc2c2241c61bf0eac4
+✅ MATCH  requirements.txt  MD5=c397ab611a5086299e60fe0f46731846
+✅ MATCH  seed/default_prompts/animation_generation.j2  MD5=5648074992839bb48330c68b0e2e086b
+✅ MATCH  seed/default_prompts/composition.j2  MD5=9d8a27a22ad5f5787ef0c7dd6dbcb882
+✅ MATCH  seed/default_prompts/image_generation.j2  MD5=f3502fe67a4f7722d76c66d1b52701c1
+✅ MATCH  seed/default_prompts/master.j2  MD5=c93883e606f4991c5eb5e89fab423697
+✅ MATCH  seed/default_prompts/storyboard_generation.j2  MD5=af6dd76302df5b5c541b4d8ab11ea999
+✅ MATCH  seed/default_prompts/talking_head.j2  MD5=0730b6d5db83ba8bcd4153a8abfbda96
+✅ MATCH  seed/default_prompts/transcript_refinement.j2  MD5=965bb93b018168b96d58945e2bc2d944
+✅ MATCH  seed/default_prompts/translation.j2  MD5=5c41345469365a96b0983d7baa3e4a7b
+✅ MATCH  seed/default_prompts/tts_voice.j2  MD5=d7a8659eee8dae05a256f33bac08a796
+✅ MATCH  seed/default_prompts/video_generation.j2  MD5=b93f23e5e18ed8f7f82d8b1fa058a979
+✅ MATCH  tests/__init__.py  MD5=f4d0a3fc87c67686991304a70a221250
+❌ DIFFER tests/conftest.py  SANDBOX=6f8f01e6f3c91aff151c4a2f29b2a2f5  ORIGIN=1d1f9adbb309c1d96b6efc3ac5731776
+✅ MATCH  tests/test_assets.py  MD5=daad9de79d190cf91f8920b13205251b
+✅ MATCH  tests/test_auth.py  MD5=e5bebfde4d486c3bd68e4a461ce65662
+✅ MATCH  tests/test_checkpoint_api.py  MD5=3ad1aa3ee1303a237c46d162061f3ce4
+✅ MATCH  tests/test_dlq_api.py  MD5=07af968cb610361412ff7ec7e62297ae
+✅ MATCH  tests/test_gpu_api.py  MD5=5d8ef1ea1557530fdd35b7679ab34f28
+✅ MATCH  tests/test_health.py  MD5=97fcd2a38c013bf3e8991f7d855789e8
+✅ MATCH  tests/test_projects.py  MD5=50d4a09fdf45c43d48d2010fec52d093
+✅ MATCH  tests/test_prompts.py  MD5=daf6fb53d6c61cff7512481f4e0fe7a0
+✅ MATCH  tests/test_quality_api.py  MD5=4c92a66763c0b82f05df5b945cbc317f
+✅ MATCH  tests/test_retention_api.py  MD5=6da089bfe6905d2f40aaaa0be413d668
+✅ MATCH  tests/test_storyboard.py  MD5=6f02f8018d4210ed740af9d7bb5a9778
+✅ MATCH  tests/test_transcripts.py  MD5=effc18d0542a214d46f128d951b02156
+✅ MATCH  tests/test_users.py  MD5=794dc3959d49727fae891fdbedca9e6c
