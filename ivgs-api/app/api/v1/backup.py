@@ -175,8 +175,13 @@ async def trigger_backup(
     )
     await db.commit()
 
-    # Launch backup in background
-    asyncio.create_task(_run_backup(backup_id, request.backup_type, db))
+    # Launch backup in background using an isolated session.
+    # NOTE: must NOT pass the request-scoped `db` here. The dependency
+    # cleanup closes the request session as soon as this handler returns;
+    # a fire-and-forget task using it races with close() and crashes with
+    # SQLAlchemy IllegalStateChangeError. The isolated wrapper acquires
+    # its own session from the factory. (BUG-API-BACKUP-TASK-SESSION)
+    asyncio.create_task(_run_backup_isolated(backup_id, request.backup_type))
 
     return BackupTriggerResponse(
         id=backup_id,
@@ -221,8 +226,10 @@ async def verify_backup(
     # status stays 'success'; populating verification_checksum in _run_verification
     # serves as the indicator that verification completed.
 
-    # Launch verification in background
-    asyncio.create_task(_run_verification(backup_id, row.backup_path, db))
+    # Launch verification in background using an isolated session.
+    # Same lifecycle constraint as the trigger above — see
+    # _run_backup_isolated for the full rationale.
+    asyncio.create_task(_run_verification_isolated(backup_id, row.backup_path))
 
     return BackupVerifyResponse(
         id=backup_id,
@@ -234,6 +241,40 @@ async def verify_backup(
 # ---------------------------------------------------------------------------
 # Background tasks
 # ---------------------------------------------------------------------------
+#
+# Lifecycle note: the trigger and verify endpoints fire-and-forget these
+# tasks via asyncio.create_task. The endpoints' request-scoped DB session
+# is closed by the FastAPI dependency cleanup as soon as the response is
+# returned, so background tasks MUST NOT reuse the request's session.
+# The "_isolated" wrappers acquire a fresh session from the factory and
+# pass it to the work functions, which keep their (db) signatures so they
+# remain directly callable from tests.  (BUG-API-BACKUP-TASK-SESSION)
+
+async def _run_backup_isolated(backup_id: str, backup_type: str) -> None:
+    """Background-task wrapper: acquires its own session, calls _run_backup."""
+    from shared.database import async_session_factory
+    async with async_session_factory() as task_db:
+        try:
+            await _run_backup(backup_id, backup_type, task_db)
+        except Exception:
+            logger.exception(
+                "Background backup task failed",
+                extra={"backup_id": backup_id, "backup_type": backup_type},
+            )
+
+
+async def _run_verification_isolated(backup_id: str, backup_path: str) -> None:
+    """Background-task wrapper: acquires its own session, calls _run_verification."""
+    from shared.database import async_session_factory
+    async with async_session_factory() as task_db:
+        try:
+            await _run_verification(backup_id, backup_path, task_db)
+        except Exception:
+            logger.exception(
+                "Background verification task failed",
+                extra={"backup_id": backup_id},
+            )
+
 
 async def _run_backup(backup_id: str, backup_type: str, db) -> None:
     """Execute backup shell script and update record."""
