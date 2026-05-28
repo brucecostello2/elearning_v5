@@ -120,10 +120,13 @@ async def test_rate_limit_window_does_not_reset_without_ttl(
 async def test_rate_limit_redis_incr_failure(
     client: AsyncClient, db_session, monkeypatch
 ):
-    """When Redis is unavailable, rate limiter should fail open (BUG-011 FIXED).
+    """When Redis is unavailable, the login bucket fails CLOSED (BUG-011 fix).
 
-    The RateLimitMiddleware.dispatch() now wraps Redis calls in try/except.
-    When Redis is down, the request is allowed through without rate limiting.
+    Policy: RateLimitMiddleware wraps Redis calls in try/except. On the LOGIN
+    bucket specifically it fails CLOSED (503) to preserve brute-force protection
+    during Redis outages — silently disabling rate limiting on auth would let
+    an attacker run unlimited credential attempts during a Redis hiccup. Other
+    buckets fail open so a Redis outage doesn't take down the API write-path.
     """
     from shared.redis_client import redis_client
 
@@ -141,9 +144,12 @@ async def test_rate_limit_redis_incr_failure(
         "/api/v1/auth/login",
         json={"username": "nobody", "password": "wrong"},
     )
-    # Should fail open: request reaches auth handler → 401 (bad credentials)
-    assert response.status_code == 401, \
-        f"Expected 401 (fail open), got {response.status_code}"
+    # Should fail CLOSED on login bucket: 503 Service Unavailable.
+    # The request never reaches the auth handler — rate limiting denies it.
+    # Operator policy (BUG-011 fix): non-login buckets fail open on Redis down,
+    # but the login bucket fails closed to preserve brute-force protection.
+    assert response.status_code == 503, \
+        f"Expected 503 (fail closed on login bucket), got {response.status_code}"
 
 
 # ===================================================================
