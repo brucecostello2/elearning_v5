@@ -326,8 +326,12 @@ class PromptService:
         Phase 3 stub: returns rendered prompt and a placeholder response.
         Phase 5: will call vLLM/Ollama through LLMProvider interface.
         """
-        # Render template if variables provided
+        # Always validate Jinja2 syntax; render if variables provided
         rendered = prompt_text
+        try:
+            jinja_env.parse(prompt_text)
+        except TemplateSyntaxError as e:
+            raise ValueError(f"Jinja2 syntax error in prompt: {e}")
         if template_variables:
             rendered = self.render_template(prompt_text, template_variables)
 
