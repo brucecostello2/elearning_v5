@@ -73,6 +73,12 @@ class RenderJob(Base):
         nullable=True,
         doc="PostgreSQL ENUM failure_category",
     )
+    resume_from_stage: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,
+        doc="Stage name this resume job picked up from (BUG-CHECKPOINT-STAGE). "
+            "NULL for non-resume jobs. Free text, not an enum.",
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
