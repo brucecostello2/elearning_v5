@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, text, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -43,7 +43,9 @@ class PipelineCheckpoint(Base):
         String(128), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="pending",
+        PG_ENUM("pending", "complete", "failed", "skipped",
+                name="checkpoint_status", create_type=False),
+        nullable=False, server_default="pending",
         doc="PostgreSQL ENUM checkpoint_status",
     )
     started_at: Mapped[Optional[datetime]] = mapped_column(

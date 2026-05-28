@@ -12,7 +12,7 @@ from typing import Optional
 from sqlalchemy import (
     String, Integer, DateTime, ForeignKey, UniqueConstraint, text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -43,7 +43,9 @@ class GpuNode(Base):
         String(16), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="online",
+        PG_ENUM("online", "offline", "draining",
+                name="gpu_node_status", create_type=False),
+        nullable=False, server_default="online",
         doc="PostgreSQL ENUM gpu_node_status",
     )
     registered_at: Mapped[datetime] = mapped_column(
@@ -116,7 +118,9 @@ class GpuReservation(Base):
         String(128), nullable=True,
     )
     status: Mapped[str] = mapped_column(
-        String(16), nullable=False, server_default="reserved",
+        PG_ENUM("reserved", "active", "released", "expired",
+                name="reservation_status", create_type=False),
+        nullable=False, server_default="reserved",
         doc="PostgreSQL ENUM reservation_status",
     )
     reserved_at: Mapped[datetime] = mapped_column(

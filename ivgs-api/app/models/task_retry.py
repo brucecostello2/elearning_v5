@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, Float, Text, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -32,7 +32,9 @@ class TaskRetry(Base):
     stage_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     failure_type: Mapped[Optional[str]] = mapped_column(
-        String(32), nullable=True,
+        PG_ENUM("transient", "config", "external", "resource",
+                name="failure_category", create_type=False),
+        nullable=True,
         doc="failure_category ENUM: transient | config | external | resource",
     )
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)

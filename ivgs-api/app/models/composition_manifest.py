@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -42,7 +42,9 @@ class CompositionManifest(Base):
     audio_sample_rate: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     timeline: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="draft",
+        PG_ENUM("draft", "locked", "rendered", "invalid",
+                name="manifest_status", create_type=False),
+        nullable=False, server_default="draft",
         doc="manifest_status ENUM: draft | locked | rendered | invalid",
     )
     locked_at: Mapped[Optional[datetime]] = mapped_column(

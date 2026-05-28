@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, BigInteger, DateTime, Text, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -30,12 +30,17 @@ class BackupRecord(Base):
         server_default=text("uuid_generate_v4()"),
     )
     backup_type: Mapped[str] = mapped_column(
-        String(32), nullable=False,
+        PG_ENUM("full_database", "wal_archive", "asset_backup",
+                "config_backup", "vm_snapshot",
+                name="backup_type", create_type=False),
+        nullable=False,
         doc="backup_type ENUM: full_database | wal_archive | asset_backup | config_backup | vm_snapshot",
     )
     scope: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="running",
+        PG_ENUM("running", "completed", "failed", "verified",
+                name="backup_status", create_type=False),
+        nullable=False, server_default="running",
         doc="backup_status ENUM: running | completed | failed | verified",
     )
     backup_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)

@@ -13,7 +13,7 @@ from sqlalchemy import (
     String, Integer, Boolean, Text, DateTime,
     ForeignKey, text,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -38,7 +38,11 @@ class Prompt(Base):
         nullable=True,
     )
     prompt_type: Mapped[str] = mapped_column(
-        String(32), nullable=False,
+        PG_ENUM("master", "transcript_refinement", "storyboard_generation",
+                "image_generation", "video_generation", "animation_generation",
+                "tts_voice", "talking_head", "composition", "translation",
+                name="prompt_type", create_type=False),
+        nullable=False,
         doc="PostgreSQL ENUM prompt_type — 10 values",
     )
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)

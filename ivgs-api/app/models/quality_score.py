@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Any, Optional
 
 from sqlalchemy import String, Float, DateTime, ForeignKey, Text, text
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -44,7 +44,9 @@ class AssetQualityScore(Base):
         JSONB, nullable=True,
     )
     decision: Mapped[str] = mapped_column(
-        String(16), nullable=False,
+        PG_ENUM("approved", "flagged", "rejected",
+                name="quality_decision", create_type=False),
+        nullable=False,
         doc="PostgreSQL ENUM quality_decision",
     )
     reviewed_by: Mapped[Optional[str]] = mapped_column(

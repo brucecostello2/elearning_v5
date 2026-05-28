@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -35,7 +35,9 @@ class RenderSegment(Base):
     output_path: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     output_checksum: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default="pending",
+        PG_ENUM("pending", "rendering", "complete", "failed",
+                name="segment_status", create_type=False),
+        nullable=False, server_default="pending",
         doc="segment_status ENUM: pending | rendering | complete | failed",
     )
     attempts: Mapped[int] = mapped_column(

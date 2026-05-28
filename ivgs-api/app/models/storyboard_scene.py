@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, Float, Text, DateTime, ForeignKey, text, Index
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -35,7 +35,9 @@ class StoryboardScene(Base):
         Text, nullable=True,
     )
     media_type: Mapped[Optional[str]] = mapped_column(
-        String(16), nullable=True,
+        PG_ENUM("image", "video_clip", "animation",
+                name="media_type", create_type=False),
+        nullable=True,
         doc="PostgreSQL ENUM media_type: image, video_clip, animation",
     )
     duration_seconds: Mapped[Optional[float]] = mapped_column(
