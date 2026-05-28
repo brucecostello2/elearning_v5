@@ -1,0 +1,255 @@
+================================================================================
+PROMPT_ID PRODUCTION TYPE VERIFICATION
+================================================================================
+Date: 2026-05-27
+Scope: Decision 2 of Migration Reconciliation — resolve String(36) vs UUID
+Status: VERIFICATION ONLY — no modifications, no recovery work
+
+================================================================================
+SECTION 1: DATABASE CONNECTION ATTEMPT
+================================================================================
+
+Production node-01 address: 192.168.1.71 (per subtask) / 192.168.1.90 (per handover)
+Production port: 5432
+Network test: Port 5432 NOT REACHABLE from this VM (private VLAN)
+
+Local PostgreSQL: NOT RUNNING (pg_isready → no response)
+Local test database: CONNECTION REFUSED (localhost:5432)
+
+Available connection files:
+  .env.phase6 → DATABASE_URL=postgresql+asyncpg://testuser:testpass@localhost:5432/testdb
+  alembic.ini → sqlalchemy.url = driver://user:pass@localhost/dbname (placeholder)
+  tests/conftest.py → defaults to localhost:5432/testdb
+
+Handover document (IVGS_RECOVERY_HANDOVER.md):
+  Node: node-01 (192.168.1.90 / spec IP: 10.10.0.1)
+  PostgreSQL 17: ✅ Healthy, port 5432
+  Docker compose: db+postgresql+psycopg2://ivgs:***@postgres:5432/ivgs
+  Note: Handover says 192.168.1.90, subtask says 192.168.1.71
+        Both are private VLAN addresses unreachable from this VM.
+
+CONCLUSION: Cannot connect to production database from this VM.
+            Production is on a private VLAN (192.168.1.x) that is not
+            routable from the Abacus AI sandbox environment.
+
+================================================================================
+SECTION 2: CODE-LEVEL FORENSIC ANALYSIS (ALTERNATIVE VERIFICATION)
+================================================================================
+
+Since production database is unreachable, performing exhaustive code-level
+analysis to determine the ground truth for prompt_id column type.
+
+The original reconciliation report identified:
+  "ONE REAL SCHEMA DIFFERENCE in 0001: prompt_id String(36) vs UUID"
+
+CORRECTION: After deeper analysis, the difference is more precisely located:
+
+  Table: prompt_tag_associations
+  Column: prompt_id (FK → prompts.id)
+  
+  Sandbox 0001:  sa.Column("prompt_id", sa.String(36), ...)
+  Origin 0001:   sa.Column("prompt_id", UUID(as_uuid=True), ...)
+  Closest match (v5.1.0) 0001: sa.Column("prompt_id", sa.String(36), ...)
+  
+  Note: Sandbox baseline MATCHES the closest match (v5.1.0).
+  Origin HEAD changed this to UUID in the hybrid ENUM fix commit.
+
+================================================================================
+SECTION 3: COMPLETE prompt_id TYPE INVENTORY
+================================================================================
+
+3.1 Where prompt_id Appears in Migration 0001
+──────────────────────────────────────────────
+
+  Location A: assets.generation_prompt_id
+    Sandbox:  UUID(as_uuid=True)  ← FK → prompts.id
+    Origin:   UUID(as_uuid=True)  ← FK → prompts.id
+    Status:   IDENTICAL ✅
+
+  Location B: prompt_tag_associations.prompt_id
+    Sandbox:  sa.String(36)       ← FK → prompts.id
+    Origin:   UUID(as_uuid=True)  ← FK → prompts.id
+    Status:   DIFFERENT ❌  ← THIS IS THE DIVERGENCE
+
+  Location C: prompt_tag_associations.tag_id
+    Sandbox:  sa.String(36)       ← FK → prompt_tags.id
+    Origin:   sa.String(36)       ← FK → prompt_tags.id
+    Status:   IDENTICAL ✅
+
+3.2 FK Target Column Types
+──────────────────────────
+
+  prompts.id:
+    Sandbox:  UUID(as_uuid=True)  (PK)
+    Origin:   UUID(as_uuid=True)  (PK)
+    Status:   IDENTICAL ✅
+
+  prompt_tags.id:
+    Sandbox:  sa.String(36)       (PK)
+    Origin:   sa.String(36)       (PK)
+    Status:   IDENTICAL ✅
+
+3.3 ORM Model Definition (Both Trees)
+──────────────────────────────────────
+
+  app/models/prompt_tag.py defines prompt_tag_associations:
+    prompt_id: UUID(as_uuid=True), FK → prompts.id
+    tag_id:    UUID(as_uuid=True), FK → prompt_tags.id
+  
+  Note: The ORM model uses UUID for BOTH columns in BOTH trees.
+  This means the sandbox ORM disagrees with its own migration!
+
+3.4 String(36) Usage Pattern
+─────────────────────────────
+
+  Tables with String(36) primary keys (BOTH sandbox AND origin):
+    - rollback_points.id → String(36) PK
+    - prompt_tags.id → String(36) PK
+  
+  All other tables use UUID(as_uuid=True) for PKs.
+  
+  The String(36) usage appears to be a legacy pattern for these two tables.
+  The ORM model for prompt_tags defines id as UUID(as_uuid=True), creating
+  a model-migration mismatch in BOTH trees for prompt_tags.id type.
+
+================================================================================
+SECTION 4: TYPE COMPATIBILITY ANALYSIS
+================================================================================
+
+PostgreSQL Type Behavior:
+  - UUID type: Native 16-byte type, validates format
+  - VARCHAR(36): String type, no UUID validation, 36 chars
+  - FK compatibility: PostgreSQL ALLOWS FK from VARCHAR(36) → UUID if the
+    stored values happen to be valid UUID strings cast to text. But this
+    is fragile and produces implicit cast warnings.
+  - FK from UUID → UUID: Native, no cast needed, type-safe
+
+Production Database Determination:
+  The ACTUAL production column type depends on which migration was run first:
+  
+  Scenario A: If production was initialized from sandbox migrations (v5.1.0):
+    prompt_tag_associations.prompt_id = VARCHAR(36) [sa.String(36)]
+  
+  Scenario B: If production was initialized from origin HEAD migrations:
+    prompt_tag_associations.prompt_id = UUID [UUID(as_uuid=True)]
+  
+  Scenario C: If production was never migrated / table doesn't exist yet:
+    Column doesn't exist.
+
+  Based on handover document:
+    - Production uses Docker compose with PostgreSQL 17
+    - The handover mentions "ivgs" database
+    - The handover references Celery result backend pointing to postgres
+    - No specific migration version is mentioned
+    - The system was reportedly in a degraded state before handover
+
+  MOST LIKELY SCENARIO: Production was set up with the v5.1.0 migrations
+  (same as closest match), which means prompt_id is VARCHAR(36).
+
+================================================================================
+SECTION 5: DECISION 2 RESOLUTION — ANALYSIS
+================================================================================
+
+The Question: Should prompt_id in prompt_tag_associations be String(36) or UUID?
+
+Evidence FOR UUID (origin's approach):
+  1. prompts.id (the FK target) IS UUID → matching types is correct
+  2. ORM model in BOTH trees defines prompt_id as UUID(as_uuid=True)
+  3. Every other FK in the schema targeting a UUID PK uses UUID type
+  4. Origin's ENUM fix commit specifically changed this to UUID
+  5. Native UUID is more efficient (16 bytes vs 36 bytes) and validated
+
+Evidence FOR String(36) (sandbox's approach):
+  1. prompt_tags.id (the OTHER FK in same table) IS String(36)
+  2. The v5.1.0 merge (closest match) used String(36)
+  3. If production was initialized from v5.1.0, the column IS String(36)
+
+Analysis:
+  The String(36) in the sandbox migration is almost certainly a BUG in the
+  original v5.1.0 migration, not an intentional design choice. Evidence:
+  
+  a) The ORM model defines it as UUID, not String
+  b) The FK target (prompts.id) is UUID
+  c) Origin specifically fixed this in the ENUM fix commit
+  d) Every other UUID FK in the schema uses the UUID type
+  e) String(36) only appears for prompt_tags.id and rollback_points.id PKs,
+     which are themselves legacy patterns that disagree with their ORM models
+
+RECOMMENDED RESOLUTION:
+  Use UUID(as_uuid=True) for prompt_tag_associations.prompt_id
+  
+  This aligns with:
+    ✅ ORM model (both trees)
+    ✅ FK target type (prompts.id is UUID)
+    ✅ Origin HEAD migration
+    ✅ All other FK patterns in the schema
+    ✅ PostgreSQL best practices
+
+  If production currently has VARCHAR(36), a migration will be needed:
+    ALTER TABLE prompt_tag_associations 
+    ALTER COLUMN prompt_id TYPE uuid USING prompt_id::uuid;
+  
+  This is safe IF all existing values are valid UUID strings (which they
+  must be, since they're FKs to prompts.id which is a UUID column).
+
+================================================================================
+SECTION 6: ADDITIONAL FINDINGS — prompt_tags.id TYPE MISMATCH
+================================================================================
+
+During this analysis, discovered a SECOND type mismatch:
+
+  prompt_tags.id:
+    Migration (both trees): sa.String(36) — VARCHAR(36)
+    ORM model (both trees): UUID(as_uuid=True) — native UUID
+  
+  This means:
+    a) The ORM model says UUID but the database column is VARCHAR(36)
+    b) SQLAlchemy may handle this through implicit casting, but it's fragile
+    c) This should be added to the reconciliation as an ADDITIONAL schema fix
+
+  Similarly:
+    rollback_points.id: String(36) in migration, possibly UUID in ORM
+    (rollback_points ORM model not checked — lower priority)
+
+  These are pre-existing mismatches in BOTH trees, not caused by divergence.
+
+================================================================================
+SECTION 7: VERDICT
+================================================================================
+
+PRODUCTION DATABASE: UNREACHABLE from this VM
+  Cannot directly verify the production column type.
+
+CODE-LEVEL DETERMINATION: 
+  The prompt_id column in prompt_tag_associations SHOULD be UUID.
+  
+  Both the ORM model and FK target agree on UUID.
+  String(36) in the v5.1.0 migration was a bug, fixed in origin HEAD.
+
+DECISION 2 RECOMMENDATION:
+  ✅ Adopt UUID(as_uuid=True) for prompt_tag_associations.prompt_id
+  
+  If production DB has VARCHAR(36), a type conversion migration is needed.
+  The conversion is safe (all values are valid UUIDs from FK constraint).
+
+ADDITIONAL FINDINGS:
+  ⚠️ prompt_tags.id: String(36) in migration vs UUID in ORM (both trees)
+  ⚠️ rollback_points.id: String(36) in migration (ORM needs verification)
+  These are pre-existing issues, not related to sandbox/origin divergence.
+
+NOTE FOR PRODUCTION VERIFICATION:
+  When the new sandbox (with Docker + PG17) is set up, or when SSH access
+  to node-01 is available, the following query should be run:
+  
+    SELECT table_name, column_name, data_type, udt_name
+    FROM information_schema.columns
+    WHERE (table_name = 'prompt_tag_associations' AND column_name = 'prompt_id')
+       OR (table_name = 'prompt_tags' AND column_name = 'id')
+       OR (table_name = 'rollback_points' AND column_name = 'id');
+  
+  This will confirm the actual production types and determine if type
+  conversion migrations are needed.
+
+================================================================================
+No modifications made. No recovery work initiated. Awaiting operator review.
+================================================================================
