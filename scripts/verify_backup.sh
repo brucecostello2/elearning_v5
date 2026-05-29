@@ -54,6 +54,11 @@ log_json() {
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
+    # Self-permissive log file: created world-writable so that
+    # both cron (root) and the backup-worker container (UID 999)
+    # can append. Idempotent via the chmod-after-touch.
+    touch "${LOG_FILE}" 2>/dev/null || true
+    chmod 666 "${LOG_FILE}" 2>/dev/null || true
     local entry="{\"timestamp\":\"${timestamp}\",\"level\":\"${level}\",\"service\":\"backup-verify\",\"script\":\"${SCRIPT_NAME}\",\"verify_date\":\"${VERIFY_DATE}\",\"message\":\"${message}\",\"extra\":${extra}}"
     echo "${entry}" >> "${LOG_FILE}"
     echo "[${level}] ${message}"

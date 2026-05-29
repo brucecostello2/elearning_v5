@@ -73,7 +73,7 @@ readonly SCRIPT_NAME="$(basename "$0")"
 readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 readonly TIMESTAMP="$(date +%Y-%m-%d)"
 readonly DATETIME="$(date +%Y-%m-%dT%H:%M:%S%z)"
-readonly LOCK_FILE="/var/run/ivgs-backup.lock"
+readonly LOCK_FILE="/var/run/ivgs/backup.lock"
 readonly LOG_FILE="/var/log/ivgs/backup.log"
 readonly LOG_DIR="/var/log/ivgs"
 
@@ -106,6 +106,11 @@ log_json() {
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
 
     mkdir -p "${LOG_DIR}"
+    # Self-permissive log file: created world-writable so that
+    # both cron (root) and the backup-worker container (UID 999)
+    # can append. Idempotent via the chmod-after-touch.
+    touch "${LOG_FILE}" 2>/dev/null || true
+    chmod 666 "${LOG_FILE}" 2>/dev/null || true
 
     local entry
     entry=$(cat <<EOF
