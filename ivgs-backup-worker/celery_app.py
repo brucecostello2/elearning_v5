@@ -111,6 +111,27 @@ celery_app.conf.update(
     worker_task_log_format=(
         "%(asctime)s [%(levelname)s] %(task_name)s[%(task_id)s]: %(message)s"
     ),
+    # Broker transport options — required for kombu 5.4+ when using Redis as
+    # broker.  Without fanout_prefix and fanout_patterns, pidbox control
+    # commands (used by `celery inspect ping` and the healthcheck) crash
+    # with "ValueError: not enough values to unpack (expected 3, got 1)" in
+    # kombu/transport/virtual/exchange.py lookup().
+    #
+    # The global_keyprefix isolates our Redis keyspace from the other Celery
+    # apps (ivgs-celery-default) sharing this Redis instance.  Different
+    # prefixes = different visibility scopes; one worker's pidbox doesn't
+    # interfere with another's.
+    broker_transport_options={
+        "fanout_prefix": True,
+        "fanout_patterns": True,
+        "global_keyprefix": "ivgs_backup_",
+    },
+    # Same for result backend (postgres URLs ignore this, harmless to set)
+    result_backend_transport_options={
+        "global_keyprefix": "ivgs_backup_",
+    },
+    # Quiet the deprecation warning about broker_connection_retry_on_startup
+    broker_connection_retry_on_startup=True,
 )
 
 

@@ -70,6 +70,10 @@ services:
     environment:
       # Postgres for status writes (sync — psycopg2)
       POSTGRES_DSN_SYNC: postgresql://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      # Override of default 'localhost' for backup.sh and others.  Inside
+      # the container, postgres is reachable via the docker service name.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
       # Celery broker / backend
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
@@ -92,7 +96,10 @@ services:
       # NOTE: /root/.gnupg is owned by root on host; we mount it but inside the
       # container the GPG_HOME is /home/ivgs/.gnupg which is also a mount target.
       # The keyring files come in via this mount.
-      - /root/.gnupg:/home/ivgs/.gnupg:ro
+      # GPG keyring — copy lives at /etc/ivgs/gpg-backup-keyring owned
+      # by UID 999 so the container's ivgs user can use it (host's /root/.gnupg
+      # is root-only and gpg refuses to operate on unsafe-ownership dirs).
+      - /etc/ivgs/gpg-backup-keyring:/home/ivgs/.gnupg
       # Logs — shared across cron, postgres-wal, and worker scripts
       - /var/log/ivgs:/var/log/ivgs
       # Docker socket — for verify_backup.sh's temp postgres container.
@@ -101,6 +108,11 @@ services:
       # backup scripts that WE control.  No external user inputs reach the
       # subprocess invocation.
       - /var/run/docker.sock:/var/run/docker.sock
+      # Lock directory — shared between host cron (runs as root) and the
+      # worker container (UID 999).  Mutual exclusion across both
+      # invocation paths.  /var/run/ivgs/ is created on the host with
+      # mode 1777 (sticky world-writable).
+      - /var/run/ivgs:/var/run/ivgs
     # The host's docker group GID is 988 (verified during Phase 1 setup).
     # The ivgs user inside the container must be added to a group with this
     # GID to use docker.sock.  group_add appends supplementary groups.
@@ -113,12 +125,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "celery -A celery_app inspect ping --timeout=5 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
+    # Healthcheck is defined in the Dockerfile (uses celery inspect ping;
+    # works correctly once broker_transport_options is configured).
     logging:
       driver: "json-file"
       options:

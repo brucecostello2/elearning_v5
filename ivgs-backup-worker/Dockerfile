@@ -81,8 +81,10 @@ RUN chown -R ivgs:ivgs /app
 USER ivgs
 ENV GNUPGHOME=/home/ivgs/.gnupg
 
+# Healthcheck: celery inspect ping.  Requires broker_transport_options
+# to be set (see celery_app.py) so pidbox doesn't crash.
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD celery -A celery_app inspect ping --timeout=5 || exit 1
+    CMD celery -A celery_app inspect ping --timeout=5 --destination backup-worker@node01 | grep -q pong || exit 1
 
 # Single worker process — backups are infrequent, no need for concurrency.
 # --prefetch-multiplier=1 means each worker pulls one task at a time
@@ -93,5 +95,7 @@ CMD ["celery", "-A", "celery_app", "worker", \
      "--queues=backup", \
      "--concurrency=1", \
      "--prefetch-multiplier=1", \
+     "--without-mingle", \
+     "--without-gossip", \
      "-Ofair", \
      "-n", "backup-worker@node01"]
