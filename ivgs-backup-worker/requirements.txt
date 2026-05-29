@@ -1,0 +1,11 @@
+# IVGS v5 — Backup Worker Python dependencies
+# Phase 14 Stream B
+#
+# Everything not listed here comes from shared/requirements.txt:
+#   sqlalchemy, asyncpg, psycopg2-binary, redis, pydantic, pydantic-settings,
+#   python-json-logger, alembic, httpx, structlog.
+#
+# This file lists ONLY the packages specific to the Celery worker role.
+
+celery==5.4.0
+kombu==5.4.2

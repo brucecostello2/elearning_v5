@@ -21,6 +21,9 @@
 version: "3.8"
 
 networks:
+  ivgs-net:
+    external: true
+    name: ivgs-infra_ivgs-net
   monitoring_net:
     driver: bridge
     ipam:
@@ -42,6 +45,9 @@ volumes:
       type: none
       o: bind
       device: /var/lib/grafana
+
+  pushgateway_data:
+    driver: local
 
 services:
   # ---------------------------------------------------------------------------
@@ -312,3 +318,47 @@ services:
       com.ivgs.service: "redis-exporter"
       com.ivgs.phase: "14"
       com.ivgs.spec: "§13.1"
+
+  # ---------------------------------------------------------------------------
+  # Prometheus Pushgateway (§14.1, §13 — consumed by backup.sh/wal_archive.sh/
+  # config_backup.sh/verify_backup.sh for batch-job metric ingestion)
+  # ---------------------------------------------------------------------------
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    container_name: ivgs-pushgateway
+    hostname: pushgateway
+    restart: unless-stopped
+    command:
+      - "--web.listen-address=:9091"
+      - "--web.telemetry-path=/metrics"
+      - "--persistence.file=/data/pushgateway-persistence"
+      - "--persistence.interval=5m"
+    volumes:
+      - pushgateway_data:/data
+    ports:
+      - "9091:9091"
+    networks:
+      ivgs-net: {}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9091/-/healthy"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 256M
+        reservations:
+          cpus: "0.05"
+          memory: 32M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "pushgateway"
+      com.ivgs.phase: "14"
+      com.ivgs.spec: "§14.1"

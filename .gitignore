@@ -87,6 +87,7 @@ logs/
 
 # Backup files
 *.bak
+*.bak-*
 *.backup
 
 # GPU/CUDA
