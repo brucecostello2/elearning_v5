@@ -25,7 +25,7 @@ const fetcher = async (url: string): Promise<any> => {
 // ── Backup Records Hook ───────────────────────────────────────────────
 
 interface BackupRecordFilters {
-  type?: string;
+  backup_type?: string;
   status?: string;
   page: number;
   pageSize: number;
@@ -48,7 +48,7 @@ export function useBackupRecords(filters: BackupRecordFilters): {
   mutate: KeyedMutator<any>;
 } {
   const params = new URLSearchParams();
-  if (filters.type) params.set("type", filters.type);
+  if (filters.backup_type) params.set("backup_type", filters.backup_type);
   if (filters.status) params.set("status", filters.status);
   params.set("page", filters.page.toString());
   params.set("per_page", filters.pageSize.toString());
