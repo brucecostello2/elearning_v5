@@ -43,7 +43,7 @@ services:
     build:
       context: /opt/ivgs
       dockerfile: ivgs-backup-worker/Dockerfile
-    image: ivgs-backup-worker:local
+    image: ghcr.io/brucecostello2/ivgs-backup-worker:${IVGS_BACKUP_WORKER_TAG:?IVGS_BACKUP_WORKER_TAG required}
     container_name: ivgs-backup-worker
     restart: unless-stopped
     env_file:
