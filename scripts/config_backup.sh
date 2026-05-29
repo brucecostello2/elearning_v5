@@ -25,6 +25,25 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# Argument parsing (Stream B API integration)
+# ---------------------------------------------------------------------------
+BACKUP_ID=""
+for arg in "$@"; do
+    case "$arg" in
+        --backup-id=*)  BACKUP_ID="${arg#--backup-id=}" ;;
+        --help|-h)
+            echo "Usage: $0 [--backup-id=<uuid>]"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $arg" >&2
+            echo "Usage: $0 [--backup-id=<uuid>]" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 readonly SCRIPT_NAME="$(basename "$0")"
@@ -51,15 +70,48 @@ log_entry() {
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
+    # Self-permissive log file: created world-writable so that
+    # both cron (root) and the backup-worker container (UID 999)
+    # can append. Idempotent via the chmod-after-touch.
+    touch "${LOG_FILE}" 2>/dev/null || true
+    chmod 666 "${LOG_FILE}" 2>/dev/null || true
     echo "{\"timestamp\":\"${timestamp}\",\"level\":\"${level}\",\"service\":\"config-backup\",\"script\":\"${SCRIPT_NAME}\",\"message\":\"${message}\"}" >> "${LOG_FILE}"
     echo "[${level}] ${message}"
+}
+
+# ---------------------------------------------------------------------------
+# Push metrics (must be defined before cleanup() trap, which calls it on failure)
+# ---------------------------------------------------------------------------
+push_status() {
+    local status="$1"
+    cat <<EOF | curl --silent --max-time 10 --data-binary @- \
+        "${PROMETHEUS_PUSHGATEWAY}/metrics/job/ivgs_config_backup/instance/node-01" 2>/dev/null || true
+# TYPE ivgs_backup_last_status gauge
+ivgs_backup_last_status{backup_type="config",target_path="${BACKUP_NAS_DIR}",node="node-01"} ${status}
+# TYPE ivgs_backup_last_timestamp gauge
+ivgs_backup_last_timestamp{backup_type="config"} $(date +%s)
+EOF
 }
 
 # ---------------------------------------------------------------------------
 # Cleanup
 # ---------------------------------------------------------------------------
 cleanup() {
+    # Capture the exit code at trap entry — must be first command.
+    local exit_code=$?
+
+    # Remove temp files. Always succeed (don't shadow exit code).
     rm -rf "${STAGING_DIR}" "${ARCHIVE_FILE}" "${ENCRYPTED_FILE}" 2>/dev/null || true
+
+    # If we're exiting non-zero, push a failure status so BackupFailed alert fires.
+    if [ "${exit_code}" -ne 0 ]; then
+        push_status 0 2>/dev/null || true
+        log_entry "ERROR" "Config backup failed with exit code ${exit_code}"
+    fi
+
+    # Re-exit with the original exit code (the trap's last command otherwise
+    # determines the exit code, which is a well-known bash gotcha).
+    exit "${exit_code}"
 }
 trap cleanup EXIT
 
@@ -221,20 +273,6 @@ cleanup_old() {
 }
 
 # ---------------------------------------------------------------------------
-# Push metrics
-# ---------------------------------------------------------------------------
-push_status() {
-    local status="$1"
-    cat <<EOF | curl --silent --max-time 10 --data-binary @- \
-        "${PROMETHEUS_PUSHGATEWAY}/metrics/job/ivgs_config_backup/instance/node-01" 2>/dev/null || true
-# TYPE ivgs_backup_last_status gauge
-ivgs_backup_last_status{backup_type="config",target_path="${BACKUP_NAS_DIR}",node="node-01"} ${status}
-# TYPE ivgs_backup_last_timestamp gauge
-ivgs_backup_last_timestamp{backup_type="config"} $(date +%s)
-EOF
-}
-
-# ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
 main() {
@@ -256,6 +294,14 @@ main() {
     local duration=$(( end_time - start_time ))
 
     log_entry "INFO" "=== Config Backup Completed (${duration}s) ==="
+
+    # Stream B API integration: emit KEY=VALUE lines for FastAPI to parse.
+    local size_bytes
+    size_bytes="$(stat -c%s "${NAS_TARGET}/$(basename "${ENCRYPTED_FILE}")" 2>/dev/null || echo 0)"
+    local effective_id="${BACKUP_ID:-${TIMESTAMP}}"
+    echo "backup_id=${effective_id}"
+    echo "size_bytes=${size_bytes}"
+    echo "backup_path=${NAS_TARGET}"
 }
 
 main "$@"

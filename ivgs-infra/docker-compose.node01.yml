@@ -235,7 +235,7 @@ services:
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
-      GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
+      IVGS_GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
       VLLM_PRIMARY_URL: http://192.168.1.91:8000/v1
       VLLM_SECONDARY_URL: http://192.168.1.92:8000/v1
       VLLM_MIDSIZE_URL: http://192.168.1.93:8000/v1

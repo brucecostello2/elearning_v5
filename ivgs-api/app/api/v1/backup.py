@@ -6,16 +6,26 @@ Implements §5.2.7:
   GET  /api/v1/backup/records      — List backup records with status and size
   POST /api/v1/backup/trigger      — Trigger on-demand backup (Admin only)
   POST /api/v1/backup/{id}/verify  — Trigger integrity verification
+
+Phase 14 Stream B refactor:
+  - Replaces in-process asyncio.create_subprocess_shell with Celery task
+    dispatch via .send_task().  The actual backup work happens in the
+    dedicated ivgs-backup-worker container.
+  - API container no longer has docker.sock or GPG keys; only dispatches
+    work to the worker queue.
+  - Trigger endpoint returns immediately with status='running'; the worker
+    transitions through running → completed/failed.
 """
 
 from __future__ import annotations
 
-import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
+from celery import Celery
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -28,35 +38,77 @@ router = APIRouter(tags=["Backup"])
 
 
 # ---------------------------------------------------------------------------
-# Pydantic Schemas
+# Celery dispatcher
+# ---------------------------------------------------------------------------
+# The API does NOT execute backup work in-process.  It dispatches tasks to
+# the `backup` queue, which the ivgs-backup-worker container consumes.
+#
+# We use send_task(name=...) so the API doesn't import the worker's task
+# functions (different container, different codebase).  Task names are the
+# coordination contract; both ends must agree on them.
+# ---------------------------------------------------------------------------
+
+_BROKER_URL = os.environ.get("IVGS_CELERY_BROKER_URL", "redis://redis:6379/0")
+
+# A lightweight Celery client just for dispatching.  No queues defined here
+# because this app is producer-only (never consumes).
+celery_client = Celery("ivgs_api_dispatcher", broker=_BROKER_URL)
+
+# Match the backup-worker's broker_transport_options so pidbox isn't
+# triggered on our side (we're a producer-only, but still).
+celery_client.conf.update(
+    broker_transport_options={
+        "fanout_prefix": True,
+        "fanout_patterns": True,
+        "global_keyprefix": "ivgs_backup_",
+    },
+    broker_connection_retry_on_startup=True,
+    task_serializer="json",
+    accept_content=["json"],
+)
+
+# Task name → handles  the routing.  Names must match @shared_task(name=...)
+# decorators in /opt/ivgs/ivgs-backup-worker/tasks/backup_tasks.py.
+_TASK_NAMES = {
+    "full_database": "tasks.backup_tasks.run_full_database_backup",
+    "asset_backup":  "tasks.backup_tasks.run_asset_backup",
+    "config_backup": "tasks.backup_tasks.run_config_backup",
+}
+
+
+# ---------------------------------------------------------------------------
+# Response models
 # ---------------------------------------------------------------------------
 
 class BackupRecord(BaseModel):
+    """Single backup record."""
     id: str
-    backup_type: str  # full_database | wal_archive | asset_backup | config_backup | vm_snapshot
-    status: str  # pending | running | success | failed
-    size_bytes: Optional[int] = None
+    backup_type: str
+    status: str
     started_at: datetime
     completed_at: Optional[datetime] = None
-    verification_checksum: Optional[str] = None
+    size_bytes: Optional[int] = None
     backup_path: Optional[str] = None
+    verification_checksum: Optional[str] = None
+    verified_at: Optional[datetime] = None
     error_message: Optional[str] = None
 
 
 class BackupListResponse(BaseModel):
+    """Paginated backup list response."""
     data: list[BackupRecord]
-    total: int
     page: int
     per_page: int
-    pages: int
-    has_more: bool
+    total: int
 
 
 class BackupTriggerRequest(BaseModel):
-    backup_type: str = "full_database"  # full_database | asset_backup | config_backup
+    """Request to trigger a backup."""
+    backup_type: str = "full_database"
 
 
 class BackupTriggerResponse(BaseModel):
+    """Response after dispatching a backup task."""
     id: str
     backup_type: str
     status: str
@@ -65,80 +117,72 @@ class BackupTriggerResponse(BaseModel):
 
 
 class BackupVerifyResponse(BaseModel):
+    """Response after dispatching a verification task."""
     id: str
     status: str
-    verification_checksum: Optional[str] = None
-    row_count_match: Optional[bool] = None
     message: str
 
 
 # ---------------------------------------------------------------------------
-# Endpoints
+# GET /records — list backup records
 # ---------------------------------------------------------------------------
 
 @router.get("/records", response_model=BackupListResponse)
 async def list_backup_records(
     page: int = 1,
-    per_page: int = 50,
+    per_page: int = 20,
     backup_type: Optional[str] = None,
     status_filter: Optional[str] = None,
     db=Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """GET /api/v1/backup/records — List backup records with status and size."""
+    """List backup records with optional filtering and pagination."""
     from sqlalchemy import text as sa_text
 
-    where_clauses = []
+    # Build WHERE clause dynamically
+    conditions = []
     params: dict = {}
-
     if backup_type:
-        where_clauses.append("backup_type = :backup_type")
+        conditions.append("backup_type = :backup_type")
         params["backup_type"] = backup_type
     if status_filter:
-        where_clauses.append("status = :status_filter")
-        params["status_filter"] = status_filter
+        conditions.append("status = :status")
+        params["status"] = status_filter
 
-    # SECURITY NOTE: where_clauses contains only hardcoded column comparisons
-    # with :named_param placeholders. Actual values are in params dict and
-    # passed to execute() separately — this is parameterized, not injectable.
-    where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+    where_sql = ""
+    if conditions:
+        where_sql = "WHERE " + " AND ".join(conditions)
 
     # Count total
-    count_row = (
-        await db.execute(
-            sa_text(f"SELECT COUNT(*) as cnt FROM backup_records WHERE {where_sql}"),
-            params,
-        )
-    ).fetchone()
-    total = count_row.cnt
+    count_sql = f"SELECT COUNT(*) FROM backup_records {where_sql}"
+    total = (await db.execute(sa_text(count_sql), params)).scalar() or 0
 
     # Fetch page
     offset = (page - 1) * per_page
-    params["limit"] = per_page
-    params["offset"] = offset
-
-    rows = (
-        await db.execute(
-            sa_text(
-                f"SELECT * FROM backup_records WHERE {where_sql} "
-                "ORDER BY started_at DESC LIMIT :limit OFFSET :offset"
-            ),
-            params,
-        )
-    ).fetchall()
-
-    pages = max(1, (total + per_page - 1) // per_page)
+    list_sql = (
+        f"SELECT id, backup_type, status, started_at, completed_at, "
+        f"       size_bytes, backup_path, verification_checksum, "
+        f"       verified_at, error_message "
+        f"FROM backup_records {where_sql} "
+        f"ORDER BY started_at DESC "
+        f"LIMIT :limit OFFSET :offset"
+    )
+    rows = (await db.execute(
+        sa_text(list_sql),
+        {**params, "limit": per_page, "offset": offset},
+    )).fetchall()
 
     records = [
         BackupRecord(
             id=str(r.id),
             backup_type=r.backup_type,
             status=r.status,
-            size_bytes=r.size_bytes,
             started_at=r.started_at,
             completed_at=r.completed_at,
-            verification_checksum=r.verification_checksum,
+            size_bytes=r.size_bytes,
             backup_path=r.backup_path,
+            verification_checksum=r.verification_checksum,
+            verified_at=r.verified_at,
             error_message=r.error_message,
         )
         for r in rows
@@ -146,13 +190,15 @@ async def list_backup_records(
 
     return BackupListResponse(
         data=records,
-        total=total,
         page=page,
         per_page=per_page,
-        pages=pages,
-        has_more=page < pages,
+        total=total,
     )
 
+
+# ---------------------------------------------------------------------------
+# POST /trigger — dispatch a backup task to the worker
+# ---------------------------------------------------------------------------
 
 @router.post("/trigger", response_model=BackupTriggerResponse)
 async def trigger_backup(
@@ -160,12 +206,36 @@ async def trigger_backup(
     db=Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    """POST /api/v1/backup/trigger — Trigger on-demand backup (Admin only)."""
+    """
+    POST /api/v1/backup/trigger — Trigger on-demand backup (Admin only).
+
+    Inserts a record with status='running', dispatches a Celery task to the
+    backup queue, and returns immediately.  The worker takes ownership of
+    the record's lifecycle (running → completed/failed).
+    """
     from sqlalchemy import text as sa_text
+
+    # Validate backup_type early; reject unsupported values before DB write
+    if request.backup_type not in _TASK_NAMES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {
+                "code": "VALIDATION_ERROR",
+                "message": (
+                    f"Unsupported backup_type '{request.backup_type}'. "
+                    f"Supported: {sorted(_TASK_NAMES.keys())}"
+                ),
+            }},
+        )
 
     backup_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    task_name = _TASK_NAMES[request.backup_type]
 
+    # Insert record FIRST.  If broker dispatch fails after this, we have a
+    # 'running' row that will never transition.  That's acceptable for now
+    # (operator can manually reconcile); future enhancement could roll back
+    # the row on dispatch failure.
     await db.execute(
         sa_text(
             "INSERT INTO backup_records (id, backup_type, status, started_at) "
@@ -175,22 +245,65 @@ async def trigger_backup(
     )
     await db.commit()
 
-    # Launch backup in background using an isolated session.
-    # NOTE: must NOT pass the request-scoped `db` here. The dependency
-    # cleanup closes the request session as soon as this handler returns;
-    # a fire-and-forget task using it races with close() and crashes with
-    # SQLAlchemy IllegalStateChangeError. The isolated wrapper acquires
-    # its own session from the factory. (BUG-API-BACKUP-TASK-SESSION)
-    asyncio.create_task(_run_backup_isolated(backup_id, request.backup_type))
+    # Dispatch to the backup worker via Celery.  send_task() pushes a message
+    # onto Redis; the worker picks it up and executes the script.
+    try:
+        celery_client.send_task(
+            task_name,
+            args=[backup_id],
+            queue="backup",
+        )
+        logger.info(
+            "Backup task dispatched",
+            extra={
+                "backup_id": backup_id,
+                "backup_type": request.backup_type,
+                "task_name": task_name,
+            },
+        )
+    except Exception as exc:
+        # If dispatch fails (broker down, etc.), mark the record as failed
+        # so it doesn't sit at 'running' forever.
+        logger.exception(
+            "Failed to dispatch backup task to broker",
+            extra={"backup_id": backup_id, "backup_type": request.backup_type},
+        )
+        await db.execute(
+            sa_text(
+                "UPDATE backup_records "
+                "SET status = 'failed', error_message = :err, completed_at = :ts "
+                "WHERE id = :id"
+            ),
+            {
+                "id": backup_id,
+                "err": f"Broker dispatch failed: {exc}"[:2000],
+                "ts": datetime.now(timezone.utc),
+            },
+        )
+        await db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": {
+                "code": "BROKER_UNAVAILABLE",
+                "message": "Failed to dispatch backup task; broker may be down.",
+            }},
+        )
 
     return BackupTriggerResponse(
         id=backup_id,
         backup_type=request.backup_type,
         status="running",
         started_at=now,
-        message=f"Backup {request.backup_type} initiated. Track via GET /api/v1/backup/records.",
+        message=(
+            f"Backup {request.backup_type} dispatched (id={backup_id}). "
+            f"Track via GET /api/v1/backup/records."
+        ),
     )
 
+
+# ---------------------------------------------------------------------------
+# POST /{backup_id}/verify — dispatch a verification task
+# ---------------------------------------------------------------------------
 
 @router.post("/{backup_id}/verify", response_model=BackupVerifyResponse)
 async def verify_backup(
@@ -198,7 +311,18 @@ async def verify_backup(
     db=Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """POST /api/v1/backup/{id}/verify — Trigger integrity verification."""
+    """
+    POST /api/v1/backup/{id}/verify — Trigger integrity verification.
+
+    Verifies a completed backup by dispatching run_verification to the
+    worker, which decrypts, restores to a temp postgres container, and
+    compares row counts.  Updates the record to status='verified' on
+    success.
+
+    Pre-conditions:
+      - Backup record must exist
+      - Backup record must have status='completed' (DB ENUM value)
+    """
     from sqlalchemy import text as sa_text
 
     row = (
@@ -211,174 +335,61 @@ async def verify_backup(
     if not row:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "RESOURCE_NOT_FOUND",
-                              "message": f"Backup record {backup_id} not found"}},
+            detail={"error": {
+                "code": "RESOURCE_NOT_FOUND",
+                "message": f"Backup record {backup_id} not found",
+            }},
         )
 
-    if row.status != "success":
+    # DB ENUM values are: running, completed, failed, verified.
+    # Verify is only valid for completed (or re-verified) backups.
+    if row.status not in ("completed", "verified"):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail={"error": {"code": "VALIDATION_ERROR",
-                              "message": f"Cannot verify backup in '{row.status}' state; verify requires status='success'"}},
+            detail={"error": {
+                "code": "VALIDATION_ERROR",
+                "message": (
+                    f"Cannot verify backup in '{row.status}' state; "
+                    f"verify requires status in ('completed', 'verified')."
+                ),
+            }},
         )
 
-    # Per BUG-API-BACKUP-STATUS fix: no DB status write here. The backup's
-    # status stays 'success'; populating verification_checksum in _run_verification
-    # serves as the indicator that verification completed.
+    # Derive verify_date from the backup's started_at — verify_backup.sh
+    # takes a date string (YYYY-MM-DD) as positional arg to locate the
+    # backup files on the NAS at /mnt/backup/ivgs/db/<date>/.
+    verify_date = row.started_at.strftime("%Y-%m-%d")
 
-    # Launch verification in background using an isolated session.
-    # Same lifecycle constraint as the trigger above — see
-    # _run_backup_isolated for the full rationale.
-    asyncio.create_task(_run_verification_isolated(backup_id, row.backup_path))
+    # Dispatch the verification task.  Worker will update the record
+    # status to 'verified' on success or 'failed' on error.
+    try:
+        celery_client.send_task(
+            "tasks.backup_tasks.run_verification",
+            args=[backup_id, verify_date],
+            queue="backup",
+        )
+        logger.info(
+            "Verification task dispatched",
+            extra={"backup_id": backup_id, "verify_date": verify_date},
+        )
+    except Exception as exc:
+        logger.exception(
+            "Failed to dispatch verification task",
+            extra={"backup_id": backup_id},
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": {
+                "code": "BROKER_UNAVAILABLE",
+                "message": f"Failed to dispatch verification task: {exc}",
+            }},
+        )
 
     return BackupVerifyResponse(
         id=backup_id,
-        status="verifying",
-        message="Backup verification initiated.",
+        status="running",
+        message=(
+            f"Verification dispatched for backup {backup_id} "
+            f"(date {verify_date}). Track via GET /api/v1/backup/records."
+        ),
     )
-
-
-# ---------------------------------------------------------------------------
-# Background tasks
-# ---------------------------------------------------------------------------
-#
-# Lifecycle note: the trigger and verify endpoints fire-and-forget these
-# tasks via asyncio.create_task. The endpoints' request-scoped DB session
-# is closed by the FastAPI dependency cleanup as soon as the response is
-# returned, so background tasks MUST NOT reuse the request's session.
-# The "_isolated" wrappers acquire a fresh session from the factory and
-# pass it to the work functions, which keep their (db) signatures so they
-# remain directly callable from tests.  (BUG-API-BACKUP-TASK-SESSION)
-
-async def _run_backup_isolated(backup_id: str, backup_type: str) -> None:
-    """Background-task wrapper: acquires its own session, calls _run_backup."""
-    from shared.database import async_session_factory
-    async with async_session_factory() as task_db:
-        try:
-            await _run_backup(backup_id, backup_type, task_db)
-        except Exception:
-            logger.exception(
-                "Background backup task failed",
-                extra={"backup_id": backup_id, "backup_type": backup_type},
-            )
-
-
-async def _run_verification_isolated(backup_id: str, backup_path: str) -> None:
-    """Background-task wrapper: acquires its own session, calls _run_verification."""
-    from shared.database import async_session_factory
-    async with async_session_factory() as task_db:
-        try:
-            await _run_verification(backup_id, backup_path, task_db)
-        except Exception:
-            logger.exception(
-                "Background verification task failed",
-                extra={"backup_id": backup_id},
-            )
-
-
-async def _run_backup(backup_id: str, backup_type: str, db) -> None:
-    """Execute backup shell script and update record."""
-    from sqlalchemy import text as sa_text
-
-    script_map = {
-        "full_database": "/ivgs/ivgs-infra/scripts/backup.sh",
-        "asset_backup": "/ivgs/ivgs-infra/scripts/backup.sh --assets-only",
-        "config_backup": "/ivgs/ivgs-infra/scripts/backup.sh --config-only",
-    }
-
-    script_cmd = script_map.get(backup_type, script_map["full_database"])
-
-    try:
-        proc = await asyncio.create_subprocess_shell(
-            f"{script_cmd} --backup-id={backup_id}",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-
-        if proc.returncode == 0:
-            # Parse size from script output
-            size_bytes = _parse_backup_size(stdout.decode())
-            backup_path = f"/mnt/backup/ivgs/db/{backup_id}"
-
-            await db.execute(
-                sa_text(
-                    "UPDATE backup_records SET status = 'success', "
-                    "size_bytes = :size, backup_path = :path, "
-                    "completed_at = :completed_at WHERE id = :id"
-                ),
-                {
-                    "id": backup_id,
-                    "size": size_bytes,
-                    "path": backup_path,
-                    "completed_at": datetime.now(timezone.utc),
-                },
-            )
-        else:
-            await db.execute(
-                sa_text(
-                    "UPDATE backup_records SET status = 'failed', "
-                    "error_message = :error, completed_at = :completed_at "
-                    "WHERE id = :id"
-                ),
-                {
-                    "id": backup_id,
-                    "error": stderr.decode()[:2000],
-                    "completed_at": datetime.now(timezone.utc),
-                },
-            )
-        await db.commit()
-    except Exception as _exc:  # noqa: F841
-        logger.exception("Backup task failed", extra={"backup_id": backup_id})
-        await db.execute(
-            sa_text(
-                "UPDATE backup_records SET status = 'failed', "
-                "error_message = :error WHERE id = :id"
-            ),
-            {"id": backup_id, "error": str(_exc)[:2000]},
-        )
-        await db.commit()
-
-
-async def _run_verification(backup_id: str, backup_path: str, db) -> None:
-    """Run backup verification: restore to temp DB, compare row counts, compute checksum."""
-    from sqlalchemy import text as sa_text
-    import hashlib
-
-    try:
-        proc = await asyncio.create_subprocess_shell(
-            f"/ivgs/ivgs-infra/scripts/verify_backup.sh --backup-id={backup_id} "
-            f"--path={backup_path}",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-
-        if proc.returncode == 0:
-            checksum = hashlib.sha256(stdout).hexdigest()
-            await db.execute(
-                sa_text(
-                    "UPDATE backup_records SET "
-                    "verification_checksum = :checksum WHERE id = :id"
-                ),
-                {"id": backup_id, "checksum": checksum},
-            )
-        else:
-            await db.execute(
-                sa_text(
-                    "UPDATE backup_records SET status = 'failed', "
-                    "error_message = :error WHERE id = :id"
-                ),
-                {"id": backup_id, "error": f"Verification failed: {stderr.decode()[:2000]}"},
-            )
-        await db.commit()
-    except Exception as _exc:  # noqa: F841
-        logger.exception("Verification failed", extra={"backup_id": backup_id})
-
-
-def _parse_backup_size(output: str) -> int:
-    """Parse backup size from shell script output."""
-    for line in output.split("\n"):
-        if "size_bytes=" in line:
-            return int(line.split("=")[1].strip())
-    return 0

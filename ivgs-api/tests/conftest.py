@@ -194,6 +194,47 @@ async def db_session(test_engine, test_session_factory) -> AsyncGenerator[AsyncS
 # OVERRIDE DB FUNCTIONS — route API sessions through test engine
 # ============================================================================
 
+@pytest.fixture(autouse=True)
+def _patch_celery_dispatch(monkeypatch):
+    """
+    Stub out Celery task dispatch in API endpoints.
+
+    Phase 14 Stream B introduced a refactor where the backup trigger and
+    verify endpoints dispatch to a Celery worker via send_task().  In tests
+    we don't want to actually push messages onto Redis (the live broker
+    instance) because:
+      - A live backup-worker is connected to /0 and would consume the
+        message, then attempt to execute a real backup against test data
+      - Test runs would pollute the broker's keyspace
+
+    Recorded calls available at celery_client.send_task.calls for assertion.
+    """
+    try:
+        from app.api.v1.backup import celery_client
+    except ImportError:
+        return
+
+    calls = []
+
+    def _stub_send_task(name, args=None, kwargs=None, queue=None, **extra):
+        calls.append({
+            "name": name,
+            "args": args,
+            "kwargs": kwargs,
+            "queue": queue,
+            **extra,
+        })
+        class _StubAsyncResult:
+            id = "stub-task-id"
+            def get(self, *a, **kw): return None
+            def ready(self): return False
+            def __bool__(self): return True
+        return _StubAsyncResult()
+
+    _stub_send_task.calls = calls
+    monkeypatch.setattr(celery_client, "send_task", _stub_send_task)
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def _override_db_functions(test_engine, test_session_factory, monkeypatch):
     """

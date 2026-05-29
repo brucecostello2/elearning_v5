@@ -219,3 +219,22 @@ scrape_configs:
         target_label: instance
         regex: "(.+):\\d+"
         replacement: "${1}"
+
+  # ---------------------------------------------------------------------------
+  # Scrape Target Group 8: Prometheus Pushgateway (§14.1, §13.1)
+  # Receives push-based metrics from backup scripts (backup.sh, wal_archive.sh,
+  # config_backup.sh, verify_backup.sh). Prometheus pulls from pushgateway,
+  # scripts push to it.
+  # honor_labels: true preserves backup_type/node labels set by the scripts.
+  # ---------------------------------------------------------------------------
+  - job_name: "pushgateway"
+    metrics_path: "/metrics"
+    scrape_interval: 30s
+    honor_labels: true
+    static_configs:
+      - targets:
+          - "pushgateway:9091"
+        labels:
+          service: "pushgateway"
+          node: "node-01"
+          component: "metric-ingestion"

@@ -223,7 +223,20 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
         "queue_order_strategy": "priority",
         "sep": ":",
         "priority_steps": list(range(10)),
+        # Kombu 5.4+ requires these for pidbox control commands to work with
+        # Redis broker.  Without them, `celery inspect ping` (and the
+        # healthcheck that depends on it) crash with:
+        #   ValueError: not enough values to unpack (expected 3, got 1)
+        # in kombu/transport/virtual/exchange.py lookup().
+        "fanout_prefix": True,
+        "fanout_patterns": True,
+        # Namespace this worker's keys so they don't collide with the
+        # ivgs-backup-worker's keys (both share the same Redis instance,
+        # different DB index = 0).
+        "global_keyprefix": "ivgs_workers_",
     }
+    # Quiet a Celery 5.4 deprecation warning. Behavior remains the same.
+    app.conf.broker_connection_retry_on_startup = True
 
     if config.broker_use_ssl:
         app.conf.broker_use_ssl = {

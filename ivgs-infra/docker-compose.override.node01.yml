@@ -1,8 +1,39 @@
 # Per-node override applied at compose time.
 services:
+  # Phase 14 WAL archiving: mount the scripts dir so postgres can find
+  # /scripts/wal_archive.sh (referenced by archive_command in base compose).
+  # Also set WAL_ARCHIVE_DIR so the script writes to the wal-archive mount
+  # rather than its default /mnt/backup/ivgs/wal path.
+  postgres:
+    volumes:
+      - /opt/ivgs/scripts:/scripts:ro
+      - /var/log/ivgs:/var/log/ivgs
+    environment:
+      WAL_ARCHIVE_DIR: /mnt/wal-archive
+      WAL_RETENTION_DAYS: 7
+
   fastapi-backend:
     volumes:
       - /opt/ivgs/rollback-storage:/ivgs
+      # Phase 14 Stream B: source overlay so we can iterate without rebuilds.
+      # Read-only — production deploys should still use the baked image.
+      - /opt/ivgs/ivgs-api:/app
+      # Note: /app is mounted RW (no :ro) because /app/shared is then mounted
+      # on top of it — Docker needs to mkdir the nested mountpoint, which
+      # fails if /app is read-only. Files are still effectively immutable
+      # because we don't edit inside the container; host writes from
+      # /opt/ivgs/ivgs-api on the host filesystem.
+      # The above mount overlays /app entirely, hiding the baked-in /app/shared
+      # module that the API imports. Mount the host's shared dir on top of the
+      # overlay so 'from shared.database import ...' resolves correctly.
+      - /opt/ivgs/shared:/app/shared:ro
+      # Backup scripts at the path the API code expects.
+      # (API hardcodes /ivgs/ivgs-infra/scripts/backup.sh etc.)
+      - /opt/ivgs/scripts:/ivgs/ivgs-infra/scripts:ro
+      # Backup data — API reads backup_record.json for size/checksum.
+      - /mnt/backup:/mnt/backup:ro
+      # Log dir for backup scripts invoked via subprocess.
+      - /var/log/ivgs:/var/log/ivgs
   nextjs-frontend:
     # Image healthcheck uses curl which is not installed in the slim image.
     # Override with wget (present in the image) hitting 127.0.0.1 explicitly.
@@ -12,3 +43,92 @@ services:
       timeout: 10s
       start_period: 30s
       retries: 3
+
+  # ---------------------------------------------------------------------------
+  # Phase 14 Stream B: dedicated backup worker container
+  # ---------------------------------------------------------------------------
+  # Why this is a separate container (not a flag on ivgs-celery-default):
+  #   - Needs docker.sock to spin up temp postgres for verify_backup.sh.
+  #     Giving GPU/orchestration workers docker.sock is a security risk.
+  #   - Needs GPG private key access to decrypt during verify.
+  #   - Carries write access to /mnt/backup.
+  # Isolating to one container = minimal blast radius if compromised.
+  #
+  # NOTE: this service uses `build:` (not a pre-built ghcr image) because the
+  # backup worker is node-01-specific and built locally.  Production roll-out
+  # to additional nodes would still need its own image, but only node-01
+  # actually runs backups, so local build is acceptable.
+  backup-worker:
+    build:
+      context: /opt/ivgs
+      dockerfile: ivgs-backup-worker/Dockerfile
+    image: ivgs-backup-worker:local
+    container_name: ivgs-backup-worker
+    restart: unless-stopped
+    env_file:
+      - /opt/ivgs/ivgs-infra/.env.node01
+    environment:
+      # Postgres for status writes (sync — psycopg2)
+      POSTGRES_DSN_SYNC: postgresql://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      # Override of default 'localhost' for backup.sh and others.  Inside
+      # the container, postgres is reachable via the docker service name.
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      # Celery broker / backend
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      # Where the backup scripts live inside the container (mounted below)
+      SCRIPTS_DIR: /scripts
+      # Inherited by scripts via subprocess env
+      BACKUP_GPG_RECIPIENT: bruce@fourthirds.com
+      PROMETHEUS_PUSHGATEWAY: http://pushgateway:9091
+      WAL_ARCHIVE_DIR: /mnt/backup/ivgs/wal
+      WAL_RETENTION_DAYS: 7
+      # GPG keyring location matches the volume mount
+      GNUPGHOME: /home/ivgs/.gnupg
+    volumes:
+      # Backup scripts (read-only — worker invokes them as subprocesses)
+      - /opt/ivgs/scripts:/scripts:ro
+      # Backup data — RW because verify_backup.sh writes the verification block
+      # back to backup_record.json on success
+      - /mnt/backup:/mnt/backup
+      # GPG keyring for decryption during verify
+      # NOTE: /root/.gnupg is owned by root on host; we mount it but inside the
+      # container the GPG_HOME is /home/ivgs/.gnupg which is also a mount target.
+      # The keyring files come in via this mount.
+      # GPG keyring — copy lives at /etc/ivgs/gpg-backup-keyring owned
+      # by UID 999 so the container's ivgs user can use it (host's /root/.gnupg
+      # is root-only and gpg refuses to operate on unsafe-ownership dirs).
+      - /etc/ivgs/gpg-backup-keyring:/home/ivgs/.gnupg
+      # Logs — shared across cron, postgres-wal, and worker scripts
+      - /var/log/ivgs:/var/log/ivgs
+      # Docker socket — for verify_backup.sh's temp postgres container.
+      # SECURITY: anyone in the container who can exec arbitrary commands
+      # has root-on-host via the daemon.  Worker code only ever calls
+      # backup scripts that WE control.  No external user inputs reach the
+      # subprocess invocation.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Lock directory — shared between host cron (runs as root) and the
+      # worker container (UID 999).  Mutual exclusion across both
+      # invocation paths.  /var/run/ivgs/ is created on the host with
+      # mode 1777 (sticky world-writable).
+      - /var/run/ivgs:/var/run/ivgs
+    # The host's docker group GID is 988 (verified during Phase 1 setup).
+    # The ivgs user inside the container must be added to a group with this
+    # GID to use docker.sock.  group_add appends supplementary groups.
+    group_add:
+      - "988"
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Healthcheck is defined in the Dockerfile (uses celery inspect ping;
+    # works correctly once broker_transport_options is configured).
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"

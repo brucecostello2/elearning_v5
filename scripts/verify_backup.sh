@@ -49,18 +49,24 @@ VERIFICATION_PASSED=false
 log_json() {
     local level="$1"
     local message="$2"
-    local extra="${3:-{}}"
+    local extra="${3:-}"
+    [ -z "${extra}" ] && extra='{}'
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
+    # Self-permissive log file: created world-writable so that
+    # both cron (root) and the backup-worker container (UID 999)
+    # can append. Idempotent via the chmod-after-touch.
+    touch "${LOG_FILE}" 2>/dev/null || true
+    chmod 666 "${LOG_FILE}" 2>/dev/null || true
     local entry="{\"timestamp\":\"${timestamp}\",\"level\":\"${level}\",\"service\":\"backup-verify\",\"script\":\"${SCRIPT_NAME}\",\"verify_date\":\"${VERIFY_DATE}\",\"message\":\"${message}\",\"extra\":${extra}}"
     echo "${entry}" >> "${LOG_FILE}"
     echo "[${level}] ${message}"
 }
 
-log_info()  { log_json "INFO"  "$1" "${2:-{}}"; }
-log_warn()  { log_json "WARN"  "$1" "${2:-{}}"; }
-log_error() { log_json "ERROR" "$1" "${2:-{}}"; }
+log_info()  { log_json "INFO"  "$1" "${2-}"; }
+log_warn()  { log_json "WARN"  "$1" "${2-}"; }
+log_error() { log_json "ERROR" "$1" "${2-}"; }
 
 # ---------------------------------------------------------------------------
 # Prometheus metric push
@@ -162,11 +168,17 @@ decrypt_backup() {
 start_temp_postgres() {
     log_info "Starting temporary PostgreSQL container: ${TEMP_PG_CONTAINER}"
 
+    # Stream B Phase 5: docker-exec-based postgres access.
+    # The temp container is started on the same docker network as
+    # ivgs-postgres and the worker, so it gets a DNS name on that
+    # network.  We connect via 'docker exec' (which works identically
+    # from cron-on-host and from the backup-worker container — both
+    # have docker.sock access).  No port mapping needed.
     docker run -d \
         --name "${TEMP_PG_CONTAINER}" \
+        --network ivgs-infra_ivgs-net \
         -e POSTGRES_PASSWORD="${TEMP_PG_PASSWORD}" \
-        -e POSTGRES_DB="ivgs_verify" \
-        -p "${TEMP_PG_PORT}:5432" \
+        -e POSTGRES_DB="postgres" \
         --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=2g \
         postgres:17-alpine \
         >/dev/null
@@ -175,7 +187,7 @@ start_temp_postgres() {
     local retries=30
     while [ ${retries} -gt 0 ]; do
         if docker exec "${TEMP_PG_CONTAINER}" \
-            pg_isready -U postgres -d ivgs_verify >/dev/null 2>&1; then
+            pg_isready -U postgres -d postgres >/dev/null 2>&1; then
             log_info "Temporary PostgreSQL is ready"
             return 0
         fi
@@ -196,12 +208,16 @@ restore_to_temp() {
     local restore_start
     restore_start="$(date +%s)"
 
-    PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
-        -f "${RESTORE_SQL}" \
+    # Copy decrypted SQL into temp container, then exec psql inside
+    docker cp "${RESTORE_SQL}" "${TEMP_PG_CONTAINER}:/tmp/restore.sql"
+    docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql -U postgres -d postgres -f /tmp/restore.sql \
         --quiet \
         2>> "${LOG_FILE}" || true  # Some warnings expected (roles, etc.)
+    # NOTE: the dump uses --create --clean --if-exists, so it issues CREATE
+    # DATABASE ivgs and \connect ivgs internally. Data lands in the 'ivgs' DB.
+    # All verification queries below connect to 'ivgs', not 'postgres'.
 
     local restore_end
     restore_end="$(date +%s)"
@@ -223,18 +239,20 @@ verify_row_counts() {
     fi
 
     # Run ANALYZE to update statistics
-    PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+    docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql \
+        -U postgres -d ivgs \
         -c "ANALYZE;" 2>/dev/null || true
 
     local expected_total
     expected_total="$(python3 -c "import json; d=json.load(open('${RECORD_FILE}')); print(d.get('total_rows', 0))" 2>/dev/null || echo "0")"
 
     local actual_total
-    actual_total="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+    actual_total="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COALESCE(SUM(n_live_tup), 0) FROM pg_stat_user_tables;" 2>/dev/null || echo "0")"
 
@@ -257,9 +275,10 @@ verify_row_counts() {
     while IFS=',' read -r table_name expected_count; do
         [ -z "${table_name}" ] && continue
         local actual_count
-        actual_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-            -h localhost -p "${TEMP_PG_PORT}" \
-            -U postgres -d ivgs_verify \
+        actual_count="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+            "${TEMP_PG_CONTAINER}" \
+            psql \
+            -U postgres -d ivgs \
             -t -A \
             -c "SELECT COUNT(*) FROM ${table_name};" 2>/dev/null || echo "-1")"
 
@@ -297,23 +316,26 @@ verify_schema() {
     log_info "Verifying schema integrity"
 
     local table_count
-    table_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+    table_count="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")"
 
     local index_count
-    index_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+    index_count="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null || echo "0")"
 
     local constraint_count
-    constraint_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
-        -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+    constraint_count="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
+        "${TEMP_PG_CONTAINER}" \
+        psql \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public';" 2>/dev/null || echo "0")"
 

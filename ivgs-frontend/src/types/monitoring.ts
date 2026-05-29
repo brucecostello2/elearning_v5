@@ -324,28 +324,37 @@ export interface OrphanAsset {
 // Backup Management (§14)
 // ────────────────────────────────────────────────────────────────────────────
 
-export type BackupType = "full_db" | "wal" | "asset" | "config" | "vm_snapshot";
+// Stream B Phase 14: aligned with backend DB ENUM and API contract.
+//   backend ENUM backup_type   = full_database, wal_archive, asset_backup,
+//                                config_backup, vm_snapshot
+//   backend ENUM backup_status = running, completed, failed, verified
+// Verification is a status transition (completed -> verified) rather than
+// a separate enum field.  duration is derived client-side from
+// started_at / completed_at.
+export type BackupType =
+  | "full_database"
+  | "wal_archive"
+  | "asset_backup"
+  | "config_backup"
+  | "vm_snapshot";
 
-export type BackupStatus = "success" | "failed" | "in_progress" | "pending";
-
-export type VerificationStatus = "verified" | "failed" | "pending";
+export type BackupStatus = "running" | "completed" | "failed" | "verified";
 
 export interface BackupRecord {
   id: string;
-  type: BackupType;
+  backup_type: BackupType;
   started_at: string;
   completed_at: string | null;
   status: BackupStatus;
-  size_bytes: number;
-  duration_seconds: number | null;
+  size_bytes: number | null;
+  backup_path: string | null;
   verification_checksum: string | null;
-  verification_status: VerificationStatus;
-  target_path: string;
+  verified_at: string | null;
   error_message: string | null;
 }
 
 export interface BackupTriggerPayload {
-  type: BackupType;
+  backup_type: BackupType;
 }
 
 export interface RollbackPoint {

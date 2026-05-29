@@ -10,7 +10,6 @@ import type {
   BackupRecord,
   BackupType,
   BackupStatus,
-  VerificationStatus,
 } from "@/types/monitoring";
 
 /**
@@ -32,24 +31,18 @@ import type {
 
 const BACKUP_TYPE_OPTIONS: { value: BackupType | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Types" },
-  { value: "full_db", label: "Full Database" },
-  { value: "wal", label: "WAL Archive" },
-  { value: "asset", label: "Asset Backup" },
-  { value: "config", label: "Config Backup" },
+  { value: "full_database", label: "Full Database" },
+  { value: "wal_archive", label: "WAL Archive" },
+  { value: "asset_backup", label: "Asset Backup" },
+  { value: "config_backup", label: "Config Backup" },
   { value: "vm_snapshot", label: "VM Snapshot" },
 ];
 
 const STATUS_BADGES: Record<BackupStatus, { bg: string; text: string }> = {
-  success: { bg: "bg-green-900/30", text: "text-green-400" },
+  running: { bg: "bg-blue-900/30", text: "text-blue-400" },
+  completed: { bg: "bg-green-900/30", text: "text-green-400" },
   failed: { bg: "bg-red-900/30", text: "text-red-400" },
-  in_progress: { bg: "bg-blue-900/30", text: "text-blue-400" },
-  pending: { bg: "bg-yellow-900/30", text: "text-yellow-400" },
-};
-
-const VERIFY_BADGES: Record<VerificationStatus, { bg: string; text: string }> = {
-  verified: { bg: "bg-green-900/30", text: "text-green-400" },
-  failed: { bg: "bg-red-900/30", text: "text-red-400" },
-  pending: { bg: "bg-gray-800", text: "text-gray-400" },
+  verified: { bg: "bg-emerald-900/30", text: "text-emerald-400" },
 };
 
 /** Format byte sizes to human-readable */
@@ -91,7 +84,7 @@ export default function BackupsPage(): React.ReactElement {
 
   /* ── Modal state ──────────────────────────────────────────────────── */
   const [showTriggerModal, setShowTriggerModal] = useState(false);
-  const [triggerType, setTriggerType] = useState<BackupType>("full_db");
+  const [triggerType, setTriggerType] = useState<BackupType>("full_database");
   const [triggering, setTriggering] = useState(false);
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
 
@@ -100,7 +93,7 @@ export default function BackupsPage(): React.ReactElement {
 
   /* ── Data fetching ────────────────────────────────────────────────── */
   const { records, totalCount, isLoading, error, mutate } = useBackupRecords({
-    type: typeFilter === "ALL" ? undefined : typeFilter,
+    backup_type: typeFilter === "ALL" ? undefined : typeFilter,
     page,
     pageSize,
   });
@@ -112,7 +105,7 @@ export default function BackupsPage(): React.ReactElement {
     setTriggering(true);
     setActionMessage(null);
     try {
-      await api.post("/api/v1/backup/trigger", { type: triggerType });
+      await api.post("/api/v1/backup/trigger", { backup_type: triggerType });
       setActionMessage({ type: "success", text: `${triggerType} backup triggered successfully.` });
       setShowTriggerModal(false);
       mutate();
@@ -277,13 +270,19 @@ export default function BackupsPage(): React.ReactElement {
               </thead>
               <tbody className="divide-y divide-gray-800">
                 {records.map((record: BackupRecord) => {
-                  const statusBadge = STATUS_BADGES[record.status] ?? STATUS_BADGES.pending;
-                  const verifyBadge = VERIFY_BADGES[record.verification_status] ?? VERIFY_BADGES.pending;
+                  const statusBadge = STATUS_BADGES[record.status] ?? STATUS_BADGES.running;
+                  // Derive duration client-side: completed_at - started_at
+                  const durationSecs: number | null =
+                    record.completed_at
+                      ? Math.max(0, Math.floor(
+                          (new Date(record.completed_at).getTime()
+                            - new Date(record.started_at).getTime()) / 1000))
+                      : null;
 
                   return (
                     <tr key={record.id} className="hover:bg-gray-800/50">
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-200">
-                        {record.type.replace(/_/g, " ").toUpperCase()}
+                        {record.backup_type.replace(/_/g, " ").toUpperCase()}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-gray-400">
                         {formatTimestamp(record.started_at)}
@@ -294,20 +293,30 @@ export default function BackupsPage(): React.ReactElement {
                         </span>
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-gray-400">
-                        {formatBytes(record.size_bytes)}
+                        {formatBytes(record.size_bytes ?? 0)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-gray-400">
-                        {formatDuration(record.duration_seconds)}
+                        {formatDuration(durationSecs)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${verifyBadge.bg} ${verifyBadge.text}`}>
-                          {record.verification_status}
-                        </span>
+                        {record.status === "verified" ? (
+                          <span className="inline-flex rounded-full bg-emerald-900/30 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                            verified
+                          </span>
+                        ) : record.status === "failed" ? (
+                          <span className="inline-flex rounded-full bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-400">
+                            failed
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-400">
+                            unverified
+                          </span>
+                        )}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <button
                           onClick={() => handleVerify(record.id)}
-                          disabled={verifyingId === record.id || record.status !== "success"}
+                          disabled={verifyingId === record.id || !["completed", "verified"].includes(record.status)}
                           className="rounded px-2 py-1 text-xs font-medium text-ivgs-400 transition-colors hover:bg-ivgs-600/20 hover:text-ivgs-300 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {verifyingId === record.id ? "Verifying..." : "Verify"}
@@ -364,10 +373,10 @@ export default function BackupsPage(): React.ReactElement {
                   onChange={(e) => setTriggerType(e.target.value as BackupType)}
                   className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
                 >
-                  <option value="full_db">Full Database</option>
-                  <option value="wal">WAL Archive</option>
-                  <option value="asset">Asset Backup</option>
-                  <option value="config">Config Backup</option>
+                  <option value="full_database">Full Database</option>
+                  <option value="wal_archive">WAL Archive</option>
+                  <option value="asset_backup">Asset Backup</option>
+                  <option value="config_backup">Config Backup</option>
                 </select>
               </div>
               <div className="mt-4 rounded-lg border border-yellow-800/50 bg-yellow-900/10 p-3 text-xs text-yellow-400">
