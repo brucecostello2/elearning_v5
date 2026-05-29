@@ -35,6 +35,38 @@
 set -euo pipefail
 
 # ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
+# Supported flags (all optional):
+#   --backup-id=<uuid>  Backup ID supplied by API caller. Recorded in metadata
+#                       and emitted on stdout so API can correlate. If absent,
+#                       cron invocations use the date-based timestamp.
+#
+# On success, the script emits to STDOUT in addition to its JSON log file:
+#   backup_id=<uuid-or-date>
+#   size_bytes=<int>
+#   backup_path=<host-path>
+#   checksum=<sha256>
+# These KEY=VALUE lines are parsed by the API's _parse_backup_size and the
+# backup.py response builder. They must NOT contain spaces or extra fields.
+
+BACKUP_ID=""
+for arg in "$@"; do
+    case "$arg" in
+        --backup-id=*)  BACKUP_ID="${arg#--backup-id=}" ;;
+        --help|-h)
+            echo "Usage: $0 [--backup-id=<uuid>]"
+            exit 0
+            ;;
+        *)
+            echo "Unknown argument: $arg" >&2
+            echo "Usage: $0 [--backup-id=<uuid>]" >&2
+            exit 1
+            ;;
+    esac
+done
+
+# ---------------------------------------------------------------------------
 # Configuration with defaults
 # ---------------------------------------------------------------------------
 readonly SCRIPT_NAME="$(basename "$0")"
@@ -68,7 +100,8 @@ readonly RECORD_FILE="${BACKUP_DIR}/${TIMESTAMP}/backup_record.json"
 log_json() {
     local level="$1"
     local message="$2"
-    local extra="${3:-{}}"
+    local extra="${3:-}"
+    [ -z "${extra}" ] && extra='{}'
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
 
@@ -87,9 +120,9 @@ EOF
     fi
 }
 
-log_info()  { log_json "INFO"  "$1" "${2:-{}}"; }
-log_warn()  { log_json "WARN"  "$1" "${2:-{}}"; }
-log_error() { log_json "ERROR" "$1" "${2:-{}}"; }
+log_info()  { log_json "INFO"  "$1" "${2-}"; }
+log_warn()  { log_json "WARN"  "$1" "${2-}"; }
+log_error() { log_json "ERROR" "$1" "${2-}"; }
 
 # ---------------------------------------------------------------------------
 # Prometheus metric push
@@ -223,20 +256,29 @@ perform_dump() {
     local dump_start
     dump_start="$(date +%s)"
 
-    PGPASSWORD="${POSTGRES_PASSWORD}" pg_dump \
-        --host="${POSTGRES_HOST}" \
-        --port="${POSTGRES_PORT}" \
-        --username="${POSTGRES_USER}" \
-        --dbname="${POSTGRES_DB}" \
-        --format=plain \
-        --verbose \
-        --no-owner \
-        --no-privileges \
-        --clean \
-        --if-exists \
-        --create \
-        --encoding=UTF8 \
-        --file="${DUMP_FILE}" \
+    # pg_dump is invoked INSIDE the ivgs-postgres container so the dump tool's
+    # version matches the server version (host's pg_dump may be older — e.g.
+    # Ubuntu 24.04 ships pg_dump 16, server is 17). Stdout streams back to host
+    # and we redirect to DUMP_FILE.
+    # Inside the container, connect to 127.0.0.1 (loopback) since the postgres
+    # process is in the same network namespace.
+    docker exec \
+        -e PGPASSWORD="${POSTGRES_PASSWORD}" \
+        ivgs-postgres \
+        pg_dump \
+            --host=127.0.0.1 \
+            --port=5432 \
+            --username="${POSTGRES_USER}" \
+            --dbname="${POSTGRES_DB}" \
+            --format=plain \
+            --verbose \
+            --no-owner \
+            --no-privileges \
+            --clean \
+            --if-exists \
+            --create \
+            --encoding=UTF8 \
+        > "${DUMP_FILE}" \
         2>> "${LOG_FILE}"
 
     local dump_end
@@ -294,6 +336,10 @@ encrypt_dump() {
 # ---------------------------------------------------------------------------
 # SHA-256 checksum
 # ---------------------------------------------------------------------------
+# Global used by compute_checksum to return the hash to the caller.
+# (Stdout-as-return-value would be polluted by log_info's stdout writes.)
+COMPUTED_CHECKSUM=""
+
 compute_checksum() {
     log_info "Computing SHA-256 checksum"
 
@@ -305,7 +351,7 @@ compute_checksum() {
     log_info "Checksum computed" \
         "{\"sha256\":\"${checksum}\"}"
 
-    echo "${checksum}"
+    COMPUTED_CHECKSUM="${checksum}"
 }
 
 # ---------------------------------------------------------------------------
@@ -418,8 +464,8 @@ main() {
     perform_dump
     compress_dump
     encrypt_dump
-    local checksum
-    checksum="$(compute_checksum)"
+    compute_checksum
+    local checksum="${COMPUTED_CHECKSUM}"
     capture_row_counts
     sync_to_nas
     cleanup_old_backups
@@ -434,6 +480,16 @@ main() {
 
     log_info "=== IVGS v5 Daily Database Backup Completed Successfully ===" \
         "{\"duration_seconds\":${duration},\"backup_size_bytes\":${backup_size},\"checksum\":\"${checksum}\"}"
+
+    # Stream B API integration: emit KEY=VALUE lines on stdout so that the
+    # FastAPI _run_backup / _parse_backup_size code can pick up the size,
+    # path, and checksum without parsing the JSON log file.
+    # Format is strict KEY=VALUE, one per line, no spaces in values.
+    local effective_id="${BACKUP_ID:-${TIMESTAMP}}"
+    echo "backup_id=${effective_id}"
+    echo "size_bytes=${backup_size}"
+    echo "backup_path=${BACKUP_NAS_DIR}/${TIMESTAMP}"
+    echo "checksum=${checksum}"
 }
 
 main "$@"

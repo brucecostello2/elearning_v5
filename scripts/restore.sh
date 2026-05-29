@@ -55,7 +55,8 @@ RESTORE_DATE=""
 log_json() {
     local level="$1"
     local message="$2"
-    local extra="${3:-{}}"
+    local extra="${3:-}"
+    [ -z "${extra}" ] && extra='{}'
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
@@ -68,9 +69,9 @@ log_json() {
     fi
 }
 
-log_info()  { log_json "INFO"  "$1" "${2:-{}}"; }
-log_warn()  { log_json "WARN"  "$1" "${2:-{}}"; }
-log_error() { log_json "ERROR" "$1" "${2:-{}}"; }
+log_info()  { log_json "INFO"  "$1" "${2-}"; }
+log_warn()  { log_json "WARN"  "$1" "${2-}"; }
+log_error() { log_json "ERROR" "$1" "${2-}"; }
 
 # ---------------------------------------------------------------------------
 # Usage

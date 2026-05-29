@@ -49,7 +49,8 @@ VERIFICATION_PASSED=false
 log_json() {
     local level="$1"
     local message="$2"
-    local extra="${3:-{}}"
+    local extra="${3:-}"
+    [ -z "${extra}" ] && extra='{}'
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
@@ -58,9 +59,9 @@ log_json() {
     echo "[${level}] ${message}"
 }
 
-log_info()  { log_json "INFO"  "$1" "${2:-{}}"; }
-log_warn()  { log_json "WARN"  "$1" "${2:-{}}"; }
-log_error() { log_json "ERROR" "$1" "${2:-{}}"; }
+log_info()  { log_json "INFO"  "$1" "${2-}"; }
+log_warn()  { log_json "WARN"  "$1" "${2-}"; }
+log_error() { log_json "ERROR" "$1" "${2-}"; }
 
 # ---------------------------------------------------------------------------
 # Prometheus metric push
@@ -165,7 +166,7 @@ start_temp_postgres() {
     docker run -d \
         --name "${TEMP_PG_CONTAINER}" \
         -e POSTGRES_PASSWORD="${TEMP_PG_PASSWORD}" \
-        -e POSTGRES_DB="ivgs_verify" \
+        -e POSTGRES_DB="postgres" \
         -p "${TEMP_PG_PORT}:5432" \
         --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=2g \
         postgres:17-alpine \
@@ -175,7 +176,7 @@ start_temp_postgres() {
     local retries=30
     while [ ${retries} -gt 0 ]; do
         if docker exec "${TEMP_PG_CONTAINER}" \
-            pg_isready -U postgres -d ivgs_verify >/dev/null 2>&1; then
+            pg_isready -U postgres -d postgres >/dev/null 2>&1; then
             log_info "Temporary PostgreSQL is ready"
             return 0
         fi
@@ -198,10 +199,13 @@ restore_to_temp() {
 
     PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d postgres \
         -f "${RESTORE_SQL}" \
         --quiet \
         2>> "${LOG_FILE}" || true  # Some warnings expected (roles, etc.)
+    # NOTE: the dump uses --create --clean --if-exists, so it issues CREATE
+    # DATABASE ivgs and \connect ivgs internally. Data lands in the 'ivgs' DB.
+    # All verification queries below connect to 'ivgs', not 'postgres'.
 
     local restore_end
     restore_end="$(date +%s)"
@@ -225,7 +229,7 @@ verify_row_counts() {
     # Run ANALYZE to update statistics
     PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d ivgs \
         -c "ANALYZE;" 2>/dev/null || true
 
     local expected_total
@@ -234,7 +238,7 @@ verify_row_counts() {
     local actual_total
     actual_total="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COALESCE(SUM(n_live_tup), 0) FROM pg_stat_user_tables;" 2>/dev/null || echo "0")"
 
@@ -259,7 +263,7 @@ verify_row_counts() {
         local actual_count
         actual_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
             -h localhost -p "${TEMP_PG_PORT}" \
-            -U postgres -d ivgs_verify \
+            -U postgres -d ivgs \
             -t -A \
             -c "SELECT COUNT(*) FROM ${table_name};" 2>/dev/null || echo "-1")"
 
@@ -299,21 +303,21 @@ verify_schema() {
     local table_count
     table_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';" 2>/dev/null || echo "0")"
 
     local index_count
     index_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'public';" 2>/dev/null || echo "0")"
 
     local constraint_count
     constraint_count="$(PGPASSWORD="${TEMP_PG_PASSWORD}" psql \
         -h localhost -p "${TEMP_PG_PORT}" \
-        -U postgres -d ivgs_verify \
+        -U postgres -d ivgs \
         -t -A \
         -c "SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_schema = 'public';" 2>/dev/null || echo "0")"
 
