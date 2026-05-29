@@ -29,7 +29,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | Priority | Count | Headline items |
 |---|---|---|
 | P0 | 0 | — |
-| P1 | 4 | Defect #4 prompt ENUM; D.11 prompt-mgmt browser smoke; Spec v1.1 §9 GPU acceptance bullets; push ivgs-backup-worker image to ghcr.io |
+| P1 | 3 | Defect #4 prompt ENUM; D.11 prompt-mgmt browser smoke; Spec v1.1 §9 GPU acceptance bullets |
 | P2 | 22 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; config externalization; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.2/F.3/F.4 (pre-commit IP guard, digest pins, FlaggedAsset typing); forensic correction; tag taxonomy doc |
 | P3 | 6 | GpuNodeStatus UPPERCASE dead code; empty seaweedfs volumes; Phase H multi-node; endpoint test coverage; rogue-branch attribution investigation; cosmetic UI polish |
 
@@ -76,7 +76,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | | |
 |---|---|
 | **Source** | Phase 14 Stream B closeout (this session) |
-| **Status** | OPEN. Currently built locally as `ivgs-backup-worker:local`; not in registry. |
+| **Status** | CLOSED (2026-05-29). Pushed to GHCR; node-01 override pins the registry image via `${IVGS_BACKUP_WORKER_TAG}`. See Items-closed table. |
 | **Severity** | Multi-node deployment (Phase H) will fail because nodes 02–06 can't pull `:local`. |
 | **Scope** | `docker tag ivgs-backup-worker:local ghcr.io/brucecostello2/ivgs-backup-worker:v5.1.0-stream-b`, push, update IVGS_BACKUP_WORKER_TAG in `.env` and `.env.node01`. |
 | **Carry-forward action** | Execute next session before any multi-node work. |
@@ -367,6 +367,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 
 | Item | Closed in | Evidence |
 |---|---|---|
+| ivgs-backup-worker image to GHCR (P1.4) | This session (2026-05-29) | Pushed `ghcr.io/brucecostello2/ivgs-backup-worker:v5.1.0-stream-b` (digest `sha256:18ce86f0…`); override `image:` switched from `:local` to `${IVGS_BACKUP_WORKER_TAG}`, recreated healthy. Commit `379292a`. |
 | Defect #8 — Test suite restoration | Session 11/12 (PR #48 merged to main) | 512 tests passing; 28 production bugs fixed. Merge commit `a836668`. |
 | Diff 1.6 — GPU Fleet integration tests | Session 11 | Subsumed under defect #8 closure — service-layer tests cover the GPU history endpoint. |
 | Phase 14 backup infrastructure (Stream A) | Session 13 | NAS mount, GPG key, Prometheus pushgateway, WAL archiving, cron jobs, asset_backup.sh — all working. |
