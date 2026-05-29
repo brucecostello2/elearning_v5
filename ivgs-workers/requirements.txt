@@ -2,32 +2,23 @@
 # IVGS v5 — Worker Dependencies
 # ===========================================================================
 # Pin exact versions for reproducible builds.
-# Updated: 2025-05-19
+# Originally created: 2025-05-19
+# Updated 2026-05-29: removed packages that are now in shared/requirements.txt
+#   (sqlalchemy, psycopg2-binary, pydantic, pydantic-settings, redis,
+#    httpx, structlog).  Pip rejected the duplicate-with-different-version
+#    declarations as ResolutionImpossible.
 # ===========================================================================
 
 # --- Celery & Task Queue ---
 celery[redis]==5.4.0
-redis==5.2.1
 kombu==5.4.2
 
-# --- PostgreSQL Result Backend ---
-psycopg2-binary==2.9.10
-SQLAlchemy==2.0.36
-
-# --- HTTP Client (vLLM, API calls) ---
-httpx==0.28.1
+# --- HTTP Client (httpcore is worker-specific; httpx comes from shared) ---
 httpcore==1.0.7
-
-# --- Data Models & Validation ---
-pydantic==2.10.4
-pydantic-settings==2.7.1
 
 # --- Jinja2 Prompt Templates ---
 Jinja2==3.1.5
 MarkupSafe==3.0.2
-
-# --- Structured Logging ---
-structlog==24.4.0
 
 # --- Async Support ---
 asyncio-extras==1.3.2

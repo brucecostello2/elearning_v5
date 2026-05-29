@@ -145,7 +145,7 @@ services:
     environment:
       REDIS_URL: redis://10.10.0.1:6379/0
       DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
-      GPU_SCHEDULER_URL: http://10.10.0.1:8002
+      IVGS_GPU_SCHEDULER_URL: http://10.10.0.1:8002
       SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
       COMFYUI_FALLBACK_URL: http://comfyui:8188
       OLLAMA_URL: http://ollama:11434
