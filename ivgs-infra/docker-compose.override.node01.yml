@@ -15,25 +15,6 @@ services:
   fastapi-backend:
     volumes:
       - /opt/ivgs/rollback-storage:/ivgs
-      # Phase 14 Stream B: source overlay so we can iterate without rebuilds.
-      # Read-only — production deploys should still use the baked image.
-      - /opt/ivgs/ivgs-api:/app
-      # Note: /app is mounted RW (no :ro) because /app/shared is then mounted
-      # on top of it — Docker needs to mkdir the nested mountpoint, which
-      # fails if /app is read-only. Files are still effectively immutable
-      # because we don't edit inside the container; host writes from
-      # /opt/ivgs/ivgs-api on the host filesystem.
-      # The above mount overlays /app entirely, hiding the baked-in /app/shared
-      # module that the API imports. Mount the host's shared dir on top of the
-      # overlay so 'from shared.database import ...' resolves correctly.
-      - /opt/ivgs/shared:/app/shared:ro
-      # Backup scripts at the path the API code expects.
-      # (API hardcodes /ivgs/ivgs-infra/scripts/backup.sh etc.)
-      - /opt/ivgs/scripts:/ivgs/ivgs-infra/scripts:ro
-      # Backup data — API reads backup_record.json for size/checksum.
-      - /mnt/backup:/mnt/backup:ro
-      # Log dir for backup scripts invoked via subprocess.
-      - /var/log/ivgs:/var/log/ivgs
   nextjs-frontend:
     # Image healthcheck uses curl which is not installed in the slim image.
     # Override with wget (present in the image) hitting 127.0.0.1 explicitly.
