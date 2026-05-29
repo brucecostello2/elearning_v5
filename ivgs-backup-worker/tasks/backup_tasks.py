@@ -390,28 +390,44 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
     """
     Invoke /scripts/verify_backup.sh <verify_date>.
 
-    The verify_date is the date the backup was originally taken (YYYY-MM-DD).
-    verify_backup.sh reads the backup record file at
-    /mnt/backup/ivgs/db/<verify_date>/backup_record.json and updates it with
-    a `verification` block on success.
+    Stream B Phase 5 — durability-first verification:
 
-    On success, the worker updates the backup_records row:
-      - status                  → 'verified'
-      - verification_checksum   → from the script's stdout (KEY=VALUE)
-      - verified_at             → now()
+    The worker does NOT trust the script's stdout to confirm verification
+    succeeded.  After verify_backup.sh exits 0, the worker checks the NAS
+    filesystem to confirm the script DURABLY wrote its verification block.
 
-    The verify_backup.sh script needs the GPG private key (mounted at
-    /home/ivgs/.gnupg) and access to /var/run/docker.sock (to spin up the
-    temp postgres container).
+    Required files on the NAS for the worker to mark verified:
+      1. /mnt/backup/ivgs/db/<date>/backup_record.json must contain a
+         top-level "verification" key with status="passed".
+      2. /mnt/backup/ivgs/db/<date>/ivgs_backup.sha256 must exist and
+         contain a 64-char hex SHA-256 hash (standard sha256sum format).
+
+    If either check fails after a "successful" script exit, the worker
+    marks the row 'failed' with a clear error explaining what wasn't
+    durable.  This prevents claiming success when the NAS write didn't
+    actually land (process crash after script finished but before file
+    flushed, NAS becoming read-only mid-write, JSON parse error in
+    read-modify-write block of the script, etc.).
+
+    Updates the backup_records row:
+      - status                 -> 'verified' (durable success)
+      - verification_checksum  -> SHA-256 from ivgs_backup.sha256 file
+      - verified_at            -> now()
+    OR
+      - status                 -> 'failed' with error_message
     """
+    import json
+    from pathlib import Path
+
     logger.info("run_verification START", extra={
         "backup_id": backup_id, "verify_date": verify_date,
     })
 
-    # verify_backup.sh takes the date as positional argument, not --backup-id.
-    # We still pass --backup-id for logging/correlation purposes if the script
-    # accepts it; otherwise the script rejects unknown args (we haven't yet
-    # added --backup-id flag to verify_backup.sh — pass date only).
+    nas_base = os.environ.get("BACKUP_NAS_PATH", "/mnt/backup/ivgs")
+    backup_dir = Path(nas_base) / "db" / verify_date
+    record_path = backup_dir / "backup_record.json"
+    checksum_path = backup_dir / "ivgs_backup.sha256"
+
     script_path = os.path.join(SCRIPTS_DIR, "verify_backup.sh")
     if not os.path.isfile(script_path):
         err = f"Script not found: {script_path}"
@@ -423,25 +439,99 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
                 extra={"backup_id": backup_id, "cmd": " ".join(cmd)})
 
     proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
-    kv = _parse_kv_stdout(proc.stdout)
 
-    if proc.returncode == 0:
-        # verify_backup.sh writes the `verification` block to backup_record.json
-        # on the NAS, but doesn't currently emit checksum= on stdout.  For now
-        # we record a fixed marker — full integration requires adding KV
-        # emission to verify_backup.sh (deferred to follow-up).
-        checksum = kv.get("checksum", "VERIFIED")
-        _update_record_verified(
-            backup_id=backup_id,
-            verification_checksum=checksum,
-            verified_at=datetime.now(timezone.utc),
+    if proc.returncode != 0:
+        err = proc.stderr or f"verify script exited {proc.returncode}"
+        logger.error("verify_backup.sh FAILED", extra={
+            "backup_id": backup_id, "returncode": proc.returncode,
+            "stderr_tail": err[-500:],
+        })
+        _update_record_failed(backup_id, f"Verification failed: {err}")
+        return {"backup_id": backup_id, "status": "failed",
+                "returncode": proc.returncode,
+                "stderr_tail": err[-500:]}
+
+    # Script reported success.  Confirm the durable artifacts exist.
+
+    # 1. Verification block must be in backup_record.json on disk.
+    if not record_path.is_file():
+        err = (
+            f"verify_backup.sh exited 0 but backup_record.json is missing "
+            f"at {record_path}.  The script claimed success but didn't "
+            f"persist its verification block."
         )
-        return {"backup_id": backup_id, "status": "verified",
-                "verification_checksum": checksum,
-                "verify_date": verify_date}
+        logger.error("Durability check failed (record missing)",
+                     extra={"backup_id": backup_id, "path": str(record_path)})
+        _update_record_failed(backup_id, err)
+        return {"backup_id": backup_id, "status": "failed", "error": err}
 
-    err = proc.stderr or f"verify script exited {proc.returncode}"
-    _update_record_failed(backup_id, f"Verification failed: {err}")
-    return {"backup_id": backup_id, "status": "failed",
-            "returncode": proc.returncode,
-            "stderr_tail": err[-500:]}
+    try:
+        with open(record_path) as f:
+            record_data = json.load(f)
+    except Exception as exc:
+        err = f"backup_record.json unreadable/unparseable: {exc}"
+        logger.error("Durability check failed (record unreadable)",
+                     extra={"backup_id": backup_id, "path": str(record_path)})
+        _update_record_failed(backup_id, err)
+        return {"backup_id": backup_id, "status": "failed", "error": err}
+
+    verification = record_data.get("verification")
+    if not verification or verification.get("status") != "passed":
+        err = (
+            f"verify_backup.sh exited 0 but backup_record.json does not "
+            f"have verification.status == 'passed'.  Actual verification "
+            f"block: {verification!r}"
+        )
+        logger.error("Durability check failed (block missing or wrong status)",
+                     extra={"backup_id": backup_id})
+        _update_record_failed(backup_id, err)
+        return {"backup_id": backup_id, "status": "failed", "error": err}
+
+    # 2. Canonical checksum file must exist.
+    if not checksum_path.is_file():
+        err = (
+            f"verify_backup.sh exited 0 but ivgs_backup.sha256 is missing "
+            f"at {checksum_path}."
+        )
+        logger.error("Durability check failed (checksum file missing)",
+                     extra={"backup_id": backup_id, "path": str(checksum_path)})
+        _update_record_failed(backup_id, err)
+        return {"backup_id": backup_id, "status": "failed", "error": err}
+
+    try:
+        checksum_line = checksum_path.read_text().strip()
+        # Standard sha256sum format: "<hash>  <filename>"
+        checksum = checksum_line.split()[0] if checksum_line else ""
+        # SHA-256 hex is exactly 64 chars
+        if not checksum or len(checksum) != 64:
+            raise ValueError(
+                f"Unexpected sha256 file contents: {checksum_line!r}"
+            )
+    except Exception as exc:
+        err = f"Failed to read/parse sha256 file: {exc}"
+        logger.error("Durability check failed (checksum unreadable)",
+                     extra={"backup_id": backup_id})
+        _update_record_failed(backup_id, err)
+        return {"backup_id": backup_id, "status": "failed", "error": err}
+
+    # All durable artifacts confirmed.  Mark verified.
+    _update_record_verified(
+        backup_id=backup_id,
+        verification_checksum=checksum,
+        verified_at=datetime.now(timezone.utc),
+    )
+
+    logger.info("run_verification OK", extra={
+        "backup_id": backup_id,
+        "verify_date": verify_date,
+        "checksum": checksum,
+        "verification_block": verification,
+    })
+
+    return {
+        "backup_id": backup_id,
+        "status": "verified",
+        "verification_checksum": checksum,
+        "verify_date": verify_date,
+        "verification_block": verification,
+    }
