@@ -49,18 +49,13 @@ class VLLMConfig:
     """
     vLLM server connection configuration per §7.1.1.
     vLLM serves OpenAI-compatible API at http://node-0X:8000/v1.
+    Base URLs below are host:port only (no /v1); VLLMClient appends /v1/chat/completions.
     Tensor parallelism for 70B+ models uses NCCL over 10GbE VLAN.
     """
 
-    primary_base_url: str = _env(
-        "IVGS_VLLM_PRIMARY_URL", "http://node-02:8000"
-    )
-    secondary_base_url: str = _env(
-        "IVGS_VLLM_SECONDARY_URL", "http://node-03:8000"
-    )
-    midsize_base_url: str = _env(
-        "IVGS_VLLM_MIDSIZE_URL", "http://node-04:8000"
-    )
+    primary_base_url: str = _env_required("VLLM_PRIMARY_URL")
+    secondary_base_url: str = _env_required("VLLM_SECONDARY_URL")
+    midsize_base_url: str = _env_required("VLLM_MIDSIZE_URL")
 
     primary_model: str = _env(
         "IVGS_VLLM_PRIMARY_MODEL", "meta-llama/Llama-3.3-70B-Instruct"

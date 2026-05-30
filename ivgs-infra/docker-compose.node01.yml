@@ -51,9 +51,9 @@ x-common-restart: &common-restart
   restart: unless-stopped
 
 x-gpu-service-urls: &gpu-service-urls
-  VLLM_PRIMARY_URL: "http://${NODE_02_IP}:${VLLM_PORT}/v1"
-  VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT}/v1"
-  VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT}/v1"
+  VLLM_PRIMARY_URL: "http://${NODE_02_IP}:${VLLM_PORT}"
+  VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT}"
+  VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT}"
   OLLAMA_URL: "http://${NODE_05_IP}:${OLLAMA_PORT}"
   COMFYUI_PRIMARY_URL: "http://${NODE_04_IP}:${COMFYUI_PORT}"
   COMFYUI_FALLBACK_URL: "http://${NODE_05_IP}:${COMFYUI_PORT}"
