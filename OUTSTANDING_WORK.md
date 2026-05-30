@@ -30,7 +30,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 |---|---|---|
 | P0 | 0 | — |
 | P1 | 3 | Defect #4 prompt ENUM; D.11 prompt-mgmt browser smoke; Spec v1.1 §9 GPU acceptance bullets |
-| P2 | 22 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; config externalization; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.2/F.3/F.4 (pre-commit IP guard, digest pins, FlaggedAsset typing); forensic correction; tag taxonomy doc |
+| P2 | 21 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; config externalization; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.2/F.3/F.4 (pre-commit IP guard, digest pins, FlaggedAsset typing); forensic correction; tag taxonomy doc |
 | P3 | 6 | GpuNodeStatus UPPERCASE dead code; empty seaweedfs volumes; Phase H multi-node; endpoint test coverage; rogue-branch attribution investigation; cosmetic UI polish |
 
 ---
@@ -201,7 +201,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | | |
 |---|---|
 | **Source** | v1.0 §3.2 (S5 → `IVGS_Nginx_Hardening_Backlog.docx` → S7 §11.8) |
-| **Status** | OPEN — fully scoped, ready to execute. |
+| **Status** | CLOSED (2026-05-29). resolver + variable proxy_pass (7 sites) + proxy_connect_timeout 2s + http2 modernization; verified via forced-IP-change auto-recovery. See Items-closed table. |
 | **Severity** | Operational: any fastapi-backend / nextjs-frontend / grafana recreate triggers 502 until ivgs-nginx is also restarted (nginx caches DNS at startup). |
 | **Scope** | Add `resolver 127.0.0.11 valid=10s ipv6=off;` to http{}. Convert each `proxy_pass` to variable form. Apply to 3 fastapi, 2 nextjs, 2 grafana locations. Optional: remove unused upstream{} blocks. |
 | **Carry-forward action** | Sequence as dedicated mini-session per the docx. |
@@ -367,6 +367,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 
 | Item | Closed in | Evidence |
 |---|---|---|
+| Nginx dynamic-resolution hardening (P2.12) | This session (2026-05-29) | `configs/nginx/nginx.conf`: resolver 127.0.0.11 + variable `proxy_pass` (7 sites) + `proxy_connect_timeout 2s` + http2 modernization. Verified by forcing fastapi to 172.20.0.50, nginx untouched -> auto-recovered to 200 within TTL. Commit `7173797`. |
 | ivgs-backup-worker image to GHCR (P1.4) | This session (2026-05-29) | Pushed `ghcr.io/brucecostello2/ivgs-backup-worker:v5.1.0-stream-b` (digest `sha256:18ce86f0…`); override `image:` switched from `:local` to `${IVGS_BACKUP_WORKER_TAG}`, recreated healthy. Commit `379292a`. |
 | Defect #8 — Test suite restoration | Session 11/12 (PR #48 merged to main) | 512 tests passing; 28 production bugs fixed. Merge commit `a836668`. |
 | Diff 1.6 — GPU Fleet integration tests | Session 11 | Subsumed under defect #8 closure — service-layer tests cover the GPU history endpoint. |
