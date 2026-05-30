@@ -18,7 +18,6 @@
 # External networks: ivgs_default (shared with Phase 1 infrastructure)
 # =============================================================================
 
-version: "3.8"
 
 networks:
   ivgs-net:
