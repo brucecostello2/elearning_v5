@@ -31,11 +31,11 @@ set -euo pipefail
 # ---------------------------------------------------------------------------
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+readonly INFRA_DIR="${PROJECT_DIR}/ivgs-infra"
 readonly LOG_DIR="/var/log/ivgs/deploy"
 readonly HEALTH_CHECK_RETRIES=3
 readonly HEALTH_CHECK_INTERVAL=10
-readonly NODE_01_API="http://10.10.0.1:8001"
-readonly NODE_01_SCHEDULER="http://10.10.0.1:8002"
+# NODE_01_API / NODE_01_SCHEDULER are derived from NODE_01_IP once the env file is known
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -71,21 +71,44 @@ if [[ ! " ${VALID_NODES[*]} " =~ " ${NODE} " ]]; then
     exit 1
 fi
 
-COMPOSE_FILE="${PROJECT_DIR}/docker-compose.${NODE}.yml"
-if [[ ! -f "$COMPOSE_FILE" ]]; then
-    log_error "Compose file not found: $COMPOSE_FILE"
+PRIMARY_COMPOSE="${INFRA_DIR}/docker-compose.${NODE}.yml"
+if [[ ! -f "$PRIMARY_COMPOSE" ]]; then
+    log_error "Compose file not found: $PRIMARY_COMPOSE"
+    exit 1
+fi
+# node-01 runs a three-file stack (node + override + monitoring); GPU nodes are single-file
+if [[ "$NODE" == "node01" ]]; then
+    COMPOSE_FILES=(
+        -f "${INFRA_DIR}/docker-compose.node01.yml"
+        -f "${INFRA_DIR}/docker-compose.override.node01.yml"
+        -f "${INFRA_DIR}/docker-compose.monitoring.yml"
+    )
+else
+    COMPOSE_FILES=(-f "$PRIMARY_COMPOSE")
+fi
+
+if [[ "$NODE" == "node01" ]]; then
+    ENV_FILE="${INFRA_DIR}/.env"            # node-01: topology registry + secrets
+else
+    ENV_FILE="${INFRA_DIR}/.env.${NODE}"    # GPU node: NODE_01_IP pointer + node config
+fi
+if [[ ! -f "$ENV_FILE" ]]; then
+    log_error "Environment file not found: $ENV_FILE"
     exit 1
 fi
 
-ENV_FILE="${PROJECT_DIR}/.env.${NODE}"
-if [[ ! -f "$ENV_FILE" ]]; then
-    log_warn "Environment file not found: $ENV_FILE"
-    log_warn "Falling back to default environment"
+# Orchestrator address — single source: NODE_01_IP in the env file
+NODE_01_IP="$(grep -E '^NODE_01_IP=' "$ENV_FILE" | head -1 | cut -d= -f2)"
+if [[ -z "$NODE_01_IP" ]]; then
+    log_error "NODE_01_IP not set in $ENV_FILE — cannot resolve orchestrator address"
+    exit 1
 fi
+NODE_01_API="http://${NODE_01_IP}:8001"
+NODE_01_SCHEDULER="http://${NODE_01_IP}:8002"
 
 log_info "=========================================="
 log_info "IVGS v5 Deployment — ${NODE}"
-log_info "Compose file: ${COMPOSE_FILE}"
+log_info "Compose file(s): ${COMPOSE_FILES[*]}"
 log_info "Git revision: $(cd "$PROJECT_DIR" && git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
 log_info "=========================================="
 
@@ -118,7 +141,7 @@ log_info "Rollback point created: ${ROLLBACK_ID} (version: ${VERSION_TAG})"
 # ---------------------------------------------------------------------------
 log_info "Step 2/6: Pulling pinned images..."
 
-if ! docker compose -f "$COMPOSE_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
+if ! docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" pull 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Image pull failed for ${NODE}"
     log_error "Attempting rollback..."
     exit 3
@@ -131,9 +154,9 @@ log_info "All images pulled successfully"
 # ---------------------------------------------------------------------------
 log_info "Step 3/6: Stopping current stack..."
 
-docker compose -f "$COMPOSE_FILE" down --timeout 60 2>&1 | tee -a "$LOG_FILE" || {
+docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" down --timeout 60 2>&1 | tee -a "$LOG_FILE" || {
     log_warn "Clean shutdown failed, forcing..."
-    docker compose -f "$COMPOSE_FILE" down --timeout 10 --remove-orphans 2>&1 | tee -a "$LOG_FILE"
+    docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" down --timeout 10 --remove-orphans 2>&1 | tee -a "$LOG_FILE"
 }
 
 log_info "Stack stopped"
@@ -146,14 +169,14 @@ log_info "Stack stopped"
 if [[ "$NODE" == "node01" ]]; then
     log_info "Step 4/6: Running Alembic migrations (node-01 only)..."
 
-    if ! docker compose -f "$COMPOSE_FILE" run --rm \
+    if ! docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" run --rm \
         -e DATABASE_URL="postgresql+psycopg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}" \
         fastapi-backend \
         alembic upgrade head 2>&1 | tee -a "$LOG_FILE"; then
         log_error "Alembic migration failed!"
         log_error "Rolling back to previous version..."
         # Restart previous stack
-        docker compose -f "$COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"
+        docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" up -d 2>&1 | tee -a "$LOG_FILE"
         exit 4
     fi
 
@@ -167,7 +190,7 @@ fi
 # ---------------------------------------------------------------------------
 log_info "Step 5/6: Starting updated stack..."
 
-if ! docker compose -f "$COMPOSE_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
+if ! docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" up -d 2>&1 | tee -a "$LOG_FILE"; then
     log_error "Failed to start stack for ${NODE}"
     exit 5
 fi
@@ -218,7 +241,7 @@ done
 if [[ "$HEALTH_OK" != "true" ]]; then
     log_error "Health check FAILED after ${HEALTH_CHECK_RETRIES} attempts"
     log_error "Deployment may have failed — check container logs:"
-    log_error "  docker compose -f ${COMPOSE_FILE} logs --tail=50"
+    log_error "  docker compose ${COMPOSE_FILES[*]} logs --tail=50"
     exit 5
 fi
 
@@ -230,14 +253,14 @@ if [[ "$NODE" == "node01" ]]; then
     log_info "Running platform-level checks for node-01..."
 
     # Database connectivity
-    if docker compose -f "$COMPOSE_FILE" exec -T postgres pg_isready -U "${POSTGRES_USER:-ivgs}" > /dev/null 2>&1; then
+    if docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T postgres pg_isready -U "${POSTGRES_USER:-ivgs}" > /dev/null 2>&1; then
         log_info "  ✓ PostgreSQL: healthy"
     else
         log_warn "  ✗ PostgreSQL: not ready"
     fi
 
     # Redis connectivity
-    if docker compose -f "$COMPOSE_FILE" exec -T redis redis-cli ping > /dev/null 2>&1; then
+    if docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T redis redis-cli ping > /dev/null 2>&1; then
         log_info "  ✓ Redis: healthy"
     else
         log_warn "  ✗ Redis: not ready"
@@ -273,7 +296,7 @@ fi
 if [[ "$NODE" =~ ^node0[2-5]$ ]]; then
     log_info "Running GPU checks for ${NODE}..."
 
-    if docker compose -f "$COMPOSE_FILE" exec -T nvidia-gpu-exporter nvidia-smi > /dev/null 2>&1; then
+    if docker compose "${COMPOSE_FILES[@]}" --env-file "$ENV_FILE" exec -T nvidia-gpu-exporter nvidia-smi > /dev/null 2>&1; then
         log_info "  ✓ nvidia-smi: GPU available"
     else
         log_warn "  ✗ nvidia-smi: GPU not detected"
