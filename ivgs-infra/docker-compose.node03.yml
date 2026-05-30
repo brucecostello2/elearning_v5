@@ -56,8 +56,7 @@ services:
   vllm:
     image: vllm/vllm-openai:v0.6.4@sha256:d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5c6d7e8f9a0b1c2
     container_name: ivgs-vllm-secondary
-    <<: [*common-restart, *common-logging]
-    <<: *gpu-resources
+    <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node03
     environment:
@@ -93,15 +92,14 @@ services:
   cogvideox-worker:
     image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-cogvideox-worker-node03
-    <<: [*common-restart, *common-logging]
-    <<: *gpu-resources
+    <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node03
     environment:
-      REDIS_URL: redis://10.10.0.1:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
-      IVGS_GPU_SCHEDULER_URL: http://10.10.0.1:8002
-      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      REDIS_URL: redis://${NODE_01_IP}:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
+      SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-03
       CUDA_VISIBLE_DEVICES: "0"
       HF_HOME: /data/models
@@ -130,11 +128,11 @@ services:
     env_file:
       - .env.node03
     environment:
-      REDIS_URL: redis://10.10.0.1:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
+      REDIS_URL: redis://${NODE_01_IP}:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
       VLLM_PRIMARY_URL: http://vllm:8000/v1
-      IVGS_GPU_SCHEDULER_URL: http://10.10.0.1:8002
-      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
+      SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-03
       C_FORCE_ROOT: "1"
     volumes:
@@ -178,8 +176,7 @@ services:
   nvidia-gpu-exporter:
     image: utkuozdemir/nvidia_gpu_exporter:1.2.1@sha256:e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2
     container_name: ivgs-nvidia-gpu-exporter
-    <<: [*common-restart, *common-logging]
-    <<: *gpu-resources
+    <<: [*common-restart, *common-logging, *gpu-resources]
     ports:
       - "0.0.0.0:9400:9400"
     networks:

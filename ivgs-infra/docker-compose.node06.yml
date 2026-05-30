@@ -81,9 +81,9 @@ services:
     env_file:
       - .env.node06
     environment:
-      REDIS_URL: redis://10.10.0.1:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
-      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      REDIS_URL: redis://${NODE_01_IP}:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-06
       FFMPEG_HWACCEL: "qsv"
       C_FORCE_ROOT: "1"
@@ -112,10 +112,10 @@ services:
     env_file:
       - .env.node06
     environment:
-      REDIS_URL: redis://10.10.0.1:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@10.10.0.1:5432/ivgs
-      IVGS_GPU_SCHEDULER_URL: http://10.10.0.1:8002
-      SEAWEEDFS_FILER_URL: http://10.10.0.1:8888
+      REDIS_URL: redis://${NODE_01_IP}:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
+      SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       REMOTION_URL: http://remotion-renderer:3002
       NODE_HOSTNAME: node-06
       C_FORCE_ROOT: "1"
