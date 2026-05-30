@@ -19,27 +19,46 @@ import httpx
 import pytest
 import pytest_asyncio
 
-# Node endpoints from Table 2-4
+# Endpoints resolve from the canonical node registry (single source: node-01 .env /
+# x-gpu-service-urls anchor) -- never hardcoded IPs. Spec 2.3 (192.168.1.0/24) + A.2.
+# gpu_exporter has no canonical service URL, so it is built from NODE_0x_IP + its port.
+_EXPORTER_PORT = {"node-02": 9400, "node-03": 9400, "node-04": 9400, "node-05": 9400, "node-06": 9401}
+
+
+def _exporter(node_ip_var: str, node: str) -> str:
+    ip = os.environ.get(node_ip_var, "")
+    return f"http://{ip}:{_EXPORTER_PORT[node]}" if ip else ""
+
+
 NODE_ENDPOINTS = {
-    "node-02": {"vllm": "http://10.10.0.2:8000", "gpu_exporter": "http://10.10.0.2:9400"},
-    "node-03": {"vllm": "http://10.10.0.3:8000", "gpu_exporter": "http://10.10.0.3:9400"},
-    "node-04": {
-        "vllm": "http://10.10.0.4:8000",
-        "comfyui": "http://10.10.0.4:8188",
-        "coqui_tts": "http://10.10.0.4:5002",
-        "latentsync": "http://10.10.0.4:7860",
-        "gpu_exporter": "http://10.10.0.4:9400",
-    },
-    "node-05": {
-        "comfyui": "http://10.10.0.5:8188",
-        "ollama": "http://10.10.0.5:11434",
-        "gpu_exporter": "http://10.10.0.5:9400",
-    },
-    "node-06": {
-        "remotion": "http://10.10.0.6:3002",
-        "gpu_exporter": "http://10.10.0.6:9401",
-    },
+    "node-02": {"vllm": os.environ.get("VLLM_PRIMARY_URL", ""),
+                "gpu_exporter": _exporter("NODE_02_IP", "node-02")},
+    "node-03": {"vllm": os.environ.get("VLLM_SECONDARY_URL", ""),
+                "gpu_exporter": _exporter("NODE_03_IP", "node-03")},
+    "node-04": {"vllm": os.environ.get("VLLM_MIDSIZE_URL", ""),
+                "comfyui": os.environ.get("COMFYUI_PRIMARY_URL", ""),
+                "coqui_tts": os.environ.get("COQUI_TTS_URL", ""),
+                "latentsync": os.environ.get("LATENTSYNC_URL", ""),
+                "gpu_exporter": _exporter("NODE_04_IP", "node-04")},
+    "node-05": {"comfyui": os.environ.get("COMFYUI_FALLBACK_URL", ""),
+                "ollama": os.environ.get("OLLAMA_URL", ""),
+                "gpu_exporter": _exporter("NODE_05_IP", "node-05")},
+    "node-06": {"remotion": os.environ.get("REMOTION_URL", ""),
+                "gpu_exporter": _exporter("NODE_06_IP", "node-06")},
 }
+
+
+# These smoke tests hit the live GPU fleet; only runnable when the registry env is
+# present (a configured node / the live cluster). Skip cleanly otherwise so the suite
+# still collects and runs on node-01 (which has no GPU services).
+_REQUIRED_ENV = ("VLLM_PRIMARY_URL", "VLLM_SECONDARY_URL", "VLLM_MIDSIZE_URL",
+                 "COMFYUI_PRIMARY_URL", "COMFYUI_FALLBACK_URL", "COQUI_TTS_URL",
+                 "LATENTSYNC_URL", "OLLAMA_URL", "REMOTION_URL",
+                 "NODE_02_IP", "NODE_03_IP", "NODE_04_IP", "NODE_05_IP", "NODE_06_IP")
+pytestmark = pytest.mark.skipif(
+    any(not os.environ.get(v) for v in _REQUIRED_ENV),
+    reason="GPU smoke tests need the node registry env (configured node / live fleet)",
+)
 
 
 @pytest_asyncio.fixture
