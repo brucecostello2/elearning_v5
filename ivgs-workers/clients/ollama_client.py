@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import AsyncIterator, Optional
 
 import httpx
@@ -24,17 +25,17 @@ class OllamaClient(LLMProvider):
     """
     Ollama implementation of LLMProvider interface (§19.1).
 
-    Node: node-05 (http://10.10.0.5:11434).
+    Node: node-05.
     Models: llama3.2:8b, phi3:medium, gemma2:9b.
     """
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.5:11434",
+        base_url: Optional[str] = None,
         model: str = "llama3.2:8b",
         timeout: float = 120.0,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["OLLAMA_URL"]).rstrip("/")
         self.model = model
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None

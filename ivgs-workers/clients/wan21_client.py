@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -21,11 +22,11 @@ class Wan21Client(VideoProvider):
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.2:8190",
+        base_url: Optional[str] = None,
         timeout: float = 30.0,
         poll_interval: float = 2.0,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["WAN21_URL"]).rstrip("/")
         self.timeout = timeout
         self.poll_interval = poll_interval
         self._client: Optional[httpx.AsyncClient] = None

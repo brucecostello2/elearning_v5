@@ -5,6 +5,7 @@ Uses self-hosted LlamaGuard 3 via vLLM on node-04.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -17,11 +18,11 @@ class SafetyClassifier:
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.4:8000/v1",
+        base_url: Optional[str] = None,
         model: str = "meta-llama/Llama-Guard-3-8B",
         threshold: float = 0.98,
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["SAFETY_CLASSIFIER_URL"]).rstrip("/")
         self.model = model
         self.threshold = threshold
         self._client: Optional[httpx.AsyncClient] = None

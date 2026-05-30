@@ -30,6 +30,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -165,14 +166,14 @@ class LatentSyncClient:
 
     def __init__(
         self,
-        base_url: str = "http://node-04:8300",
-        fallback_url: Optional[str] = "http://node-04:8301",
+        base_url: Optional[str] = None,
+        fallback_url: Optional[str] = None,
         timeout: float = 600.0,
         poll_interval: float = 5.0,
         alignment_threshold: float = 0.85,
     ):
-        self._base_url = base_url
-        self._fallback_url = fallback_url
+        self._base_url = base_url or os.environ["LATENTSYNC_URL"]
+        self._fallback_url = fallback_url or os.environ.get("SADTALKER_URL")
         self._timeout = timeout
         self._poll_interval = poll_interval
         self._alignment_threshold = alignment_threshold

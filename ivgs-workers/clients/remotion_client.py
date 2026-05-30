@@ -30,6 +30,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -197,12 +198,12 @@ class RemotionClient:
 
     def __init__(
         self,
-        base_url: str = "http://node-06:3100",
+        base_url: Optional[str] = None,
         timeout: float = 300.0,
         poll_interval: float = 2.0,
         max_concurrent: int = 4,
     ):
-        self._base_url = base_url
+        self._base_url = base_url or os.environ["REMOTION_URL"]
         self._timeout = timeout
         self._poll_interval = poll_interval
         self._max_concurrent = max_concurrent

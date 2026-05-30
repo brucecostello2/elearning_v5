@@ -9,6 +9,7 @@ Word-level timestamp generation, SRT/VTT output.
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -23,10 +24,10 @@ class WhisperXClient(STTProvider):
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.4:9000",
+        base_url: Optional[str] = None,
         timeout: float = 300.0,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["WHISPERX_URL"]).rstrip("/")
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
 

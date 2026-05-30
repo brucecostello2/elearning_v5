@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
+import os
 from typing import Optional
 
 import httpx
@@ -24,13 +25,13 @@ class FluxClient(ImageProvider):
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.4:8188",
+        base_url: Optional[str] = None,
         model: str = "flux1-dev-fp8.safetensors",
         steps: int = 50,
         timeout: float = 300.0,
         poll_interval: float = 2.0,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["COMFYUI_PRIMARY_URL"]).rstrip("/")
         self.model = model
         self.steps = steps
         self.timeout = timeout

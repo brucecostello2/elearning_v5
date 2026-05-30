@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import Optional
 
 import httpx
@@ -26,10 +27,10 @@ class CoquiClient(TTSProvider):
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.4:5002",
+        base_url: Optional[str] = None,
         timeout: float = 120.0,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["COQUI_TTS_URL"]).rstrip("/")
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
 

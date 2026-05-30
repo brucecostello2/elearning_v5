@@ -35,6 +35,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
+import os
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -135,12 +136,12 @@ class SadTalkerClient(TalkingHeadProvider):
 
     def __init__(
         self,
-        base_url: str = "http://10.10.0.4:7861",
+        base_url: Optional[str] = None,
         timeout: float = 900.0,
         max_retries: int = 2,
         config: Optional[SadTalkerConfig] = None,
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = (base_url or os.environ["SADTALKER_URL"]).rstrip("/")
         self.timeout = timeout
         self.max_retries = max_retries
         self.config = config or SadTalkerConfig()
