@@ -1,0 +1,21 @@
+# IVGS node-config apply watcher (path unit).
+#
+# Watches for the apply-request marker the API drops under /ivgs
+# (host: /opt/ivgs/rollback-storage/node-config.apply.request) and triggers
+# node-config-apply.service when it appears. This is the ONLY component that
+# holds host privilege; the API stays least-privilege and never runs docker.
+#
+# Install (one-time, as root on node-01):
+#   cp ivgs-infra/systemd/node-config-apply.{path,service} /etc/systemd/system/
+#   systemctl daemon-reload
+#   systemctl enable --now node-config-apply.path
+
+[Unit]
+Description=Watch for an IVGS node-config apply request
+
+[Path]
+PathExists=/opt/ivgs/rollback-storage/node-config.apply.request
+Unit=node-config-apply.service
+
+[Install]
+WantedBy=multi-user.target

@@ -8,7 +8,7 @@
 #   1. reads the pending file,
 #   2. backs up ivgs-infra/.env,
 #   3. rewrites the NODE_0x_IP registry lines in .env (atomic; preserves the rest),
-#   4. recreates the stack so the new IPs take effect (node-01 briefly goes offline),
+#   4. recreates only the IP-consuming services so the new IPs take effect (the API is briefly unavailable),
 #   5. clears the pending file.
 #
 # Usage:
@@ -22,7 +22,11 @@ REPO_ROOT="${IVGS_REPO_ROOT:-/opt/ivgs}"
 INFRA_DIR="$REPO_ROOT/ivgs-infra"
 ENV_FILE="$INFRA_DIR/.env"
 PENDING="${IVGS_NODE_CONFIG_PENDING_PATH:-/opt/ivgs/rollback-storage/node-config.pending.json}"
-DC_FILES=(-f docker-compose.node01.yml -f docker-compose.override.node01.yml -f docker-compose.monitoring.yml)
+# Only node01 + override define the app services; the monitoring file is intentionally
+# excluded (its services do not use node IPs, and it references an external network that
+# is not always present). We recreate ONLY the services that consume the node IPs.
+DC_FILES=(-f docker-compose.node01.yml -f docker-compose.override.node01.yml)
+SERVICES=(${IVGS_NODE_CONFIG_SERVICES:-fastapi-backend ivgs-scheduler celery-worker-default celery-beat})
 
 ASSUME_YES=0
 DO_RESTART=1
@@ -49,7 +53,7 @@ with open(pending_path, encoding="utf-8") as fh:
     nodes = (json.load(fh) or {}).get("nodes", {})
 valid = {}
 for node_id, ip in nodes.items():
-    if not re.fullmatch(r"node-0[1-6]", str(node_id)):
+    if not re.fullmatch(r"node-0[2-6]", str(node_id)):
         continue
     ip = str(ip).strip()
     ipaddress.IPv4Address(ip)  # raises ValueError if invalid
@@ -60,7 +64,7 @@ with open(env_path, encoding="utf-8") as fh:
     lines = fh.readlines()
 seen, changes = set(), []
 for i, line in enumerate(lines):
-    m = re.match(r"^(NODE_0[1-6]_IP)=(.*)$", line.rstrip("\n"))
+    m = re.match(r"^(NODE_0[2-6]_IP)=(.*)$", line.rstrip("\n"))
     if m and m.group(1) in valid:
         key, old, new = m.group(1), m.group(2), valid[m.group(1)]
         if old != new:
@@ -91,14 +95,14 @@ fi
 if [ "$DO_RESTART" -eq 1 ]; then
   if [ "$ASSUME_YES" -ne 1 ]; then
     echo
-    echo "This will recreate the stack (docker compose up -d). node-01 will briefly go offline."
+    echo "This will recreate the IP-consuming services (${SERVICES[*]}). The API will be briefly unavailable."
     read -r -p "Proceed with restart now? [y/N] " ans
     case "$ans" in
       y|Y|yes|YES) ;;
       *) echo "Skipped restart. .env is updated; run the stack 'up -d' when ready (pending file kept)."; exit 0 ;;
     esac
   fi
-  ( cd "$INFRA_DIR" && docker compose "${DC_FILES[@]}" up -d )
+  ( cd "$INFRA_DIR" && docker compose "${DC_FILES[@]}" up -d --no-deps "${SERVICES[@]}" )
   rm -f "$PENDING"
   echo "Stack recreated and pending change cleared."
 else

@@ -1,0 +1,18 @@
+# IVGS node-config apply (oneshot service triggered by node-config-apply.path).
+#
+# Runs the host-side apply script, which backs up + rewrites ivgs-infra/.env from
+# the staged pending file and recreates the stack. ExecStopPost removes the
+# request marker unconditionally (success OR failure) so the path unit re-arms
+# and we never spin in a retry loop.
+
+[Unit]
+Description=Apply staged IVGS node-config and recreate the stack
+After=docker.service
+Wants=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/ivgs/ivgs-infra
+Environment=IVGS_REPO_ROOT=/opt/ivgs
+ExecStart=/opt/ivgs/scripts/apply-node-config.sh --yes
+ExecStopPost=/bin/rm -f /opt/ivgs/rollback-storage/node-config.apply.request

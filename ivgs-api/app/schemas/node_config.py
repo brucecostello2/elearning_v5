@@ -6,6 +6,11 @@ per-node address in the stack; it lives in ivgs-infra/.env and is applied to the
 running containers when the stack is (re)started. This endpoint lets an admin
 view the applied registry and *stage* a change. A host-side apply script writes
 .env and restarts. See spec 2.3 (192.168.1.0/24) and Appendix A.2.
+
+node-01 (the infrastructure host) is shown for reference but is immutable here:
+its address is set at the router / host level, and changing the address of the
+host that serves this UI mid-restart is unsafe. It is reported with
+editable=False and is never staged.
 """
 import ipaddress
 from typing import List, Optional
@@ -16,7 +21,7 @@ NODE_IDS = ("node-01", "node-02", "node-03", "node-04", "node-05", "node-06")
 
 
 class NodeEntry(BaseModel):
-    """A single node: its id, role label, the applied IP, and the staged IP (if any)."""
+    """A single node: its id, role label, the applied IP, the staged IP (if any)."""
 
     node_id: str = Field(description="Node identifier, e.g. node-04")
     role: str = Field(description="Human-readable role of the node")
@@ -27,6 +32,10 @@ class NodeEntry(BaseModel):
     pending_ip: Optional[str] = Field(
         default=None,
         description="Staged IP not yet applied; null when there is no pending change",
+    )
+    editable: bool = Field(
+        default=True,
+        description="False for node-01 (fixed infrastructure host); shown but not changeable",
     )
 
 
@@ -39,11 +48,11 @@ class NodeConfigResponse(BaseModel):
     )
     expected_subnet: str = Field(
         default="192.168.1.0/24",
-        description="Spec 2.3 mandated subnet (advisory; not enforced)",
+        description="The /24 derived from node-01's applied IP (advisory; not enforced)",
     )
     warnings: List[str] = Field(
         default_factory=list,
-        description="Soft advisories (e.g. out-of-subnet or duplicate IPs)",
+        description="Soft advisories (e.g. off node-01 subnet or duplicate IPs)",
     )
 
 

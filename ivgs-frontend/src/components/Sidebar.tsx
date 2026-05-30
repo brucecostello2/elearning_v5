@@ -66,6 +66,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
       { label: "User Management", href: "/admin/users", minRole: "admin" },
       { label: "Backup Management", href: "/admin/backups", minRole: "admin" },
       { label: "Retention Policies", href: "/admin/retention", minRole: "admin" },
+      { label: "Node Configuration", href: "/admin/nodes", minRole: "admin" },
     ],
   },
 ];
