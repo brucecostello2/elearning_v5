@@ -30,7 +30,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 |---|---|---|
 | P0 | 0 | — |
 | P1 | 3 | Defect #4 prompt ENUM; D.11 prompt-mgmt browser smoke; Spec v1.1 §9 GPU acceptance bullets |
-| P2 | 21 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; config externalization; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.2/F.3/F.4 (pre-commit IP guard, digest pins, FlaggedAsset typing); forensic correction; tag taxonomy doc |
+| P2 | 20 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; config externalization; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.2/F.3/F.4 (pre-commit IP guard, digest pins, FlaggedAsset typing); forensic correction; tag taxonomy doc |
 | P3 | 6 | GpuNodeStatus UPPERCASE dead code; empty seaweedfs volumes; Phase H multi-node; endpoint test coverage; rogue-branch attribution investigation; cosmetic UI polish |
 
 ---
@@ -173,7 +173,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | | |
 |---|---|
 | **Source** | v1.0 §3.2 (S7 §11.8) — smallest blast radius in F backlog |
-| **Status** | OPEN. |
+| **Status** | CLOSED (2026-05-29). `version: "3.8"` removed; docker compose config parses clean, warning gone. See Items-closed table. |
 | **Scope** | Compose produces WARN on every invocation: "the attribute version is obsolete". Delete one line; verify compose still parses. |
 | **Effort** | Trivial. End-of-session warm-up/cooldown task. |
 
@@ -367,6 +367,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 
 | Item | Closed in | Evidence |
 |---|---|---|
+| Obsolete compose `version:` removed (P2.9) | This session (2026-05-29) | Deleted `version: "3.8"` from `ivgs-infra/docker-compose.node01.yml`; `docker compose config` parses without the obsolete-attribute warning. Commit `fbbafb5`. |
 | Nginx dynamic-resolution hardening (P2.12) | This session (2026-05-29) | `configs/nginx/nginx.conf`: resolver 127.0.0.11 + variable `proxy_pass` (7 sites) + `proxy_connect_timeout 2s` + http2 modernization. Verified by forcing fastapi to 172.20.0.50, nginx untouched -> auto-recovered to 200 within TTL. Commit `7173797`. |
 | ivgs-backup-worker image to GHCR (P1.4) | This session (2026-05-29) | Pushed `ghcr.io/brucecostello2/ivgs-backup-worker:v5.1.0-stream-b` (digest `sha256:18ce86f0…`); override `image:` switched from `:local` to `${IVGS_BACKUP_WORKER_TAG}`, recreated healthy. Commit `379292a`. |
 | Defect #8 — Test suite restoration | Session 11/12 (PR #48 merged to main) | 512 tests passing; 28 production bugs fixed. Merge commit `a836668`. |
