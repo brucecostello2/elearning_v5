@@ -250,6 +250,14 @@ services:
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       IVGS_GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
+      # Raw node registry for features needing per-node addresses (e.g. ws_logs SSH targets).
+      # The anchor below consumes these at substitution time, so pass them through explicitly.
+      NODE_01_IP: ${NODE_01_IP}
+      NODE_02_IP: ${NODE_02_IP}
+      NODE_03_IP: ${NODE_03_IP}
+      NODE_04_IP: ${NODE_04_IP}
+      NODE_05_IP: ${NODE_05_IP}
+      NODE_06_IP: ${NODE_06_IP}
       <<: *gpu-service-urls
       UVICORN_WORKERS: "4"
       UVICORN_HOST: "0.0.0.0"
