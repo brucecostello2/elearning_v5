@@ -44,6 +44,15 @@ BACKUP_NAS_DIR="${BACKUP_NAS_DIR:-/mnt/backup/ivgs/db}"
 WAL_ARCHIVE_DIR="${WAL_ARCHIVE_DIR:-/mnt/backup/ivgs/wal}"
 COMPOSE_DIR="${COMPOSE_DIR:-/opt/ivgs}"
 
+# Node registry — GPU node IPs come from node-01's .env (single source), never hardcoded
+NODE_REGISTRY="${NODE_REGISTRY:-${COMPOSE_DIR}/ivgs-infra/.env}"
+declare -A NODE_IPS=( [02]="" [03]="" [04]="" [05]="" [06]="" )
+if [[ -f "$NODE_REGISTRY" ]]; then
+    for __n in "${!NODE_IPS[@]}"; do
+        NODE_IPS[$__n]="$(grep -E "^NODE_${__n}_IP=" "$NODE_REGISTRY" | head -1 | cut -d= -f2)"
+    done
+fi
+
 DRY_RUN=false
 SKIP_CONFIRMATION=false
 PIT_TARGET=""
@@ -252,7 +261,11 @@ stop_services() {
 
     # Stop workers on GPU nodes (via SSH)
     for node in node-02 node-03 node-04 node-05 node-06; do
-        local node_ip="10.10.0.${node##node-0}"
+        local node_ip="${NODE_IPS[${node##node-}]:-}"
+        if [[ -z "$node_ip" ]]; then
+            log_warn "No registry IP for ${node} (set NODE_${node##node-}_IP in ${NODE_REGISTRY}) — skipping"
+            continue
+        fi
         if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
             "root@${node_ip}" \
             "cd /opt/ivgs && docker compose stop celery-worker 2>/dev/null" 2>/dev/null; then
@@ -499,7 +512,11 @@ restart_services() {
 
     # Start workers on GPU nodes
     for node in node-02 node-03 node-04 node-05 node-06; do
-        local node_ip="10.10.0.${node##node-0}"
+        local node_ip="${NODE_IPS[${node##node-}]:-}"
+        if [[ -z "$node_ip" ]]; then
+            log_warn "No registry IP for ${node} (set NODE_${node##node-}_IP in ${NODE_REGISTRY}) — skipping"
+            continue
+        fi
         if ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no \
             "root@${node_ip}" \
             "cd /opt/ivgs && docker compose start celery-worker 2>/dev/null" 2>/dev/null; then
