@@ -28,7 +28,7 @@
       PRIMARY KEY (dirhash, name)
     )
   """
-  hostname = "10.10.0.1"
+  hostname = "postgres"          # node-01 Postgres via compose service DNS
   port = 5432
   username = "ivgs"
   password = "CHANGE_ME_DB_PASSWORD"
