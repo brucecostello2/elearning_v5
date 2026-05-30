@@ -12,9 +12,9 @@ Implements Appendix D.3 Migration from v4:
 
 Usage:
     python v4_to_v5_migration.py \
-        --v4-host=10.10.0.1 --v4-port=5432 --v4-db=ivgs_v4 \
+        --v4-host=192.168.1.90 --v4-port=5432 --v4-db=ivgs_v4 \
         --v4-user=ivgs --v4-password=SECRET \
-        --v5-host=10.10.0.1 --v5-port=5432 --v5-db=ivgs \
+        --v5-host=192.168.1.90 --v5-port=5432 --v5-db=ivgs \
         --v5-user=ivgs --v5-password=SECRET \
         [--dry-run] [--verbose]
 """
