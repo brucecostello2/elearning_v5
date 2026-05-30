@@ -108,7 +108,7 @@ class PipelineAPIConfig:
     prompt resolution, and transcript/storyboard CRUD.
     """
 
-    base_url: str = _env("IVGS_API_BASE_URL", "http://node-01:8000")
+    base_url: str = _env("API_BASE_URL", "http://fastapi-backend:8001")
     api_prefix: str = _env("IVGS_API_PREFIX", "/api/v1")
     timeout_seconds: int = _env("IVGS_API_TIMEOUT", 30, int)
     service_token: str = _env("IVGS_SERVICE_TOKEN", "dev-service-token")

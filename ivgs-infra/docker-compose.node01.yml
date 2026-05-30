@@ -63,6 +63,7 @@ x-gpu-service-urls: &gpu-service-urls
   SADTALKER_URL: "http://${NODE_04_IP}:${SADTALKER_PORT}"
   WHISPERX_URL: "http://${NODE_04_IP}:${WHISPERX_PORT}"
   REMOTION_URL: "http://${NODE_06_IP}:${REMOTION_PORT}"
+  API_BASE_URL: "http://fastapi-backend:8001"
 
 networks:
   ivgs-net:

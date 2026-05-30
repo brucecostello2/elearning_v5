@@ -26,7 +26,6 @@ class Settings(BaseSettings):
     SEAWEEDFS_MOUNT_PATH: str = "/ivgs"
 
     # --- GPU Scheduler ---
-    GPU_SCHEDULER_URL: str = "http://localhost:8001"
 
     # GPU / media-node service URLs are intentionally not declared here. The API
     # consumes only auth + Redis settings; these were vestigial fields (never read
