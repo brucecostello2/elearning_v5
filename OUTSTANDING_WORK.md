@@ -2,8 +2,8 @@
 
 | | |
 |---|---|
-| **Document version** | v2.0 — 2026-05-29 |
-| **Authoritative as of** | Phase 14 Stream B closeout, main @ `1cb2c58` |
+| **Document version** | v2.1 — 2026-05-30 |
+| **Authoritative as of** | main @ `31f61e8` (Node Configuration delivered; P1.4 + P2.2/2.9/2.12/2.14 closed; P2.5/2.23/2.24/2.25 added) |
 | **Repository / branch** | `brucecostello2/elearning_v5` on `main` |
 | **Supersedes** | v1.0 (`IVGS_Outstanding_Fixes_SoT.docx`, 2026-05-26, Sessions 5–9). Items from v1.0 are reviewed below with current status. |
 | **Live stack** | ivgs-api `v5.1.18-node-config`, ivgs-frontend `v5.2.16-node-config`, ivgs-workers `v5.1.4-config-2b`, ivgs-backup-worker `v5.1.0-stream-b`, ivgs-scheduler `latest` (P2.11). Alembic 0024. |
