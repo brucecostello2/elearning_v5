@@ -28,24 +28,12 @@ class Settings(BaseSettings):
     # --- GPU Scheduler ---
     GPU_SCHEDULER_URL: str = "http://localhost:8001"
 
-    # --- vLLM Endpoints ---
-    VLLM_PRIMARY_URL: str = "http://10.10.0.2:8000/v1"
-    VLLM_SECONDARY_URL: str = "http://10.10.0.3:8000/v1"
-    VLLM_MIDSIZE_URL: str = "http://10.10.0.4:8000/v1"
-    OLLAMA_URL: str = "http://10.10.0.5:11434"
-
-    # --- ComfyUI Endpoints ---
-    COMFYUI_PRIMARY_URL: str = "http://10.10.0.4:8188"
-    COMFYUI_FALLBACK_URL: str = "http://10.10.0.5:8188"
-
-    # --- TTS / Talking Head ---
-    COQUI_TTS_URL: str = "http://10.10.0.4:5002"
-    KOKORO_TTS_URL: str = "http://10.10.0.4:5003"
-    LATENTSYNC_URL: str = "http://10.10.0.4:7860"
-    SADTALKER_URL: str = "http://10.10.0.4:7861"
-
-    # --- Composition ---
-    REMOTION_URL: str = "http://10.10.0.6:3002"
+    # GPU / media-node service URLs are intentionally not declared here. The API
+    # consumes only auth + Redis settings; these were vestigial fields (never read
+    # via `settings` anywhere in the codebase) carrying obsolete hardcoded-IP defaults.
+    # The canonical node-service URLs are composed from the node registry by the
+    # compose `x-gpu-service-urls` anchor and consumed by the workers
+    # (ivgs-workers/config.py). Removed in P2.2 phase 2b.
 
     # --- Authentication (§16.1) ---
     JWT_SECRET_KEY: str = "CHANGE_ME_STRONG_RANDOM_SECRET_64_CHARS_MINIMUM"
