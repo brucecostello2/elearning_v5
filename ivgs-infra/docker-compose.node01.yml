@@ -28,7 +28,8 @@
 # Health checks: all services define healthcheck with interval=30s,
 # timeout=10s, retries=3 per §15.6
 #
-# Network: all services on ivgs-net bridge (10.10.0.0/24 VLAN equivalent)
+# Network: all services on ivgs-net docker bridge (172.20.0.0/16). Host VLAN IPs
+# are defined once in .env (SUBNET_PREFIX / NODE_xx_IP); see x-gpu-service-urls anchor.
 # =============================================================================
 
 
@@ -48,6 +49,20 @@ x-common-logging: &common-logging
 
 x-common-restart: &common-restart
   restart: unless-stopped
+
+x-gpu-service-urls: &gpu-service-urls
+  VLLM_PRIMARY_URL: "http://${NODE_02_IP}:${VLLM_PORT}/v1"
+  VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT}/v1"
+  VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT}/v1"
+  OLLAMA_URL: "http://${NODE_05_IP}:${OLLAMA_PORT}"
+  COMFYUI_PRIMARY_URL: "http://${NODE_04_IP}:${COMFYUI_PORT}"
+  COMFYUI_FALLBACK_URL: "http://${NODE_05_IP}:${COMFYUI_PORT}"
+  COQUI_TTS_URL: "http://${NODE_04_IP}:${COQUI_TTS_PORT}"
+  KOKORO_TTS_URL: "http://${NODE_04_IP}:${KOKORO_TTS_PORT}"
+  LATENTSYNC_URL: "http://${NODE_04_IP}:${LATENTSYNC_PORT}"
+  SADTALKER_URL: "http://${NODE_04_IP}:${SADTALKER_PORT}"
+  WHISPERX_URL: "http://${NODE_04_IP}:${WHISPERX_PORT}"
+  REMOTION_URL: "http://${NODE_06_IP}:${REMOTION_PORT}"
 
 networks:
   ivgs-net:
@@ -235,15 +250,7 @@ services:
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       IVGS_GPU_SCHEDULER_URL: http://ivgs-scheduler:8001
-      VLLM_PRIMARY_URL: http://192.168.1.91:8000/v1
-      VLLM_SECONDARY_URL: http://192.168.1.92:8000/v1
-      VLLM_MIDSIZE_URL: http://192.168.1.93:8000/v1
-      OLLAMA_URL: http://192.168.1.94:11434
-      COMFYUI_PRIMARY_URL: http://192.168.1.93:8188
-      COMFYUI_FALLBACK_URL: http://192.168.1.94:8188
-      COQUI_TTS_URL: http://192.168.1.93:5002
-      LATENTSYNC_URL: http://192.168.1.93:7860
-      REMOTION_URL: http://192.168.1.95:3002
+      <<: *gpu-service-urls
       UVICORN_WORKERS: "4"
       UVICORN_HOST: "0.0.0.0"
       UVICORN_PORT: "8001"
@@ -277,7 +284,9 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/1
+      SCHEDULER_REDIS_URL: redis://redis:6379/1
       SCHEDULER_PORT: "8001"
+      <<: *gpu-service-urls
     ports:
       - "127.0.0.1:8002:8001"
     networks:
@@ -354,6 +363,7 @@ services:
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
+      <<: *gpu-service-urls
     volumes:
       - /mnt/ivgs-shared:/mnt/ivgs-shared
     networks:
@@ -392,6 +402,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      <<: *gpu-service-urls
     networks:
       - ivgs-net
     depends_on:
