@@ -6,7 +6,7 @@
 | **Authoritative as of** | Phase 14 Stream B closeout, main @ `1cb2c58` |
 | **Repository / branch** | `brucecostello2/elearning_v5` on `main` |
 | **Supersedes** | v1.0 (`IVGS_Outstanding_Fixes_SoT.docx`, 2026-05-26, Sessions 5–9). Items from v1.0 are reviewed below with current status. |
-| **Live stack** | ivgs-api `v5.1.14-stream-b`, ivgs-frontend `v5.2.12-backup-vocab-alignment`, ivgs-workers `v5.1.1-pidbox-fix`, ivgs-backup-worker `local`. Alembic 0024. |
+| **Live stack** | ivgs-api `v5.1.18-node-config`, ivgs-frontend `v5.2.16-node-config`, ivgs-workers `v5.1.4-config-2b`, ivgs-backup-worker `v5.1.0-stream-b`, ivgs-scheduler `latest` (P2.11). Alembic 0024. |
 | **Purpose** | Single ledger of every known outstanding item. Each new session updates this file before close. Items have priority, source, scope, and concrete carry-forward action. |
 
 ## Operator policy on tech debt
@@ -30,7 +30,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 |---|---|---|
 | P0 | 0 | — |
 | P1 | 3 | Defect #4 prompt ENUM; D.11 prompt-mgmt browser smoke; Spec v1.1 §9 GPU acceptance bullets |
-| P2 | 20 | Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.3/F.4 (digest pins, FlaggedAsset typing); tests/ pytest-collection SQLite blocker; forensic correction; tag taxonomy doc |
+| P2 | 21 | monitoring `ivgs_default` external-net (P2.25); Defect #5 [object Object]; Defect #9 nodes status lie; **Defect #10 test directory scope unification**; Phase F.1–F.11 hygiene backlog; Phase E.1 infrastructure docs; **Phase E.2 RUNBOOK.md**; MP F.3/F.4 (digest pins, FlaggedAsset typing); tests/ pytest-collection SQLite blocker; forensic correction; tag taxonomy doc |
 | P3 | 6 | GpuNodeStatus UPPERCASE dead code; empty seaweedfs volumes; Phase H multi-node; endpoint test coverage; rogue-branch attribution investigation; cosmetic UI polish |
 
 ---
@@ -315,6 +315,21 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | **Root cause** | `shared/database.py:31` passes `pool_size=settings.DATABASE_POOL_SIZE` (plus `max_overflow`/`pool_timeout`) to the async engine factory unconditionally. When a test points `DATABASE_URL` at SQLite/aiosqlite (NullPool), SQLAlchemy raises a TypeError on those args at create_engine, failing collection for every test under `tests/` (a conftest/session fixture builds the engine at setup). |
 | **Carry-forward action** | Make the engine factory dialect-aware: drop the pool args when the URL is SQLite (or whenever NullPool is selected). Pairs with P2.13 (CI scaffolding) and P2.1 (test-dir unification). Until fixed, the 2h guard is enforced by the pre-commit hook, which needs no pytest. |
 
+---
+
+## P2.25 -- `docker-compose.monitoring.yml` references a non-existent external network `ivgs_default`
+
+| | |
+|---|---|
+| **Source** | Found this session (2026-05-30) while building the Node Configuration apply path (the host watcher's first full `docker compose up -d` failed). |
+| **Status** | OPEN. Latent: a full-stack `up -d` across node01+override+monitoring fails today. Operations are unaffected because deploys use `up -d --no-deps <service>`, which never validates the monitoring network. |
+| **Severity** | Medium. Blocks any full-stack `up -d`; would bite a cold start or a full monitoring recreate. |
+| **Root cause** | The monitoring file declares `networks: ivgs_default: {external: true}` (no `name:`) and attaches services to it, but no docker network named `ivgs_default` exists -- the real core net is `ivgs-infra_ivgs-net` (which the same file also references correctly as external `ivgs-net`). Running monitoring containers predate the drift, so the broken ref only surfaces on a fresh `up`. |
+| **Workaround in place** | `scripts/apply-node-config.sh` recreates only the IP-consuming app services with `--no-deps` using just `node01 + override` (monitoring excluded), so node-config apply never touches this. |
+| **Carry-forward action** | Reconcile the monitoring network definition (attach to the real `ivgs-net`, or create/name the expected network). Pairs with P2.19. |
+| **Effort** | ~1 hour (edit + a full `up -d` validation in a maintenance window). |
+
+
 # P3 — Low Priority
 
 ## P3.1 — GpuNodeStatus UPPERCASE half (dead code cleanup)
@@ -387,6 +402,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 
 | Item | Closed in | Evidence |
 |---|---|---|
+| Node Configuration admin GUI (commissioning tool) -- NEW feature | 2026-05-30 (this session) | Admin-only `/admin` Node Configuration page (4th card + sidebar item + `/admin/nodes`) over `GET/PUT/POST /api/v1/node-config`. Shows the applied NODE_0x_IP registry (from the API container env), stages edits, applies them. node-01 is read-only (fixed infra host; `editable=false`, never staged, enforced server-side + in the apply script). Editable nodes 02-06 are IPv4-validated with live + server advisories for off-(node-01)-subnet (the /24 derived from node-01's own IP) and duplicate IPs. Least-privilege: the API never touches `.env` or docker -- PUT writes a pending file under the existing `/ivgs` mount; `POST /apply` drops an apply-request marker; a host systemd path+service watcher (`ivgs-infra/systemd/node-config-apply.{path,service}`) runs `scripts/apply-node-config.sh`, which backs up + rewrites `.env` and recreates ONLY the IP-consuming services (`fastapi-backend ivgs-scheduler celery-worker-default celery-beat`) via `--no-deps`. UI: applied-vs-pending, restart banner, Stage/Discard/Apply-with-confirm, polls until the API returns. Verified end-to-end on node-01 (staged .96/.99 -> applied -> reverted to .95). Commits `0538ae0` + `145b366`. Live images: `ivgs-api:v5.1.18-node-config`, `ivgs-frontend:v5.2.16-node-config` (GHCR push pending). |
 | Config externalization PR (P2.2) -- phases 2a-2h complete | 2026-05-29 + 2026-05-30 (this session) | All node-IP references single-sourced to the NODE_0x_IP registry in node-01 `.env`, which composes 12 GPU URLs via the `x-gpu-service-urls` anchor; the obsolete 10.10.0.x scheme is eliminated from all code/config (only this ledger history references it) and is now guarded. Prior phases 2a-2g: fa6f4db, 49b736d, 7c374e5, bfcec00, e0fe26f, 68318bd, 41c34bd, 3426f0f, c85690b. This session 2b API half: shared/config.py trimmed (0c797df), ws_logs NODE_0x_IP resolution + test (18f17d9), fastapi env (a656514) -> ivgs-api:v5.1.15-config-2b deployed, /health green, 8/8 ws_logs tests. 2b workers (4 deployed increments): vLLM URLs canonical + fail-fast, anchor /v1 stripped (35954ed); API callback re-keyed to API_BASE_URL=fastapi-backend:8001 + latent-bug fix (1453530); 11 client base_urls canonical + fail-fast, latentsync 8300->7860 and remotion 3100->3002 (5d525a7); images ivgs-workers v5.1.2/v5.1.3/v5.1.4-config-2b each rebuilt + recreated + verified (worker ready, celery ping, worker->API 200, in-container client resolution). 2h: tests/smoke/test_gpu_nodes.py re-pointed to the registry + tests/spec_compliance/test_no_hardcoded_ips.py guard + widened pre-commit hook (e5816d8). Ledger increments d6c96c0, 936fb47, 84daf9d. Deferred to Phase H (P3.3 H.5): GPU-pipeline task-layer URL consolidation + broken-interface repair (gated on GPU node services online). Live tags: ivgs-api v5.1.15-config-2b, ivgs-workers v5.1.4-config-2b. |
 | Pre-commit guard for 10.10.0.x IP literals (P2.14 / MP F.2) | 2026-05-30 (this session) | Delivered as P2.2 phase 2h: the pre-commit hook now blocks both the http:// and bare forms of the obsolete 10.10.0.x scheme (with `.md` and the guard test excluded so documented history still commits), and tests/spec_compliance/test_no_hardcoded_ips.py is the CI/full-suite backstop (pattern assembled from fragments so it cannot self-match). Commit e5816d8. Running the guard via pytest is currently blocked by P2.24; the hook enforces it regardless. |
 | Config externalization phase 2e remainder: `restore.sh` GPU IPs from registry | This session (2026-05-29) | Both worker stop/start SSH loops derived targets as obsolete `10.10.0.${node}`; now read `NODE_0x_IP` from node-01 `.env` (single source) with a skip+warn guard when unset. `bash -n` OK; no `10.10.0.x`. Standalone DR script, not run end-to-end (SSHes to absent GPU nodes) — same shakeout caveat. Completes phase 2e. Commit `e0fe26f`. |
