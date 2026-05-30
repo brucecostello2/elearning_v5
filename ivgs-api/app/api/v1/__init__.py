@@ -36,6 +36,7 @@ from app.api.v1.manifests import router as manifests_router
 
 # --- Infrastructure routers ---
 from app.api.v1.nodes import router as nodes_router
+from app.api.v1.node_config import router as node_config_router
 from app.api.v1.gpus import router as gpus_router
 from app.api.v1.dlq import router as dlq_router
 from app.api.v1.alerts import router as alerts_router
@@ -88,6 +89,7 @@ api_v1_router.include_router(manifests_router, prefix="/manifests", tags=["Manif
 
 # Infrastructure
 api_v1_router.include_router(nodes_router)             # prefix built into router
+api_v1_router.include_router(node_config_router)  # /node-config (admin)
 api_v1_router.include_router(gpus_router)              # prefix built into router
 api_v1_router.include_router(dlq_router)               # prefix built into router
 api_v1_router.include_router(alerts_router, prefix="/alerts", tags=["Alerts"])
