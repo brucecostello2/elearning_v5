@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from typing import Optional
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
@@ -64,15 +65,14 @@ async def _authenticate_ws(websocket: WebSocket) -> bool:
 
     return True
 
-# Node SSH connection map
-NODE_HOSTS = {
-    "node-01": "10.10.0.1",
-    "node-02": "10.10.0.2",
-    "node-03": "10.10.0.3",
-    "node-04": "10.10.0.4",
-    "node-05": "10.10.0.5",
-    "node-06": "10.10.0.6",
-}
+# Node SSH targets resolve from the node registry (NODE_0x_IP env — the single
+# source, the same values the compose x-gpu-service-urls anchor consumes). No hardcoded IPs.
+def _node_ip(node_id: str) -> Optional[str]:
+    """Return a node's registry IP, or None for an unknown/unregistered node."""
+    if not node_id.startswith("node-"):
+        return None
+    suffix = node_id.split("-")[-1]
+    return os.environ.get(f"NODE_{suffix}_IP") or None
 
 
 @router.websocket("/ws/nodes/{node_id}/logs")
@@ -91,14 +91,14 @@ async def stream_node_logs(
         return
     await websocket.accept()
 
-    if node_id not in NODE_HOSTS:
+    host = _node_ip(node_id)
+    if host is None:
         await websocket.send_json(
-            {"error": f"Unknown node: {node_id}"}
+            {"error": f"Unknown or unregistered node: {node_id}"}
         )
         await websocket.close(code=1008)
         return
 
-    host = NODE_HOSTS[node_id]
     docker_cmd = "docker compose logs --follow --tail"
     if service:
         cmd = f"ssh {host} '{docker_cmd} {tail} {service}'"

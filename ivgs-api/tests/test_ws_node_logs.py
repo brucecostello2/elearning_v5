@@ -15,6 +15,15 @@ from starlette.testclient import TestClient
 AUTH_PATCH = "app.api.v1.ws_logs._authenticate_ws"
 
 
+@pytest.fixture(autouse=True)
+def _registry_env(monkeypatch):
+    """Populate node registry env so ws_logs._node_ip resolves test targets."""
+    _reg = {"01": "192.168.1.90", "02": "192.168.1.91", "03": "192.168.1.92",
+            "04": "192.168.1.93", "05": "192.168.1.94", "06": "192.168.1.95"}
+    for _n, _ip in _reg.items():
+        monkeypatch.setenv(f"NODE_{_n}_IP", _ip)
+
+
 @pytest.fixture
 def sync_client():
     """Synchronous TestClient for WebSocket testing."""
@@ -101,7 +110,7 @@ def test_node_logs_with_service_filter(sync_client):
 
     cmd_arg = mock_shell.call_args[0][0]
     assert "render-engine" in cmd_arg
-    assert "10.10.0.1" in cmd_arg
+    assert "192.168.1.90" in cmd_arg
 
 
 def test_node_logs_with_tail_param(sync_client):
