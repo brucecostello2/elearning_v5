@@ -78,13 +78,13 @@ jobs:
       - name: "Determine node IP"
         id: node-ip
         run: |
-          case "${{ matrix.node }}" in
-            node02) echo "ip=10.10.0.2" >> $GITHUB_OUTPUT ;;
-            node03) echo "ip=10.10.0.3" >> $GITHUB_OUTPUT ;;
-            node04) echo "ip=10.10.0.4" >> $GITHUB_OUTPUT ;;
-            node05) echo "ip=10.10.0.5" >> $GITHUB_OUTPUT ;;
-            node06) echo "ip=10.10.0.6" >> $GITHUB_OUTPUT ;;
-          esac
+          # Resolve the target IP from node-01's registry (single source), not a hardcoded map
+          reg="/opt/ivgs/ivgs-infra/.env"
+          node="${{ matrix.node }}"
+          key="NODE_${node#node}_IP"
+          ip="$(grep -E "^${key}=" "$reg" 2>/dev/null | head -1 | cut -d= -f2)"
+          if [ -z "$ip" ]; then echo "::error::${key} not found in ${reg}"; exit 1; fi
+          echo "ip=$ip" >> "$GITHUB_OUTPUT"
 
       - name: "Deploy ${{ matrix.node }}"
         run: |
