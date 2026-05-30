@@ -103,10 +103,10 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | | |
 |---|---|
 | **Source** | Phase 14 Stream B session. Documented in `IVGS_CONFIG_EXTERNALIZATION.md` on operator's PC. |
-| **Status** | OPEN — fully scoped, ready to execute. |
+| **Status** | IN PROGRESS. Phase 2a done (this session, 2026-05-29): node-01 live stack single-sourced — `.env` now holds `SUBNET_PREFIX`/`NODE_xx_IP`/`*_PORT` as the sole node-IP source; `node01.yml` `x-gpu-service-urls` anchor composes the 12 GPU URLs and merges into fastapi/scheduler/worker/beat; `.env.node01` literal URLs removed (env_file cannot interpolate). All 16 containers healthy. Commit `fa6f4db`. |
 | **Severity** | Pre-commit hook currently blocks `http://10.10.0.X` strings in commits. Some env-var naming is also inconsistent. Risk of spec drift between Compose, env files, and runtime. |
 | **Scope** | Externalize IP literals into env vars; standardize env-var naming convention; document acceptable patterns; update pre-commit hook scope. |
-| **Carry-forward action** | Open PR per the IVGS_CONFIG_EXTERNALIZATION.md plan. |
+| **Carry-forward action** | Remaining phases, each behind a verify gate: (2b) Python fail-fast — remove the hardcoded `10.10.0.x` fallback defaults in `shared/config.py` + `ivgs-workers/config.py` (the one phase with live-startup risk); (2c) node02-06 compose `${VAR}` conversion + obsolete `version:` removal; (2d) `.env*.template` topology propagation; (2e) `scripts/deploy-node.sh` + `restore.sh`; (2f) `.github/workflows/cd-deploy.yml`; (2g) docs; (2h) add `tests/spec_compliance/test_no_hardcoded_ips.py` guard (subsumes P2.14) + update pre-commit hook scope. |
 | **Effort** | ~5 hours (per the doc). |
 
 ## P2.3 — Defect #5: "[object Object]" validation banner
@@ -194,7 +194,7 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 | **Status** | OPEN. |
 | **Severity** | Exact class of problem that caused the v5.1.5/v5.1.8 image-drift crisis (Session 6 Addendum A). |
 | **Scope** | Either pin to a specific scheduler version (preferred) or document why this service is exempt from §19.5 no-`:latest` rule. |
-| **Carry-forward action** | Operator decision pin-vs-document this session or next. |
+| **Carry-forward action** | Operator decision pin-vs-document this session or next. **Update (this session):** while diagnosing the scheduler crash, confirmed locally that `ivgs-scheduler:v5.1.0` and `:latest` share one image ID (same 7-day-old build) — so pinning `IVGS_SCHEDULER_TAG=v5.1.0` is now a zero-behavior-change close whenever desired. |
 
 ## P2.12 — Phase F.10: Nginx hardening (resolver + variable-based proxy_pass)
 
@@ -377,6 +377,9 @@ This file exists to give effect to that policy: nothing is "deferred" without be
 
 | Item | Closed in | Evidence |
 |---|---|---|
+| Config externalization — phase 2a: node-01 IP single-sourcing (P2.2, still open for 2b+) | This session (2026-05-29) | `.env` gained `SUBNET_PREFIX`/`NODE_xx_IP`/`*_PORT` as the sole node-IP source; `node01.yml` `x-gpu-service-urls` anchor composes the 12 GPU URLs and merges into fastapi/scheduler/worker/beat; `.env.node01` literal URLs removed. `docker compose config` resolved every URL to a correct `.9x` IP with no placeholders; all 16 containers healthy; URLs confirmed in-container; API up. Commit `fa6f4db`. |
+| `ivgs-scheduler` redis mis-wire (localhost crash) | This session (2026-05-29) | Surfaced when the phase-2a recreate restarted the scheduler fresh: it reads `SCHEDULER_REDIS_URL` (default `redis://localhost:6379/3`) but compose only set generic `REDIS_URL`, so startup crashed at `redis.ping`. Added `SCHEDULER_REDIS_URL=redis://redis:6379/1` (Redis is its only external dep). Not an image regression — `:v5.1.0` == `:latest`. Now healthy, `redis_connected`, serving `/fleet 200`. Commit `fa6f4db`. |
+| `GITHUB_REPO_URL` corrected (elearning -> elearning_v5) | This session (2026-05-29) | Value pointed at a non-matching repo; the self-hosted runner registers against this URL. Fixed in `.env` and `.env.node01`. Commit `fa6f4db`. |
 | celery-beat false `unhealthy` (healthcheck) | This session (2026-05-29) | Beat was functional (scheduling heartbeat / gpu-metrics / dlq tasks); `unhealthy` came from the image's broken `-A worker` probe, inherited because beat had no compose override. Added pidfile process-liveness healthcheck to `celery-beat` in node01.yml; recreated -> healthy, FailingStreak 0. Root cause logged as P2.23. Commit `13c9d90`. |
 | Obsolete compose `version:` removed (P2.9) | This session (2026-05-29) | Deleted `version: "3.8"` from `ivgs-infra/docker-compose.node01.yml`; `docker compose config` parses without the obsolete-attribute warning. Commit `fbbafb5`. |
 | Nginx dynamic-resolution hardening (P2.12) | This session (2026-05-29) | `configs/nginx/nginx.conf`: resolver 127.0.0.11 + variable `proxy_pass` (7 sites) + `proxy_connect_timeout 2s` + http2 modernization. Verified by forcing fastapi to 172.20.0.50, nginx untouched -> auto-recovered to 200 within TTL. Commit `7173797`. |
