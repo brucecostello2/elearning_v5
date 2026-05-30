@@ -183,7 +183,7 @@ The following areas were verified and **match the spec**:
 |------|---------------|--------|
 | GPU hardware specs in README table | §3.1-3.2, Tables 3-1/3-2 | ✅ PASS |
 | VM resource allocation (vCPU, RAM, disk) | Table 2-3 | ✅ PASS |
-| Network topology (10.10.0.0/24, IPs) | §2.3, Table 2-4 | ✅ PASS |
+| Network topology (192.168.1.0/24, IPs) | §2.3, Table 2-4 | ✅ PASS |
 | SeaweedFS topology and ports | §3.3 | ✅ PASS |
 | Storage tiering concept (HOT/WARM/COLD/ARCHIVE) | §10.1 | ✅ PASS |
 | GPU Scheduler microservice exists | §12 | ✅ PASS |

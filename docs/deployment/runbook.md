@@ -51,6 +51,6 @@ Complete all items in Table F-1 before deploying to production:
 - Intel oneAPI/IPEX on node-06
 - NFS share mounted at `/mnt/ivgs-shared` on all nodes
 - Backup NAS mounted at `/mnt/backup/ivgs` on node-01
-- Private VLAN 10.10.0.0/24 configured
+- Private VLAN 192.168.1.0/24 configured
 
 ### 2.2 First-Time Setup

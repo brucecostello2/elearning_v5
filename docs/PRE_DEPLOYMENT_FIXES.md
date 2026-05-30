@@ -896,9 +896,9 @@ huggingface-cli download THUDM/CogVideoX-5b \
 # === Ollama Models (node-05) ===
 echo ""
 echo "--- Pulling Ollama models ---"
-OLLAMA_HOST="${OLLAMA_URL:-http://10.10.0.5:11434}" ollama pull llama3.2:8b
-OLLAMA_HOST="${OLLAMA_URL:-http://10.10.0.5:11434}" ollama pull phi3:medium
-OLLAMA_HOST="${OLLAMA_URL:-http://10.10.0.5:11434}" ollama pull gemma2:9b
+OLLAMA_HOST="${OLLAMA_URL:-http://192.168.1.94:11434}" ollama pull llama3.2:8b
+OLLAMA_HOST="${OLLAMA_URL:-http://192.168.1.94:11434}" ollama pull phi3:medium
+OLLAMA_HOST="${OLLAMA_URL:-http://192.168.1.94:11434}" ollama pull gemma2:9b
 
 echo ""
 echo "============================================="

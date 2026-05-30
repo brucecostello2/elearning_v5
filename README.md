@@ -29,12 +29,12 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 
 | Node | IP | vCPUs | RAM | Boot Disk | Data Disk | GPU Passthrough |
 |------|-----|-------|-----|-----------|-----------|-----------------|
-| node-01 | 10.10.0.1 | 8 | 16 GB | 500 GB SSD | — *(see [Storage Topology](#storage-topology))* | None |
-| node-02 | 10.10.0.2 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#1) |
-| node-03 | 10.10.0.3 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
-| node-04 | 10.10.0.4 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
-| node-05 | 10.10.0.5 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 5080 16 GB |
-| node-06 | 10.10.0.6 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | Intel B70 Pro 32 GB |
+| node-01 | 192.168.1.90 | 8 | 16 GB | 500 GB SSD | — *(see [Storage Topology](#storage-topology))* | None |
+| node-02 | 192.168.1.91 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#1) |
+| node-03 | 192.168.1.92 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
+| node-04 | 192.168.1.93 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
+| node-05 | 192.168.1.94 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 5080 16 GB |
+| node-06 | 192.168.1.95 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | Intel B70 Pro 32 GB |
 
 #### Node Roles (Table 2-2)
 
@@ -186,7 +186,7 @@ Files are organized under the `/ivgs/` filer namespace (see [Directory Structure
 
 #### Storage Topology
 
-All SeaweedFS services (master, volume server, filer) run on **node-01** (10.10.0.1). The spec (§2.2 Table 2-3) lists no dedicated data disk for node-01 — storage uses Docker volumes on the 500 GB boot SSD plus the NFS shared volume.
+All SeaweedFS services (master, volume server, filer) run on **node-01** (192.168.1.90). The spec (§2.2 Table 2-3) lists no dedicated data disk for node-01 — storage uses Docker volumes on the 500 GB boot SSD plus the NFS shared volume.
 
 > **⚠️ TODO — Production Storage:** Define dedicated storage drives for node-01 before production deployment. The current Docker-volume-on-boot-disk configuration is suitable for development only. Production should provision separate SSD and HDD drives for Hot and Warm tiers respectively.
 
