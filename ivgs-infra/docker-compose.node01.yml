@@ -31,7 +31,6 @@
 # Network: all services on ivgs-net bridge (10.10.0.0/24 VLAN equivalent)
 # =============================================================================
 
-version: "3.8"
 
 x-common-healthcheck: &common-healthcheck
   interval: 30s
