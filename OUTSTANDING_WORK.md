@@ -493,3 +493,22 @@ No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider 
 - `tasks/periodic_tasks.py`: imports clean but dormant (not in conf.include/__init__; beat uses v1's copies) — likely a duplicate beat home; consolidate in H.1.
 - node02/03/04 vLLM image tag `v0.6.4` is the pre-Stage-1 value (fails on Blackwell); working `cu130-nightly` lands with the node-02 DR commit / per-node at Stage 4.
 - node-01 rebind (127.0.0.1 -> 192.168.1.90 for Redis/Postgres/scheduler) — the one live-infra change, prerequisite for Stage 2.
+
+---
+
+## Stage 0 closure — node-01 rebind + node-02 DR (2026-05-31)
+
+- node-01 service rebind (bf78a23): postgres 5432, redis 6379, seaweedfs
+  master 9333/19333 + volume 8080 + filer 8888, scheduler 8002 now published
+  on ${NODE_01_IP} (was 127.0.0.1). Reachable from node-02; gates G2-G4 cleared.
+- node-02 DR (663fe9e): tested CogVideoX server recipe + node-02 compose
+  (cu130-nightly vLLM, cogvideox-server, thin worker) committed; .env.node02
+  gitignored, .example added.
+- node-02 live compose: fabricated exporter @sha256 digests stripped.
+
+### Open pre-prod / operator items (NOT Stage-2 blockers)
+- .env.node01 is tracked in git — verify, git rm --cached, rotate, consider history purge.
+- Rotate Postgres/Redis shared credentials (now VLAN-reachable).
+- Push feat/phase-h0-make-main-honest (4 commits) + open PR.
+
+### Stage 0 = COMPLETE. Next: Stage 2 (first real node-01+node-02 pipeline run).
