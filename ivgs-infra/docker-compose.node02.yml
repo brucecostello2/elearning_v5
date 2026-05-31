@@ -55,7 +55,7 @@ services:
   # Remaining ~26 GB for CogVideoX scheduling
   # ---------------------------------------------------------------------------
   vllm:
-    image: vllm/vllm-openai:v0.6.4
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
     container_name: ivgs-vllm-primary
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
@@ -79,12 +79,11 @@ services:
       --model ${VLLM_MODEL_NAME:-meta-llama/Llama-3.3-70B-Instruct}
       --tensor-parallel-size ${VLLM_TP_SIZE:-1}
       --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
-      --gpu-memory-utilization 0.90
+      --gpu-memory-utilization ${VLLM_GPU_UTIL:-0.90}
       --dtype bfloat16
       --trust-remote-code
       --api-key ${VLLM_API_KEY:-ivgs-internal}
       --served-model-name ${VLLM_SERVED_NAME:-llama-70b}
-      --disable-log-requests
     shm_size: "16g"
 
   # ---------------------------------------------------------------------------
@@ -95,8 +94,11 @@ services:
   # ---------------------------------------------------------------------------
   cogvideox-worker:
     image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    # STAGE 2: switch to the generic (H.0-fixed) ivgs-workers image. This server image has
+    #          no celery task code, so the worker cannot actually run until then.
     container_name: ivgs-cogvideox-worker
-    <<: [*common-restart, *common-logging, *gpu-resources]
+    <<: [*common-restart, *common-logging]
+    depends_on: [cogvideox-server]
     env_file:
       - .env.node02
     environment:
@@ -105,11 +107,9 @@ services:
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-02
-      CUDA_VISIBLE_DEVICES: "0"
-      HF_HOME: /data/models
+      COGVIDEOX_URL: http://cogvideox-server:8200
       C_FORCE_ROOT: "1"
     volumes:
-      - /data/models:/data/models
       - /mnt/ivgs-shared:/mnt/ivgs-shared
     networks:
       - ivgs-net
@@ -120,6 +120,28 @@ services:
         --concurrency=1
         --max-tasks-per-child=10
         -n cogvideox-worker@node02
+
+  # ---------------------------------------------------------------------------
+  # CogVideoX/Wan2.1 model server (HTTP). GPU + weights live HERE; the worker is
+  # a thin client that reaches it at COGVIDEOX_URL over the ivgs-net network.
+  # Runs the locally-built image (pull_policy: never) — no registry needed.
+  # ---------------------------------------------------------------------------
+  cogvideox-server:
+    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-cogvideox-server
+    pull_policy: never
+    <<: [*common-restart, *common-logging, *gpu-resources]
+    environment:
+      MODEL_VARIANT: cogvideox
+      MODEL_PATH: /opt/models/cogvideox-5b     # local-staged weights (NOT /mnt NFS: mmap-over-NFS too slow)
+      PORT: "8200"
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      - /opt/models:/opt/models:ro
+    ports:
+      - "8200:8200"                            # optional host access; worker reaches it by service name
+    networks:
+      - ivgs-net
     shm_size: "8g"
 
   # ---------------------------------------------------------------------------

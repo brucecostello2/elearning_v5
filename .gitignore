@@ -109,3 +109,6 @@ ivgs-infra/configs/grafana/
 coverage.json
 htmlcov/
 .coverage
+
+# node env files hold real secrets -- commit only the .example variants
+.env.node0[1-6]

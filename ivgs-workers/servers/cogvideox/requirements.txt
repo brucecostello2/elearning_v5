@@ -1,0 +1,19 @@
+# IVGS v5 — CogVideoX / Wan2.1 model server deps (REFERENCE)
+#
+# IMPORTANT: torch / torchvision / torchaudio are installed in the Dockerfile from the
+# CUDA 12.8 (cu128) index for Blackwell sm_120 support. DO NOT pin torch here.
+#
+# VERIFY-ON-NODE: pin `diffusers` to a version whose CogVideoXPipeline matches the
+# CogVideoX-5b weights; confirm the Wan2.1 pipeline class before enabling dual-model.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+diffusers>=0.30.0
+transformers>=4.44.0
+accelerate>=0.34.0
+imageio-ffmpeg>=0.5.1
+sentencepiece>=0.2.0
+protobuf>=4.25
+opencv-python-headless>=4.8
