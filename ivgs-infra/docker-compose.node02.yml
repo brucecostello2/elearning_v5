@@ -93,9 +93,7 @@ services:
   # GPU scheduler (§12.2) ensures VRAM availability before dispatch
   # ---------------------------------------------------------------------------
   cogvideox-worker:
-    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
-    # STAGE 2: switch to the generic (H.0-fixed) ivgs-workers image. This server image has
-    #          no celery task code, so the worker cannot actually run until then.
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-cogvideox-worker
     <<: [*common-restart, *common-logging]
     depends_on: [cogvideox-server]
