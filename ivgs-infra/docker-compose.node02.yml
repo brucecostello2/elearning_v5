@@ -106,6 +106,9 @@ services:
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-02
       COGVIDEOX_URL: http://cogvideox-server:8200
+      VLLM_PRIMARY_URL: "http://${NODE_02_IP}:${VLLM_PORT:-8000}"
+      VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
+      VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
       C_FORCE_ROOT: "1"
     volumes:
       - /mnt/ivgs-shared:/mnt/ivgs-shared
