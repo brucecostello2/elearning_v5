@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
@@ -132,6 +133,7 @@ class VLLMClient(LLMProvider):
         failover_urls: Optional[List[str]] = None,
         *,
         base_url: Optional[str] = None,
+        api_key: Optional[str] = None,
     ) -> None:
         cfg = config_or_base_url if hasattr(config_or_base_url, "primary_base_url") else None
         resolved = base_url or (cfg.primary_base_url if cfg else config_or_base_url)
@@ -140,6 +142,11 @@ class VLLMClient(LLMProvider):
 
         self.base_url = str(resolved).rstrip("/")
         self._config = cfg
+        self.api_key = (
+            api_key
+            or (cfg.api_key if cfg is not None else None)
+            or os.environ.get("IVGS_VLLM_API_KEY")
+        )
         self.model = model or (cfg.primary_model if cfg else "meta-llama/Llama-3.3-70B-Instruct")
         self.timeout = timeout if timeout is not None else (float(cfg.timeout_seconds) if cfg else 120.0)
         self.max_retries = max_retries if max_retries is not None else (cfg.max_retries if cfg else 2)
@@ -161,7 +168,11 @@ class VLLMClient(LLMProvider):
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
+            headers = {"Content-Type": "application/json"}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
             self._client = httpx.AsyncClient(
+                headers=headers,
                 timeout=httpx.Timeout(self.timeout, connect=10.0),
                 limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
             )
