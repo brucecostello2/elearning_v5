@@ -464,3 +464,32 @@ Each session that closes should, before final commit:
 The discipline is: nothing is "deferred" without going into this file. That's the rule.
 
 *— End of ledger —*
+
+---
+
+## Phase H.0 — Make Main Honest (CLOSED 2026-05-31, commit `d349c46`, branch `feat/phase-h0-make-main-honest`)
+
+No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider refactor, added the missing config method, wired all 8 stages, removed off-plan residue, reconciled node02-06 compose. Build + import + 22-task-registration gates all green; no GPU hardware exercised. Single code commit `d349c46` (16 files, +1369/-754).
+
+**Closed by H.0:**
+- **A3 / SSOT P2.27 (deploy-blocker 02-06):** node02-06 `celery -A ivgs.celery_app` -> `celery -A celery_app` (9 sites). CLOSED.
+- **H.5 "doable now" interface + wiring (code/config; live validation still GPU-gated):**
+  - `clients/vllm_client.py`: re-added `chat()`/`chat_json()`/`chat_completion()`, a `VLLMConfig`-accepting ctor, `__aenter__`/`__aexit__`, and `VLLMResponse`/`VLLMChoice`/`VLLMUsage`/`VLLMMessage`. Fixes the stage1 `async with VLLMClient(config.vllm)` + `.chat()` finding (was at vllm_client.py one-class/240L). RESOLVED.
+  - `clients/{cogvideox,wan21,flux,coqui}_client.py`: restored deleted error/enum/params/result symbols + call-time methods; fixed result bugs (`video_bytes`->`video_data`, `audio_bytes`->`audio_data`). RESOLVED.
+  - `config.py`: added `WorkerConfig.get_model_config(name)` (registry-backed, env-overridable: cogvideox_5b/wan21/latentsync/sadtalker) used by video_generation_task/talking_head_task; added `_AttrDict` so `get_vllm_config_for_stage` answers both `["model"]` and `.model`. RESOLVED.
+  - `celery_app.py` + `tasks/__init__.py`: `conf.include` + `task_routes` now register all 8 stages + video/talking-head + `pipeline_orchestrator_v2`; route keys corrected to real task names. (H.5 item E — stages 3-8 unwired — RESOLVED.)
+  - `tasks/localization_pipeline.py`: off-plan, non-importable residue (`ivgs_workers.*`/`provider_factory`); REMOVED (git history retains it). It was an unfinished draft of spec §17.2; a real §17.2 localization orchestration is tracked as a deferred feature (re-dispatch existing stages with a target language_code — not a standalone task).
+
+**Advanced (partial) by H.0:**
+- **A1 / SSOT P2.15:** node02-06 fabricated `@sha256` placeholder digests stripped to tag-only (matching node-01). Compose portion done; base-image re-pin (part i) unchanged.
+- **SSOT P2.23:** Dockerfile baked `HEALTHCHECK` module `worker` -> `celery_app`. Done (effective next workers build).
+
+**Decision D1 (canonical orchestrator):** `pipeline_orchestrator_v2` is canonical for pipeline dispatch (full §6.1 parallel-media + composition-manifest); v1 retained for its 6 beat/ops tasks (heartbeat/DLQ/cleanup/retention/backup/metrics) that `beat_schedule` references. Both included. Final consolidation -> H.1; runtime "which handle_stage_completion the stages call back into" -> validated at Stage 2.
+
+**Deferred (tracked; nothing dropped):**
+- Live-GPU execution of every generate*/synthesize/chat* path + primary->fallback failover (needs node services online) — Stage 2/3.
+- Spec §17.2 localization orchestration (unbuilt feature).
+- latentsync/sadtalker ports: H.0 defaults to the task call-site values (8300/8301), which CONFLICT with the Build Plan wire contract (7860/7861) — reconcile when node-04 is built (env-overridable, no code change). cogvideox 8200 settled; wan21 8210 per Build Plan.
+- `tasks/periodic_tasks.py`: imports clean but dormant (not in conf.include/__init__; beat uses v1's copies) — likely a duplicate beat home; consolidate in H.1.
+- node02/03/04 vLLM image tag `v0.6.4` is the pre-Stage-1 value (fails on Blackwell); working `cu130-nightly` lands with the node-02 DR commit / per-node at Stage 4.
+- node-01 rebind (127.0.0.1 -> 192.168.1.90 for Redis/Postgres/scheduler) — the one live-infra change, prerequisite for Stage 2.
