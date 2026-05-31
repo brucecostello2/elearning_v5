@@ -44,6 +44,23 @@ def _env_required(key: str, cast: type = str) -> Any:
     return cast(val)
 
 
+class _AttrDict(dict):
+    """dict supporting both item access (d["x"]) and attribute access (d.x).
+
+    Lets config helpers return one object usable both by call sites that index
+    (vllm_config["model"]) and those that use attributes (cfg.model).
+    """
+
+    def __getattr__(self, name):
+        try:
+            return self[name]
+        except KeyError as exc:
+            raise AttributeError(name) from exc
+
+    def __setattr__(self, name, value):
+        self[name] = value
+
+
 @dataclass(frozen=True)
 class VLLMConfig:
     """
@@ -254,10 +271,22 @@ class WorkerConfig:
         "IVGS_ENABLE_CHECKPOINT_SAVING", True, bool
     )
 
+    # GPU media-service URLs (H.0 WI-2). Env-overridable; defaults follow the
+    # Build Plan wire contract + task call-site defaults + the fleet node map.
+    # cogvideox port 8200 is settled (Stage-1 build); latentsync/sadtalker
+    # ports (8300/8301 here vs Build Plan 7860/7861) are a tracked H.1/Stage-3
+    # item, changeable via env without a code edit.
+    cogvideox_url: str = _env("IVGS_COGVIDEOX_URL", "http://node-02:8200")
+    cogvideox_fallback_url: str = _env("IVGS_COGVIDEOX_FALLBACK_URL", "http://node-03:8200")
+    wan21_url: str = _env("IVGS_WAN21_URL", "http://node-02:8210")
+    wan21_fallback_url: str = _env("IVGS_WAN21_FALLBACK_URL", "http://node-03:8210")
+    latentsync_url: str = _env("IVGS_LATENTSYNC_URL", "http://node-04:8300")
+    sadtalker_url: str = _env("IVGS_SADTALKER_URL", "http://node-04:8301")
+
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
         if stage in ("transcript_refinement", "storyboard_generation"):
-            return {
+            return _AttrDict({
                 "base_url": self.vllm.primary_base_url,
                 "model": self.vllm.primary_model,
                 "timeout": self.timeouts.vllm_timeout,
@@ -266,11 +295,11 @@ class WorkerConfig:
                 "top_p": self.vllm.top_p,
                 "fallback_base_url": self.vllm.secondary_base_url,
                 "fallback_model": self.vllm.secondary_model,
-            }
+            })
         elif stage in (
             "image_generation", "video_generation", "animation_generation"
         ):
-            return {
+            return _AttrDict({
                 "base_url": self.vllm.midsize_base_url,
                 "model": self.vllm.midsize_model,
                 "timeout": self.timeouts.vllm_timeout,
@@ -279,16 +308,34 @@ class WorkerConfig:
                 "top_p": 0.95,
                 "fallback_base_url": self.vllm.primary_base_url,
                 "fallback_model": self.vllm.primary_model,
-            }
+            })
         else:
-            return {
+            return _AttrDict({
                 "base_url": self.vllm.primary_base_url,
                 "model": self.vllm.primary_model,
                 "timeout": self.timeouts.vllm_timeout,
                 "max_tokens": self.vllm.max_tokens,
                 "temperature": self.vllm.temperature,
                 "top_p": self.vllm.top_p,
-            }
+            })
+
+    def get_model_config(self, name: str) -> "_AttrDict":
+        """Resolve a GPU model-service config by logical name (H.0 WI-2).
+
+        Returns an _AttrDict with at least 'api_url' and 'fallback_url'
+        (fallback_url is None for single-instance services). URLs come from the
+        env-overridable WorkerConfig fields above, never hard-coded literals.
+        """
+        registry = {
+            "cogvideox_5b": (self.cogvideox_url, self.cogvideox_fallback_url),
+            "wan21": (self.wan21_url, self.wan21_fallback_url),
+            "latentsync": (self.latentsync_url, None),
+            "sadtalker": (self.sadtalker_url, None),
+        }
+        if name not in registry:
+            raise KeyError(f"Unknown model config '{name}'")
+        primary, fallback = registry[name]
+        return _AttrDict({"api_url": primary, "fallback_url": fallback})
 
     def get_retry_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get retry configuration for a specific pipeline stage."""

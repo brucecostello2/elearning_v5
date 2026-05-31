@@ -3,7 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-from typing import AsyncIterator, Optional
+from dataclasses import dataclass, field
+from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
 
 import httpx
 
@@ -33,12 +34,7 @@ class VLLMRateLimitError(VLLMError):
 
 
 class VLLMInvalidResponseError(VLLMError):
-    """Raised when vLLM returns a response that cannot be parsed.
-
-    Attributes:
-        response_body: The raw response text that failed parsing.
-        status_code:   HTTP status code of the response, if available.
-    """
+    """Raised when vLLM returns a response that cannot be parsed."""
 
     def __init__(
         self,
@@ -53,39 +49,114 @@ class VLLMInvalidResponseError(VLLMError):
 
 
 class VLLMModelNotFoundError(VLLMError):
-    """Raised when the requested model is not loaded on the vLLM instance.
-
-    Typically corresponds to an HTTP 404 or a payload error indicating
-    the model name is not recognised by the server.
-    """
+    """Raised when the requested model is not loaded on the vLLM instance."""
 
 
 class VLLMServerError(VLLMError):
     """Raised when vLLM returns an HTTP 5xx server-side error."""
 
 
+# ---------------------------------------------------------------------------
+# Response models (task-facing; re-added per H.0 WI-1).
+# Lightweight stdlib dataclasses mirroring the OpenAI-compatible response shape
+# that pipeline tasks read: response.content,
+# response.choices[i].message.content, response.usage.prompt_tokens,
+# response.model.
+# ---------------------------------------------------------------------------
+
+@dataclass
+class VLLMMessage:
+    role: str
+    content: str
+
+
+@dataclass
+class VLLMUsage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+@dataclass
+class VLLMChoice:
+    index: int = 0
+    message: Optional[VLLMMessage] = None
+    text: Optional[str] = None
+    finish_reason: Optional[str] = None
+
+
+@dataclass
+class VLLMResponse:
+    id: str = ""
+    object: str = ""
+    created: int = 0
+    model: str = ""
+    choices: List[VLLMChoice] = field(default_factory=list)
+    usage: Optional[VLLMUsage] = None
+
+    @property
+    def content(self) -> str:
+        if self.choices and self.choices[0].message:
+            return self.choices[0].message.content or ""
+        if self.choices and self.choices[0].text:
+            return self.choices[0].text or ""
+        return ""
+
+    @property
+    def finish_reason(self) -> Optional[str]:
+        return self.choices[0].finish_reason if self.choices else None
+
+
 class VLLMClient(LLMProvider):
     """
-    vLLM implementation of LLMProvider interface (§19.1).
+    vLLM implementation of the LLMProvider interface (spec 19.1).
 
     Targets vLLM's OpenAI-compatible API at http://node-0X:8000/v1.
-    Supports Llama 3.3 70B (tensor parallel on node-02/03),
-    Qwen2.5 72B, and Mistral 24B (node-04).
+
+    Provider interface : generate() / stream()  -> shared LLMResponse.
+    Task interface (re-added H.0 WI-1):
+        chat() / chat_json() / chat_completion() -> VLLMResponse,
+        compute_request_hash(), and async-context support.
+
+    The constructor accepts either a VLLMConfig (VLLMClient(config.vllm)) or an
+    explicit base_url (VLLMClient(base_url=...)); detection is by duck-typing on
+    `primary_base_url`, so config.py is never imported here.
     """
 
     def __init__(
         self,
-        base_url: str,
-        model: str = "meta-llama/Llama-3.3-70B-Instruct",
-        timeout: float = 120.0,
-        max_retries: int = 2,
-        failover_urls: Optional[list[str]] = None,
+        config_or_base_url: Any = None,
+        model: Optional[str] = None,
+        timeout: Optional[float] = None,
+        max_retries: Optional[int] = None,
+        failover_urls: Optional[List[str]] = None,
+        *,
+        base_url: Optional[str] = None,
     ) -> None:
-        self.base_url = base_url.rstrip("/")
-        self.model = model
-        self.timeout = timeout
-        self.max_retries = max_retries
-        self.failover_urls = failover_urls or []
+        cfg = config_or_base_url if hasattr(config_or_base_url, "primary_base_url") else None
+        resolved = base_url or (cfg.primary_base_url if cfg else config_or_base_url)
+        if not resolved:
+            raise VLLMError("VLLMClient requires a base_url or a VLLMConfig")
+
+        self.base_url = str(resolved).rstrip("/")
+        self._config = cfg
+        self.model = model or (cfg.primary_model if cfg else "meta-llama/Llama-3.3-70B-Instruct")
+        self.timeout = timeout if timeout is not None else (float(cfg.timeout_seconds) if cfg else 120.0)
+        self.max_retries = max_retries if max_retries is not None else (cfg.max_retries if cfg else 2)
+
+        if failover_urls is not None:
+            self.failover_urls = failover_urls
+        elif cfg:
+            self.failover_urls = [
+                u for u in (cfg.secondary_base_url, cfg.midsize_base_url)
+                if u and u.rstrip("/") != self.base_url
+            ]
+        else:
+            self.failover_urls = []
+
+        self._default_max_tokens = cfg.max_tokens if cfg else 8192
+        self._default_temperature = cfg.temperature if cfg else 0.3
+        self._default_top_p = cfg.top_p if cfg else 0.9
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
@@ -95,6 +166,16 @@ class VLLMClient(LLMProvider):
                 limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
             )
         return self._client
+
+    async def __aenter__(self) -> "VLLMClient":
+        return self
+
+    async def __aexit__(self, *exc_info) -> None:
+        await self.close()
+
+    # ------------------------------------------------------------------
+    # Provider interface (shared LLMResponse)
+    # ------------------------------------------------------------------
 
     async def generate(self, prompt: str, params: LLMParams) -> LLMResponse:
         """Generate text from a prompt via vLLM OpenAI-compatible API."""
@@ -134,17 +215,11 @@ class VLLMClient(LLMProvider):
             except httpx.HTTPStatusError as exc:
                 status = exc.response.status_code
                 if status == 429:
-                    raise VLLMRateLimitError(
-                        f"vLLM rate-limited at {url}"
-                    ) from exc
+                    raise VLLMRateLimitError(f"vLLM rate-limited at {url}") from exc
                 if status == 404:
-                    raise VLLMModelNotFoundError(
-                        f"Model not found on vLLM at {url}: {exc}"
-                    ) from exc
+                    raise VLLMModelNotFoundError(f"Model not found on vLLM at {url}: {exc}") from exc
                 if 500 <= status < 600:
-                    raise VLLMServerError(
-                        f"vLLM server error ({status}) at {url}: {exc}"
-                    ) from exc
+                    raise VLLMServerError(f"vLLM server error ({status}) at {url}: {exc}") from exc
                 last_error = exc
                 logger.warning("vLLM HTTP error", extra={"url": url, "error": str(exc)})
                 continue
@@ -160,12 +235,8 @@ class VLLMClient(LLMProvider):
                 continue
 
         if isinstance(last_error, httpx.TimeoutException):
-            raise VLLMTimeoutError(
-                f"All vLLM endpoints timed out: {last_error}"
-            ) from last_error
-        raise VLLMConnectionError(
-            f"All vLLM endpoints exhausted: {last_error}"
-        ) from last_error
+            raise VLLMTimeoutError(f"All vLLM endpoints timed out: {last_error}") from last_error
+        raise VLLMConnectionError(f"All vLLM endpoints exhausted: {last_error}") from last_error
 
     async def stream(self, prompt: str, params: LLMParams) -> AsyncIterator[str]:
         """Stream generated text tokens from vLLM."""
@@ -196,6 +267,216 @@ class VLLMClient(LLMProvider):
                         yield content
 
     # ------------------------------------------------------------------
+    # Shared execution for the task-facing chat API
+    # ------------------------------------------------------------------
+
+    async def _chat_request(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        response_format: Optional[Dict[str, str]] = None,
+        timeout: Optional[float] = None,
+    ) -> VLLMResponse:
+        client = await self._get_client()
+        payload: Dict[str, Any] = {
+            "model": model or self.model,
+            "messages": messages,
+            "max_tokens": max_tokens if max_tokens is not None else self._default_max_tokens,
+            "temperature": temperature if temperature is not None else self._default_temperature,
+            "top_p": top_p if top_p is not None else self._default_top_p,
+        }
+        if response_format is not None:
+            payload["response_format"] = response_format
+
+        primary = (base_url or self.base_url).rstrip("/")
+        urls_to_try = [primary] + [u.rstrip("/") for u in self.failover_urls if u.rstrip("/") != primary]
+        req_timeout = timeout if timeout is not None else self.timeout
+        last_error: Optional[Exception] = None
+        response = None
+
+        for url in urls_to_try:
+            try:
+                response = await client.post(
+                    f"{url}/v1/chat/completions",
+                    json=payload,
+                    timeout=req_timeout,
+                )
+                response.raise_for_status()
+                return self._parse_response(response.json())
+            except httpx.TimeoutException as exc:
+                last_error = exc
+                logger.warning("vLLM timeout", extra={"url": url, "error": str(exc)})
+                continue
+            except httpx.HTTPStatusError as exc:
+                status = exc.response.status_code
+                if status == 429:
+                    raise VLLMRateLimitError(f"vLLM rate-limited at {url}") from exc
+                if status == 404:
+                    raise VLLMModelNotFoundError(f"Model not found on vLLM at {url}: {exc}") from exc
+                if 500 <= status < 600:
+                    raise VLLMServerError(f"vLLM server error ({status}) at {url}: {exc}") from exc
+                last_error = exc
+                logger.warning("vLLM HTTP error", extra={"url": url, "error": str(exc)})
+                continue
+            except httpx.HTTPError as exc:
+                last_error = exc
+                logger.warning("vLLM request failed", extra={"url": url, "error": str(exc)})
+                continue
+
+        if isinstance(last_error, httpx.TimeoutException):
+            raise VLLMTimeoutError(f"All vLLM endpoints timed out: {last_error}") from last_error
+        raise VLLMConnectionError(f"All vLLM endpoints exhausted: {last_error}") from last_error
+
+    def _parse_response(self, data: Dict[str, Any]) -> VLLMResponse:
+        """Parse a raw vLLM JSON body into a VLLMResponse."""
+        try:
+            choices: List[VLLMChoice] = []
+            for c in data.get("choices", []):
+                msg_data = c.get("message") or {}
+                choices.append(
+                    VLLMChoice(
+                        index=c.get("index", 0),
+                        message=VLLMMessage(
+                            role=msg_data.get("role", "assistant"),
+                            content=msg_data.get("content", ""),
+                        ),
+                        text=c.get("text"),
+                        finish_reason=c.get("finish_reason"),
+                    )
+                )
+
+            usage = None
+            usage_data = data.get("usage")
+            if usage_data:
+                usage = VLLMUsage(
+                    prompt_tokens=usage_data.get("prompt_tokens", 0),
+                    completion_tokens=usage_data.get("completion_tokens", 0),
+                    total_tokens=usage_data.get("total_tokens", 0),
+                )
+
+            return VLLMResponse(
+                id=data.get("id", ""),
+                object=data.get("object", ""),
+                created=data.get("created", 0),
+                model=data.get("model", self.model),
+                choices=choices,
+                usage=usage,
+            )
+        except Exception as exc:
+            raise VLLMInvalidResponseError(
+                f"Failed to parse vLLM response: {exc}",
+                response_body=json.dumps(data)[:1000],
+            ) from exc
+
+    # ------------------------------------------------------------------
+    # Task-facing convenience methods (re-added H.0 WI-1)
+    # ------------------------------------------------------------------
+
+    async def chat_completion(
+        self,
+        messages: List[Dict[str, str]],
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        response_format: Optional[Dict[str, str]] = None,
+        timeout: Optional[float] = None,
+    ) -> VLLMResponse:
+        """Send an explicit list of chat messages (OpenAI-style dicts)."""
+        return await self._chat_request(
+            messages=messages,
+            model=model,
+            base_url=base_url,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            response_format=response_format,
+            timeout=timeout,
+        )
+
+    async def chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        top_p: Optional[float] = None,
+        response_format: Optional[Dict[str, str]] = None,
+        timeout: Optional[float] = None,
+    ) -> VLLMResponse:
+        """Primary entry point for stage tasks: system + user -> VLLMResponse."""
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        return await self._chat_request(
+            messages=messages,
+            model=model,
+            base_url=base_url,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            response_format=response_format,
+            timeout=timeout,
+        )
+
+    async def chat_json(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        model: Optional[str] = None,
+        base_url: Optional[str] = None,
+        max_tokens: Optional[int] = None,
+        temperature: Optional[float] = None,
+        timeout: Optional[float] = None,
+    ) -> Tuple[Dict[str, Any], VLLMResponse]:
+        """Chat completion expecting JSON. Returns (parsed_json, raw_response)."""
+        response = await self.chat(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            model=model,
+            base_url=base_url,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            response_format={"type": "json_object"},
+            timeout=timeout,
+        )
+
+        content = response.content.strip()
+
+        # Strip markdown code fences if present.
+        if content.startswith("```"):
+            lines = content.split("\n")
+            json_lines: List[str] = []
+            in_block = False
+            for line in lines:
+                if line.startswith("```") and not in_block:
+                    in_block = True
+                    continue
+                if line.startswith("```") and in_block:
+                    break
+                if in_block:
+                    json_lines.append(line)
+            if json_lines:
+                content = "\n".join(json_lines)
+
+        try:
+            parsed = json.loads(content)
+            return parsed, response
+        except json.JSONDecodeError as exc:
+            raise VLLMInvalidResponseError(
+                f"vLLM response is not valid JSON: {exc}",
+                response_body=content[:2000],
+            ) from exc
+
+    # ------------------------------------------------------------------
     # Idempotency helper
     # ------------------------------------------------------------------
 
@@ -207,21 +488,7 @@ class VLLMClient(LLMProvider):
         temperature: float,
         max_tokens: Optional[int] = None,
     ) -> str:
-        """Return a deterministic SHA-256 hex digest for a request.
-
-        Used by pipeline tasks to detect duplicate LLM calls and skip
-        re-processing when idempotency checking is enabled.
-
-        Args:
-            system_prompt: The system-role prompt text.
-            user_prompt:   The user-role prompt text.
-            model:         Model identifier string (e.g. ``meta-llama/Llama-3.3-70B-Instruct``).
-            temperature:   Sampling temperature.
-            max_tokens:    Maximum output tokens (``None`` treated as ``0`` for hashing).
-
-        Returns:
-            64-character lowercase hex SHA-256 digest.
-        """
+        """Deterministic SHA-256 digest of request params (for idempotency)."""
         canonical = json.dumps(
             {
                 "system_prompt": system_prompt,

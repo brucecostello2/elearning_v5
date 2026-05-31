@@ -116,39 +116,59 @@ TASK_QUEUES = (
 # ---------------------------------------------------------------------------
 
 TASK_ROUTES: Dict[str, Dict[str, str]] = {
-    "tasks.stage1_transcript.refine_transcript_task": {
+    # Keys match the registered task NAME (Celery routes by name), which for
+    # several modules differs from the filename (H.0 WI-4 finding):
+    #   stage5_voiceover.py       -> tasks.stage4_voiceover.*
+    #   stage6_talking_head.py    -> tasks.stage5_talking_head.*
+    #   stage7_prototype_draft.py -> tasks.prototype_draft_task.*
+    #   stage8_final_render.py    -> tasks.final_render_task.*
+    # The orchestrator dispatches each stage with an explicit queue= (its
+    # STAGE_QUEUE_MAP), so these routes are the fallback.
+    "tasks.stage1_transcript.*": {
         "queue": "gpu_llm",
         "routing_key": "gpu.llm",
     },
-    "tasks.stage2_storyboard.generate_storyboard_task": {
+    "tasks.stage2_storyboard.*": {
         "queue": "gpu_llm",
         "routing_key": "gpu.llm",
     },
-    "tasks.stage3_image.*": {
+    "tasks.stage3_images.*": {
         "queue": "gpu_image",
         "routing_key": "gpu.image",
     },
-    "tasks.stage3_video.*": {
+    "tasks.video_generation_task.*": {
         "queue": "gpu_video",
         "routing_key": "gpu.video",
     },
-    "tasks.stage5_tts.*": {
+    "tasks.stage4_manifest.*": {
+        "queue": "default",
+        "routing_key": "default",
+    },
+    "tasks.stage4_voiceover.*": {
         "queue": "gpu_tts",
         "routing_key": "gpu.tts",
     },
-    "tasks.stage6_talking_head.*": {
+    "tasks.stage5_talking_head.*": {
         "queue": "gpu_talking_head",
         "routing_key": "gpu.talking_head",
     },
-    "tasks.stage7_composition.*": {
+    "tasks.talking_head_task.*": {
+        "queue": "gpu_talking_head",
+        "routing_key": "gpu.talking_head",
+    },
+    "tasks.prototype_draft_task.*": {
         "queue": "composition",
         "routing_key": "composition",
     },
-    "tasks.stage8_final_render.*": {
+    "tasks.final_render_task.*": {
         "queue": "composition",
         "routing_key": "composition",
     },
     "tasks.pipeline_orchestrator.*": {
+        "queue": "default",
+        "routing_key": "default",
+    },
+    "tasks.pipeline_orchestrator_v2.*": {
         "queue": "default",
         "routing_key": "default",
     },
@@ -292,7 +312,16 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
     app.conf.include = [
         "tasks.stage1_transcript",
         "tasks.stage2_storyboard",
+        "tasks.stage3_images",
+        "tasks.stage4_manifest",
+        "tasks.stage5_voiceover",
+        "tasks.stage6_talking_head",
+        "tasks.stage7_prototype_draft",
+        "tasks.stage8_final_render",
+        "tasks.video_generation_task",
+        "tasks.talking_head_task",
         "tasks.pipeline_orchestrator",
+        "tasks.pipeline_orchestrator_v2",
     ]
 
     # Timezone

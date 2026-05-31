@@ -35,7 +35,7 @@ RUN chown -R ivgs:ivgs /app
 USER ivgs
 
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
-    CMD celery -A worker inspect ping --timeout=5 || exit 1
+    CMD celery -A celery_app inspect ping --timeout=5 || exit 1
 
 CMD ["celery", "-A", "worker", "worker", \
      "--loglevel=info", \

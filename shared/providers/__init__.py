@@ -40,6 +40,7 @@ class LLMResponse:
 @dataclass
 class ImageParams:
     """Parameters for image generation."""
+    negative_prompt: str = ""
     width: int = 1024
     height: int = 1024
     steps: int = 50
@@ -84,6 +85,8 @@ class VideoParams:
     height: int = 480
     fps: int = 24
     num_frames: int = 48
+    guidance_scale: float = 7.5
+    num_inference_steps: int = 50
     seed: Optional[int] = None
     model: str = "cogvideox-5b"
     timeout_seconds: int = 1800
