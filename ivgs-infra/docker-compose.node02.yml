@@ -151,7 +151,7 @@ services:
   # Handles LLM inference tasks dispatched to this node
   # ---------------------------------------------------------------------------
   celery-worker:
-    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-celery-node02
     <<: [*common-restart, *common-logging]
     env_file:
@@ -159,7 +159,15 @@ services:
     environment:
       REDIS_URL: redis://${NODE_01_IP}:6379/0
       DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
-      VLLM_PRIMARY_URL: http://vllm:8000/v1
+      VLLM_PRIMARY_URL: http://vllm:8000
+      VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
+      VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
+      OLLAMA_URL: "http://${NODE_05_IP}:${OLLAMA_PORT:-11434}"
+      COMFYUI_PRIMARY_URL: "http://${NODE_04_IP}:${COMFYUI_PORT:-8188}"
+      COMFYUI_FALLBACK_URL: "http://${NODE_05_IP}:${COMFYUI_PORT:-8188}"
+      COQUI_TTS_URL: "http://${NODE_04_IP}:${COQUI_TTS_PORT:-8020}"
+      IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
+      API_BASE_URL: "http://${NODE_01_IP}:8001"
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-02
