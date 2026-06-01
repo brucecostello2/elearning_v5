@@ -708,7 +708,10 @@ def _build_stage_input(
     }
 
     if stage == PipelineStage.TRANSCRIPT_REFINEMENT.value:
-        return {**base_input, "transcripts": []}
+        return {
+            "job_context": context,
+            "transcripts": _fetch_transcripts(base_input["project_id"], config),
+        }
 
     elif stage == PipelineStage.STORYBOARD_GENERATION.value:
         refined = (previous_output or {}).get("refined_transcripts", [])
@@ -822,6 +825,41 @@ def _decrement_media_task_count(
 # ---------------------------------------------------------------------------
 # API fetch helpers
 # ---------------------------------------------------------------------------
+
+def _fetch_transcripts(
+    project_id: str, config: WorkerConfig,
+) -> List[Dict[str, Any]]:
+    """Fetch raw transcripts for a project from the Pipeline API.
+
+    On upload the extracted source text is stored in Transcript.refined_text
+    (dual-purpose: raw until the refinement stage overwrites it), so it maps to
+    the worker TranscriptRecord.original_text here.
+    """
+    try:
+        with httpx.Client(
+            timeout=30.0,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            resp = client.get(
+                f"{config.pipeline_api.full_base_url}/projects/{project_id}/transcripts",
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data if isinstance(data, list) else data.get("items", [])
+                return [
+                    {
+                        "id": str(t.get("id", "")),
+                        "project_id": str(t.get("project_id", "")),
+                        "sequence_order": t.get("sequence_order", 0),
+                        "original_text": t.get("refined_text") or "",
+                        "language_code": t.get("language_code") or "en-US",
+                    }
+                    for t in items
+                ]
+    except Exception as e:
+        logger.warning("fetch_transcripts_failed", error=str(e))
+    return []
+
 
 def _fetch_project_scenes(
     project_id: str, config: WorkerConfig,
