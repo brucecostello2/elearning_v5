@@ -501,7 +501,7 @@ async def _run_refinement(
                 vram_requirement_mb=vram_req,
                 estimated_duration_s=config.timeouts.vllm_timeout
                     * len(task_input.transcripts),
-                priority=job_context.priority.value,
+                priority=job_context.priority,
             )
             reservation_id = reservation.get("reservation_id")
             task._gpu_reservation_id = reservation_id

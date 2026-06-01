@@ -200,7 +200,7 @@ def dispatch_pipeline(
         task_name,
         kwargs={"task_input_dict": task_input},
         queue=STAGE_QUEUE_MAP.get(start_stage, "default"),
-        priority=_get_priority(job_context.priority.value),
+        priority=_get_priority(job_context.priority),
     )
 
     _update_job_celery_task_id(job_id, result.id, config)

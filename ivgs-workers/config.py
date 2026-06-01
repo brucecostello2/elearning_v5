@@ -87,7 +87,7 @@ class VLLMConfig:
     timeout_seconds: int = _env("IVGS_VLLM_TIMEOUT", 120, int)
     connect_timeout_seconds: int = _env("IVGS_VLLM_CONNECT_TIMEOUT", 10, int)
     max_retries: int = _env("IVGS_VLLM_MAX_RETRIES", 2, int)
-    max_tokens: int = _env("IVGS_VLLM_MAX_TOKENS", 8192, int)
+    max_tokens: int = _env("IVGS_VLLM_MAX_TOKENS", 4096, int)
     temperature: float = _env("IVGS_VLLM_TEMPERATURE", 0.3, float)
     top_p: float = _env("IVGS_VLLM_TOP_P", 0.9, float)
 
