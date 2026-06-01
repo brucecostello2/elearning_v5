@@ -388,7 +388,7 @@ def _save_storyboard_scenes(
             "scene_index": scene.scene_index,
             "narration_text": scene.narration_text,
             "visual_description": scene.visual_description,
-            "media_type": scene.media_type.value,
+            "media_type": scene.media_type,
             "duration_seconds": scene.duration_seconds,
         }
 
