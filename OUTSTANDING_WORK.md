@@ -515,7 +515,7 @@ No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider 
 
 ---
 
-## Stage 2 — First Real Cross-Node Pipeline Stage (Routed Gate) (TRANSPORT GATE MET 2026-06-01; API ENTRYPOINT OPEN — P1.5)
+## Stage 2 - First Real Cross-Node Pipeline Stage (Routed Gate) (TRANSPORT GATE MET 2026-06-01; API ENTRYPOINT P1.5 CLOSED + STAGE-2B GATE CLOSED 2026-06-01 - see 'Stage 2B closure' at end)
 
 **Mandate:** prove one real pipeline stage executes across the live 2-node cluster —
 a job dispatched from node-01's worker completes using node-02's GPU services. Direct
@@ -666,3 +666,43 @@ committed; revisit for production Llama-70B):
 - Push feat/phase-h0-make-main-honest + open PR; apply SS5 SSOT amendments.
 - SS19.5: pin v5.2.2-h0 digest in compose.
 - Pipeline API JobUpdate schema should accept 'stage' (verify when ivgs-api in scope).
+
+
+---
+
+## Stage 2B closure - API entrypoint (P1.5) -> orchestrator -> storyboard gate (CLOSED 2026-06-01, branch feat/phase-h0-make-main-honest @ 564e343)
+
+**Verdict: Stage 2B CLOSED.** A single real POST /api/v1/projects/{id}/trigger drives the pipeline end to end across node-01 + node-02 to the deliberate post-storyboard user gate, observably and without error. Dispatch method = API (not manual send_task). This SUPERSEDES the "API ENTRYPOINT OPEN - P1.5" verdict in the Stage 2 section above and the provisional P1.5 entry, per the Stage-2 Gate Amendment.
+
+**Evidence (run 2026-06-01 21:33 UTC; project 90a0e5b1; job a2af8e3b):**
+dispatch_pipeline -> stage1 transcript_refinement (vLLM 200, node-02) success -> self-dispatch handle_stage_completion -> next_stage=storyboard_generation -> stage2 storyboard_generation (vLLM 200) -> storyboard_validated (7 scenes) success -> self-dispatch handle_stage_completion -> STAGE_TRANSITIONS[storyboard_generation]=None -> pipeline_paused_at_gate (gate_status=storyboard_review, action=user_gate) -> render_jobs.status=success persisted, NO job_status_update_failed, no media stage dispatched. Job reached success in ~5s.
+
+**P1.5 status:** start-dispatch CLOSED + proven. project_service.trigger_pipeline now dispatches tasks.pipeline_orchestrator_v2.dispatch_pipeline (commit 699986b; the old commented '# celery_app.send_task(pipeline.execute_stage, ...)' is no longer the path), and the API producer's broker_transport_options now match the worker fleet incl. global_keyprefix=ivgs_workers_ (commit 76d2735) so dispatched tasks reach the queues workers poll. Remaining P1.5 items (do NOT block 2B): (2) storyboard-approval -> dispatch_media_generation resume (with Stage 3); (3) ORCH-5 worker->project.state mapping (projects.state still reads TRANSCRIPT_REFINEMENT after a full run); (4) /projects/{id}/pipeline/{stage} route (or realign the Phase-15 suite).
+
+**Bug chain fixed this session (branch feat/phase-h0-make-main-honest, pushed a821b43..564e343):**
+1. 76d2735 - API producer broker_transport_options/global_keyprefix aligned (dispatched tasks stranded on un-prefixed redis keys before); + dispatch_pipeline L180 .value-on-str (current_stage is a str field) guarded.
+2. 607d537 (v5.2.5-h0) - stage1_transcript/stage2_storyboard now inject their stage value and self-dispatch handle_stage_completion (v2) so the pipeline advances (they previously returned with no 'stage' key and no dispatch; stage7/8 already followed this convention).
+3. 13678d0 (v5.2.6-h0) - stage2 _save_storyboard_scenes used scene.media_type.value, but StoryboardScene.media_type is a plain str -> AttributeError while persisting; use the value directly.
+4. 564e343 (v5.2.7-h0) - user-gate wrote the review-gate name (storyboard_review) into render_jobs.status, but job_status is the execution enum (pending/running/success/failed) -> Postgres InvalidTextRepresentationError -> 500 -> status never persisted (job stuck running). Now persists 'success' at the gate (the stage's job succeeded; the pipeline pauses); gate_status retained in log+return; review state belongs on projects.state per spec 4.3 (ORCH-5).
+(Carried in: 5847f40 service-or-user auth so the worker service token authenticates.)
+
+**Image digests (SS19.5 pinning):**
+- ivgs-workers:v5.2.7-h0 = sha256:7dba84c0f497a76a5a6a3bfd33ce387aad4a97635ebff4f4fe4c85930f0b7369
+- ivgs-workers:v5.2.6-h0 = sha256:57406760728175b6c1e6dad88d2788fb2c7b82302941ea8c1bd1161e73ecace4
+- ivgs-workers:v5.2.5-h0 = sha256:58bceef1247f6c4f29420433fc6e21f2d6d4a0c4e8dd1b5d02f1a404de9c272c
+- ivgs-workers:v5.2.4-h0 = sha256:3530c1d7aeeb567609cf38bb20302d8f5bcca18e6aca64ac0888eaca18a63622
+- ivgs-api:v5.1.20-producer-fix = sha256:85d26ae1e0c2192e9c6a1c932ae9d56ecafbec315531f8af7918faa979238ee2
+- Deployed: node-01 API v5.1.20-producer-fix + celery-worker-default/celery-beat v5.2.7-h0; node-02 celery-worker@node02 v5.2.7-h0, cogvideox-worker v5.2.2-h0, cogvideox-server cogvideox-pilot-1, vllm-primary qwen-1.5b (test model).
+
+**Honest caveat - storyboard scene persistence not yet working (scene_count=0).** The storyboard is generated + validated, but the worker POSTs scenes to /projects/{id}/scenes and the API storyboard router exposes only GET /scenes, PATCH /scenes/{sid}, POST /scenes/reorder, POST /scenes/{sid}/regenerate - NO create route - so the write hits the worker's swallowed scene_save_failed branch. The gate is proven; persisting the artifact is the first API-batch item and a Stage-3 prerequisite (media reads storyboard_scenes). The media_type column is the enum {image, video_clip, animation} (scene default image is valid).
+
+**Next: API batch (one ivgs-api rebuild; none needs the offline nodes 03-06):**
+- Add POST /projects/{id}/scenes (service-auth create) -> persist storyboard_scenes.
+- SeaweedFS transcript_service .upload -> upload_to_filer (transcript upload broken; workaround = seed transcripts via SQL).
+- Repoint GET /projects/{id}/prompts + PATCH /transcripts/{id} onto get_service_or_user (worker 401s; non-fatal).
+- Add POST /jobs/{id}/checkpoints (worker 405s; checkpointing disabled).
+- Optionally accept celery_task_id on PATCH /jobs/{id}.
+
+**Carried follow-ons (tracked):** ORCH-5 worker->project.state mapping; P1.5 item 2 media resume (Stage 3); GPU fleet/heartbeat registry empty -> gpu_reservation_skipped (non-fatal); test-model refinement quality (qwen-1.5b returns a generic non-refinement - model/prompt, not pipeline; real model per AD-01); v1/v2 handle_stage_completion reconciliation (stage1/2 on v2, stage7/8 on v1); drift/hygiene (node-02 cogvideox-server compose cogvideox-${IVGS_WORKERS_TAG} -> pin cogvideox-pilot-1; pushgateway orphan; un-prefixed redis backlogs; bump cogvideox-worker + hairpin its vLLM URL before Stage 3); pre-prod secret rotation; SS19.5 digest pinning.
+
+**Closure record:** /mnt/user-data/outputs/IVGS_Phase_H0_Closure_Addendum.md Part B (runtime closure, 2026-06-01).
