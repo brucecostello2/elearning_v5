@@ -23,4 +23,15 @@ celery_app.conf.update(
     result_serializer="json",
     task_default_queue="default",
     broker_connection_retry_on_startup=True,
+    # Must match the worker fleet's transport options so produced messages land in
+    # the keyspace the workers actually consume (critically: global_keyprefix).
+    broker_transport_options={
+        "visibility_timeout": 3600,
+        "queue_order_strategy": "priority",
+        "sep": ":",
+        "priority_steps": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "fanout_prefix": True,
+        "fanout_patterns": True,
+        "global_keyprefix": "ivgs_workers_",
+    },
 )

@@ -177,7 +177,7 @@ def dispatch_pipeline(
     log.info("pipeline_v2_dispatch_starting")
 
     # Determine starting stage
-    start_stage = job_context.current_stage.value
+    start_stage = job_context.current_stage or PipelineStage.TRANSCRIPT_REFINEMENT.value
     if job_context.resume_from_stage:
         start_stage = job_context.resume_from_stage
         log.info("pipeline_resuming", resume_from=start_stage)
