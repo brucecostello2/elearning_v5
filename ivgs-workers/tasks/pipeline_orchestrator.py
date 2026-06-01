@@ -168,7 +168,7 @@ def dispatch_pipeline(
         task_name,
         kwargs={"task_input_dict": task_input},
         queue=_get_queue_for_stage(start_stage),
-        priority=_get_priority(job_context.priority.value),
+        priority=_get_priority(job_context.priority),
     )
 
     # Update job with Celery task ID

@@ -307,6 +307,7 @@ class VLLMClient(LLMProvider):
         urls_to_try = [primary] + [u.rstrip("/") for u in self.failover_urls if u.rstrip("/") != primary]
         req_timeout = timeout if timeout is not None else self.timeout
         last_error: Optional[Exception] = None
+        primary_http_error: Optional[httpx.HTTPStatusError] = None
         response = None
 
         for url in urls_to_try:
@@ -330,6 +331,8 @@ class VLLMClient(LLMProvider):
                     raise VLLMModelNotFoundError(f"Model not found on vLLM at {url}: {exc}") from exc
                 if 500 <= status < 600:
                     raise VLLMServerError(f"vLLM server error ({status}) at {url}: {exc}") from exc
+                if primary_http_error is None:
+                    primary_http_error = exc
                 last_error = exc
                 logger.warning("vLLM HTTP error", extra={"url": url, "error": str(exc)})
                 continue
@@ -338,6 +341,13 @@ class VLLMClient(LLMProvider):
                 logger.warning("vLLM request failed", extra={"url": url, "error": str(exc)})
                 continue
 
+        if primary_http_error is not None:
+            status = primary_http_error.response.status_code
+            body = primary_http_error.response.text[:500]
+            raise VLLMError(
+                f"vLLM request rejected by primary (HTTP {status}); failover endpoints "
+                f"unreachable, so this is the operative error. Response body: {body}"
+            ) from primary_http_error
         if isinstance(last_error, httpx.TimeoutException):
             raise VLLMTimeoutError(f"All vLLM endpoints timed out: {last_error}") from last_error
         raise VLLMConnectionError(f"All vLLM endpoints exhausted: {last_error}") from last_error
