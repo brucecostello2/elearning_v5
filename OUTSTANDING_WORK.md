@@ -515,24 +515,68 @@ No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider 
 
 ---
 
-## Stage 2 — First Real Cross-Node Pipeline Stage (Routed Gate) (CLOSED 2026-06-01)
+## Stage 2 — First Real Cross-Node Pipeline Stage (Routed Gate) (TRANSPORT GATE MET 2026-06-01; API ENTRYPOINT OPEN — P1.5)
 
 **Mandate:** prove one real pipeline stage executes across the live 2-node cluster —
 a job dispatched from node-01's worker completes using node-02's GPU services. Direct
 `docker run` client checks do NOT satisfy this; only a celery-dispatched stage task,
 run by a node-02 worker against node-02's vLLM, does.
 
-**Verdict: GATE MET (2026-06-01 02:03).** A `refine_transcript_task` dispatched from
-node-01 (`celery_app.send_task(..., queue='gpu_llm')`) was received and executed by
-node-02's `celery-worker@node02`, which called node-02's vLLM (`http://vllm:8000`,
-qwen-1.5b) and returned a refined transcript; the result was written to the shared
-`ivgs` DB and retrieved by the node-01 caller via `AsyncResult.get()`. Task
-`1c694bea-3a0e-4b44-8855-248c1f1afd87`: status=success, successful_count=1,
-failed_count=0, no retries, 0.24s. Real refinement ("um so basically the the product
-is a a video thing that uh you know makes videos from just text automatically" ->
-"So basically, the product is a video-making tool that converts text into videos
-automatically."), model_used=qwen-1.5b, finish=stop, 70 prompt + 18 completion tokens.
-First moment the worker track and the server track meet.
+**Verdict: TRANSPORT gate MET (2026-06-01 02:03); API-ENTRYPOINT gate OPEN (P1.5).** A
+`refine_transcript_task` dispatched from node-01 (`celery_app.send_task(..., queue='gpu_llm')`)
+was executed by node-02's `celery-worker@node02`, which called node-02's vLLM (`http://vllm:8000`,
+qwen-1.5b) and returned a refined transcript; the result was written to the shared `ivgs` DB and
+retrieved by the node-01 caller. Task `1c694bea`: status=success, successful_count=1, no retries,
+0.24s; real refinement ("um so basically the the product is a a video thing..." -> "So basically,
+the product is a video-making tool that converts text into videos automatically."), model
+qwen-1.5b, finish=stop, 70+18 tok. **This proves the cross-node TRANSPORT — celery routing + vLLM +
+shared result backend. It does NOT prove the product entrypoint:** the dispatch was a *manual,
+direct stage-task* `send_task` (not even via the orchestrator), so the API trigger and the
+orchestrator self-driving were never exercised. Per the revised paint-by-numbers + P1.5 amendment
+(2026-06-01), a manual-dispatch pass does NOT close Stage 2; the real entrypoint (P1.5) is the named
+next blocker, recorded below — not deferred to Stage 5.
+
+### P1.5 — API never dispatches the orchestrator (VERIFIED 2026-06-01, branch a821b43)
+Read-only greps on node-01 confirm a single root cause: the worker orchestrator is built; the API
+never calls it.
+- **Start trigger STUBBED:** `ivgs-api/app/services/project_service.py` `trigger_pipeline` (L221)
+  validates state, advances the DB project state, logs, and returns with NO dispatch. L285 is the
+  only dispatch ref, commented: `# celery_app.send_task("pipeline.execute_stage", ...)` — stale
+  (that task does not exist; it passes a job id, not the job context). Fix: dispatch
+  `tasks.pipeline_orchestrator_v2.dispatch_pipeline` with the job context.
+- **Worker orchestrator BUILT (exonerated):** `pipeline_orchestrator_v2.py` has `dispatch_pipeline`
+  (L157), `handle_stage_completion` (L236), `dispatch_media_generation` (L356),
+  `build_composition_manifest` (L502), media join `_handle_media_generation_completion` (L617), and
+  `STAGE_TRANSITIONS` (L57) with the deliberate post-storyboard user gate
+  (`STORYBOARD_GENERATION -> None`, L62). No worker orchestration work needed.
+- **E2E per-stage route ABSENT:** no `/projects/{id}/pipeline/{stage}` route (the Phase-15 suite
+  POSTs to a route that isn't there). Small independent follow-on.
+- **3->1 API state mapping unimplemented:** worker has its own `MEDIA_GENERATION_STAGES` grouping
+  (L138, used in the fan-out join L276) but references the API's `ProjectState`/`project.state`
+  nowhere; the 3 worker media stages -> 1 API `MEDIA_GENERATION` state mapping lives only in the API
+  layer and is not done. Low severity.
+
+**Worker->API callback contract also broken (NEW — runtime evidence + route greps; a Stage-2B
+co-requisite the P1.5 doc under-weights).** An API-driven run that "pauses at the storyboard gate"
+needs the orchestrator's status/checkpoint callbacks to land; they do not:
+- `PATCH /jobs/{id}` (worker `update_job_status`) -> 405: jobs router exposes only `GET /{job_id}`
+  and `POST /{job_id}/cancel`; no PATCH route. Contract mismatch.
+- `POST /jobs/{id}/checkpoints` (worker `save_checkpoint`) -> 405: checkpoints live under a separate
+  router/prefix (GET/POST/DELETE), not under `/jobs/{id}`; worker calls the wrong path.
+- `GET /projects/{id}/prompts` (worker prompt fetch) -> 401: route exists (`project_prompt_router`,
+  L449) but the worker's service token is rejected — auth gap (the stage falls back to inline
+  prompts, which is why tonight's manual gate still ran).
+Tolerated by a manual stage-task run, but must be reconciled (worker URLs vs API routes/auth) for
+Stage-2B. So P1.5's "~a few hours" covers the start trigger only; the callback reconciliation is
+separate, additional work. And the orchestrator's runtime self-drive (`dispatch_pipeline` ->
+`handle_stage_completion` -> next stage) has never run (tonight bypassed it), so Stage-2B is its
+first real test.
+
+**Staging vs the revised paint-by-numbers (2026-06-01):** revised Stage 1 (node-02 pilot: vLLM chat
++ CogVideoX video via real clients) = done (tonight's groundwork); Stage 2A LLM half = done via
+manual dispatch; Stage 2A video half (CogVideoX routed) = NOT done; Stage 2B (API entrypoint +
+orchestrator self-drive to the gate) = OPEN = P1.5. Under the revised plan, Stage 2 is NOT complete.
+P1.5 is node-01 `ivgs-api` code — independent of the node-02 clone and the v5.2.3-h0 image work.
 
 ### Groundwork (direct-client checks — necessary, NOT the gate)
 These proved the H.0-restored clients in isolation over the VLAN. They were the prior
