@@ -715,7 +715,15 @@ async def _run_storyboard_generation(
         elapsed=round(elapsed, 3),
     )
 
-    return output.model_dump(mode="json")
+    output_dict = output.model_dump(mode="json")
+    output_dict.setdefault("stage", PipelineStage.STORYBOARD_GENERATION.value)
+    # Advance the pipeline: storyboard completion -> storyboard_review gate.
+    celery_app.send_task(
+        "tasks.pipeline_orchestrator_v2.handle_stage_completion",
+        kwargs={"stage_output_dict": output_dict},
+        queue="default",
+    )
+    return output_dict
 
 
 # ---------------------------------------------------------------------------

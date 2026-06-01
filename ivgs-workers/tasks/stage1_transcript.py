@@ -693,7 +693,15 @@ async def _run_refinement(
         total_tokens=total_input_tokens + total_output_tokens,
     )
 
-    return output.model_dump(mode="json")
+    output_dict = output.model_dump(mode="json")
+    output_dict.setdefault("stage", PipelineStage.TRANSCRIPT_REFINEMENT.value)
+    # Advance the pipeline: notify the orchestrator this stage completed.
+    celery_app.send_task(
+        "tasks.pipeline_orchestrator_v2.handle_stage_completion",
+        kwargs={"stage_output_dict": output_dict},
+        queue="default",
+    )
+    return output_dict
 
 
 # ---------------------------------------------------------------------------
