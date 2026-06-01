@@ -706,3 +706,21 @@ dispatch_pipeline -> stage1 transcript_refinement (vLLM 200, node-02) success ->
 **Carried follow-ons (tracked):** ORCH-5 worker->project.state mapping; P1.5 item 2 media resume (Stage 3); GPU fleet/heartbeat registry empty -> gpu_reservation_skipped (non-fatal); test-model refinement quality (qwen-1.5b returns a generic non-refinement - model/prompt, not pipeline; real model per AD-01); v1/v2 handle_stage_completion reconciliation (stage1/2 on v2, stage7/8 on v1); drift/hygiene (node-02 cogvideox-server compose cogvideox-${IVGS_WORKERS_TAG} -> pin cogvideox-pilot-1; pushgateway orphan; un-prefixed redis backlogs; bump cogvideox-worker + hairpin its vLLM URL before Stage 3); pre-prod secret rotation; SS19.5 digest pinning.
 
 **Closure record:** /mnt/user-data/outputs/IVGS_Phase_H0_Closure_Addendum.md Part B (runtime closure, 2026-06-01).
+
+
+---
+
+### API batch outcome (2026-06-01, ivgs-api v5.1.22-scenes)
+
+Executed the Stage-2B API batch in one ivgs-api rebuild (commits 45a4a02 -> 6832834; image ivgs-api:v5.1.22-scenes, digest sha256:e5767604260fb81030934ce6af8c5f198c6288486ebc42c2882eef9749a7bd2a). Verified by a real POST /trigger run (project 3814f845, job=success ~10s):
+
+- DONE/PROVEN - storyboard scene persistence: added POST /projects/{id}/scenes (service-auth) -> StoryboardService.create_scene. Run persisted 6 rows into storyboard_scenes (scene_index 0-5, media_type in {image,video_clip,animation}). SceneCreate.scene_index relaxed ge=1 -> ge=0 (worker emits 0-based indices).
+- DONE/PROVEN - transcript upload: transcript_service .upload(...) (nonexistent) -> upload_file(collection=hot); POST /transcripts/upload returns 201 with a real seaweedfs_fid (e.g. 2,01b0da86bc).
+- DONE/PROVEN - transcript refined-text PATCH auth: update_transcript -> get_service_or_user; worker PATCH now succeeds (transcript_updated), refined text persists.
+- DONE - celery_task_id accepted + written on PATCH /jobs/{id}.
+- REVERTED/DEFERRED - prompts auth (GET /projects/{id}/prompts): the service-token repoint made the worker consume the unfiltered effective-prompt list (master-first; prompt_type ignored) and feed a non-storyboard prompt to qwen-1.5b -> empty storyboard (ValueError) where the bundled fallback yields scenes. Reverted list_project_prompts to get_current_user (image v5.1.21-scenes-auth superseded by v5.1.22-scenes). Custom-prompt fetch follow-on: (1) list_project_prompts must filter by prompt_type; (2) worker stage1/2 must select the matching prompt and fall back to bundled when absent/empty; (3) validate with the production model, not the 1.5B test model.
+- DEFERRED - POST /jobs/{id}/checkpoints save: needs new request schema + CheckpointService method; non-fatal (worker 405; nothing reads checkpoints back yet).
+
+Image digests (input to section 19.5 pinning): ivgs-api:v5.1.22-scenes = sha256:e5767604260fb81030934ce6af8c5f198c6288486ebc42c2882eef9749a7bd2a (DEPLOYED node-01); ivgs-api:v5.1.21-scenes-auth = sha256:007109ad3995349a4b81c6756a47d2c94246ed35ac22c1979376826ba7d7ef50 (superseded).
+
+Net: full pipeline runs API -> orchestrator -> transcript -> storyboard (scenes persisted) -> user gate via real trigger; upload + refined-text persistence work. Genuine Stage-3 prerequisites remain: storyboard-approval -> dispatch_media_generation resume (P1.5 item 2); worker -> project.state mapping (ORCH-5); offline media nodes 03-06.
