@@ -512,3 +512,77 @@ No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider 
 - Push feat/phase-h0-make-main-honest (4 commits) + open PR.
 
 ### Stage 0 = COMPLETE. Next: Stage 2 (first real node-01+node-02 pipeline run).
+
+---
+
+## Stage 2 — First Real Pipeline Run / Deferred Call-Time Validation (CLOSED 2026-06-01)
+
+**Mandate:** validate deferred call-time execution of the H.0-restored clients against
+live GPU servers; bring the 2-node cluster (node-01 control + node-02 GPU) live and
+correctly routed.
+
+**Verdict: COMPLETE.** Both critical clients proven end-to-end over the VLAN; three
+call-time regressions found and fixed; cluster live and reconciled to the canonical
+queue topology.
+
+### Validated (evidence)
+- VLLMClient.chat() -> HTTP 200 from node-02 qwen-1.5b ('Hello World!', finish=stop,
+  23+4 tok), authenticated /v1/chat/completions over the VLAN. Both ctor forms
+  (VLLMConfig and base_url=) resolve the api-key.
+- CogVideoXClient.generate() -> 10,014-byte MP4 (magic 0000001c 66747970 isom) from
+  node-02 cogvideox-server:8200, ~6s warm. POST /generate -> poll /status -> GET
+  /download chain confirmed.
+- _AttrDict dual dict+attribute access confirmed (get_vllm_config_for_stage().model and
+  ["model"] both work) -> closes the H.0-deferred dict/attr question; no fix needed.
+
+### Call-time regressions fixed this session
+1. vLLM client dropped the Authorization: Bearer header in the H.0 refactor
+   (VLLMConfig.api_key read but never sent) -> 401 from node-02 vLLM
+   (--api-key ivgs-internal). Fix: re-add bearer header in _get_client from config or
+   IVGS_VLLM_API_KEY env. Commit 836641d, image v5.2.1-h0.
+2. Worker --queues used stage/job vocabulary (video_generation, llm_inference,
+   transcript_refinement, storyboard_generation) not the canonical queue names
+   (gpu_video/gpu_llm) -> GPU-routed tasks reached no worker. Fix: cogvideox-worker
+   ->gpu_video, LLM worker->gpu_llm; wire IVGS_VLLM_API_KEY into node-01
+   &gpu-service-urls anchor + node-02 worker. Commit 8eea9c0.
+3. video_generation/talking_head/stage7_prototype_draft/stage8_final_render call
+   update_job_status(..., stage=...) but helper lacked the stage param -> TypeError on
+   first status update. Fix: add optional stage param + thread into PATCH payload.
+   Commit e90576d, image v5.2.2-h0.
+(The earlier chat() "unexpected kwarg 'system'" was a test-harness error on the
+assistant side, not a code bug -- real signature is chat(system_prompt, user_prompt,...).)
+
+### Infra state
+- 2-node celery cluster LIVE: default-worker@node01 -> [default, notifications, cleanup];
+  cogvideox-worker@node02 -> [gpu_video]. Broker redis://node-01:6379/0 reached
+  cross-VLAN (validates the Stage-0 service rebind).
+- Fleet uniform on v5.2.2-h0.
+- Image digests (for SS19.5 pinning):
+  v5.2.1-h0 = sha256:1fef99f174cd6e507cf927bd43135369b856bb643b0118404f4bc1284e71e6dc
+  v5.2.2-h0 = sha256:046b53036f58316a0407bd13549381b5b8b0b6a09415ab5166b2f49ff71cf4fd
+- Branch feat/phase-h0-make-main-honest session commits: 836641d, 8eea9c0, e90576d.
+
+### Stage 3 milestone -- full routed-stage-task completion (DEFERRED: needs offline nodes/fixtures)
+1. node-04 midsize vLLM -- video_generation_task's prompt step uses
+   VLLM_MIDSIZE_URL -> ${NODE_04_IP} (offline). Pilot test workaround: override
+   midsize->node-02. Real fix: node-04 online.
+2. gpu_llm worker -- node-02 celery-worker (--queues=gpu_llm after reconcile) is defined
+   but NOT running, and is on the ivgs-api image while stage tasks live in ivgs-workers.
+   Bring up on the worker image for a stage-1 routed run; verify the image choice.
+3. Pipeline fixture -- a real job row (update_job_status PATCHes /jobs/{id}; tolerant of
+   404 but a real run wants a real job) + valid scenes/storyboard from upstream stages.
+4. Downstream per-scene path -- SeaweedFS asset upload (Stage-0 volume publicUrl
+   cross-host flag), checkpoint save, handle_stage_completion dispatch (-> default queue,
+   node-01 consumes).
+5. Unconsumed queues -- gpu_image/gpu_tts/gpu_talking_head/composition have no workers
+   until nodes 04/05/06 + a node-01 composition worker are online.
+
+### Carried-forward pre-prod / operator items
+- .env.node01 is git-tracked (secret leak) AND carries a stale
+  IVGS_WORKERS_TAG=v5.1.1-pidbox-fix (cosmetic; running image is correct). git rm
+  --cached + rotate + bump/remove the stale tag.
+- Rotate Postgres/Redis shared creds (VLAN-reachable post-rebind; Redis has no auth).
+- SeaweedFS volume publicUrl cross-host verification.
+- Push feat/phase-h0-make-main-honest + open PR; apply SS5 SSOT amendments.
+- SS19.5: pin v5.2.2-h0 digest in compose.
+- Pipeline API JobUpdate schema should accept 'stage' (verify when ivgs-api in scope).
