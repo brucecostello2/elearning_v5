@@ -292,7 +292,11 @@ def handle_stage_completion(
             completed_stage=completed_stage,
             gate_status=gate_status,
         )
-        update_job_status(job_id, gate_status)
+        # job_status is the execution-lifecycle enum (pending/running/success/failed);
+        # the review/gate state belongs to projects.state per spec 4.3, not job_status.
+        # The stage's job succeeded and the pipeline pauses here, so persist success and
+        # keep gate_status in the log/return below for observability.
+        update_job_status(job_id, "success")
 
         return {
             "job_id": job_id,
