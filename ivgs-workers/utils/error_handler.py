@@ -341,6 +341,7 @@ def update_job_status(
     status: str,
     error_message: Optional[str] = None,
     failure_category: Optional[str] = None,
+    stage: Optional[str] = None,
 ) -> bool:
     """
     Update render job status via Pipeline API.
@@ -355,6 +356,8 @@ def update_job_status(
         payload["error_message"] = error_message
     if failure_category:
         payload["failure_category"] = failure_category
+    if stage:
+        payload["stage"] = stage
 
     try:
         with httpx.Client(
