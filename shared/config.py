@@ -36,6 +36,10 @@ class Settings(BaseSettings):
 
     # --- Authentication (§16.1) ---
     JWT_SECRET_KEY: str = "CHANGE_ME_STRONG_RANDOM_SECRET_64_CHARS_MINIMUM"
+    # Shared secret for internal service-to-service auth (worker -> API). The worker sends it as a
+    # Bearer token (ivgs-workers IVGS_SERVICE_TOKEN); the API resolves it to the svc-pipeline service
+    # account. MUST be overridden with a strong value in prod (same posture as JWT_SECRET_KEY).
+    IVGS_SERVICE_TOKEN: str = "dev-service-token"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7

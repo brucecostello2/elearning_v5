@@ -25,6 +25,7 @@ from app.schemas.transcript import (
     TranscriptReorderRequest,
 )
 from app.services.transcript_service import TranscriptService
+from app.core.auth import get_service_or_user
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
@@ -35,7 +36,7 @@ router = APIRouter(prefix="/projects/{project_id}/transcripts", tags=["Transcrip
 @router.get("", response_model=List[TranscriptResponse], summary="List transcripts")
 async def list_transcripts(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List transcripts ordered by sequence_order."""
