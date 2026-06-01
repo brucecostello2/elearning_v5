@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user, get_service_or_user
+from app.core.auth import get_current_user
 from app.core.rbac import require_admin, require_operator_or_admin
 from app.models.user import User
 from app.schemas.prompt import (
@@ -453,7 +453,7 @@ async def playground_save(
 )
 async def list_project_prompts(
     project_id: UUID,
-    current_user: User = Depends(get_service_or_user),
+    current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List project-level prompts with effective source (SCENE/PROJECT/GLOBAL)."""
