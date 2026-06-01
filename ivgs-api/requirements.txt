@@ -1,5 +1,5 @@
 # IVGS v5 — API Service Dependencies (pinned)
-fastapi==0.115.6
+fastapi==0.136.3
 uvicorn[standard]==0.34.0
 sqlalchemy==2.0.35
 asyncpg==0.30.0
