@@ -515,66 +515,102 @@ No-GPU code-surgery pass on node-01's repo: repaired the half-finished provider 
 
 ---
 
-## Stage 2 — First Real Pipeline Run / Deferred Call-Time Validation (CLOSED 2026-06-01)
+## Stage 2 — First Real Cross-Node Pipeline Stage (Routed Gate) (CLOSED 2026-06-01)
 
-**Mandate:** validate deferred call-time execution of the H.0-restored clients against
-live GPU servers; bring the 2-node cluster (node-01 control + node-02 GPU) live and
-correctly routed.
+**Mandate:** prove one real pipeline stage executes across the live 2-node cluster —
+a job dispatched from node-01's worker completes using node-02's GPU services. Direct
+`docker run` client checks do NOT satisfy this; only a celery-dispatched stage task,
+run by a node-02 worker against node-02's vLLM, does.
 
-**Verdict: COMPLETE.** Both critical clients proven end-to-end over the VLAN; three
-call-time regressions found and fixed; cluster live and reconciled to the canonical
-queue topology.
+**Verdict: GATE MET (2026-06-01 02:03).** A `refine_transcript_task` dispatched from
+node-01 (`celery_app.send_task(..., queue='gpu_llm')`) was received and executed by
+node-02's `celery-worker@node02`, which called node-02's vLLM (`http://vllm:8000`,
+qwen-1.5b) and returned a refined transcript; the result was written to the shared
+`ivgs` DB and retrieved by the node-01 caller via `AsyncResult.get()`. Task
+`1c694bea-3a0e-4b44-8855-248c1f1afd87`: status=success, successful_count=1,
+failed_count=0, no retries, 0.24s. Real refinement ("um so basically the the product
+is a a video thing that uh you know makes videos from just text automatically" ->
+"So basically, the product is a video-making tool that converts text into videos
+automatically."), model_used=qwen-1.5b, finish=stop, 70 prompt + 18 completion tokens.
+First moment the worker track and the server track meet.
 
-### Validated (evidence)
+### Groundwork (direct-client checks — necessary, NOT the gate)
+These proved the H.0-restored clients in isolation over the VLAN. They were the prior
+"COMPLETE" claim, corrected here: they bypass the worker->server routing the gate needs.
 - VLLMClient.chat() -> HTTP 200 from node-02 qwen-1.5b ('Hello World!', finish=stop,
-  23+4 tok), authenticated /v1/chat/completions over the VLAN. Both ctor forms
-  (VLLMConfig and base_url=) resolve the api-key.
+  23+4 tok), authenticated /v1/chat/completions over the VLAN. Both ctor forms resolve
+  the api-key.
 - CogVideoXClient.generate() -> 10,014-byte MP4 (magic 0000001c 66747970 isom) from
   node-02 cogvideox-server:8200, ~6s warm. POST /generate -> poll /status -> GET
-  /download chain confirmed.
-- _AttrDict dual dict+attribute access confirmed (get_vllm_config_for_stage().model and
-  ["model"] both work) -> closes the H.0-deferred dict/attr question; no fix needed.
+  /download confirmed.
+- _AttrDict dual dict+attribute access confirmed -> closes the H.0-deferred dict/attr
+  question; no fix needed.
 
-### Call-time regressions fixed this session
-1. vLLM client dropped the Authorization: Bearer header in the H.0 refactor
-   (VLLMConfig.api_key read but never sent) -> 401 from node-02 vLLM
-   (--api-key ivgs-internal). Fix: re-add bearer header in _get_client from config or
-   IVGS_VLLM_API_KEY env. Commit 836641d, image v5.2.1-h0.
-2. Worker --queues used stage/job vocabulary (video_generation, llm_inference,
-   transcript_refinement, storyboard_generation) not the canonical queue names
-   (gpu_video/gpu_llm) -> GPU-routed tasks reached no worker. Fix: cogvideox-worker
-   ->gpu_video, LLM worker->gpu_llm; wire IVGS_VLLM_API_KEY into node-01
-   &gpu-service-urls anchor + node-02 worker. Commit 8eea9c0.
-3. video_generation/talking_head/stage7_prototype_draft/stage8_final_render call
-   update_job_status(..., stage=...) but helper lacked the stage param -> TypeError on
-   first status update. Fix: add optional stage param + thread into PATCH payload.
-   Commit e90576d, image v5.2.2-h0.
-(The earlier chat() "unexpected kwarg 'system'" was a test-harness error on the
-assistant side, not a code bug -- real signature is chat(system_prompt, user_prompt,...).)
+### Bug chain surfaced + fixed to reach the routed gate (committed)
+1. vLLM bearer header dropped in H.0 (api_key read, never sent) -> 401. Re-added in
+   _get_client. Commit 836641d, image v5.2.1-h0.
+2. Worker --queues used stage/job vocabulary not canonical queue names -> GPU-routed
+   tasks reached no worker. Reconciled cogvideox-worker->gpu_video, LLM->gpu_llm; wired
+   IVGS_VLLM_API_KEY into node-01 anchor + node-02 worker. Commit 8eea9c0.
+3. update_job_status(..., stage=...) called by 4 stage tasks but helper lacked the param
+   -> TypeError. Added optional stage param into the PATCH payload. Commit e90576d,
+   image v5.2.2-h0.
+4. Pipeline API (fastapi-backend :8001) bound to 127.0.0.1 only, but stage tasks DO call
+   it (status/checkpoints/prompts) -> must be worker-facing. Rebound to ${NODE_01_IP}:8001.
+   Commit fe95a95.
+5. node-02 gpu_llm worker was on the ivgs-api image with a partial vLLM env (stray /v1,
+   missing secondary/midsize/api-key/API_BASE_URL). Re-pointed to ivgs-workers + full env.
+   Commit 8ae4f25.
+6. node-02 workers had NO explicit IVGS_CELERY_RESULT_BACKEND -> config fell through to
+   the ivgs:ivgs@node-01:5432/ivgs_results dev default (wrong DB + wrong password):
+   results invisible to the node-01 caller + backend auth failure. Pinned both workers
+   to the ivgs DB via ${POSTGRES_PASSWORD}/${NODE_01_IP}. Commit 9514324.
 
-### Infra state
-- 2-node celery cluster LIVE: default-worker@node01 -> [default, notifications, cleanup];
-  cogvideox-worker@node02 -> [gpu_video]. Broker redis://node-01:6379/0 reached
-  cross-VLAN (validates the Stage-0 service rebind).
-- Fleet uniform on v5.2.2-h0.
-- Image digests (for SS19.5 pinning):
+Node-local pilot overrides (.env.node02, gitignored — test-model accommodations, NOT
+committed; revisit for production Llama-70B):
+- .env.node02 POSTGRES_PASSWORD had diverged from .env -> aligned to the correct value.
+- IVGS_VLLM_PRIMARY_MODEL=qwen-1.5b — stage requests defaulted to Llama-3.3-70B which the
+  test vLLM does not serve (would 404).
+- IVGS_VLLM_MAX_TOKENS=2048 — the 8192 default equals the served max_model_len (8192),
+  leaving zero room for the prompt -> vLLM 400 on every call.
+
+### Deferred CODE fixes (next image, ~v5.2.3-h0 — these bite production too)
+- max_tokens: lower the IVGS_VLLM_MAX_TOKENS default (config.py:90) and/or clamp against
+  served max_model_len in vllm_client (Llama-70B with --max-model-len 8192 hits the same
+  wall).
+- vllm_client failover lets offline node-03/04 ConnectErrors overwrite last_error, so the
+  surfaced "All connection attempts failed" MASKS the primary's real HTTP status -
+  preserve/report the primary error.
+- cogvideox-worker VLLM_PRIMARY_URL is http://${NODE_02_IP}:8000 (host LAN IP) -
+  unreachable from inside the container (hairpin). Change to http://vllm:8000 (service
+  name) BEFORE the Stage-3 video gate.
+- Pipeline API (tolerated, not gate blockers): PATCH /jobs/{id} -> 405, POST
+  /jobs/{id}/checkpoints -> 405, GET /projects/{id}/prompts -> 401 (stage falls back to
+  inline prompts), transcript writeback -> 401; and gpu_reservation_skipped "'str' object
+  has no attribute 'value'". Reconcile API routes/auth + the enum bug.
+
+### Infra state (post-gate)
+- 2-node celery cluster LIVE + routed: celery-worker@node02 -> [gpu_llm];
+  cogvideox-worker@node02 -> [gpu_video]; default-worker@node01 -> [default,
+  notifications, cleanup]. Broker redis://node-01:6379/0 cross-VLAN; result backend =
+  shared ivgs DB on node-01 (both nodes).
+- Fleet uniform on image v5.2.2-h0; node02 compose adds the result-backend/broker pin
+  (commit 9514324, config-only, no new image).
+- Image digests (SS19.5 pinning):
   v5.2.1-h0 = sha256:1fef99f174cd6e507cf927bd43135369b856bb643b0118404f4bc1284e71e6dc
   v5.2.2-h0 = sha256:046b53036f58316a0407bd13549381b5b8b0b6a09415ab5166b2f49ff71cf4fd
-- Branch feat/phase-h0-make-main-honest session commits: 836641d, 8eea9c0, e90576d.
+- Branch session commits: 836641d, 8eea9c0, e90576d, fe95a95, 8ae4f25, 9514324.
 
-### Stage 3 milestone -- full routed-stage-task completion (DEFERRED: needs offline nodes/fixtures)
-1. node-04 midsize vLLM -- video_generation_task's prompt step uses
-   VLLM_MIDSIZE_URL -> ${NODE_04_IP} (offline). Pilot test workaround: override
-   midsize->node-02. Real fix: node-04 online.
-2. gpu_llm worker -- node-02 celery-worker (--queues=gpu_llm after reconcile) is defined
-   but NOT running, and is on the ivgs-api image while stage tasks live in ivgs-workers.
-   Bring up on the worker image for a stage-1 routed run; verify the image choice.
-3. Pipeline fixture -- a real job row (update_job_status PATCHes /jobs/{id}; tolerant of
-   404 but a real run wants a real job) + valid scenes/storyboard from upstream stages.
-4. Downstream per-scene path -- SeaweedFS asset upload (Stage-0 volume publicUrl
-   cross-host flag), checkpoint save, handle_stage_completion dispatch (-> default queue,
-   node-01 consumes).
-5. Unconsumed queues -- gpu_image/gpu_tts/gpu_talking_head/composition have no workers
+### Stage 3 milestone -- full routed VIDEO-stage completion (DEFERRED: needs offline nodes/fixtures)
+1. cogvideox-worker VLLM_PRIMARY_URL hairpin fix (above) — prerequisite; its vLLM prompt
+   step would fail the way Stage-1 did.
+2. node-04 midsize vLLM — video_generation_task's prompt step uses VLLM_MIDSIZE_URL ->
+   ${NODE_04_IP} (offline). Pilot workaround: override midsize->node-02. Real fix: node-04.
+3. Pipeline fixture — a real job row + valid scenes/storyboard from upstream stages (the
+   API 405/401 gaps above will surface for a non-tolerant real run).
+4. Downstream per-scene path — SeaweedFS asset upload (volume publicUrl cross-host flag),
+   checkpoint save, handle_stage_completion dispatch (-> default queue, node-01 consumes).
+5. Unconsumed queues — gpu_image/gpu_tts/gpu_talking_head/composition have no workers
    until nodes 04/05/06 + a node-01 composition worker are online.
 
 ### Carried-forward pre-prod / operator items
