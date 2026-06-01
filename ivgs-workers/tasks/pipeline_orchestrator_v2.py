@@ -701,6 +701,7 @@ def _build_stage_input(
     )
 
     base_input = {
+        "job_context": context,
         "job_id": context.get("job_id", ""),
         "project_id": context.get("project_id", ""),
         "project_name": context.get("project_name", ""),
@@ -708,10 +709,7 @@ def _build_stage_input(
     }
 
     if stage == PipelineStage.TRANSCRIPT_REFINEMENT.value:
-        return {
-            "job_context": context,
-            "transcripts": _fetch_transcripts(base_input["project_id"], config),
-        }
+        return {**base_input, "transcripts": _fetch_transcripts(base_input["project_id"], config)}
 
     elif stage == PipelineStage.STORYBOARD_GENERATION.value:
         refined = (previous_output or {}).get("refined_transcripts", [])
