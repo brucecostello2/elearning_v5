@@ -281,8 +281,33 @@ class ProjectService:
             f"job={job.id}"
         )
 
-        # Phase 5: dispatch Celery task here
-        # celery_app.send_task("pipeline.execute_stage", args=[str(job.id)])
+        # P1.5: dispatch the worker orchestrator's real entrypoint.
+        # DRAFT -> TRANSCRIPT_REFINEMENT is the pipeline start. USER_REVIEW -> FINAL_RENDER
+        # (post-storyboard media resume) is wired separately (P1.5 item 2 / Stage 3).
+        if current_state == ProjectState.DRAFT:
+            from app.services.celery_producer import celery_app as _pipeline_celery
+
+            job_context = {
+                "job_id": str(job.id),
+                "project_id": str(project.id),
+                "project_name": getattr(project, "name", "") or "",
+                "project_description": getattr(project, "description", "") or "",
+                "target_audience": getattr(project, "target_audience", "") or "",
+                "language_code": getattr(project, "language_code", "en-US") or "en-US",
+                "priority": "normal",
+                "current_stage": "transcript_refinement",
+            }
+            dispatch = _pipeline_celery.send_task(
+                "tasks.pipeline_orchestrator_v2.dispatch_pipeline",
+                kwargs={"job_context_dict": job_context},
+                queue="default",
+            )
+            job.celery_task_id = dispatch.id
+            await self.db.commit()
+            logger.info(
+                f"Pipeline dispatched: project={project.id} job={job.id} "
+                f"celery_task={dispatch.id} -> tasks.pipeline_orchestrator_v2.dispatch_pipeline"
+            )
 
         return await self._to_response(project)
 
