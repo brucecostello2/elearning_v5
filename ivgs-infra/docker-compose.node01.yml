@@ -267,7 +267,7 @@ services:
     volumes:
       - /mnt/ivgs-shared:/mnt/ivgs-shared
     ports:
-      - "127.0.0.1:8001:8001"
+      - "${NODE_01_IP:?NODE_01_IP must be set}:8001:8001"
     networks:
       - ivgs-net
     depends_on:
