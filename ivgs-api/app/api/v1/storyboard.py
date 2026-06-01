@@ -15,10 +15,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_service_or_user
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
-from app.schemas.storyboard import SceneResponse, SceneUpdate, SceneReorderRequest
+from app.schemas.storyboard import SceneResponse, SceneUpdate, SceneReorderRequest, SceneCreate
 from app.schemas.render_job import JobResponse
 from app.services.storyboard_service import StoryboardService
 from app.services.project_service import ProjectService
@@ -46,6 +46,26 @@ async def list_scenes(
     service = StoryboardService(db)
     scenes = await service.list_scenes(project_id)
     return [SceneResponse.model_validate(s) for s in scenes]
+
+
+@router.post("", response_model=SceneResponse, status_code=status.HTTP_201_CREATED, summary="Create scene (internal: pipeline)")
+async def create_scene(
+    project_id: UUID,
+    data: SceneCreate,
+    current_user: User = Depends(get_service_or_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Create a storyboard scene. Called by the worker fleet (service token) during Stage 2."""
+    service = StoryboardService(db)
+    scene = await service.create_scene(
+        project_id=project_id,
+        scene_index=data.scene_index,
+        narration_text=data.narration_text,
+        visual_description=data.visual_description,
+        media_type=data.media_type,
+        duration_seconds=data.duration_seconds,
+    )
+    return SceneResponse.model_validate(scene)
 
 
 @router.patch("/{scene_id}", response_model=SceneResponse, summary="Update scene")

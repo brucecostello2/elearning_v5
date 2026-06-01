@@ -116,7 +116,7 @@ async def update_transcript(
     project_id: UUID,
     transcript_id: UUID,
     data: TranscriptUpdate,
-    current_user: User = Depends(require_operator_or_admin),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Update refined_text inline or reorder sequence_order."""

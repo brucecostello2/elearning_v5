@@ -104,6 +104,7 @@ class JobStatusUpdate(_BaseModel):
     error_message: _Optional[str] = None
     failure_category: _Optional[str] = None
     stage: _Optional[str] = None
+    celery_task_id: _Optional[str] = None
 
 
 @job_router.patch("/{job_id}", response_model=JobResponse, summary="Update job status (internal)")
@@ -132,6 +133,8 @@ async def update_job_status(
         job.failure_category = payload.failure_category
     if payload.stage is not None:
         job.resume_from_stage = payload.stage
+    if payload.celery_task_id is not None:
+        job.celery_task_id = payload.celery_task_id
     await db.commit()
     await db.refresh(job)
     return JobResponse.model_validate(job)

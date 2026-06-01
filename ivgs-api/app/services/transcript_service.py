@@ -111,12 +111,13 @@ class TranscriptService:
 
             # Upload original file to SeaweedFS
             seaweedfs_path = f"/ivgs/uploads/{project_id}/{filename}"
-            upload_result = await seaweedfs_client.upload(
-                path=seaweedfs_path,
-                data=content,
-                content_type=content_type,
-            )
-            seaweedfs_fid = upload_result.get("fid", "") if upload_result else ""
+            # SeaweedFSClient has no .upload(); use upload_file (volume assign -> fid) so the
+            # asset records a real fid for later download_file(fid). collection matches storage_tier.
+            seaweedfs_fid = await seaweedfs_client.upload_file(
+                file_data=content,
+                collection="hot",
+                filename=filename,
+            ) or ""
 
             # Create asset record for original file
             asset = Asset(
