@@ -817,3 +817,24 @@ Fix (monitoring hygiene / Stage 4.5, fleet-wide): (a) replace gpu-exporter with 
   Closes the current gap where /mnt/ivgs-shared backups live on node-01's disk and
   do NOT survive a node-01 failure. Prereqs: nodes 02-06 all operational and
   AD-01 model management implemented.
+## Update 2026-06-02 — node-04 media tier: shared wrapper skeleton + Kokoro DONE; NFS bulk-write wedge logged
+
+### Done (commit `ada1896`)
+- **Shared FastAPI wrapper skeleton** — `ivgs-workers/servers/common/`:
+  - `base.py`: `create_app()` app factory + lifespan model load/unload + `/health` (with VRAM) + consistent JSON-500 handler + `get_model()`/`run()` helpers. Used by all five node-04 wrappers.
+  - `jobs.py`: in-memory `JobStore` (TTL GC, thread-pool background runner) + `register_job_routes()` for `/status` `/download` `/metrics` (the `alignment_score` the §11.1 talking-head gate needs). Used by the async wrappers (LatentSync/SadTalker).
+  - Factored from the proven `cogvideox` server; lifespan replaces deprecated `on_event`. Build context = `servers/` so wrappers `COPY common`. `cogvideox` left untouched (retrofittable later).
+- **Kokoro TTS sync wrapper** — `ivgs-workers/servers/kokoro/`, port 5003:
+  - `POST /tts_to_audio` → 24 kHz mono WAV; English-only fallback for Coqui (same wire contract, interchangeable client). Accepts the full Coqui payload, uses only text/language/speed.
+  - cu128 Blackwell base (torch 2.12 nightly, sm_120 verified); `en_core_web_sm==3.8.0` baked so startup never pip-installs at runtime (self-contained); Kokoro-82M weights mounted via HF cache under `/data/models` (AD-01, not baked).
+  - Proven end-to-end via the real `coqui_client` provider path: 212 KB / 24 kHz / 4.42 s valid WAV.
+  - Recovery artifact banked: `/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_kokoro-v5.2.7-h0.tar.zst` (6.7G, zstd-verified, `sha256:e8e86256c5adca712eb7e299b2a7452e8e87077349f2a49d9163da856b7048d1`), MANIFEST updated. NOTE: this image was built via BuildKit/containerd (layers already compressed) so zstd gains little (~1.07×) vs the older classic-builder ComfyUI image (2.9×).
+
+### OPEN ISSUE — NFS bulk-transfer wedge (intermittent; storage-layer reliability)
+- **Symptom:** a single NFS4 TCP connection (node-04 → node-01:2049) wedged mid bulk write — node-04 Send-Q stuck (~333 KB unACKed), node-01 Recv-Q 0, while ICMP, small packets, and *new* TCP connections all worked. Surfaced on the first large `docker save | zstd` write to `/mnt/ivgs-shared`. A `readdir` (`ls`) on the mount also hung (hard mount → D-state).
+- **Recovery:** self-cleared after ~15 min (kernel `tcp_retries2` gave up → hard mount reconnected → write resumed). Cost ~20 min and nearly left a truncated artifact.
+- **Ruled out:** server health (node-01 fine: load 0.16, 28G RAM free, 370G disk free, nfsd 8 threads, both exports present); firewall (UFW default-deny incoming but allows `192.168.1.0/24`); MTU (1500 on both `enp6s18`, verified — the jumbo ping failed locally as expected).
+- **Root cause: UNCONFIRMED.** Prime suspect = NIC offload: TSO/GSO/GRO all ON on both `enp6s18` (fits "small packets fine, bulk stalls"). BUT the earlier ComfyUI 7.4G save worked with the same settings, so offload-on is not deterministic. Other candidates: transient packet loss, host/hypervisor (VM) networking hiccup, TCP/NFS-client edge case. Intermittent — needs live capture or deliberate reproduction to confirm.
+- **Impact:** can recur on any sustained large write to `/mnt/ivgs-shared` (artifact saves, pipeline stage outputs) or large reads from `/mnt/models`; hangs that mount ~15 min (or until manually reset). Any process touching it blocks.
+- **Mitigations adopted:** save large artifacts local-first then copy (shrinks blast radius — the slow zstd never touches NFS); fast reset = `systemctl restart nfs-server` on node-01 (resets the connection without waiting out the timeout; does not affect Postgres/Redis/SeaweedFS).
+- **Next steps when it recurs:** BEFORE resetting, capture `ss -ti` on the stuck socket + `ip -s link` (drop/error counters) + `nstat` — that's the real evidence. If offloads are implicated, disable on both nodes (`ethtool -K enp6s18 tso off gso off gro off`) and persist via netplan. A precautionary disable is available now but unconfirmed (costs some CPU), so deferred.
