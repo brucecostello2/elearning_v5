@@ -112,3 +112,7 @@ htmlcov/
 
 # node env files hold real secrets -- commit only the .example variants
 .env.node0[1-6]
+
+# node-local env files (secrets) - never commit
+.env.node0*
+ivgs-infra/.env.node0*
