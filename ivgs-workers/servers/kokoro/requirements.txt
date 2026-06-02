@@ -1,0 +1,14 @@
+# IVGS v5 - Kokoro TTS server deps.
+#
+# IMPORTANT: torch / torchaudio are installed in the Dockerfile from the CUDA 12.8 (cu128)
+# index for Blackwell sm_120. DO NOT pin torch here.
+# VERIFY-ON-NODE: confirm `pip install kokoro` does not pull a conflicting torch and that
+# torch.cuda.is_available() stays True after this install.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+kokoro>=0.9.4
+soundfile>=0.12.1
+numpy>=1.24
