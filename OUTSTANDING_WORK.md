@@ -764,3 +764,13 @@ node-03 (RTX PRO 6000 Blackwell 96GB #2, dedicated passthrough; 192.168.1.92) is
 - .env.node03 from inherited .env.node02 (only NODE_HOSTNAME changed; same qwen-1.5b test rig).
 - VERIFIED: vllm serves qwen-1.5b; cogvideox-server healthy; broker shows both twins (celery+cogvideox @node02 and @node03) + default-worker@node01 -> gpu_llm + gpu_video redundant across two 96GB nodes.
 - node-03 minor follow-ups: exporters (nvidia_gpu_exporter:1.2.1 needs Docker Hub pull); peer-IP warnings (NODE_03/04/05_IP unset -> blank fallback URLs) benign-by-design (populate at full-fleet failover); VLLM_SECONDARY_URL=NODE_03_IP self (derivation artifact -> NODE_02_IP at failover); obsolete compose `version:` key (cosmetic, node-02/03); old worker images v5.2.0-2.6 prunable.
+
+
+---
+
+### GPU monitoring broken on Blackwell fleet (2026-06-02) - exporter panic + empty dashboards
+
+Symptom: Node Monitor shows all nodes Online but VRAM/Util/Temp/Power read 0; GPU Fleet page shows NODES ONLINE 0/0, AVG UTIL 0%, no utilization history.
+Cause #1 (exporter): committed compose pins utkuozdemir/nvidia_gpu_exporter:1.2.1, which auto-derives Prometheus metric names from nvidia-smi. Blackwell driver emits 'clocks_event_reasons_counters.sw_thermal_slowdown [us]' -> exporter builds an invalid metric name (space+brackets) -> panic -> CrashLoop. Confirmed node-03 (first to bring it up fresh). Affects all Blackwell nodes (02/03 6000, 04 5000). node-02 only looks OK because it still runs an OLDER dcgm-exporter container (committed exporter never recreated there). node-03's crashing exporter stopped (restart=no); node-exporter :9100 fine.
+Cause #2 (heartbeat): GPU heartbeat registry still empty (total_nodes:0 -> gpu_reservation_skipped); nodes not registering GPU presence with node-01 scheduler, so GPU Fleet sees 0 nodes regardless of exporters.
+Fix (monitoring hygiene / Stage 4.5, fleet-wide): (a) replace gpu-exporter with a Blackwell-safe option - restrict utkuozdemir --query-gpu to a safe field set (drop clocks_event_reasons_counters), bump to a newer tag that sanitizes names, or move to nvidia dcgm-exporter on a Blackwell-capable tag (fleet already used dcgm); update docker-compose.node02/03/04 + commit; (b) wire node GPU heartbeat registration so total_nodes>0. Dashboard GPU telemetry is NOT trustworthy until both land; node liveness works via a separate check.
