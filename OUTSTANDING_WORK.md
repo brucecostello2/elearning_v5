@@ -774,3 +774,46 @@ Symptom: Node Monitor shows all nodes Online but VRAM/Util/Temp/Power read 0; GP
 Cause #1 (exporter): committed compose pins utkuozdemir/nvidia_gpu_exporter:1.2.1, which auto-derives Prometheus metric names from nvidia-smi. Blackwell driver emits 'clocks_event_reasons_counters.sw_thermal_slowdown [us]' -> exporter builds an invalid metric name (space+brackets) -> panic -> CrashLoop. Confirmed node-03 (first to bring it up fresh). Affects all Blackwell nodes (02/03 6000, 04 5000). node-02 only looks OK because it still runs an OLDER dcgm-exporter container (committed exporter never recreated there). node-03's crashing exporter stopped (restart=no); node-exporter :9100 fine.
 Cause #2 (heartbeat): GPU heartbeat registry still empty (total_nodes:0 -> gpu_reservation_skipped); nodes not registering GPU presence with node-01 scheduler, so GPU Fleet sees 0 nodes regardless of exporters.
 Fix (monitoring hygiene / Stage 4.5, fleet-wide): (a) replace gpu-exporter with a Blackwell-safe option - restrict utkuozdemir --query-gpu to a safe field set (drop clocks_event_reasons_counters), bump to a newer tag that sanitizes names, or move to nvidia dcgm-exporter on a Blackwell-capable tag (fleet already used dcgm); update docker-compose.node02/03/04 + commit; (b) wire node GPU heartbeat registration so total_nodes>0. Dashboard GPU telemetry is NOT trustworthy until both land; node liveness works via a separate check.
+
+## Stage 3 -- node-04 media tier (IN PROGRESS)
+
+- [DONE 2026-06-02] ComfyUI/FLUX image service PROVEN end-to-end on node-04.
+  Built locally: ghcr.io/brucecostello2/ivgs-workers:comfyui-v5.2.7-h0
+  (ComfyUI v0.23.0, torch cu128 for Blackwell sm_120, FLUX weights MOUNTED not
+  baked). The real deployed client (flux_client.generate_image,
+  FluxGenerationParams) returned a valid 1024x1024 PNG in ~4s on the RTX PRO 5000.
+  FLUX schnell weight SHA256
+  ead426278b49030e9da5df862994f25ce94ab2ee4df38b556ddddb3db093bf72.
+  NOT pushed to GHCR (see recovery decision); captured via docker save instead.
+- [TODO] Reconcile docker-compose.node04.yml (stale template): real image tags,
+  ivgs-workers worker image (not ivgs-api), media queues wired to
+  celery-worker@node04, FLUX checkpoint mount, drop the crash-looping
+  nvidia_gpu_exporter, add pull_policy: never on GPU-server services.
+- [TODO] Build the rest of the node-04 media servers via the build loop
+  (RECOVERY.md): Coqui-TTS, Kokoro-TTS, WhisperX, LatentSync, SadTalker,
+  vLLM-midsize (Mistral-24B); plus the shared async/sync FastAPI wrapper skeleton.
+- [TODO] flux_client provider-interface generate(): coerce text fields, e.g.
+  negative_prompt=params.negative_prompt or "" (ImageParams default None caused a
+  ComfyUI 400 via null CLIPTextEncode text). generate_image path is unaffected.
+
+## Recovery / image-artifact strategy (DECIDED 2026-06-02)
+
+- Large GPU images are NOT pushed to GHCR (free tier too small, storage billed).
+  Recovery = Dockerfile in git + docker save artifact on owned storage +
+  re-acquirable weights. Full procedure in RECOVERY.md.
+- Convention: scripts/save-image-artifact.sh saves to
+  /mnt/ivgs-shared/image-artifacts/ with SHA-256 + MANIFEST. Compose services use
+  pull_policy: never so a node runs the locally built/loaded image.
+- [TODO] Also capture existing custom GPU images this way: cogvideox-pilot-1
+  (node-02 and node-03). vllm/vllm-openai:cu130-nightly is upstream/re-pullable
+  (optionally save it too since its nightly tag rotates).
+
+## DEFERRED -- comprehensive disaster recovery (after full fleet + AD-01)
+
+- Design and implement a comprehensive DR solution using non-node location(s):
+  likely BOTH a local NAS and an offsite target. Must cover ALL recoverable
+  state, not just image artifacts: the git repo, /mnt/models weights, Postgres
+  (ivgs DB), SeaweedFS/Redis state as appropriate, and per-node compose + .env.
+  Closes the current gap where /mnt/ivgs-shared backups live on node-01's disk and
+  do NOT survive a node-01 failure. Prereqs: nodes 02-06 all operational and
+  AD-01 model management implemented.
