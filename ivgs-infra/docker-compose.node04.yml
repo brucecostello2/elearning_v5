@@ -1,27 +1,23 @@
 # =============================================================================
-# IVGS v5 — Docker Compose: node-04 (Image, TTS, Talking Head)
+# IVGS v5 — Docker Compose: node-04 (Image / TTS / Talking-Head media tier)
 # =============================================================================
-# Spec reference: §2.4 Docker Compose Stacks — node-04
-#
-# Node-04 role (Table 2-2):
+# Spec reference: §2.4 Docker Compose Stacks — node-04 (Table 2-2)
 #   NVIDIA RTX 5000 Pro Blackwell — 48 GB VRAM
-#   ComfyUI (FLUX.1 Dev, AnimateDiff), Coqui XTTS v2, Kokoro TTS,
-#   WhisperX alignment, LatentSync, SadTalker, vLLM mid-size (Mistral 24B)
+#   ComfyUI (FLUX.1), Coqui XTTS v2, Kokoro TTS, WhisperX, LatentSync,
+#   SadTalker, vLLM mid-size (Mistral 24B)
 #
-# Services (10 per §2.4):
-#   1.  vllm             — Mid-size LLM (:8000)
-#   2.  comfyui          — Image generation (:8188)
-#   3.  coqui-tts        — Primary TTS (:5002)
-#   4.  kokoro-tts       — English-only TTS fallback (:5003)
-#   5.  whisperx         — Speech alignment (:9000)
-#   6.  latentsync       — Primary lip-sync (:7860)
-#   7.  sadtalker        — Fallback lip-sync (:7861)
-#   8.  celery-worker    — Image/TTS/talking-head queues
-#   9.  node-exporter    — System metrics (:9100)
-#  10.  nvidia-gpu-exporter — GPU metrics (:9400)
+# RECONCILED 2026-06-02:
+#   ACTIVE (default `up`):  comfyui + celery-worker(gpu_image) + node-exporter
+#   PENDING (profiles: pending — start once built/staged/proven via its client):
+#       vllm, coqui-tts, kokoro-tts, whisperx, latentsync, sadtalker
+#   nvidia-gpu-exporter REMOVED (utkuozdemir 1.2.1 invalid-metric-name crashloop
+#       on Blackwell; replacement tracked under monitoring-hygiene).
+#
+# Run the active services:
+#   docker compose --env-file .env.node04 -f docker-compose.node04.yml up -d comfyui celery-worker node-exporter
+# Activate a pending service later (after build/stage/prove):
+#   docker compose --env-file .env.node04 -f docker-compose.node04.yml --profile pending up -d <service>
 # =============================================================================
-
-version: "3.8"
 
 x-common-healthcheck: &common-healthcheck
   interval: 30s
@@ -54,13 +50,110 @@ networks:
 
 services:
   # ---------------------------------------------------------------------------
-  # Service 1: vLLM Mid-Size (Mistral 24B — Table B-1: 48 GB)
-  # Used for prompt refinement and storyboard when 70B models are busy
-  # GPU scheduler ensures non-concurrent load with FLUX.1
+  # ACTIVE — ComfyUI / FLUX.1 image server (proven via flux_client.generate_image).
+  # GPU + weights live here; the FLUX checkpoint is mounted read-only at the path
+  # CheckpointLoaderSimple reads from. Healthcheck = the image's built-in (proven
+  # healthy in the manual run). pull_policy: never — image is local-only, recovered
+  # from the docker-save artifact, never pulled from GHCR.
   # ---------------------------------------------------------------------------
+  comfyui:
+    image: ghcr.io/brucecostello2/ivgs-workers:comfyui-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-comfyui-primary
+    pull_policy: never
+    <<: [*common-restart, *common-logging, *gpu-resources]
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      - /data/models/comfyui/checkpoints:/app/ComfyUI/models/checkpoints:ro
+    ports:
+      - "0.0.0.0:8188:8188"
+    networks:
+      - ivgs-net
+    shm_size: "8g"
+
+  # ---------------------------------------------------------------------------
+  # ACTIVE — Celery worker for the image queue. Only comfyui is up, so it
+  # consumes gpu_image only; add gpu_tts / gpu_talking_head (or dedicated workers
+  # per node-03's pattern) as those servers come online.
+  # ---------------------------------------------------------------------------
+  celery-worker:
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    container_name: ivgs-celery-node04
+    depends_on: [comfyui]
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node04
+    environment:
+      REDIS_URL: redis://${NODE_01_IP}:6379/0
+      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
+      IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
+      API_BASE_URL: "http://${NODE_01_IP}:8001"
+      IVGS_GPU_SCHEDULER_URL: "http://${NODE_01_IP}:8002"
+      SEAWEEDFS_FILER_URL: "http://${NODE_01_IP}:8888"
+      COMFYUI_PRIMARY_URL: "http://comfyui:8188"
+      # Image stage = mid-size vLLM (Mistral-24B) writes the FLUX-compatible prompt,
+      # then ComfyUI/FLUX renders it (Table 6-1). VLLM_MIDSIZE_URL is node-04's own
+      # vllm service (resolves once the pending vllm is activated); until then a
+      # gpu_image task completes only the render half. Primary/secondary are the
+      # 70B LLM tiers on node-02/03 (not called by this image worker).
+      VLLM_PRIMARY_URL: "http://${NODE_02_IP}:8000"
+      VLLM_SECONDARY_URL: "http://${NODE_03_IP}:8000"
+      VLLM_MIDSIZE_URL: "http://vllm:8000"
+      IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
+      NODE_HOSTNAME: node-04
+      C_FORCE_ROOT: "1"
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    command: >
+      celery -A celery_app worker
+        --loglevel=info
+        --queues=gpu_image
+        --concurrency=1
+        --max-tasks-per-child=20
+        -n image-worker@node04
+
+  # ---------------------------------------------------------------------------
+  # ACTIVE — Node Exporter (§13.1, port 9100)
+  # ---------------------------------------------------------------------------
+  node-exporter:
+    image: prom/node-exporter:v1.8.1
+    container_name: ivgs-node-exporter
+    <<: [*common-restart, *common-logging]
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    ports:
+      - "0.0.0.0:9100:9100"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+
+  # ===========================================================================
+  # PENDING (profiles: pending) — excluded from a default `up`. Activate a
+  # service only after its image is built, weights staged, and it is proven via
+  # its real *_client. pull_policy: never (local-only images). Ports/mounts/
+  # healthchecks below are the spec defaults and will be confirmed per service
+  # when each is actually built.
+  # ===========================================================================
+
+  # vLLM mid-size (Mistral 24B). Blackwell nightly image. Cannot co-reside with
+  # FLUX on a 48 GB card — the GPU scheduler must gate dispatch; kept pending
+  # until that contention is wired and Mistral-24B weights are staged.
   vllm:
-    image: vllm/vllm-openai:v0.6.4
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
     container_name: ivgs-vllm-midsize
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -90,42 +183,12 @@ services:
       --disable-log-requests
     shm_size: "8g"
 
-  # ---------------------------------------------------------------------------
-  # Service 2: ComfyUI (FLUX.1 Dev, AnimateDiff)
-  # Primary image generation — Table B-1: FLUX.1 Dev 24 GB
-  # GPU scheduler prevents concurrent load with vLLM mid-size
-  # ---------------------------------------------------------------------------
-  comfyui:
-    image: ghcr.io/brucecostello2/ivgs-workers:comfyui-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
-    container_name: ivgs-comfyui-primary
-    <<: [*common-restart, *common-logging, *gpu-resources]
-    env_file:
-      - .env.node04
-    environment:
-      COMFYUI_PORT: "8188"
-      CUDA_VISIBLE_DEVICES: "0"
-      HF_HOME: /data/models
-    volumes:
-      - /data/models:/data/models
-      - /data/comfyui-output:/output
-      - /mnt/ivgs-shared:/mnt/ivgs-shared
-    ports:
-      - "0.0.0.0:8188:8188"
-    networks:
-      - ivgs-net
-    healthcheck:
-      <<: *common-healthcheck
-      test: ["CMD-SHELL", "curl -sf http://localhost:8188/system_stats || exit 1"]
-    shm_size: "8g"
-
-  # ---------------------------------------------------------------------------
-  # Service 3: Coqui XTTS v2 (Primary TTS — Table B-1: 16 GB)
-  # Multilingual TTS per §17.1: 8 languages
-  # Typically kept resident on node-04
-  # ---------------------------------------------------------------------------
+  # Coqui XTTS v2 — primary multilingual TTS (Table B-1: 16 GB; §17.1: 8 langs)
   coqui-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:coqui-tts-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:coqui-tts-${IVGS_WORKERS_TAG:-v5.2.7-h0}
     container_name: ivgs-coqui-tts
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -145,12 +208,12 @@ services:
       test: ["CMD-SHELL", "curl -sf http://localhost:5002/health || exit 1"]
     shm_size: "4g"
 
-  # ---------------------------------------------------------------------------
-  # Service 4: Kokoro TTS (English-only fallback — Table B-1: 4 GB)
-  # ---------------------------------------------------------------------------
+  # Kokoro TTS — English-only fallback (Table B-1: 4 GB)
   kokoro-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-tts-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-tts-${IVGS_WORKERS_TAG:-v5.2.7-h0}
     container_name: ivgs-kokoro-tts
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -167,13 +230,12 @@ services:
       <<: *common-healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:5003/health || exit 1"]
 
-  # ---------------------------------------------------------------------------
-  # Service 5: WhisperX (Speech alignment — Table B-1: 8 GB)
-  # Word-level timestamp alignment for caption generation per §17.3
-  # ---------------------------------------------------------------------------
+  # WhisperX — speech alignment for captions (Table B-1: 8 GB; large-v3)
   whisperx:
-    image: ghcr.io/brucecostello2/ivgs-workers:whisperx-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:whisperx-${IVGS_WORKERS_TAG:-v5.2.7-h0}
     container_name: ivgs-whisperx
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -192,13 +254,12 @@ services:
       <<: *common-healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:9000/health || exit 1"]
 
-  # ---------------------------------------------------------------------------
-  # Service 6: LatentSync (Primary lip-sync — Table B-1: 12 GB)
-  # Talking head generation per §7.1
-  # ---------------------------------------------------------------------------
+  # LatentSync — primary lip-sync / talking head (Table B-1: 12 GB)
   latentsync:
-    image: ghcr.io/brucecostello2/ivgs-workers:latentsync-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:latentsync-${IVGS_WORKERS_TAG:-v5.2.7-h0}
     container_name: ivgs-latentsync
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -216,12 +277,12 @@ services:
       <<: *common-healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:7860/health || exit 1"]
 
-  # ---------------------------------------------------------------------------
-  # Service 7: SadTalker (Fallback lip-sync — Table B-1: 8 GB)
-  # ---------------------------------------------------------------------------
+  # SadTalker — fallback lip-sync (Table B-1: 8 GB)
   sadtalker:
-    image: ghcr.io/brucecostello2/ivgs-workers:sadtalker-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:sadtalker-${IVGS_WORKERS_TAG:-v5.2.7-h0}
     container_name: ivgs-sadtalker
+    profiles: ["pending"]
+    pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
       - .env.node04
@@ -238,76 +299,3 @@ services:
     healthcheck:
       <<: *common-healthcheck
       test: ["CMD-SHELL", "curl -sf http://localhost:7861/health || exit 1"]
-
-  # ---------------------------------------------------------------------------
-  # Service 8: Celery Worker (image/TTS/talking-head queues)
-  # ---------------------------------------------------------------------------
-  celery-worker:
-    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
-    container_name: ivgs-celery-node04
-    <<: [*common-restart, *common-logging]
-    env_file:
-      - .env.node04
-    environment:
-      REDIS_URL: redis://${NODE_01_IP}:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
-      IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
-      SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
-      COMFYUI_PRIMARY_URL: http://comfyui:8188
-      COQUI_TTS_URL: http://coqui-tts:5002
-      KOKORO_TTS_URL: http://kokoro-tts:5003
-      WHISPERX_URL: http://whisperx:9000
-      LATENTSYNC_URL: http://latentsync:7860
-      SADTALKER_URL: http://sadtalker:7861
-      VLLM_MIDSIZE_URL: http://vllm:8000/v1
-      NODE_HOSTNAME: node-04
-      C_FORCE_ROOT: "1"
-    volumes:
-      - /mnt/ivgs-shared:/mnt/ivgs-shared
-    networks:
-      - ivgs-net
-    command: >
-      celery -A celery_app worker
-        --loglevel=info
-        --queues=image_generation,tts_synthesis,talking_head,caption_generation,quality_scoring
-        --concurrency=2
-        --max-tasks-per-child=20
-        -n celery-worker@node04
-
-  # ---------------------------------------------------------------------------
-  # Service 9: Node Exporter
-  # ---------------------------------------------------------------------------
-  node-exporter:
-    image: prom/node-exporter:v1.8.1
-    container_name: ivgs-node-exporter
-    <<: [*common-restart, *common-logging]
-    volumes:
-      - /proc:/host/proc:ro
-      - /sys:/host/sys:ro
-      - /:/rootfs:ro
-    ports:
-      - "0.0.0.0:9100:9100"
-    networks:
-      - ivgs-net
-    healthcheck:
-      <<: *common-healthcheck
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9100/metrics || exit 1"]
-    command:
-      - "--path.procfs=/host/proc"
-      - "--path.sysfs=/host/sys"
-      - "--path.rootfs=/rootfs"
-
-  # ---------------------------------------------------------------------------
-  # Service 10: NVIDIA GPU Exporter
-  # ---------------------------------------------------------------------------
-  nvidia-gpu-exporter:
-    image: utkuozdemir/nvidia_gpu_exporter:1.2.1
-    container_name: ivgs-nvidia-gpu-exporter
-    <<: [*common-restart, *common-logging, *gpu-resources]
-    ports:
-      - "0.0.0.0:9400:9400"
-    networks:
-      - ivgs-net
-    healthcheck:
-      <<: *common-healthcheck
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9400/metrics || exit 1"]
