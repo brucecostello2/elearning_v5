@@ -1,11 +1,11 @@
 # =============================================================================
-# IVGS v5 — Docker Compose: node-03 (LLM + Video Diffusion — Secondary)
+# IVGS v5 — Docker Compose: node-03 (LLM + Video Diffusion — Primary)
 # =============================================================================
-# Spec reference: §2.4 Docker Compose Stacks — node-03
+# Spec reference: §2.4 Docker Compose Stacks — node-02
 #
-# Node-03 role (Table 2-2):
+# Node-02 role (Table 2-2):
 #   NVIDIA RTX 6000 Blackwell — 96 GB VRAM
-#   vLLM inference (70B+ models, tensor parallel with node-02)
+#   vLLM inference (70B+ models, tensor parallel with node-03)
 #   CogVideoX / Wan2.1 video generation
 #
 # Services (5 per §2.4):
@@ -49,12 +49,13 @@ networks:
 
 services:
   # ---------------------------------------------------------------------------
-  # Service 1: vLLM Secondary (Table 2-4: port 8000)
-  # Tensor parallel partner for node-02 on 70B+ models
-  # Also serves Qwen2.5 72B independently when TP not active
+  # Service 1: vLLM Primary (Table 2-4: port 8000)
+  # Serves Llama 3.3 70B (tensor parallel) and smaller models
+  # VRAM: 70 GB for Llama 3.3 70B TP shard (Table B-1)
+  # Remaining ~26 GB for CogVideoX scheduling
   # ---------------------------------------------------------------------------
   vllm:
-    image: vllm/vllm-openai:v0.6.4
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
     container_name: ivgs-vllm-secondary
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
@@ -78,21 +79,24 @@ services:
       --model ${VLLM_MODEL_NAME:-meta-llama/Llama-3.3-70B-Instruct}
       --tensor-parallel-size ${VLLM_TP_SIZE:-1}
       --max-model-len ${VLLM_MAX_MODEL_LEN:-8192}
-      --gpu-memory-utilization 0.90
+      --gpu-memory-utilization ${VLLM_GPU_UTIL:-0.90}
       --dtype bfloat16
       --trust-remote-code
       --api-key ${VLLM_API_KEY:-ivgs-internal}
-      --served-model-name ${VLLM_SERVED_NAME:-llama-70b-secondary}
-      --disable-log-requests
+      --served-model-name ${VLLM_SERVED_NAME:-llama-70b}
     shm_size: "16g"
 
   # ---------------------------------------------------------------------------
   # Service 2: CogVideoX / Wan2.1 Worker
+  # Video generation Celery worker — processes video_generation queue
+  # VRAM: CogVideoX 5B = 24 GB, CogVideoX 2B = 14 GB, Wan2.1 = 16 GB
+  # GPU scheduler (§12.2) ensures VRAM availability before dispatch
   # ---------------------------------------------------------------------------
   cogvideox-worker:
-    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-cogvideox-worker-node03
-    <<: [*common-restart, *common-logging, *gpu-resources]
+    <<: [*common-restart, *common-logging]
+    depends_on: [cogvideox-server]
     env_file:
       - .env.node03
     environment:
@@ -101,28 +105,55 @@ services:
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-03
-      CUDA_VISIBLE_DEVICES: "0"
-      HF_HOME: /data/models
+      COGVIDEOX_URL: http://cogvideox-server:8200
+      VLLM_PRIMARY_URL: "http://vllm:8000"
+      VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
+      VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
+      IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
+      IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
+      IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
       C_FORCE_ROOT: "1"
     volumes:
-      - /data/models:/data/models
       - /mnt/ivgs-shared:/mnt/ivgs-shared
     networks:
       - ivgs-net
     command: >
       celery -A celery_app worker
         --loglevel=info
-        --queues=video_generation
+        --queues=gpu_video
         --concurrency=1
         --max-tasks-per-child=10
         -n cogvideox-worker@node03
+
+  # ---------------------------------------------------------------------------
+  # CogVideoX/Wan2.1 model server (HTTP). GPU + weights live HERE; the worker is
+  # a thin client that reaches it at COGVIDEOX_URL over the ivgs-net network.
+  # Runs the locally-built image (pull_policy: never) — no registry needed.
+  # ---------------------------------------------------------------------------
+  cogvideox-server:
+    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-pilot-1  # pinned: only built cogvideox image (rebuild+retag to bump)
+    container_name: ivgs-cogvideox-server-node03
+    pull_policy: never
+    <<: [*common-restart, *common-logging, *gpu-resources]
+    environment:
+      MODEL_VARIANT: cogvideox
+      MODEL_PATH: /opt/models/cogvideox-5b     # local-staged weights (NOT /mnt NFS: mmap-over-NFS too slow)
+      PORT: "8200"
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      - /opt/models:/opt/models:ro
+    ports:
+      - "8200:8200"                            # optional host access; worker reaches it by service name
+    networks:
+      - ivgs-net
     shm_size: "8g"
 
   # ---------------------------------------------------------------------------
   # Service 3: Celery Worker (LLM + video queues)
+  # Handles LLM inference tasks dispatched to this node
   # ---------------------------------------------------------------------------
   celery-worker:
-    image: ghcr.io/brucecostello2/ivgs-api:${IVGS_API_TAG:?IVGS_API_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-celery-node03
     <<: [*common-restart, *common-logging]
     env_file:
@@ -130,7 +161,17 @@ services:
     environment:
       REDIS_URL: redis://${NODE_01_IP}:6379/0
       DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
-      VLLM_PRIMARY_URL: http://vllm:8000/v1
+      VLLM_PRIMARY_URL: http://vllm:8000
+      VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
+      VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
+      OLLAMA_URL: "http://${NODE_05_IP}:${OLLAMA_PORT:-11434}"
+      COMFYUI_PRIMARY_URL: "http://${NODE_04_IP}:${COMFYUI_PORT:-8188}"
+      COMFYUI_FALLBACK_URL: "http://${NODE_05_IP}:${COMFYUI_PORT:-8188}"
+      COQUI_TTS_URL: "http://${NODE_04_IP}:${COQUI_TTS_PORT:-8020}"
+      IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
+      IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
+      IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
+      API_BASE_URL: "http://${NODE_01_IP}:8001"
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-03
@@ -142,13 +183,13 @@ services:
     command: >
       celery -A celery_app worker
         --loglevel=info
-        --queues=llm_inference,transcript_refinement,storyboard_generation
+        --queues=gpu_llm
         --concurrency=2
         --max-tasks-per-child=50
         -n celery-worker@node03
 
   # ---------------------------------------------------------------------------
-  # Service 4: Node Exporter
+  # Service 4: Node Exporter (§13.1 Table 13-1 Row 3, port 9100)
   # ---------------------------------------------------------------------------
   node-exporter:
     image: prom/node-exporter:v1.8.1
@@ -171,7 +212,8 @@ services:
       - "--path.rootfs=/rootfs"
 
   # ---------------------------------------------------------------------------
-  # Service 5: NVIDIA GPU Exporter
+  # Service 5: NVIDIA GPU Exporter (§13.1 Table 13-1 Row 4, port 9400)
+  # GPU utilization %, VRAM used/total, temperature, power, clock speeds
   # ---------------------------------------------------------------------------
   nvidia-gpu-exporter:
     image: utkuozdemir/nvidia_gpu_exporter:1.2.1
