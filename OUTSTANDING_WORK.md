@@ -739,3 +739,15 @@ MEDIA TIER IS NOT BUILT. node-04 cannot come up until this backlog is done. DEFE
 2. Complete + reconcile model staging. ivgs-models/download_models.sh runs on node-01 (huggingface-cli -> /mnt/ivgs-shared/models; needs internet + HF token + gated-license acceptance for Llama/Mistral/FLUX-dev) and is INCOMPLETE: missing Kokoro, WhisperX large-v3, LatentSync, SadTalker, FLUX-schnell. Path drift: script stages to /mnt/ivgs-shared/models but compose mounts /data/models (HF_HOME) and a separate /mnt/models ro exists. Format drift: media_generation.yml wants flux1-{schnell,dev}-fp8.safetensors (ComfyUI single-file) but the script fetches the FLUX.1-dev diffusers repo.
 3. Reconcile stale docker-compose.node04.yml: FAKE placeholder @sha256 digests on vllm + both exporters (sequential hex; will fail pull -> real digests or drop pin); celery-worker pinned to ivgs-api image + 'ivgs.celery_app' whereas the working fleet uses ivgs-workers + 'celery_app'; queue names image_generation/tts_synthesis/talking_head/caption_generation/quality_scoring vs the live gpu_* convention (must match dispatch_media_generation); vllm tag v0.6.4 vs running cu130-nightly; model id Mistral-Small-24B-Instruct vs -2501.
 4. Author .env.node04 (all NODE_0X_IP, POSTGRES_PASSWORD from the node-01 secret set, IVGS_WORKERS_TAG + IVGS_API_TAG); register node-04 in the GPU heartbeat registry (currently total_nodes:0).
+
+
+---
+
+### node-02 FROZEN baseline (2026-06-02) - clone source for node-03
+
+node-02 (RTX PRO 6000 Blackwell 96GB; 192.168.1.91) is a clean, proven, committed baseline:
+- git: clean at origin HEAD f924fc2 (synced 32 commits; cogvideox-server pinned cogvideox-pilot-1; cogvideox-worker vLLM URL http://vllm:8000; node .env gitignored; .env.node02.example committed).
+- .env.node02 template-aligned; qwen-1.5b test overrides kept (VLLM_GPU_UTIL=0.30, qwen, 2048 tokens).
+- images: cogvideox-worker + celery-worker v5.2.7-h0; cogvideox-server cogvideox-pilot-1; vllm cu130-nightly; cogvideox-5b weights at /opt/models.
+- PROVEN: vLLM drives transcript+storyboard (Stage-2B, API-triggered); CogVideoX returns a real clip via the real cogvideox_client (49f 854x480@8fps, 6.12s, ~886KB, 71.9s) -> Stage 1 + Gate-1 via-client CLOSED. Stage-2A CogVideoX-via-gpu_video-celery-task (DB scene) deferred to Stage-3 pipeline integration.
+- minor: compose still has obsolete 'version:' key (cosmetic); cogvideox verified pins in /root/node02-precommit-backup not yet folded into committed servers/cogvideox/.
