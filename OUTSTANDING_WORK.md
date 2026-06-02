@@ -751,3 +751,16 @@ node-02 (RTX PRO 6000 Blackwell 96GB; 192.168.1.91) is a clean, proven, committe
 - images: cogvideox-worker + celery-worker v5.2.7-h0; cogvideox-server cogvideox-pilot-1; vllm cu130-nightly; cogvideox-5b weights at /opt/models.
 - PROVEN: vLLM drives transcript+storyboard (Stage-2B, API-triggered); CogVideoX returns a real clip via the real cogvideox_client (49f 854x480@8fps, 6.12s, ~886KB, 71.9s) -> Stage 1 + Gate-1 via-client CLOSED. Stage-2A CogVideoX-via-gpu_video-celery-task (DB scene) deferred to Stage-3 pipeline integration.
 - minor: compose still has obsolete 'version:' key (cosmetic); cogvideox verified pins in /root/node02-precommit-backup not yet folded into committed servers/cogvideox/.
+
+
+---
+
+### node-03 cloned from node-02 + brought up (2026-06-02) - twin live at .92
+
+node-03 (RTX PRO 6000 Blackwell 96GB #2, dedicated passthrough; 192.168.1.92) is live as node-02's twin:
+- cloned from frozen node-02 (new MAC, DHCP .92); de-conflicted: hostname node-03, RANDOM machine-id (NOT systemd-machine-id-setup, which re-derives the cloned SMBIOS uuid), fresh SSH keys, cloud-init disabled, netplan static .92, inherited node-02-identity stack stopped/removed (images+weights kept).
+- git inherited CLEAN at f924fc2 (freeze paid off - no reconciliation, unlike node-04). GOTCHA: clone branch had NO upstream tracking, so the first `git pull --ff-only` was a silent no-op (stayed f924fc2) and the stale compose got used; fixed via `git branch --set-upstream-to` + `git merge --ff-only`.
+- docker-compose.node03.yml was a STALE TEMPLATE at f924fc2 (freeze only fixed node02's file; node03's was an older draft: vllm v0.6.4, cogvideox-${TAG} worker image, NO cogvideox-server, celery on ivgs-api, video_generation/llm_inference queues). Reconciled by DERIVING from the proven docker-compose.node02.yml with node-03 identity (commit 46eb806): vllm cu130-nightly, ivgs-workers:${IVGS_WORKERS_TAG} workers, cogvideox-server cogvideox-pilot-1 :8200 ADDED, gpu_video/gpu_llm queues, @node03, .env.node03, NODE_HOSTNAME node-03.
+- .env.node03 from inherited .env.node02 (only NODE_HOSTNAME changed; same qwen-1.5b test rig).
+- VERIFIED: vllm serves qwen-1.5b; cogvideox-server healthy; broker shows both twins (celery+cogvideox @node02 and @node03) + default-worker@node01 -> gpu_llm + gpu_video redundant across two 96GB nodes.
+- node-03 minor follow-ups: exporters (nvidia_gpu_exporter:1.2.1 needs Docker Hub pull); peer-IP warnings (NODE_03/04/05_IP unset -> blank fallback URLs) benign-by-design (populate at full-fleet failover); VLLM_SECONDARY_URL=NODE_03_IP self (derivation artifact -> NODE_02_IP at failover); obsolete compose `version:` key (cosmetic, node-02/03); old worker images v5.2.0-2.6 prunable.
