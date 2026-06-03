@@ -478,8 +478,8 @@ def generate_video_clips(
         reservation = acquire_gpu_reservation(
             job_id=job_id,
             model_name="cogvideox_5b",
-            vram_mb=24576,
-            config=config,
+            vram_requirement_mb=24576,
+            estimated_duration_s=len(task_input.scenes) * 300,
         )
     except Exception as e:
         log.warning("gpu_reservation_failed", error=str(e))
@@ -511,7 +511,9 @@ def generate_video_clips(
                 # Checkpoint per scene
                 save_checkpoint(
                     job_id=job_id,
-                    stage=PipelineStage.VIDEO_GENERATION.value,
+                    stage_name=PipelineStage.VIDEO_GENERATION.value,
+                    stage_index=3,
+                    status="running",
                     checkpoint_data={
                         "completed_scenes": [r.scene_id for r in results if r.status == "success"],
                         "last_scene_index": scene.scene_index,
