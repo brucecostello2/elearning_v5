@@ -95,13 +95,13 @@ STAGE_TASK_MAP: Dict[str, str] = {
         "tasks.stage2_storyboard.generate_storyboard_task"
     ),
     PipelineStage.IMAGE_GENERATION.value: (
-        "tasks.stage3_images.generate_scene_images"
+        "tasks.stage3_images.generate_scene_images_task"
     ),
     PipelineStage.VIDEO_GENERATION.value: (
         "tasks.video_generation_task.generate_video_clips"
     ),
     PipelineStage.ANIMATION_GENERATION.value: (
-        "tasks.stage3_images.generate_scene_images"  # Animations via same Stage 3
+        "tasks.stage3_images.generate_scene_images_task"  # Animations via same Stage 3
     ),
     PipelineStage.COMPOSITION_MANIFEST.value: (
         "tasks.stage4_manifest.build_composition_manifest"

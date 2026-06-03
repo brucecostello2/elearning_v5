@@ -283,6 +283,11 @@ class WorkerConfig:
     latentsync_url: str = _env("IVGS_LATENTSYNC_URL", "http://node-04:8300")
     sadtalker_url: str = _env("IVGS_SADTALKER_URL", "http://node-04:8301")
 
+    @property
+    def redis_url(self) -> str:
+        """Redis URL for app-level keys; aliases the Celery broker (same Redis)."""
+        return self.celery_broker_url
+
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
         if stage in ("transcript_refinement", "storyboard_generation"):
