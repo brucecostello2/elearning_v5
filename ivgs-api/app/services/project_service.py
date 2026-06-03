@@ -331,6 +331,11 @@ class ProjectService:
 
         current_state = ProjectState(project.state)
 
+        # Tracked deviation (intentional; see OUTSTANDING_WORK.md / ORCH-5): this guard
+        # rejects only MEDIA_GENERATION-and-later, so it accepts earlier states incl.
+        # TRANSCRIPT_REFINEMENT. Spec Table 4-3 sanctions only STORYBOARD_GENERATION ->
+        # MEDIA_GENERATION; kept lenient to accommodate ORCH-5 (projects.state stays
+        # stale after a run). Tighten to require STORYBOARD_GENERATION once ORCH-5 lands.
         if current_state in (
             ProjectState.MEDIA_GENERATION, ProjectState.MANIFEST_GENERATION,
             ProjectState.AUDIO_GENERATION, ProjectState.TALKING_HEAD_RENDER,

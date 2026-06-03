@@ -725,6 +725,12 @@ Image digests (input to section 19.5 pinning): ivgs-api:v5.1.22-scenes = sha256:
 
 Net: full pipeline runs API -> orchestrator -> transcript -> storyboard (scenes persisted) -> user gate via real trigger; upload + refined-text persistence work. Genuine Stage-3 prerequisites remain: storyboard-approval -> dispatch_media_generation resume (P1.5 item 2); worker -> project.state mapping (ORCH-5); offline media nodes 03-06.
 
+### P1.5 item 2 — storyboard-approval -> media dispatch: DELIVERED + tracked deviation (2026-06-03)
+
+**Delivered** (commits 19bf90d api + 78c3684 workers; images ivgs-api:v5.1.24-scene-id, ivgs-workers:v5.2.8-mediafix). POST /projects/{id}/scenes/approve -> ProjectService.approve_storyboard -> dispatch_media_generation (image/animation -> gpu_image, video -> gpu_video). Proven e2e: 200 -> MEDIA_GENERATION -> 3/2/1 fan-out, accepted + scene_id-validated by the workers. Closes "Remaining P1.5 item (2)" above. (Three first-run bugs fixed in the same commits: scene_id serialization; STAGE_TASK_MAP image name +_task; WorkerConfig.redis_url.)
+
+**TRACKED DEVIATION - intentional, kept by decision 2026-06-03 (tied to ORCH-5):** approve_storyboard's guard rejects only MEDIA_GENERATION-and-later, so it accepts earlier states incl. TRANSCRIPT_REFINEMENT and advances straight to MEDIA_GENERATION. Spec Table 4-3 (§4.3) sanctions only STORYBOARD_GENERATION -> MEDIA_GENERATION; accepting TRANSCRIPT_REFINEMENT skips STORYBOARD_GENERATION. Deliberate accommodation of ORCH-5 (projects.state stays stale at TRANSCRIPT_REFINEMENT after a run even with the storyboard persisted; the e2e relied on it). FIX-WHEN: once ORCH-5 advances state correctly, tighten the guard to require STORYBOARD_GENERATION per Table 4-3. A matching code comment marks the guard in project_service.py. (Render execution past the wiring - video_generation_task signature drift, vLLM mid-size serving, GPU heartbeat, node-02/03 DNS, checkpoint 405 - is a separate punch-list, filed later.)
+
 
 ---
 
