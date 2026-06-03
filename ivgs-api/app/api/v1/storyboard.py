@@ -25,6 +25,8 @@ from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
 
+from app.schemas.project import ProjectResponse
+
 router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["Storyboard"])
 
 
@@ -134,3 +136,32 @@ async def regenerate_scene(
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Scene {scene_id} not found"}},
         )
     return JobResponse.model_validate(job)
+
+
+@router.post(
+    "/approve",
+    response_model=ProjectResponse,
+    summary="Approve storyboard -> start media generation (P1.5 item 2)",
+)
+async def approve_storyboard(
+    project_id: UUID,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Approve the storyboard and resume the pipeline into media generation."""
+    from app.services.project_service import ProjectService
+
+    service = ProjectService(db)
+    try:
+        result = await service.approve_storyboard(project_id, current_user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": str(e)}},
+        )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
+        )
+    return result
