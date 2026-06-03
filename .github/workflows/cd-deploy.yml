@@ -37,7 +37,7 @@ jobs:
     runs-on: [self-hosted, linux, x64, ivgs-infra]
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: "Deploy node-01"
         run: |
@@ -73,7 +73,7 @@ jobs:
       matrix:
         node: [node02, node03, node04, node05, node06]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: "Determine node IP"
         id: node-ip
@@ -109,7 +109,7 @@ jobs:
     needs: deploy-gpu-nodes
     runs-on: [self-hosted, linux, x64, ivgs-infra]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: "GPU fleet check"
         run: |
