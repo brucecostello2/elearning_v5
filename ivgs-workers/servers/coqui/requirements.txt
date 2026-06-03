@@ -1,0 +1,19 @@
+# IVGS v5 - Coqui XTTS v2 TTS server deps.
+#
+# torch / torchaudio are installed in the Dockerfile from the CUDA 12.8 (cu128) index
+# for Blackwell sm_120. DO NOT pin torch here.
+#
+# coqui-tts is the MAINTAINED fork of the original (unmaintained) `TTS` package; both
+# expose `from TTS.api import TTS`. It pulls heavy deps (transformers, etc.).
+# VERIFY-ON-NODE: confirm `pip install coqui-tts` does NOT downgrade the cu128 torch and
+# does not conflict with pydantic 2.9.2 / fastapi 0.115. If it fights torch, pin a
+# coqui-tts version with looser torch deps or reinstall cu128 torch after it.
+
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+pydantic==2.9.2
+
+coqui-tts>=0.24
+soundfile>=0.12.1
+
+transformers>=4.43,<5
