@@ -830,7 +830,7 @@ Fix (monitoring hygiene / Stage 4.5, fleet-wide): (a) replace gpu-exporter with 
   - Proven end-to-end via the real `coqui_client` provider path: 212 KB / 24 kHz / 4.42 s valid WAV.
   - Recovery artifact banked: `/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_kokoro-v5.2.7-h0.tar.zst` (6.7G, zstd-verified, `sha256:e8e86256c5adca712eb7e299b2a7452e8e87077349f2a49d9163da856b7048d1`), MANIFEST updated. NOTE: this image was built via BuildKit/containerd (layers already compressed) so zstd gains little (~1.07×) vs the older classic-builder ComfyUI image (2.9×).
 
-### OPEN ISSUE — NFS bulk-transfer wedge (intermittent; storage-layer reliability)
+### OPEN ISSUE — NFS bulk-transfer wedge (intermittent; storage-layer reliability)  **[RESOLVED 2026-06-03 - root cause was the inter-switch path, NOT NIC offload; see Update 2026-06-03 at end]**
 - **Symptom:** a single NFS4 TCP connection (node-04 → node-01:2049) wedged mid bulk write — node-04 Send-Q stuck (~333 KB unACKed), node-01 Recv-Q 0, while ICMP, small packets, and *new* TCP connections all worked. Surfaced on the first large `docker save | zstd` write to `/mnt/ivgs-shared`. A `readdir` (`ls`) on the mount also hung (hard mount → D-state).
 - **Recovery:** self-cleared after ~15 min (kernel `tcp_retries2` gave up → hard mount reconnected → write resumed). Cost ~20 min and nearly left a truncated artifact.
 - **Ruled out:** server health (node-01 fine: load 0.16, 28G RAM free, 370G disk free, nfsd 8 threads, both exports present); firewall (UFW default-deny incoming but allows `192.168.1.0/24`); MTU (1500 on both `enp6s18`, verified — the jumbo ping failed locally as expected).
