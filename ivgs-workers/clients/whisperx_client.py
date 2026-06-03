@@ -1,9 +1,18 @@
 """
-IVGS v5 — WhisperX Client
+IVGS v5 - WhisperX Client
 ===========================
 
-Implements §7.1.6: WhisperX large-v3 on node-04.
-Word-level timestamp generation, SRT/VTT output.
+Implements 7.1.6: WhisperX large-v3 on node-04 (STT + word-level alignment).
+HTTP client for the whisperx model server (servers/whisperx); implements the
+STTProvider interface (shared/providers):
+
+    transcribe(audio_path, params: STTParams) -> STTResult
+    align(audio_path, transcript, language)   -> STTResult
+
+Audio is passed by path. In the cluster the audio lives on the shared NFS, which is
+mounted into the whisperx container, so the path the calling worker provides resolves
+on the server side. SRT/VTT serialization and caption-asset creation are the caller's
+job (per 19.1), built from STTResult.segments.
 """
 
 from __future__ import annotations
@@ -14,88 +23,54 @@ from typing import Optional
 
 import httpx
 
-from shared.providers import STTProvider
+from shared.providers import STTParams, STTProvider, STTResult
 
 logger = logging.getLogger("ivgs.workers.whisperx")
 
 
 class WhisperXClient(STTProvider):
-    """HTTP client for WhisperX large-v3 on node-04. Implements STTProvider ABC."""
+    """HTTP client for WhisperX large-v3 on node-04. Implements the STTProvider ABC."""
 
-    def __init__(
-        self,
-        base_url: Optional[str] = None,
-        timeout: float = 300.0,
-    ) -> None:
+    def __init__(self, base_url: Optional[str] = None, timeout: float = 300.0) -> None:
         self.base_url = (base_url or os.environ["WHISPERX_URL"]).rstrip("/")
         self.timeout = timeout
         self._client: Optional[httpx.AsyncClient] = None
 
     async def _get_client(self) -> httpx.AsyncClient:
         if self._client is None or self._client.is_closed:
-            self._client = httpx.AsyncClient(
-                timeout=httpx.Timeout(self.timeout, connect=10.0),
-            )
+            self._client = httpx.AsyncClient(timeout=httpx.Timeout(self.timeout, connect=10.0))
         return self._client
 
-    async def transcribe(
-        self,
-        audio_asset_id: str,
-        language: str = "en",
-        output_formats: Optional[list[str]] = None,
-    ) -> dict:
-        """
-        Transcribe audio with word-level timestamps.
-
-        Returns dict with:
-          - segments: list of {start, end, text, words: [{word, start, end}]}
-          - srt: SRT formatted string
-          - vtt: VTT formatted string
-          - caption_asset_ids: list of created caption asset IDs
-        """
-        client = await self._get_client()
-
-        if output_formats is None:
-            output_formats = ["srt", "vtt"]
-
-        payload = {
-            "audio_asset_id": audio_asset_id,
-            "language": language,
-            "model": "large-v3",
-            "output_formats": output_formats,
-            "word_timestamps": True,
-        }
-
-        response = await client.post(
-            f"{self.base_url}/transcribe",
-            json=payload,
+    @staticmethod
+    def _to_result(data: dict) -> STTResult:
+        return STTResult(
+            text=data.get("text", ""),
+            segments=data.get("segments", []),
+            language=data.get("language", ""),
+            duration_seconds=float(data.get("duration_seconds", 0.0)),
         )
-        response.raise_for_status()
-        return response.json()
 
-    async def align(
-        self,
-        audio_asset_id: str,
-        transcript_text: str,
-        language: str = "en",
-    ) -> dict:
-        """
-        Forc
-e-align WhisperX output with provided transcript."""
+    async def transcribe(self, audio_path: str, params: STTParams) -> STTResult:
+        """Transcribe audio to text with word-level timestamps."""
         client = await self._get_client()
-
         payload = {
-            "audio_asset_id": audio_asset_id,
-            "transcript": transcript_text,
-            "language": language,
+            "audio_path": audio_path,
+            "language": params.language,
+            "model_size": params.model_size,
+            "word_timestamps": params.word_timestamps,
+            "output_format": params.output_format,
         }
+        resp = await client.post(f"{self.base_url}/transcribe", json=payload)
+        resp.raise_for_status()
+        return self._to_result(resp.json())
 
-        response = await client.post(
-            f"{self.base_url}/align",
-            json=payload,
-        )
-        response.raise_for_status()
-        return response.json()
+    async def align(self, audio_path: str, transcript: str, language: str) -> STTResult:
+        """Force-align a transcript to audio for word-level timestamps."""
+        client = await self._get_client()
+        payload = {"audio_path": audio_path, "transcript": transcript, "language": language}
+        resp = await client.post(f"{self.base_url}/align", json=payload)
+        resp.raise_for_status()
+        return self._to_result(resp.json())
 
     async def close(self) -> None:
         if self._client and not self._client.is_closed:

@@ -1,0 +1,7 @@
+# torch / torchaudio are installed separately from the cu128 nightly index (see Dockerfile);
+# do NOT list them here or pip will pull the stable CPU/cu wheels over the nightly.
+whisperx
+transformers>=4.43,<5
+fastapi
+uvicorn
+pydantic>=2,<3
