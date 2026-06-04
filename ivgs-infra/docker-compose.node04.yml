@@ -57,8 +57,9 @@ services:
   # from the docker-save artifact, never pulled from GHCR.
   # ---------------------------------------------------------------------------
   comfyui:
-    image: ghcr.io/brucecostello2/ivgs-workers:comfyui-${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
+    image: ghcr.io/brucecostello2/ivgs-workers:comfyui-${IVGS_COMFYUI_TAG:-v5.2.7-h0}
     container_name: ivgs-comfyui-primary
+    command: ["sh", "-c", "python /app/ComfyUI/main.py --listen 0.0.0.0 --port 8188 --disable-dynamic-vram"]
     pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     environment:
@@ -185,7 +186,7 @@ services:
 
   # Coqui XTTS v2 — primary multilingual TTS (Table B-1: 16 GB; §17.1: 8 langs)
   coqui-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:coqui-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    image: ghcr.io/brucecostello2/ivgs-workers:coqui-${IVGS_COQUI_TAG:-v5.2.7-h0}
     container_name: ivgs-coqui
     profiles: ["pending"]
     pull_policy: never
@@ -210,7 +211,7 @@ services:
 
   # Kokoro TTS — English-only fallback (Table B-1: 4 GB)
   kokoro-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-${IVGS_KOKORO_TAG:-v5.2.7-h0}
     container_name: ivgs-kokoro
     profiles: ["pending"]
     pull_policy: never
@@ -232,7 +233,7 @@ services:
 
   # WhisperX — speech alignment for captions (Table B-1: 8 GB; large-v3)
   whisperx:
-    image: ghcr.io/brucecostello2/ivgs-workers:whisperx-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    image: ghcr.io/brucecostello2/ivgs-workers:whisperx-${IVGS_WHISPERX_TAG:-v5.2.7-h0}
     container_name: ivgs-whisperx
     profiles: ["pending"]
     pull_policy: never
@@ -256,7 +257,7 @@ services:
 
   # LatentSync — primary lip-sync / talking head (Table B-1: 12 GB)
   latentsync:
-    image: ghcr.io/brucecostello2/ivgs-workers:latentsync-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    image: ghcr.io/brucecostello2/ivgs-workers:latentsync-${IVGS_LATENTSYNC_TAG:-v5.2.7-h0}
     container_name: ivgs-latentsync
     profiles: ["pending"]
     pull_policy: never
@@ -279,7 +280,7 @@ services:
 
   # SadTalker — fallback lip-sync (Table B-1: 8 GB)
   sadtalker:
-    image: ghcr.io/brucecostello2/ivgs-workers:sadtalker-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    image: ghcr.io/brucecostello2/ivgs-workers:sadtalker-${IVGS_SADTALKER_TAG:-v5.2.7-h0}
     container_name: ivgs-sadtalker
     profiles: ["pending"]
     pull_policy: never
