@@ -110,7 +110,7 @@ services:
     command: >
       celery -A celery_app worker
         --loglevel=info
-        --queues=gpu_image
+        --queues=gpu_image,gpu_tts
         --concurrency=1
         --max-tasks-per-child=20
         -n image-worker@node04
@@ -185,8 +185,8 @@ services:
 
   # Coqui XTTS v2 — primary multilingual TTS (Table B-1: 16 GB; §17.1: 8 langs)
   coqui-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:coqui-tts-${IVGS_WORKERS_TAG:-v5.2.7-h0}
-    container_name: ivgs-coqui-tts
+    image: ghcr.io/brucecostello2/ivgs-workers:coqui-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    container_name: ivgs-coqui
     profiles: ["pending"]
     pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
@@ -210,8 +210,8 @@ services:
 
   # Kokoro TTS — English-only fallback (Table B-1: 4 GB)
   kokoro-tts:
-    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-tts-${IVGS_WORKERS_TAG:-v5.2.7-h0}
-    container_name: ivgs-kokoro-tts
+    image: ghcr.io/brucecostello2/ivgs-workers:kokoro-${IVGS_WORKERS_TAG:-v5.2.7-h0}
+    container_name: ivgs-kokoro
     profiles: ["pending"]
     pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
