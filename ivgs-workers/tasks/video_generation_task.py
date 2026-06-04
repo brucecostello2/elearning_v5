@@ -179,7 +179,7 @@ async def _upload_asset(
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
     ) as client:
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={"file": (f"{scene_id}_video.mp4", data, content_type)},
             data={
                 "project_id": project_id,
@@ -313,7 +313,7 @@ async def _process_single_video(
         ).hexdigest()
 
         if enable_dedup:
-            existing = await check_duplicate_asset(params_hash, config)
+            existing = check_duplicate_asset(sha256_hash=params_hash, api_base_url=config.pipeline_api.full_base_url, service_token=config.pipeline_api.service_token)
             if existing:
                 log.info("video_deduplicated", existing_asset_id=existing["id"])
                 result.asset_id = existing["id"]
@@ -396,7 +396,7 @@ async def _process_single_video(
             project_id=project_id,
             scene_id=scene.scene_id,
             data=video_data,
-            asset_type="video_clip",
+            asset_type="video",
             content_type="video/mp4",
             sha256_hash=sha256,
             metadata={
@@ -411,7 +411,7 @@ async def _process_single_video(
         )
 
         result.asset_id = upload_result.get("id", "")
-        result.seaweedfs_path = upload_result.get("storage_path", "")
+        result.seaweedfs_path = upload_result.get("seaweedfs_path", "")
         result.generation_time_seconds = round(time.monotonic() - start_time, 2)
 
         log.info(

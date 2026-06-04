@@ -125,7 +125,7 @@ class PipelineAPIConfig:
     prompt resolution, and transcript/storyboard CRUD.
     """
 
-    base_url: str = _env("API_BASE_URL", "http://fastapi-backend:8001")
+    base_url: str = _env("API_BASE_URL", "http://node-01:8001")
     api_prefix: str = _env("IVGS_API_PREFIX", "/api/v1")
     timeout_seconds: int = _env("IVGS_API_TIMEOUT", 30, int)
     service_token: str = _env("IVGS_SERVICE_TOKEN", "dev-service-token")
@@ -276,7 +276,7 @@ class WorkerConfig:
     # cogvideox port 8200 is settled (Stage-1 build); latentsync/sadtalker
     # ports (8300/8301 here vs Build Plan 7860/7861) are a tracked H.1/Stage-3
     # item, changeable via env without a code edit.
-    cogvideox_url: str = _env("IVGS_COGVIDEOX_URL", "http://node-02:8200")
+    cogvideox_url: str = _env("IVGS_COGVIDEOX_URL", "http://cogvideox-server:8200")
     cogvideox_fallback_url: str = _env("IVGS_COGVIDEOX_FALLBACK_URL", "http://node-03:8200")
     wan21_url: str = _env("IVGS_WAN21_URL", "http://node-02:8210")
     wan21_fallback_url: str = _env("IVGS_WAN21_FALLBACK_URL", "http://node-03:8210")

@@ -18,7 +18,7 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_service_or_user
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.base import PaginatedResponse
@@ -81,7 +81,7 @@ async def upload_asset(
     asset_type: str = Form(...),
     scene_id: Optional[str] = Form(default=None),
     language_code: Optional[str] = Form(default=None),
-    current_user: User = Depends(require_operator_or_admin),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Upload asset file to SeaweedFS. Returns {id, seaweedfs_fid, seaweedfs_path}."""

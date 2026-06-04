@@ -162,12 +162,11 @@ class AssetService:
         seaweedfs_path = f"{base_path}/{project_id}/{filename}"
 
         # Upload to SeaweedFS
-        upload_result = await seaweedfs_client.upload(
-            path=seaweedfs_path,
-            data=file_content,
-            content_type=content_type,
-        )
-        seaweedfs_fid = upload_result.get("fid", "") if upload_result else ""
+        seaweedfs_fid = await seaweedfs_client.upload_file(
+            file_data=file_content,
+            collection=INITIAL_TIER,
+            filename=filename,
+        ) or ""
 
         # Create asset record
         asset = Asset(

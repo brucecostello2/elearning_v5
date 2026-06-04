@@ -96,7 +96,7 @@ class Stage3Input(BaseModel):
     target_audience: str = "general"
     visual_style: str = "professional, clean, modern"
     scenes: List[SceneImageInput] = Field(min_length=1)
-    flux_model: str = "flux1-dev-fp8.safetensors"
+    flux_model: str = "flux1-schnell-fp8.safetensors"
     target_width: int = 1920
     target_height: int = 1080
     enable_clip_scoring: bool = True
@@ -228,7 +228,7 @@ async def _upload_to_seaweedfs(
     ) as client:
         # Upload to SeaweedFS via API
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets/upload",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={
                 "file": ("image.png", image_data, "image/png"),
             },
