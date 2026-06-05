@@ -34,6 +34,9 @@ from uuid import UUID
 
 from celery import shared_task
 
+from celery_app import celery_app
+from models.task_result import PipelineStage
+
 logger = logging.getLogger(__name__)
 
 
@@ -131,7 +134,7 @@ def build_composition_manifest(
             },
         )
 
-        return {
+        output_dict = {
             "job_id": job_id,
             "project_id": project_id,
             "manifest_id": str(locked.id),
@@ -139,8 +142,14 @@ def build_composition_manifest(
             "total_duration_ms": locked.total_duration_ms,
             "checksum": locked.checksum,
             "scene_count": len(assets),
-            "stage": "MANIFEST_GENERATION",
+            "stage": PipelineStage.COMPOSITION_MANIFEST.value,
         }
+        celery_app.send_task(
+            "tasks.pipeline_orchestrator_v2.handle_stage_completion",
+            kwargs={"stage_output_dict": output_dict},
+            queue="default",
+        )
+        return output_dict
 
     except Exception as exc:
         elapsed = time.monotonic() - start_time
@@ -157,10 +166,16 @@ def build_composition_manifest(
         if self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
 
-        return {
+        output_dict = {
             "job_id": job_id,
             "project_id": project_id,
             "status": "failed",
             "error": str(exc),
-            "stage": "MANIFEST_GENERATION",
+            "stage": PipelineStage.COMPOSITION_MANIFEST.value,
         }
+        celery_app.send_task(
+            "tasks.pipeline_orchestrator_v2.handle_stage_completion",
+            kwargs={"stage_output_dict": output_dict},
+            queue="default",
+        )
+        return output_dict

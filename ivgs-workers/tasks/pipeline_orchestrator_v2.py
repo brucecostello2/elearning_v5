@@ -107,16 +107,16 @@ STAGE_TASK_MAP: Dict[str, str] = {
         "tasks.stage4_manifest.build_composition_manifest"
     ),
     PipelineStage.TTS_AUDIO.value: (
-        "tasks.stage5_voiceover.synthesize_voiceover"
+        "tasks.stage4_voiceover.generate_voiceover_task"
     ),
     PipelineStage.TALKING_HEAD_RENDER.value: (
-        "tasks.stage6_talking_head.render_talking_head"
+        "tasks.talking_head_task.render_talking_head"
     ),
     PipelineStage.PROTOTYPE_DRAFT.value: (
-        "tasks.stage7_prototype_draft.assemble_prototype_draft"
+        "tasks.prototype_draft_task.assemble_prototype_draft"
     ),
     PipelineStage.FINAL_RENDER.value: (
-        "tasks.stage8_final_render.render_final"
+        "tasks.final_render_task.render_final"
     ),
 }
 

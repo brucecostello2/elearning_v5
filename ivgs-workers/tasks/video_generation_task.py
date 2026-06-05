@@ -574,7 +574,7 @@ def generate_video_clips(
     # Dispatch stage completion
     output_dict = output.model_dump(mode="json")
     celery_app.send_task(
-        "tasks.pipeline_orchestrator.handle_stage_completion",
+        "tasks.pipeline_orchestrator_v2.handle_stage_completion",
         kwargs={"stage_output_dict": output_dict},
         queue="default",
     )
