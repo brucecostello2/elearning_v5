@@ -234,6 +234,7 @@ async def _upload_to_seaweedfs(
             },
             data={
                 "project_id": project_id,
+                "scene_id": scene_id,
                 "asset_type": "image",
                 "storage_path": seaweedfs_path,
                 "sha256": compute_asset_sha256(image_data),
@@ -248,32 +249,6 @@ async def _upload_to_seaweedfs(
 
         data = resp.json()
         return data.get("asset_id", data.get("id", "")), seaweedfs_path
-
-
-async def _update_scene_asset(
-    project_id: str,
-    scene_id: str,
-    asset_id: str,
-    config: WorkerConfig,
-) -> None:
-    """Update scene record with generated image asset_id."""
-    async with httpx.AsyncClient(
-        timeout=30.0,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config.pipeline_api.service_token}",
-        },
-    ) as client:
-        resp = await client.patch(
-            f"{config.pipeline_api.full_base_url}/projects/{project_id}/scenes/{scene_id}",
-            json={"image_asset_id": asset_id},
-        )
-        if resp.status_code != 200:
-            logger.warning(
-                "scene_asset_update_failed",
-                scene_id=scene_id,
-                status_code=resp.status_code,
-            )
 
 
 async def _submit_quality_score(
@@ -439,11 +414,6 @@ async def _process_single_scene(
                 asset_id = existing.get("id", "")
                 seaweedfs_path = existing.get("storage_path", "")
 
-                # Update scene with existing asset
-                await _update_scene_asset(
-                    task_input.project_id, scene.scene_id, asset_id, config
-                )
-
                 return SceneImageResult(
                     scene_id=scene.scene_id,
                     scene_index=scene.scene_index,
@@ -469,11 +439,6 @@ async def _process_single_scene(
             project_id=task_input.project_id,
             scene_id=scene.scene_id,
             config=config,
-        )
-
-        # 7. Update scene record
-        await _update_scene_asset(
-            task_input.project_id, scene.scene_id, asset_id, config
         )
 
         # 8. Submit quality score
