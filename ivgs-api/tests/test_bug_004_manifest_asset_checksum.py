@@ -19,7 +19,7 @@ async def test_validate_manifest_uses_content_hash(
     db_session,
     operator_token: str,
 ):
-    """POST /api/v1/manifests/{job_id}/manifest/validate should check checksums correctly."""
+    """POST /api/v1/jobs/{job_id}/manifest/validate should check checksums correctly."""
     project_id = str(uuid.uuid4())
     job_id = str(uuid.uuid4())
     manifest_id = str(uuid.uuid4())
@@ -95,7 +95,7 @@ async def test_validate_manifest_uses_content_hash(
     await db_session.commit()
 
     response = await client.post(
-        f"/api/v1/manifests/{job_id}/manifest/validate",
+        f"/api/v1/jobs/{job_id}/manifest/validate",
         headers={"Authorization": f"Bearer {operator_token}"},
     )
 

@@ -218,7 +218,7 @@ class TestCriticalPath6:
         headers = {"Authorization": f"Bearer {operator_token}"}
         # Try to lock a non-existent manifest
         resp = await client.post(
-            "/api/v1/manifests/00000000-0000-0000-0000-000000000000/manifest/lock",
+            "/api/v1/jobs/00000000-0000-0000-0000-000000000000/manifest/lock",
             headers=headers,
         )
         # 404 (no such job) is expected for non-existent
@@ -230,7 +230,7 @@ class TestCriticalPath6:
         """Manifest validation endpoint checks asset checksums."""
         headers = {"Authorization": f"Bearer {operator_token}"}
         resp = await client.post(
-            "/api/v1/manifests/00000000-0000-0000-0000-000000000000/manifest/validate",
+            "/api/v1/jobs/00000000-0000-0000-0000-000000000000/manifest/validate",
             headers=headers,
         )
         assert resp.status_code in (404, 422)
@@ -241,7 +241,7 @@ class TestCriticalPath6:
         """Manifest timeline contains valid JSON schema."""
         headers = {"Authorization": f"Bearer {operator_token}"}
         resp = await client.get(
-            "/api/v1/manifests/00000000-0000-0000-0000-000000000000/manifest",
+            "/api/v1/jobs/00000000-0000-0000-0000-000000000000/manifest",
             headers=headers,
         )
         # Non-existent job → 404

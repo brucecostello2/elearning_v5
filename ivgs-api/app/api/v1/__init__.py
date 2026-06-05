@@ -85,7 +85,7 @@ api_v1_router.include_router(scene_prompt_router)       # /projects/{id}/scenes/
 api_v1_router.include_router(job_quality_router)       # prefix built into router
 api_v1_router.include_router(quality_router)           # prefix built into router
 api_v1_router.include_router(checkpoints_router)       # prefix built into router
-api_v1_router.include_router(manifests_router, prefix="/manifests", tags=["Manifests"])
+api_v1_router.include_router(manifests_router, prefix="/jobs", tags=["Manifests"])
 
 # Infrastructure
 api_v1_router.include_router(nodes_router)             # prefix built into router

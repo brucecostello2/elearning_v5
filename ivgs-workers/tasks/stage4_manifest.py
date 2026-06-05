@@ -2,42 +2,81 @@
 IVGS v5 — Stage 4: Composition Manifest Generation
 ====================================================
 
-Celery task for building the composition manifest per §6.1 Stage 4.
+Celery task for building the composition manifest per §6.1 Stage 4 / §5.2.5.
 
-This stage runs after media generation (Stage 3) completes. It:
-1. Collects all generated assets (images, videos, animations)
-2. Validates checksums against the storyboard specification
-3. Builds a timeline layout with scene boundaries and layer assignments
-4. Locks the manifest for downstream rendering stages
+The composition manifest is built **server-side by the Pipeline API**: the API
+collects the locked storyboard and the generated, scene-linked Stage-3 assets,
+assembles the timeline, and persists it to composition_manifests. This task is a
+thin, idempotent driver that calls the API's manifest endpoints with the
+pipeline service token:
 
-The manifest is the single source of truth for:
-- Stage 7 (Prototype Draft)
-- Stage 8 (Final Render)
+    GET  /api/v1/jobs/{id}/manifest            (reuse if present)
+    POST /api/v1/jobs/{id}/manifest/generate   (build draft from storyboard+assets)
+    POST /api/v1/jobs/{id}/manifest/validate   (verify asset refs + checksums)
+    POST /api/v1/jobs/{id}/manifest/lock        (freeze timeline)
 
-Input:
-- Locked storyboard (from Stage 2)
-- All generated scene assets (from Stage 3)
-
-Output:
-- Composition manifest (JSONB in composition_manifests table)
-- Manifest status: draft → locked
-
-Queue: default (CPU-only, no GPU required)
+Queue: default (CPU-only, no GPU required).
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import time
-from typing import Any, Dict, Optional
-from uuid import UUID
+from typing import Any, Dict
+
+import httpx
 
 from celery import shared_task
 
 from celery_app import celery_app
+from config import WorkerConfig
 from models.task_result import PipelineStage
 
 logger = logging.getLogger(__name__)
+
+
+def _check(resp: httpx.Response, step: str) -> Dict[str, Any]:
+    """2xx -> JSON; 4xx -> ValueError (deterministic); 5xx -> RuntimeError (transient)."""
+    if resp.status_code in (200, 201):
+        return resp.json()
+    if 400 <= resp.status_code < 500:
+        raise ValueError(f"manifest {step} rejected: HTTP {resp.status_code} — {resp.text[:300]}")
+    raise RuntimeError(f"manifest {step} failed: HTTP {resp.status_code} — {resp.text[:300]}")
+
+
+async def _drive_manifest(job_id: str, config: WorkerConfig) -> Dict[str, Any]:
+    """
+    Drive the API manifest lifecycle: (reuse | generate) -> validate -> lock.
+
+    Idempotent and retry-safe: an already-locked manifest is returned as-is, and
+    an existing draft is reused rather than re-generated (composition_manifests
+    is UNIQUE per job, so a second generate would conflict).
+    """
+    base = f"{config.pipeline_api.full_base_url}/jobs/{job_id}/manifest"
+    headers = {"Authorization": f"Bearer {config.pipeline_api.service_token}"}
+
+    async with httpx.AsyncClient(timeout=60.0, headers=headers) as client:
+        existing = await client.get(base)
+        if existing.status_code == 200:
+            manifest = existing.json()
+            if manifest.get("status") == "locked":
+                return manifest  # already complete
+        elif existing.status_code == 404:
+            manifest = _check(await client.post(f"{base}/generate", json={}), "generate")
+        elif 400 <= existing.status_code < 500:
+            raise ValueError(
+                f"manifest lookup rejected: HTTP {existing.status_code} — {existing.text[:300]}"
+            )
+        else:
+            raise RuntimeError(f"manifest lookup failed: HTTP {existing.status_code}")
+
+        validation = _check(await client.post(f"{base}/validate", json={}), "validate")
+        if not validation.get("valid", False):
+            errors = validation.get("errors", [])
+            raise ValueError(f"manifest validation failed: {len(errors)} error(s): {errors[:5]}")
+
+        return _check(await client.post(f"{base}/lock", json={}), "lock")
 
 
 @shared_task(
@@ -49,99 +88,41 @@ logger = logging.getLogger(__name__)
     reject_on_worker_lost=True,
     queue="default",
 )
-def build_composition_manifest(
-    self: Any,
-    task_input_dict: Dict[str, Any],
-) -> Dict[str, Any]:
-    """
-    Build and lock a composition manifest for the given job.
-
-    §6.1 Stage 4 — Composition Manifest Generation:
-    - Gathers all assets produced by Stage 3 (Media Generation)
-    - Validates asset checksums against storyboard specs
-    - Constructs timeline with scene boundaries and layer assignments
-    - Locks the manifest (immutable after lock)
-
-    Args:
-        task_input_dict: Contains job_id, project_id, and stage context.
-
-    Returns:
-        Dict with manifest_id, status, and checksums for audit.
-    """
+def build_composition_manifest(self: Any, task_input_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """§6.1 Stage 4 — build + lock the composition manifest via the Pipeline API (§5.2.5)."""
     job_id = task_input_dict.get("job_id", "")
     project_id = task_input_dict.get("project_id", "")
+    config = WorkerConfig()
 
-    log = logger
-    log.info(
-        "stage4_manifest_start",
-        extra={"job_id": job_id, "project_id": project_id},
-    )
-
+    logger.info("stage4_manifest_start", extra={"job_id": job_id, "project_id": project_id})
     start_time = time.monotonic()
 
     try:
-        # Import service lazily to avoid circular imports at module load
-        from services.manifest_builder import ManifestBuilder
+        loop = asyncio.new_event_loop()
+        try:
+            manifest = loop.run_until_complete(_drive_manifest(job_id, config))
+        finally:
+            loop.close()
 
-        builder = ManifestBuilder()
-
-        # Step 1: Collect assets for all scenes in this job
-        log.info(
-            "stage4_collecting_assets",
-            extra={"job_id": job_id},
-        )
-        assets = builder.collect_assets(project_id=project_id, job_id=job_id)
-
-        # Step 2: Validate checksums
-        log.info(
-            "stage4_validating_checksums",
-            extra={"job_id": job_id, "asset_count": len(assets)},
-        )
-        validation = builder.validate_checksums(assets)
-        if not validation.all_valid:
-            raise ValueError(
-                f"Checksum validation failed for {len(validation.failures)} assets: "
-                f"{[f.asset_id for f in validation.failures]}"
-            )
-
-        # Step 3: Build the manifest
-        log.info(
-            "stage4_building_manifest",
-            extra={"job_id": job_id},
-        )
-        manifest = builder.build_manifest(
-            project_id=project_id,
-            job_id=job_id,
-            assets=assets,
-        )
-
-        # Step 4: Lock the manifest
-        log.info(
-            "stage4_locking_manifest",
-            extra={"job_id": job_id, "manifest_id": str(manifest.id)},
-        )
-        locked = builder.lock_manifest(manifest_id=manifest.id)
-
-        elapsed = time.monotonic() - start_time
-        log.info(
+        logger.info(
             "stage4_manifest_complete",
             extra={
                 "job_id": job_id,
-                "manifest_id": str(locked.id),
-                "duration_ms": locked.total_duration_ms,
-                "scene_count": len(assets),
-                "elapsed_s": round(elapsed, 2),
+                "manifest_id": manifest.get("id"),
+                "status": manifest.get("status"),
+                "scene_count": manifest.get("scene_count"),
+                "total_duration_ms": manifest.get("total_duration_ms"),
+                "elapsed_s": round(time.monotonic() - start_time, 2),
             },
         )
 
         output_dict = {
             "job_id": job_id,
             "project_id": project_id,
-            "manifest_id": str(locked.id),
-            "status": "locked",
-            "total_duration_ms": locked.total_duration_ms,
-            "checksum": locked.checksum,
-            "scene_count": len(assets),
+            "manifest_id": manifest.get("id", ""),
+            "status": manifest.get("status", "locked"),
+            "total_duration_ms": manifest.get("total_duration_ms", 0),
+            "scene_count": manifest.get("scene_count", 0),
             "stage": PipelineStage.COMPOSITION_MANIFEST.value,
         }
         celery_app.send_task(
@@ -152,18 +133,17 @@ def build_composition_manifest(
         return output_dict
 
     except Exception as exc:
-        elapsed = time.monotonic() - start_time
-        log.error(
+        logger.error(
             "stage4_manifest_failed",
             extra={
                 "job_id": job_id,
                 "error": str(exc),
-                "elapsed_s": round(elapsed, 2),
+                "elapsed_s": round(time.monotonic() - start_time, 2),
             },
         )
-
-        # Retry transient errors
-        if self.request.retries < self.max_retries:
+        # Retry transient failures (5xx / network). Deterministic failures
+        # (4xx, validation) are ValueError -> fail the job without retrying.
+        if not isinstance(exc, ValueError) and self.request.retries < self.max_retries:
             raise self.retry(exc=exc)
 
         output_dict = {

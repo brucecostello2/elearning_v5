@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db
+from app.core.auth import get_service_or_user
 from app.models.user import User
 
 logger = logging.getLogger("ivgs.api.manifests")
@@ -77,7 +78,7 @@ class ManifestValidationResult(BaseModel):
 async def get_manifest(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
 ) -> ManifestResponse:
     """GET /api/v1/jobs/{id}/manifest — Get composition manifest with timeline JSON."""
     from sqlalchemy import text as sa_text
@@ -123,7 +124,7 @@ async def generate_manifest(
     job_id: str,
     request: ManifestGenerateRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
 ) -> ManifestResponse:
     """POST /api/v1/jobs/{id}/manifest/generate — Build manifest from storyboard and assets."""
     from sqlalchemy import text as sa_text
@@ -244,7 +245,7 @@ async def generate_manifest(
 async def lock_manifest(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
 ) -> ManifestResponse:
     """POST /api/v1/jobs/{id}/manifest/lock — Freeze timeline."""
     from sqlalchemy import text as sa_text
@@ -291,7 +292,7 @@ async def lock_manifest(
 async def validate_manifest(
     job_id: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
 ) -> ManifestValidationResult:
     """POST /api/v1/jobs/{id}/manifest/validate — Validate asset references + checksums."""
     from sqlalchemy import text as sa_text
