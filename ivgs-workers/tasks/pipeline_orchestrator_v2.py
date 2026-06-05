@@ -259,8 +259,11 @@ def handle_stage_completion(
 
     log.info("stage_completion_received_v2")
 
-    # Handle failure
-    if status in (StageStatus.FAILED.value, "failed"):
+    # Handle failure, but NOT for media stages. A failed media scene must still
+    # flow through the media-join below so it decrements the counter and the
+    # pipeline drains to Stage 4 with whatever rendered (partial-advance), instead
+    # of fail-fasting the whole job and stranding it in MEDIA_GENERATION.
+    if status in (StageStatus.FAILED.value, "failed") and completed_stage not in MEDIA_GENERATION_STAGES:
         log.warning("stage_failed_no_advance", stage=completed_stage)
         update_job_status(
             job_id, "failed",
@@ -627,23 +630,40 @@ def _handle_media_generation_completion(
     """
     Handle completion of a media generation stage.
 
-    Media generation runs in parallel (image, video, animation).
-    We need all media tasks to complete before advancing to Stage 4.
+    All media tasks must report (success OR failure) before advancing to Stage 4.
+    A failed scene is drained: it decrements the join counter and is recorded, so
+    one bad scene cannot strand the pipeline. The composition manifest then
+    proceeds with whatever rendered (partial-advance).
     """
     job_id = stage_output.get("job_id", "")
+    status = stage_output.get("status", "")
+    failed = status in (StageStatus.FAILED.value, "failed")
 
-    # Decrement remaining count
+    # Always decrement: every media task reporting in moves the join forward.
     remaining = _decrement_media_task_count(job_id, config)
 
-    log.info(
-        "media_stage_completed",
-        stage=completed_stage,
-        remaining_tasks=remaining,
-    )
+    if failed:
+        failures = _record_media_failure(job_id, config)
+        log.warning(
+            "media_stage_failed_continuing",
+            stage=completed_stage,
+            remaining_tasks=remaining,
+            failures_so_far=failures,
+        )
+    else:
+        log.info(
+            "media_stage_completed",
+            stage=completed_stage,
+            remaining_tasks=remaining,
+        )
 
     if remaining <= 0:
         # All media generation complete → dispatch Stage 4 (Composition Manifest)
-        log.info("all_media_generation_complete_advancing")
+        failed_count = _get_media_failure_count(job_id, config)
+        if failed_count > 0:
+            log.warning("all_media_reported_advancing_with_failures", failed_count=failed_count)
+        else:
+            log.info("all_media_generation_complete_advancing")
 
         next_stage = PipelineStage.COMPOSITION_MANIFEST.value
         task_name = STAGE_TASK_MAP[next_stage]
@@ -663,7 +683,8 @@ def _handle_media_generation_completion(
             "action": "dispatched",
             "next_stage": next_stage,
             "celery_task_id": result.id,
-            "message": "All media generation complete",
+            "failed_count": failed_count,
+            "message": "All media generation reported",
         }
 
     return {
@@ -806,6 +827,7 @@ def _store_media_task_count(
         import redis
         r = redis.Redis.from_url(config.redis_url)
         r.set(f"ivgs:media_tasks:{job_id}", count, ex=86400)
+        r.delete(f"ivgs:media_failures:{job_id}")
     except Exception as e:
         logger.warning("redis_store_media_count_failed", error=str(e))
 
@@ -821,6 +843,31 @@ def _decrement_media_task_count(
         return max(0, remaining)
     except Exception as e:
         logger.warning("redis_decrement_media_count_failed", error=str(e))
+        return 0
+
+
+def _record_media_failure(job_id: str, config: WorkerConfig) -> int:
+    """Increment and return the media-failure count for this job."""
+    try:
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        failures = r.incr(f"ivgs:media_failures:{job_id}")
+        r.expire(f"ivgs:media_failures:{job_id}", 86400)
+        return int(failures)
+    except Exception as e:
+        logger.warning("redis_record_media_failure_failed", error=str(e))
+        return 0
+
+
+def _get_media_failure_count(job_id: str, config: WorkerConfig) -> int:
+    """Return the media-failure count for this job (0 if none/unavailable)."""
+    try:
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        val = r.get(f"ivgs:media_failures:{job_id}")
+        return int(val) if val is not None else 0
+    except Exception as e:
+        logger.warning("redis_get_media_failure_failed", error=str(e))
         return 0
 
 
