@@ -23,7 +23,7 @@ from sqlalchemy import text as sa_text
 
 logger = logging.getLogger("ivgs.rollback")
 
-ROLLBACK_STORAGE_DIR = Path("/ivgs/rollback_points")
+ROLLBACK_STORAGE_DIR = Path("/mnt/ivgs-shared/rollback_points")
 
 
 class RollbackPoint:
