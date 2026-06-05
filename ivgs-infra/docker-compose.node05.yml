@@ -17,7 +17,6 @@
 #   6. nvidia-gpu-exporter — GPU metrics (:9400)
 # =============================================================================
 
-version: "3.8"
 
 x-common-healthcheck: &common-healthcheck
   interval: 30s

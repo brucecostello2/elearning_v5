@@ -2,7 +2,6 @@
 # IVGS v5 — Base Docker Compose for Local Development
 # Starts PostgreSQL 17, Redis 7, SeaweedFS (master+volume+filer)
 # =============================================================
-version: "3.8"
 
 networks:
   ivgs-net:

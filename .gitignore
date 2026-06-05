@@ -116,3 +116,6 @@ htmlcov/
 # node-local env files (secrets) - never commit
 .env.node0*
 ivgs-infra/.env.node0*
+
+# local per-node model smoke-test compose files (not for the repo)
+ivgs-infra/docker-compose.smoke-*.yml

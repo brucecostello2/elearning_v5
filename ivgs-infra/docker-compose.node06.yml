@@ -16,7 +16,6 @@
 #   5. intel-gpu-exporter — Intel GPU metrics (:9401)
 # =============================================================================
 
-version: "3.8"
 
 x-common-healthcheck: &common-healthcheck
   interval: 30s
