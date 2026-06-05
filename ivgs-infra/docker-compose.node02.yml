@@ -93,6 +93,7 @@ services:
   # GPU scheduler (§12.2) ensures VRAM availability before dispatch
   # ---------------------------------------------------------------------------
   cogvideox-worker:
+    profiles: ["standby"]
     image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-cogvideox-worker
     <<: [*common-restart, *common-logging]
@@ -131,6 +132,7 @@ services:
   # Runs the locally-built image (pull_policy: never) — no registry needed.
   # ---------------------------------------------------------------------------
   cogvideox-server:
+    profiles: ["standby"]
     image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-pilot-1  # pinned: only built cogvideox image (rebuild+retag to bump)
     container_name: ivgs-cogvideox-server
     pull_policy: never

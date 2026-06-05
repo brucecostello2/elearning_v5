@@ -55,6 +55,7 @@ services:
   # Remaining ~26 GB for CogVideoX scheduling
   # ---------------------------------------------------------------------------
   vllm:
+    profiles: ["standby"]
     image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
     container_name: ivgs-vllm-secondary
     <<: [*common-restart, *common-logging, *gpu-resources]
@@ -153,6 +154,7 @@ services:
   # Handles LLM inference tasks dispatched to this node
   # ---------------------------------------------------------------------------
   celery-worker:
+    profiles: ["standby"]
     image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:?IVGS_WORKERS_TAG required}
     container_name: ivgs-celery-node03
     <<: [*common-restart, *common-logging]
