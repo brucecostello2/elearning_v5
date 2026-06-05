@@ -93,6 +93,7 @@ services:
       IVGS_GPU_SCHEDULER_URL: "http://${NODE_01_IP}:8002"
       SEAWEEDFS_FILER_URL: "http://${NODE_01_IP}:8888"
       COMFYUI_PRIMARY_URL: "http://comfyui:8188"
+      IVGS_COMFYUI_URL: "http://comfyui:8188"
       # Image stage = mid-size vLLM (Mistral-24B) writes the FLUX-compatible prompt,
       # then ComfyUI/FLUX renders it (Table 6-1). VLLM_MIDSIZE_URL is node-04's own
       # vllm service (resolves once the pending vllm is activated); until then a
@@ -101,6 +102,7 @@ services:
       VLLM_PRIMARY_URL: "http://${NODE_02_IP}:8000"
       VLLM_SECONDARY_URL: "http://${NODE_03_IP}:8000"
       VLLM_MIDSIZE_URL: "http://vllm:8000"
+      IVGS_VLLM_MIDSIZE_MODEL: "mistral-24b"
       IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
       NODE_HOSTNAME: node-04
       C_FORCE_ROOT: "1"

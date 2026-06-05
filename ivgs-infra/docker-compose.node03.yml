@@ -110,6 +110,7 @@ services:
       VLLM_PRIMARY_URL: "http://vllm:8000"
       VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
       VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
+      IVGS_VLLM_MIDSIZE_MODEL: "mistral-24b"
       IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
       IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
       IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
