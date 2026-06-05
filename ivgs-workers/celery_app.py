@@ -209,6 +209,11 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
         "schedule": timedelta(seconds=60),
         "options": {"queue": "default", "priority": 3},
     },
+    "media-join-watchdog": {
+        "task": "tasks.pipeline_orchestrator_v2.media_join_watchdog",
+        "schedule": timedelta(minutes=5),
+        "options": {"queue": "default", "priority": 4},
+    },
 }
 
 

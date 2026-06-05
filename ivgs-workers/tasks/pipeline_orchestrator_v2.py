@@ -385,6 +385,19 @@ def dispatch_media_generation(
     )
     log.info("media_generation_dispatch_starting")
 
+    # Stash the minimal context the media-join watchdog needs to rebuild the
+    # composition-manifest input if a crashed media task strands this join.
+    _store_media_join_context(
+        job_id,
+        {
+            "job_id": job_id,
+            "project_id": project_id,
+            "project_name": dispatch_input.get("project_name", ""),
+            "language_code": dispatch_input.get("language_code", "en-US"),
+        },
+        config,
+    )
+
     # Group scenes by media type
     image_scenes: List[Dict[str, Any]] = []
     video_scenes: List[Dict[str, Any]] = []
@@ -658,7 +671,7 @@ def _handle_media_generation_completion(
         )
 
     if remaining <= 0:
-        # All media generation complete → dispatch Stage 4 (Composition Manifest)
+        # All media generation complete -> dispatch Stage 4 (Composition Manifest)
         failed_count = _get_media_failure_count(job_id, config)
         if failed_count > 0:
             log.warning("all_media_reported_advancing_with_failures", failed_count=failed_count)
@@ -819,6 +832,21 @@ def _update_job_celery_task_id(
 # Redis-based media task counter
 # ---------------------------------------------------------------------------
 
+# TTL on every per-job media-join key, written once at dispatch. The watchdog
+# derives a counter's age from it (age = MEDIA_JOIN_TTL_SECONDS - ttl), so this
+# value and the watchdog deadline are read together.
+MEDIA_JOIN_TTL_SECONDS = 86400
+
+# Default media-join watchdog deadline. A join counter still > 0 and older than
+# this is treated as stranded (a media task whose worker crashed and never
+# reported). MUST stay above the longest media task hard time_limit
+# (video generate_video_clips = 3900s) plus dispatch/queue slack. Age is
+# measured from dispatch and video serializes on the single gpu_video worker,
+# so for concurrent projects raise IVGS_MEDIA_JOIN_TIMEOUT_SECONDS to cover the
+# queue depth (~video hard limit * concurrent projects + buffer). Default ~2h.
+MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS = 7200
+
+
 def _store_media_task_count(
     job_id: str, count: int, config: WorkerConfig,
 ) -> None:
@@ -826,7 +854,7 @@ def _store_media_task_count(
     try:
         import redis
         r = redis.Redis.from_url(config.redis_url)
-        r.set(f"ivgs:media_tasks:{job_id}", count, ex=86400)
+        r.set(f"ivgs:media_tasks:{job_id}", count, ex=MEDIA_JOIN_TTL_SECONDS)
         r.delete(f"ivgs:media_failures:{job_id}")
     except Exception as e:
         logger.warning("redis_store_media_count_failed", error=str(e))
@@ -852,7 +880,7 @@ def _record_media_failure(job_id: str, config: WorkerConfig) -> int:
         import redis
         r = redis.Redis.from_url(config.redis_url)
         failures = r.incr(f"ivgs:media_failures:{job_id}")
-        r.expire(f"ivgs:media_failures:{job_id}", 86400)
+        r.expire(f"ivgs:media_failures:{job_id}", MEDIA_JOIN_TTL_SECONDS)
         return int(failures)
     except Exception as e:
         logger.warning("redis_record_media_failure_failed", error=str(e))
@@ -869,6 +897,195 @@ def _get_media_failure_count(job_id: str, config: WorkerConfig) -> int:
     except Exception as e:
         logger.warning("redis_get_media_failure_failed", error=str(e))
         return 0
+
+
+def _store_media_join_context(
+    job_id: str, ctx: Dict[str, Any], config: WorkerConfig,
+) -> None:
+    """Stash minimal job context so the watchdog can advance a stranded join."""
+    try:
+        import json
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        r.set(
+            f"ivgs:media_join_ctx:{job_id}",
+            json.dumps(ctx),
+            ex=MEDIA_JOIN_TTL_SECONDS,
+        )
+    except Exception as e:
+        logger.warning("redis_store_media_ctx_failed", error=str(e))
+
+
+def _get_media_join_context(
+    job_id: str, config: WorkerConfig,
+) -> Optional[Dict[str, Any]]:
+    """Return the stashed media-join context for a job (None if absent)."""
+    try:
+        import json
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        val = r.get(f"ivgs:media_join_ctx:{job_id}")
+        return json.loads(val) if val is not None else None
+    except Exception as e:
+        logger.warning("redis_get_media_ctx_failed", error=str(e))
+        return None
+
+
+def _cleanup_media_join_keys(job_id: str, config: WorkerConfig) -> None:
+    """Delete every per-job media-join key (counter, failures, context)."""
+    try:
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        r.delete(
+            f"ivgs:media_tasks:{job_id}",
+            f"ivgs:media_failures:{job_id}",
+            f"ivgs:media_join_ctx:{job_id}",
+        )
+    except Exception as e:
+        logger.warning("redis_cleanup_media_join_failed", error=str(e))
+
+
+@celery_app.task(
+    name="tasks.pipeline_orchestrator_v2.media_join_watchdog",
+    queue="default",
+    soft_time_limit=180,
+)
+def media_join_watchdog() -> Dict[str, Any]:
+    """
+    Recover media-generation joins stranded by a crashed worker.
+
+    Fix #2 drains any media task that reports failure. A task whose worker
+    hard-crashes never calls handle_stage_completion, so its join counter never
+    decrements and the project hangs in MEDIA_GENERATION. This periodic sweep
+    finds any counter still > 0 that is older than the deadline, atomically
+    claims it, counts the vanished task(s) toward failed_count, and advances to
+    the composition manifest (partial-advance) just like the reported-failure
+    path. Counters at <= 0 (joins that completed normally) are skipped.
+    """
+    import os
+
+    config = WorkerConfig()
+    log = logger.bind(task="media_join_watchdog")
+
+    timeout_s = int(
+        os.getenv(
+            "IVGS_MEDIA_JOIN_TIMEOUT_SECONDS",
+            str(MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS),
+        )
+    )
+    # A counter's TTL counts down from MEDIA_JOIN_TTL_SECONDS; a ttl below this
+    # threshold means the counter is older than the deadline.
+    min_ttl = MEDIA_JOIN_TTL_SECONDS - timeout_s
+
+    swept = 0
+    advanced = 0
+    failed = 0
+    skipped_recent = 0
+
+    try:
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+    except Exception as e:
+        log.warning("media_join_watchdog_redis_unavailable", error=str(e))
+        return {"status": "error", "reason": "redis_unavailable"}
+
+    for raw_key in r.scan_iter(match="ivgs:media_tasks:*", count=100):
+        swept += 1
+        key = raw_key.decode() if isinstance(raw_key, (bytes, bytearray)) else raw_key
+        job_id = key.split("ivgs:media_tasks:", 1)[-1]
+
+        try:
+            val = r.get(key)
+            ttl = r.ttl(key)
+        except Exception as e:
+            log.warning("media_join_watchdog_read_failed", job_id=job_id, error=str(e))
+            continue
+
+        remaining = int(val) if val is not None else 0
+        if remaining <= 0:
+            continue
+        if ttl is None or ttl < 0 or ttl >= min_ttl:
+            skipped_recent += 1
+            continue
+
+        # Atomically claim: only the run that reads a > 0 value here owns the job.
+        pipe = r.pipeline()
+        pipe.get(key)
+        pipe.delete(key)
+        claimed_val, _ = pipe.execute()
+        claimed = int(claimed_val) if claimed_val is not None else 0
+        if claimed <= 0:
+            continue
+
+        existing_failures = _get_media_failure_count(job_id, config)
+        total_failed = existing_failures + claimed
+        ctx = _get_media_join_context(job_id, config)
+
+        log.warning(
+            "media_join_watchdog_stranded_job",
+            job_id=job_id,
+            vanished_tasks=claimed,
+            recorded_failures=existing_failures,
+            total_failed=total_failed,
+            timeout_seconds=timeout_s,
+            have_context=bool(ctx),
+        )
+
+        if not ctx:
+            try:
+                update_job_status(
+                    job_id, "failed",
+                    error_message=(
+                        "media-generation join stranded (worker crash); no "
+                        "dispatch context available to advance"
+                    ),
+                )
+            except Exception as e:
+                log.warning(
+                    "media_join_watchdog_fail_update_error",
+                    job_id=job_id, error=str(e),
+                )
+            failed += 1
+            _cleanup_media_join_keys(job_id, config)
+            continue
+
+        try:
+            next_stage = PipelineStage.COMPOSITION_MANIFEST.value
+            task_name = STAGE_TASK_MAP[next_stage]
+            task_input = _build_stage_input(next_stage, None, config, ctx)
+            result = celery_app.send_task(
+                task_name,
+                kwargs={"task_input_dict": task_input},
+                queue=STAGE_QUEUE_MAP.get(next_stage, "default"),
+            )
+            advanced += 1
+            log.warning(
+                "media_join_watchdog_advanced_with_failures",
+                job_id=job_id,
+                next_stage=next_stage,
+                celery_task_id=result.id,
+                failed_count=total_failed,
+            )
+        except Exception as e:
+            log.error("media_join_watchdog_advance_failed", job_id=job_id, error=str(e))
+            try:
+                update_job_status(
+                    job_id, "failed",
+                    error_message=f"media-join watchdog advance failed: {e}",
+                )
+            except Exception:
+                pass
+            failed += 1
+        finally:
+            _cleanup_media_join_keys(job_id, config)
+
+    return {
+        "status": "ok",
+        "swept": swept,
+        "advanced": advanced,
+        "failed": failed,
+        "skipped_recent": skipped_recent,
+    }
 
 
 # ---------------------------------------------------------------------------
