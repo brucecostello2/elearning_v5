@@ -117,7 +117,7 @@ services:
     command: >
       celery -A celery_app worker
         --loglevel=info
-        --queues=gpu_image,gpu_tts
+        --queues=gpu_image,gpu_tts,gpu_talking_head
         --concurrency=1
         --max-tasks-per-child=20
         -n image-worker@node04
