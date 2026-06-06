@@ -94,6 +94,10 @@ services:
       SEAWEEDFS_FILER_URL: "http://${NODE_01_IP}:8888"
       COMFYUI_PRIMARY_URL: "http://comfyui:8188"
       IVGS_COMFYUI_URL: "http://comfyui:8188"
+      IVGS_COQUI_URL: "http://ivgs-coqui:5002"
+      COQUI_TTS_URL: "http://ivgs-coqui:5002"
+      KOKORO_TTS_URL: "http://ivgs-kokoro:5003"
+      WHISPERX_URL: "http://ivgs-whisperx:9000"
       # Image stage = mid-size vLLM (Mistral-24B) writes the FLUX-compatible prompt,
       # then ComfyUI/FLUX renders it (Table 6-1). VLLM_MIDSIZE_URL is node-04's own
       # vllm service (resolves once the pending vllm is activated); until then a
