@@ -85,3 +85,10 @@ echo "============================================="
 echo "All models downloaded successfully."
 echo "Run 'sha256sum -c checksums.sha256' to verify."
 echo "============================================="
+
+# === Talking Head — LatentSync 1.6 (§7.1.7) ===
+# Requires HF_TOKEN (gated repo). Weights land where the latentsync container mounts them.
+echo "Downloading LatentSync 1.6 (talking head) -> $MODELS_DIR/latentsync-1.6 ..."
+huggingface-cli download ByteDance/LatentSync-1.6 \
+  latentsync_unet.pt whisper/tiny.pt stable_syncnet.pt \
+  --local-dir "$MODELS_DIR/latentsync-1.6"
