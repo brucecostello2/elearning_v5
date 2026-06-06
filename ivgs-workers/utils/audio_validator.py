@@ -155,7 +155,7 @@ class AudioValidator:
         audio_format = wav_info.get("audio_format", 0)
 
         # --- Format check ---
-        format_ok = audio_format in (1, 3)  # 1=PCM, 3=IEEE Float
+        format_ok = audio_format in (1, 3, 65534)  # 1=PCM, 3=IEEE Float
         if not format_ok:
             errors.append(f"Unsupported audio format code: {audio_format}")
 
