@@ -774,22 +774,25 @@ def _build_stage_input(
 
     elif stage == PipelineStage.PROTOTYPE_DRAFT.value:
         project_id = base_input["project_id"]
-        manifest = _fetch_latest_manifest(project_id, config)
+        manifest = _fetch_latest_manifest(base_input["job_id"], config)
         return {
             **base_input,
-            "manifest_id": manifest.get("manifest_id", ""),
-            "talking_head_asset_id": manifest.get("talking_head_asset_id"),
-            "scenes": manifest.get("scenes", []),
+            "manifest_id": manifest.get("id", ""),
+            "talking_head_asset_id": None,
+            "scenes": _build_manifest_scenes(project_id, manifest, config),
+            "enable_lower_thirds": False,
+            "enable_captions": False,
+            "enable_talking_head": True,
         }
 
     elif stage == PipelineStage.FINAL_RENDER.value:
         project_id = base_input["project_id"]
-        manifest = _fetch_latest_manifest(project_id, config)
+        manifest = _fetch_latest_manifest(base_input["job_id"], config)
         return {
             **base_input,
-            "manifest_id": manifest.get("manifest_id", ""),
-            "talking_head_asset_id": manifest.get("talking_head_asset_id"),
-            "scenes": manifest.get("scenes", []),
+            "manifest_id": manifest.get("id", ""),
+            "talking_head_asset_id": None,
+            "scenes": _build_manifest_scenes(project_id, manifest, config),
             "render_profiles": ["1080p", "4k"],
         }
 
@@ -1255,23 +1258,104 @@ def _fetch_scene_audio_refs(
 
 
 def _fetch_latest_manifest(
-    project_id: str, config: WorkerConfig,
+    job_id: str, config: WorkerConfig,
 ) -> Dict[str, Any]:
-    """Fetch the latest locked manifest for a project."""
+    """Fetch the locked composition manifest for a job (GET /jobs/{job_id}/manifest)."""
     try:
         with httpx.Client(
             timeout=30.0,
             headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
         ) as client:
             resp = client.get(
-                f"{config.pipeline_api.full_base_url}/projects/{project_id}/manifests",
-                params={"status": "locked", "limit": 1, "sort": "-created_at"},
+                f"{config.pipeline_api.full_base_url}/jobs/{job_id}/manifest",
             )
             if resp.status_code == 200:
-                data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
-                if items:
-                    return items[0]
+                return resp.json() or {}
+            logger.warning(
+                "fetch_manifest_non_200", status=resp.status_code, job_id=job_id,
+            )
     except Exception as e:
         logger.warning("fetch_manifest_failed", error=str(e))
     return {}
+
+
+def _build_manifest_scenes(
+    project_id: str, manifest: Dict[str, Any], config: WorkerConfig,
+) -> List[Dict[str, Any]]:
+    """Build Stage-7/8 ManifestScene dicts from a locked manifest. Backgrounds come
+    from the manifest timeline; per-scene audio is bound from the scene-linked
+    Stage-5 assets (the manifest is locked before audio exists)."""
+    timeline = manifest.get("timeline_json") or {}
+    raw_scenes = timeline.get("scenes") or []
+
+    meta_by_index: Dict[int, Dict[str, Any]] = {}
+    for s in _fetch_project_scenes(project_id, config):
+        idx = s.get("scene_index")
+        if idx is not None:
+            meta_by_index[idx] = s
+
+    audio_by_scene: Dict[str, Dict[str, Any]] = {}
+    try:
+        with httpx.Client(
+            timeout=30.0,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            resp = client.get(
+                f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets",
+                params={"asset_type": "audio", "per_page": 100},
+            )
+        audios = (resp.json() or {}).get("data", []) if resp.status_code == 200 else []
+        audios.sort(key=lambda a: a.get("created_at", ""), reverse=True)
+        for a in audios:
+            sid = a.get("scene_id")
+            if sid and sid not in audio_by_scene:
+                audio_by_scene[sid] = a
+    except Exception as e:
+        logger.warning("fetch_scene_audio_failed", error=str(e))
+
+    scenes: List[Dict[str, Any]] = []
+    for rs in raw_scenes:
+        idx = rs.get("scene_index", 0)
+        meta = meta_by_index.get(idx, {})
+        scene_id = meta.get("id") or f"scene-{idx}"
+        media_type = meta.get("media_type") or "image"
+        dur = ((rs.get("end_time_ms", 0) - rs.get("start_time_ms", 0)) / 1000.0) or float(
+            meta.get("duration_seconds") or 0.0
+        ) or 10.0
+
+        background_asset = None
+        for layer in (rs.get("layers") or []):
+            if layer.get("layer_type") == "background" and layer.get("asset_id"):
+                background_asset = {
+                    "asset_id": layer["asset_id"],
+                    "asset_type": media_type,
+                    "seaweedfs_path": layer.get("seaweedfs_fid", "") or "",
+                    "content_hash": layer.get("checksum", "") or "",
+                    "duration_seconds": dur,
+                }
+                break
+
+        audio_asset = None
+        au = audio_by_scene.get(scene_id)
+        if au and au.get("id"):
+            audio_asset = {
+                "asset_id": au["id"],
+                "asset_type": "audio",
+                "seaweedfs_path": au.get("seaweedfs_path", "") or "",
+                "content_hash": au.get("content_hash", "") or "",
+                "duration_seconds": float(au.get("duration_seconds") or 0.0),
+            }
+
+        scenes.append({
+            "scene_id": scene_id,
+            "scene_index": idx,
+            "scene_title": "",
+            "narration_text": meta.get("narration_text", "") or "",
+            "duration_seconds": dur,
+            "media_type": media_type,
+            "background_asset": background_asset,
+            "audio_asset": audio_asset,
+        })
+
+    scenes.sort(key=lambda s: s["scene_index"])
+    return scenes
