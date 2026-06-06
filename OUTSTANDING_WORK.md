@@ -2,11 +2,11 @@
 
 | | |
 |---|---|
-| **Document version** | v3.0 — 2026-06-06 (consolidated) |
-| **Authoritative as of** | `feat/phase-h0-make-main-honest` @ `eaddebb` (Stages 1–5 green end-to-end; Stage 6 = build-required) |
-| **Repository / branch** | `brucecostello2/elearning_v5` on `feat/phase-h0-make-main-honest` |
+| **Document version** | v3.1 — 2026-06-06 (post node-03↔04 GPU swap: Stages 1–5 re-validated e2e; merged to `main`) |
+| **Authoritative as of** | `main` @ `5657f95` (tag `stages-1-5-green-2026-06-06`; Stages 1–5 green end-to-end on the post-swap fleet; Stage 6 = build-required) |
+| **Repository / branch** | `brucecostello2/elearning_v5` on **`main`** (trunk as of 2026-06-06; `feat/phase-h0-make-main-honest` was merged `--ff-only` and is now redundant) |
 | **Supersedes / merges** | v2.1 (2026-05-30, `main` @ `31f61e8`, with appendix updates through 2026-06-03) **and** `OUTSTANDING_WORK_Addendum_A_2026-06-05.md` (the 06-04/05 arc). Both are folded in here; Addendum A's `A#` items are assigned final `P#` numbers (A1/A2/A4 closed by later work; A3→P1.6, A5→P2.26, A6→P2.27, A7→P3.7). |
-| **Live stack (deployed)** | API **`ivgs-api:v5.2.3-h0`** (node-01); workers **`ivgs-workers:v5.4.7-h0`** (node-01 + node-04 confirmed; node-02/03 may trail at `v5.4.4-h0` — no functional impact, they run no TTS). Engines on node-04: `comfyui-v5.2.7-h0` (FLUX), vLLM `mistral-24b`, `coqui`/`kokoro`/`whisperx` `*-v5.2.7-h0`. node-02 vLLM `llama-3.3-70b` (FP8). node-03 CogVideoX (`cogvideox-pilot-1`). |
+| **Live stack (deployed)** | API **`ivgs-api:v5.2.3-h0`** (node-01); workers **`ivgs-workers:v5.4.7-h0`** (node-01 + node-04 confirmed; node-02/03 may trail at `v5.4.4-h0` — no functional impact, they run no TTS). Engines on node-04: `comfyui-v5.2.7-h0` (FLUX), vLLM `mistral-24b`, `coqui`/`kokoro`/`whisperx` `*-v5.2.7-h0`. node-02 vLLM `llama-3.3-70b` (FP8). node-03 CogVideoX (`cogvideox-pilot-1`). **GPU swap (2026-06-06): node-04 now holds the 96 GB RTX PRO 6000 and node-03 the 48 GB RTX PRO 5000** (previously reversed) — aligns the image+TTS+talking-head host (node-04) with the larger card per AD-02 stacking; verified e2e (CogVideoX video peaked ~26 GB on the 48 GB card). |
 | **Purpose** | Single ledger of every known outstanding item. Each session updates this file before close. Items carry priority, source, scope, and a concrete carry-forward action. |
 
 ## Operator policy on tech debt
@@ -28,7 +28,7 @@ Nothing is "deferred" without being recorded here. New deferrals require an entr
 |---|---|---|
 | **P0** | 0 | — (the A1 image-gen regression is **closed**; see Items-closed) |
 | **P1** | 5 | Defect #4 prompt ENUM (P1.1); prompt-mgmt browser smoke (P1.2); GPU acceptance bullets (P1.3); AD-02 governance/SPOF recording (P1.6); pre-prod secret-leak + credential rotation (P1.7) |
-| **P2** | ~28 | test-dir unification; `[object Object]` banner; `/nodes` status stub; CI scaffolding; RUNBOOK.md; v1→v2 orchestrator cleanup (P2.26); 4xx cluster (P2.27); ORCH-5 `projects.state` mapping (P2.28); Blackwell GPU monitoring + heartbeat (P2.29); manifest regenerate/reset (P2.30); animation asset-type (P2.31); audio duration not persisted (P2.32); non-unique audio path (P2.33); Stage-6 upload-URL pre-check (P2.34); rollback snapshot/restore unwired (P2.35); + carried hygiene |
+| **P2** | ~32 | test-dir unification; `[object Object]` banner; `/nodes` status stub; CI scaffolding; RUNBOOK.md; v1→v2 orchestrator cleanup (P2.26); 4xx cluster (P2.27); ORCH-5 `projects.state` mapping (P2.28); Blackwell GPU monitoring + heartbeat (P2.29); manifest regenerate/reset (P2.30); animation asset-type (P2.31); audio duration not persisted (P2.32); non-unique audio path (P2.33); Stage-6 upload-URL pre-check (P2.34); rollback snapshot/restore unwired (P2.35); voiceover scene-audio 401 dead-PATCH (P2.36); `reference_clip` lookup 500 — Stage-6 pre-check (P2.37); + carried hygiene |
 | **P3** | ~13 | UPPERCASE dead code; empty seaweedfs volumes; **Phase H** multi-node (nodes 02/03/04 up; 05/06 + GPU-service validation remain); endpoint test coverage; manifest_version NULL; render_jobs `updated_at`; in-code Coqui default; audio-validator GUID; extensible-WAV readers; 06-04/05 hygiene (P3.7); comprehensive DR (strategic) |
 
 ## Pipeline status (2026-06-06)
@@ -178,6 +178,14 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 ## P2.35 — Rollback feature snapshot/restore unwired
 **Status:** OPEN. The storage-path crash was fixed (`c3e8a1a`, repointed to `/mnt/ivgs-shared/rollback_points`), but `rollback_service.py` (~164/241/244) still references `/ivgs/ivgs-api/config` and `/ivgs/.env`, and `rollback_to` restarts containers — full §14.3 rollback needs host-level `deploy-node.sh` integration (the service runs in-container without host access). Decide: wire to the real layout, or remove. *(= follow-on #7.)*
 
+## P2.36 — Voiceover `scene_audio_update_failed` 401 (dead scene→audio back-link PATCH) *(Stage-5)*
+**Status:** OPEN — fires 6×/run (once per scene) in the post-swap e2e (2026-06-06). After each audio `201` upload, `stage5_voiceover.py` makes a follow-up scene-update call that returns **401** (an operator-only endpoint the pipeline service token can't pass). It is **redundant**: the audio asset is already scene-linked via the upload form's `scene_id` (`eaddebb`), so the back-link adds nothing and is swallowed as a warning (TTS still completes 6/6). Same dead-PATCH pattern removed from `stage3_images.py` in `a914352` (A4).
+**Scope/action:** confirm nothing reads the scene→audio back-reference (`scene.audio_asset_id` or equivalent), then delete the dead PATCH (call + helper); or, if the back-link is wanted, open that endpoint to `get_service_or_user` and send `scene_id`. Bundle with the P2.26 dead-code pass. Source: post-swap e2e, transcript 2026-06-06.
+
+## P2.37 — `GET /assets?asset_type=reference_clip` returns **500** (not empty/404) *(Stage-6 prerequisite)*
+**Status:** OPEN — observed on the Stage-6 advance in the post-swap e2e (2026-06-06): when `tts_audio` completes, the orchestrator's presenter-clip lookup (`GET …/projects/{id}/assets?asset_type=reference_clip&limit=1`) returns **500 Internal Server Error**. The orchestrator soft-continues (dispatches `talking_head_render` anyway) so it didn't block the run — but it's a **5xx server bug** (worse than the P2.27 4xx cluster), likely an enum/query mishandle of the `reference_clip` filter in `list_assets`.
+**Scope/action:** make the assets-list endpoint return an **empty list / clean 404** for `asset_type=reference_clip` when none exists — so Stage 6 can take the no-clip skip path — rather than 500; fix as part of Stage-6 wiring + the asset-endpoint sweep. Relates to P2.34 and the Stage-6 section. Source: post-swap e2e, transcript 2026-06-06.
+
 ---
 
 # P3 — Low Priority
@@ -230,11 +238,11 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 
 **This is the next major build, not a deploy.** The compose declares both engine services (`docker-compose.node04.yml`: `latentsync` :7860, `sadtalker` :7861) but they are **parked placeholders** (`profiles: ["pending"]`, `pull_policy: never`) and the images **do not exist** in ghcr (`docker manifest inspect …:latentsync-v5.2.7-h0` / `…:sadtalker-v5.2.7-h0` → `manifest unknown`, confirmed 2026-06-06). The pipeline auto-advances and parks cleanly at `talking_head_render` (correct).
 
-**Placement decision (2026-06-06): node-03.** node-04 has only ~8 GB free (RTX PRO 5000 48 GB; FLUX ~16.8 + Mistral-24B vLLM ~16.1 + TTS ~7.5), too tight for LatentSync (~12 GB). **node-03** (RTX PRO 6000, 97.9 GB, ~70 GB free with CogVideoX resident ~26 GB) has ample room. Tradeoff: concentrates a second stage on the sole video node (SPOF) — acceptable for bring-up; node-05/06 remain an isolation option later.
+**Placement decision (UPDATED 2026-06-06, post node-03↔04 GPU swap): node-04** — this **overturns** the earlier same-day node-03 decision, which was based on the pre-swap card layout. After the swap, **node-04 holds the 96 GB RTX PRO 6000** (measured idle ~38 GB used / ~59 GB free, vLLM-dominated — and vLLM fraction-scaled up to ~29 GB on the bigger card, cappable via `--gpu-memory-utilization` to reclaim headroom if needed), leaving ample room for LatentSync (~12 GB) + SadTalker (~8 GB) alongside FLUX/TTS at load; **node-03 is now the 48 GB RTX PRO 5000, video-only.** node-04 is also where the two engine services are **already declared** (`docker-compose.node04.yml`) and where the worker **already serves the `gpu_talking_head` queue** (per AD-02) — so this is the spec-aligned placement with **no compose porting**. (The swap was made specifically to enable this.)
 
 **Work breakdown:**
 1. **Build two GPU engine images** (the bulk): `ghcr.io/brucecostello2/ivgs-workers:{latentsync,sadtalker}-v5.2.7-h0`. Per engine: upstream model code + checkpoints (weights live in the mounted `/data/models`, not baked) + a server wrapper exposing `/health` + an inference endpoint matching the IVGS client contract + a Dockerfile on a Blackwell-capable CUDA base; build/push from node-01. Template: the existing engine builds (ComfyUI/Coqui/Kokoro/WhisperX `*-v5.2.7-h0`) and the `servers/common/` skeleton + `servers/cogvideox/` (async-job contract `POST /generate`, `GET /status/{id}`, `/download/{id}`, `/health`).
-2. **Wiring** (smaller): move the two service defs `node04.yml` → `node03.yml`; add engine URLs to node-03's worker env via the consolidated-compose pattern; shift the `gpu_talking_head` queue onto node-03's worker (engines + worker co-located for intra-node DNS); implement the live `talking_head_task.py` client logic — LatentSync-primary **>0.85 alignment gate**, SadTalker fallback, DLQ, **600 s** timeout, output path, manifest binding (the `metrics`/`alignment_score` route from `servers/common/jobs.py` feeds the gate). Confirm the upload URL (P2.34).
+2. **Wiring** (smaller, now simpler post-swap): the two service defs are **already on `docker-compose.node04.yml`** (un-park by dropping `profiles: ["pending"]` once the images exist) and the `gpu_talking_head` queue is **already served by node-04's worker** — so no porting; just add the LatentSync/SadTalker engine URLs to node-04's worker env via the consolidated-compose pattern. Implement the live `talking_head_task.py` client logic — LatentSync-primary **>0.85 alignment gate**, SadTalker fallback, DLQ, **600 s** timeout, output path, manifest binding (the `metrics`/`alignment_score` route from `servers/common/jobs.py` feeds the gate). Confirm the upload URL (P2.34) and fix the `reference_clip` lookup 500 (P2.37) so the no-clip skip path works.
 3. **Inputs:** presenter-clip upload (`POST /projects/{id}/upload-talking-head` → `asset_id`) + retrieve the Stage-5 audio; **skip Stage 6 cleanly** when no clip is uploaded. (The test project has no presenter clip — first run can exercise the skip path, or upload a test clip.)
 4. **Output:** spec path `/ivgs/talking-heads/{project_id}/{language_code}.mp4` — confirm the live mount (`/mnt/ivgs-shared`, per the rollback `/ivgs` lesson) before relying on it.
 
@@ -250,7 +258,7 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 |---|---|
 | GPG private key off-network backup | Signing key `4F2243FAB5A25808` should have an off-node copy. Security-sensitive. |
 | `.env.node01` secret leak + credential rotation | See P1.7. Operator-driven. |
-| Push `feat/phase-h0-make-main-honest` + open/track PR | Branch carries all current work through `eaddebb`. |
+| Trunk = `main` (done 2026-06-06) | `feat/phase-h0-make-main-honest` merged `--ff-only` → `main` @ `5657f95`; tag `stages-1-5-green-2026-06-06` pushed. node-01 is already on `main`. **Remaining:** switch GPU nodes 02/03/04 from the feature branch to `main` at the next deploy (`git checkout main` before `git pull --ff-only`); optionally delete the now-redundant feature branch (local + remote). |
 
 ---
 
@@ -270,6 +278,8 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 | API `/ivgs` crash (rollback storage) | 2026-06-05 (`c3e8a1a`, API `v5.2.2-h0`) | `rollback_service.py` ran `mkdir` on hardcoded `/ivgs` at import (unmounted; API runs non-root) → crash-looped the API. Repointed `ROLLBACK_STORAGE_DIR` → `/mnt/ivgs-shared/rollback_points`. (Full rollback wiring remains — P2.35.) |
 | **Stage 5 — TTS/voiceover (e2e PASS)** | 2026-06-06 (5 commits; API `v5.2.3-h0`, workers `v5.4.7-h0`) | Final run `3cb8c4d6` (42.6 s): 6/6 scenes → Coqui XTTS v2 `200` → validated → uploaded `201`; **48 kHz/24-bit, approved, SNR 60 dB**, six distinct `seaweedfs_fid`, all scene-linked. Seven fixes: **auth** (`92616f7`, API `v5.2.3-h0`) `list_scenes`+`list_assets` → `get_service_or_user`; **`CoquiClient` ctor + retry raise-None** (`82d9490`, workers `v5.4.5-h0`); **TTS engine URLs in worker env** (`db264c5`, compose); **validator accepts `WAVE_FORMAT_EXTENSIBLE`** (`39ee28d`, workers `v5.4.6-h0`); **upload URL + `scene_id`/`language_code`** (`eaddebb`, workers `v5.4.7-h0`). Auto-advances to `talking_head_render`. |
 | Voiceover auto-advance — confirmed present | 2026-06-06 | The Stage-5 task calls `handle_stage_completion` on success (dispatched `talking_head_render` unprompted) — no gap at the TTS→talking-head boundary. |
+| **node-03↔04 GPU swap + full Stages 1–5 e2e re-validation** | 2026-06-06 | Operator relocated the cards so **node-04 = 96 GB RTX PRO 6000**, **node-03 = 48 GB RTX PRO 5000** (aligns the image+TTS+talking-head host with the larger card per AD-02; un-blocks Stage-6 placement on node-04 with no compose porting — see Stage-6 section). Full media→manifest→audio e2e on project `3814f845`: FLUX 4/4 images+animation (node-04), CogVideoX **2/2 videos with peak ~26 GB on the 48 GB card** (218/224 s, ample headroom), manifest reused (`b636fe87` locked), voiceover 6/6 (48 kHz/24-bit), parked cleanly at `talking_head_render`. Re-fire driven via `dispatch_media_generation` `send_task` with `id`→`scene_id` mapped. |
+| **Make Main Honest — merged to `main`** | 2026-06-06 (`5657f95`, tag `stages-1-5-green-2026-06-06`) | `feat/phase-h0-make-main-honest` (70 commits, strict ancestor of `main`) merged **`--ff-only`** into `main` — all commit SHAs preserved, linear history, no squash. `main` adopted as trunk. (Fleet branch-switch + optional feat-branch deletion remain — see Operator tasks.) |
 
 ### Closed in the 06-04/05 arc (Addendum A §B)
 
@@ -338,4 +348,4 @@ Each session that closes should, before final commit:
 
 The discipline: nothing is "deferred" without going into this file.
 
-*— End of ledger (v3.0, consolidated 2026-06-06) —*
+*— End of ledger (v3.1, 2026-06-06 — post-swap e2e re-validation + merged to `main`) —*
