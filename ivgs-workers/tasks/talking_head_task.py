@@ -75,8 +75,8 @@ class Stage6Input(BaseModel):
     project_id: str
     project_name: str = ""
     language_code: str = "en-US"
-    reference_clip_asset_id: str
-    scene_audio_refs: List[SceneAudioRef] = Field(min_length=1)
+    reference_clip_asset_id: Optional[str] = None
+    scene_audio_refs: List[SceneAudioRef] = Field(default_factory=list)
     output_width: int = 1920
     output_height: int = 1080
     output_fps: int = 30
@@ -304,6 +304,21 @@ def render_talking_head(
     update_job_status(job_id, "running", stage=PipelineStage.TALKING_HEAD_RENDER.value)
 
     output = Stage6Output(job_id=job_id, project_id=project_id)
+
+    # Stage 6 is optional: skip cleanly when no presenter/reference clip was uploaded.
+    # Absent a talking-head source there is nothing to lip-sync, so advance to prototype_draft.
+    if not task_input.reference_clip_asset_id:
+        log.info("stage6_skipped_no_reference_clip")
+        output.status = StageStatus.SUCCESS
+        output.model_used = "skipped"
+        output.completed_at = datetime.now(timezone.utc)
+        skip_dict = output.model_dump(mode="json")
+        celery_app.send_task(
+            "tasks.pipeline_orchestrator_v2.handle_stage_completion",
+            kwargs={"stage_output_dict": skip_dict},
+            queue="default",
+        )
+        return skip_dict
 
     temp_dir = tempfile.mkdtemp(prefix="ivgs_stage6_")
     reservation = None
