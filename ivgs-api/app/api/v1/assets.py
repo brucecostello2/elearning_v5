@@ -111,7 +111,7 @@ async def upload_asset(
 @asset_router.get("/{asset_id}", response_model=AssetResponse, summary="Get asset metadata")
 async def get_asset(
     asset_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Get asset metadata including quality scores."""
@@ -128,7 +128,7 @@ async def get_asset(
 @asset_router.get("/{asset_id}/download", summary="Proxy download from SeaweedFS")
 async def download_asset(
     asset_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Proxy download from SeaweedFS."""
