@@ -516,7 +516,6 @@ def generate_voiceover_task(
             base_url=os.getenv("IVGS_COQUI_URL", "http://node-04:5002"),
             fallback_url=os.getenv("IVGS_COQUI_FALLBACK_URL"),
             timeout=config.timeouts.tts_timeout,
-            default_speaker_wav_path=task_input.speaker_wav_path,
         )
         audio_validator = AudioValidator()
         audio_converter = AudioConverter()
@@ -574,7 +573,9 @@ def generate_voiceover_task(
 
     except Exception as e:
         log.error("stage4_processing_error", error=str(e))
-        raise self.retry(exc=e) if self.request.retries < self.max_retries else None
+        if self.request.retries < self.max_retries:
+            raise self.retry(exc=e)
+        raise
     finally:
         loop.close()
 
