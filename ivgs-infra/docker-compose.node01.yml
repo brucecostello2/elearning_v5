@@ -397,6 +397,46 @@ services:
         -n default-worker@node01
 
   # ---------------------------------------------------------------------------
+  # Composition worker (Stage 7 prototype_draft + Stage 8 final_render)
+  # Serves the `composition` queue; ffmpeg-based, CPU/IO-bound.
+  # ---------------------------------------------------------------------------
+  celery-worker-composition:
+    image: ghcr.io/brucecostello2/ivgs-workers:${IVGS_WORKERS_TAG:-v5.1.0}
+    container_name: ivgs-celery-composition
+    <<: [*common-restart, *common-logging]
+    env_file:
+      - .env.node01
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      REDIS_URL: redis://redis:6379/0
+      IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
+      SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
+      C_FORCE_ROOT: "1"
+      <<: *gpu-service-urls
+    volumes:
+      - /mnt/ivgs-shared:/mnt/ivgs-shared
+    networks:
+      - ivgs-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      test: ["CMD-SHELL", "celery -A celery_app inspect ping --timeout=5 --destination composition-worker@node01 | grep -q pong || exit 1"]
+    command: >
+      celery -A celery_app worker
+        --loglevel=info
+        --queues=composition
+        --concurrency=1
+        --max-tasks-per-child=20
+        --without-heartbeat
+        --without-mingle
+        -n composition-worker@node01
+
+  # ---------------------------------------------------------------------------
   # Service 11: Celery Beat Scheduler (§2.4)
   # Periodic tasks: DLQ processing, orphan cleanup, retention management,
   # heartbeat timeout checks
