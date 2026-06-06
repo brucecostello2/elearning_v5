@@ -199,13 +199,13 @@ class AssetService:
         Returns (content_bytes, mime_type, filename) or None if not found.
         """
         asset = await self.get_asset(asset_id)
-        if asset is None or not asset.seaweedfs_path:
+        if asset is None or not asset.seaweedfs_fid:
             return None
 
-        # Download from SeaweedFS
-        content = await seaweedfs_client.download(asset.seaweedfs_path)
+        # Download from SeaweedFS by fid (master volume lookup -> volume fetch)
+        content = await seaweedfs_client.download_file(asset.seaweedfs_fid)
         if content is None:
-            logger.error("SeaweedFS download failed: path=%s", asset.seaweedfs_path)
+            logger.error("SeaweedFS download failed: fid=%s", asset.seaweedfs_fid)
             return None
 
         # Extract filename from path
