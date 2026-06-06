@@ -168,7 +168,7 @@ async def _upload_draft(
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
     ) as client:
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={
                 "file": (
                     f"draft_720p_{language_code}.mp4",
@@ -177,10 +177,8 @@ async def _upload_draft(
                 ),
             },
             data={
-                "project_id": project_id,
-                "asset_type": "draft_render",
-                "content_hash": sha256_hash,
-                "metadata": json.dumps(metadata),
+                "asset_type": "final_render",
+                "language_code": language_code,
             },
         )
         if resp.status_code not in (200, 201):
@@ -435,7 +433,9 @@ def assemble_prototype_draft(
                 # Checkpoint per scene
                 save_checkpoint(
                     job_id=job_id,
-                    stage=PipelineStage.PROTOTYPE_DRAFT.value,
+                    stage_name=PipelineStage.PROTOTYPE_DRAFT.value,
+                    stage_index=6,
+                    status="running",
                     checkpoint_data={
                         "scenes_composed": scenes_composed,
                         "last_scene_index": scene.scene_index,
@@ -521,7 +521,7 @@ def assemble_prototype_draft(
         loop.close()
 
         output.asset_id = upload_result.get("id", "")
-        output.seaweedfs_path = upload_result.get("storage_path", "")
+        output.seaweedfs_path = upload_result.get("seaweedfs_path", "")
         output.sha256_hash = sha256
         output.duration_seconds = render_result.duration_seconds
         output.file_size_bytes = render_result.file_size_bytes
@@ -546,7 +546,9 @@ def assemble_prototype_draft(
 
         save_checkpoint(
             job_id=job_id,
-            stage=PipelineStage.PROTOTYPE_DRAFT.value,
+            stage_name=PipelineStage.PROTOTYPE_DRAFT.value,
+            stage_index=6,
+            status=output.status.value,
             checkpoint_data={
                 "asset_id": output.asset_id,
                 "duration": output.duration_seconds,
