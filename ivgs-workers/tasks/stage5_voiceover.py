@@ -197,13 +197,15 @@ async def _upload_audio_to_seaweedfs(
         },
     ) as client:
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets/upload",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={
                 "file": (f"{language_code}.wav", audio_data, "audio/wav"),
             },
             data={
                 "project_id": project_id,
                 "asset_type": "audio",
+                "scene_id": scene_id,
+                "language_code": language_code,
                 "storage_path": seaweedfs_path,
                 "sha256": compute_asset_sha256(audio_data),
                 "file_size": str(len(audio_data)),
