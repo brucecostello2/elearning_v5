@@ -33,7 +33,7 @@ router = APIRouter(prefix="/projects/{project_id}/scenes", tags=["Storyboard"])
 @router.get("", response_model=List[SceneResponse], summary="List all scenes")
 async def list_scenes(
     project_id: UUID,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List all scenes ordered by scene_index."""

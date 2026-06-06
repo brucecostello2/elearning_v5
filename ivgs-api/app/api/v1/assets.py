@@ -45,7 +45,7 @@ async def list_assets(
     language_code: Optional[str] = Query(default=None),
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=1, le=100),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List all assets. Supports ?scene_id=&asset_type=&language_code= filters."""
