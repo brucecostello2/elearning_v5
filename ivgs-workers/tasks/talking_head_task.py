@@ -206,9 +206,14 @@ async def _render_with_latentsync(
     except ValueError:
         mode = LatentSyncMode.FULL_FRAME
 
+    with open(reference_clip_path, "rb") as _vf:
+        reference_video_data = _vf.read()
+    with open(audio_path, "rb") as _af:
+        audio_data = _af.read()
+
     params = LatentSyncParams(
-        reference_video_path=reference_clip_path,
-        audio_path=audio_path,
+        reference_video_data=reference_video_data,
+        audio_data=audio_data,
         output_width=task_input.output_width,
         output_height=task_input.output_height,
         output_fps=task_input.output_fps,
