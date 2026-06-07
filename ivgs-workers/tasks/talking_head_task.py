@@ -81,7 +81,7 @@ class Stage6Input(BaseModel):
     output_height: int = 1080
     output_fps: int = 30
     alignment_threshold: float = 0.85
-    latentsync_mode: str = "full_screen"
+    latentsync_mode: str = "full_frame"
     pip_position: str = "bottom_right"
     pip_scale: float = 0.25
     enable_face_enhance: bool = True
@@ -204,7 +204,7 @@ async def _render_with_latentsync(
     try:
         mode = LatentSyncMode(task_input.latentsync_mode)
     except ValueError:
-        mode = LatentSyncMode.FULL_SCREEN
+        mode = LatentSyncMode.FULL_FRAME
 
     params = LatentSyncParams(
         reference_video_path=reference_clip_path,
@@ -347,8 +347,7 @@ def render_talking_head(
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
                 model_name="latentsync",
-                vram_mb=16384,
-                config=config,
+                vram_requirement_mb=16384,
             )
         except Exception as e:
             log.warning("gpu_reservation_failed", error=str(e))
@@ -405,8 +404,7 @@ def render_talking_head(
                 reservation = acquire_gpu_reservation(
                     job_id=job_id,
                     model_name="sadtalker",
-                    vram_mb=8192,
-                    config=config,
+                    vram_requirement_mb=8192,
                 )
             except Exception:
                 pass
