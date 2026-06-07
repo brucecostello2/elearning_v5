@@ -39,7 +39,7 @@ class Asset(Base):
     )
     asset_type: Mapped[str] = mapped_column(
         PG_ENUM("image", "video", "audio", "document", "talking_head",
-                "final_render", name="asset_type", create_type=False),
+                "final_render", "reference_clip", name="asset_type", create_type=False),
         nullable=False,
         doc="PostgreSQL ENUM asset_type",
     )

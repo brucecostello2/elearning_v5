@@ -29,6 +29,7 @@ ASSET_TYPE_PATHS = {
     "document": "/ivgs/uploads",
     "talking_head": "/ivgs/talking-heads",
     "final_render": "/ivgs/final",
+    "reference_clip": "/ivgs/reference-clips",
 }
 
 # Storage tier routing based on asset type (§10.1)
@@ -44,6 +45,7 @@ MAX_FILE_SIZES = {
     "document": 100 * 1024 * 1024,     # 100 MB
     "talking_head": 500 * 1024 * 1024,  # 500 MB
     "final_render": 5 * 1024 * 1024 * 1024,  # 5 GB
+    "reference_clip": 2 * 1024 * 1024 * 1024,  # 2 GB
 }
 
 
