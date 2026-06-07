@@ -1243,18 +1243,50 @@ def _fetch_reference_clip_id(
 def _fetch_scene_audio_refs(
     project_id: str, config: WorkerConfig,
 ) -> List[Dict[str, Any]]:
-    """Fetch scene audio asset references for talking head concatenation."""
+    """Fetch per-scene audio asset references for talking-head concatenation.
+
+    Mirrors _build_manifest_scenes' audio binding: the composition manifest is
+    locked before TTS, so per-scene audio lives only in the assets table keyed by
+    scene_id (not on the scene row, and not in the manifest timeline). Re-runs can
+    leave multiple audio rows per scene; keep the latest per scene (by created_at)
+    and emit one ref per scene in scene_index order.
+    """
     scenes = _fetch_project_scenes(project_id, config)
-    return [
-        {
-            "scene_id": s.get("scene_id", s.get("id", "")),
+    audio_by_scene: Dict[str, Dict[str, Any]] = {}
+    try:
+        with httpx.Client(
+            timeout=30.0,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            resp = client.get(
+                f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets",
+                params={"asset_type": "audio", "per_page": 100},
+            )
+        audios = (resp.json() or {}).get("data", []) if resp.status_code == 200 else []
+        audios.sort(key=lambda a: a.get("created_at", ""), reverse=True)
+        for a in audios:
+            sid = a.get("scene_id")
+            if sid and sid not in audio_by_scene:
+                audio_by_scene[sid] = a
+    except Exception as e:
+        logger.warning("fetch_scene_audio_failed", error=str(e))
+    refs: List[Dict[str, Any]] = []
+    for s in scenes:
+        scene_id = s.get("id") or s.get("scene_id", "")
+        au = audio_by_scene.get(scene_id)
+        if not au or not au.get("id"):
+            continue
+        refs.append({
+            "scene_id": scene_id,
             "scene_index": s.get("scene_index", 0),
-            "audio_asset_id": s.get("audio_asset_id", ""),
-            "duration_seconds": s.get("duration_seconds", 10.0),
-        }
-        for s in scenes
-        if s.get("audio_asset_id")
-    ]
+            "audio_asset_id": au["id"],
+            "duration_seconds": (
+                float(au.get("duration_seconds") or 0.0)
+                or float(s.get("duration_seconds") or 10.0)
+            ),
+        })
+    refs.sort(key=lambda r: r["scene_index"])
+    return refs
 
 
 def _fetch_latest_manifest(
