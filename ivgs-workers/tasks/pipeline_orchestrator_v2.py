@@ -1372,6 +1372,7 @@ def _build_manifest_scenes(
 
         audio_asset = None
         au = audio_by_scene.get(scene_id)
+        audio_dur = float(au.get("duration_seconds") or 0.0) if au else 0.0
         if au and au.get("id"):
             audio_asset = {
                 "asset_id": au["id"],
@@ -1386,7 +1387,7 @@ def _build_manifest_scenes(
             "scene_index": idx,
             "scene_title": "",
             "narration_text": meta.get("narration_text", "") or "",
-            "duration_seconds": dur,
+            "duration_seconds": (audio_dur or dur),
             "media_type": media_type,
             "background_asset": background_asset,
             "audio_asset": audio_asset,
