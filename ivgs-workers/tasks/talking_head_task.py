@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import math
 import os
 import tempfile
 import time
@@ -56,10 +57,12 @@ from validators.corruption_detector import CorruptionDetector
 
 logger = structlog.get_logger("ivgs.stage6.talking_head")
 
-# Segment-based render config (spec 6.1): one talking-head segment per scene keeps
-# per-render memory bounded (each scene is tens of seconds) so the engine never
-# loads a full-narration worth of frames at once.
+# Segment-based render config (spec 6.1): render in per-scene segments, splitting any
+# scene longer than MAX_SEGMENT_SECONDS into equal sub-renders so no single render
+# loads more than ~one segment of frames at once (a whole long-scene render OOM'd the
+# engine). Total length scales by segment count, not per-render RAM.
 MAX_SEGMENT_RETRIES = 2
+MAX_SEGMENT_SECONDS = 30.0
 
 
 # ---------------------------------------------------------------------------
@@ -370,24 +373,73 @@ def render_talking_head(
 
         # 4. Render with LatentSync (primary)
         try:
-            # Segment-based render (spec 6.1): render ONE talking-head segment per scene.
-            # Each scene's audio is tens of seconds, so per-render memory stays bounded
-            # (the full-narration render OOM'd node-04). Total length scales by segment
-            # count, not per-render RAM. Scene-grouping / long-scene splitting -> Phase 2.
+            # Segment-based render (spec 6.1): render in per-scene segments, splitting any
+            # scene longer than MAX_SEGMENT_SECONDS into equal sub-renders. Each render
+            # stays bounded (~one segment of frames) rather than the whole narration,
+            # which OOM'd node-04. Length scales by segment count, not per-render RAM.
             sorted_refs = sorted(
                 task_input.scene_audio_refs, key=lambda r: r.scene_index
             )
             if not sorted_refs:
                 raise RuntimeError("No scene audio refs to render")
 
+            # Build the ordered render-piece list. A scene whose audio exceeds
+            # MAX_SEGMENT_SECONDS is sliced into ceil(dur/MAX) equal pieces at offsets we
+            # control (no SceneRef ambiguity); the last piece runs to EOF so they tile.
+            ffmpeg_seg = FFmpegClient(temp_dir=temp_dir)
+            render_pieces: List[Dict[str, Any]] = []
+            for ref in sorted_refs:
+                scene_audio = os.path.join(
+                    temp_dir, f"scene_{ref.scene_index:04d}.wav"
+                )
+                try:
+                    scene_dur = float(
+                        ffmpeg_seg.probe(scene_audio).get("format", {}).get("duration", 0.0)
+                    )
+                except Exception:
+                    scene_dur = 0.0
+                if scene_dur <= MAX_SEGMENT_SECONDS or scene_dur <= 0.0:
+                    render_pieces.append(
+                        {"audio": scene_audio, "scene_index": ref.scene_index, "part": 0}
+                    )
+                else:
+                    n_parts = math.ceil(scene_dur / MAX_SEGMENT_SECONDS)
+                    piece_dur = scene_dur / n_parts
+                    for p in range(n_parts):
+                        part_audio = os.path.join(
+                            temp_dir, f"scene_{ref.scene_index:04d}_part{p:02d}.wav"
+                        )
+                        slice_cmd = [
+                            ffmpeg_seg._ffmpeg, "-y",
+                            "-ss", f"{p * piece_dur:.3f}", "-i", scene_audio,
+                        ]
+                        if p < n_parts - 1:
+                            slice_cmd += ["-t", f"{piece_dur:.3f}"]
+                        slice_cmd += ["-c:a", "pcm_s16le", part_audio]
+                        ffmpeg_seg._run_ffmpeg(slice_cmd, timeout=120.0)
+                        render_pieces.append(
+                            {"audio": part_audio, "scene_index": ref.scene_index, "part": p}
+                        )
+                    log.info(
+                        "scene_split",
+                        scene_index=ref.scene_index,
+                        duration_s=round(scene_dur, 1),
+                        parts=n_parts,
+                    )
+
+            log.info(
+                "render_plan",
+                scenes=len(sorted_refs),
+                pieces=len(render_pieces),
+                max_segment_s=MAX_SEGMENT_SECONDS,
+            )
+
             seg_clip_paths: List[str] = []
             seg_checksums: Dict[str, str] = {}
             seg_alignments: List[float] = []
 
-            for seg_idx, ref in enumerate(sorted_refs):
-                seg_audio_path = os.path.join(
-                    temp_dir, f"scene_{ref.scene_index:04d}.wav"
-                )
+            for seg_idx, piece in enumerate(render_pieces):
+                seg_audio_path = piece["audio"]
                 seg_result = None
                 last_seg_err = None
                 for attempt in range(MAX_SEGMENT_RETRIES + 1):
@@ -404,13 +456,15 @@ def render_talking_head(
                         log.warning(
                             "segment_render_attempt_failed",
                             segment_index=seg_idx,
-                            scene_index=ref.scene_index,
+                            scene_index=piece["scene_index"],
+                            part=piece["part"],
                             attempt=attempt,
                             error=str(seg_err),
                         )
                 if seg_result is None:
                     raise RuntimeError(
-                        f"Segment {seg_idx} (scene {ref.scene_index}) failed after "
+                        f"Segment {seg_idx} (scene {piece['scene_index']} "
+                        f"part {piece['part']}) failed after "
                         f"{MAX_SEGMENT_RETRIES + 1} attempts: {last_seg_err}"
                     )
 
@@ -434,9 +488,10 @@ def render_talking_head(
                 log.info(
                     "segment_render_complete",
                     segment_index=seg_idx,
-                    scene_index=ref.scene_index,
+                    scene_index=piece["scene_index"],
+                    part=piece["part"],
                     alignment_score=seg_result.alignment_score,
-                    segments_total=len(sorted_refs),
+                    segments_total=len(render_pieces),
                 )
 
             # Assemble per-scene clips via checksum-verified concat demuxer.
