@@ -28,8 +28,8 @@ WORKDIR /app
 
 # torch cu128 FIRST (Blackwell sm_120), matching the cogvideox image
 RUN python3 -m pip install --upgrade pip \
- && python3 -m pip install --pre torch torchvision torchaudio \
-        --index-url https://download.pytorch.org/whl/nightly/cu128
+ && python3 -m pip install torch torchvision torchaudio \
+        --index-url https://download.pytorch.org/whl/cu128
 
 # Vendor LatentSync (pinned) + install its deps WITHOUT the torch pins
 RUN git clone https://github.com/bytedance/LatentSync.git /app/LatentSync \
