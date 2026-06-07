@@ -670,7 +670,9 @@ def render_talking_head(
         # Save checkpoint
         save_checkpoint(
             job_id=job_id,
-            stage=PipelineStage.TALKING_HEAD_RENDER.value,
+            stage_name=PipelineStage.TALKING_HEAD_RENDER.value,
+            stage_index=5,
+            status=output.status.value,
             checkpoint_data={
                 "asset_id": output.asset_id,
                 "alignment_score": output.alignment_score,
