@@ -1114,7 +1114,7 @@ def _fetch_transcripts(
             )
             if resp.status_code == 200:
                 data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
+                items = data if isinstance(data, list) else data.get("data", [])
                 return [
                     {
                         "id": str(t.get("id", "")),
@@ -1145,7 +1145,7 @@ def _fetch_project_scenes(
             )
             if resp.status_code == 200:
                 data = resp.json()
-                return data if isinstance(data, list) else data.get("items", [])
+                return data if isinstance(data, list) else data.get("data", [])
     except Exception as e:
         logger.warning("fetch_scenes_failed", error=str(e))
     return []
@@ -1166,7 +1166,7 @@ def _fetch_talking_head_asset(
             )
             if resp.status_code == 200:
                 data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
+                items = data if isinstance(data, list) else data.get("data", [])
                 return items[0] if items else None
     except Exception as e:
         logger.warning("fetch_talking_head_failed", error=str(e))
@@ -1188,7 +1188,7 @@ def _fetch_asset_checksums(
             )
             if resp.status_code == 200:
                 data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
+                items = data if isinstance(data, list) else data.get("data", [])
                 return {
                     item["id"]: item.get("content_hash", "")
                     for item in items
@@ -1232,7 +1232,7 @@ def _fetch_reference_clip_id(
             )
             if resp.status_code == 200:
                 data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
+                items = data if isinstance(data, list) else data.get("data", [])
                 if items:
                     return items[0].get("id", "")
     except Exception as e:
