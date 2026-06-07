@@ -1,18 +1,18 @@
 """
-0020_add_reference_clip_asset_type — Add 'reference_clip' to asset_type enum
+0025_add_reference_clip_asset_type — Add 'reference_clip' to asset_type enum
 
 Enables Stage 6 (talking_head_render). The orchestrator _fetch_reference_clip_id
 queries assets with asset_type=reference_clip (pipeline_orchestrator_v2.py:1231);
 the asset_type enum lacked that value, so the query 500'd -> None -> task skip.
 
-Revision ID: 0020
-Revises: 0019
+Revision ID: 0025
+Revises: 0024
 """
 from alembic import op
 import sqlalchemy as sa
 
-revision = "0020"
-down_revision = "0019"
+revision = "0025"
+down_revision = "0024"
 branch_labels = None
 depends_on = None
 
