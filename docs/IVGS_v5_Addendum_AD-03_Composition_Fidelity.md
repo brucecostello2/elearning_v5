@@ -1,8 +1,8 @@
 # IVGS v5 - Addendum AD-03: Composition Fidelity and Talking-Head Synchronization
 
-- **Version:** v0.2 (2026-06-07 - Pillar 1 core implemented)
+- **Version:** v0.3 (2026-06-07 - Pillar 1 implemented; reconciled with functional spec)
 - **Date:** 2026-06-07
-- **Status:** Pillar 1 CORE implemented and verified (see S11); Pillars 2-3 + frame-align still design. Open questions in S7 to resolve per phase.
+- **Status:** Pillar 1 CORE implemented and verified (S11). Reconciled against `ivgs_v5_functional_spec.md` (S12): composition tier = node-06/05, Pillar 3 = the spec's L2/L3 media fallback (Remotion/ffmpeg), captions = Remotion. Pillars 2-3 + frame-align still to build. Open questions in S7.
 - **Owner:** Bruce Costello (architect/operator)
 - **Related:** `IVGS_v5_Master_Sequence_Plan_to_Production.md` (M1, M3), `IVGS_v5_Addendum_AD-01_Model_Management.md`, `IVGS_v5_Addendum_AD-02_Node_Specialization.md`, `OUTSTANDING_WORK.md`
 - **Code touched:** `ivgs-workers/clients/ffmpeg_client.py` (`compose_scene`), `ivgs-workers/tasks/stage7_prototype_draft.py`, `ivgs-workers/tasks/stage8_final_render.py`, `ivgs-workers/tasks/talking_head_task.py`, Stage 4 manifest builder (TBD)
@@ -217,4 +217,40 @@ The CORE of Pillar 1 is implemented: scene duration is now anchored on the real 
 
 ---
 
-*End AD-03 v0.2.*
+## 12. Reconciliation with the functional spec (composition tier, Remotion, fallback chain)
+
+A review of `ivgs_v5_functional_spec.md` (prompted 2026-06-07) shows this addendum was written in node-01 / ffmpeg-only terms and must be reconciled with the spec's composition architecture. The duration work (Pillar 1) is unaffected - it is engine- and node-agnostic - but the composition engine, the node it runs on, and the long-scene fill strategy all differ from how S4-S6 framed them.
+
+### 12.1 Composition runs on node-06/05, not node-01
+
+Spec section 2.2 + the Stage-7/8 spec: the FFmpeg compositor is specified on **node-06 (primary), node-05 (overflow)** - not node-01. The `celery-worker-composition` we run on node-01 today is a bootstrap. Pillars 1-2 are portable FFmpeg and stay valid; their target home is the node-06/05 composition tier once those nodes are online. No rework of the logic is implied - it is a relocation.
+
+### 12.2 Pillar 3 (Ken Burns) is the spec's L2/L3 media fallback, on Remotion/node-06
+
+S4.3 introduced "scene-length-aware visual fill / Ken Burns" as if new. It is not - it is the existing media fallback chain (spec section 6.3, Table 6-6):
+
+- **L1 - AI Video** (CogVideoX / Wan2.1) - marked **Phase 2+** (enabled after maturity proven).
+- **L2 - Animated Still** - **Ken Burns pan/zoom on a generated image, via MotionGraphicsService = Remotion on node-06**. Read as the **Phase-1 default primary** visual.
+- **L3 - Static Pan/Zoom** - simple FFmpeg zoom/pan on a static image (no Remotion; runs on the ffmpeg compositor).
+- **L4 - Static Image** - no motion, last resort before the DLQ.
+
+Two consequences:
+
+- **The current approach is off the Phase-1 plan.** We generate ~6s CogVideoX clips (L1) and hold/stretch them to scene length (the frozen frame on scene 3 - 75s over a ~6s clip). The Phase-1 spec says long scenes should be **Ken Burns stills (L2)**, not stretched clips. The hold-last-frame stopgap (S5b) is therefore a stopgap for a strategy that should not be the Phase-1 primary at all.
+- **Pillar 3 splits and moves earlier.** A Ken-Burns-lite **L3 (ffmpeg `zoompan`) can run on the current node-01 bootstrap now**, replacing the frozen-frame fill without waiting for node-06. The full **L2 (Remotion Ken Burns) lands with node-06**. So S6's "Phase 4, last/cosmetic" placement for Ken Burns is retracted: it is the Phase-1 primary visual, and part of it (L3) is available immediately.
+
+### 12.3 Captions and lower-thirds are Remotion, not ffmpeg drawtext
+
+Spec section 7.1.8 + Stage-7: lower-thirds and captions are rendered by **Remotion on node-06**, overlaid by the compositor. The stage7 caption-offset clock noted in S11.5 (still on the stale `scene.duration_seconds`) is an interim ffmpeg-path concern; the durable home for captions is Remotion, and the same audio-anchored offsets must be carried there. Until node-06 is online, captions stay off for the draft (as today).
+
+### 12.4 Net effect on the AD-03 phasing
+
+- **Pillar 1 (timeline)** - done, engine-agnostic, unchanged.
+- **Pillar 2 (single head overlay)** - FFmpeg compositor; relocate to node-06 when online; logic unchanged.
+- **Pillar 3** - reframed as the L2/L3 media fallback: ship **L3 ffmpeg `zoompan` on node-01 now** (kills the frozen frame, Phase-1-aligned); **L2 Remotion Ken Burns with node-06**.
+- **Captions** - Remotion/node-06; the audio-anchored caption clock carries forward there.
+- The S6 phase numbering stands as a logical order, but Pillar 3's "last/cosmetic" framing is retracted (12.2) and the node-06 dependency is now explicit. Cross-milestone ordering is governed by the Master Plan's M4 split / node-06 pull-forward note.
+
+---
+
+*End AD-03 v0.3.*

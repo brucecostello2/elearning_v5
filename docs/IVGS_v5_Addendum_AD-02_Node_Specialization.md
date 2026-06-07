@@ -3,7 +3,7 @@
 ## Node-02 / Node-03 Workload Specialization (fp8 LLM ⁄ Dedicated Video) and Resolution of Gap N23-4
 
 **Addendum to:** IVGS v5.0 Functional Specification (18 May 2026)
-**Addendum version:** AD-02, Draft 1
+**Addendum version:** AD-02, Draft 2 (2026-06-07 — node-05/06 roles corrected per the functional spec; see the closing correction note)
 **Classification:** Internal Working Document
 **Change-control status:** Draft for review (per §18 change-control process)
 **Depends on:** Node topology & model matrix (§6, Table 6-1), GPU scheduler & VRAM matrix (§12, Appendix B), Celery task routing (§6), provider abstraction (§19.1), self-hosted mandate (§1.3)
@@ -25,7 +25,7 @@ In scope: the physical placement, precision, and serving topology of the LLM and
 Explicitly out of scope — **not** changed by this addendum:
 
 - **The logical model assignment.** LLM stages still target a Llama-3.3-70B-class model; video stages still target CogVideoX/Wan2.1. Only the *realization* (single-card fp8 vs bf16 tensor-parallel pair, and the separation of the two workloads) changes.
-- **Other nodes.** node-01 (CPU host: Postgres, API, Redis, SeaweedFS, scheduler, Celery beat) and node-04 (Mistral-24B image-prompt LLM + image/TTS), node-05/06 are unchanged by this addendum, except as future elastic capacity (AD-02.6).
+- **Other nodes.** node-01 (CPU host: Postgres, API, Redis, SeaweedFS, scheduler, Celery beat) and node-04 (Mistral-24B image-prompt LLM + image/TTS) are unchanged by this addendum. **node-05/06 are *not* general elastic `gpu_video`/`gpu_llm` capacity** — the functional spec (§2.2) assigns them specific roles: node-05 = SDXL image fallback + Ollama LLM fallback + FFmpeg composition overflow (NVIDIA RTX 5080); node-06 = Remotion motion-graphics + the primary FFmpeg compositor (Intel B70 Pro, **no CUDA**). See the closing correction note for the impact on the elasticity argument below.
 - **Weight acquisition mechanics.** Provisioning weights remains the responsibility of the `ivgs-models` tooling and operations (§14.1, AD-01.7); this addendum states the *target* weights, not the procedure.
 - **Single-job video latency.** Parallelizing one job's scenes across multiple video nodes requires a per-scene dispatch change (AD-02.6); that is a separate, deferred item and is **not** delivered here.
 - **The AD-01 Model Management subsystem.** This addendum fixes the per-node *served set*; it does not implement model selection. Compatibility with AD-01 is addressed in AD-02.9.
@@ -79,7 +79,7 @@ The obvious objection is that dedicating only node-03 to video halves potential 
 
 - **Video is dispatched batched-per-job.** `dispatch_media_generation` packs **all** of a job's video scenes into a **single** `generate_video_clips` task, which runs on **one** node, rendering scenes **sequentially**. A single job's video therefore already uses only one node; the second node never accelerated an individual job.
 - **Two video nodes only help two cases:** (a) **concurrent jobs** — each job's video task lands on a different node; or (b) a future **per-scene dispatch** change that lets one job's scenes spread across nodes. Under the current batched-per-job dispatch at low/dev concurrency, the second video node is idle capacity.
-- **Celery makes the lost capacity elastically recoverable.** Task routing is broker-based competing-consumers (Redis). A worker subscribed to the `gpu_video` queue becomes an additional consumer the instant it starts — **no code change, no scheduler change, no central registration**. Concurrent-video capacity is restored simply by bringing up additional video-capable nodes (node-05/06/…); Celery distributes per-job video tasks across them automatically. **Capability is the `-Q` queue subscription a worker holds, not the model loaded** — so specialization is a *soft*, reversible configuration choice, not a one-way architectural commitment.
+- **Celery makes the lost capacity elastically recoverable.** Task routing is broker-based competing-consumers (Redis). A worker subscribed to the `gpu_video` queue becomes an additional consumer the instant it starts — **no code change, no scheduler change, no central registration**. **[Correction 2026-06-07: the planned node-05/06 do *not* supply this `gpu_video` headroom — node-06 is Intel (no CUDA) and node-05's spec role is image/LLM fallback + composition overflow, per §2.2. The competing-consumer mechanism still holds, but recovering concurrent-*video* capacity requires *additional CUDA video-capable* nodes beyond the planned six, or deliberately re-tasking node-05's card. See the closing correction note.]** **Capability is the `-Q` queue subscription a worker holds, not the model loaded** — so specialization is a *soft*, reversible configuration choice, not a one-way architectural commitment.
 - **Pipeline assembly-line benefit.** Under a stream of jobs, specialization lets node-02 continuously process LLM stages while node-03 continuously processes video for *different* concurrent jobs — clean cross-job pipelining, with each node's hardware matched to its stage.
 - **Single-job video latency is unchanged by node count.** It improves only via per-scene dispatch, which is independent of how many nodes exist and is explicitly out of scope here (AD-02.2).
 
@@ -171,10 +171,24 @@ Compatibility with the (future, non-functional) AD-01 Model Management subsystem
 | node-02 | `gpu_llm`, `gpu_video` | **`gpu_llm`** | fp8 Llama-3.3-70B (LLM stages) |
 | node-03 | `gpu_llm`, `gpu_video` | **`gpu_video`** | CogVideoX/Wan2.1 (video) |
 | node-04 | image / TTS queues | *unchanged* | Mistral-24B + image/TTS |
-| node-05/06 (future) | — | `gpu_video` and/or `gpu_llm` | elastic capacity; auto-joins on worker start |
+| node-05 (future) | — | image-fallback / `gpu_llm` (Ollama) / compose-overflow | SDXL image fallback, Ollama LLM fallback, FFmpeg composition overflow (NVIDIA RTX 5080) — *not* primary `gpu_video` |
+| node-06 (future) | — | composition / motion-graphics | Remotion (captions/lower-thirds/Ken-Burns L2) + **primary** FFmpeg compositor (Intel B70 Pro, **no CUDA**) |
 
 *Capability is conferred by the queue subscription, not the model loaded; adding a worker on a queue makes it an immediate competing consumer with no code or scheduler change.*
 
 ---
 
 *Prepared as an additive deviation under the §18 change-control process. It resolves gap N23-4 by separating the node-02/03 LLM and video workloads onto dedicated cards, and supersedes the §6 / Table 6-1 node-02/03 physical assignment (bf16 70B tensor-parallel pair with co-resident video) while preserving the spec's logical model-to-stage intent. It is compatible with the AD-01 Model Management subsystem, which it leaves non-functional; AD-01's vLLM `dynamically_loadable = false` constraint and availability poller apply unchanged to the fixed per-node served set defined here.*
+
+---
+
+## Correction (2026-06-07) — node-05/06 roles per the functional spec
+
+Draft 1 characterized node-05/06 as **future elastic `gpu_video`/`gpu_llm` capacity** that auto-joins via Celery competing-consumers. A review of `ivgs_v5_functional_spec.md` shows that is wrong:
+
+- **node-05** (NVIDIA RTX 5080, 16 GB): ComfyUI **SDXL/SD3.5 image fallback** (behind node-04 FLUX), **Ollama** small-model **LLM fallback** (behind node-02 vLLM, via the `OllamaProvider`), and FFmpeg composition **overflow** + utility. *(`docker-compose.node05.yml — Image fallback, Ollama, FFmpeg utility`.)*
+- **node-06** (Intel B70 Pro, 32 GB, oneAPI/IPEX — **no CUDA**): **Remotion** motion-graphics (lower-thirds, captions, animated titles, **Ken-Burns L2 fill**) and the **primary FFmpeg compositor**. *(`docker-compose.node06.yml — Remotion renderer, FFmpeg composition overflow`.)*
+
+**Impact on AD-02.6's elasticity argument.** AD-02.6 partly justified specializing node-03 to video-only on the grounds that concurrent-video capacity is *elastically recoverable by adding node-05/06 as `gpu_video` consumers*. That specific recovery path does **not** hold: node-06 cannot run CUDA video at all, and node-05's planned role is fallback + composition, not primary video. The Celery competing-consumer **mechanism** remains valid and reversible — but recovering concurrent-**video** throughput requires **additional CUDA video-capable nodes beyond the planned six**, or deliberately re-tasking node-05's NVIDIA card. AD-02's core conclusion (specialization is acceptable at present load) is unaffected; only the named elastic-capacity escape hatch changes.
+
+Tracked in the Master Sequence Plan (M4 split into **M4a** node-06 / **M4b** node-05) and AD-03 §12 (composition tier + Remotion).
