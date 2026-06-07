@@ -775,10 +775,11 @@ def _build_stage_input(
     elif stage == PipelineStage.PROTOTYPE_DRAFT.value:
         project_id = base_input["project_id"]
         manifest = _fetch_latest_manifest(base_input["job_id"], config)
+        _th = _fetch_talking_head_asset(project_id, config)
         return {
             **base_input,
             "manifest_id": manifest.get("id", ""),
-            "talking_head_asset_id": None,
+            "talking_head_asset_id": (_th.get("id") if _th else None),
             "scenes": _build_manifest_scenes(project_id, manifest, config),
             "enable_lower_thirds": False,
             "enable_captions": False,
@@ -788,11 +789,13 @@ def _build_stage_input(
     elif stage == PipelineStage.FINAL_RENDER.value:
         project_id = base_input["project_id"]
         manifest = _fetch_latest_manifest(base_input["job_id"], config)
+        _th = _fetch_talking_head_asset(project_id, config)
         return {
             **base_input,
             "manifest_id": manifest.get("id", ""),
-            "talking_head_asset_id": None,
+            "talking_head_asset_id": (_th.get("id") if _th else None),
             "scenes": _build_manifest_scenes(project_id, manifest, config),
+            "enable_talking_head": True,
             "render_profiles": ["1080p", "4k"],
         }
 
