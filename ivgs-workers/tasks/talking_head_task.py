@@ -3,18 +3,18 @@ IVGS v5 — Stage 6: Talking Head Rendering Task
 ===================================================
 
 Pipeline Stage 6 per §6.1:
-- Input: User-uploaded talking head reference clip + full concatenated audio track
+- Input: User-uploaded talking head reference clip + per-scene narration audio (segment-based)
 - Primary: LatentSync on node-04 (lip-sync score threshold >0.85)
 - Fallback: SadTalker on node-04
 - Output: Full lip-synced talking head video at /ivgs/talking-heads/{project_id}/{language_code}.mp4
-- Timeout: 600 seconds
+- Timeout: 3600 seconds (wraps the per-segment render loop)
 - Retry: 2 retries with 30s→90s backoff
 
 Processing:
     1. Download user-uploaded reference clip from SeaweedFS
     2. Concatenate all scene audio files into a single audio track
     3. Acquire GPU reservation (LatentSync: 16GB VRAM)
-    4. Render lip-synced video via LatentSync
+    4. Render one lip-synced segment per scene via LatentSync, then concat (bounded memory)
     5. Validate: alignment score >0.85 (§11.1)
     6. On LatentSync failure/low score: fallback to SadTalker (8GB VRAM)
     7. Run corruption detection (§11.2)
@@ -55,6 +55,11 @@ from validators.lipsync_validator import LipsyncValidator
 from validators.corruption_detector import CorruptionDetector
 
 logger = structlog.get_logger("ivgs.stage6.talking_head")
+
+# Segment-based render config (spec 6.1): one talking-head segment per scene keeps
+# per-render memory bounded (each scene is tens of seconds) so the engine never
+# loads a full-narration worth of frames at once.
+MAX_SEGMENT_RETRIES = 2
 
 
 # ---------------------------------------------------------------------------
@@ -274,8 +279,8 @@ async def _render_with_sadtalker(
     queue="gpu_talking_head",
     max_retries=2,
     default_retry_delay=30,
-    soft_time_limit=600,
-    time_limit=660,
+    soft_time_limit=3600,
+    time_limit=3900,
     acks_late=True,
     reject_on_worker_lost=True,
 )
@@ -365,23 +370,101 @@ def render_talking_head(
 
         # 4. Render with LatentSync (primary)
         try:
-            ls_result = loop.run_until_complete(
-                _render_with_latentsync(
-                    reference_path, audio_path, task_input, config, temp_dir,
-                )
+            # Segment-based render (spec 6.1): render ONE talking-head segment per scene.
+            # Each scene's audio is tens of seconds, so per-render memory stays bounded
+            # (the full-narration render OOM'd node-04). Total length scales by segment
+            # count, not per-render RAM. Scene-grouping / long-scene splitting -> Phase 2.
+            sorted_refs = sorted(
+                task_input.scene_audio_refs, key=lambda r: r.scene_index
             )
-            video_data = ls_result.video_data
-            alignment_score = ls_result.alignment_score
+            if not sorted_refs:
+                raise RuntimeError("No scene audio refs to render")
+
+            seg_clip_paths: List[str] = []
+            seg_checksums: Dict[str, str] = {}
+            seg_alignments: List[float] = []
+
+            for seg_idx, ref in enumerate(sorted_refs):
+                seg_audio_path = os.path.join(
+                    temp_dir, f"scene_{ref.scene_index:04d}.wav"
+                )
+                seg_result = None
+                last_seg_err = None
+                for attempt in range(MAX_SEGMENT_RETRIES + 1):
+                    try:
+                        seg_result = loop.run_until_complete(
+                            _render_with_latentsync(
+                                reference_path, seg_audio_path,
+                                task_input, config, temp_dir,
+                            )
+                        )
+                        break
+                    except Exception as seg_err:
+                        last_seg_err = seg_err
+                        log.warning(
+                            "segment_render_attempt_failed",
+                            segment_index=seg_idx,
+                            scene_index=ref.scene_index,
+                            attempt=attempt,
+                            error=str(seg_err),
+                        )
+                if seg_result is None:
+                    raise RuntimeError(
+                        f"Segment {seg_idx} (scene {ref.scene_index}) failed after "
+                        f"{MAX_SEGMENT_RETRIES + 1} attempts: {last_seg_err}"
+                    )
+
+                seg_clip_path = os.path.join(
+                    temp_dir, f"segment_{seg_idx:04d}.mp4"
+                )
+                with open(seg_clip_path, "wb") as _seg_f:
+                    _seg_f.write(seg_result.video_data)
+                seg_checksums[seg_clip_path] = compute_asset_sha256(
+                    seg_result.video_data
+                )
+                seg_clip_paths.append(seg_clip_path)
+                seg_alignments.append(seg_result.alignment_score)
+
+                # Render geometry is uniform across segments; capture once.
+                if seg_idx == 0:
+                    output.width = seg_result.width
+                    output.height = seg_result.height
+                    output.fps = seg_result.fps
+
+                log.info(
+                    "segment_render_complete",
+                    segment_index=seg_idx,
+                    scene_index=ref.scene_index,
+                    alignment_score=seg_result.alignment_score,
+                    segments_total=len(sorted_refs),
+                )
+
+            # Assemble per-scene clips via checksum-verified concat demuxer.
+            ffmpeg_concat = FFmpegClient(temp_dir=temp_dir)
+            concat_output_path = os.path.join(
+                temp_dir, "talking_head_concat.mp4"
+            )
+            concat_result = ffmpeg_concat.concat_segments(
+                segment_paths=seg_clip_paths,
+                output_path=concat_output_path,
+                verify_checksums=seg_checksums,
+                timeout=600.0,
+            )
+            with open(concat_output_path, "rb") as _concat_f:
+                video_data = _concat_f.read()
+
+            output.duration_seconds = concat_result.duration_seconds
+            alignment_score = (
+                round(sum(seg_alignments) / len(seg_alignments), 4)
+                if seg_alignments else 0.0
+            )
             model_used = "latentsync"
-            output.width = ls_result.width
-            output.height = ls_result.height
-            output.fps = ls_result.fps
-            output.duration_seconds = ls_result.duration_seconds
 
             log.info(
-                "latentsync_render_complete",
+                "latentsync_segmented_render_complete",
+                segments=len(seg_clip_paths),
                 alignment_score=alignment_score,
-                duration=ls_result.duration_seconds,
+                duration=output.duration_seconds,
             )
 
             # 5. Validate alignment score
