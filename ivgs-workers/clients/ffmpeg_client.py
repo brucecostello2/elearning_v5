@@ -387,6 +387,19 @@ class FFmpegClient:
                 f"Scene {scene.scene_id} has no background layer"
             )
 
+        # AD-03 Pillar 1: anchor the scene on its real narration length (the audio file).
+        # The manifest/storyboard duration is unreliable and the asset duration field is
+        # null, so probe the downloaded audio; fall back to scene.duration when no audio.
+        effective_duration = scene.duration
+        if audio:
+            try:
+                _ap = self.probe(audio.file_path)
+                _ad = float(_ap.get("format", {}).get("duration", 0) or 0)
+                if _ad > 0:
+                    effective_duration = _ad
+            except Exception:
+                effective_duration = scene.duration
+
         # Build ffmpeg command
         cmd = [self._ffmpeg, "-y"]
 
@@ -430,7 +443,7 @@ class FFmpegClient:
             f"{current_video}scale={config.width}:{config.height}:"
             f"force_original_aspect_ratio=decrease,"
             f"pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2:black,"
-            f"setsar=1,tpad=stop_mode=clone:stop_duration={scene.duration}[bg]"
+            f"setsar=1,tpad=stop_mode=clone:stop_duration={effective_duration}[bg]"
         )
         current_video = "[bg]"
 
@@ -445,7 +458,7 @@ class FFmpegClient:
             filters[-1] = (
                 f"[{input_map['background']}:v]"
                 f"loop=loop=-1:size=1:start=0,"
-                f"trim=duration={scene.duration},"
+                f"trim=duration={effective_duration},"
                 f"fps={config.fps},"
                 f"scale={config.width}:{config.height}:"
                 f"force_original_aspect_ratio=decrease,"
@@ -540,8 +553,8 @@ class FFmpegClient:
             ])
             cmd.extend(["-map", f"{input_idx}:a"])
 
-        # AD-03 Phase 0: clamp every scene to its manifest duration (video + audio)
-        cmd.extend(["-t", str(scene.duration)])
+        # AD-03 Pillar 1: clamp every scene to its real narration length (video + audio)
+        cmd.extend(["-t", str(effective_duration)])
         # Output encoding
         cmd.extend(["-c:v", config.video_codec])
         cmd.extend(["-crf", str(config.crf)])
