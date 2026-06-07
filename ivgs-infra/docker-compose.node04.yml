@@ -95,6 +95,8 @@ services:
       COMFYUI_PRIMARY_URL: "http://comfyui:8188"
       IVGS_COMFYUI_URL: "http://comfyui:8188"
       IVGS_COQUI_URL: "http://ivgs-coqui:5002"
+      IVGS_LATENTSYNC_URL: "http://latentsync:7860"
+      IVGS_SADTALKER_URL: "http://sadtalker:7861"
       COQUI_TTS_URL: "http://ivgs-coqui:5002"
       KOKORO_TTS_URL: "http://ivgs-kokoro:5003"
       WHISPERX_URL: "http://ivgs-whisperx:9000"
@@ -265,7 +267,6 @@ services:
   latentsync:
     image: ghcr.io/brucecostello2/ivgs-workers:latentsync-${IVGS_LATENTSYNC_TAG:-v5.2.7-h0}
     container_name: ivgs-latentsync
-    profiles: ["pending"]
     pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
     env_file:
