@@ -419,15 +419,28 @@ def assemble_prototype_draft(
                     )
                 )
 
+                # AD-03 Pillar 1: anchor stage7 clock on the real audio length (same as
+                # compose_scene); scene.duration_seconds is the storyboard estimate and the
+                # asset duration field is null.
+                _scene_dur = scene.duration_seconds
+                _al = next((l for l in layers if getattr(l, "layer_type", None) == "audio"), None)
+                if _al and getattr(_al, "file_path", None):
+                    try:
+                        _ad = float(ffmpeg.probe(_al.file_path).get("format", {}).get("duration", 0) or 0)
+                        if _ad > 0:
+                            _scene_dur = _ad
+                    except Exception:
+                        _scene_dur = scene.duration_seconds
+
                 timeline_scene = TimelineScene(
                     scene_id=scene.scene_id,
                     scene_index=scene.scene_index,
                     start_time=cumulative_time,
-                    duration=scene.duration_seconds,
+                    duration=_scene_dur,
                     layers=layers,
                 )
                 timeline_scenes.append(timeline_scene)
-                cumulative_time += scene.duration_seconds
+                cumulative_time += _scene_dur
                 scenes_composed += 1
 
                 # Checkpoint per scene
