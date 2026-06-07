@@ -1,8 +1,8 @@
 # IVGS v5 - Addendum AD-03: Composition Fidelity and Talking-Head Synchronization
 
-- **Version:** v0.1 (draft)
+- **Version:** v0.2 (2026-06-07 - Pillar 1 core implemented)
 - **Date:** 2026-06-07
-- **Status:** Proposed (design accepted in principle; open questions in S7 to resolve per phase)
+- **Status:** Pillar 1 CORE implemented and verified (see S11); Pillars 2-3 + frame-align still design. Open questions in S7 to resolve per phase.
 - **Owner:** Bruce Costello (architect/operator)
 - **Related:** `IVGS_v5_Master_Sequence_Plan_to_Production.md` (M1, M3), `IVGS_v5_Addendum_AD-01_Model_Management.md`, `IVGS_v5_Addendum_AD-02_Node_Specialization.md`, `OUTSTANDING_WORK.md`
 - **Code touched:** `ivgs-workers/clients/ffmpeg_client.py` (`compose_scene`), `ivgs-workers/tasks/stage7_prototype_draft.py`, `ivgs-workers/tasks/stage8_final_render.py`, `ivgs-workers/tasks/talking_head_task.py`, Stage 4 manifest builder (TBD)
@@ -20,6 +20,8 @@ Out of scope: GPU heartbeat / reservation (`total_nodes:0`), fleet tag consisten
 ---
 
 ## 2. Background - the defect cluster (verified)
+
+> **Figures in S2-S3 and S5 are partly superseded by the implementation - see S11.** In particular the timeline is ~214.88s of real speech vs a 115s manifest estimate (a ~2x UNDERSHOOT), not the ~227s / ~12s-overshoot stated below; and the S5(a) "permanently correct" claim about the `-t` clamp was wrong (its operand had to change from `scene.duration` to the probed audio length).
 
 Observed on test project `3814f845-4668-496b-a88a-53fea95897c2`, scenes of duration `10 / 15 / 31.4 / 75.35 / 57.11 / 38.37 = 227.23s`.
 
@@ -177,4 +179,42 @@ A full E2E (Stages 1->8) produces a draft AND a final in which:
 
 ---
 
-*End AD-03 v0.1.*
+## 11. Implementation update - 2026-06-07 (Pillar 1 core landed; figure corrections)
+
+The duration half of this addendum was implemented this session, ahead of the M3 schedule, because the real mismatch turned out to be far larger than S2/S3 assumed and was blocking M1. This section records what shipped, what the earlier sections got wrong, and what remains.
+
+### 11.1 What landed (worker images v5.4.19 -> v5.4.22 on node-01)
+
+- **v5.4.19** `compose_scene`: moved `-t` out of the silent-audio branch (applies always) and added `tpad=stop_mode=clone` hold-last-frame fill for non-image backgrounds. This was the Phase-0 stopgap as written in S5 - and it REGRESSED (see 11.2).
+- **v5.4.20** orchestrator `_build_manifest_scenes`: best-effort read of the audio asset `duration_seconds` to set scene duration. Did NOT work (see 11.3); left in as a forward-compatible fallback.
+- **v5.4.21** `compose_scene`: probe the downloaded audio FILE with ffprobe -> `effective_duration`; use it for the image trim, the video tpad `stop_duration`, and the output `-t`. This is the working duration fix.
+- **v5.4.22** `stage7_prototype_draft`: anchor `cumulative_time` (the value handed to the corruption check as `expected_duration`) on the same probed audio length instead of the manifest sum. This is what cleared corruption 5/6 -> 6/6.
+
+Both `celery-worker-default` (orchestrator) and `celery-worker-composition` (stage7/8) run `v5.4.22-h0`. node-02/03/04 worker tags are unchanged (fleet-tag gap, tracked in the ledger).
+
+### 11.2 Correction: the mismatch is ~2x, not ~12s; the `-t` clamp target was wrong
+
+S2/S3 state the timeline is ~227.26s with a ~12s pad over speech. That is wrong. Verified per-scene:
+
+- Manifest `scene.duration_seconds`: 10 / 15 / 20 / 25 / 30 / 15 = **115s**. This is a Stage-4 storyboard ESTIMATE set before TTS exists and never reconciled to the spoken length.
+- Real per-scene narration (audio file durations): 7.09 / 5.57 / 31.40 / 75.37 / 57.13 / 38.37 = **214.88s**.
+
+So the manifest UNDERSHOOTS the real audio by ~100s (about 2x); it does not overshoot by 12s. The 227.26 figure in S2 was itself an artifact of an early mis-assembled audio. Consequence: S5(a)'s claim that `-t {scene.duration}` is permanently correct is FALSE - clamping to the 115s manifest CLIPPED ~100s of narration in v5.4.19. The permanently-correct clamp target is the real audio length (the probed `effective_duration`), which is what v5.4.21 does. The `-t` mechanism stays; its operand changed from `scene.duration` to the probed audio length.
+
+### 11.3 Correction: the audio asset `duration_seconds` field is NULL
+
+The v5.4.20 orchestrator approach failed because the assets list/detail API returns `duration_seconds = None` for every audio asset. The talking head obtained 214.88s by concatenating the audio FILES and probing the result, not by reading the field. Stage 5 (`stage5_voiceover.py`) is supposed to persist `actual_duration_seconds`, and/or the asset serializer drops it - either way the field cannot be trusted today. The robust fix probes the file directly (v5.4.21 compose, v5.4.22 stage7). This is a real upstream data gap - new ledger item (see 11.5).
+
+### 11.4 Pillar-1 status and what remains
+
+The CORE of Pillar 1 is implemented: scene duration is now anchored on the real speech length end to end (orchestrator best-effort + compose probe + stage7 probe), and the timeline and the talking-head full_audio now share the same ~214.88 / 214.97 clock - the shared interface Pillar 2 needs. What remains of Pillar 1 as designed: the explicit, named pad `P_i` is currently 0 (pure speech length); formalizing a deliberate inter-scene pad and deciding the Stage-4 estimate's fate (S7-Q1) is still open and now lower-stakes. The clean end state is still to make Stage 4 / TTS write a reconciled duration so downstream stages need not probe files - file-probing is the robust stopgap, not the destination.
+
+### 11.5 Confirmation and new follow-ups
+
+- **Confirmed** (draft asset `061f64eb-ed33-4354-9558-42bc262feddc`, stream-level ffprobe): video 214.9667s / 6449 frames at 30fps, audio 214.963s, format 214.967s, corruption 6/6. Video vs audio = 3.7 ms. M1 happy-path duration + corruption: DONE.
+- **New ledger items** opened by this work: (i) audio asset `duration_seconds` persistence/serialization (Stage 5 / assets endpoint) - the null-field gap; (ii) the stage7 caption-offset loop still advances on the stale `scene.duration_seconds` (`cumulative_offset += scene.duration_seconds`) - deliberately not fixed because captions are off for the draft, needs the same audio anchoring when captions are enabled; (iii) duplicate audio assets (2 per scene from re-runs) and duplicate drafts accumulating; (iv) the checkpoint POST 405 still fires per scene (non-fatal, already tracked).
+- **Unchanged by this work** (still open): head per-scene desync (Pillar 2 - the next item); long-scene frozen-frame fill (Pillar 3); the 0.62s head A/V drift (frame-align); Stage-8 final-render-with-head not yet exercised.
+
+---
+
+*End AD-03 v0.2.*
