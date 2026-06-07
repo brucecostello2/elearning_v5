@@ -430,7 +430,7 @@ class FFmpegClient:
             f"{current_video}scale={config.width}:{config.height}:"
             f"force_original_aspect_ratio=decrease,"
             f"pad={config.width}:{config.height}:(ow-iw)/2:(oh-ih)/2:black,"
-            f"setsar=1[bg]"
+            f"setsar=1,tpad=stop_mode=clone:stop_duration={scene.duration}[bg]"
         )
         current_video = "[bg]"
 
@@ -539,8 +539,9 @@ class FFmpegClient:
                 f"anullsrc=r={config.audio_sample_rate}:cl=stereo",
             ])
             cmd.extend(["-map", f"{input_idx}:a"])
-            cmd.extend(["-t", str(scene.duration)])
 
+        # AD-03 Phase 0: clamp every scene to its manifest duration (video + audio)
+        cmd.extend(["-t", str(scene.duration)])
         # Output encoding
         cmd.extend(["-c:v", config.video_codec])
         cmd.extend(["-crf", str(config.crf)])
