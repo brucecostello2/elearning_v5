@@ -152,7 +152,7 @@ async def _upload_asset(
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
     ) as client:
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={
                 "file": (
                     f"talking_head_{language_code}.mp4",
@@ -161,10 +161,8 @@ async def _upload_asset(
                 ),
             },
             data={
-                "project_id": project_id,
                 "asset_type": "talking_head",
-                "content_hash": sha256_hash,
-                "metadata": json.dumps(metadata),
+                "language_code": language_code,
             },
         )
         if resp.status_code not in (200, 201):
@@ -663,7 +661,7 @@ def render_talking_head(
         )
 
         output.asset_id = upload_result.get("id", "")
-        output.seaweedfs_path = upload_result.get("storage_path", "")
+        output.seaweedfs_path = upload_result.get("seaweedfs_path", "")
         output.generation_time_seconds = round(time.monotonic() - start_time, 2)
         output.completed_at = datetime.now(timezone.utc)
 
