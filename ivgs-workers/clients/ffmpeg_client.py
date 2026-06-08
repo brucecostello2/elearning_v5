@@ -630,6 +630,9 @@ class FFmpegClient:
         timeline: CompositionTimeline,
         output_path: Optional[str] = None,
         timeout: Optional[float] = None,
+        talking_head_path: Optional[str] = None,
+        talking_head_position: PiPPosition = PiPPosition.BOTTOM_RIGHT,
+        talking_head_scale: float = 0.25,
     ) -> FFmpegRenderResult:
         """
         Compose a full timeline by rendering each scene and concatenating.
@@ -673,6 +676,55 @@ class FFmpegClient:
             profile=profile,
             timeout=timeout,
         )
+
+        # AD-03 Pillar 2: composite the talking head ONCE over the assembled
+        # timeline (single continuous overlay) instead of baking it into each scene.
+        # The head was rendered from the full concatenated audio, so a 0:00-aligned
+        # overlay lands each scene's mouth on its own audio. Video from the head,
+        # audio from the timeline; shortest=1 clips to the timeline length.
+        if talking_head_path:
+            cfg = RENDER_PROFILES[profile]
+            head_out = (output_path[:-4] + "_th.mp4") if output_path.endswith(".mp4") else (output_path + "_th.mp4")
+            if talking_head_position == PiPPosition.FULL_SCREEN:
+                fc = (
+                    f"[1:v]scale={cfg.width}:{cfg.height}[th];"
+                    f"[0:v][th]overlay=0:0:shortest=1[v]"
+                )
+            else:
+                th_w = int(cfg.width * talking_head_scale)
+                th_h = int(cfg.height * talking_head_scale)
+                margin = 20
+                if talking_head_position == PiPPosition.BOTTOM_LEFT:
+                    x, y = margin, cfg.height - th_h - margin
+                elif talking_head_position == PiPPosition.TOP_RIGHT:
+                    x, y = cfg.width - th_w - margin, margin
+                elif talking_head_position == PiPPosition.TOP_LEFT:
+                    x, y = margin, margin
+                else:
+                    x, y = cfg.width - th_w - margin, cfg.height - th_h - margin
+                fc = (
+                    f"[1:v]scale={th_w}:{th_h}[th];"
+                    f"[0:v][th]overlay={x}:{y}:shortest=1[v]"
+                )
+            th_cmd = [
+                "ffmpeg", "-y",
+                "-i", output_path,
+                "-i", talking_head_path,
+                "-filter_complex", fc,
+                "-map", "[v]", "-map", "0:a",
+                "-c:v", cfg.video_codec, "-crf", str(cfg.crf),
+                "-preset", cfg.preset, "-pix_fmt", cfg.pixel_format,
+                "-c:a", "copy",
+                "-r", str(cfg.fps), "-movflags", "+faststart",
+                head_out,
+            ]
+            self._run_ffmpeg(th_cmd, timeout=timeout)
+            os.replace(head_out, output_path)
+            result.file_size_bytes = os.path.getsize(output_path)
+            result.sha256_hash = _compute_file_sha256(output_path)
+            _thp = self.probe(output_path)
+            result.duration_seconds = float(_thp.get("format", {}).get("duration", 0) or 0)
+            log.info("ffmpeg_timeline_head_overlay_success", duration=result.duration_seconds)
 
         elapsed = time.monotonic() - start_time
         log.info(

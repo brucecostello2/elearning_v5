@@ -411,7 +411,7 @@ def assemble_prototype_draft(
                 layers = loop.run_until_complete(
                     _prepare_scene_layers(
                         scene=scene,
-                        talking_head_path=talking_head_path,
+                        talking_head_path=None,  # AD-03 Pillar 2: head overlaid once at the timeline level
                         lower_third_path=lt_path,
                         caption_path=caption_path,
                         temp_dir=temp_dir,
@@ -494,6 +494,7 @@ def assemble_prototype_draft(
             timeline=timeline,
             output_path=draft_output_path,
             timeout=600.0,
+            talking_head_path=talking_head_path,  # AD-03 Pillar 2: single continuous head overlay
         )
 
         # Corruption detection
