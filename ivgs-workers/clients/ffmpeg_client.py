@@ -625,6 +625,78 @@ class FFmpegClient:
 
     # ----- Full timeline composition -----
 
+    def overlay_talking_head(
+        self,
+        base_path: str,
+        talking_head_path: str,
+        position: PiPPosition = PiPPosition.BOTTOM_RIGHT,
+        scale: float = 0.25,
+        profile: RenderProfile = RenderProfile.HD_1080P,
+        timeout: Optional[float] = None,
+    ) -> tuple[int, str, float]:
+        """
+        AD-03 Pillar 2: composite the talking head ONCE over an assembled video as
+        a single continuous overlay (not per-scene / per-segment). Video from the
+        head-over-base composite, audio from the base; shortest=1 clips the head to
+        the base length. Re-encodes at the profile and replaces base_path in place.
+        Returns (file_size_bytes, sha256_hash, duration_seconds). Shared by
+        compose_timeline (stage7 draft) and stage8 final render.
+        """
+        timeout = timeout or self._default_timeout
+        if isinstance(position, str):
+            position = {
+                "bottom_right": PiPPosition.BOTTOM_RIGHT,
+                "bottom_left": PiPPosition.BOTTOM_LEFT,
+                "top_right": PiPPosition.TOP_RIGHT,
+                "top_left": PiPPosition.TOP_LEFT,
+                "full_screen": PiPPosition.FULL_SCREEN,
+            }.get(position, PiPPosition.BOTTOM_RIGHT)
+        cfg = RENDER_PROFILES[profile]
+        head_out = (base_path[:-4] + "_th.mp4") if base_path.endswith(".mp4") else (base_path + "_th.mp4")
+        if position == PiPPosition.FULL_SCREEN:
+            fc = (
+                f"[1:v]scale={cfg.width}:{cfg.height}[th];"
+                f"[0:v][th]overlay=0:0:shortest=1[v]"
+            )
+        else:
+            th_w = int(cfg.width * scale)
+            th_h = int(cfg.height * scale)
+            margin = 20
+            if position == PiPPosition.BOTTOM_LEFT:
+                x, y = margin, cfg.height - th_h - margin
+            elif position == PiPPosition.TOP_RIGHT:
+                x, y = cfg.width - th_w - margin, margin
+            elif position == PiPPosition.TOP_LEFT:
+                x, y = margin, margin
+            else:
+                x, y = cfg.width - th_w - margin, cfg.height - th_h - margin
+            fc = (
+                f"[1:v]scale={th_w}:{th_h}[th];"
+                f"[0:v][th]overlay={x}:{y}:shortest=1[v]"
+            )
+        th_cmd = [
+            "ffmpeg", "-y",
+            "-i", base_path,
+            "-i", talking_head_path,
+            "-filter_complex", fc,
+            "-map", "[v]", "-map", "0:a",
+            "-c:v", cfg.video_codec, "-crf", str(cfg.crf),
+            "-preset", cfg.preset, "-pix_fmt", cfg.pixel_format,
+            "-c:a", "copy",
+            "-r", str(cfg.fps), "-movflags", "+faststart",
+            head_out,
+        ]
+        self._run_ffmpeg(th_cmd, timeout=timeout)
+        os.replace(head_out, base_path)
+        size = os.path.getsize(base_path)
+        sha = _compute_file_sha256(base_path)
+        _thp = self.probe(base_path)
+        dur = float(_thp.get("format", {}).get("duration", 0) or 0)
+        logger.bind(profile=profile.value).info(
+            "ffmpeg_timeline_head_overlay_success", duration=dur,
+        )
+        return size, sha, dur
+
     def compose_timeline(
         self,
         timeline: CompositionTimeline,
@@ -683,48 +755,14 @@ class FFmpegClient:
         # overlay lands each scene's mouth on its own audio. Video from the head,
         # audio from the timeline; shortest=1 clips to the timeline length.
         if talking_head_path:
-            cfg = RENDER_PROFILES[profile]
-            head_out = (output_path[:-4] + "_th.mp4") if output_path.endswith(".mp4") else (output_path + "_th.mp4")
-            if talking_head_position == PiPPosition.FULL_SCREEN:
-                fc = (
-                    f"[1:v]scale={cfg.width}:{cfg.height}[th];"
-                    f"[0:v][th]overlay=0:0:shortest=1[v]"
-                )
-            else:
-                th_w = int(cfg.width * talking_head_scale)
-                th_h = int(cfg.height * talking_head_scale)
-                margin = 20
-                if talking_head_position == PiPPosition.BOTTOM_LEFT:
-                    x, y = margin, cfg.height - th_h - margin
-                elif talking_head_position == PiPPosition.TOP_RIGHT:
-                    x, y = cfg.width - th_w - margin, margin
-                elif talking_head_position == PiPPosition.TOP_LEFT:
-                    x, y = margin, margin
-                else:
-                    x, y = cfg.width - th_w - margin, cfg.height - th_h - margin
-                fc = (
-                    f"[1:v]scale={th_w}:{th_h}[th];"
-                    f"[0:v][th]overlay={x}:{y}:shortest=1[v]"
-                )
-            th_cmd = [
-                "ffmpeg", "-y",
-                "-i", output_path,
-                "-i", talking_head_path,
-                "-filter_complex", fc,
-                "-map", "[v]", "-map", "0:a",
-                "-c:v", cfg.video_codec, "-crf", str(cfg.crf),
-                "-preset", cfg.preset, "-pix_fmt", cfg.pixel_format,
-                "-c:a", "copy",
-                "-r", str(cfg.fps), "-movflags", "+faststart",
-                head_out,
-            ]
-            self._run_ffmpeg(th_cmd, timeout=timeout)
-            os.replace(head_out, output_path)
-            result.file_size_bytes = os.path.getsize(output_path)
-            result.sha256_hash = _compute_file_sha256(output_path)
-            _thp = self.probe(output_path)
-            result.duration_seconds = float(_thp.get("format", {}).get("duration", 0) or 0)
-            log.info("ffmpeg_timeline_head_overlay_success", duration=result.duration_seconds)
+            result.file_size_bytes, result.sha256_hash, result.duration_seconds = self.overlay_talking_head(
+                base_path=output_path,
+                talking_head_path=talking_head_path,
+                position=talking_head_position,
+                scale=talking_head_scale,
+                profile=profile,
+                timeout=timeout,
+            )
 
         elapsed = time.monotonic() - start_time
         log.info(

@@ -199,7 +199,7 @@ async def _upload_final_render(
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
     ) as client:
         resp = await client.post(
-            f"{config.pipeline_api.full_base_url}/assets",
+            f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={
                 "file": (
                     f"final_{profile}_{language_code}.mp4",
@@ -208,10 +208,8 @@ async def _upload_final_render(
                 ),
             },
             data={
-                "project_id": project_id,
                 "asset_type": "final_render",
-                "content_hash": sha256_hash,
-                "metadata": json.dumps(metadata),
+                "language_code": language_code,
             },
         )
         if resp.status_code not in (200, 201):
@@ -530,7 +528,7 @@ def render_final(
                             segment=segment,
                             scenes=task_input.scenes,
                             scene_file_map=scene_file_map,
-                            talking_head_path=talking_head_path,
+                            talking_head_path=None,  # AD-03 Pillar 2: head overlaid once post-concat, not per-segment
                             caption_path=caption_path,
                             profile=profile,
                         )
@@ -635,6 +633,25 @@ def render_final(
                 output.profile_results.append(profile_result)
                 continue
 
+            # AD-03 Pillar 2: composite the talking head ONCE over the assembled
+            # per-profile video (single continuous overlay), not per-segment.
+            if task_input.enable_talking_head and talking_head_path:
+                try:
+                    _ovs, _ovh, _ovd = ffmpeg.overlay_talking_head(
+                        base_path=final_output_path,
+                        talking_head_path=talking_head_path,
+                        position=(task_input.scenes[0].talking_head_position if task_input.scenes else "bottom_right"),
+                        scale=(task_input.scenes[0].talking_head_scale if task_input.scenes else 0.25),
+                        profile=profile,
+                        timeout=600.0,
+                    )
+                    concat_result.duration_seconds = _ovd or concat_result.duration_seconds
+                except Exception as e:
+                    log.error("final_head_overlay_failed", profile=profile_name, error=str(e))
+                    profile_result.status = "failed"
+                    output.profile_results.append(profile_result)
+                    continue
+
             # 5. Corruption detection
             detector = CorruptionDetector()
             from clients.ffmpeg_client import RENDER_PROFILES
@@ -674,7 +691,7 @@ def render_final(
             )
 
             profile_result.asset_id = upload.get("id", "")
-            profile_result.seaweedfs_path = upload.get("storage_path", "")
+            profile_result.seaweedfs_path = upload.get("seaweedfs_path", "")
             profile_result.sha256_hash = final_sha256
             profile_result.width = prof_config.width
             profile_result.height = prof_config.height
@@ -688,11 +705,12 @@ def render_final(
 
             save_checkpoint(
                 job_id=job_id,
-                stage=PipelineStage.FINAL_RENDER.value,
+                stage_name=PipelineStage.FINAL_RENDER.value,
+                stage_index=7,
+                status=profile_result.status,
                 checkpoint_data={
                     "profile": profile_name,
                     "asset_id": profile_result.asset_id,
-                    "status": "completed",
                 },
             )
 
