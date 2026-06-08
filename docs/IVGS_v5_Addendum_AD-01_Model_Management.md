@@ -157,6 +157,8 @@ The poller asserts **availability**, never **suitability**. A model can be appro
 
 This subsystem is an **allow-list of pre-vetted models, not a validation harness.** Admins may add models to the store, but a model may only reach `APPROVED` after passing an acceptance process performed **outside this system**, against the actual target hardware. This boundary is deliberate: validating a model against six heterogeneous GPU nodes (mixed NVIDIA Blackwell and Intel B70 Pro), specific CUDA/driver/quantization combinations, and engine versions is an operational, hardware-in-the-loop activity that the IVGS application is not equipped to perform safely. Registering a model is an **assertion that this external acceptance has already succeeded.**
 
+> **Operationalized by AD-04 (2026-06-08).** This external acceptance process is now defined as a standalone platform — the **Model Benchmarking & Certification Platform (MBCP, AD-04)**. The MBCP runs the AD-01.7.1 checklist on representative content against the real target hardware, measures performance and quality, and issues a **certification record**; that record is the attestation AD-01.7.2 requires for `CANDIDATE → APPROVED`. AD-01 remains the allow-list and selection/serving layer; AD-04 is the validation layer that feeds it.
+
 ### AD-01.7.1 External acceptance checklist (performed outside IVGS)
 
 Before an admin marks a model `APPROVED`, the operations team must independently confirm and record:

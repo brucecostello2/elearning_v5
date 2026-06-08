@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Document** | Master Sequence Plan — the high-level path from current state to a fully deployed, production-ready system |
-| **Version** | v0.2 — 2026-06-07 (M1 duration+corruption closed; M4 corrected against the functional spec — 05/06 are a composition/motion-graphics/fallback tier, not CUDA scale-out) |
-| **Authoritative as of** | `main` @ `16ac574`; workers `v5.4.22-h0` on node-01 (`celery-worker-default`/`-composition`) + node-04 (`v5.4.18-h0`). Pipeline proven **E2E Stages 1→7 with the talking-head composited into the draft**; **A/V duration + corruption (6/6) closed this session** (AD-03 §11, draft `061f64eb` video==audio at 214.97s); paused at `user_review`. |
+| **Version** | v0.3 — 2026-06-08 (M1 duration+corruption + Pillar-2 head sync closed; M4 corrected vs functional spec; WS-H / AD-04 model-certification workstream added) |
+| **Authoritative as of** | `main` @ `b17397b`; workers `v5.4.23-h0` on node-01 (`celery-worker-default`/`-composition`) + node-04 (`v5.4.18-h0`). Pipeline proven **E2E Stages 1→7 with the talking-head composited into the draft**; **A/V duration + corruption (6/6) and AD-03 Pillar-2 head sync closed** (draft `f78eb063`, video==audio at 214.94s, single continuous head overlay); paused at `user_review`. **Open quality gate: the LatentSync head's lip-sync articulation is not production-viable → routed through AD-04/MBCP for a certified replacement.** |
 | **Companion ledgers** | `OUTSTANDING_WORK.md` (task-level single source of truth) + `OUTSTANDING_WORK_Addendum_A` (2026-06-05). **This plan sequences workstreams and milestones; the ledger tracks individual items.** |
 | **Operating principle** | *"Fix, don't park — clean as we go."* Walk the end-to-end happy path; fix bugs inline as they surface; defer nothing without recording it in the ledger. |
 
@@ -55,6 +55,7 @@ A non-technical operator can drive a course video from a raw transcript to a fin
 | **WS-E** | UI | Make the user-facing flow functional: project lifecycle, review gates, asset preview, approve/reject, download. |
 | **WS-F** | Composition + motion-graphics + fallback tier (06/05) | Stand up **node-06** (canonical FFmpeg compositor + Remotion captions/lower-thirds/Ken-Burns L2) and **node-05** (SDXL image + Ollama LLM fallbacks + composition overflow); migrate composition off the node-01 bootstrap. *(This is capability + resilience, not CUDA render-distribution — node-06 is Intel.)* |
 | **WS-G** | Production hardening | Secrets/tokens, monitoring/alerting, DR, runbooks, load/soak testing, hygiene. |
+| **WS-H** | Model evaluation & certification (AD-04) | Build the **MBCP** — benchmark, validate, and certify self-hostable models on real hardware; produce the AD-01.7 attestation. **Phase 1 settles the talking-head production model**; the full platform is AD-01's (M5) external acceptance process. |
 
 ---
 
@@ -74,11 +75,11 @@ A non-technical operator can drive a course video from a raw transcript to a fin
 | **M8** | Production launch | Final acceptance + cutover. |
 
 ### M1 — Close the happy path at quality *(immediate — this is items 1–3 + the sync catch)*
-> **Update 2026-06-07.** The **A/V duration mismatch and corruption check are CLOSED** (AD-03 §11): scene durations are now anchored on real audio length end-to-end (orchestrator + `compose_scene` + `stage7`, `v5.4.22-h0`); draft `061f64eb` is 214.97s with video==audio (3.7 ms) and corruption **6/6**. The "215.5 vs 227.26" / "5/6" framing in the bullets below is superseded — the real timeline is **214.97s** (215.5 was the head's own length). **Remaining M1:** the head is still **per-scene desynced** (AD-03 Pillar 2 — the next item) and **Stage 8 with the head** is not yet validated. The ~0.62s head A/V drift (frame-align) also remains.
+> **Update 2026-06-08.** Two AD-03 pillars are CLOSED: **(1) A/V duration + corruption** (Pillar 1, §11) — durations anchored on real audio end-to-end (`v5.4.22`); and **(2) Pillar-2 head sync** (`v5.4.23`) — the head is now composited **once** as a continuous timeline overlay (draft `f78eb063`, 214.94s, video==audio, corruption 6/6), so it tracks each scene instead of replaying the opening. The "215.5 vs 227.26" / "5/6" framing in the bullets below is superseded (real timeline **214.94s**; 215.5 was the head's own length). **Remaining mechanical M1** (model-agnostic): **Stage 8 with the head** (not yet validated) and the ~0.62s head A/V drift (frame-align). **Quality gate on M1 closure:** the LatentSync head's articulation is **not production-viable** — "final reviewed correct" now depends on a certified replacement head model via **AD-04/MBCP (WS-H)**. The composition path is model-agnostic, so the Stage-8 plumbing is validated now and the certified model drops into the same path.
 - **Head placement QA — spatial *and* temporal.** Inspect stage7's overlay filter to learn the *intended* layout (PiP vs full-frame vs lower-third), then eyeball the actual draft (`8e0c8531`). Resolve the **temporal** question: the head is 215.5s but the timeline is 227.26s — confirm whether the head is sliced per-scene against each scene's audio, stretched, or left short at the tail.
 - **A/V drift fix (~0.62s).** Segment rendering rounds each piece to whole frames (`ceil(slice_s × 30)`), accumulating ~0.62s of video-over-audio across 11 pieces. Fix with **frame-aligned splitting** (slice on 1/fps boundaries so pieces are whole-frame and sum exactly), or trim each rendered piece to its audio length. Regression introduced by the OAM-fix split; not present in single-render.
 - **Corruption check 5/6.** Identify the failing 6th check on the draft (fails identically on head-less and head drafts, so head-independent); decide whether it gates for drafts vs finals.
-- **Stage 8 final render with head.** Validate `final_render` (1080p, optionally 4k) carries the head correctly. *Do this last in M1* — no point spending a 4k render before the head is synced and placed.
+- **Stage 8 final render with head.** Validate `final_render` (1080p, optionally 4k) carries the head correctly. *Do this last in M1.* **Build it to resolve the head model via the provider factory / AD-01 binding, not a hard-coded engine** (AD-04 §16) — so a newly certified production head (Wan2.2-S2V / MagiHuman / …) is a selection change, not a code change.
 - **Exit:** one project completes 1→8; the final video is reviewed and confirmed correct (head synced, placed, validation passing).
 
 ### M2 — Make the single-job happy path robust
@@ -90,7 +91,8 @@ A non-technical operator can drive a course video from a raw transcript to a fin
 - **Exit:** the happy path runs with no swallowed errors or orphan renders; reservations succeed; pipeline/project state is accurate.
 
 ### M3 — Talking-head completeness + long videos
-- **SadTalker fallback.** Build the `sadtalker:7861` engine (currently a stub) as the alignment-gated fallback when LatentSync scores below threshold. Closes the last node-04 media-tier TODO.
+- **Production head model (via AD-04/MBCP).** The production-tier talking-head is no longer assumed to be LatentSync — its articulation failed the viability bar — so the production head is whatever the MBCP (WS-H) certifies (Wan2.2-S2V / MagiHuman / HuMo candidates), composited via the existing model-agnostic overlay. The target is a **two-tier** render: fast LatentSync draft, certified model for production.
+- **SadTalker fallback.** Build the `sadtalker:7861` engine (currently a stub) as the alignment-gated fallback when the primary head model scores below threshold. (Robustness fallback, *not* the quality answer — that comes from the MBCP-certified production model above.)
 - **Segment-rendering quality:** frame-aligned splitting (from M1), pause-aligned (not even-split) seams, and tuning `MAX_SEGMENT_SECONDS` upward for fewer seams once RAM headroom is confirmed.
 - **Phase 2 — parallel piece rendering.** RAM-autosensed concurrency: an engine-side dynamic semaphore sized from real-time free RAM ÷ measured per-render budget, **reserving** budget per in-flight render (LatentSync's memory spike is late). Autosense over a static cap because node-04 RAM is shared across six engines.
 - **Phase 3 — per-piece Celery sub-tasks + resume.** Move pieces into `group`/`chord` sub-tasks; persist `render_segments` (table exists, 0 rows) and add the `/jobs/{id}/segments` tracking API so renders are resumable and a single task no longer spans hours.
@@ -149,6 +151,9 @@ The spec review (05/06 roles, Remotion compositor, §6.3 fallback chain) shifts 
 3. **Composition migrates off node-01** (bootstrap → node-06 primary / node-05 overflow) — folded into M4a; the audio-anchored caption clock moves to Remotion there.
 
 **Unchanged:** M1 correctness (the node-01 bootstrap delivered a clean happy path); M2 (heartbeat / ORCH-5 / fleet-consistency still next, still gates CUDA parallelism + an honest UI); M5–M8 (M5/AD-01 now explicitly absorbs the Ollama fallback provider).
+
+### Sequencing impact of the head-model decision (2026-06-08)
+The LatentSync head's articulation is not production-viable, so a certified replacement is now on M1's *quality* critical path. This adds **WS-H** (the MBCP / AD-04): its **Phase 1** — the talking-head bake-off (LatentSync vs Wan2.2-S2V vs MagiHuman) — is pulled forward to settle the production head, and the **full platform** is the external acceptance process AD-01 (M5) needs to function at all. Mechanical M1 (Stage-8 plumbing, frame-align drift) stays model-agnostic and proceeds in parallel; **Stage 8 binds its head model through the provider factory** so the certified model is a selection change, not a rebuild.
 
 ---
 
