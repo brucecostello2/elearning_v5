@@ -1,6 +1,6 @@
 # IVGS v5 — FastAPI Backend (ivgs-api)
 # Python 3.12 slim base, non-root execution, health check
-FROM python:3.12.8-slim-bookworm AS builder
+FROM python:3.14.0-slim-bookworm AS builder
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential libpq-dev \
@@ -15,7 +15,7 @@ RUN pip install --no-cache-dir --prefix=/install \
     -r /build/api-requirements.txt
 
 # --- Runtime stage ---
-FROM python:3.12.8-slim-bookworm
+FROM python:3.14.0-slim-bookworm
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 curl \
