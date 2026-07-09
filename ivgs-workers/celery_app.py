@@ -209,6 +209,12 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
         "schedule": timedelta(seconds=60),
         "options": {"queue": "default", "priority": 3},
     },
+    # M2-3: project scheduler fleet residency -> model_node_availability
+    "model-availability-poll": {
+        "task": "ivgs_workers.tasks.periodic_tasks.poll_model_node_availability",
+        "schedule": timedelta(seconds=30),
+        "options": {"queue": "default", "priority": 3},
+    },
     "media-join-watchdog": {
         "task": "tasks.pipeline_orchestrator_v2.media_join_watchdog",
         "schedule": timedelta(minutes=5),
@@ -327,6 +333,7 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
         "tasks.talking_head_task",
         "tasks.pipeline_orchestrator",
         "tasks.pipeline_orchestrator_v2",
+        "tasks.periodic_tasks",
     ]
 
     # Timezone
