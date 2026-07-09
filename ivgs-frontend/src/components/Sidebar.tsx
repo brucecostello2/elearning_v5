@@ -63,6 +63,7 @@ const ADMIN_SECTIONS: SidebarSection[] = [
     minRole: "admin",
     items: [
       { label: "Overview", href: "/admin", minRole: "admin" },
+      { label: "Model Store", href: "/admin/models", minRole: "admin" },
       { label: "User Management", href: "/admin/users", minRole: "admin" },
       { label: "Backup Management", href: "/admin/backups", minRole: "admin" },
       { label: "Retention Policies", href: "/admin/retention", minRole: "admin" },

@@ -170,6 +170,20 @@ async function request<T>(
     }
   }
 
+  /* No token at all and the API refused (FastAPI returns 403 for a missing
+     bearer): a dead/expired session — send the user to login instead of
+     stranding them on an error page. A 403 WITH a token is a real role
+     denial and is surfaced normally. */
+  if (response.status === 403 && !accessToken) {
+    if (typeof window !== "undefined" && window.location.pathname !== "/login") {
+      window.location.href = "/login";
+    }
+    throw new ApiRequestError({
+      status: 403,
+      message: "Not signed in. Please sign in.",
+    });
+  }
+
   /* Parse response */
   if (!response.ok) {
     let errorBody: Record<string, unknown> = {};
