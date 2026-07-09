@@ -264,6 +264,12 @@ class WorkerConfig:
     enable_gpu_reservation: bool = _env(
         "IVGS_ENABLE_GPU_RESERVATION", True, bool
     )
+    enable_node_registration: bool = _env(
+        "IVGS_ENABLE_NODE_REGISTRATION", True, bool
+    )
+    enable_availability_poller: bool = _env(
+        "IVGS_ENABLE_AVAILABILITY_POLLER", True, bool
+    )
     enable_idempotency_check: bool = _env(
         "IVGS_ENABLE_IDEMPOTENCY_CHECK", True, bool
     )

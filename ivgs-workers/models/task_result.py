@@ -97,6 +97,9 @@ class PipelineJobContext(BaseModel):
     max_runtime_seconds: int = 600
     language_code: str = "en-US"
     priority: str = "normal"
+    # ARCH-1/AD-01: which model tier (prototype vs production) this job renders.
+    # Set by the API at job creation; drives get_binding's tier resolution.
+    tier: str = "prototype"
     current_stage: str = ""
     resume_from_stage: Optional[str] = None
 

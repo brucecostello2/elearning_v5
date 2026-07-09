@@ -30,6 +30,7 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 import httpx
 import structlog
@@ -50,6 +51,8 @@ from models.task_result import (
     TranscriptRefinementInput,
     TranscriptRefinementOutput,
 )
+from providers import ensure_registered
+from shared.providers.factory import build_provider, get_binding
 from utils.error_handler import (
     compute_backoff_delay,
     save_checkpoint,
@@ -489,12 +492,22 @@ async def _run_refinement(
             checkpoint_data={"started_at": datetime.now(timezone.utc).isoformat()},
         )
 
+    # ARCH-1: resolve the selection-aware binding once; the GPU reservation
+    # and the vLLM client both derive from it — no hard-coded model identity.
+    ensure_registered()
+    binding = await get_binding(
+        "transcript_refinement",
+        project_id=UUID(project_id),
+        tier=job_context.tier,
+    )
+    log.info("model_bound", binding=binding.describe())
+
     # GPU reservation (if enabled)
     reservation_id = None
     if config.enable_gpu_reservation:
         try:
-            model_name = config.vllm.primary_model
-            vram_req = get_vram_requirement(model_name)
+            model_name = binding.name
+            vram_req = binding.vram_requirement_mb or get_vram_requirement(model_name)
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
                 model_name=model_name,
@@ -533,7 +546,7 @@ async def _run_refinement(
         idempotency_hash = VC.compute_request_hash(
             system_prompt=system_prompt,
             user_prompt=user_template,
-            model=config.vllm.primary_model,
+            model=binding.name,
             temperature=config.vllm.temperature,
             max_tokens=config.vllm.max_tokens,
         )
@@ -557,7 +570,7 @@ async def _run_refinement(
     total_input_tokens = 0
     total_output_tokens = 0
 
-    async with VLLMClient(config.vllm) as vllm_client:
+    async with build_provider(binding) as vllm_client:
         for transcript in transcripts:
             log.info(
                 "refining_transcript",
@@ -642,7 +655,7 @@ async def _run_refinement(
         total_input_tokens=total_input_tokens,
         total_output_tokens=total_output_tokens,
         processing_time_seconds=round(elapsed, 3),
-        model_used=config.vllm.primary_model,
+        model_used=binding.name,
         idempotency_hash=idempotency_hash,
         errors=errors,
         completed_at=datetime.now(timezone.utc),

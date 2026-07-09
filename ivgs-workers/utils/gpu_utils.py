@@ -316,6 +316,98 @@ def _collect_gpu_metrics(gpu_index: int = 0) -> Dict[str, Any]:
     return metrics
 
 
+def _detect_gpu_identity(gpu_index: int) -> Optional[Dict[str, Any]]:
+    """Resolve this node's GPU identity: env override -> nvidia-smi -> None.
+
+    Returns ``{gpu_model, total_vram_mb, compute_capability}`` or ``None`` when
+    neither source is available (CI / a non-GPU worker) — the caller then skips
+    registration rather than registering a phantom node.
+    """
+    model = os.environ.get("IVGS_GPU_MODEL")
+    vram = os.environ.get("IVGS_GPU_VRAM_MB")
+    cc = os.environ.get("IVGS_GPU_COMPUTE_CAP")
+    if model and vram and cc:
+        return {
+            "gpu_model": model,
+            "total_vram_mb": int(vram),
+            "compute_capability": cc,
+        }
+    try:
+        import subprocess
+
+        out = subprocess.run(
+            [
+                "nvidia-smi",
+                f"--id={gpu_index}",
+                "--query-gpu=name,memory.total,compute_cap",
+                "--format=csv,noheader,nounits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            name, mem, ccap = [p.strip() for p in out.stdout.strip().split(",")]
+            return {
+                "gpu_model": model or name,
+                "total_vram_mb": int(vram) if vram else int(float(mem)),
+                "compute_capability": cc or ccap,
+            }
+    except Exception as exc:  # nvidia-smi absent / unparsable
+        logger.info("gpu_identity_probe_failed", error=str(exc))
+    if model and vram:  # partial env; compute_cap unavailable
+        return {
+            "gpu_model": model,
+            "total_vram_mb": int(vram),
+            "compute_capability": cc or "0.0",
+        }
+    return None
+
+
+def register_node(gpu_index: Optional[int] = None) -> Optional[str]:
+    """Register this node with the GPU scheduler (POST /register).
+
+    Server-side registration is idempotent. Returns the ``node_id``, or
+    ``None`` when the node has no resolvable GPU identity (skip) or the
+    scheduler is unreachable — the worker still runs; placement simply won't
+    see this node until a later registration/heartbeat succeeds.
+    """
+    cfg = WorkerConfig()
+    if not cfg.enable_node_registration:
+        logger.info("node_registration_disabled")
+        return None
+    idx = gpu_index if gpu_index is not None else int(
+        os.environ.get("IVGS_GPU_INDEX", "0")
+    )
+    ident = _detect_gpu_identity(idx)
+    if ident is None:
+        logger.info(
+            "node_registration_skipped",
+            reason="no GPU identity (env or nvidia-smi)",
+        )
+        return None
+    payload = {"node_hostname": cfg.node_hostname, "gpu_index": idx, **ident}
+    try:
+        resp = _get_client().post("/register", json=payload)
+        if resp.status_code == 201:
+            node_id = resp.json().get("node_id")
+            logger.info(
+                "node_registered",
+                node_id=node_id,
+                node_hostname=cfg.node_hostname,
+                gpu_index=idx,
+            )
+            return node_id
+        logger.warning(
+            "node_registration_failed",
+            status_code=resp.status_code,
+            body=resp.text[:200],
+        )
+    except Exception as exc:
+        logger.warning("node_registration_error", error=str(exc))
+    return None
+
+
 def start_heartbeat_loop(
     worker_id: str,
     node_hostname: str,

@@ -25,15 +25,17 @@ class Base(DeclarativeBase):
     """Base class for all SQLAlchemy ORM models."""
 
 
-# Async engine with connection pooling
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_timeout=settings.DATABASE_POOL_TIMEOUT,
-    pool_pre_ping=True,
-    echo=False,
-)
+# Async engine with connection pooling.
+# SQLite (test runs) uses a pool-less dialect that rejects the QueuePool
+# kwargs, so those are applied only for server databases.
+_engine_kwargs: dict = {"pool_pre_ping": True, "echo": False}
+if not settings.DATABASE_URL.startswith("sqlite"):
+    _engine_kwargs.update(
+        pool_size=settings.DATABASE_POOL_SIZE,
+        max_overflow=settings.DATABASE_MAX_OVERFLOW,
+        pool_timeout=settings.DATABASE_POOL_TIMEOUT,
+    )
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 # Async session factory
 async_session_factory = async_sessionmaker(

@@ -1,46 +1,50 @@
-"""
-Test for BUG-001: NameError in backup error handler (FIXED).
+"""BUG-001: the backup dispatch error-handler marks the record failed.
 
-Bug was: app/api/v1/backup.py line 299 — exc → _exc
-Fix: Changed str(exc) to str(_exc)
+The original bug was a NameError in app/api/v1/backup.py's dispatch handler
+(``str(exc)`` referenced as ``str(_exc)``). The inline ``_run_backup`` path the
+old test imported was removed in the Celery refactor; the failure-status
+invariant now lives in two places, each tested where it runs:
+  * API dispatch (broker-dispatch failure -> record 'failed') — this test;
+  * worker execution (backup script failure -> record 'failed') —
+    ivgs-backup-worker/tests/test_backup_tasks.py.
+Previously xfailed; un-xfailed now that the invariant is exercised against live
+code rather than the removed inline path.
 """
-
 import pytest
-import uuid
-from datetime import datetime, timezone
-from unittest.mock import patch
-
+from httpx import AsyncClient
 from sqlalchemy import text
 
+pytestmark = pytest.mark.asyncio
 
-@pytest.mark.asyncio
-async def test_backup_error_handler_updates_status_on_exception(
-    db_session,
-):
-    """When _run_backup hits an exception, the record should be set to 'failed'."""
-    backup_id = str(uuid.uuid4())
 
-    await db_session.execute(
-        text(
-            "INSERT INTO backup_records (id, backup_type, status, started_at) "
-            "VALUES (:id, 'full_database', 'running', :now)"
-        ),
-        {"id": backup_id, "now": datetime.now(timezone.utc)},
-    )
-    await db_session.commit()
+class TestBackupDispatchErrorHandler:
+    async def test_dispatch_failure_marks_record_failed(
+        self, client: AsyncClient, admin_token, db_session
+    ):
+        from unittest.mock import patch
 
-    from app.api.v1.backup import _run_backup
+        with patch(
+            "app.api.v1.backup.celery_client.send_task",
+            side_effect=OSError("broker down"),
+        ):
+            r = await client.post(
+                "/api/v1/backup/trigger",
+                json={"backup_type": "full_database"},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
 
-    with patch("asyncio.create_subprocess_shell", side_effect=OSError("disk full")):
-        await _run_backup(backup_id, "full_database", db_session)
+        # Dispatch failed -> handler marks the record failed and surfaces 503.
+        assert r.status_code == 503
 
-    row = (
-        await db_session.execute(
-            text("SELECT status, error_message FROM backup_records WHERE id = :id"),
-            {"id": backup_id},
-        )
-    ).fetchone()
-
-    assert row is not None
-    assert row.status == "failed"
-    assert "disk full" in row.error_message
+        row = (
+            await db_session.execute(
+                text(
+                    "SELECT status, error_message FROM backup_records "
+                    "WHERE backup_type = 'full_database' AND status = 'failed' "
+                    "ORDER BY started_at DESC LIMIT 1"
+                )
+            )
+        ).fetchone()
+        assert row is not None
+        assert row.status == "failed"
+        assert "broker down" in row.error_message

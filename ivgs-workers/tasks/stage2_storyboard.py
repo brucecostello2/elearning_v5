@@ -27,6 +27,7 @@ import re
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 import httpx
 import structlog
@@ -48,6 +49,9 @@ from models.task_result import (
     StoryboardGenerationOutput,
     StoryboardScene,
 )
+from providers import ensure_registered
+from providers._common import engine_model_id
+from shared.providers.factory import build_provider, get_binding
 from utils.error_handler import (
     compute_backoff_delay,
     save_checkpoint,
@@ -514,12 +518,22 @@ async def _run_storyboard_generation(
             },
         )
 
+    # ARCH-1: resolve the selection-aware binding once; reservation + client
+    # both derive from it — no hard-coded model identity.
+    ensure_registered()
+    binding = await get_binding(
+        "storyboard_generation",
+        project_id=UUID(project_id),
+        tier=job_context.tier,
+    )
+    log.info("model_bound", binding=binding.describe())
+
     # GPU reservation
     reservation_id = None
     if config.enable_gpu_reservation:
         try:
-            model_name = config.vllm.primary_model
-            vram_req = get_vram_requirement(model_name)
+            model_name = binding.name
+            vram_req = binding.vram_requirement_mb or get_vram_requirement(model_name)
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
                 model_name=model_name,
@@ -562,7 +576,7 @@ async def _run_storyboard_generation(
         idempotency_hash = VLLMClient.compute_request_hash(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            model=vllm_config["model"],
+            model=engine_model_id(binding),
             temperature=vllm_config["temperature"],
             max_tokens=vllm_config["max_tokens"],
         )
@@ -572,17 +586,17 @@ async def _run_storyboard_generation(
     scenes: List[StoryboardScene] = []
     total_input_tokens = 0
     total_output_tokens = 0
-    model_used = vllm_config["model"]
+    model_used = binding.name
 
     try:
-        async with VLLMClient(config.vllm) as vllm_client:
+        async with build_provider(binding) as vllm_client:
             log.info("vllm_storyboard_request_starting")
 
             parsed_json, response = await vllm_client.chat_json(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model=vllm_config["model"],
-                base_url=vllm_config["base_url"],
+                model=engine_model_id(binding),
+                base_url=binding.endpoint,
                 max_tokens=vllm_config["max_tokens"],
                 temperature=vllm_config["temperature"],
                 timeout=vllm_config["timeout"],

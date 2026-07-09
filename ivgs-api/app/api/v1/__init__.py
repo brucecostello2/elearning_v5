@@ -50,6 +50,12 @@ from app.api.v1.rollback import router as rollback_router
 # --- WebSocket ---
 from app.api.v1.ws_logs import router as ws_logs_router
 
+# --- Model Store (AD-01 / ARCH-1) ---
+from app.api.v1.model_store import (
+    models_router as model_store_router,
+    selections_router as model_selections_router,
+)
+
 
 api_v1_router = APIRouter()
 
@@ -69,6 +75,10 @@ api_v1_router.include_router(transcripts_router)      # prefix built into router
 api_v1_router.include_router(storyboard_router)       # prefix built into router
 api_v1_router.include_router(languages_router)         # prefix built into router
 api_v1_router.include_router(project_job_router)       # prefix built into router
+api_v1_router.include_router(model_selections_router)  # prefix built into router
+
+# Model Store (AD-01 / ARCH-1)
+api_v1_router.include_router(model_store_router)        # /models
 
 # Standalone assets & jobs
 api_v1_router.include_router(assets_router)            # prefix built into router

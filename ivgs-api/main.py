@@ -20,6 +20,7 @@ from app.middleware.audit import AuditMiddleware
 from app.middleware.error_handler import ErrorHandlerMiddleware
 from app.middleware.rate_limit import RateLimitMiddleware
 from app.api.v1 import api_v1_router
+from app.api.ad01_ingest import ad01_router
 
 setup_logging(service_name="ivgs-api")
 logger = logging.getLogger(__name__)
@@ -79,6 +80,8 @@ app.add_middleware(RateLimitMiddleware)
 
 # --- Routers ---
 app.include_router(api_v1_router, prefix="/api/v1")
+# AD-04 seam 1: MBCP posts to {base}/ad01/v1/certified-models — root-mounted.
+app.include_router(ad01_router)
 
 
 @app.get("/", tags=["Root"])

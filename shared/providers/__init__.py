@@ -205,10 +205,28 @@ class STTProvider(ABC):
 
 @dataclass
 class TalkingHeadParams:
-    """Parameters for talking head / lip-sync rendering."""
+    """Parameters for talking head / lip-sync rendering.
+
+    ARCH-1 contract note: the live Stage-6 pipeline supplies asset BYTES
+    (downloaded once per job/scene) plus render-mode controls. Byte fields
+    are the primary contract; the ``*_path`` fields remain for file-based
+    engines. A provider may honour either, preferring bytes when both are
+    set.
+    """
+    # Primary (byte) inputs — what Stage 6 actually supplies
+    scene_image_data: Optional[bytes] = None
+    voiceover_audio_data: Optional[bytes] = None
+    reference_clip_data: Optional[bytes] = None
+    # File-based inputs (SadTalker server contract)
     scene_image_path: str = ""          # 1920×1080 PNG from Stage 3
     voiceover_audio_path: str = ""      # WAV 48kHz mono from Stage 4
     reference_clip_path: str = ""       # User-uploaded MP4/MOV reference
+    # Render-mode controls (Stage-6 auto-detect / per-scene override)
+    mode: str = "full_frame"            # full_frame / pip / overlay
+    pip_position: str = "bottom_right"
+    pip_scale: float = 0.25
+    lip_sync_strength: float = 1.0
+    face_enhance: bool = True
     output_width: int = 1920
     output_height: int = 1080
     output_fps: int = 30
@@ -227,6 +245,7 @@ class TalkingHeadResult:
     alignment_score: float = 0.0
     model: str = ""
     output_path: str = ""
+    generation_time_seconds: float = 0.0
 
 
 class TalkingHeadProvider(ABC):
@@ -261,3 +280,23 @@ class TalkingHeadProvider(ABC):
     def provider_name(self) -> str:
         """Return human-readable provider name for logging/metrics."""
         ...
+
+
+# ---------------------------------------------------------------------------
+# ARCH-1: selection-aware factory surface (§19.1 / AD-01.9)
+# ---------------------------------------------------------------------------
+from shared.providers.binding import ModelBinding, resolve_endpoint  # noqa: E402,F401
+from shared.providers.errors import (  # noqa: E402,F401
+    EndpointResolutionError,
+    EngineNotRegisteredError,
+    ProviderError,
+    SelectionError,
+    SelectionIntegrityError,
+)
+from shared.providers.factory import (  # noqa: E402,F401
+    build_provider,
+    get_binding,
+    get_provider,
+    register_engine_builder,
+    registered_engines,
+)

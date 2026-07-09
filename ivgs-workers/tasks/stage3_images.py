@@ -30,6 +30,7 @@ import os
 import time
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 import httpx
 import structlog
@@ -37,13 +38,12 @@ from jinja2 import BaseLoader, Environment, select_autoescape
 
 from celery_app import IVGSBaseTask, celery_app
 from clients.flux_client import (
-    FluxClient,
     FluxGenerationParams,
     FluxModel,
 )
 from clients.cogvideox_client import (
-    CogVideoXClient,
     CogVideoXGenerationParams,
+    CogVideoXModel,
 )
 from clients.vllm_client import VLLMClient
 from config import WorkerConfig
@@ -52,6 +52,9 @@ from models.task_result import (
     PipelineStage,
     StageStatus,
 )
+from providers import ensure_registered
+from providers._common import engine_model_id
+from shared.providers.factory import build_provider, get_binding
 from utils.error_handler import (
     save_checkpoint,
     update_job_status,
@@ -97,6 +100,7 @@ class Stage3Input(BaseModel):
     visual_style: str = "professional, clean, modern"
     scenes: List[SceneImageInput] = Field(min_length=1)
     flux_model: str = "flux1-schnell-fp8.safetensors"
+    tier: str = "prototype"
     target_width: int = 1920
     target_height: int = 1080
     enable_clip_scoring: bool = True
@@ -284,14 +288,22 @@ async def _submit_quality_score(
 # Per-scene processing
 # ---------------------------------------------------------------------------
 
+async def _close_provider(provider: Any) -> None:
+    """Close a per-scene provider's underlying HTTP client if it exposes one."""
+    close = getattr(provider, "close", None)
+    if close is not None:
+        await close()
+
+
 async def _process_single_scene(
     scene: SceneImageInput,
     task_input: Stage3Input,
     vllm_client: VLLMClient,
-    flux_client: FluxClient,
-    cogvideox_client: CogVideoXClient,
     image_validator: ImageValidator,
     config: WorkerConfig,
+    *,
+    project_id: str,
+    tier: str,
 ) -> SceneImageResult:
     """Process a single scene: prompt gen → image gen → validate → upload."""
     start_time = time.monotonic()
@@ -322,35 +334,71 @@ async def _process_single_scene(
         model_used: str
 
         if scene.media_type == MediaType.VIDEO_CLIP.value:
-            # Generate video keyframe via CogVideoX
+            # ARCH-1: scene-scoped video-model selection.
             log.info("generating_video_keyframe")
-            params = CogVideoXGenerationParams(prompt=positive_prompt)
-            keyframe = await cogvideox_client.generate_keyframe(params)
+            vid_binding = await get_binding(
+                "video_generation",
+                project_id=UUID(project_id),
+                tier=tier,
+                scene_id=UUID(scene.scene_id),
+            )
+            log.info("model_bound", binding=vid_binding.describe())
+            params = CogVideoXGenerationParams(
+                prompt=positive_prompt,
+                model=CogVideoXModel(engine_model_id(vid_binding)),
+            )
+            cogvideox_client = build_provider(vid_binding)
+            try:
+                keyframe = await cogvideox_client.generate_keyframe(params)
+            finally:
+                await _close_provider(cogvideox_client)
             if keyframe:
                 image_data = keyframe
-                model_used = "cogvideox-5b-keyframe"
+                model_used = vid_binding.name
             else:
-                # Fallback to FLUX image
+                # Fallback to a still image — resolve the image selection lazily
+                # (a video-only project may carry no image default).
                 log.warning("cogvideox_keyframe_failed_using_flux_fallback")
+                img_binding = await get_binding(
+                    "image_generation",
+                    project_id=UUID(project_id),
+                    tier=tier,
+                    scene_id=UUID(scene.scene_id),
+                )
                 flux_params = FluxGenerationParams(
                     prompt=positive_prompt,
                     negative_prompt=negative_prompt,
-                    model=FluxModel(task_input.flux_model),
+                    model=FluxModel(engine_model_id(img_binding)),
                 )
-                flux_result = await flux_client.generate_image(flux_params)
+                flux_client = build_provider(img_binding)
+                try:
+                    flux_result = await flux_client.generate_image(flux_params)
+                finally:
+                    await _close_provider(flux_client)
                 image_data = flux_result.image_data
-                model_used = flux_result.model_used
+                model_used = img_binding.name
         else:
-            # Standard image generation via FLUX
+            # ARCH-1: scene-scoped image-model selection.
             log.info("generating_scene_image")
+            img_binding = await get_binding(
+                "image_generation",
+                project_id=UUID(project_id),
+                tier=tier,
+                scene_id=UUID(scene.scene_id),
+            )
+            log.info("model_bound", binding=img_binding.describe())
             flux_params = FluxGenerationParams(
                 prompt=positive_prompt,
                 negative_prompt=negative_prompt,
-                model=FluxModel(task_input.flux_model),
+                model=FluxModel(engine_model_id(img_binding)),
             )
-            flux_result = await flux_client.generate_image(flux_params)
+            flux_client = build_provider(img_binding)
+            try:
+                flux_result = await flux_client.generate_image(flux_params)
+            finally:
+                await _close_provider(flux_client)
             image_data = flux_result.image_data
-            model_used = flux_result.model_used
+            model_used = img_binding.name
 
         # 3. Upscale to 1920×1080
         log.info("upscaling_image")
@@ -535,20 +583,12 @@ def generate_scene_images_task(
     # Update job status
     update_job_status(task_input.job_id, "running")
 
-    # GPU reservation for FLUX.1 (16GB for schnell)
+    # ARCH-1: register engine builders once for this worker process.
+    ensure_registered()
+
+    # GPU reservation is sized from a representative (project-level) image
+    # selection below, on the same event loop that runs the scenes.
     reservation_id = None
-    if config.enable_gpu_reservation:
-        try:
-            reservation = acquire_gpu_reservation(
-                job_id=task_input.job_id,
-                model_name="flux1-schnell",
-                vram_requirement_mb=16384,
-                estimated_duration_s=len(task_input.scenes) * 60,
-            )
-            reservation_id = reservation.get("reservation_id")
-            self._gpu_reservation_id = reservation_id
-        except Exception as gpu_err:
-            log.warning("gpu_reservation_failed", error=str(gpu_err))
 
     # Idempotency check
     if config.enable_idempotency_check:
@@ -569,17 +609,30 @@ def generate_scene_images_task(
     loop = asyncio.new_event_loop()
 
     try:
-        # Initialize clients
-        flux_client = FluxClient(
-            base_url=os.getenv("IVGS_COMFYUI_URL", "http://node-04:8188"),
-            fallback_url=os.getenv("IVGS_COMFYUI_FALLBACK_URL", "http://node-05:8188"),
-            timeout=config.timeouts.comfyui_timeout,
-        )
-        cogvideox_client = CogVideoXClient(
-            base_url=os.getenv("IVGS_COGVIDEOX_URL", "http://node-02:8200"),
-            fallback_url=os.getenv("IVGS_COGVIDEOX_FALLBACK_URL", "http://node-03:8200"),
-            timeout=config.timeouts.cogvideox_timeout,
-        )
+        # GPU reservation — representative (project-level) image selection,
+        # resolved on this loop (mixing loops would break the async engine).
+        if config.enable_gpu_reservation:
+            try:
+                rep_binding = loop.run_until_complete(
+                    get_binding(
+                        "image_generation",
+                        project_id=UUID(task_input.project_id),
+                        tier=task_input.tier,
+                    )
+                )
+                reservation = acquire_gpu_reservation(
+                    job_id=task_input.job_id,
+                    model_name=rep_binding.name,
+                    vram_requirement_mb=rep_binding.vram_requirement_mb or 16384,
+                    estimated_duration_s=len(task_input.scenes) * 60,
+                )
+                reservation_id = reservation.get("reservation_id")
+                self._gpu_reservation_id = reservation_id
+            except Exception as gpu_err:
+                log.warning("gpu_reservation_failed", error=str(gpu_err))
+
+        # Prompt-generation LLM is constructed once; image/video providers are
+        # resolved per scene inside _process_single_scene (ARCH-1 scene scope).
         vllm_client = VLLMClient(config.vllm)
         image_validator = ImageValidator()
 
@@ -589,10 +642,10 @@ def generate_scene_images_task(
                     scene=scene,
                     task_input=task_input,
                     vllm_client=vllm_client,
-                    flux_client=flux_client,
-                    cogvideox_client=cogvideox_client,
                     image_validator=image_validator,
                     config=config,
+                    project_id=task_input.project_id,
+                    tier=task_input.tier,
                 )
             )
 
@@ -631,8 +684,6 @@ def generate_scene_images_task(
             )
 
         # Cleanup clients
-        loop.run_until_complete(flux_client.close())
-        loop.run_until_complete(cogvideox_client.close())
         loop.run_until_complete(vllm_client.close())
 
     except Exception as e:

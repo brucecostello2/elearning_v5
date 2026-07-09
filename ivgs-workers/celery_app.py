@@ -393,7 +393,7 @@ def on_worker_init(sender: Any = None, **kwargs: Any) -> None:
 
 @signals.worker_ready.connect
 def on_worker_ready(sender: Any = None, **kwargs: Any) -> None:
-    """Log when worker is ready to accept tasks."""
+    """Log readiness and self-register this node with the GPU scheduler (M2-1)."""
     import structlog
     slog = structlog.get_logger("ivgs.worker.ready")
     slog.info(
@@ -401,6 +401,22 @@ def on_worker_ready(sender: Any = None, **kwargs: Any) -> None:
         hostname=sender.hostname if sender else "unknown",
         pid=os.getpid(),
     )
+    # M2-1: register the node with the GPU scheduler and keep it alive. Skips
+    # cleanly on non-GPU workers (no GPU identity) — see register_node.
+    try:
+        from config import WorkerConfig
+        from utils.gpu_utils import register_node, start_heartbeat_loop
+
+        node_id = register_node()
+        if node_id is not None:
+            cfg = WorkerConfig()
+            start_heartbeat_loop(
+                worker_id=sender.hostname if sender else cfg.node_hostname,
+                node_hostname=cfg.node_hostname,
+                gpu_index=int(os.environ.get("IVGS_GPU_INDEX", "0")),
+            )
+    except Exception as exc:
+        slog.warning("node_registration_bootstrap_failed", error=str(exc))
 
 
 @signals.worker_shutting_down.connect
@@ -415,6 +431,13 @@ def on_worker_shutdown(
         hostname=sender.hostname if sender else "unknown",
         signal=str(sig),
     )
+    # M2-1: stop the node keepalive so the scheduler ages this node out.
+    try:
+        from utils.gpu_utils import stop_heartbeat_loop
+
+        stop_heartbeat_loop()
+    except Exception:
+        pass
 
 
 @signals.task_prerun.connect

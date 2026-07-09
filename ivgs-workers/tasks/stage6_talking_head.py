@@ -10,14 +10,14 @@ Pipeline Stage 5 (Talking Head Render) per §6.1:
     2. Download voiceover audio from SeaweedFS
     3. Fetch user-uploaded talking head reference clip
     4. Optionally determine render mode via vLLM
-    5. Render lip-synced video via LatentSync (1920×1080, 30fps)
+    5. Render lip-synced video via the AD-01-selected provider (1920×1080, 30fps)
     6. Validate: resolution, codec, duration, alignment score >0.85
     7. SHA-256 dedup check before upload
     8. Store MP4 to SeaweedFS: /ivgs/talking-heads/{project_id}/{scene_id}.mp4
     9. Update scene.talking_head_asset_id
     10. Save checkpoint per scene
 
-- GPU: LatentSync requires 16GB VRAM (node-04)
+- GPU: VRAM reserved per the selected model's binding (ARCH-1)
 - Timeout: 600s per scene
 - Retry: 2 retries with 30s→90s backoff
 - Fallback: SadTalker (8GB VRAM)
@@ -35,14 +35,19 @@ import httpx
 import structlog
 from jinja2 import BaseLoader, Environment, select_autoescape
 
+from uuid import UUID
+
 from celery_app import IVGSBaseTask, celery_app
-from clients.latentsync_client import (
-    LatentSyncClient,
-    LatentSyncMode,
-    LatentSyncParams,
-)
 from clients.vllm_client import VLLMClient
 from config import WorkerConfig
+from providers import ensure_registered  # registers engine builders (ARCH-1)
+from shared.providers import (
+    ModelBinding,
+    TalkingHeadParams,
+    TalkingHeadProvider,
+    build_provider,
+    get_binding,
+)
 from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation
@@ -85,6 +90,8 @@ class Stage5Input(BaseModel):
     project_name: str = ""
     scenes: List[SceneTalkingHeadInput] = Field(min_length=1)
     reference_clip_asset_id: str
+    # AD-01 tier: prototype drives Stage 7, production drives Stage 8.
+    tier: str = "prototype"
     output_width: int = 1920
     output_height: int = 1080
     output_fps: int = 30
@@ -287,7 +294,8 @@ async def _process_single_talking_head(
     scene: SceneTalkingHeadInput,
     task_input: Stage5Input,
     reference_clip_data: bytes,
-    latentsync_client: LatentSyncClient,
+    provider: TalkingHeadProvider,
+    binding: ModelBinding,
     vllm_client: Optional[VLLMClient],
     video_validator: VideoValidator,
     video_converter: VideoConverter,
@@ -327,25 +335,30 @@ async def _process_single_talking_head(
             except Exception:
                 pass  # Use defaults
 
-        # 3. Render talking head via LatentSync
-        log.info("rendering_talking_head", mode=render_params["mode"])
+        # 3. Render via the AD-01-selected provider (ARCH-1: no engine here)
+        log.info(
+            "rendering_talking_head",
+            mode=render_params["mode"],
+            model=binding.name,
+            engine=binding.engine,
+        )
 
-        mode_enum = LatentSyncMode(render_params["mode"])
-        latentsync_params = LatentSyncParams(
-            audio_data=audio_data,
-            reference_video_data=reference_clip_data,
+        provider_params = TalkingHeadParams(
             scene_image_data=image_data,
-            mode=mode_enum,
+            voiceover_audio_data=audio_data,
+            reference_clip_data=reference_clip_data,
+            mode=render_params["mode"],
+            pip_position=render_params.get("pip_position", "bottom_right"),
+            pip_scale=render_params.get("pip_scale", 0.25),
+            lip_sync_strength=render_params.get("lip_sync_strength", 1.0),
+            face_enhance=render_params.get("face_enhance", True),
             output_width=task_input.output_width,
             output_height=task_input.output_height,
             output_fps=task_input.output_fps,
-            lip_sync_strength=render_params.get("lip_sync_strength", 1.0),
-            face_enhance=render_params.get("face_enhance", True),
-            pip_scale=render_params.get("pip_scale", 0.25),
-            pip_position=render_params.get("pip_position", "bottom_right"),
+            alignment_threshold=task_input.alignment_threshold,
         )
 
-        render_result = await latentsync_client.render(latentsync_params)
+        render_result = await provider.render(provider_params)
         video_data = render_result.video_data
         alignment_score = render_result.alignment_score
 
@@ -369,7 +382,7 @@ async def _process_single_talking_head(
                 alignment_score=alignment_score,
                 quality_score=validation.quality_score,
                 quality_decision=validation.decision.value,
-                model_used=render_result.model_used,
+                model_used=binding.name,
                 render_mode=render_params["mode"],
                 generation_time_seconds=round(time.monotonic() - start_time, 3),
                 errors=validation.errors,
@@ -419,7 +432,7 @@ async def _process_single_talking_head(
                     alignment_score=alignment_score,
                     quality_score=validation.quality_score,
                     quality_decision=validation.decision.value,
-                    model_used=render_result.model_used,
+                    model_used=binding.name,
                     render_mode=render_params["mode"],
                     generation_time_seconds=round(time.monotonic() - start_time, 3),
                     was_deduplicated=True,
@@ -463,7 +476,7 @@ async def _process_single_talking_head(
             alignment_score=alignment_score,
             quality_score=validation.quality_score,
             quality_decision=validation.decision.value,
-            model_used=render_result.model_used,
+            model_used=binding.name,
             render_mode=render_params["mode"],
             generation_time_seconds=elapsed,
             was_deduplicated=was_deduplicated,
@@ -520,14 +533,35 @@ def generate_talking_head_task(
 
     update_job_status(task_input.job_id, "running")
 
-    # GPU reservation for LatentSync (16GB)
+    # ARCH-1: resolve the AD-01 selection for this (project, tier) and build
+    # the provider — no engine identity is hard-coded in this task.
+    ensure_registered()
+    binding_loop = asyncio.new_event_loop()
+    try:
+        binding: ModelBinding = binding_loop.run_until_complete(
+            get_binding(
+                "talking_head",
+                project_id=UUID(task_input.project_id),
+                tier=task_input.tier,
+            )
+        )
+    finally:
+        binding_loop.close()
+    log = log.bind(model=binding.name, engine=binding.engine)
+    provider: TalkingHeadProvider = build_provider(
+        binding,
+        timeout=config.timeouts.latentsync_timeout,
+        alignment_threshold=task_input.alignment_threshold,
+    )
+
+    # GPU reservation for the SELECTED model (binding-driven)
     reservation_id = None
     if config.enable_gpu_reservation:
         try:
             reservation = acquire_gpu_reservation(
                 job_id=task_input.job_id,
-                model_name="latentsync",
-                vram_requirement_mb=16384,
+                model_name=binding.name,
+                vram_requirement_mb=provider.vram_requirement_mb(),
                 estimated_duration_s=len(task_input.scenes) * 120,
             )
             reservation_id = reservation.get("reservation_id")
@@ -550,12 +584,6 @@ def generate_talking_head_task(
             _download_asset(task_input.reference_clip_asset_id, config)
         )
 
-        latentsync_client = LatentSyncClient(
-            base_url=os.getenv("IVGS_LATENTSYNC_URL", "http://node-04:8300"),
-            fallback_url=os.getenv("IVGS_SADTALKER_URL", "http://node-04:8301"),
-            timeout=config.timeouts.latentsync_timeout,
-            alignment_threshold=task_input.alignment_threshold,
-        )
         video_validator = VideoValidator()
         video_converter = VideoConverter()
 
@@ -569,7 +597,8 @@ def generate_talking_head_task(
                     scene=scene,
                     task_input=task_input,
                     reference_clip_data=reference_clip_data,
-                    latentsync_client=latentsync_client,
+                    provider=provider,
+                    binding=binding,
                     vllm_client=vllm_client,
                     video_validator=video_validator,
                     video_converter=video_converter,
@@ -611,7 +640,9 @@ def generate_talking_head_task(
                 progress=f"{len(scene_results)}/{len(task_input.scenes)}",
             )
 
-        loop.run_until_complete(latentsync_client.close())
+        provider_close = getattr(provider, "close", None)
+        if provider_close is not None:
+            loop.run_until_complete(provider_close())
         if vllm_client:
             loop.run_until_complete(vllm_client.close())
 

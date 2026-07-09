@@ -136,6 +136,12 @@ def test_session_factory(test_engine):
 # ============================================================================
 
 _ALL_TABLES = [
+    # AD-01 Model Store (children before parents; selections before projects)
+    "project_model_selections",
+    "model_approvals",
+    "model_node_availability",
+    "model_capability_tags",
+    "models",
     "prompt_tag_associations",
     "asset_quality_scores",
     "pipeline_checkpoints",
@@ -353,8 +359,16 @@ def mock_seaweedfs(monkeypatch):
         data = kwargs.get("data") or kwargs.get("content") or kwargs.get("file_data") or (args[1] if len(args) > 1 else b"")
         if isinstance(data, str):
             data = data.encode()
+        # Real shared.seaweedfs_client.upload_file returns Optional[str] (the
+        # bare fid), which asset_service stores directly into the VARCHAR
+        # seaweedfs_fid column. Returning a dict here made asyncpg reject the
+        # bind on PostgreSQL ("expected str, got dict"). Match the contract.
+        fid = f"mock-fid-{len(_fs_store) + 1}"
+        # Key by BOTH path and fid: download resolves by fid
+        # (asset.seaweedfs_fid), while path-based callers still hit.
         _fs_store[path] = data
-        return {"fid": f"mock-fid-{len(_fs_store)}", "size": len(data), "url": f"http://mock-seaweedfs/{path}"}
+        _fs_store[fid] = data
+        return fid
 
     async def mock_download(*args, **kwargs):
         path = kwargs.get("path") or kwargs.get("fid") or (args[0] if args else "")
@@ -1328,3 +1342,113 @@ async def approved_quality_score(db_session, operator_token) -> dict:
     await db_session.commit()
 
     return {"id": str(score.id), "asset_id": str(asset.id)}
+
+
+# ============================================================================
+# AD-01 MODEL STORE FIXTURES (ARCH-1 Tarball 1)
+# ============================================================================
+
+def make_model(
+    *,
+    name,
+    stage=None,
+    engine=None,
+    tier=None,
+    state=None,
+    enabled=True,
+    is_default=False,
+    vram_gb=16.0,
+    dynamically_loadable=True,
+    tags=None,
+    nodes=None,
+):
+    """Build (unsaved) an AD-01 Model with tags and node availability."""
+    from shared.models.model_store import (
+        CapabilityDimension as _CD,  # noqa: F401  (imported for callers)
+        Model,
+        ModelCapabilityTag,
+        ModelEngine,
+        ModelNodeAvailability,
+        ModelStage,
+        ModelState,
+        ModelTier,
+    )
+
+    model = Model(
+        id=uuid.uuid4(),
+        name=name,
+        display_name=name.replace("-", " ").title(),
+        stage=stage or ModelStage.TALKING_HEAD,
+        engine=engine or ModelEngine.LATENTSYNC,
+        tier=tier or ModelTier.BOTH,
+        state=state or ModelState.APPROVED,
+        enabled=enabled,
+        is_default=is_default,
+        vram_gb=vram_gb,
+        dynamically_loadable=dynamically_loadable,
+    )
+    for dimension, value, weight in tags or []:
+        model.capability_tags.append(
+            ModelCapabilityTag(dimension=dimension, value=value, weight=weight)
+        )
+    for node_id, status, served in nodes or []:
+        model.node_availability.append(
+            ModelNodeAvailability(node_id=node_id, status=status, served=served)
+        )
+    return model
+
+
+@pytest_asyncio.fixture
+async def model_store_project(db_session, operator_token):
+    """ORM-level project row for service/factory tests (returns Project)."""
+    from app.core.security import decode_token
+    from app.models.project import Project
+
+    payload = decode_token(operator_token)
+    row = Project(
+        id=uuid.uuid4(),
+        name="arch1-exemplar",
+        description="ARCH-1 provider/planner test project",
+        state="DRAFT",
+        created_by=uuid.UUID(payload["sub"]),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db_session.add(row)
+    await db_session.commit()
+    return row
+
+
+@pytest_asyncio.fixture
+async def talking_head_store(db_session):
+    """Two approved talking-head models on node-04; LatentSync is default."""
+    from shared.models.model_store import (
+        CapabilityDimension as CD,
+        ModelEngine,
+        NodeAvailabilityStatus as NA,
+    )
+
+    latentsync = make_model(
+        name="latentsync-1.5",
+        engine=ModelEngine.LATENTSYNC,
+        is_default=True,
+        vram_gb=16.0,
+        tags=[
+            (CD.VISUAL_STYLE, "photorealistic", 1.0),
+            (CD.MOTION_PROFILE, "subtle", 0.5),
+        ],
+        nodes=[("node-04", NA.AVAILABLE, False)],
+    )
+    sadtalker = make_model(
+        name="sadtalker-v2",
+        engine=ModelEngine.SADTALKER,
+        vram_gb=8.0,
+        tags=[
+            (CD.VISUAL_STYLE, "stylized", 1.0),
+            (CD.MOTION_PROFILE, "expressive", 0.8),
+        ],
+        nodes=[("node-04", NA.AVAILABLE, False)],
+    )
+    db_session.add_all([latentsync, sadtalker])
+    await db_session.commit()
+    return {"latentsync": latentsync, "sadtalker": sadtalker}

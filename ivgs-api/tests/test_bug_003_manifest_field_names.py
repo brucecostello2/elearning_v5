@@ -61,7 +61,7 @@ async def test_get_manifest_uses_correct_column_names(
     await db_session.commit()
 
     response = await client.get(
-        f"/api/v1/manifests/{job_id}/manifest",
+        f"/api/v1/jobs/{job_id}/manifest",
         headers={"Authorization": f"Bearer {operator_token}"},
     )
 
@@ -118,7 +118,7 @@ async def test_generate_manifest_uses_correct_column_names(
     await db_session.commit()
 
     response = await client.post(
-        f"/api/v1/manifests/{job_id}/manifest/generate",
+        f"/api/v1/jobs/{job_id}/manifest/generate",
         headers={"Authorization": f"Bearer {operator_token}"},
         json={"render_params": None},
     )

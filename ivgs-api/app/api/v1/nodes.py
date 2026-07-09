@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/nodes", tags=["Nodes"])
 
-# Static node topology per §2.2
+# Static node topology per §2.2; node-02/03/06 per AD-02 Draft 3
+# (node-02 LLM-only, node-03 video-only, node-06 = 2nd CUDA video + compositor + LLM failover)
 NODE_TOPOLOGY = {
     "node-01": {
         "hostname": "node-01",
@@ -29,17 +30,17 @@ NODE_TOPOLOGY = {
     },
     "node-02": {
         "hostname": "node-02",
-        "role": "GPU Primary LLM + Video",
+        "role": "GPU LLM (fp8 Llama-3.3-70B)",
         "gpu_model": "NVIDIA RTX 6000 Blackwell",
         "total_vram_mb": 98304,
-        "services": ["vllm-primary", "cogvideox", "celery-worker"],
+        "services": ["vllm-primary", "celery-worker"],
     },
     "node-03": {
         "hostname": "node-03",
-        "role": "GPU Secondary LLM + Video",
+        "role": "GPU Video (CogVideoX/Wan2.1)",
         "gpu_model": "NVIDIA RTX 6000 Blackwell",
         "total_vram_mb": 98304,
-        "services": ["vllm-secondary", "cogvideox", "celery-worker"],
+        "services": ["cogvideox", "celery-worker"],
     },
     "node-04": {
         "hostname": "node-04",
@@ -57,10 +58,10 @@ NODE_TOPOLOGY = {
     },
     "node-06": {
         "hostname": "node-06",
-        "role": "Composition + Rendering",
-        "gpu_model": "Intel B70 Pro",
-        "total_vram_mb": 32768,
-        "services": ["remotion", "ffmpeg", "celery-worker"],
+        "role": "GPU Video + Compositor + LLM failover",
+        "gpu_model": "NVIDIA RTX 6000 Blackwell",
+        "total_vram_mb": 98304,
+        "services": ["cogvideox", "remotion", "ffmpeg", "celery-worker"],
     },
 }
 

@@ -87,6 +87,15 @@ def get_beat_schedule() -> dict[str, dict[str, Any]]:
                 "expires": 25,
             },
         },
+        # M2-3: project scheduler fleet residency -> model_node_availability
+        "model-availability-poll-every-30-seconds": {
+            "task": "ivgs_workers.tasks.periodic_tasks.poll_model_node_availability",
+            "schedule": 30.0,
+            "options": {
+                "queue": "default",
+                "expires": 25,
+            },
+        },
         # Orphan cleanup — daily at 02:00 UTC
         "orphan-cleanup-daily": {
             "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
@@ -608,3 +617,147 @@ def verify_latest_backup(self: Any) -> dict[str, Any]:
     except Exception as exc:
         task_log.error("backup_verification_failed", error=str(exc))
         raise
+
+
+# ---------------------------------------------------------------------------
+# M2-3: ModelNodeAvailability poller (ARCH-1 factory node-aware routing)
+# ---------------------------------------------------------------------------
+
+
+async def _reconcile_availability(residency: dict[str, set]) -> dict[str, Any]:
+    """Reconcile PG ``model_node_availability`` to the fleet snapshot.
+
+    ``residency`` maps node_id -> set(model_name) for alive, non-draining
+    nodes. Servable models present on a node become AVAILABLE; previously-
+    AVAILABLE rows no longer backed by residency become UNAVAILABLE (kept, not
+    deleted — the factory ignores non-AVAILABLE rows). The scheduler tracks by
+    model_name == Model.name (the store name used in reservations).
+    """
+    from datetime import datetime, timezone
+
+    from sqlalchemy import select
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+    from shared.config import settings
+    from shared.models.model_store import (
+        Model,
+        ModelNodeAvailability,
+        ModelState,
+        NodeAvailabilityStatus,
+    )
+
+    servable_states = (ModelState.APPROVED, ModelState.DEPRECATED)
+    now = datetime.now(timezone.utc)
+
+    # The task spins a fresh event loop each beat; a module-level async engine
+    # would keep connections bound to a prior loop (asyncpg loop-affinity), so
+    # bind a dedicated engine to *this* loop and dispose it on the way out.
+    engine = create_async_engine(settings.DATABASE_URL, pool_pre_ping=True)
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with session_factory() as session:
+            rows = (
+                await session.execute(
+                    select(Model.id, Model.name).where(Model.state.in_(servable_states))
+                )
+            ).all()
+            name_to_id = {name: mid for mid, name in rows}
+
+            desired: set = set()
+            for node_id, models in residency.items():
+                for model_name in models:
+                    mid = name_to_id.get(model_name)
+                    if mid is not None:
+                        desired.add((mid, node_id))
+
+            made = 0
+            for mid, node_id in desired:
+                stmt = (
+                    pg_insert(ModelNodeAvailability)
+                    .values(
+                        model_id=mid,
+                        node_id=node_id,
+                        status=NodeAvailabilityStatus.AVAILABLE,
+                        served=True,
+                        last_health_check=now,
+                    )
+                    .on_conflict_do_update(
+                        constraint="uq_availability_model_node",
+                        set_={
+                            "status": NodeAvailabilityStatus.AVAILABLE,
+                            "served": True,
+                            "last_health_check": now,
+                        },
+                    )
+                )
+                await session.execute(stmt)
+                made += 1
+
+            current = (
+                await session.execute(
+                    select(ModelNodeAvailability).where(
+                        ModelNodeAvailability.status == NodeAvailabilityStatus.AVAILABLE
+                    )
+                )
+            ).scalars().all()
+            cleared = 0
+            for row in current:
+                if (row.model_id, row.node_id) not in desired:
+                    row.status = NodeAvailabilityStatus.UNAVAILABLE
+                    row.last_health_check = now
+                    cleared += 1
+
+            await session.commit()
+            return {"nodes": len(residency), "available": made, "cleared": cleared}
+    finally:
+        await engine.dispose()
+
+
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.poll_model_node_availability",
+    bind=True,
+    max_retries=0,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=25,
+    soft_time_limit=20,
+)
+def poll_model_node_availability(self: Any) -> dict[str, Any]:
+    """M2-3: project the GPU scheduler's fleet residency into PG
+    ``model_node_availability`` — the table the ARCH-1 provider factory's
+    ``_pick_node`` reads. One ``GET /fleet`` snapshot -> reconcile.
+    """
+    import httpx
+
+    from config import WorkerConfig
+
+    cfg = WorkerConfig()
+    if not cfg.enable_availability_poller:
+        return {"skipped": "disabled"}
+
+    base = cfg.gpu_scheduler.base_url.rstrip("/")
+    try:
+        resp = httpx.get(
+            f"{base}/fleet", timeout=cfg.gpu_scheduler.timeout_seconds
+        )
+        resp.raise_for_status()
+        fleet = resp.json()
+    except Exception as exc:
+        logger.warning("availability_poll_fleet_unreachable", error=str(exc))
+        return {"error": "fleet_unreachable"}
+
+    residency: dict[str, set] = {}
+    for node in fleet.get("nodes", []):
+        if node.get("is_alive") and not node.get("is_draining"):
+            residency[node["node_id"]] = set(node.get("loaded_models", []))
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        summary = loop.run_until_complete(_reconcile_availability(residency))
+    finally:
+        loop.close()
+
+    logger.info("availability_poll_complete", **summary)
+    return summary

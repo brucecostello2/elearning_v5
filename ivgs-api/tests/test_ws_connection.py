@@ -17,6 +17,16 @@ from starlette.testclient import TestClient
 AUTH_PATCH = "app.api.v1.ws_logs._authenticate_ws"
 
 
+@pytest.fixture(autouse=True)
+def _node_ip_registry(monkeypatch):
+    """ws_logs._node_ip resolves a node's host from NODE_<nn>_IP env vars.
+    The test process doesn't carry the deploy env, so seed the six fleet
+    nodes; otherwise every valid node resolves as unknown and the handler
+    returns the error frame instead of a log frame."""
+    for nn in ("01", "02", "03", "04", "05", "06"):
+        monkeypatch.setenv(f"NODE_{nn}_IP", f"192.168.1.{int(nn)}")
+
+
 @pytest.fixture
 def sync_client():
     """Synchronous TestClient for WebSocket testing.
@@ -93,7 +103,7 @@ def test_ws_connect_node_logs_invalid_node(sync_client):
         with sync_client.websocket_connect("/api/v1/ws/nodes/node-99/logs") as ws:
             data = ws.receive_json()
             assert "error" in data
-            assert "Unknown node" in data["error"]
+            assert "Unknown or unregistered node" in data["error"]
             assert "node-99" in data["error"]
 
 

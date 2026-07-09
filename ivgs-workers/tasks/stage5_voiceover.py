@@ -27,7 +27,9 @@ import asyncio
 import os
 import time
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, Dict, List, Optional, Tuple
+from uuid import UUID
 
 import httpx
 import structlog
@@ -35,13 +37,16 @@ from jinja2 import BaseLoader, Environment, select_autoescape
 
 from celery_app import IVGSBaseTask, celery_app
 from clients.coqui_client import (
-    CoquiClient,
     CoquiSynthesisParams,
     SUPPORTED_LANGUAGES,
 )
 from clients.vllm_client import VLLMClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
+from providers import ensure_registered
+from shared.providers import TTSParams
+from shared.providers.binding import ModelBinding
+from shared.providers.factory import build_provider, get_binding
 from utils.audio_validator import AudioValidator
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation
@@ -87,6 +92,7 @@ class Stage4Input(BaseModel):
     enable_dedup: bool = True
     tts_temperature: float = 0.75
     tts_speed: float = 1.0
+    tier: str = "prototype"
 
 
 class SceneVoiceoverResult(BaseModel):
@@ -254,7 +260,8 @@ async def _update_scene_audio(
 async def _process_single_voiceover(
     scene: SceneVoiceoverInput,
     task_input: Stage4Input,
-    coqui_client: CoquiClient,
+    tts_provider: Any,
+    tts_binding: ModelBinding,
     vllm_client: Optional[VLLMClient],
     audio_validator: AudioValidator,
     audio_converter: AudioConverter,
@@ -298,16 +305,31 @@ async def _process_single_voiceover(
 
         # 3. Synthesize audio
         log.info("synthesizing_voiceover")
-        synthesis_params = CoquiSynthesisParams(
-            text=narration_text,
-            language=coqui_lang,
-            speaker_wav=task_input.speaker_wav_data,
-            speaker_wav_path=task_input.speaker_wav_path,
-            temperature=task_input.tts_temperature,
-            speed=task_input.tts_speed,
+        # ARCH-1: synthesize via the selected engine. Coqui keeps its rich
+        # params and voice cloning; kokoro (English) uses the shared TTS ABC.
+        # The reported model is the store model (binding.name).
+        if tts_binding.engine == "coqui":
+            synthesis_params = CoquiSynthesisParams(
+                text=narration_text,
+                language=coqui_lang,
+                speaker_wav=task_input.speaker_wav_data,
+                speaker_wav_path=task_input.speaker_wav_path,
+                temperature=task_input.tts_temperature,
+                speed=task_input.tts_speed,
+            )
+            _synth = await tts_provider.synthesize(synthesis_params)
+        else:
+            _synth = await tts_provider.synthesize(
+                narration_text,
+                coqui_lang,
+                TTSParams(
+                    speaker_wav=task_input.speaker_wav_path,
+                    speed=task_input.tts_speed,
+                ),
+            )
+        synthesis_result = SimpleNamespace(
+            audio_data=_synth.audio_data, model_used=tts_binding.name
         )
-
-        synthesis_result = await coqui_client.synthesize(synthesis_params)
         audio_data = synthesis_result.audio_data
 
         # 4. Normalize audio to 48kHz 24-bit mono WAV
@@ -491,20 +513,10 @@ def generate_voiceover_task(
 
     update_job_status(task_input.job_id, "running")
 
-    # GPU reservation for Coqui XTTS v2 (8GB)
+    # ARCH-1: register engine builders once for this worker process.
+    ensure_registered()
+
     reservation_id = None
-    if config.enable_gpu_reservation:
-        try:
-            reservation = acquire_gpu_reservation(
-                job_id=task_input.job_id,
-                model_name="coqui-xtts-v2",
-                vram_requirement_mb=8192,
-                estimated_duration_s=len(task_input.scenes) * 30,
-            )
-            reservation_id = reservation.get("reservation_id")
-            self._gpu_reservation_id = reservation_id
-        except Exception as gpu_err:
-            log.warning("gpu_reservation_failed", error=str(gpu_err))
 
     scene_results: List[SceneVoiceoverResult] = []
     successful = 0
@@ -514,11 +526,30 @@ def generate_voiceover_task(
     loop = asyncio.new_event_loop()
 
     try:
-        coqui_client = CoquiClient(
-            base_url=os.getenv("IVGS_COQUI_URL", "http://node-04:5002"),
-            fallback_url=os.getenv("IVGS_COQUI_FALLBACK_URL"),
-            timeout=config.timeouts.tts_timeout,
+        # ARCH-1: project-level TTS selection (voiceover_tts is not
+        # scene-scoped), resolved on this loop; the reservation and the
+        # provider (coqui or kokoro) both derive from it.
+        tts_binding = loop.run_until_complete(
+            get_binding(
+                "voiceover_tts",
+                project_id=UUID(task_input.project_id),
+                tier=task_input.tier,
+            )
         )
+        log.info("model_bound", binding=tts_binding.describe())
+        if config.enable_gpu_reservation:
+            try:
+                reservation = acquire_gpu_reservation(
+                    job_id=task_input.job_id,
+                    model_name=tts_binding.name,
+                    vram_requirement_mb=tts_binding.vram_requirement_mb or 8192,
+                    estimated_duration_s=len(task_input.scenes) * 30,
+                )
+                reservation_id = reservation.get("reservation_id")
+                self._gpu_reservation_id = reservation_id
+            except Exception as gpu_err:
+                log.warning("gpu_reservation_failed", error=str(gpu_err))
+        tts_provider = build_provider(tts_binding)
         audio_validator = AudioValidator()
         audio_converter = AudioConverter()
 
@@ -531,7 +562,8 @@ def generate_voiceover_task(
                 _process_single_voiceover(
                     scene=scene,
                     task_input=task_input,
-                    coqui_client=coqui_client,
+                    tts_provider=tts_provider,
+                    tts_binding=tts_binding,
                     vllm_client=vllm_client,
                     audio_validator=audio_validator,
                     audio_converter=audio_converter,
@@ -569,7 +601,7 @@ def generate_voiceover_task(
                 progress=f"{len(scene_results)}/{len(task_input.scenes)}",
             )
 
-        loop.run_until_complete(coqui_client.close())
+        loop.run_until_complete(tts_provider.close())
         if vllm_client:
             loop.run_until_complete(vllm_client.close())
 

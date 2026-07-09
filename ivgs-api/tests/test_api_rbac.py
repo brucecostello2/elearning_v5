@@ -202,6 +202,7 @@ class TestRbacViewerDenied:
         r = await client.post(
             f"/api/v1/projects/{project_id}/assets/upload",
             files={"file": ("test.mp4", b"fake", "video/mp4")},
+            data={"asset_type": "video"},  # required Form field; else 422 masks the 403
             headers=_auth(viewer_token),
         )
         assert r.status_code == 403
