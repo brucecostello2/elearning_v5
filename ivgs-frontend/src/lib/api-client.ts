@@ -193,13 +193,33 @@ async function request<T>(
       /* Non-JSON error response */
     }
 
+    /* API errors arrive in several shapes ({"detail": "..."} |
+       {"detail": {"error": {"message": "..."}}} | {"error": {...}}).
+       Rendering a non-string as a React child crashes the page (React #31),
+       so always reduce to a string. */
+    const pickMessage = (v: unknown): string | null => {
+      if (typeof v === "string") return v;
+      if (v && typeof v === "object" && !Array.isArray(v)) {
+        const o = v as Record<string, unknown>;
+        return (
+          pickMessage(o["message"]) ??
+          pickMessage(o["detail"]) ??
+          pickMessage(o["error"]) ??
+          null
+        );
+      }
+      return null;
+    };
+    const message =
+      pickMessage(errorBody) ?? `Request failed with status ${response.status}`;
+
     throw new ApiRequestError({
       status: response.status,
-      message:
-        (errorBody["message"] as string) ??
-        (errorBody["detail"] as string) ??
-        `Request failed with status ${response.status}`,
-      detail: errorBody["detail"] as string | undefined,
+      message,
+      detail:
+        typeof errorBody["detail"] === "string"
+          ? (errorBody["detail"] as string)
+          : undefined,
       code: errorBody["code"] as string | undefined,
     });
   }
