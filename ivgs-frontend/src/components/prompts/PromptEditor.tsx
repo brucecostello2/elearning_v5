@@ -472,11 +472,11 @@ export default function PromptEditor({
   return (
     <div className="space-y-4">
       {/* ── Metadata Fields ──────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-800 rounded-xl border border-gray-700">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
         <div>
           <label
             htmlFor="prompt-description"
-            className="block text-xs font-medium text-gray-400 mb-1"
+            className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
           >
             Description
           </label>
@@ -487,13 +487,13 @@ export default function PromptEditor({
             onChange={(e) => setDescription(e.target.value)}
             disabled={!canEdit}
             placeholder="Brief description of this prompt template…"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
         <div>
           <label
             htmlFor="prompt-tags"
-            className="block text-xs font-medium text-gray-400 mb-1"
+            className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
           >
             Tags (comma-separated)
           </label>
@@ -504,7 +504,7 @@ export default function PromptEditor({
             onChange={(e) => setTags(e.target.value)}
             disabled={!canEdit}
             placeholder="healthcare, technical-training, compliance…"
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           />
         </div>
       </div>
@@ -517,7 +517,7 @@ export default function PromptEditor({
             className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
               showVariablePanel
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-600"
             }`}
           >
             {showVariablePanel ? "Hide" : "Show"} Variables
@@ -527,14 +527,14 @@ export default function PromptEditor({
             className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
               showPreview
                 ? "bg-blue-600 text-white"
-                : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-600"
             }`}
           >
             {showPreview ? "Hide" : "Show"} Preview
           </button>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-gray-500">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span>{templateStats.lines} lines</span>
           <span>{templateStats.chars} chars</span>
           <span>{templateStats.variables} variables</span>
@@ -543,8 +543,8 @@ export default function PromptEditor({
 
       {/* ── Variable Panel ─────────────────────────────────────── */}
       {showVariablePanel && (
-        <div className="p-4 bg-gray-800 rounded-xl border border-gray-700">
-          <h4 className="text-sm font-medium text-gray-300 mb-3">
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
+          <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
             §9.4 Template Variables (click to insert)
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -553,14 +553,14 @@ export default function PromptEditor({
                 key={v.name}
                 onClick={() => handleInsertVariable(v.name)}
                 disabled={!canEdit}
-                className="flex items-start gap-2 p-2 text-left bg-gray-900 rounded-lg border border-gray-700 hover:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-start gap-2 p-2 text-left bg-white dark:bg-gray-900 rounded-lg border border-gray-300 dark:border-gray-700 hover:border-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <code className="text-xs text-blue-400 font-mono whitespace-nowrap">
+                <code className="text-xs text-blue-600 dark:text-blue-400 font-mono whitespace-nowrap">
                   {"{{ "}
                   {v.name}
                   {" }}"}
                 </code>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {v.description}
                 </span>
               </button>
@@ -577,11 +577,11 @@ export default function PromptEditor({
       >
         {/* Editor Pane */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between px-3 py-2 bg-gray-900 border border-gray-700 border-b-0 rounded-t-lg">
-            <span className="text-xs font-medium text-gray-400">
+          <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 border-b-0 rounded-t-lg">
+            <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Template (Jinja2)
             </span>
-            <span className="text-xs text-gray-500 font-mono">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
               {promptType}
             </span>
           </div>
@@ -592,7 +592,7 @@ export default function PromptEditor({
             disabled={!canEdit}
             rows={20}
             spellCheck={false}
-            className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-b-lg text-white text-sm font-mono leading-relaxed placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-b-lg text-gray-900 dark:text-white text-sm font-mono leading-relaxed placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
             placeholder="Enter your Jinja2 prompt template here…"
           />
         </div>
@@ -600,14 +600,14 @@ export default function PromptEditor({
         {/* Preview Pane */}
         {showPreview && (
           <div className="flex flex-col">
-            <div className="flex items-center justify-between px-3 py-2 bg-gray-900 border border-gray-700 border-b-0 rounded-t-lg">
-              <span className="text-xs font-medium text-gray-400">
+            <div className="flex items-center justify-between px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 border-b-0 rounded-t-lg">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 Preview (with sample data)
               </span>
-              <span className="text-xs text-gray-500">Live render</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Live render</span>
             </div>
-            <div className="flex-1 px-4 py-3 bg-gray-900 border border-gray-700 rounded-b-lg overflow-y-auto max-h-[500px]">
-              <pre className="text-sm text-green-300 font-mono whitespace-pre-wrap leading-relaxed">
+            <div className="flex-1 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-b-lg overflow-y-auto max-h-[500px]">
+              <pre className="text-sm text-green-800 dark:text-green-300 font-mono whitespace-pre-wrap leading-relaxed">
                 {renderedPreview}
               </pre>
             </div>
@@ -617,13 +617,13 @@ export default function PromptEditor({
 
       {/* ── Validation Errors ──────────────────────────────────── */}
       {validationErrors.length > 0 && (
-        <div className="p-3 bg-yellow-900/20 border border-yellow-700 rounded-lg">
-          <h4 className="text-sm font-medium text-yellow-400 mb-1">
+        <div className="p-3 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg">
+          <h4 className="text-sm font-medium text-yellow-600 dark:text-yellow-400 mb-1">
             Validation Warnings
           </h4>
           <ul className="space-y-1">
             {validationErrors.map((err, i) => (
-              <li key={i} className="text-xs text-yellow-300">
+              <li key={i} className="text-xs text-yellow-800 dark:text-yellow-300">
                 ⚠ {err}
               </li>
             ))}
@@ -633,8 +633,8 @@ export default function PromptEditor({
 
       {/* ── Save Error ─────────────────────────────────────────── */}
       {saveError && (
-        <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg">
-          <p className="text-sm text-red-400">{saveError}</p>
+        <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
         </div>
       )}
 
@@ -642,7 +642,7 @@ export default function PromptEditor({
       <div className="flex items-center justify-end gap-3">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+          className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
         >
           Cancel
         </button>
@@ -661,9 +661,9 @@ export default function PromptEditor({
 
       {/* ── Keyboard Shortcut Hint ──────────────────────────────── */}
       {canEdit && (
-        <p className="text-xs text-gray-500 text-right">
-          Tip: Press <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-300">Ctrl+S</kbd>{" "}
-          / <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-300">⌘S</kbd> to save
+        <p className="text-xs text-gray-500 dark:text-gray-400 text-right">
+          Tip: Press <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300">Ctrl+S</kbd>{" "}
+          / <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300">⌘S</kbd> to save
         </p>
       )}
     </div>

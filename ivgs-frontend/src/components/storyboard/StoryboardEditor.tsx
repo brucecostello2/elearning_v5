@@ -147,7 +147,7 @@ export default function StoryboardEditor({
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <svg
-          className="w-12 h-12 text-gray-500"
+          className="w-12 h-12 text-gray-500 dark:text-gray-400"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -159,7 +159,7 @@ export default function StoryboardEditor({
             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
           />
         </svg>
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           No scenes match the current filters.
         </p>
       </div>
@@ -178,7 +178,7 @@ export default function StoryboardEditor({
             {...provided.droppableProps}
             className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 transition-colors duration-200 ${
               snapshot.isDraggingOver
-                ? "bg-blue-900/10 rounded-xl p-2"
+                ? "bg-blue-100 dark:bg-blue-900/10 rounded-xl p-2"
                 : ""
             } ${isReordering ? "opacity-70 pointer-events-none" : ""}`}
           >
@@ -223,7 +223,7 @@ export default function StoryboardEditor({
       {/* Reorder loading overlay */}
       {isReordering && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/20">
-          <div className="bg-gray-800 rounded-lg px-6 py-3 text-sm text-white shadow-xl">
+          <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-6 py-3 text-sm text-gray-900 dark:text-white shadow-xl">
             Updating scene order…
           </div>
         </div>

@@ -359,29 +359,29 @@ export default function SceneEditModal({
     >
       <div
         ref={modalRef}
-        className="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700"
+        className="bg-gray-100 dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-300 dark:border-gray-700"
       >
         {/* ── Header ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300 dark:border-gray-700">
           <div className="flex items-center gap-3">
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-sm font-bold text-white">
               {scene.scene_index + 1}
             </span>
             <h2
               id="scene-edit-title"
-              className="text-lg font-semibold text-white"
+              className="text-lg font-semibold text-gray-900 dark:text-white"
             >
               {canEdit ? "Edit Scene" : "View Scene"}
             </h2>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 scene.status === "COMPLETE"
-                  ? "bg-green-500/20 text-green-400"
+                  ? "bg-green-500/20 text-green-600 dark:text-green-400"
                   : scene.status === "ERROR"
-                  ? "bg-red-500/20 text-red-400"
+                  ? "bg-red-500/20 text-red-600 dark:text-red-400"
                   : scene.status === "GENERATING" || scene.status === "REGENERATING"
-                  ? "bg-blue-500/20 text-blue-400"
-                  : "bg-gray-500/20 text-gray-400"
+                  ? "bg-blue-500/20 text-blue-600 dark:text-blue-400"
+                  : "bg-gray-500/20 text-gray-500 dark:text-gray-400"
               }`}
             >
               {scene.status}
@@ -389,7 +389,7 @@ export default function SceneEditModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+            className="p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
             aria-label="Close modal"
           >
             <svg
@@ -409,7 +409,7 @@ export default function SceneEditModal({
         </div>
 
         {/* ── Tab Navigation ─────────────────────────────────────── */}
-        <div className="flex border-b border-gray-700 px-6">
+        <div className="flex border-b border-gray-300 dark:border-gray-700 px-6">
           {(
             [
               { key: "content", label: "Content" },
@@ -423,8 +423,8 @@ export default function SceneEditModal({
               onClick={() => setActiveTab(tab.key)}
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === tab.key
-                  ? "border-blue-500 text-blue-400"
-                  : "border-transparent text-gray-400 hover:text-gray-200"
+                  ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
               }`}
             >
               {tab.label}
@@ -441,10 +441,10 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="narration-text"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Narration Text
-                  <span className="text-red-400 ml-1">*</span>
+                  <span className="text-red-600 dark:text-red-400 ml-1">*</span>
                 </label>
                 <textarea
                   id="narration-text"
@@ -454,9 +454,9 @@ export default function SceneEditModal({
                   rows={5}
                   disabled={!canEdit}
                   placeholder="Enter the narration text for this scene…"
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   {narrationText.length} characters
                 </p>
               </div>
@@ -465,7 +465,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="visual-description"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Visual Description
                 </label>
@@ -476,9 +476,9 @@ export default function SceneEditModal({
                   rows={3}
                   disabled={!canEdit}
                   placeholder="Describe the visual content for AI generation…"
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed resize-y"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Used as the image/video generation prompt input.
                 </p>
               </div>
@@ -487,7 +487,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="media-type"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Media Type
                 </label>
@@ -498,7 +498,7 @@ export default function SceneEditModal({
                     setMediaType(e.target.value as MediaType)
                   }
                   disabled={!canEdit}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {MEDIA_TYPES.map((mt) => (
                     <option key={mt.value} value={mt.value}>
@@ -517,7 +517,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="camera-angle"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Camera Angle
                 </label>
@@ -528,7 +528,7 @@ export default function SceneEditModal({
                     setCameraAngle(e.target.value as CameraAngle | "")
                   }
                   disabled={!canEdit}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   <option value="">None (default)</option>
                   {CAMERA_ANGLES.map((angle) => (
@@ -543,7 +543,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="transition-type"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Transition to Next Scene
                 </label>
@@ -554,7 +554,7 @@ export default function SceneEditModal({
                     setTransitionType(e.target.value as TransitionType)
                   }
                   disabled={!canEdit}
-                  className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
                   {TRANSITION_TYPES.map((tt) => (
                     <option key={tt} value={tt}>
@@ -566,7 +566,7 @@ export default function SceneEditModal({
 
               {/* Visual Effects (multi-select checkboxes) */}
               <div>
-                <span className="block text-sm font-medium text-gray-300 mb-2">
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Visual Effects
                 </span>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -575,8 +575,8 @@ export default function SceneEditModal({
                       key={effect}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                         effects.includes(effect)
-                          ? "border-blue-500 bg-blue-900/20 text-blue-300"
-                          : "border-gray-700 bg-gray-900 text-gray-400 hover:border-gray-600"
+                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300"
+                          : "border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:hover:border-gray-600"
                       } ${!canEdit ? "opacity-50 cursor-not-allowed" : ""}`}
                     >
                       <input
@@ -584,7 +584,7 @@ export default function SceneEditModal({
                         checked={effects.includes(effect)}
                         onChange={() => handleToggleEffect(effect)}
                         disabled={!canEdit}
-                        className="w-3.5 h-3.5 rounded border-gray-600 bg-gray-800 text-blue-500"
+                        className="w-3.5 h-3.5 rounded border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-800 text-blue-500 dark:text-blue-400"
                       />
                       <span className="text-xs">
                         {effect.replace(/_/g, " ")}
@@ -597,10 +597,10 @@ export default function SceneEditModal({
               {/* Thumbnail Preview */}
               {scene.thumbnail_url && (
                 <div>
-                  <span className="block text-sm font-medium text-gray-300 mb-2">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Current Thumbnail
                   </span>
-                  <div className="w-full max-w-sm aspect-video bg-gray-900 rounded-lg overflow-hidden">
+                  <div className="w-full max-w-sm aspect-video bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
                     <img
                       src={scene.thumbnail_url}
                       alt={`Scene ${scene.scene_index + 1} thumbnail`}
@@ -619,7 +619,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="duration-seconds"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Duration (seconds)
                 </label>
@@ -637,7 +637,7 @@ export default function SceneEditModal({
                       )
                     }
                     disabled={!canEdit}
-                    className="w-32 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                    className="w-32 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                   />
                   <input
                     type="range"
@@ -649,10 +649,10 @@ export default function SceneEditModal({
                       setDurationSeconds(parseFloat(e.target.value))
                     }
                     disabled={!canEdit}
-                    className="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
+                    className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer disabled:opacity-50"
                   />
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Min 0.5s, max 120s. Current:{" "}
                   {Math.floor(durationSeconds / 60)}:
                   {String(Math.round(durationSeconds % 60)).padStart(2, "0")}
@@ -663,7 +663,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="timing-offset"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Timing Offset (ms)
                 </label>
@@ -679,29 +679,29 @@ export default function SceneEditModal({
                     )
                   }
                   disabled={!canEdit}
-                  className="w-48 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  className="w-48 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Offset from the start of the video. Automatically computed
                   from scene order if left at 0.
                 </p>
               </div>
 
               {/* Read-only metadata */}
-              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-300 dark:border-gray-700">
                 <div>
-                  <span className="block text-xs text-gray-500 mb-1">
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                     Created
                   </span>
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     {formatTimestamp(scene.created_at)}
                   </span>
                 </div>
                 <div>
-                  <span className="block text-xs text-gray-500 mb-1">
+                  <span className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
                     Last Updated
                   </span>
-                  <span className="text-sm text-gray-300">
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
                     {formatTimestamp(scene.updated_at)}
                   </span>
                 </div>
@@ -716,7 +716,7 @@ export default function SceneEditModal({
               <div>
                 <label
                   htmlFor="generation-params"
-                  className="block text-sm font-medium text-gray-300 mb-1"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Generation Parameters (JSON)
                 </label>
@@ -727,16 +727,16 @@ export default function SceneEditModal({
                   rows={8}
                   disabled={!canEdit}
                   placeholder='{"steps": 50, "cfg_scale": 7.5}'
-                  className={`w-full px-3 py-2 bg-gray-900 border rounded-lg text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed resize-y ${
+                  className={`w-full px-3 py-2 bg-white dark:bg-gray-900 border rounded-lg text-gray-900 dark:text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed resize-y ${
                     jsonError
                       ? "border-red-500 focus:ring-red-500"
-                      : "border-gray-700 focus:ring-blue-500"
+                      : "border-gray-300 dark:border-gray-700 focus:ring-blue-500"
                   }`}
                 />
                 {jsonError && (
-                  <p className="mt-1 text-xs text-red-400">{jsonError}</p>
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400">{jsonError}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Custom parameters passed to the AI model during generation.
                   Must be valid JSON.
                 </p>
@@ -745,15 +745,15 @@ export default function SceneEditModal({
               {/* Read-only: Generation Prompt ID */}
               {scene.generation_prompt_id && (
                 <div>
-                  <span className="block text-sm font-medium text-gray-300 mb-1">
+                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Generation Prompt ID
                   </span>
-                  <div className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg">
-                    <code className="text-xs text-gray-400 font-mono break-all">
+                  <div className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg">
+                    <code className="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">
                       {scene.generation_prompt_id}
                     </code>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                     Reference to the prompt version used for generation per §9.3
                     (full reproducibility).
                   </p>
@@ -762,11 +762,11 @@ export default function SceneEditModal({
 
               {/* Scene ID */}
               <div>
-                <span className="block text-sm font-medium text-gray-300 mb-1">
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Scene ID
                 </span>
-                <div className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg">
-                  <code className="text-xs text-gray-400 font-mono break-all">
+                <div className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg">
+                  <code className="text-xs text-gray-500 dark:text-gray-400 font-mono break-all">
                     {scene.id}
                   </code>
                 </div>
@@ -776,10 +776,10 @@ export default function SceneEditModal({
         </div>
 
         {/* ── Footer ─────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700 bg-gray-800/50">
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50">
           {/* Error display */}
           {saveError && (
-            <p className="text-sm text-red-400 mr-4 flex-1">{saveError}</p>
+            <p className="text-sm text-red-600 dark:text-red-400 mr-4 flex-1">{saveError}</p>
           )}
           {!saveError && <div className="flex-1" />}
 
@@ -792,14 +792,14 @@ export default function SceneEditModal({
                   scene.status === "GENERATING" ||
                   scene.status === "REGENERATING"
                 }
-                className="px-4 py-2 text-sm font-medium text-yellow-400 bg-yellow-900/20 border border-yellow-700 rounded-lg hover:bg-yellow-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isRegenerating ? "Regenerating…" : "Regenerate"}
               </button>
             )}
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
             >
               {canEdit ? "Cancel" : "Close"}
             </button>

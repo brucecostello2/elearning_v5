@@ -141,9 +141,9 @@ export default function AssetUploader({
   // If a file is selected (single file mode), show the file info
   if (selectedFile && !multiple) {
     return (
-      <div className="flex items-center gap-3 px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg">
+      <div className="flex items-center gap-3 px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg">
         <svg
-          className="w-5 h-5 text-green-400 flex-shrink-0"
+          className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -156,8 +156,8 @@ export default function AssetUploader({
           />
         </svg>
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-white truncate">{selectedFile.name}</p>
-          <p className="text-xs text-gray-500">
+          <p className="text-sm text-gray-900 dark:text-white truncate">{selectedFile.name}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             {formatFileSize(selectedFile.size)}
           </p>
         </div>
@@ -165,7 +165,7 @@ export default function AssetUploader({
           <button
             type="button"
             onClick={onRemove}
-            className="text-gray-400 hover:text-red-400 transition-colors"
+            className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
           >
             <svg
               className="w-4 h-4"
@@ -196,14 +196,14 @@ export default function AssetUploader({
         onClick={() => inputRef.current?.click()}
         className={`flex flex-col items-center justify-center px-6 py-8 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
           isDragging
-            ? "border-blue-500 bg-blue-900/10"
-            : "border-gray-600 hover:border-gray-500 hover:bg-gray-800/50"
+            ? "border-blue-500 bg-blue-100 dark:bg-blue-900/10"
+            : "border-gray-300 dark:border-gray-600 hover:border-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800/50"
         }`}
       >
         {isUploading ? (
           <div className="flex flex-col items-center gap-2">
             <svg
-              className="w-8 h-8 text-blue-400 animate-spin"
+              className="w-8 h-8 text-blue-600 dark:text-blue-400 animate-spin"
               fill="none"
               viewBox="0 0 24 24"
             >
@@ -221,12 +221,12 @@ export default function AssetUploader({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
               />
             </svg>
-            <span className="text-sm text-blue-400">Uploading…</span>
+            <span className="text-sm text-blue-600 dark:text-blue-400">Uploading…</span>
           </div>
         ) : (
           <>
             <svg
-              className="w-10 h-10 text-gray-500 mb-2"
+              className="w-10 h-10 text-gray-500 dark:text-gray-400 mb-2"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -238,17 +238,17 @@ export default function AssetUploader({
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="text-sm text-gray-300">
-              <span className="text-blue-400 font-medium">Click to upload</span>
+            <p className="text-sm text-gray-700 dark:text-gray-300">
+              <span className="text-blue-600 dark:text-blue-400 font-medium">Click to upload</span>
               {" "}or drag and drop
             </p>
             {accept && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                 Accepted: {accept}
               </p>
             )}
             {maxSize && (
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Max size: {formatFileSize(maxSize)}
               </p>
             )}
@@ -266,7 +266,7 @@ export default function AssetUploader({
       />
 
       {(error || validationError) && (
-        <p className="text-red-400 text-xs mt-1">
+        <p className="text-red-600 dark:text-red-400 text-xs mt-1">
           {error || validationError}
         </p>
       )}

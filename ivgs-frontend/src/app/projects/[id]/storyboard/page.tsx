@@ -323,10 +323,10 @@ export default function StoryboardPage(): React.ReactElement {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500 text-lg font-semibold">
+        <div className="text-red-500 dark:text-red-400 text-lg font-semibold">
           Failed to load storyboard
         </div>
-        <p className="text-gray-400 text-sm max-w-md text-center">
+        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md text-center">
           {error.message ||
             "An unexpected error occurred while fetching storyboard data."}
         </p>
@@ -346,7 +346,7 @@ export default function StoryboardPage(): React.ReactElement {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
           <svg
-            className="w-16 h-16 text-gray-500"
+            className="w-16 h-16 text-gray-500 dark:text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -358,10 +358,10 @@ export default function StoryboardPage(): React.ReactElement {
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
             />
           </svg>
-          <h2 className="text-xl font-semibold text-white">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             No scenes yet
           </h2>
-          <p className="text-gray-400 text-sm max-w-md text-center">
+          <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md text-center">
             This project does not have a storyboard yet. Generate one by
             processing the transcript through the pipeline, or upload an
             existing storyboard from the project settings.
@@ -377,16 +377,16 @@ export default function StoryboardPage(): React.ReactElement {
         {/* ── Page Header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
               Storyboard Editor
             </h1>
-            <p className="mt-1 text-gray-400">
+            <p className="mt-1 text-gray-500 dark:text-gray-400">
               {scenes.length} scene{scenes.length !== 1 ? "s" : ""} ·{" "}
               {Math.floor(totalDuration / 60)}:
               {String(Math.round(totalDuration % 60)).padStart(2, "0")}{" "}
               total duration
               {!canEdit && (
-                <span className="ml-2 text-yellow-500 text-xs font-medium">
+                <span className="ml-2 text-yellow-500 dark:text-yellow-400 text-xs font-medium">
                   (read-only)
                 </span>
               )}
@@ -400,7 +400,7 @@ export default function StoryboardPage(): React.ReactElement {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === "grid"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-600"
               }`}
               aria-label="Grid view"
             >
@@ -424,7 +424,7 @@ export default function StoryboardPage(): React.ReactElement {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 viewMode === "timeline"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300 hover:bg-gray-600"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-600"
               }`}
               aria-label="Timeline view"
             >
@@ -447,12 +447,12 @@ export default function StoryboardPage(): React.ReactElement {
         </div>
 
         {/* ── Filter Bar ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-gray-800 rounded-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl">
           {/* Search */}
           <div>
             <label
               htmlFor="storyboard-search"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Search
             </label>
@@ -462,7 +462,7 @@ export default function StoryboardPage(): React.ReactElement {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search narration, visuals…"
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -470,7 +470,7 @@ export default function StoryboardPage(): React.ReactElement {
           <div>
             <label
               htmlFor="status-filter"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Status
             </label>
@@ -480,7 +480,7 @@ export default function StoryboardPage(): React.ReactElement {
               onChange={(e) =>
                 setStatusFilter(e.target.value as SceneStatus | "ALL")
               }
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">All Statuses ({statusCounts.ALL})</option>
               {SCENE_STATUSES.map((status) => (
@@ -495,7 +495,7 @@ export default function StoryboardPage(): React.ReactElement {
           <div>
             <label
               htmlFor="media-type-filter"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Media Type
             </label>
@@ -505,7 +505,7 @@ export default function StoryboardPage(): React.ReactElement {
               onChange={(e) =>
                 setMediaTypeFilter(e.target.value as MediaType | "ALL")
               }
-              className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">All Types</option>
               {MEDIA_TYPES.map((type) => (
@@ -520,7 +520,7 @@ export default function StoryboardPage(): React.ReactElement {
           <div className="flex items-end">
             <button
               onClick={handleResetFilters}
-              className="w-full px-3 py-2 bg-gray-700 text-gray-300 rounded-lg text-sm hover:bg-gray-600 transition-colors"
+              className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-sm hover:bg-gray-600 transition-colors"
             >
               Reset Filters
             </button>
@@ -529,21 +529,21 @@ export default function StoryboardPage(): React.ReactElement {
 
         {/* ── Bulk Actions Bar ─────────────────────────────────────── */}
         {canEdit && selectedSceneIds.size > 0 && (
-          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-900/30 border border-blue-700 rounded-lg">
-            <span className="text-sm text-blue-300">
+          <div className="flex items-center gap-3 mb-4 p-3 bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-lg">
+            <span className="text-sm text-blue-800 dark:text-blue-300">
               {selectedSceneIds.size} scene
               {selectedSceneIds.size !== 1 ? "s" : ""} selected
             </span>
             <div className="flex-1" />
             <button
               onClick={handleSelectAll}
-              className="px-3 py-1.5 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+              className="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-600 transition-colors"
             >
               Select All ({filteredScenes.length})
             </button>
             <button
               onClick={handleClearSelection}
-              className="px-3 py-1.5 text-xs bg-gray-700 text-gray-300 rounded hover:bg-gray-600 transition-colors"
+              className="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-600 transition-colors"
             >
               Clear
             </button>

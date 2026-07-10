@@ -237,10 +237,10 @@ export default function PromptsPage(): React.ReactElement {
   if (user?.role === "viewer") {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-yellow-500 text-lg font-semibold">
+        <div className="text-yellow-500 dark:text-yellow-400 text-lg font-semibold">
           Access Denied
         </div>
-        <p className="text-gray-400 text-sm max-w-md text-center">
+        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md text-center">
           Prompt management is not available for viewer accounts.
           Contact your administrator for access.
         </p>
@@ -261,10 +261,10 @@ export default function PromptsPage(): React.ReactElement {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500 text-lg font-semibold">
+        <div className="text-red-500 dark:text-red-400 text-lg font-semibold">
           Failed to load prompts
         </div>
-        <p className="text-gray-400 text-sm max-w-md text-center">
+        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md text-center">
           {error.message ||
             "An unexpected error occurred while fetching prompt data."}
         </p>
@@ -288,7 +288,7 @@ export default function PromptsPage(): React.ReactElement {
               {currentView !== "manager" && (
                 <button
                   onClick={handleBack}
-                  className="p-1.5 rounded-lg hover:bg-gray-700 transition-colors text-gray-400 hover:text-white"
+                  className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                   aria-label="Back to prompt manager"
                 >
                   <svg
@@ -306,7 +306,7 @@ export default function PromptsPage(): React.ReactElement {
                   </svg>
                 </button>
               )}
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
                 {currentView === "manager" && "Prompt Management"}
                 {currentView === "editor" && "Prompt Editor"}
                 {currentView === "playground" && "Prompt Playground"}
@@ -314,7 +314,7 @@ export default function PromptsPage(): React.ReactElement {
                 {currentView === "library" && "Prompt Library"}
               </h1>
             </div>
-            <p className="mt-1 text-gray-400">
+            <p className="mt-1 text-gray-500 dark:text-gray-400">
               {currentView === "manager" &&
                 "Manage global prompt templates across all prompt types (§9)"}
               {currentView === "editor" &&
@@ -338,7 +338,7 @@ export default function PromptsPage(): React.ReactElement {
             <div className="mt-4 sm:mt-0 flex items-center gap-3">
               <button
                 onClick={handleOpenLibrary}
-                className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
               >
                 📚 Library
               </button>
@@ -354,20 +354,20 @@ export default function PromptsPage(): React.ReactElement {
 
         {/* ── Tier Indicator ───────────────────────────────────────── */}
         {currentView === "manager" && (
-          <div className="mb-6 p-3 bg-gray-800 rounded-lg border border-gray-700">
+          <div className="mb-6 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500" />
-                <span className="text-sm font-medium text-white">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
                   Global Tier
                 </span>
               </div>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 §9.1 — Base defaults used when no project or scene override
                 exists. Admin only.
               </span>
               {!isAdmin && (
-                <span className="ml-auto px-2 py-0.5 bg-yellow-900/30 text-yellow-400 text-xs rounded">
+                <span className="ml-auto px-2 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs rounded">
                   Read-only
                 </span>
               )}

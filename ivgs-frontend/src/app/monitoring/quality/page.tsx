@@ -231,29 +231,29 @@ export default function QualityReviewPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             Quality Review Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading the quality review queue. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Quality Review Queue
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.4 — Flagged assets requiring human review per §11 Quality
                 Assurance Pipeline
               </p>
             </div>
-            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 text-amber-800">
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300">
               {totalCount ?? 0} flagged
             </span>
           </div>
@@ -261,12 +261,12 @@ export default function QualityReviewPage(): React.ReactElement | null {
 
         <div className="px-6 py-6">
           {/* ── Filters & Sort ─────────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6">
             <div className="flex flex-wrap items-end gap-4">
               <div className="min-w-[180px]">
                 <label
                   htmlFor="asset-type"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Asset Type
                 </label>
@@ -277,7 +277,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
                     setAssetTypeFilter(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 >
                   {ASSET_TYPE_FILTERS.map((opt) => (
@@ -291,7 +291,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
               <div className="min-w-[220px]">
                 <label
                   htmlFor="sort-by"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Sort By
                 </label>
@@ -299,7 +299,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
                   id="sort-by"
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 >
                   {SORT_OPTIONS.map((opt) => (
@@ -314,13 +314,13 @@ export default function QualityReviewPage(): React.ReactElement | null {
 
           {/* ── Success/Error Alerts ───────────────────────────────── */}
           {actionSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-green-700">{actionSuccess}</p>
+                <p className="text-sm text-green-700 dark:text-green-300">{actionSuccess}</p>
                 <button
                   type="button"
                   onClick={() => setActionSuccess(null)}
-                  className="text-green-500 hover:text-green-700"
+                  className="text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -331,13 +331,13 @@ export default function QualityReviewPage(): React.ReactElement | null {
           )}
 
           {actionError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-red-700">{actionError}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{actionError}</p>
                 <button
                   type="button"
                   onClick={() => setActionError(null)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -356,8 +356,8 @@ export default function QualityReviewPage(): React.ReactElement | null {
 
           {/* ── Error ────────────────────────────────────────────── */}
           {error && !isLoading && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-sm text-red-700 dark:text-red-300">
                 Failed to load flagged assets. Please try again.
               </p>
             </div>
@@ -367,9 +367,9 @@ export default function QualityReviewPage(): React.ReactElement | null {
           {!isLoading && !error && assets && (
             <>
               {assets.length === 0 ? (
-                <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-12 text-center">
                   <svg
-                    className="mx-auto h-12 w-12 text-green-400"
+                    className="mx-auto h-12 w-12 text-green-600 dark:text-green-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1}
@@ -381,10 +381,10 @@ export default function QualityReviewPage(): React.ReactElement | null {
                       d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
                     />
                   </svg>
-                  <h3 className="mt-4 text-sm font-medium text-gray-900">
+                  <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                     All Clear
                   </h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     No assets currently flagged for review.
                   </p>
                 </div>
@@ -414,12 +414,12 @@ export default function QualityReviewPage(): React.ReactElement | null {
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
                     className="px-3 py-1.5 text-sm font-medium rounded-md border
-                      border-gray-300 bg-white text-gray-700 hover:bg-gray-50
+                      border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950
                       disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Previous
                   </button>
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
                     Page {page} of {totalPages}
                   </span>
                   <button
@@ -429,7 +429,7 @@ export default function QualityReviewPage(): React.ReactElement | null {
                     }
                     disabled={page === totalPages}
                     className="px-3 py-1.5 text-sm font-medium rounded-md border
-                      border-gray-300 bg-white text-gray-700 hover:bg-gray-50
+                      border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950
                       disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Next

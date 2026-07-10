@@ -117,41 +117,41 @@ export default function DLQTable({
   }, []);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
       {/* ── Table ──────────────────────────────────────────────────── */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+          <thead className="bg-gray-50 dark:bg-gray-950">
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-8">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-8">
                 {/* Expand toggle column */}
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Task Name
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Category
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Error Message
               </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Retries
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Entered DLQ
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
             {messages.length === 0 ? (
               <tr>
                 <td
                   colSpan={7}
-                  className="px-4 py-8 text-center text-sm text-gray-500"
+                  className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                 >
                   No DLQ messages match the current filters.
                 </td>
@@ -165,14 +165,14 @@ export default function DLQTable({
 
                 return (
                   <React.Fragment key={msg.id}>
-                    <tr className="hover:bg-gray-50">
+                    <tr className="hover:bg-gray-50 dark:hover:bg-gray-950">
                       {/* Expand toggle */}
                       <td className="px-4 py-3">
                         {isTruncated && (
                           <button
                             type="button"
                             onClick={() => toggleExpand(msg.id)}
-                            className="text-gray-400 hover:text-gray-600"
+                            className="text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-400"
                           >
                             <svg
                               className={`h-4 w-4 transition-transform ${
@@ -193,7 +193,7 @@ export default function DLQTable({
                         )}
                       </td>
                       {/* Task Name */}
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 font-mono">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100 font-mono">
                         {msg.task_name}
                       </td>
                       {/* Category */}
@@ -202,24 +202,24 @@ export default function DLQTable({
                           className={`inline-flex items-center px-2 py-0.5
                             rounded-full text-xs font-medium ${
                               CATEGORY_STYLES[msg.category] ||
-                              "bg-gray-100 text-gray-700"
+                              "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                             }`}
                         >
                           {msg.category}
                         </span>
                       </td>
                       {/* Error Message */}
-                      <td className="px-4 py-3 text-sm text-gray-600 max-w-[300px]">
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 max-w-[300px]">
                         <span className="font-mono text-xs">
                           {isExpanded ? msg.error_message : truncated}
                         </span>
                       </td>
                       {/* Retry Count */}
-                      <td className="px-4 py-3 text-center text-sm font-mono text-gray-700">
+                      <td className="px-4 py-3 text-center text-sm font-mono text-gray-700 dark:text-gray-300">
                         {msg.retry_count}
                       </td>
                       {/* Entered DLQ */}
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                      <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(msg.entered_dlq_at)}
                       </td>
                       {/* Actions */}
@@ -228,7 +228,7 @@ export default function DLQTable({
                           <button
                             type="button"
                             onClick={() => onViewDetail(msg.id)}
-                            className="text-xs text-blue-600 hover:text-blue-800"
+                            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                           >
                             Detail
                           </button>
@@ -238,8 +238,8 @@ export default function DLQTable({
                               onClick={() => onReplay(msg.id)}
                               disabled={actionInProgress === msg.id}
                               className="inline-flex items-center gap-1 px-2 py-1
-                                text-xs font-medium text-green-700 bg-green-50
-                                border border-green-200 rounded hover:bg-green-100
+                                text-xs font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/40
+                                border border-green-200 dark:border-green-800 rounded hover:bg-green-100 dark:hover:bg-green-900/50
                                 disabled:opacity-50 disabled:cursor-not-allowed
                                 transition-colors"
                             >
@@ -256,8 +256,8 @@ export default function DLQTable({
                     {/* Expanded error row */}
                     {isExpanded && (
                       <tr>
-                        <td colSpan={7} className="px-4 py-3 bg-gray-50">
-                          <pre className="text-xs text-gray-700 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
+                        <td colSpan={7} className="px-4 py-3 bg-gray-50 dark:bg-gray-950">
+                          <pre className="text-xs text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
                             {msg.error_message}
                           </pre>
                         </td>
@@ -272,16 +272,16 @@ export default function DLQTable({
       </div>
 
       {/* ── Pagination ─────────────────────────────────────────────── */}
-      <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
             Showing {(page - 1) * pageSize + 1}–
             {Math.min(page * pageSize, totalCount)} of {totalCount}
           </span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(parseInt(e.target.value))}
-            className="rounded-md border-gray-300 text-xs shadow-sm
+            className="rounded-md border-gray-300 dark:border-gray-700 text-xs shadow-sm
               focus:border-blue-500 focus:ring-blue-500"
           >
             {pageSizeOptions.map((size) => (
@@ -296,8 +296,8 @@ export default function DLQTable({
             type="button"
             onClick={() => onPageChange(1)}
             disabled={page === 1}
-            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white
-              text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+              text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             First
           </button>
@@ -305,20 +305,20 @@ export default function DLQTable({
             type="button"
             onClick={() => onPageChange(page - 1)}
             disabled={page === 1}
-            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white
-              text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+              text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Prev
           </button>
-          <span className="text-xs text-gray-600 px-2">
+          <span className="text-xs text-gray-600 dark:text-gray-400 px-2">
             {page} / {totalPages}
           </span>
           <button
             type="button"
             onClick={() => onPageChange(page + 1)}
             disabled={page === totalPages}
-            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white
-              text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+              text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Next
           </button>
@@ -326,8 +326,8 @@ export default function DLQTable({
             type="button"
             onClick={() => onPageChange(totalPages)}
             disabled={page === totalPages}
-            className="px-2 py-1 text-xs rounded border border-gray-300 bg-white
-              text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs rounded border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900
+              text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-950 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Last
           </button>

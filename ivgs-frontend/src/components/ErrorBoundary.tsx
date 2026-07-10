@@ -60,9 +60,9 @@ export class ErrorBoundary extends Component<
       return (
         <div className="flex min-h-[40vh] items-center justify-center px-4">
           <div className="w-full max-w-md text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-900/20">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
               <svg
-                className="h-7 w-7 text-red-400"
+                className="h-7 w-7 text-red-600 dark:text-red-400"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth="1.5"
@@ -75,18 +75,18 @@ export class ErrorBoundary extends Component<
                 />
               </svg>
             </div>
-            <h2 className="mt-4 text-lg font-semibold text-white">
+            <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
               Something went wrong
             </h2>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
               {this.state.error?.message ?? "An unexpected error occurred"}
             </p>
             {this.state.errorInfo?.componentStack && (
               <details className="mt-3 text-left">
-                <summary className="cursor-pointer text-xs text-gray-500 hover:text-gray-400">
+                <summary className="cursor-pointer text-xs text-gray-500 dark:text-gray-400 hover:text-gray-500 dark:hover:text-gray-400">
                   Error details
                 </summary>
-                <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-gray-900 p-3 font-mono text-[10px] text-gray-400">
+                <pre className="mt-2 max-h-40 overflow-auto rounded-lg bg-white dark:bg-gray-900 p-3 font-mono text-[10px] text-gray-500 dark:text-gray-400">
                   {this.state.errorInfo.componentStack}
                 </pre>
               </details>

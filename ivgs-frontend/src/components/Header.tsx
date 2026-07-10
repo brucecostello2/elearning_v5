@@ -15,6 +15,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { clsx } from "clsx";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/contexts/ThemeContext";
 import type { UserRole } from "@/types/api";
 
 interface NavItem {
@@ -92,6 +93,7 @@ function hasAccess(userRole: UserRole, minRole: UserRole): boolean {
 export function Header() {
   const pathname = usePathname();
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   /* Don't show header on login page */
   if (pathname === "/login") {
@@ -99,12 +101,12 @@ export function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950/95 backdrop-blur-sm">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link
           href="/"
-          className="flex items-center gap-2 text-white transition-opacity hover:opacity-80"
+          className="flex items-center gap-2 text-gray-900 dark:text-white transition-opacity hover:opacity-80"
         >
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ivgs-600 text-xs font-bold">
             V5
@@ -145,17 +147,34 @@ export function Header() {
         {/* User Menu */}
         {isAuthenticated && user && (
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label="Toggle theme"
+              className="rounded-lg p-1.5 text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100 dark:text-gray-500 dark:text-gray-400 dark:hover:bg-gray-100 dark:hover:bg-gray-800 dark:hover:text-gray-900 dark:hover:text-white"
+            >
+              {theme === "dark" ? (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m14.95-6.95-1.41 1.41M7.46 16.54l-1.41 1.41m0-11.31 1.41 1.41m9.08 9.08 1.41 1.41M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z" />
+                </svg>
+              )}
+            </button>
             <div className="hidden text-right sm:block">
-              <p className="text-xs font-medium text-gray-300">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                 {user.username}
               </p>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500">
+              <p className="text-[10px] uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 {user.role}
               </p>
             </div>
             <button
               onClick={() => logout()}
-              className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-400 transition-colors hover:bg-gray-800 hover:text-gray-200"
+              className="rounded-lg px-3 py-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200"
             >
               Sign out
             </button>

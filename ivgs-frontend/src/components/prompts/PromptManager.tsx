@@ -161,7 +161,7 @@ export default function PromptManager({
       const prompt = promptMap.get(promptType);
       if (prompt) {
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-900/30 text-green-400 text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
             Defined
           </span>
@@ -169,14 +169,14 @@ export default function PromptManager({
       }
       if (tier !== "GLOBAL") {
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-700 text-gray-400 text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-xs font-medium">
             <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
             Inherited
           </span>
         );
       }
       return (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-900/30 text-red-400 text-xs font-medium">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-medium">
           <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
           Missing
         </span>
@@ -194,12 +194,12 @@ export default function PromptManager({
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search prompt types…"
-          className="flex-1 px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <select
           value={stageFilter}
           onChange={(e) => setStageFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="ALL">All Stages</option>
           {stages.map((stage) => (
@@ -211,31 +211,31 @@ export default function PromptManager({
       </div>
 
       {/* ── Prompt Type Table ───────────────────────────────────── */}
-      <div className="overflow-hidden bg-gray-800 rounded-xl border border-gray-700">
+      <div className="overflow-hidden bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-900/50">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+            <tr className="bg-white dark:bg-gray-900/50">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Prompt Type
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Pipeline Stage
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Version
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Updated
               </th>
-              <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+              <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                 Actions
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-700">
+          <tbody className="divide-y divide-gray-300 dark:divide-gray-700">
             {filteredPromptTypes.map((pt) => {
               const prompt = promptMap.get(pt.value) ?? null;
               return (
@@ -246,10 +246,10 @@ export default function PromptManager({
                   {/* Prompt Type */}
                   <td className="px-4 py-3">
                     <div className="flex flex-col">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {pt.label}
                       </span>
-                      <span className="text-xs text-gray-500 font-mono">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-mono">
                         {pt.value}
                       </span>
                     </div>
@@ -257,7 +257,7 @@ export default function PromptManager({
 
                   {/* Pipeline Stage */}
                   <td className="px-4 py-3">
-                    <span className="text-sm text-gray-300">{pt.stage}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{pt.stage}</span>
                   </td>
 
                   {/* Status */}
@@ -266,22 +266,22 @@ export default function PromptManager({
                   {/* Version */}
                   <td className="px-4 py-3">
                     {prompt ? (
-                      <span className="text-sm text-gray-300">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
                         v{prompt.version}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-500">—</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">—</span>
                     )}
                   </td>
 
                   {/* Updated */}
                   <td className="px-4 py-3">
                     {prompt?.created_at ? (
-                      <span className="text-sm text-gray-400">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
                         {new Date(prompt.created_at).toLocaleDateString()}
                       </span>
                     ) : (
-                      <span className="text-sm text-gray-500">—</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">—</span>
                     )}
                   </td>
 
@@ -290,7 +290,7 @@ export default function PromptManager({
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => onSelectPromptType(pt.value, prompt)}
-                        className="px-3 py-1 text-xs font-medium text-blue-400 bg-blue-900/20 rounded hover:bg-blue-900/40 transition-colors"
+                        className="px-3 py-1 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                       >
                         {canEdit
                           ? prompt
@@ -301,7 +301,7 @@ export default function PromptManager({
                       {prompt && (
                         <button
                           onClick={() => onViewHistory(prompt)}
-                          className="px-3 py-1 text-xs font-medium text-gray-300 bg-gray-700 rounded hover:bg-gray-600 transition-colors"
+                          className="px-3 py-1 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-600 transition-colors"
                         >
                           History
                         </button>
@@ -310,7 +310,7 @@ export default function PromptManager({
                         <button
                           onClick={() => handleDelete(prompt.id, pt.label)}
                           disabled={isDeleting === prompt.id}
-                          className="px-3 py-1 text-xs font-medium text-red-400 bg-red-900/20 rounded hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                          className="px-3 py-1 text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         >
                           {isDeleting === prompt.id ? "…" : "Delete"}
                         </button>
@@ -325,24 +325,24 @@ export default function PromptManager({
 
         {/* Empty filtered state */}
         {filteredPromptTypes.length === 0 && (
-          <div className="px-4 py-8 text-center text-gray-500 text-sm">
+          <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
             No prompt types match the current search or filter.
           </div>
         )}
       </div>
 
       {/* ── Inheritance Info ─────────────────────────────────────── */}
-      <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-        <h3 className="text-sm font-medium text-gray-300 mb-2">
+      <div className="p-4 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
+        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           §9.1 Resolution Order
         </h3>
-        <div className="flex items-center gap-3 text-xs text-gray-400">
+        <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded-full bg-orange-500" />
             Scene Override
           </span>
           <svg
-            className="w-4 h-4 text-gray-600"
+            className="w-4 h-4 text-gray-600 dark:text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -359,7 +359,7 @@ export default function PromptManager({
             Project Override
           </span>
           <svg
-            className="w-4 h-4 text-gray-600"
+            className="w-4 h-4 text-gray-600 dark:text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -375,7 +375,7 @@ export default function PromptManager({
             <span className="w-3 h-3 rounded-full bg-blue-500" />
             Global Default
           </span>
-          <span className="ml-2 text-gray-500">
+          <span className="ml-2 text-gray-500 dark:text-gray-400">
             (first match used)
           </span>
         </div>

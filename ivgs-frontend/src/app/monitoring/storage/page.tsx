@@ -147,32 +147,32 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             Storage Analytics Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading storage analytics. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Storage Analytics
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.6 — Tier usage, deduplication, quotas, migrations, orphan
                 report
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 Total:{" "}
-                <strong className="text-gray-900">
+                <strong className="text-gray-900 dark:text-gray-100">
                   {formatBytes(totalUsed || 0)}
                 </strong>{" "}
                 / {formatBytes(totalAllocated || 0)}
@@ -181,10 +181,10 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 className={`inline-flex items-center px-2 py-0.5 rounded-full
                   text-xs font-medium ${
                     totalUsagePercent > 90
-                      ? "bg-red-100 text-red-800"
+                      ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
                       : totalUsagePercent > 75
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-green-100 text-green-800"
+                      ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
+                      : "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
                   }`}
               >
                 {totalUsagePercent}%
@@ -194,7 +194,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
         </header>
 
         {/* ── Tab Navigation ──────────────────────────────────────── */}
-        <div className="bg-white border-b border-gray-200 px-6">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6">
           <nav className="flex gap-6" aria-label="Storage tabs">
             {[
               { id: "overview" as const, label: "Overview" },
@@ -212,8 +212,8 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-3 text-sm font-medium border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 }`}
               >
                 {tab.label}
@@ -231,8 +231,8 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   <LoadingSpinner size="lg" />
                 </div>
               ) : storageError ? (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <p className="text-sm text-red-700">
+                <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                  <p className="text-sm text-red-700 dark:text-red-300">
                     Failed to load storage data.
                   </p>
                 </div>
@@ -248,32 +248,32 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   )}
 
                   {/* Dedup Savings */}
-                  <div className="mt-6 bg-white rounded-lg border border-gray-200 p-6">
-                    <h2 className="text-sm font-semibold text-gray-700 mb-3">
+                  <div className="mt-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+                    <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                       Deduplication Savings
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="text-center">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                           Estimated Savings
                         </p>
-                        <p className="mt-1 text-3xl font-bold text-green-600">
+                        <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
                           {dedupSavings?.percent ?? 0}%
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                           Space Saved
                         </p>
-                        <p className="mt-1 text-3xl font-bold text-gray-900">
+                        <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
                           {formatBytes(dedupSavings?.bytes_saved ?? 0)}
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                           Duplicate Assets
                         </p>
-                        <p className="mt-1 text-3xl font-bold text-gray-900">
+                        <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
                           {dedupSavings?.duplicate_count ?? 0}
                         </p>
                       </div>
@@ -281,34 +281,34 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   </div>
 
                   {/* Per-Tier Detail Table */}
-                  <div className="mt-6 bg-white rounded-lg border border-gray-200 overflow-hidden">
-                    <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                      <h2 className="text-sm font-semibold text-gray-700">
+                  <div className="mt-6 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                      <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                         Tier Breakdown
                       </h2>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
+                      <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                        <thead className="bg-gray-50 dark:bg-gray-950">
                           <tr>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               Tier
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               Used
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               Allocated
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               Usage %
                             </th>
-                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                            <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                               Assets
                             </th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                           {STORAGE_TIERS.map((tier) => {
                             const data = tierData?.find(
                               (t: StorageTierData) => t.tier === tier.id
@@ -331,24 +331,24 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                       }}
                                     />
                                     <div>
-                                      <p className="text-sm font-medium text-gray-900">
+                                      <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                         {tier.label}
                                       </p>
-                                      <p className="text-xs text-gray-500">
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
                                         {tier.description}
                                       </p>
                                     </div>
                                   </div>
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-900 font-mono">
+                                <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono">
                                   {formatBytes(data?.used ?? 0)}
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                                <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
                                   {formatBytes(data?.allocated ?? 0)}
                                 </td>
                                 <td className="px-4 py-2">
                                   <div className="flex items-center gap-2">
-                                    <div className="w-24 bg-gray-200 rounded-full h-2">
+                                    <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                       <div
                                         className={`h-2 rounded-full ${
                                           usagePercent > 90
@@ -362,12 +362,12 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                         }}
                                       />
                                     </div>
-                                    <span className="text-xs text-gray-600 font-mono">
+                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
                                       {usagePercent}%
                                     </span>
                                   </div>
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-600">
+                                <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                                   {(data?.asset_count ?? 0).toLocaleString()}
                                 </td>
                               </tr>
@@ -384,9 +384,9 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
 
           {/* ── Quotas Tab (Admin Only) ────────────────────────────── */}
           {activeTab === "quotas" && user?.role === "admin" && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-700">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Quota Utilization — Top Consumers
                 </h2>
               </div>
@@ -396,27 +396,27 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 </div>
               ) : quotas && quotas.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-950">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           User
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Used
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Quota
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Usage
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Status
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {quotas.map((q: QuotaEntry) => {
                         const percent =
                           q.quota_bytes > 0
@@ -427,18 +427,18 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
 
                         return (
                           <tr key={q.user_id}>
-                            <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                            <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                               {q.username}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                            <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
                               {formatBytes(q.used_bytes)}
                             </td>
-                            <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                            <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
                               {formatBytes(q.quota_bytes)}
                             </td>
                             <td className="px-4 py-2">
                               <div className="flex items-center gap-2">
-                                <div className="w-24 bg-gray-200 rounded-full h-2">
+                                <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                                   <div
                                     className={`h-2 rounded-full ${
                                       percent > 90
@@ -452,7 +452,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                     }}
                                   />
                                 </div>
-                                <span className="text-xs text-gray-600 font-mono">
+                                <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
                                   {percent}%
                                 </span>
                               </div>
@@ -462,10 +462,10 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                 className={`inline-flex items-center px-2 py-0.5
                                   rounded-full text-xs font-medium ${
                                     percent > 90
-                                      ? "bg-red-100 text-red-800"
+                                      ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
                                       : percent > 80
-                                      ? "bg-amber-100 text-amber-800"
-                                      : "bg-green-100 text-green-800"
+                                      ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
+                                      : "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
                                   }`}
                               >
                                 {percent > 90
@@ -482,7 +482,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   </table>
                 </div>
               ) : (
-                <p className="p-6 text-sm text-gray-500 text-center">
+                <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
                   No quota data available.
                 </p>
               )}
@@ -491,9 +491,9 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
 
           {/* ── Migrations Tab (Admin Only) ────────────────────────── */}
           {activeTab === "migrations" && user?.role === "admin" && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-700">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Upcoming Tier Migrations — Next 7 Days
                 </h2>
               </div>
@@ -503,36 +503,36 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 </div>
               ) : migrations && migrations.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-950">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Asset
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Project
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Current Tier
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Target Tier
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Size
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Scheduled
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {migrations.map((m: TierMigration) => (
                         <tr key={m.asset_id}>
-                          <td className="px-4 py-2 text-sm text-gray-900 font-mono">
+                          <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono">
                             {m.asset_id.slice(0, 12)}…
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
                             {m.project_name}
                           </td>
                           <td className="px-4 py-2">
@@ -571,10 +571,10 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                               {m.target_tier}
                             </span>
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
                             {formatBytes(m.size_bytes)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-500">
+                          <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                             {new Date(m.scheduled_at).toLocaleDateString()}
                           </td>
                         </tr>
@@ -583,7 +583,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   </table>
                 </div>
               ) : (
-                <p className="p-6 text-sm text-gray-500 text-center">
+                <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
                   No upcoming tier migrations.
                 </p>
               )}
@@ -592,9 +592,9 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
 
           {/* ── Orphan Assets Tab (Admin Only) ─────────────────────── */}
           {activeTab === "orphans" && user?.role === "admin" && (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-sm font-semibold text-gray-700">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                   Orphan Asset Report — Unreferenced SeaweedFS Files
                 </h2>
               </div>
@@ -604,42 +604,42 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 </div>
               ) : orphans && orphans.length > 0 ? (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-950">
                       <tr>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           SeaweedFS FID
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Path
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Size
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Last Modified
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Reason
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {orphans.map((o: OrphanAsset) => (
                         <tr key={o.seaweedfs_fid}>
-                          <td className="px-4 py-2 text-sm text-gray-900 font-mono">
+                          <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono">
                             {o.seaweedfs_fid}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600 font-mono truncate max-w-[200px]">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono truncate max-w-[200px]">
                             {o.path}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-600 font-mono">
+                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
                             {formatBytes(o.size_bytes)}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-500">
+                          <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                             {new Date(o.last_modified).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-2 text-sm text-gray-500">
+                          <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
                             {o.reason}
                           </td>
                         </tr>
@@ -648,7 +648,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                   </table>
                 </div>
               ) : (
-                <p className="p-6 text-sm text-gray-500 text-center">
+                <p className="p-6 text-sm text-gray-500 dark:text-gray-400 text-center">
                   No orphan assets detected. Storage is clean.
                 </p>
               )}

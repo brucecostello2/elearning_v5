@@ -176,7 +176,7 @@ export default function SceneTimeline({
   if (scenes.length === 0 || totalDuration <= 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
-        <p className="text-gray-400 text-sm">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">
           No scenes to display in timeline view.
         </p>
       </div>
@@ -188,13 +188,13 @@ export default function SceneTimeline({
       {/* ── Controls ──────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-400">
+          <span className="text-sm text-gray-500 dark:text-gray-400">
             {scenes.length} scene{scenes.length !== 1 ? "s" : ""} ·{" "}
             {formatTime(totalDuration)}
           </span>
         </div>
         <div className="flex items-center gap-3">
-          <label className="text-xs text-gray-400">Zoom:</label>
+          <label className="text-xs text-gray-500 dark:text-gray-400">Zoom:</label>
           <input
             type="range"
             min={0.5}
@@ -202,9 +202,9 @@ export default function SceneTimeline({
             step={0.1}
             value={zoom}
             onChange={(e) => setZoom(parseFloat(e.target.value))}
-            className="w-32 h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            className="w-32 h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
           />
-          <span className="text-xs text-gray-400 w-12 text-right">
+          <span className="text-xs text-gray-500 dark:text-gray-400 w-12 text-right">
             {Math.round(zoom * 100)}%
           </span>
         </div>
@@ -213,14 +213,14 @@ export default function SceneTimeline({
       {/* ── Timeline Container ────────────────────────────────────── */}
       <div
         ref={containerRef}
-        className="overflow-x-auto bg-gray-800 rounded-xl border border-gray-700"
+        className="overflow-x-auto bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700"
       >
         <div
           style={{ width: `${zoom * 100}%`, minWidth: "100%" }}
           className="relative"
         >
           {/* ── Ruler ──────────────────────────────────────────── */}
-          <div className="relative h-8 border-b border-gray-700 bg-gray-900/50">
+          <div className="relative h-8 border-b border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900/50">
             {ticks.map((tick, i) => (
               <div
                 key={i}
@@ -228,7 +228,7 @@ export default function SceneTimeline({
                 style={{ left: `${tick.position}%` }}
               >
                 <div className="w-px h-3 bg-gray-600" />
-                <span className="text-[9px] text-gray-500 mt-0.5 select-none">
+                <span className="text-[9px] text-gray-500 dark:text-gray-400 mt-0.5 select-none">
                   {tick.label}
                 </span>
               </div>
@@ -256,16 +256,16 @@ export default function SceneTimeline({
               >
                 {/* Scene number & duration label */}
                 <div className="flex flex-col items-center gap-0.5 px-1">
-                  <span className="text-xs font-bold text-white/90 drop-shadow">
+                  <span className="text-xs font-bold text-gray-900 dark:text-white drop-shadow">
                     {scene.scene_index + 1}
                   </span>
                   {widthPercent > 3 && (
-                    <span className="text-[9px] text-white/70 truncate max-w-full px-1">
+                    <span className="text-[9px] text-gray-900 dark:text-white truncate max-w-full px-1">
                       {formatTime(scene.duration_seconds ?? 0)}
                     </span>
                   )}
                   {widthPercent > 8 && (
-                    <span className="text-[8px] text-white/50 truncate max-w-full px-1 text-center">
+                    <span className="text-[8px] text-gray-900 dark:text-white truncate max-w-full px-1 text-center">
                       {scene.narration_text.slice(0, 30)}
                       {scene.narration_text.length > 30 ? "…" : ""}
                     </span>
@@ -276,15 +276,15 @@ export default function SceneTimeline({
           </div>
 
           {/* ── Scene Labels Row ──────────────────────────────── */}
-          <div className="relative h-6 flex border-t border-gray-700">
+          <div className="relative h-6 flex border-t border-gray-300 dark:border-gray-700">
             {sceneTimings.map(({ scene, widthPercent }) => (
               <div
                 key={scene.id}
-                className="h-full flex items-center justify-center overflow-hidden border-r border-gray-800"
+                className="h-full flex items-center justify-center overflow-hidden border-r border-gray-200 dark:border-gray-800"
                 style={{ width: `${widthPercent}%` }}
               >
                 {widthPercent > 5 && (
-                  <span className="text-[9px] text-gray-500 truncate px-1">
+                  <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate px-1">
                     {scene.media_type}
                   </span>
                 )}
@@ -297,16 +297,16 @@ export default function SceneTimeline({
       {/* ── Tooltip ───────────────────────────────────────────────── */}
       {hoveredTiming && tooltipPosition && (
         <div
-          className="fixed z-50 bg-gray-900 border border-gray-600 rounded-lg shadow-xl px-4 py-3 pointer-events-none"
+          className="fixed z-50 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 rounded-lg shadow-xl px-4 py-3 pointer-events-none"
           style={{
             left: tooltipPosition.x + 12,
             top: tooltipPosition.y - 80,
           }}
         >
-          <div className="text-sm font-medium text-white mb-1">
+          <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
             Scene {hoveredTiming.scene.scene_index + 1}
           </div>
-          <div className="text-xs text-gray-400 space-y-0.5">
+          <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
             <div>Duration: {formatTime(hoveredTiming.scene.duration_seconds ?? 0)}</div>
             <div>
               Start: {formatTime(hoveredTiming.startTime)} — End:{" "}
@@ -314,7 +314,7 @@ export default function SceneTimeline({
             </div>
             <div>Type: {hoveredTiming.scene.media_type}</div>
             <div>Status: {hoveredTiming.scene.status}</div>
-            <div className="mt-1 text-gray-500 max-w-xs truncate">
+            <div className="mt-1 text-gray-500 dark:text-gray-400 max-w-xs truncate">
               {hoveredTiming.scene.narration_text.slice(0, 80)}
               {hoveredTiming.scene.narration_text.length > 80 ? "…" : ""}
             </div>
@@ -323,8 +323,8 @@ export default function SceneTimeline({
       )}
 
       {/* ── Legend ─────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
-        <span className="font-medium text-gray-400">Status:</span>
+      <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
+        <span className="font-medium text-gray-500 dark:text-gray-400">Status:</span>
         {(
           [
             { status: "PENDING", color: "bg-gray-600", label: "Pending" },

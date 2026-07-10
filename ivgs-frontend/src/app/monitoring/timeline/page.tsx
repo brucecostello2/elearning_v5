@@ -320,24 +320,24 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             Timeline Editor Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading the timeline editor. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Composition Timeline
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.5 — Horizontal timeline with layer visualization,
                 segment progress, and lock management
               </p>
@@ -348,10 +348,10 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                 className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full
                   text-sm font-medium ${
                     lockStatus === "LOCKED"
-                      ? "bg-green-100 text-green-800"
+                      ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
                       : lockStatus === "DRAFT"
-                      ? "bg-amber-100 text-amber-800"
-                      : "bg-gray-100 text-gray-600"
+                      ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
                   }`}
               >
                 <svg
@@ -379,10 +379,10 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
               </span>
               {/* Render progress */}
               {manifest && (
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   {overallProgress.percent}%
                   {overallProgress.eta && (
-                    <span className="text-xs text-gray-500 ml-1">
+                    <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
                       ETA: {overallProgress.eta}
                     </span>
                   )}
@@ -395,15 +395,15 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
         <div className="px-6 py-6">
           {/* ── Job Selector ──────────────────────────────────────── */}
           {!activeJobId && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-6">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                 Load Composition Timeline
               </h2>
               <div className="flex items-end gap-3">
                 <div className="flex-1">
                   <label
                     htmlFor="job-id-input"
-                    className="block text-xs font-medium text-gray-700 mb-1"
+                    className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Job ID
                   </label>
@@ -414,7 +414,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                     onChange={(e) => setJobIdInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLoadJob()}
                     placeholder="Enter render job ID…"
-                    className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                    className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                       focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
@@ -432,13 +432,13 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
 
           {/* ── Alerts ────────────────────────────────────────────── */}
           {actionSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-green-700">{actionSuccess}</p>
+                <p className="text-sm text-green-700 dark:text-green-300">{actionSuccess}</p>
                 <button
                   type="button"
                   onClick={() => setActionSuccess(null)}
-                  className="text-green-500 hover:text-green-700"
+                  className="text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -449,13 +449,13 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
           )}
 
           {actionError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-red-700">{actionError}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{actionError}</p>
                 <button
                   type="button"
                   onClick={() => setActionError(null)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -474,8 +474,8 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
 
           {/* ── Error ────────────────────────────────────────────── */}
           {activeJobId && error && !isLoading && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-700 dark:text-red-300">
                 Failed to load composition manifest. Please check the Job ID.
               </p>
             </div>
@@ -485,12 +485,12 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
           {activeJobId && !isLoading && !error && manifest && (
             <>
               {/* ── Toolbar ───────────────────────────────────────── */}
-              <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     {/* Zoom controls */}
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-gray-500">
+                      <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                         Zoom:
                       </span>
                       <button
@@ -498,13 +498,13 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                         onClick={() =>
                           setZoomLevel((z) => Math.max(0.25, z - 0.25))
                         }
-                        className="p-1 rounded hover:bg-gray-100"
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
                       >
-                        <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14" />
                         </svg>
                       </button>
-                      <span className="text-xs text-gray-600 font-mono w-10 text-center">
+                      <span className="text-xs text-gray-600 dark:text-gray-400 font-mono w-10 text-center">
                         {(zoomLevel * 100).toFixed(0)}%
                       </span>
                       <button
@@ -512,9 +512,9 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                         onClick={() =>
                           setZoomLevel((z) => Math.min(4, z + 0.25))
                         }
-                        className="p-1 rounded hover:bg-gray-100"
+                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
                       >
-                        <svg className="h-4 w-4 text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <svg className="h-4 w-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                         </svg>
                       </button>
@@ -524,7 +524,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                           setZoomLevel(1);
                           setPanOffset(0);
                         }}
-                        className="px-2 py-0.5 text-xs text-gray-600 hover:bg-gray-100 rounded"
+                        className="px-2 py-0.5 text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
                       >
                         Fit
                       </button>
@@ -541,7 +541,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                             className="w-3 h-3 rounded-sm"
                             style={{ backgroundColor: layer.color }}
                           />
-                          <span className="text-xs text-gray-600">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {layer.label}
                           </span>
                         </div>
@@ -558,8 +558,8 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                           onClick={handleLockManifest}
                           disabled={lockInProgress}
                           className="inline-flex items-center gap-1.5 px-3 py-1.5
-                            text-xs font-medium text-amber-700 bg-amber-50
-                            border border-amber-200 rounded-md hover:bg-amber-100
+                            text-xs font-medium text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40
+                            border border-amber-200 dark:border-amber-800 rounded-md hover:bg-amber-100 dark:hover:bg-amber-900/50
                             disabled:opacity-50 transition-colors"
                         >
                           {lockInProgress ? (
@@ -577,8 +577,8 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                         onClick={handleValidateManifest}
                         disabled={validateInProgress}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5
-                          text-xs font-medium text-blue-700 bg-blue-50
-                          border border-blue-200 rounded-md hover:bg-blue-100
+                          text-xs font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40
+                          border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50
                           disabled:opacity-50 transition-colors"
                       >
                         {validateInProgress ? (
@@ -596,7 +596,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
               </div>
 
               {/* ── Timeline Canvas ────────────────────────────────── */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                 <TimelineEditor
                   manifest={manifest}
                   segments={segments || []}
@@ -612,21 +612,21 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
               </div>
 
               {/* ── Render Progress Bar ────────────────────────────── */}
-              <div className="mt-4 bg-white rounded-lg border border-gray-200 p-4">
+              <div className="mt-4 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">
+                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     Overall Render Progress
                   </span>
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
                     {overallProgress.percent}%
                     {overallProgress.eta && (
-                      <span className="text-xs text-gray-500 font-normal ml-2">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-normal ml-2">
                         ETA: {overallProgress.eta}
                       </span>
                     )}
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3">
                   <div
                     className={`h-3 rounded-full transition-all duration-500 ${
                       overallProgress.percent === 100
@@ -637,7 +637,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                   />
                 </div>
                 {segments && (
-                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
+                  <div className="mt-2 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                     <span>
                       {segments.filter((s: TimelineSegment) => s.status === "COMPLETE").length}{" "}
                       complete
@@ -650,7 +650,7 @@ function CompositionTimelinePageInner(): React.ReactElement | null {
                       {segments.filter((s: TimelineSegment) => s.status === "PENDING").length}{" "}
                       pending
                     </span>
-                    <span className="text-red-500">
+                    <span className="text-red-500 dark:text-red-400">
                       {segments.filter((s: TimelineSegment) => s.status === "FAILED").length}{" "}
                       failed
                     </span>

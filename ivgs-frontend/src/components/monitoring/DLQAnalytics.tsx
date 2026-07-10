@@ -247,34 +247,34 @@ export default function DLQAnalytics({
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Category Pie Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
         {data.category_counts &&
         Object.keys(data.category_counts).length > 0 ? (
           <Pie data={categoryChartData} options={pieOptions} />
         ) : (
-          <div className="text-center py-8 text-sm text-gray-500">
+          <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
             No category data
           </div>
         )}
       </div>
 
       {/* Trend Line Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
         {data.trend_data && data.trend_data.length > 0 ? (
           <Line data={trendChartData} options={lineOptions} />
         ) : (
-          <div className="text-center py-8 text-sm text-gray-500">
+          <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
             No trend data
           </div>
         )}
       </div>
 
       {/* Top Tasks Bar Chart */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4">
         {data.top_tasks && data.top_tasks.length > 0 ? (
           <Bar data={topTasksChartData} options={barOptions} />
         ) : (
-          <div className="text-center py-8 text-sm text-gray-500">
+          <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
             No task data
           </div>
         )}

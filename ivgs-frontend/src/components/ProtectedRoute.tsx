@@ -69,9 +69,9 @@ export function ProtectedRoute({
     return (
       <div className="flex min-h-[50vh] items-center justify-center px-4">
         <div className="text-center">
-          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-900/20">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
             <svg
-              className="h-8 w-8 text-red-400"
+              className="h-8 w-8 text-red-600 dark:text-red-400"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth="1.5"
@@ -84,16 +84,16 @@ export function ProtectedRoute({
               />
             </svg>
           </div>
-          <h2 className="mt-4 text-lg font-semibold text-white">
+          <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white">
             Access Denied
           </h2>
-          <p className="mt-2 text-sm text-gray-400">
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
             This page requires {minRole} role or higher.
             Your current role is {user.role}.
           </p>
           <button
             onClick={() => router.push("/")}
-            className="mt-4 rounded-lg bg-gray-800 px-4 py-2 text-sm font-medium text-gray-300 transition-colors hover:bg-gray-700"
+            className="mt-4 rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             Return to Dashboard
           </button>

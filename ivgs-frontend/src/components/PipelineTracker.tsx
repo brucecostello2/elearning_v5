@@ -140,7 +140,7 @@ export default function PipelineTracker({
   }
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl p-6">
+    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-6">
       {/* Horizontal Stage Visualization */}
       <div className="flex items-center justify-between gap-1 overflow-x-auto pb-2">
         {PIPELINE_STAGES.map((stage, idx) => {
@@ -165,11 +165,11 @@ export default function PipelineTracker({
                     stage.number
                   )}
                 </div>
-                <span className="text-[10px] text-gray-400 mt-1.5 text-center leading-tight">
+                <span className="text-[10px] text-gray-500 dark:text-gray-400 mt-1.5 text-center leading-tight">
                   {stage.label}
                 </span>
                 {status === "running" && ss?.progress_percent !== undefined && (
-                  <div className="w-14 h-1 bg-gray-700 rounded-full mt-1 overflow-hidden">
+                  <div className="w-14 h-1 bg-gray-200 dark:bg-gray-700 rounded-full mt-1 overflow-hidden">
                     <div
                       className="h-full bg-blue-500 rounded-full transition-all"
                       style={{ width: `${ss.progress_percent}%` }}
@@ -177,12 +177,12 @@ export default function PipelineTracker({
                   </div>
                 )}
                 {ss?.fallback_level && (
-                  <span className="text-[9px] text-yellow-400 mt-0.5">
+                  <span className="text-[9px] text-yellow-600 dark:text-yellow-400 mt-0.5">
                     {ss.fallback_level}
                   </span>
                 )}
                 {status === "running" && ss?.eta_seconds && (
-                  <span className="text-[9px] text-gray-500">
+                  <span className="text-[9px] text-gray-500 dark:text-gray-400">
                     {formatEta(ss.eta_seconds)}
                   </span>
                 )}

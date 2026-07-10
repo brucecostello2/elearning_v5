@@ -314,14 +314,14 @@ export default function PromptPlayground({
       {/* ── Model Selection & Parameters ──────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Primary Model Selector */}
-        <div className="p-4 bg-gray-800 rounded-xl border border-gray-700">
-          <label className="block text-xs font-medium text-gray-400 mb-2">
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
+          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
             Model {comparisonMode ? "(A)" : ""}
           </label>
           <select
             value={selectedModelId}
             onChange={(e) => setSelectedModelId(e.target.value)}
-            className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             {AVAILABLE_MODELS.map((model) => (
               <option key={model.id} value={model.id}>
@@ -330,7 +330,7 @@ export default function PromptPlayground({
             ))}
           </select>
           {selectedModel && (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
               {selectedModel.description} · {selectedModel.vram} ·{" "}
               {selectedModel.context}
             </p>
@@ -343,11 +343,11 @@ export default function PromptPlayground({
               id="comparison-mode"
               checked={comparisonMode}
               onChange={(e) => setComparisonMode(e.target.checked)}
-              className="w-4 h-4 rounded border-gray-600 bg-gray-900 text-blue-500"
+              className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-blue-500 dark:text-blue-400"
             />
             <label
               htmlFor="comparison-mode"
-              className="text-xs text-gray-400"
+              className="text-xs text-gray-500 dark:text-gray-400"
             >
               Enable comparison mode
             </label>
@@ -356,13 +356,13 @@ export default function PromptPlayground({
           {/* Comparison model selector */}
           {comparisonMode && (
             <div className="mt-3">
-              <label className="block text-xs font-medium text-gray-400 mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Model (B)
               </label>
               <select
                 value={comparisonModelId}
                 onChange={(e) => setComparisonModelId(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {AVAILABLE_MODELS.filter(
                   (m) => m.id !== selectedModelId
@@ -377,14 +377,14 @@ export default function PromptPlayground({
         </div>
 
         {/* Parameters */}
-        <div className="p-4 bg-gray-800 rounded-xl border border-gray-700">
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <label className="text-xs font-medium text-gray-400">
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400">
               Parameters
             </label>
             <button
               onClick={handleResetParams}
-              className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
             >
               Reset defaults
             </button>
@@ -393,8 +393,8 @@ export default function PromptPlayground({
           {/* Temperature */}
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-400">Temperature</span>
-              <span className="text-xs text-gray-300 font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Temperature</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">
                 {params.temperature.toFixed(2)}
               </span>
             </div>
@@ -410,15 +410,15 @@ export default function PromptPlayground({
                   temperature: parseFloat(e.target.value),
                 }))
               }
-              className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
           {/* Max Tokens */}
           <div className="mb-3">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-400">Max Tokens</span>
-              <span className="text-xs text-gray-300 font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Max Tokens</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">
                 {params.max_tokens}
               </span>
             </div>
@@ -434,15 +434,15 @@ export default function PromptPlayground({
                   max_tokens: parseInt(e.target.value, 10),
                 }))
               }
-              className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
 
           {/* Top P */}
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs text-gray-400">Top P</span>
-              <span className="text-xs text-gray-300 font-mono">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Top P</span>
+              <span className="text-xs text-gray-700 dark:text-gray-300 font-mono">
                 {params.top_p.toFixed(2)}
               </span>
             </div>
@@ -458,13 +458,13 @@ export default function PromptPlayground({
                   top_p: parseFloat(e.target.value),
                 }))
               }
-              className="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+              className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
             />
           </div>
         </div>
 
         {/* Actions & History */}
-        <div className="p-4 bg-gray-800 rounded-xl border border-gray-700 flex flex-col gap-3">
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 flex flex-col gap-3">
           <button
             onClick={handleExecute}
             disabled={isLoading || !promptText.trim()}
@@ -499,26 +499,26 @@ export default function PromptPlayground({
           </button>
           <button
             onClick={handleClear}
-            className="w-full px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+            className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
           >
             Clear
           </button>
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="w-full px-4 py-2 text-sm font-medium text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+            className="w-full px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
           >
             📜 History ({history.length})
           </button>
           {response && (
             <button
               onClick={handleSaveAsVersion}
-              className="w-full px-4 py-2 text-sm font-medium text-purple-300 bg-purple-900/30 border border-purple-700 rounded-lg hover:bg-purple-900/50 transition-colors"
+              className="w-full px-4 py-2 text-sm font-medium text-purple-800 dark:text-purple-300 bg-purple-100 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-700 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
             >
               💾 Save as Prompt Version
             </button>
           )}
-          <p className="text-[10px] text-gray-500 text-center mt-auto">
-            <kbd className="px-1 py-0.5 bg-gray-700 rounded text-gray-300">
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 text-center mt-auto">
+            <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-gray-700 dark:text-gray-300">
               Ctrl+Enter
             </kbd>{" "}
             to execute
@@ -528,7 +528,7 @@ export default function PromptPlayground({
 
       {/* ── System Prompt ────────────────────────────────────────── */}
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           System Prompt (optional)
         </label>
         <textarea
@@ -536,13 +536,13 @@ export default function PromptPlayground({
           onChange={(e) => setSystemPrompt(e.target.value)}
           rows={3}
           placeholder="Optional system instructions for the model…"
-          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
         />
       </div>
 
       {/* ── Prompt Input ─────────────────────────────────────────── */}
       <div>
-        <label className="block text-xs font-medium text-gray-400 mb-1">
+        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
           Prompt
         </label>
         <textarea
@@ -551,14 +551,14 @@ export default function PromptPlayground({
           onChange={(e) => setPromptText(e.target.value)}
           rows={8}
           placeholder="Enter your prompt here… Supports Jinja2 {{ variables }}"
-          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
         />
       </div>
 
       {/* ── Error ────────────────────────────────────────────────── */}
       {error && (
-        <div className="p-3 bg-red-900/20 border border-red-700 rounded-lg">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+          <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
 
@@ -572,15 +572,15 @@ export default function PromptPlayground({
           {/* Primary Response */}
           <div
             ref={responseRef}
-            className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden"
+            className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden"
           >
-            <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
-              <span className="text-xs font-medium text-gray-400">
+            <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900/50 border-b border-gray-300 dark:border-gray-700">
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                 Response {comparisonMode ? "(A)" : ""} —{" "}
                 {selectedModel?.name ?? selectedModelId}
               </span>
               {response && (
-                <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
                   <span>
                     {response.usage?.total_tokens ?? "?"} tokens
                   </span>
@@ -594,7 +594,7 @@ export default function PromptPlayground({
             </div>
             <div className="p-4 max-h-96 overflow-y-auto">
               {isLoading ? (
-                <div className="flex items-center gap-2 text-gray-400">
+                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                   <svg
                     className="w-4 h-4 animate-spin"
                     fill="none"
@@ -617,7 +617,7 @@ export default function PromptPlayground({
                   <span className="text-sm">Generating response…</span>
                 </div>
               ) : response ? (
-                <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
+                <pre className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
                   {response.content}
                 </pre>
               ) : null}
@@ -626,13 +626,13 @@ export default function PromptPlayground({
 
           {/* Comparison Response */}
           {comparisonMode && (
-            <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
-                <span className="text-xs font-medium text-gray-400">
+            <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900/50 border-b border-gray-300 dark:border-gray-700">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
                   Response (B) — {comparisonModel?.name ?? comparisonModelId}
                 </span>
                 {comparisonResponse && (
-                  <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                  <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400">
                     <span>
                       {comparisonResponse.usage?.total_tokens ?? "?"}{" "}
                       tokens
@@ -647,7 +647,7 @@ export default function PromptPlayground({
               </div>
               <div className="p-4 max-h-96 overflow-y-auto">
                 {isComparisonLoading ? (
-                  <div className="flex items-center gap-2 text-gray-400">
+                  <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
                     <svg
                       className="w-4 h-4 animate-spin"
                       fill="none"
@@ -670,11 +670,11 @@ export default function PromptPlayground({
                     <span className="text-sm">Generating response…</span>
                   </div>
                 ) : comparisonResponse ? (
-                  <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
+                  <pre className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
                     {comparisonResponse.content}
                   </pre>
                 ) : (
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     Waiting for comparison result…
                   </p>
                 )}
@@ -686,21 +686,21 @@ export default function PromptPlayground({
 
       {/* ── History Panel ────────────────────────────────────────── */}
       {showHistory && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-            <h3 className="text-sm font-medium text-white">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-300 dark:border-gray-700">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               Session History
             </h3>
             <button
               onClick={() => setHistory([])}
-              className="text-xs text-gray-400 hover:text-red-400 transition-colors"
+              className="text-xs text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
             >
               Clear History
             </button>
           </div>
-          <div className="max-h-80 overflow-y-auto divide-y divide-gray-700">
+          <div className="max-h-80 overflow-y-auto divide-y divide-gray-300 dark:divide-gray-700">
             {history.length === 0 ? (
-              <div className="px-4 py-6 text-center text-gray-500 text-sm">
+              <div className="px-4 py-6 text-center text-gray-500 dark:text-gray-400 text-sm">
                 No history yet. Execute a prompt to see results here.
               </div>
             ) : (
@@ -711,19 +711,19 @@ export default function PromptPlayground({
                   onClick={() => handleLoadHistory(entry)}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-300">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
                       {entry.model_name}
                     </span>
-                    <span className="text-[10px] text-gray-500">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
                       {new Date(entry.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
-                  <p className="text-xs text-gray-400 truncate">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                     {entry.prompt.slice(0, 100)}
                     {entry.prompt.length > 100 ? "…" : ""}
                   </p>
                   {entry.response && (
-                    <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
+                    <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500 dark:text-gray-400">
                       <span>
                         {entry.response.usage?.total_tokens ?? "?"} tokens
                       </span>
@@ -742,8 +742,8 @@ export default function PromptPlayground({
       )}
 
       {/* ── Cloud Prohibition Notice ─────────────────────────────── */}
-      <div className="p-3 bg-gray-800/50 rounded-lg border border-gray-700">
-        <p className="text-xs text-gray-500">
+      <div className="p-3 bg-gray-100 dark:bg-gray-800/50 rounded-lg border border-gray-300 dark:border-gray-700">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
           §7.2 — Only self-hosted models (vLLM + Ollama) are available.
           Cloud AI services (OpenAI, Anthropic, Google, etc.) are permanently
           prohibited per the v5 mandate.

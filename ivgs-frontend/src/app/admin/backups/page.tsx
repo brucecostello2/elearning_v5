@@ -142,8 +142,8 @@ export default function BackupsPage(): React.ReactElement {
         {/* Page header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">Backup Management</h1>
-            <p className="mt-1 text-sm text-gray-400">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Backup Management</h1>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               §14 — Automated backup records, verification, and recovery
             </p>
           </div>
@@ -160,14 +160,14 @@ export default function BackupsPage(): React.ReactElement {
           <div
             className={`mb-4 rounded-lg px-4 py-3 text-sm ${
               actionMessage.type === "success"
-                ? "border border-green-800 bg-green-900/20 text-green-400"
-                : "border border-red-800 bg-red-900/20 text-red-400"
+                ? "border border-green-200 dark:border-green-800 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                : "border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400"
             }`}
           >
             {actionMessage.text}
             <button
               onClick={() => setActionMessage(null)}
-              className="ml-2 text-gray-500 hover:text-gray-300"
+              className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             >
               ✕
             </button>
@@ -176,27 +176,27 @@ export default function BackupsPage(): React.ReactElement {
 
         {/* RTO/RPO Info Panel */}
         <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">RTO</p>
-            <p className="mt-1 text-xl font-bold text-white">4 hours</p>
-            <p className="text-[10px] text-gray-500">Recovery Time Objective</p>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">RTO</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white">4 hours</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">Recovery Time Objective</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">RPO</p>
-            <p className="mt-1 text-xl font-bold text-white">24 hours</p>
-            <p className="text-[10px] text-gray-500">Recovery Point Objective</p>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">RPO</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white">24 hours</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">Recovery Point Objective</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Records</p>
-            <p className="mt-1 text-xl font-bold text-white">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Records</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white">
               {isLoading ? "..." : totalCount ?? 0}
             </p>
-            <p className="text-[10px] text-gray-500">Total Backup Records</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">Total Backup Records</p>
           </div>
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Schedule</p>
-            <p className="mt-1 text-xl font-bold text-white">Daily</p>
-            <p className="text-[10px] text-gray-500">Full DB at 02:00 UTC</p>
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Schedule</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 dark:text-white">Daily</p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400">Full DB at 02:00 UTC</p>
           </div>
         </div>
 
@@ -211,7 +211,7 @@ export default function BackupsPage(): React.ReactElement {
                 setTypeFilter(e.target.value as BackupType | "ALL");
                 setPage(1);
               }}
-              className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
+              className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
             >
               {BACKUP_TYPE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -222,7 +222,7 @@ export default function BackupsPage(): React.ReactElement {
           </div>
           <button
             onClick={() => mutate()}
-            className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700"
+            className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
           >
             Refresh
           </button>
@@ -234,30 +234,30 @@ export default function BackupsPage(): React.ReactElement {
             <LoadingSpinner size="lg" label="Loading backup records..." />
           </div>
         ) : error ? (
-          <div className="rounded-lg border border-red-800 bg-red-900/20 p-6 text-center text-red-400">
+          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/20 p-6 text-center text-red-600 dark:text-red-400">
             <p className="text-lg font-semibold">Failed to load backup records</p>
             <p className="mt-1 text-sm">{error.message}</p>
             <button
               onClick={() => mutate()}
-              className="mt-3 rounded-lg bg-gray-800 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+              className="mt-3 rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
             >
               Retry
             </button>
           </div>
         ) : !records || records.length === 0 ? (
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-12 text-center">
-            <svg className="mx-auto h-12 w-12 text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-12 text-center">
+            <svg className="mx-auto h-12 w-12 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375" />
             </svg>
-            <p className="mt-4 text-lg font-medium text-gray-400">No backup records found</p>
-            <p className="mt-1 text-sm text-gray-500">
+            <p className="mt-4 text-lg font-medium text-gray-500 dark:text-gray-400">No backup records found</p>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
               Trigger a manual backup or wait for the scheduled backup to create records.
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-800">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
             <table className="w-full text-left text-sm">
-              <thead className="border-b border-gray-800 bg-gray-900/50 text-xs uppercase tracking-wider text-gray-400">
+              <thead className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                 <tr>
                   <th className="px-4 py-3">Type</th>
                   <th className="px-4 py-3">Started</th>
@@ -268,7 +268,7 @@ export default function BackupsPage(): React.ReactElement {
                   <th className="px-4 py-3">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-800">
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {records.map((record: BackupRecord) => {
                   const statusBadge = STATUS_BADGES[record.status] ?? STATUS_BADGES.running;
                   // Derive duration client-side: completed_at - started_at
@@ -280,11 +280,11 @@ export default function BackupsPage(): React.ReactElement {
                       : null;
 
                   return (
-                    <tr key={record.id} className="hover:bg-gray-800/50">
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-200">
+                    <tr key={record.id} className="hover:bg-gray-100 dark:hover:bg-gray-800/50">
+                      <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-800 dark:text-gray-200">
                         {record.backup_type.replace(/_/g, " ").toUpperCase()}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
                         {formatTimestamp(record.started_at)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
@@ -292,23 +292,23 @@ export default function BackupsPage(): React.ReactElement {
                           {record.status.replace(/_/g, " ")}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
                         {formatBytes(record.size_bytes ?? 0)}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-400">
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
                         {formatDuration(durationSecs)}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         {record.status === "verified" ? (
-                          <span className="inline-flex rounded-full bg-emerald-900/30 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                          <span className="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
                             verified
                           </span>
                         ) : record.status === "failed" ? (
-                          <span className="inline-flex rounded-full bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-400">
+                          <span className="inline-flex rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
                             failed
                           </span>
                         ) : (
-                          <span className="inline-flex rounded-full bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-400">
+                          <span className="inline-flex rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                             unverified
                           </span>
                         )}
@@ -317,7 +317,7 @@ export default function BackupsPage(): React.ReactElement {
                         <button
                           onClick={() => handleVerify(record.id)}
                           disabled={verifyingId === record.id || !["completed", "verified"].includes(record.status)}
-                          className="rounded px-2 py-1 text-xs font-medium text-ivgs-400 transition-colors hover:bg-ivgs-600/20 hover:text-ivgs-300 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded px-2 py-1 text-xs font-medium text-ivgs-600 dark:text-ivgs-400 transition-colors hover:bg-ivgs-600/20 hover:text-ivgs-800 dark:hover:text-ivgs-300 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {verifyingId === record.id ? "Verifying..." : "Verify"}
                         </button>
@@ -333,21 +333,21 @@ export default function BackupsPage(): React.ReactElement {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between">
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
               Page {page} of {totalPages} ({totalCount} total records)
             </p>
             <div className="flex gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page <= 1}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page >= totalPages}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-3 py-1.5 text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 Next
               </button>
@@ -358,20 +358,20 @@ export default function BackupsPage(): React.ReactElement {
         {/* Trigger Backup Modal */}
         {showTriggerModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="mx-4 w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold text-white">Trigger Manual Backup</h2>
-              <p className="mt-2 text-sm text-gray-400">
+            <div className="mx-4 w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Trigger Manual Backup</h2>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 Select the backup type and confirm. This will initiate an immediate backup job.
               </p>
               <div className="mt-4">
-                <label htmlFor="backup-type" className="block text-sm font-medium text-gray-300">
+                <label htmlFor="backup-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   Backup Type
                 </label>
                 <select
                   id="backup-type"
                   value={triggerType}
                   onChange={(e) => setTriggerType(e.target.value as BackupType)}
-                  className="mt-1 w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
+                  className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
                 >
                   <option value="full_database">Full Database</option>
                   <option value="wal_archive">WAL Archive</option>
@@ -379,14 +379,14 @@ export default function BackupsPage(): React.ReactElement {
                   <option value="config_backup">Config Backup</option>
                 </select>
               </div>
-              <div className="mt-4 rounded-lg border border-yellow-800/50 bg-yellow-900/10 p-3 text-xs text-yellow-400">
+              <div className="mt-4 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-100 dark:bg-yellow-900/10 p-3 text-xs text-yellow-600 dark:text-yellow-400">
                 ⚠ Manual backups may impact system performance during execution. Prefer scheduling
                 backups during off-peak hours.
               </div>
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setShowTriggerModal(false)}
-                  className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                  className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </button>

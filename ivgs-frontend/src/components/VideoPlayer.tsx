@@ -239,7 +239,7 @@ export default function VideoPlayer({
           {/* Play/Pause */}
           <button
             onClick={togglePlay}
-            className="text-white hover:text-blue-400 transition-colors"
+            className="text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
           >
             {isPlaying ? (
               <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
@@ -253,7 +253,7 @@ export default function VideoPlayer({
           </button>
 
           {/* Time Display */}
-          <span className="text-xs text-gray-300 font-mono min-w-[100px]">
+          <span className="text-xs text-gray-700 dark:text-gray-300 font-mono min-w-[100px]">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
 
@@ -264,7 +264,7 @@ export default function VideoPlayer({
           <div className="flex items-center gap-1">
             <button
               onClick={toggleMute}
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                 {isMuted || volume === 0 ? (
@@ -292,7 +292,7 @@ export default function VideoPlayer({
               className={`text-sm px-2 py-1 rounded transition-colors ${
                 subtitlesEnabled
                   ? "bg-blue-600 text-white"
-                  : "text-gray-400 hover:text-white"
+                  : "text-gray-500 dark:text-gray-400 hover:text-white"
               }`}
               title="Toggle subtitles"
             >
@@ -305,20 +305,20 @@ export default function VideoPlayer({
             <div className="relative">
               <button
                 onClick={() => setShowQualityMenu(!showQualityMenu)}
-                className="text-sm text-gray-300 hover:text-white px-2 py-1 transition-colors"
+                className="text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white px-2 py-1 transition-colors"
               >
                 {selectedQuality}
               </button>
               {showQualityMenu && (
-                <div className="absolute bottom-full right-0 mb-2 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden shadow-xl">
+                <div className="absolute bottom-full right-0 mb-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden shadow-xl">
                   {qualities.map((q) => (
                     <button
                       key={q.label}
                       onClick={() => handleQualityChange(q)}
-                      className={`block w-full px-4 py-2 text-sm text-left hover:bg-gray-800 transition-colors ${
+                      className={`block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${
                         selectedQuality === q.label
-                          ? "text-blue-400"
-                          : "text-gray-300"
+                          ? "text-blue-600 dark:text-blue-400"
+                          : "text-gray-700 dark:text-gray-300"
                       }`}
                     >
                       {q.label}
@@ -334,7 +334,7 @@ export default function VideoPlayer({
             <a
               href={src}
               download
-              className="text-gray-300 hover:text-white transition-colors"
+              className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
               title="Download"
             >
               <svg
@@ -356,7 +356,7 @@ export default function VideoPlayer({
           {/* Fullscreen */}
           <button
             onClick={toggleFullscreen}
-            className="text-gray-300 hover:text-white transition-colors"
+            className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
             title="Fullscreen"
           >
             <svg
@@ -393,7 +393,7 @@ export default function VideoPlayer({
         >
           <div className="w-16 h-16 bg-blue-600/80 rounded-full flex items-center justify-center hover:bg-blue-600 transition-colors">
             <svg
-              className="w-8 h-8 text-white ml-1"
+              className="w-8 h-8 text-gray-900 dark:text-white ml-1"
               fill="currentColor"
               viewBox="0 0 24 24"
             >

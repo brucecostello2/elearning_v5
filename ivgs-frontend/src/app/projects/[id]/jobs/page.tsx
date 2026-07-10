@@ -81,7 +81,7 @@ export default function JobsPage(): React.ReactElement {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           Failed to load jobs: {error.message}
         </div>
       </div>
@@ -92,53 +92,53 @@ export default function JobsPage(): React.ReactElement {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Pipeline Jobs</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pipeline Jobs</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {jobs?.length || 0} job{(jobs?.length || 0) !== 1 ? "s" : ""}
           </p>
         </div>
         <a
           href={`/projects/${projectId}`}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           ← Back
         </a>
       </div>
 
       {!jobs || jobs.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           No pipeline jobs have been created for this project yet.
         </div>
       ) : (
-        <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-700 text-left">
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                <tr className="border-b border-gray-300 dark:border-gray-700 text-left">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Stage
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Node
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Started
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Duration
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Retries
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-gray-300 dark:divide-gray-700">
                 {jobs.map((job: RenderJob) => (
                   <React.Fragment key={job.id}>
                     <tr
@@ -152,26 +152,26 @@ export default function JobsPage(): React.ReactElement {
                       <td className="px-5 py-3">
                         <StateBadge state={job.status} />
                       </td>
-                      <td className="px-5 py-3 text-white font-medium">
+                      <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
                         {job.current_stage || "—"}
                       </td>
-                      <td className="px-5 py-3 text-gray-300">
+                      <td className="px-5 py-3 text-gray-700 dark:text-gray-300">
                         {job.assigned_node || "Unassigned"}
                       </td>
-                      <td className="px-5 py-3 text-gray-400">
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                         {job.started_at
                           ? new Date(job.started_at).toLocaleString()
                           : "—"}
                       </td>
-                      <td className="px-5 py-3 text-gray-400">
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                         {formatDuration(job.duration_seconds)}
                       </td>
                       <td className="px-5 py-3">
                         <span
                           className={`font-mono ${
                             (job.retry_count || 0) > 0
-                              ? "text-yellow-400"
-                              : "text-gray-500"
+                              ? "text-yellow-600 dark:text-yellow-400"
+                              : "text-gray-500 dark:text-gray-400"
                           }`}
                         >
                           {job.retry_count || 0}
@@ -204,37 +204,37 @@ export default function JobsPage(): React.ReactElement {
                         <td colSpan={7} className="px-5 py-4 bg-gray-850">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
-                              <span className="text-xs text-gray-500 uppercase">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                                 Job ID
                               </span>
-                              <p className="text-gray-300 font-mono text-xs mt-0.5">
+                              <p className="text-gray-700 dark:text-gray-300 font-mono text-xs mt-0.5">
                                 {job.id}
                               </p>
                             </div>
                             <div>
-                              <span className="text-xs text-gray-500 uppercase">
+                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                                 GPU
                               </span>
-                              <p className="text-gray-300 mt-0.5">
+                              <p className="text-gray-700 dark:text-gray-300 mt-0.5">
                                 {job.assigned_gpu || "N/A"}
                               </p>
                             </div>
                             {job.error_message && (
                               <div className="sm:col-span-2">
-                                <span className="text-xs text-gray-500 uppercase">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                                   Error Details
                                 </span>
-                                <pre className="mt-1 p-3 bg-red-900/20 border border-red-800 rounded-lg text-red-400 text-xs overflow-x-auto whitespace-pre-wrap">
+                                <pre className="mt-1 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs overflow-x-auto whitespace-pre-wrap">
                                   {job.error_message}
                                 </pre>
                               </div>
                             )}
                             {job.checkpoint_data && (
                               <div className="sm:col-span-2">
-                                <span className="text-xs text-gray-500 uppercase">
+                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
                                   Last Checkpoint
                                 </span>
-                                <p className="text-gray-400 text-xs mt-0.5">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
                                   Stage: {String(job.checkpoint_data.stage)} | Progress:{" "}
                                   {String(job.checkpoint_data.progress)}% | Saved:{" "}
                                   {new Date(

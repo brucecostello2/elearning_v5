@@ -69,7 +69,7 @@ export default function RendersPage(): React.ReactElement {
   if (error || !project) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           {error?.message || "Project not found."}
         </div>
       </div>
@@ -80,36 +80,36 @@ export default function RendersPage(): React.ReactElement {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Final Renders</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Final Renders</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Download 1080p and 4K renders with captions
           </p>
         </div>
         <a
           href={`/projects/${projectId}`}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           ← Back
         </a>
       </div>
 
       {variants.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           No final renders available yet. The pipeline must complete before
           renders are generated.
         </div>
       ) : (
         <div className="space-y-6">
           {/* Language & Quality Selectors */}
-          <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-800 rounded-xl">
+          <div className="flex flex-col sm:flex-row gap-4 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl">
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-400 mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Language
               </label>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {availableLanguages.map((lang) => (
                   <option key={lang} value={lang}>
@@ -119,7 +119,7 @@ export default function RendersPage(): React.ReactElement {
               </select>
             </div>
             <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-400 mb-1">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
                 Quality
               </label>
               <div className="flex gap-2">
@@ -130,7 +130,7 @@ export default function RendersPage(): React.ReactElement {
                     className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                       selectedQuality === q
                         ? "bg-blue-600 text-white"
-                        : "bg-gray-700 text-gray-400 hover:text-white"
+                        : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-white"
                     }`}
                   >
                     {q}
@@ -142,7 +142,7 @@ export default function RendersPage(): React.ReactElement {
 
           {/* Video Player */}
           {activeVariant && qualities.length > 0 && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+            <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
               <VideoPlayer
                 src={
                   selectedQuality === "4K" && activeVariant.url_4k
@@ -161,8 +161,8 @@ export default function RendersPage(): React.ReactElement {
 
           {/* Download Links */}
           {activeVariant && (
-            <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
-              <h3 className="text-sm font-semibold text-white mb-4">
+            <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">
                 Downloads — {selectedLanguage.toUpperCase()}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -216,16 +216,16 @@ function DownloadLink({
     <a
       href={url}
       download
-      className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors group"
+      className="flex items-center gap-3 p-3 bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors group"
     >
       <span className="text-xl">{icon}</span>
       <div className="flex-1 min-w-0">
-        <span className="text-sm text-white font-medium group-hover:text-blue-300 transition-colors">
+        <span className="text-sm text-gray-900 dark:text-white font-medium group-hover:text-blue-800 dark:group-hover:text-blue-300 transition-colors">
           {label}
         </span>
       </div>
       <svg
-        className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors"
+        className="w-4 h-4 text-gray-500 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors"
         fill="none"
         stroke="currentColor"
         viewBox="0 0 24 24"

@@ -37,7 +37,7 @@ export default function ProjectCard({
   return (
     <div
       onClick={() => onClick(project)}
-      className="group bg-gray-800 border border-gray-700 rounded-xl overflow-hidden cursor-pointer hover:border-gray-600 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-200"
+      className="group bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-200"
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
@@ -48,7 +48,7 @@ export default function ProjectCard({
       }}
     >
       {/* Hero Image */}
-      <div className="relative aspect-video bg-gray-900 overflow-hidden">
+      <div className="relative aspect-video bg-white dark:bg-gray-900 overflow-hidden">
         {project.hero_image_url ? (
           <img
             src={project.hero_image_url}
@@ -59,7 +59,7 @@ export default function ProjectCard({
         ) : (
           <div className="w-full h-full flex items-center justify-center">
             <svg
-              className="w-12 h-12 text-gray-700"
+              className="w-12 h-12 text-gray-700 dark:text-gray-300"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -75,7 +75,7 @@ export default function ProjectCard({
         )}
 
         {/* Runtime Badge */}
-        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs text-white font-mono">
+        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs text-gray-900 dark:text-white font-mono">
           {formatRuntime(project.max_runtime_seconds)}
         </div>
 
@@ -87,11 +87,11 @@ export default function ProjectCard({
 
       {/* Card Body */}
       <div className="px-4 py-3">
-        <h3 className="text-sm font-semibold text-white truncate group-hover:text-blue-300 transition-colors">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-800 dark:group-hover:text-blue-300 transition-colors">
           {project.name}
         </h3>
         {project.description && (
-          <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
             {project.description}
           </p>
         )}
@@ -102,13 +102,13 @@ export default function ProjectCard({
             {project.target_languages.slice(0, 5).map((lang: string) => (
               <span
                 key={lang}
-                className="px-1.5 py-0.5 bg-gray-700 text-gray-400 text-[10px] rounded font-mono uppercase"
+                className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 text-[10px] rounded font-mono uppercase"
               >
                 {lang}
               </span>
             ))}
             {project.target_languages.length > 5 && (
-              <span className="px-1.5 py-0.5 text-gray-500 text-[10px]">
+              <span className="px-1.5 py-0.5 text-gray-500 dark:text-gray-400 text-[10px]">
                 +{project.target_languages.length - 5}
               </span>
             )}

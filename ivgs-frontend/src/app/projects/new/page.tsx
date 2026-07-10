@@ -279,8 +279,8 @@ export default function NewProjectPage(): React.ReactElement {
   if (user?.role === "viewer") {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <h2 className="text-2xl font-bold text-white mb-4">Access Denied</h2>
-        <p className="text-gray-400">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Access Denied</h2>
+        <p className="text-gray-500 dark:text-gray-400">
           Viewers cannot create new projects. Contact an administrator for access.
         </p>
       </div>
@@ -289,15 +289,15 @@ export default function NewProjectPage(): React.ReactElement {
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-white mb-2">New Project</h1>
-      <p className="text-gray-400 mb-8">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">New Project</h1>
+      <p className="text-gray-500 dark:text-gray-400 mb-8">
         Create a new video project. All fields marked with * are required.
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* ── General Error ────────────────────────────────────────── */}
         {errors.general && (
-          <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+          <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
             {errors.general}
           </div>
         )}
@@ -306,7 +306,7 @@ export default function NewProjectPage(): React.ReactElement {
         <div>
           <label
             htmlFor="project-name"
-            className="block text-sm font-medium text-gray-300 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Video Name *
           </label>
@@ -318,15 +318,15 @@ export default function NewProjectPage(): React.ReactElement {
             maxLength={255}
             required
             placeholder="Enter video project name"
-            className={`w-full px-4 py-2.5 bg-gray-800 border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              errors.name ? "border-red-500" : "border-gray-600"
+            className={`w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              errors.name ? "border-red-500" : "border-gray-300 dark:border-gray-600"
             }`}
           />
           <div className="flex justify-between mt-1">
             {errors.name && (
-              <span className="text-red-400 text-xs">{errors.name}</span>
+              <span className="text-red-600 dark:text-red-400 text-xs">{errors.name}</span>
             )}
-            <span className="text-gray-500 text-xs ml-auto">
+            <span className="text-gray-500 dark:text-gray-400 text-xs ml-auto">
               {name.length}/255
             </span>
           </div>
@@ -336,7 +336,7 @@ export default function NewProjectPage(): React.ReactElement {
         <div>
           <label
             htmlFor="project-description"
-            className="block text-sm font-medium text-gray-300 mb-1"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
           >
             Description
           </label>
@@ -347,14 +347,14 @@ export default function NewProjectPage(): React.ReactElement {
             maxLength={1000}
             rows={4}
             placeholder="Optional project description"
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
-          <span className="text-gray-500 text-xs">{description.length}/1000</span>
+          <span className="text-gray-500 dark:text-gray-400 text-xs">{description.length}/1000</span>
         </div>
 
         {/* ── Maximum Runtime * ─────────────────────────────────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Maximum Runtime * (1–120 minutes)
           </label>
           <div className="flex items-center gap-3">
@@ -369,13 +369,13 @@ export default function NewProjectPage(): React.ReactElement {
                     Math.max(0, Math.min(120, parseInt(e.target.value) || 0))
                   )
                 }
-                className={`w-20 px-3 py-2.5 bg-gray-800 border rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.runtime ? "border-red-500" : "border-gray-600"
+                className={`w-20 px-3 py-2.5 bg-gray-100 dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.runtime ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
               />
-              <span className="text-gray-400 text-sm">min</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">min</span>
             </div>
-            <span className="text-gray-500">:</span>
+            <span className="text-gray-500 dark:text-gray-400">:</span>
             <div className="flex items-center gap-1">
               <input
                 type="number"
@@ -387,15 +387,15 @@ export default function NewProjectPage(): React.ReactElement {
                     Math.max(0, Math.min(59, parseInt(e.target.value) || 0))
                   )
                 }
-                className={`w-20 px-3 py-2.5 bg-gray-800 border rounded-lg text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                  errors.runtime ? "border-red-500" : "border-gray-600"
+                className={`w-20 px-3 py-2.5 bg-gray-100 dark:bg-gray-800 border rounded-lg text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.runtime ? "border-red-500" : "border-gray-300 dark:border-gray-600"
                 }`}
               />
-              <span className="text-gray-400 text-sm">sec</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">sec</span>
             </div>
           </div>
           {errors.runtime && (
-            <span className="text-red-400 text-xs mt-1 block">
+            <span className="text-red-600 dark:text-red-400 text-xs mt-1 block">
               {errors.runtime}
             </span>
           )}
@@ -403,7 +403,7 @@ export default function NewProjectPage(): React.ReactElement {
 
         {/* ── Talking Head Clip * ───────────────────────────────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Talking Head Clip * (MP4/MOV, max 500 MB)
           </label>
           <AssetUploader
@@ -420,7 +420,7 @@ export default function NewProjectPage(): React.ReactElement {
 
         {/* ── Voice Transcripts * ──────────────────────────────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Voice Transcripts * (PDF/DOCX/TXT, at least one)
           </label>
           <div className="mb-3">
@@ -435,7 +435,7 @@ export default function NewProjectPage(): React.ReactElement {
             <button
               type="button"
               onClick={() => transcriptInputRef.current?.click()}
-              className="px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-300 hover:bg-gray-600 hover:text-white transition-colors"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               + Add Transcript Files
             </button>
@@ -444,7 +444,7 @@ export default function NewProjectPage(): React.ReactElement {
           {/* Transcript Order — Drag-and-Drop Reorder List */}
           {transcriptFiles.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Drag and drop to set transcript processing order:
               </p>
               {transcriptFiles.map((tf, index) => (
@@ -454,17 +454,17 @@ export default function NewProjectPage(): React.ReactElement {
                   onDragStart={(e) => handleDragStart(e, index)}
                   onDragOver={handleDragOver}
                   onDrop={(e) => handleDrop(e, index)}
-                  className={`flex items-center gap-3 px-4 py-2.5 bg-gray-800 border rounded-lg cursor-grab active:cursor-grabbing transition-colors ${
+                  className={`flex items-center gap-3 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border rounded-lg cursor-grab active:cursor-grabbing transition-colors ${
                     dragIndex === index
-                      ? "border-blue-500 bg-gray-700"
-                      : "border-gray-600"
+                      ? "border-blue-500 bg-gray-200 dark:bg-gray-700"
+                      : "border-gray-300 dark:border-gray-600"
                   }`}
                 >
-                  <span className="text-gray-500 text-sm font-mono w-6">
+                  <span className="text-gray-500 dark:text-gray-400 text-sm font-mono w-6">
                     {index + 1}.
                   </span>
                   <svg
-                    className="w-4 h-4 text-gray-500 flex-shrink-0"
+                    className="w-4 h-4 text-gray-500 dark:text-gray-400 flex-shrink-0"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -476,16 +476,16 @@ export default function NewProjectPage(): React.ReactElement {
                       d="M4 8h16M4 16h16"
                     />
                   </svg>
-                  <span className="text-white text-sm truncate flex-1">
+                  <span className="text-gray-900 dark:text-white text-sm truncate flex-1">
                     {tf.file.name}
                   </span>
-                  <span className="text-gray-500 text-xs">
+                  <span className="text-gray-500 dark:text-gray-400 text-xs">
                     {(tf.file.size / 1024).toFixed(1)} KB
                   </span>
                   <button
                     type="button"
                     onClick={() => handleRemoveTranscript(tf.id)}
-                    className="text-gray-500 hover:text-red-400 transition-colors"
+                    className="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                     title="Remove transcript"
                   >
                     <svg
@@ -507,7 +507,7 @@ export default function NewProjectPage(): React.ReactElement {
             </div>
           )}
           {errors.transcripts && (
-            <span className="text-red-400 text-xs mt-1 block">
+            <span className="text-red-600 dark:text-red-400 text-xs mt-1 block">
               {errors.transcripts}
             </span>
           )}
@@ -515,7 +515,7 @@ export default function NewProjectPage(): React.ReactElement {
 
         {/* ── Existing Storyboard (optional) ───────────────────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Existing Storyboard (PDF/DOCX, optional)
           </label>
           <AssetUploader
@@ -530,7 +530,7 @@ export default function NewProjectPage(): React.ReactElement {
 
         {/* ── Target Languages ─────────────────────────────────────── */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             Target Languages (optional at creation)
           </label>
           <div className="flex flex-wrap gap-2">
@@ -544,7 +544,7 @@ export default function NewProjectPage(): React.ReactElement {
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
                     isSelected
                       ? "bg-blue-600 border-blue-500 text-white"
-                      : "bg-gray-800 border-gray-600 text-gray-400 hover:border-gray-500 hover:text-gray-300"
+                      : "bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                   }`}
                 >
                   {lang.label}
@@ -555,7 +555,7 @@ export default function NewProjectPage(): React.ReactElement {
         </div>
 
         {/* ── Submit ───────────────────────────────────────────────── */}
-        <div className="flex items-center gap-4 pt-4 border-t border-gray-700">
+        <div className="flex items-center gap-4 pt-4 border-t border-gray-300 dark:border-gray-700">
           <button
             type="submit"
             disabled={isSubmitting}
@@ -573,7 +573,7 @@ export default function NewProjectPage(): React.ReactElement {
           <button
             type="button"
             onClick={() => router.push("/gallery")}
-            className="px-6 py-3 text-gray-400 hover:text-white transition-colors"
+            className="px-6 py-3 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             Cancel
           </button>

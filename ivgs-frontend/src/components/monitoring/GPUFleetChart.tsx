@@ -218,7 +218,7 @@ export default function GPUFleetChart({
 
   if (!data || data.length === 0) {
     return (
-      <div className="text-center py-8 text-sm text-gray-500">
+      <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
         No utilization history data available for the last 30 minutes.
       </div>
     );
@@ -228,7 +228,7 @@ export default function GPUFleetChart({
     <div className="relative">
       <Line data={chartData} options={options} />
       {/* Legend annotation for alert thresholds */}
-      <div className="mt-2 flex items-center justify-end gap-4 text-xs text-gray-400">
+      <div className="mt-2 flex items-center justify-end gap-4 text-xs text-gray-500 dark:text-gray-400">
         <span>
           🔴 &gt;85°C alert threshold (Table 13-3 GPUOvertemperature)
         </span>

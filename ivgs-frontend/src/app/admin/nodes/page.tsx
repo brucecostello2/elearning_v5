@@ -231,8 +231,8 @@ export default function NodeConfigPage(): React.ReactElement {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Page header */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white">Node Configuration</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Node Configuration</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             §2.3 — Cluster node IP registry. Welcome, {user?.username}.
           </p>
         </div>
@@ -242,12 +242,12 @@ export default function NodeConfigPage(): React.ReactElement {
           <div
             className={`mb-4 rounded-lg px-4 py-3 text-sm ${
               actionMessage.type === "success"
-                ? "border border-green-800 bg-green-900/20 text-green-400"
-                : "border border-red-800 bg-red-900/20 text-red-400"
+                ? "border border-green-200 dark:border-green-800 bg-green-100 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                : "border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/20 text-red-600 dark:text-red-400"
             }`}
           >
             {actionMessage.text}
-            <button onClick={() => setActionMessage(null)} className="ml-2 text-gray-500 hover:text-gray-300">
+            <button onClick={() => setActionMessage(null)} className="ml-2 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
               ✕
             </button>
           </div>
@@ -255,7 +255,7 @@ export default function NodeConfigPage(): React.ReactElement {
 
         {/* Applying state */}
         {applying && (
-          <div className="mb-4 rounded-lg border border-blue-800 bg-blue-900/20 px-4 py-3 text-sm text-blue-300">
+          <div className="mb-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-100 dark:bg-blue-900/20 px-4 py-3 text-sm text-blue-800 dark:text-blue-300">
             <span className="font-semibold">Applying node IP changes…</span> The API is restarting and will be briefly
             unavailable; this page updates automatically when it returns.
           </div>
@@ -263,23 +263,23 @@ export default function NodeConfigPage(): React.ReactElement {
 
         {/* Restart-required notice */}
         {restartRequired && (
-          <div className="mb-6 rounded-lg border border-yellow-800 bg-yellow-900/20 p-4 text-sm text-yellow-300">
+          <div className="mb-6 rounded-lg border border-yellow-200 dark:border-yellow-800 bg-yellow-100 dark:bg-yellow-900/20 p-4 text-sm text-yellow-800 dark:text-yellow-300">
             <p className="font-semibold">Restart required to apply staged changes</p>
-            <p className="mt-1 text-yellow-200/80">
+            <p className="mt-1 text-yellow-800 dark:text-yellow-200">
               One or more node IPs are staged but not yet applied. To apply them, an operator runs the following on
               node-01, which backs up and rewrites{" "}
               <code className="rounded bg-black/30 px-1">ivgs-infra/.env</code> then recreates the stack:
             </p>
             <pre className="mt-2 overflow-x-auto rounded bg-black/40 px-3 py-2 text-xs text-yellow-100">scripts/apply-node-config.sh</pre>
-            <p className="mt-2 text-yellow-200/80">node-01 will go briefly offline during the restart.</p>
+            <p className="mt-2 text-yellow-800 dark:text-yellow-200">node-01 will go briefly offline during the restart.</p>
           </div>
         )}
 
         {/* Server advisories (out-of-subnet / duplicates / ignored node-01) */}
         {warnings.length > 0 && (
-          <div className="mb-6 rounded-lg border border-orange-800 bg-orange-900/20 p-4 text-sm text-orange-300">
+          <div className="mb-6 rounded-lg border border-orange-200 dark:border-orange-800 bg-orange-100 dark:bg-orange-900/20 p-4 text-sm text-orange-800 dark:text-orange-300">
             <p className="font-semibold">Advisories</p>
-            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-orange-200/90">
+            <ul className="mt-1 list-disc space-y-0.5 pl-5 text-orange-800 dark:text-orange-200">
               {warnings.map((w, i) => (
                 <li key={i}>{w}</li>
               ))}
@@ -293,22 +293,22 @@ export default function NodeConfigPage(): React.ReactElement {
             <LoadingSpinner size="lg" label="Loading node configuration..." />
           </div>
         ) : loadError ? (
-          <div className="rounded-lg border border-red-800 bg-red-900/20 p-6 text-center text-red-400">
+          <div className="rounded-lg border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/20 p-6 text-center text-red-600 dark:text-red-400">
             <p>Failed to load node configuration</p>
-            <p className="mt-1 text-sm text-red-300/80">{loadError}</p>
-            <button onClick={() => load()} className="mt-2 rounded bg-gray-800 px-3 py-1 text-sm hover:bg-gray-700">
+            <p className="mt-1 text-sm text-red-800 dark:text-red-300">{loadError}</p>
+            <button onClick={() => load()} className="mt-2 rounded bg-gray-100 dark:bg-gray-800 px-3 py-1 text-sm hover:bg-gray-200 dark:hover:bg-gray-700">
               Retry
             </button>
           </div>
         ) : !config ? (
-          <div className="rounded-lg border border-gray-800 bg-gray-900 p-8 text-center text-gray-400">
+          <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-8 text-center text-gray-500 dark:text-gray-400">
             No node configuration available.
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-lg border border-gray-800">
+            <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-800">
               <table className="w-full text-left text-sm">
-                <thead className="border-b border-gray-800 bg-gray-900/50 text-xs uppercase tracking-wider text-gray-400">
+                <thead className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   <tr>
                     <th className="px-4 py-3">Node</th>
                     <th className="px-4 py-3">Role</th>
@@ -317,17 +317,17 @@ export default function NodeConfigPage(): React.ReactElement {
                     <th className="px-4 py-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                   {config.nodes.map((node) => {
                     if (!node.editable) {
                       return (
-                        <tr key={node.node_id} className="hover:bg-gray-800/50">
-                          <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-200">{node.node_id}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-gray-300">{node.role}</td>
-                          <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-400">{node.applied_ip}</td>
-                          <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500">Router / host assigned</td>
+                        <tr key={node.node_id} className="hover:bg-gray-100 dark:hover:bg-gray-800/50">
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-800 dark:text-gray-200">{node.node_id}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-gray-700 dark:text-gray-300">{node.role}</td>
+                          <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-500 dark:text-gray-400">{node.applied_ip}</td>
+                          <td className="whitespace-nowrap px-4 py-3 text-xs text-gray-500 dark:text-gray-400">Router / host assigned</td>
                           <td className="whitespace-nowrap px-4 py-3">
-                            <span className="inline-flex rounded-full bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-400">
+                            <span className="inline-flex rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
                               Fixed
                             </span>
                           </td>
@@ -339,37 +339,37 @@ export default function NodeConfigPage(): React.ReactElement {
                     const invalid = !isValidIPv4(value);
                     const offSubnet = !invalid && !sameSubnet24(value, node01Ip);
                     return (
-                      <tr key={node.node_id} className="hover:bg-gray-800/50">
-                        <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-200">{node.node_id}</td>
-                        <td className="whitespace-nowrap px-4 py-3 text-gray-300">{node.role}</td>
-                        <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-400">{node.applied_ip}</td>
+                      <tr key={node.node_id} className="hover:bg-gray-100 dark:hover:bg-gray-800/50">
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-800 dark:text-gray-200">{node.node_id}</td>
+                        <td className="whitespace-nowrap px-4 py-3 text-gray-700 dark:text-gray-300">{node.role}</td>
+                        <td className="whitespace-nowrap px-4 py-3 font-mono text-gray-500 dark:text-gray-400">{node.applied_ip}</td>
                         <td className="whitespace-nowrap px-4 py-3">
                           <input
                             type="text"
                             value={value}
                             onChange={(e) => setEdits((prev) => ({ ...prev, [node.node_id]: e.target.value }))}
                             aria-label={`${node.node_id} IP address`}
-                            className={`w-40 rounded-lg border bg-gray-800 px-3 py-2 font-mono text-sm text-gray-200 focus:outline-none focus:ring-1 ${
+                            className={`w-40 rounded-lg border bg-gray-100 dark:bg-gray-800 px-3 py-2 font-mono text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-1 ${
                               invalid
-                                ? "border-red-700 focus:border-red-500 focus:ring-red-500"
-                                : "border-gray-700 focus:border-ivgs-500 focus:ring-ivgs-500"
+                                ? "border-red-200 dark:border-red-700 focus:border-red-500 focus:ring-red-500"
+                                : "border-gray-300 dark:border-gray-700 focus:border-ivgs-500 focus:ring-ivgs-500"
                             }`}
                           />
                           {offSubnet && (
-                            <p className="mt-1 text-xs text-orange-400">Different subnet from node-01</p>
+                            <p className="mt-1 text-xs text-orange-600 dark:text-orange-400">Different subnet from node-01</p>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-3">
                           {invalid ? (
-                            <span className="inline-flex rounded-full bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-400">
+                            <span className="inline-flex rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
                               Invalid IPv4
                             </span>
                           ) : changed ? (
-                            <span className="inline-flex rounded-full bg-yellow-900/30 px-2 py-0.5 text-xs font-medium text-yellow-300">
+                            <span className="inline-flex rounded-full bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:text-yellow-300">
                               Pending
                             </span>
                           ) : (
-                            <span className="inline-flex rounded-full bg-green-900/30 px-2 py-0.5 text-xs font-medium text-green-400">
+                            <span className="inline-flex rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-xs font-medium text-green-600 dark:text-green-400">
                               Applied
                             </span>
                           )}
@@ -381,7 +381,7 @@ export default function NodeConfigPage(): React.ReactElement {
               </table>
             </div>
 
-            <p className="mt-3 text-xs text-gray-500">
+            <p className="mt-3 text-xs text-gray-500 dark:text-gray-400">
               Expected subnet: <span className="font-mono">{config.expected_subnet}</span> (derived from node-01).
               node-01 is fixed and shown for reference. IPs outside the subnet are allowed but flagged as advisories.
               Staged changes take effect only after the host apply step and stack restart.
@@ -391,7 +391,7 @@ export default function NodeConfigPage(): React.ReactElement {
               <button
                 onClick={handleDiscard}
                 disabled={saving || applying || !(dirty || restartRequired)}
-                className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-gray-300 transition-colors hover:bg-gray-700 disabled:opacity-50"
+                className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 transition-colors hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
               >
                 Discard Pending
               </button>
@@ -416,9 +416,9 @@ export default function NodeConfigPage(): React.ReactElement {
         {/* Apply & Restart confirmation */}
         {confirmApply && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-            <div className="mx-4 w-full max-w-md rounded-lg border border-gray-700 bg-gray-900 p-6">
-              <h2 className="text-lg font-semibold text-white">Apply node IP changes and restart?</h2>
-              <p className="mt-2 text-sm text-gray-400">
+            <div className="mx-4 w-full max-w-md rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Apply node IP changes and restart?</h2>
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
                 This rewrites <code className="rounded bg-black/30 px-1">ivgs-infra/.env</code> on node-01 (a backup is
                 kept) and recreates the stack so the staged IPs take effect. The API will be briefly unavailable
                 (typically 10–30 seconds) while it restarts. This page updates automatically when it returns.
@@ -426,7 +426,7 @@ export default function NodeConfigPage(): React.ReactElement {
               <div className="mt-6 flex justify-end gap-3">
                 <button
                   onClick={() => setConfirmApply(false)}
-                  className="rounded-lg border border-gray-700 bg-gray-800 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
+                  className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                 >
                   Cancel
                 </button>

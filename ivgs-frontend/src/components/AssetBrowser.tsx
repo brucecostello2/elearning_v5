@@ -69,9 +69,9 @@ export default function AssetBrowser({
     }
     if (asset.asset_type === "video") {
       return (
-        <div className="w-full h-full flex items-center justify-center bg-gray-900">
+        <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900">
           <svg
-            className="w-10 h-10 text-gray-600"
+            className="w-10 h-10 text-gray-600 dark:text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -93,7 +93,7 @@ export default function AssetBrowser({
       );
     }
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-900 text-gray-600">
+      <div className="w-full h-full flex items-center justify-center bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400">
         <span className="text-xs">Asset</span>
       </div>
     );
@@ -107,7 +107,7 @@ export default function AssetBrowser({
           {assets.map((asset: Asset) => (
             <div
               key={asset.id}
-              className="group bg-gray-800 border border-gray-700 rounded-xl overflow-hidden hover:border-gray-600 transition-colors"
+              className="group bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 transition-colors"
             >
               {/* Thumbnail */}
               <div
@@ -127,11 +127,11 @@ export default function AssetBrowser({
 
               {/* Info */}
               <div className="px-3 py-2">
-                <p className="text-xs text-white truncate font-medium">
+                <p className="text-xs text-gray-900 dark:text-white truncate font-medium">
                   {asset.scene_label || asset.filename}
                 </p>
                 {asset.generation_prompt && (
-                  <p className="text-[10px] text-gray-500 truncate mt-0.5">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
                     {asset.generation_prompt}
                   </p>
                 )}
@@ -139,7 +139,7 @@ export default function AssetBrowser({
                   <button
                     onClick={() => handleRegenerate(asset.id)}
                     disabled={regeneratingId === asset.id}
-                    className="mt-1.5 text-[10px] text-blue-400 hover:text-blue-300 disabled:opacity-50 transition-colors"
+                    className="mt-1.5 text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
                   >
                     {regeneratingId === asset.id ? "Regenerating…" : "↻ Regenerate"}
                   </button>
@@ -175,18 +175,18 @@ export default function AssetBrowser({
               )}
               <div className="mt-3 px-2 flex items-center justify-between">
                 <div>
-                  <p className="text-white font-medium text-sm">
+                  <p className="text-gray-900 dark:text-white font-medium text-sm">
                     {previewAsset.scene_label || previewAsset.filename}
                   </p>
                   {previewAsset.generation_prompt && (
-                    <p className="text-gray-400 text-xs mt-0.5">
+                    <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
                       {previewAsset.generation_prompt}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={() => setPreviewAsset(null)}
-                  className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
+                  className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
                 >
                   Close
                 </button>
@@ -201,34 +201,34 @@ export default function AssetBrowser({
   // ── List View ───────────────────────────────────────────────────────
   return (
     <>
-      <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+      <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-700 text-left">
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase w-16">
+              <tr className="border-b border-gray-300 dark:border-gray-700 text-left">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase w-16">
                   Preview
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Name
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Type
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Quality
                 </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase">
+                <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Prompt
                 </th>
                 {canEdit && (
-                  <th className="px-4 py-3 text-xs font-medium text-gray-400 uppercase">
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                     Actions
                   </th>
                 )}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-700">
+            <tbody className="divide-y divide-gray-300 dark:divide-gray-700">
               {assets.map((asset: Asset) => (
                 <tr
                   key={asset.id}
@@ -242,10 +242,10 @@ export default function AssetBrowser({
                       {renderThumbnail(asset)}
                     </div>
                   </td>
-                  <td className="px-4 py-2 text-white font-medium">
+                  <td className="px-4 py-2 text-gray-900 dark:text-white font-medium">
                     {asset.scene_label || asset.filename}
                   </td>
-                  <td className="px-4 py-2 text-gray-400 capitalize">
+                  <td className="px-4 py-2 text-gray-500 dark:text-gray-400 capitalize">
                     {asset.asset_type}
                   </td>
                   <td className="px-4 py-2">
@@ -257,7 +257,7 @@ export default function AssetBrowser({
                       {getQualityLabel(asset.quality_score)}
                     </span>
                   </td>
-                  <td className="px-4 py-2 text-gray-500 text-xs max-w-[200px] truncate">
+                  <td className="px-4 py-2 text-gray-500 dark:text-gray-400 text-xs max-w-[200px] truncate">
                     {asset.generation_prompt || "—"}
                   </td>
                   {canEdit && (
@@ -265,7 +265,7 @@ export default function AssetBrowser({
                       <button
                         onClick={() => handleRegenerate(asset.id)}
                         disabled={regeneratingId === asset.id}
-                        className="text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 transition-colors"
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
                       >
                         {regeneratingId === asset.id
                           ? "Regenerating…"
@@ -306,7 +306,7 @@ export default function AssetBrowser({
             )}
             <button
               onClick={() => setPreviewAsset(null)}
-              className="absolute top-3 right-3 w-8 h-8 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-black/80"
+              className="absolute top-3 right-3 w-8 h-8 bg-black/60 rounded-full text-gray-900 dark:text-white flex items-center justify-center hover:bg-black/80"
             >
               ✕
             </button>

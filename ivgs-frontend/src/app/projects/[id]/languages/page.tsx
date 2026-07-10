@@ -130,7 +130,7 @@ export default function LanguagesPage(): React.ReactElement {
   if (error || !project) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           {error?.message || "Project not found."}
         </div>
       </div>
@@ -143,8 +143,8 @@ export default function LanguagesPage(): React.ReactElement {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Languages</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Languages</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {variants.length} language variant
             {variants.length !== 1 ? "s" : ""}
           </p>
@@ -160,7 +160,7 @@ export default function LanguagesPage(): React.ReactElement {
           )}
           <a
             href={`/projects/${projectId}`}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             ← Back
           </a>
@@ -169,15 +169,15 @@ export default function LanguagesPage(): React.ReactElement {
 
       {/* Add Language Form */}
       {showAddForm && (
-        <div className="mb-6 p-4 bg-gray-800 border border-gray-700 rounded-xl flex items-end gap-4">
+        <div className="mb-6 p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl flex items-end gap-4">
           <div className="flex-1">
-            <label className="block text-xs font-medium text-gray-400 mb-1">
+            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
               Select Language
             </label>
             <select
               value={selectedNewLang}
               onChange={(e) => setSelectedNewLang(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Choose a language…</option>
               {availableLanguages.map((lang) => (
@@ -199,7 +199,7 @@ export default function LanguagesPage(): React.ReactElement {
               setShowAddForm(false);
               setSelectedNewLang("");
             }}
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors text-sm"
+            className="px-4 py-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
           >
             Cancel
           </button>
@@ -208,45 +208,45 @@ export default function LanguagesPage(): React.ReactElement {
 
       {/* Language Variant Table */}
       {variants.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           No language variants configured for this project.
         </div>
       ) : (
-        <div className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden">
+        <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-700 text-left">
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                <tr className="border-b border-gray-300 dark:border-gray-700 text-left">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Language
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Code
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Status
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Progress
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Last Updated
                   </th>
-                  <th className="px-5 py-3 text-xs font-medium text-gray-400 uppercase tracking-wide">
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Actions
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-700">
+              <tbody className="divide-y divide-gray-300 dark:divide-gray-700">
                 {variants.map((variant: LanguageVariant) => (
                   <tr
                     key={variant.language_code}
                     className="hover:bg-gray-750 transition-colors"
                   >
-                    <td className="px-5 py-3 text-white font-medium">
+                    <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
                       {getLangLabel(variant.language_code)}
                     </td>
-                    <td className="px-5 py-3 text-gray-400 font-mono">
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 font-mono">
                       {variant.language_code.toUpperCase()}
                     </td>
                     <td className="px-5 py-3">
@@ -254,7 +254,7 @@ export default function LanguagesPage(): React.ReactElement {
                     </td>
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2">
-                        <div className="flex-1 h-2 bg-gray-700 rounded-full overflow-hidden max-w-[120px]">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden max-w-[120px]">
                           <div
                             className="h-full bg-blue-500 rounded-full transition-all"
                             style={{
@@ -262,12 +262,12 @@ export default function LanguagesPage(): React.ReactElement {
                             }}
                           />
                         </div>
-                        <span className="text-xs text-gray-400">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {variant.progress_percent || 0}%
                         </span>
                       </div>
                     </td>
-                    <td className="px-5 py-3 text-gray-400 text-xs">
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
                       {variant.updated_at
                         ? new Date(variant.updated_at).toLocaleString()
                         : "—"}

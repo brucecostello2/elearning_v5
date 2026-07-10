@@ -77,9 +77,9 @@ export default function NodeCard({
 
   return (
     <div
-      className={`bg-gray-800 border border-gray-700 rounded-xl p-5 transition-all ${
+      className={`bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5 transition-all ${
         onClick
-          ? "cursor-pointer hover:border-gray-600 hover:shadow-lg hover:shadow-blue-900/10"
+          ? "cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-blue-900/10"
           : ""
       }`}
       onClick={onClick ? () => onClick(node) : undefined}
@@ -90,7 +90,7 @@ export default function NodeCard({
           <span
             className={`w-2.5 h-2.5 rounded-full ${statusStyles.dot}`}
           />
-          <h3 className="text-sm font-bold text-white">
+          <h3 className="text-sm font-bold text-gray-900 dark:text-white">
             {node.hostname}
           </h3>
         </div>
@@ -102,23 +102,23 @@ export default function NodeCard({
       </div>
 
       {/* GPU Model (null for infrastructure node-01) */}
-      <p className="text-xs text-gray-400 mb-3">
+      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
         {node.gpu_model ?? (
-          <span className="italic text-gray-600">No GPU ({node.role})</span>
+          <span className="italic text-gray-600 dark:text-gray-400">No GPU ({node.role})</span>
         )}
       </p>
 
       {/* VRAM Bar - rendered only for nodes with a GPU */}
       {node.total_vram_mb > 0 && (
         <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+          <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span>VRAM</span>
             <span>
               {(node.used_vram_mb / 1024).toFixed(1)} /{" "}
               {(node.total_vram_mb / 1024).toFixed(1)} GB
             </span>
           </div>
-          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all ${vramColor}`}
               style={{ width: `${Math.min(vramPercent, 100)}%` }}
@@ -131,14 +131,14 @@ export default function NodeCard({
       {node.total_vram_mb > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="text-center">
-            <span className="text-xs text-gray-500 block">Util</span>
-            <span className="text-sm font-bold text-white">
+            <span className="text-xs text-gray-500 dark:text-gray-400 block">Util</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white">
               {node.gpu_utilization_pct.toFixed(0)}%
             </span>
           </div>
 
           <div className="text-center">
-            <span className="text-xs text-gray-500 block">Temp</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400 block">Temp</span>
             <span
               className={`text-sm font-bold ${getTempColor(node.temperature_c)}`}
             >
@@ -147,8 +147,8 @@ export default function NodeCard({
           </div>
 
           <div className="text-center">
-            <span className="text-xs text-gray-500 block">Power</span>
-            <span className="text-sm font-bold text-white">
+            <span className="text-xs text-gray-500 dark:text-gray-400 block">Power</span>
+            <span className="text-sm font-bold text-gray-900 dark:text-white">
               {node.power_draw_w !== undefined
                 ? `${node.power_draw_w.toFixed(0)}W`
                 : "—"}
@@ -159,7 +159,7 @@ export default function NodeCard({
 
       {/* Detail Hint for Admin */}
       {showDetailHint && (
-        <p className="text-[10px] text-gray-600 mt-2 text-center">
+        <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-2 text-center">
           Click for logs and details
         </p>
       )}

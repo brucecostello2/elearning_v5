@@ -369,24 +369,24 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             Pipeline Monitoring Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading the pipeline monitor. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Pipeline Progress Tracker
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.1 — Real-time pipeline monitoring with stage DAG,
                 checkpoints, and resume controls
               </p>
@@ -403,7 +403,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                       : "bg-gray-400"
                   }`}
                 />
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-500 dark:text-gray-400">
                   {connectionState === "CONNECTED"
                     ? "Live"
                     : connectionState === "CONNECTING"
@@ -416,53 +416,53 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
         </header>
 
         {/* ── Summary Statistics Bar ──────────────────────────────── */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3">
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Total Jobs
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {summaryStats.total}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Running
               </p>
-              <p className="mt-1 text-2xl font-bold text-blue-600">
+              <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {summaryStats.running}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Complete
               </p>
-              <p className="mt-1 text-2xl font-bold text-green-600">
+              <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
                 {summaryStats.complete}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Error
               </p>
-              <p className="mt-1 text-2xl font-bold text-red-600">
+              <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
                 {summaryStats.error}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Pending
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-600">
+              <p className="mt-1 text-2xl font-bold text-gray-600 dark:text-gray-400">
                 {summaryStats.pending}
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Avg Duration
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {formatDuration(summaryStats.avgDuration)}
               </p>
             </div>
@@ -471,13 +471,13 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
         <div className="px-6 py-6">
           {/* ── Filters ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6">
             <div className="flex flex-wrap items-end gap-4">
               {/* State filter */}
               <div className="flex-1 min-w-[160px]">
                 <label
                   htmlFor="state-filter"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Job State
                 </label>
@@ -485,7 +485,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                   id="state-filter"
                   value={stateFilter}
                   onChange={(e) => setStateFilter(e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 >
                   {JOB_STATE_FILTERS.map((opt) => (
@@ -500,7 +500,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
               <div className="flex-1 min-w-[200px]">
                 <label
                   htmlFor="search-query"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Search Projects
                 </label>
@@ -510,7 +510,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Project name or job ID…"
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -519,7 +519,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
               <div className="min-w-[140px]">
                 <label
                   htmlFor="date-from"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   From
                 </label>
@@ -528,14 +528,14 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                   type="date"
                   value={dateFrom}
                   onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               <div className="min-w-[140px]">
                 <label
                   htmlFor="date-to"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   To
                 </label>
@@ -544,7 +544,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                   type="date"
                   value={dateTo}
                   onChange={(e) => setDateTo(e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -553,8 +553,8 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900
-                  hover:bg-gray-100 rounded-md transition-colors"
+                className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100
+                  hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
               >
                 Clear Filters
               </button>
@@ -570,10 +570,10 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
           {/* ── Error State ─────────────────────────────────────── */}
           {jobsError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <div className="flex items-center gap-2">
                 <svg
-                  className="h-5 w-5 text-red-500"
+                  className="h-5 w-5 text-red-500 dark:text-red-400"
                   fill="none"
                   viewBox="0 0 24 24"
                   strokeWidth={1.5}
@@ -585,7 +585,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                     d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z"
                   />
                 </svg>
-                <p className="text-sm text-red-700">
+                <p className="text-sm text-red-700 dark:text-red-300">
                   Failed to load pipeline jobs. Please try again.
                 </p>
               </div>
@@ -594,11 +594,11 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
           {/* ── Resume Error Alert ──────────────────────────────── */}
           {resumeError && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <svg
-                    className="h-5 w-5 text-amber-500"
+                    className="h-5 w-5 text-amber-500 dark:text-amber-400"
                     fill="none"
                     viewBox="0 0 24 24"
                     strokeWidth={1.5}
@@ -610,12 +610,12 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                       d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126Z"
                     />
                   </svg>
-                  <p className="text-sm text-amber-700">{resumeError}</p>
+                  <p className="text-sm text-amber-700 dark:text-amber-300">{resumeError}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setResumeError(null)}
-                  className="text-amber-500 hover:text-amber-700"
+                  className="text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -630,15 +630,15 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left panel: Job list */}
               <div className="lg:col-span-1">
-                <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                    <h2 className="text-sm font-semibold text-gray-700">
+                <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                    <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       Pipeline Jobs ({jobs.length})
                     </h2>
                   </div>
-                  <div className="divide-y divide-gray-100 max-h-[calc(100vh-320px)] overflow-y-auto">
+                  <div className="divide-y divide-gray-100 dark:divide-gray-800 max-h-[calc(100vh-320px)] overflow-y-auto">
                     {jobs.length === 0 ? (
-                      <div className="p-6 text-center text-sm text-gray-500">
+                      <div className="p-6 text-center text-sm text-gray-500 dark:text-gray-400">
                         No pipeline jobs match the current filters.
                       </div>
                     ) : (
@@ -647,19 +647,19 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                           key={job.id}
                           type="button"
                           onClick={() => handleSelectJob(job.id)}
-                          className={`w-full text-left px-4 py-3 hover:bg-gray-50
+                          className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-950
                             transition-colors ${
                               selectedJobId === job.id
-                                ? "bg-blue-50 border-l-4 border-blue-500"
+                                ? "bg-blue-50 dark:bg-blue-900/40 border-l-4 border-blue-500"
                                 : ""
                             }`}
                         >
                           <div className="flex items-center justify-between">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-gray-900 truncate">
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                                 {job.project_name}
                               </p>
-                              <p className="text-xs text-gray-500 mt-0.5">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                                 Job #{job.id.slice(0, 8)} •{" "}
                                 {formatDate(job.created_at)}
                               </p>
@@ -670,13 +670,13 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                                 className={`inline-flex items-center px-2 py-0.5
                                   rounded-full text-xs font-medium ${
                                     job.status === "COMPLETE"
-                                      ? "bg-green-100 text-green-800"
+                                      ? "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
                                       : job.status === "ERROR"
-                                      ? "bg-red-100 text-red-800"
+                                      ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
                                       : job.status === "PENDING" ||
                                         job.status === "DRAFT"
-                                      ? "bg-gray-100 text-gray-700"
-                                      : "bg-blue-100 text-blue-800"
+                                      ? "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                                      : "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300"
                                   }`}
                               >
                                 {job.status}
@@ -699,7 +699,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
                           {/* Progress bar for running jobs */}
                           {job.progress !== undefined && job.progress < 100 && (
-                            <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                            <div className="mt-2 w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                               <div
                                 className="bg-blue-600 h-1.5 rounded-full transition-all
                                   duration-300"
@@ -710,7 +710,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
                           {/* ETA for running jobs */}
                           {job.estimated_completion && (
-                            <p className="mt-1 text-xs text-gray-400">
+                            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                               ETA:{" "}
                               {formatDate(job.estimated_completion)}
                             </p>
@@ -727,9 +727,9 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                 {selectedJobId ? (
                   <div className="space-y-6">
                     {/* DAG Visualization */}
-                    <div className="bg-white rounded-lg border border-gray-200 p-6">
+                    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h2 className="text-sm font-semibold text-gray-700">
+                        <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                           Stage DAG — Pipeline Execution Graph
                         </h2>
                         {/* Resume button — admin only, ERROR state only */}
@@ -779,7 +779,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                           <LoadingSpinner size="md" />
                         </div>
                       ) : detailError ? (
-                        <p className="text-sm text-red-600 text-center py-8">
+                        <p className="text-sm text-red-600 dark:text-red-400 text-center py-8">
                           Failed to load job detail.
                         </p>
                       ) : jobDetail ? (
@@ -796,43 +796,43 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
                     {/* Checkpoint Details Table */}
                     {jobDetail && jobDetail.checkpoints && (
-                      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                          <h2 className="text-sm font-semibold text-gray-700">
+                      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                        <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
+                          <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                             Checkpoint Data — §6.2 Operational Layer
                           </h2>
                         </div>
                         <div className="overflow-x-auto">
-                          <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                            <thead className="bg-gray-50 dark:bg-gray-950">
                               <tr>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Stage
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Status
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Started
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Completed
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Duration
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Retries
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Fallback
                                 </th>
-                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                                   Node
                                 </th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                               {PIPELINE_STAGES.map((stage) => {
                                 const cp = jobDetail.checkpoints?.find(
                                   (c: CheckpointData) => c.stage === stage
@@ -854,7 +854,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                                         : ""
                                     }
                                   >
-                                    <td className="px-4 py-2 text-sm font-medium text-gray-900">
+                                    <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
                                       {STAGE_LABELS[stage]}
                                     </td>
                                     <td className="px-4 py-2">
@@ -864,22 +864,22 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                                           ${
                                             cp
                                               ? STATUS_COLORS[cp.status]
-                                              : "bg-gray-100 text-gray-500"
+                                              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                                           }`}
                                       >
                                         {cp?.status || "PENDING"}
                                       </span>
                                     </td>
-                                    <td className="px-4 py-2 text-xs text-gray-500">
+                                    <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
                                       {formatDate(cp?.started_at || null)}
                                     </td>
-                                    <td className="px-4 py-2 text-xs text-gray-500">
+                                    <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
                                       {formatDate(cp?.completed_at || null)}
                                     </td>
-                                    <td className="px-4 py-2 text-xs text-gray-600 font-mono">
+                                    <td className="px-4 py-2 text-xs text-gray-600 dark:text-gray-400 font-mono">
                                       {formatDuration(duration)}
                                     </td>
-                                    <td className="px-4 py-2 text-xs text-gray-600">
+                                    <td className="px-4 py-2 text-xs text-gray-600 dark:text-gray-400">
                                       {cp?.retry_count ?? "—"}
                                     </td>
                                     <td className="px-4 py-2">
@@ -895,7 +895,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                                         </span>
                                       )}
                                     </td>
-                                    <td className="px-4 py-2 text-xs text-gray-500">
+                                    <td className="px-4 py-2 text-xs text-gray-500 dark:text-gray-400">
                                       {cp?.node_id || "—"}
                                     </td>
                                   </tr>
@@ -909,15 +909,15 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
                     {/* Error Details — shown for ERROR jobs */}
                     {jobDetail && jobDetail.status === "ERROR" && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <h3 className="text-sm font-semibold text-red-800 mb-2">
+                      <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                        <h3 className="text-sm font-semibold text-red-800 dark:text-red-300 mb-2">
                           Error Details
                         </h3>
-                        <pre className="text-xs text-red-700 bg-red-100 rounded p-3 overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
+                        <pre className="text-xs text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/50 rounded p-3 overflow-x-auto max-h-48 overflow-y-auto whitespace-pre-wrap">
                           {jobDetail.error_message || "No error details available."}
                         </pre>
                         {jobDetail.error_stage && (
-                          <p className="mt-2 text-xs text-red-600">
+                          <p className="mt-2 text-xs text-red-600 dark:text-red-400">
                             Failed at stage:{" "}
                             <strong>
                               {STAGE_LABELS[jobDetail.error_stage as PipelineStage] ||
@@ -929,9 +929,9 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                     )}
                   </div>
                 ) : (
-                  <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+                  <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-12 text-center">
                     <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
+                      className="mx-auto h-12 w-12 text-gray-500 dark:text-gray-400"
                       fill="none"
                       viewBox="0 0 24 24"
                       strokeWidth={1}
@@ -943,10 +943,10 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                         d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25a2.25 2.25 0 0 1-2.25-2.25v-2.25Z"
                       />
                     </svg>
-                    <h3 className="mt-4 text-sm font-medium text-gray-900">
+                    <h3 className="mt-4 text-sm font-medium text-gray-900 dark:text-gray-100">
                       Select a Pipeline Job
                     </h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                       Click a job in the left panel to view its stage DAG
                       and checkpoint details.
                     </p>

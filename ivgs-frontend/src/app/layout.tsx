@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/Toast";
@@ -50,10 +51,20 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${jetbrainsMono.variable} dark`}
+      className={`${inter.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen bg-gray-950 font-sans text-gray-100 antialiased">
+      <head>
+        {/* Apply the stored/system theme before hydration (no flash). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var t=localStorage.getItem('ivgs-theme');if(t!=='light'&&t!=='dark'){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';}document.documentElement.classList.toggle('dark',t==='dark');}catch(e){document.documentElement.classList.add('dark');}",
+          }}
+        />
+      </head>
+      <body className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 antialiased dark:bg-gray-50 dark:bg-gray-950 dark:text-gray-900 dark:text-gray-100">
+        <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
             <div className="flex min-h-screen flex-col">
@@ -63,6 +74,7 @@ export default function RootLayout({
             </div>
           </ToastProvider>
         </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

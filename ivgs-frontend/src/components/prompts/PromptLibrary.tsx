@@ -200,7 +200,7 @@ export default function PromptLibrary({
   // ── Loading ──────────────────────────────────────────────────────────
   if (isLibraryLoading) {
     return (
-      <div className="flex items-center justify-center py-16 text-gray-400">
+      <div className="flex items-center justify-center py-16 text-gray-500 dark:text-gray-400">
         <span className="text-sm">Loading prompt library…</span>
       </div>
     );
@@ -209,8 +209,8 @@ export default function PromptLibrary({
   // ── Error ────────────────────────────────────────────────────────────
   if (libraryError) {
     return (
-      <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg">
-        <p className="text-sm text-red-400">{libraryError}</p>
+      <div className="p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+        <p className="text-sm text-red-600 dark:text-red-400">{libraryError}</p>
       </div>
     );
   }
@@ -223,8 +223,8 @@ export default function PromptLibrary({
           onClick={() => setSelectedCategory("ALL")}
           className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
             selectedCategory === "ALL"
-              ? "bg-white/10 text-white border-white/30"
-              : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600"
+              ? "bg-white dark:bg-gray-900 text-gray-900 dark:text-white border-white/30"
+              : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
           }`}
         >
           All ({categoryCounts.ALL})
@@ -236,7 +236,7 @@ export default function PromptLibrary({
             className={`px-3 py-1.5 text-xs font-medium rounded-full border transition-colors ${
               selectedCategory === cat.id
                 ? cat.color
-                : "bg-gray-800 text-gray-400 border-gray-700 hover:border-gray-600"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
             }`}
           >
             {cat.icon} {cat.label} ({categoryCounts[cat.id] ?? 0})
@@ -250,45 +250,45 @@ export default function PromptLibrary({
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
         placeholder="Search library templates…"
-        className="w-full px-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
       {/* ── Template Grid ────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredEntries.length === 0 ? (
-          <div className="col-span-full py-12 text-center text-gray-500 text-sm">
+          <div className="col-span-full py-12 text-center text-gray-500 dark:text-gray-400 text-sm">
             No library templates match the current filters.
           </div>
         ) : (
           filteredEntries.map((entry) => (
             <div
               key={entry.id}
-              className={`bg-gray-800 rounded-xl border p-4 cursor-pointer transition-all ${
+              className={`bg-gray-100 dark:bg-gray-800 rounded-xl border p-4 cursor-pointer transition-all ${
                 selectedEntry?.id === entry.id
                   ? "border-blue-500 ring-2 ring-blue-500/20"
-                  : "border-gray-700 hover:border-gray-600"
+                  : "border-gray-300 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
               }`}
               onClick={() => setSelectedEntry(entry)}
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-2">
-                <h4 className="text-sm font-medium text-white">
+                <h4 className="text-sm font-medium text-gray-900 dark:text-white">
                   {entry.prompt_type.replace(/_/g, " ")}
                 </h4>
-                <span className="text-xs text-gray-500 font-mono ml-2 whitespace-nowrap">
+                <span className="text-xs text-gray-500 dark:text-gray-400 font-mono ml-2 whitespace-nowrap">
                   v{entry.version} · {entry.scope}
                 </span>
               </div>
 
               {/* Change note */}
               {entry.change_note && (
-                <p className="text-xs text-gray-400 mb-3 line-clamp-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
                   {entry.change_note}
                 </p>
               )}
 
               {/* Preview snippet */}
-              <div className="p-2 bg-gray-900 rounded text-[10px] text-gray-500 font-mono max-h-16 overflow-hidden">
+              <div className="p-2 bg-white dark:bg-gray-900 rounded text-[10px] text-gray-500 dark:text-gray-400 font-mono max-h-16 overflow-hidden">
                 {entry.prompt_text.slice(0, 150)}
                 {entry.prompt_text.length > 150 ? "…" : ""}
               </div>
@@ -300,7 +300,7 @@ export default function PromptLibrary({
                     e.stopPropagation();
                     handleApply(entry);
                   }}
-                  className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-400 bg-blue-900/20 rounded hover:bg-blue-900/40 transition-colors"
+                  className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                 >
                   Apply
                 </button>
@@ -311,7 +311,7 @@ export default function PromptLibrary({
                       handleRemove(entry.id);
                     }}
                     disabled={isRemoving === entry.id}
-                    className="px-2 py-1.5 text-xs text-red-400 bg-red-900/20 rounded hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                    className="px-2 py-1.5 text-xs text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                   >
                     {isRemoving === entry.id ? "…" : "Remove"}
                   </button>
@@ -324,14 +324,14 @@ export default function PromptLibrary({
 
       {/* ── Selected Entry Detail ──────────────────────────────── */}
       {selectedEntry && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 bg-gray-900/50 border-b border-gray-700">
-            <h3 className="text-sm font-medium text-white">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-gray-900/50 border-b border-gray-300 dark:border-gray-700">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               {selectedEntry.prompt_type.replace(/_/g, " ")}
             </h3>
             <button
               onClick={() => setSelectedEntry(null)}
-              className="text-gray-400 hover:text-white transition-colors"
+              className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <svg
                 className="w-4 h-4"
@@ -349,11 +349,11 @@ export default function PromptLibrary({
             </button>
           </div>
           <div className="p-4">
-            <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
+            <pre className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed max-h-64 overflow-y-auto">
               {selectedEntry.prompt_text}
             </pre>
           </div>
-          <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-end gap-2">
+          <div className="px-4 py-3 border-t border-gray-300 dark:border-gray-700 flex items-center justify-end gap-2">
             <button
               onClick={() => handleApply(selectedEntry)}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"

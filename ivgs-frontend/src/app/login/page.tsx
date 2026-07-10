@@ -64,12 +64,12 @@ export default function LoginPage() {
         {/* Logo / Header */}
         <div className="mb-8 text-center">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-xl bg-ivgs-600">
-            <span className="text-2xl font-bold text-white">V5</span>
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">V5</span>
           </div>
-          <h1 className="mt-4 text-2xl font-bold text-white">
+          <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-white">
             Sign in to IVGS
           </h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Intelligent Video Generation System
           </p>
         </div>
@@ -77,11 +77,11 @@ export default function LoginPage() {
         {/* Login Form */}
         <form
           onSubmit={handleSubmit}
-          className="rounded-xl border border-gray-800 bg-gray-900 p-6 shadow-xl"
+          className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 shadow-xl"
         >
           {/* Error Alert */}
           {error && (
-            <div className="mb-4 rounded-lg border border-red-800/50 bg-red-900/20 px-4 py-3 text-sm text-red-400">
+            <div className="mb-4 rounded-lg border border-red-200 dark:border-red-800 bg-red-100 dark:bg-red-900/20 px-4 py-3 text-sm text-red-600 dark:text-red-400">
               <p>{error}</p>
               {remainingAttempts !== null && remainingAttempts <= 3 && (
                 <p className="mt-1 font-medium">
@@ -96,7 +96,7 @@ export default function LoginPage() {
           <div className="mb-4">
             <label
               htmlFor="username"
-              className="mb-1.5 block text-sm font-medium text-gray-300"
+              className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Username
             </label>
@@ -110,7 +110,7 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               disabled={isDisabled}
-              className="block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500 disabled:opacity-50"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500 disabled:opacity-50"
               placeholder="Enter your username"
             />
           </div>
@@ -119,7 +119,7 @@ export default function LoginPage() {
           <div className="mb-6">
             <label
               htmlFor="password"
-              className="mb-1.5 block text-sm font-medium text-gray-300"
+              className="mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
               Password
             </label>
@@ -132,7 +132,7 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               disabled={isDisabled}
-              className="block w-full rounded-lg border border-gray-700 bg-gray-800 px-3 py-2.5 text-sm text-white placeholder-gray-500 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500 disabled:opacity-50"
+              className="block w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500 disabled:opacity-50"
               placeholder="Enter your password"
             />
           </div>
@@ -155,7 +155,7 @@ export default function LoginPage() {
         </form>
 
         {/* Footer note */}
-        <p className="mt-4 text-center text-xs text-gray-500">
+        <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
           Contact your administrator for account access.
         </p>
       </div>

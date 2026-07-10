@@ -85,7 +85,7 @@ export default function TalkingHeadPage(): React.ReactElement {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           Failed to load talking head: {error.message}
         </div>
       </div>
@@ -96,21 +96,21 @@ export default function TalkingHeadPage(): React.ReactElement {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Talking Head</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Talking Head</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             Preview rendered talking head video with lip-sync alignment
           </p>
         </div>
         <a
           href={`/projects/${projectId}`}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           ← Back
         </a>
       </div>
 
       {talkingHeadAssets.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           No talking head video rendered yet.
         </div>
       ) : (
@@ -118,7 +118,7 @@ export default function TalkingHeadPage(): React.ReactElement {
           {talkingHeadAssets.map((asset: Asset) => (
             <div
               key={asset.id}
-              className="bg-gray-800 border border-gray-700 rounded-xl overflow-hidden"
+              className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden"
             >
               {/* Video Player */}
               <div className="relative aspect-video bg-black">
@@ -135,7 +135,7 @@ export default function TalkingHeadPage(): React.ReactElement {
               {/* Info Bar */}
               <div className="flex items-center justify-between px-5 py-4">
                 <div className="flex items-center gap-4">
-                  <span className="text-sm font-medium text-white">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {asset.scene_label || asset.filename}
                   </span>
                   {asset.quality_score !== undefined &&
@@ -149,7 +149,7 @@ export default function TalkingHeadPage(): React.ReactElement {
                       </span>
                     )}
                   {asset.metadata?.duration != null && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       Duration: {String(asset.metadata.duration)}s
                     </span>
                   )}
@@ -158,7 +158,7 @@ export default function TalkingHeadPage(): React.ReactElement {
                   <button
                     onClick={() => handleRegenerate(asset.id)}
                     disabled={isRegenerating}
-                    className="px-4 py-1.5 text-sm bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 hover:text-white disabled:opacity-50 transition-colors"
+                    className="px-4 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white disabled:opacity-50 transition-colors"
                   >
                     {isRegenerating ? "Regenerating…" : "Regenerate"}
                   </button>

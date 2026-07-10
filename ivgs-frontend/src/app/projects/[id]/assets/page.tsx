@@ -147,7 +147,7 @@ export default function AssetsPage(): React.ReactElement {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           Failed to load assets: {error.message}
         </div>
       </div>
@@ -159,8 +159,8 @@ export default function AssetsPage(): React.ReactElement {
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Media Assets</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Media Assets</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {filteredAssets.length} asset
             {filteredAssets.length !== 1 ? "s" : ""}
           </p>
@@ -176,7 +176,7 @@ export default function AssetsPage(): React.ReactElement {
           )}
           <a
             href={`/projects/${projectId}`}
-            className="text-sm text-gray-400 hover:text-white transition-colors"
+            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
           >
             ← Back
           </a>
@@ -185,7 +185,7 @@ export default function AssetsPage(): React.ReactElement {
 
       {/* ── Upload Area ────────────────────────────────────────────── */}
       {showUploader && canEdit && (
-        <div className="mb-6 p-6 bg-gray-800 border border-gray-700 border-dashed rounded-xl">
+        <div className="mb-6 p-6 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 border-dashed rounded-xl">
           <AssetUploader
             accept="image/*,video/*"
             multiple
@@ -205,10 +205,10 @@ export default function AssetsPage(): React.ReactElement {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search assets…"
-            className="w-full pl-9 pr-4 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -231,7 +231,7 @@ export default function AssetsPage(): React.ReactElement {
                 className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
                   filter === f
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-800 text-gray-400 hover:text-white border border-gray-600"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-white border border-gray-300 dark:border-gray-600"
                 }`}
               >
                 {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -245,8 +245,8 @@ export default function AssetsPage(): React.ReactElement {
             onClick={() => setViewMode("grid")}
             className={`p-2 rounded ${
               viewMode === "grid"
-                ? "text-blue-400 bg-gray-800"
-                : "text-gray-500 hover:text-gray-300"
+                ? "text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
             title="Grid view"
           >
@@ -262,8 +262,8 @@ export default function AssetsPage(): React.ReactElement {
             onClick={() => setViewMode("list")}
             className={`p-2 rounded ${
               viewMode === "list"
-                ? "text-blue-400 bg-gray-800"
-                : "text-gray-500 hover:text-gray-300"
+                ? "text-blue-600 dark:text-blue-400 bg-gray-100 dark:bg-gray-800"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
             title="List view"
           >
@@ -284,7 +284,7 @@ export default function AssetsPage(): React.ReactElement {
 
       {/* ── Asset Grid / List ──────────────────────────────────────── */}
       {filteredAssets.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           {assets && assets.length > 0
             ? "No assets match your filters."
             : "No assets generated yet for this project."}

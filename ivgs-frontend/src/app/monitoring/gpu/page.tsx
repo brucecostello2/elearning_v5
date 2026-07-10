@@ -242,24 +242,24 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             GPU Fleet Status Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading GPU fleet data. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 GPU Fleet Status
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.2 — Per-GPU cards, fleet utilization, queue depth, model
                 residency heatmap
               </p>
@@ -274,7 +274,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                     ${
                       viewMode === "cards"
                         ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                        : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950"
                     }`}
                 >
                   Cards
@@ -287,7 +287,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                     ${
                       viewMode === "heatmap"
                         ? "bg-blue-600 text-white border-blue-600"
-                        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                        : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950"
                     }`}
                 >
                   Heatmap
@@ -298,51 +298,51 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
         </header>
 
         {/* ── Fleet Summary Bar ───────────────────────────────────── */}
-        <div className="bg-white border-b border-gray-200 px-6 py-3">
+        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-3">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Nodes Online
               </p>
-              <p className="mt-1 text-2xl font-bold text-green-600">
+              <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
                 {fleetStats.onlineNodes}
-                <span className="text-sm text-gray-400 font-normal">
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
                   /{fleetStats.totalNodes}
                 </span>
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Avg GPU Utilization
               </p>
               <p
                 className={`mt-1 text-2xl font-bold ${
                   fleetStats.avgUtilization > 85
-                    ? "text-red-600"
+                    ? "text-red-600 dark:text-red-400"
                     : fleetStats.avgUtilization > 60
-                    ? "text-amber-600"
-                    : "text-green-600"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-green-600 dark:text-green-400"
                 }`}
               >
                 {fleetStats.avgUtilization}%
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 VRAM Usage
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900">
+              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
                 {(fleetStats.usedVRAM / 1024).toFixed(1)}
-                <span className="text-sm text-gray-400 font-normal">
+                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
                   /{(fleetStats.totalVRAM / 1024).toFixed(0)} GB
                 </span>
               </p>
             </div>
             <div className="text-center">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Active Jobs
               </p>
-              <p className="mt-1 text-2xl font-bold text-blue-600">
+              <p className="mt-1 text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {fleetStats.activeJobs}
               </p>
             </div>
@@ -352,13 +352,13 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
         <div className="px-6 py-6">
           {/* ── Drain Error ──────────────────────────────────────── */}
           {drainError && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-amber-700">{drainError}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">{drainError}</p>
                 <button
                   type="button"
                   onClick={() => setDrainError(null)}
-                  className="text-amber-500 hover:text-amber-700"
+                  className="text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -377,8 +377,8 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
 
           {/* ── Error ────────────────────────────────────────────── */}
           {nodesError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
+              <p className="text-sm text-red-700 dark:text-red-300">
                 Failed to load GPU fleet status. Please try again.
               </p>
             </div>
@@ -401,8 +401,8 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
               </div>
 
               {/* Fleet Utilization Chart — last 30 minutes */}
-              <div className="bg-white rounded-lg border border-gray-200 p-6">
-                <h2 className="text-sm font-semibold text-gray-700 mb-4">
+              <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+                <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                   Fleet Utilization — Last 30 Minutes
                 </h2>
                 {historyLoading ? (
@@ -410,7 +410,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                     <LoadingSpinner size="md" />
                   </div>
                 ) : historyError ? (
-                  <div className="bg-amber-50 border border-amber-200 rounded p-4 text-sm text-amber-800">
+                  <div className="bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded p-4 text-sm text-amber-800 dark:text-amber-300">
                     Utilization history unavailable: {historyError.message}.
                     The fleet snapshot above is unaffected.
                   </div>
@@ -420,7 +420,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                     nodes={nodes}
                   />
                 ) : (
-                  <p className="text-sm text-gray-500 text-center py-8">
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                     No utilization history available for the selected range.
                   </p>
                 )}
@@ -430,17 +430,17 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
 
           {/* ── Model Residency Heatmap View ─────────────────────── */}
           {!nodesLoading && !nodesError && nodes && viewMode === "heatmap" && (
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
-              <h2 className="text-sm font-semibold text-gray-700 mb-4">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6">
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
                 Model Residency Heatmap — §8.2.2
               </h2>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                 Shows which AI models are currently loaded on which GPU nodes.
                 Darker cells indicate higher VRAM reservation.
               </p>
 
               {heatmapData.length === 0 ? (
-                <p className="text-sm text-gray-500 text-center py-8">
+                <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
                   No model residency data available.
                 </p>
               ) : (
@@ -448,14 +448,14 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                   <table className="min-w-full">
                     <thead>
                       <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Model
                         </th>
                         {NODE_IDS.filter((id) => id !== "node-01").map(
                           (nodeId) => (
                             <th
                               key={nodeId}
-                              className="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase"
+                              className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
                             >
                               {nodeId}
                             </th>
@@ -463,10 +463,10 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                         )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                       {heatmapData.map((entry: ModelResidencyEntry) => (
                         <tr key={entry.model_name}>
-                          <td className="px-3 py-2 text-sm font-medium text-gray-900 whitespace-nowrap">
+                          <td className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
                             {entry.model_name}
                           </td>
                           {NODE_IDS.filter((id) => id !== "node-01").map(
@@ -506,7 +506,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                                       {(allocation.vram_mb / 1024).toFixed(1)}G
                                     </div>
                                   ) : (
-                                    <span className="text-xs text-gray-300">
+                                    <span className="text-xs text-gray-700 dark:text-gray-300">
                                       —
                                     </span>
                                   )}

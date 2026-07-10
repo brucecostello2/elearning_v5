@@ -347,31 +347,31 @@ export default function DLQDashboardPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             DLQ Dashboard Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading the DLQ dashboard. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 Dead Letter Queue
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §8.2.3 — Failed task management with replay, discard, and
                 analytics
               </p>
             </div>
             <div className="flex items-center gap-2">
               {/* Total count badge */}
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300">
                 {totalCount ?? 0} messages
               </span>
               {/* Analytics toggle */}
@@ -382,7 +382,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                   ${
                     showAnalytics
                       ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                      : "bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-950"
                   }`}
               >
                 Analytics
@@ -406,12 +406,12 @@ export default function DLQDashboardPage(): React.ReactElement | null {
           )}
 
           {/* ── Filters ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6">
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[150px]">
                 <label
                   htmlFor="category-filter"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Category
                 </label>
@@ -424,7 +424,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                     );
                     setPage(1);
                   }}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 >
                   {DLQ_CATEGORIES.map((cat) => (
@@ -438,7 +438,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
               <div className="flex-1 min-w-[180px]">
                 <label
                   htmlFor="task-filter"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Task Name
                 </label>
@@ -451,7 +451,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                     setPage(1);
                   }}
                   placeholder="e.g., generate_media"
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -459,7 +459,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
               <div className="min-w-[130px]">
                 <label
                   htmlFor="dlq-date-from"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   From
                 </label>
@@ -471,7 +471,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                     setDateFrom(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -479,7 +479,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
               <div className="min-w-[130px]">
                 <label
                   htmlFor="dlq-date-to"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   To
                 </label>
@@ -491,7 +491,7 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                     setDateTo(e.target.value);
                     setPage(1);
                   }}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
@@ -499,8 +499,8 @@ export default function DLQDashboardPage(): React.ReactElement | null {
               <button
                 type="button"
                 onClick={handleClearFilters}
-                className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900
-                  hover:bg-gray-100 rounded-md transition-colors"
+                className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100
+                  hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md transition-colors"
               >
                 Clear
               </button>
@@ -508,8 +508,8 @@ export default function DLQDashboardPage(): React.ReactElement | null {
 
             {/* ── Bulk Actions (Admin Only) ─────────────────────── */}
             {user?.role === "admin" && (
-              <div className="mt-4 pt-4 border-t border-gray-200 flex flex-wrap items-center gap-3">
-                <span className="text-xs font-medium text-gray-500 uppercase">
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-800 flex flex-wrap items-center gap-3">
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                   Bulk Actions:
                 </span>
                 <button
@@ -517,8 +517,8 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                   onClick={handleBulkReplayTransient}
                   disabled={bulkActionInProgress}
                   className="inline-flex items-center gap-1 px-3 py-1.5 text-xs
-                    font-medium text-blue-700 bg-blue-50 border border-blue-200
-                    rounded-md hover:bg-blue-100 disabled:opacity-50
+                    font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800
+                    rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 disabled:opacity-50
                     disabled:cursor-not-allowed transition-colors"
                 >
                   Replay All Transient
@@ -529,8 +529,8 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                     onClick={handleBulkDiscardOld}
                     disabled={bulkActionInProgress}
                     className="inline-flex items-center gap-1 px-3 py-1.5 text-xs
-                      font-medium text-red-700 bg-red-50 border border-red-200
-                      rounded-md hover:bg-red-100 disabled:opacity-50
+                      font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800
+                      rounded-md hover:bg-red-100 dark:hover:bg-red-900/50 disabled:opacity-50
                       disabled:cursor-not-allowed transition-colors"
                   >
                     Discard Older Than
@@ -545,10 +545,10 @@ export default function DLQDashboardPage(): React.ReactElement | null {
                         Math.max(1, parseInt(e.target.value) || 30)
                       )
                     }
-                    className="w-16 rounded-md border-gray-300 text-xs shadow-sm
+                    className="w-16 rounded-md border-gray-300 dark:border-gray-700 text-xs shadow-sm
                       focus:border-blue-500 focus:ring-blue-500"
                   />
-                  <span className="text-xs text-gray-500">days</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">days</span>
                 </div>
                 {bulkActionInProgress && <LoadingSpinner size="sm" />}
               </div>
@@ -557,13 +557,13 @@ export default function DLQDashboardPage(): React.ReactElement | null {
 
           {/* ── Action Error ─────────────────────────────────────── */}
           {actionError && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div className="bg-amber-50 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-amber-700">{actionError}</p>
+                <p className="text-sm text-amber-700 dark:text-amber-300">{actionError}</p>
                 <button
                   type="button"
                   onClick={() => setActionError(null)}
-                  className="text-amber-500 hover:text-amber-700"
+                  className="text-amber-500 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -579,8 +579,8 @@ export default function DLQDashboardPage(): React.ReactElement | null {
               <LoadingSpinner size="lg" />
             </div>
           ) : messagesError ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-sm text-red-700 dark:text-red-300">
                 Failed to load DLQ messages. Please try again.
               </p>
             </div>

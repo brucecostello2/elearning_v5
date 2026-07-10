@@ -127,17 +127,17 @@ export default function GPUNodeCard({
 
   return (
     <div
-      className={`bg-white rounded-lg border overflow-hidden transition-shadow
+      className={`bg-white dark:bg-gray-900 rounded-lg border overflow-hidden transition-shadow
         hover:shadow-md ${
           node.status === "offline"
-            ? "border-red-200 opacity-75"
+            ? "border-red-200 dark:border-red-800 opacity-75"
             : node.status === "draining"
-            ? "border-amber-200"
-            : "border-gray-200"
+            ? "border-amber-200 dark:border-amber-800"
+            : "border-gray-200 dark:border-gray-800"
         }`}
     >
       {/* ── Card Header ──────────────────────────────────────────── */}
-      <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+      <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
         <div className="flex items-center gap-2">
           {/* Status dot */}
           <div
@@ -150,10 +150,10 @@ export default function GPUNodeCard({
             }`}
           />
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {node.node_hostname}
             </h3>
-            <p className="text-xs text-gray-500">{gpuLabel}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{gpuLabel}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export default function GPUNodeCard({
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs
               font-medium ${
-                STATUS_BADGE_STYLES[node.status] || "bg-gray-100 text-gray-600"
+                STATUS_BADGE_STYLES[node.status] || "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
               }`}
           >
             {statusLabel}
@@ -175,8 +175,8 @@ export default function GPUNodeCard({
               className={`px-2 py-1 text-xs font-medium rounded transition-colors
                 ${
                   node.status === "draining"
-                    ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
-                    : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                    ? "bg-green-50 dark:bg-green-900/40 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800 hover:bg-green-100 dark:hover:bg-green-900/50"
+                    : "bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50"
                 }
                 disabled:opacity-50 disabled:cursor-not-allowed`}
               title={
@@ -203,13 +203,13 @@ export default function GPUNodeCard({
         {(node.total_vram_mb ?? 0) > 0 && (
           <div>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600">VRAM</span>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">VRAM</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
                 {formatVRAM(node.used_vram_mb)} /{" "}
                 {formatVRAM(node.total_vram_mb!)}
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
               <div
                 className={`h-2 rounded-full transition-all duration-300 ${getVRAMColor(
                   vramPercent
@@ -217,7 +217,7 @@ export default function GPUNodeCard({
                 style={{ width: `${Math.min(vramPercent, 100)}%` }}
               />
             </div>
-            <p className="mt-0.5 text-right text-xs text-gray-400">
+            <p className="mt-0.5 text-right text-xs text-gray-500 dark:text-gray-400">
               {vramPercent}%
             </p>
           </div>
@@ -226,11 +226,11 @@ export default function GPUNodeCard({
         {/* GPU Utilization */}
         {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               GPU Utilization
             </span>
             <div className="flex items-center gap-2">
-              <div className="w-20 bg-gray-200 rounded-full h-1.5">
+              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                 <div
                   className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
                   style={{
@@ -238,7 +238,7 @@ export default function GPUNodeCard({
                   }}
                 />
               </div>
-              <span className="text-xs font-mono text-gray-700 w-10 text-right">
+              <span className="text-xs font-mono text-gray-700 dark:text-gray-300 w-10 text-right">
                 {node.gpu_utilization_pct.toFixed(0)}%
               </span>
             </div>
@@ -248,11 +248,11 @@ export default function GPUNodeCard({
         {/* Temperature */}
         {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               Temperature
             </span>
             <div className="flex items-center gap-2">
-              <div className="w-20 bg-gray-200 rounded-full h-1.5">
+              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                 <div
                   className={`h-1.5 rounded-full transition-all duration-300 ${getTemperatureBarColor(
                     node.temperature_c
@@ -276,8 +276,8 @@ export default function GPUNodeCard({
         {/* Power Draw - shows draw alone if TDP not known */}
         {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-600">Power</span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Power</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {node.power_tdp_w
                 ? `${node.power_draw_w.toFixed(0)}W / ${node.power_tdp_w}W TDP (${powerPercent}%)`
                 : `${node.power_draw_w.toFixed(0)}W`}
@@ -287,15 +287,15 @@ export default function GPUNodeCard({
 
         {/* Active Job */}
         {activeJob && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-600 mb-1">
+          <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
               Active Job
             </p>
-            <div className="bg-gray-50 rounded p-2">
-              <p className="text-xs text-gray-900 font-mono">
+            <div className="bg-gray-50 dark:bg-gray-950 rounded p-2">
+              <p className="text-xs text-gray-900 dark:text-gray-100 font-mono">
                 {activeJob.job_id.slice(0, 12)}…
               </p>
-              <p className="text-[10px] text-gray-500 mt-0.5">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
                 {activeJob.project_name ?? "—"}
                 {activeJob.stage && ` • ${activeJob.stage}`}
               </p>

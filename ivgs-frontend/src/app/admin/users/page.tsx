@@ -322,24 +322,24 @@ export default function UserManagementPage(): React.ReactElement | null {
     <ErrorBoundary
       fallback={
         <div className="p-8 text-center">
-          <h3 className="text-lg font-semibold text-red-600">
+          <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">
             User Management Error
           </h3>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
             An error occurred loading user management. Please refresh.
           </p>
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
+        <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
                 User Management
               </h1>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                 §5.1.9 — Admin-only user CRUD (Table 8-3: admin access only)
               </p>
             </div>
@@ -361,13 +361,13 @@ export default function UserManagementPage(): React.ReactElement | null {
         <div className="px-6 py-6">
           {/* ── Alerts ──────────────────────────────────────────── */}
           {actionSuccess && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+            <div className="bg-green-50 dark:bg-green-900/40 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-green-700">{actionSuccess}</p>
+                <p className="text-sm text-green-700 dark:text-green-300">{actionSuccess}</p>
                 <button
                   type="button"
                   onClick={() => setActionSuccess(null)}
-                  className="text-green-500 hover:text-green-700"
+                  className="text-green-500 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -378,13 +378,13 @@ export default function UserManagementPage(): React.ReactElement | null {
           )}
 
           {actionError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-red-700">{actionError}</p>
+                <p className="text-sm text-red-700 dark:text-red-300">{actionError}</p>
                 <button
                   type="button"
                   onClick={() => setActionError(null)}
-                  className="text-red-500 hover:text-red-700"
+                  className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -395,12 +395,12 @@ export default function UserManagementPage(): React.ReactElement | null {
           )}
 
           {/* ── Filters ─────────────────────────────────────────── */}
-          <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-6">
             <div className="flex flex-wrap items-end gap-4">
               <div className="flex-1 min-w-[200px]">
                 <label
                   htmlFor="user-search"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Search
                 </label>
@@ -410,14 +410,14 @@ export default function UserManagementPage(): React.ReactElement | null {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search by username…"
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 />
               </div>
               <div className="min-w-[150px]">
                 <label
                   htmlFor="role-filter"
-                  className="block text-xs font-medium text-gray-700 mb-1"
+                  className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
                 >
                   Role
                 </label>
@@ -425,7 +425,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                   id="role-filter"
                   value={roleFilter}
                   onChange={(e) => setRoleFilter(e.target.value)}
-                  className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                  className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                     focus:border-blue-500 focus:ring-blue-500"
                 >
                   <option value="ALL">All Roles</option>
@@ -445,60 +445,60 @@ export default function UserManagementPage(): React.ReactElement | null {
               <LoadingSpinner size="lg" />
             </div>
           ) : error ? (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-sm text-red-700 dark:text-red-300">
                 Failed to load users. Please try again.
               </p>
             </div>
           ) : (
-            <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                  <thead className="bg-gray-50 dark:bg-gray-950">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Username
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Role
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Created
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Last Login
                       </th>
-                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                         Actions
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {filteredUsers.length === 0 ? (
                       <tr>
                         <td
                           colSpan={5}
-                          className="px-4 py-8 text-center text-sm text-gray-500"
+                          className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                         >
                           No users found.
                         </td>
                       </tr>
                     ) : (
                       filteredUsers.map((u: User) => (
-                        <tr key={u.id} className="hover:bg-gray-50">
+                        <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-950">
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                                <span className="text-sm font-medium text-gray-600">
+                              <div className="h-8 w-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                   {u.username.charAt(0).toUpperCase()}
                                 </span>
                               </div>
                               <div>
-                                <p className="text-sm font-medium text-gray-900">
+                                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {u.username}
                                 </p>
                                 {u.id === currentUser?.id && (
-                                  <span className="text-xs text-blue-600">
+                                  <span className="text-xs text-blue-600 dark:text-blue-400">
                                     (you)
                                   </span>
                                 )}
@@ -513,7 +513,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                                   onChange={(e) =>
                                     setEditRole(e.target.value as UserRole)
                                   }
-                                  className="rounded-md border-gray-300 text-sm shadow-sm
+                                  className="rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                                     focus:border-blue-500 focus:ring-blue-500"
                                 >
                                   {USER_ROLES.map((r) => (
@@ -537,8 +537,8 @@ export default function UserManagementPage(): React.ReactElement | null {
                                 <button
                                   type="button"
                                   onClick={() => setEditingUserId(null)}
-                                  className="px-2 py-1 text-xs text-gray-600
-                                    hover:text-gray-900"
+                                  className="px-2 py-1 text-xs text-gray-600 dark:text-gray-400
+                                    hover:text-gray-900 dark:hover:text-gray-100"
                                 >
                                   Cancel
                                 </button>
@@ -548,20 +548,20 @@ export default function UserManagementPage(): React.ReactElement | null {
                                 className={`inline-flex items-center px-2.5 py-0.5
                                   rounded-full text-xs font-medium ${
                                     u.role === "admin"
-                                      ? "bg-purple-100 text-purple-800"
+                                      ? "bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-300"
                                       : u.role === "operator"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : "bg-gray-100 text-gray-700"
+                                      ? "bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300"
+                                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                                   }`}
                               >
                                 {u.role}
                               </span>
                             )}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                             {new Date(u.created_at).toLocaleDateString()}
                           </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">
+                          <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
                             {u.last_login
                               ? new Date(u.last_login).toLocaleString()
                               : "Never"}
@@ -576,7 +576,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                                     setEditingUserId(u.id);
                                     setEditRole(u.role as UserRole);
                                   }}
-                                  className="text-xs text-blue-600 hover:text-blue-800"
+                                  className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
                                 >
                                   Edit Role
                                 </button>
@@ -592,7 +592,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                                   );
                                   setNewPassword("");
                                 }}
-                                className="text-xs text-amber-600 hover:text-amber-800"
+                                className="text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-300"
                               >
                                 Reset PW
                               </button>
@@ -604,7 +604,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                                     handleDeleteUser(u.id, u.username)
                                   }
                                   disabled={actionInProgress === u.id}
-                                  className="text-xs text-red-600 hover:text-red-800
+                                  className="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300
                                     disabled:opacity-50"
                                 >
                                   Delete
@@ -621,7 +621,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                                     setNewPassword(e.target.value)
                                   }
                                   placeholder="New password (min 8 chars)"
-                                  className="rounded-md border-gray-300 text-xs shadow-sm
+                                  className="rounded-md border-gray-300 dark:border-gray-700 text-xs shadow-sm
                                     focus:border-blue-500 focus:ring-blue-500 w-48"
                                 />
                                 <button
@@ -650,9 +650,9 @@ export default function UserManagementPage(): React.ReactElement | null {
         {/* ── Create User Modal ────────────────────────────────────── */}
         {showCreateModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-semibold text-gray-900">
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl w-full max-w-md mx-4">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   Create New User
                 </h2>
               </div>
@@ -661,7 +661,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                 <div>
                   <label
                     htmlFor="create-username"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Username
                   </label>
@@ -678,12 +678,12 @@ export default function UserManagementPage(): React.ReactElement | null {
                     className={`w-full rounded-md text-sm shadow-sm
                       focus:border-blue-500 focus:ring-blue-500 ${
                         createErrors.username
-                          ? "border-red-300"
-                          : "border-gray-300"
+                          ? "border-red-300 dark:border-red-800"
+                          : "border-gray-300 dark:border-gray-700"
                       }`}
                   />
                   {createErrors.username && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                       {createErrors.username}
                     </p>
                   )}
@@ -693,7 +693,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                 <div>
                   <label
                     htmlFor="create-password"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Password
                   </label>
@@ -710,12 +710,12 @@ export default function UserManagementPage(): React.ReactElement | null {
                     className={`w-full rounded-md text-sm shadow-sm
                       focus:border-blue-500 focus:ring-blue-500 ${
                         createErrors.password
-                          ? "border-red-300"
-                          : "border-gray-300"
+                          ? "border-red-300 dark:border-red-800"
+                          : "border-gray-300 dark:border-gray-700"
                       }`}
                   />
                   {createErrors.password && (
-                    <p className="mt-1 text-xs text-red-600">
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">
                       {createErrors.password}
                     </p>
                   )}
@@ -725,7 +725,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                 <div>
                   <label
                     htmlFor="create-role"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
                   >
                     Role
                   </label>
@@ -738,7 +738,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                         role: e.target.value as UserRole,
                       }))
                     }
-                    className="w-full rounded-md border-gray-300 text-sm shadow-sm
+                    className="w-full rounded-md border-gray-300 dark:border-gray-700 text-sm shadow-sm
                       focus:border-blue-500 focus:ring-blue-500"
                   >
                     {USER_ROLES.map((r) => (
@@ -749,7 +749,7 @@ export default function UserManagementPage(): React.ReactElement | null {
                   </select>
                 </div>
               </div>
-              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-end gap-3 rounded-b-lg">
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 flex items-center justify-end gap-3 rounded-b-lg">
                 <button
                   type="button"
                   onClick={() => {
@@ -761,8 +761,8 @@ export default function UserManagementPage(): React.ReactElement | null {
                     });
                     setCreateErrors({});
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700
-                    bg-white border border-gray-300 rounded-md hover:bg-gray-50
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300
+                    bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-md hover:bg-gray-50 dark:hover:bg-gray-950
                     transition-colors"
                 >
                   Cancel

@@ -99,21 +99,21 @@ export default function TranscriptEditor({
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div>
-          <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+          <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
             Original
           </h4>
-          <div className="p-4 bg-gray-900 border border-gray-700 rounded-lg text-sm text-gray-300 whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
+          <div className="p-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
             {originalText}
           </div>
         </div>
         <div>
-          <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+          <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
             Refined (editing)
           </h4>
           <textarea
             value={refinedText}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full p-4 bg-gray-900 border border-blue-600 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[200px] max-h-[500px]"
+            className="w-full p-4 bg-white dark:bg-gray-900 border border-blue-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[200px] max-h-[500px]"
             rows={Math.max(10, refinedText.split("\n").length)}
           />
         </div>
@@ -125,10 +125,10 @@ export default function TranscriptEditor({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div>
-        <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+        <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
           Original
         </h4>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
           {diff.left.map((line, idx) => (
             <div
               key={idx}
@@ -136,7 +136,7 @@ export default function TranscriptEditor({
                 line.type
               )}`}
             >
-              <span className="w-8 text-right text-gray-600 text-xs mr-3 select-none">
+              <span className="w-8 text-right text-gray-600 dark:text-gray-400 text-xs mr-3 select-none">
                 {idx + 1}
               </span>
               <span className={getDiffTextClass(line.type)}>
@@ -147,10 +147,10 @@ export default function TranscriptEditor({
         </div>
       </div>
       <div>
-        <h4 className="text-xs font-medium text-gray-500 uppercase mb-2">
+        <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
           Refined
         </h4>
-        <div className="bg-gray-900 border border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+        <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
           {diff.right.map((line, idx) => (
             <div
               key={idx}
@@ -158,7 +158,7 @@ export default function TranscriptEditor({
                 line.type
               )}`}
             >
-              <span className="w-8 text-right text-gray-600 text-xs mr-3 select-none">
+              <span className="w-8 text-right text-gray-600 dark:text-gray-400 text-xs mr-3 select-none">
                 {idx + 1}
               </span>
               <span className={getDiffTextClass(line.type)}>

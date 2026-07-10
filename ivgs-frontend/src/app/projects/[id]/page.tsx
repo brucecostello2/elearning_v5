@@ -171,12 +171,12 @@ export default function ProjectDetailPage(): React.ReactElement {
   if (error || !project) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500 text-lg font-semibold">
+        <div className="text-red-500 dark:text-red-400 text-lg font-semibold">
           {error?.message || "Project not found"}
         </div>
         <button
           onClick={() => router.push("/gallery")}
-          className="px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-600 transition-colors"
         >
           Back to Gallery
         </button>
@@ -191,17 +191,17 @@ export default function ProjectDetailPage(): React.ReactElement {
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-white truncate">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
                 {project.name}
               </h1>
               <StateBadge state={project.state} />
             </div>
             {project.description && (
-              <p className="text-gray-400 text-sm max-w-2xl">
+              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-2xl">
                 {project.description}
               </p>
             )}
-            <div className="flex items-center gap-6 mt-3 text-sm text-gray-500">
+            <div className="flex items-center gap-6 mt-3 text-sm text-gray-500 dark:text-gray-400">
               <span>
                 Runtime: {formatRuntime(project.max_runtime_seconds)}
               </span>
@@ -228,7 +228,7 @@ export default function ProjectDetailPage(): React.ReactElement {
             )}
             <button
               onClick={() => router.push("/gallery")}
-              className="px-4 py-2 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 hover:text-white transition-colors text-sm"
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
             >
               ← Gallery
             </button>
@@ -236,7 +236,7 @@ export default function ProjectDetailPage(): React.ReactElement {
         </div>
 
         {/* ── Tab Navigation per Table 8-2 ─────────────────────────── */}
-        <div className="border-b border-gray-700 mb-8">
+        <div className="border-b border-gray-300 dark:border-gray-700 mb-8">
           <nav className="flex gap-1 overflow-x-auto pb-px -mb-px">
             {tabs.map((tab) => (
               <button
@@ -244,13 +244,13 @@ export default function ProjectDetailPage(): React.ReactElement {
                 onClick={() => handleTabClick(tab)}
                 className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
                   activeTab === tab.id
-                    ? "border-blue-500 text-blue-400"
-                    : "border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600"
+                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
                 }`}
               >
                 {tab.label}
                 {tab.phase && tab.phase > 11 && (
-                  <span className="ml-1 text-xs text-gray-600">(soon)</span>
+                  <span className="ml-1 text-xs text-gray-600 dark:text-gray-400">(soon)</span>
                 )}
               </button>
             ))}
@@ -262,7 +262,7 @@ export default function ProjectDetailPage(): React.ReactElement {
           <div className="space-y-8">
             {/* State Timeline */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Project Timeline
               </h2>
               <div className="flex items-center gap-2">
@@ -285,14 +285,14 @@ export default function ProjectDetailPage(): React.ReactElement {
                               ? isCurrent
                                 ? "bg-blue-600 text-white ring-4 ring-blue-600/30"
                                 : "bg-green-600 text-white"
-                              : "bg-gray-700 text-gray-500"
+                              : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                           }`}
                         >
                           {isCompleted && !isCurrent ? "✓" : step.order}
                         </div>
                         <span
                           className={`text-xs mt-1 ${
-                            isCompleted ? "text-gray-300" : "text-gray-600"
+                            isCompleted ? "text-gray-700 dark:text-gray-300" : "text-gray-600 dark:text-gray-400"
                           }`}
                         >
                           {step.label}
@@ -303,7 +303,7 @@ export default function ProjectDetailPage(): React.ReactElement {
                           className={`flex-1 h-0.5 ${
                             idx < currentOrder
                               ? "bg-green-600"
-                              : "bg-gray-700"
+                              : "bg-gray-200 dark:bg-gray-700"
                           }`}
                         />
                       )}
@@ -312,7 +312,7 @@ export default function ProjectDetailPage(): React.ReactElement {
                 })}
               </div>
               {project.state === "ERROR" && (
-                <div className="mt-4 p-3 bg-red-900/30 border border-red-700 rounded-lg text-red-400 text-sm">
+                <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
                   Pipeline encountered an error. Check the Jobs tab for details.
                 </div>
               )}
@@ -320,7 +320,7 @@ export default function ProjectDetailPage(): React.ReactElement {
 
             {/* Pipeline Progress Tracker per §8.2.1 */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Pipeline Progress
               </h2>
               <PipelineTracker projectId={projectId} />
@@ -328,7 +328,7 @@ export default function ProjectDetailPage(): React.ReactElement {
 
             {/* Project Metadata */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Project Details
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -367,7 +367,7 @@ export default function ProjectDetailPage(): React.ReactElement {
 
             {/* Quick Links to tabs */}
             <section>
-              <h2 className="text-lg font-semibold text-white mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Quick Access
               </h2>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -377,9 +377,9 @@ export default function ProjectDetailPage(): React.ReactElement {
                     <button
                       key={tab.id}
                       onClick={() => handleTabClick(tab)}
-                      className="p-4 bg-gray-800 border border-gray-700 rounded-lg text-left hover:border-gray-600 hover:bg-gray-750 transition-colors"
+                      className="p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-left hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-750 transition-colors"
                     >
-                      <span className="text-sm font-medium text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         {tab.label}
                       </span>
                     </button>
@@ -404,11 +404,11 @@ function MetadataCard({
   value: string;
 }): React.ReactElement {
   return (
-    <div className="p-4 bg-gray-800 border border-gray-700 rounded-lg">
-      <dt className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+    <div className="p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">
+      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
         {label}
       </dt>
-      <dd className="mt-1 text-sm text-white">{value}</dd>
+      <dd className="mt-1 text-sm text-gray-900 dark:text-white">{value}</dd>
     </div>
   );
 }

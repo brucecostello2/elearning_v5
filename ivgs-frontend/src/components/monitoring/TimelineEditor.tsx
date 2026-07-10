@@ -173,10 +173,10 @@ export default function TimelineEditor({
   return (
     <div className="flex">
       {/* ── Track Labels (fixed left column) ─────────────────────── */}
-      <div className="flex-shrink-0 bg-gray-50 border-r border-gray-200" style={{ width: LABEL_WIDTH }}>
+      <div className="flex-shrink-0 bg-gray-50 dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800" style={{ width: LABEL_WIDTH }}>
         {/* Time ruler label */}
         <div
-          className="flex items-center justify-center text-[10px] text-gray-400 border-b border-gray-200"
+          className="flex items-center justify-center text-[10px] text-gray-500 dark:text-gray-400 border-b border-gray-200 dark:border-gray-800"
           style={{ height: 24 }}
         >
           Time
@@ -185,14 +185,14 @@ export default function TimelineEditor({
         {layers.map((layer) => (
           <div
             key={layer.id}
-            className="flex items-center gap-1.5 px-2 border-b border-gray-100"
+            className="flex items-center gap-1.5 px-2 border-b border-gray-100 dark:border-gray-800"
             style={{ height: TRACK_HEIGHT + TRACK_GAP }}
           >
             <div
               className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
               style={{ backgroundColor: layer.color }}
             />
-            <span className="text-[10px] font-medium text-gray-700 truncate">
+            <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300 truncate">
               {layer.label}
             </span>
           </div>
@@ -208,7 +208,7 @@ export default function TimelineEditor({
         <div style={{ width: Math.max(timelineWidth, 600), position: "relative" }}>
           {/* ── Time Ruler ────────────────────────────────────────── */}
           <div
-            className="bg-gray-100 border-b border-gray-200 relative"
+            className="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-800 relative"
             style={{ height: 24 }}
           >
             {/* Time markers every 10 seconds (or adjusted by zoom) */}
@@ -221,10 +221,10 @@ export default function TimelineEditor({
               return (
                 <div
                   key={seconds}
-                  className="absolute top-0 text-[9px] text-gray-500 font-mono"
+                  className="absolute top-0 text-[9px] text-gray-500 dark:text-gray-400 font-mono"
                   style={{ left: x, transform: "translateX(-50%)" }}
                 >
-                  <div className="h-3 border-l border-gray-300" />
+                  <div className="h-3 border-l border-gray-300 dark:border-gray-700" />
                   <span className="mt-0.5 block">{formatTime(seconds)}</span>
                 </div>
               );
@@ -237,9 +237,9 @@ export default function TimelineEditor({
                 className="absolute top-0 h-full"
                 style={{ left: boundary.x }}
               >
-                <div className="h-full border-l-2 border-dashed border-blue-300" />
+                <div className="h-full border-l-2 border-dashed border-blue-300 dark:border-blue-800" />
                 <span
-                  className="absolute -top-0.5 text-[8px] text-blue-600 font-bold bg-blue-50 px-1 rounded"
+                  className="absolute -top-0.5 text-[8px] text-blue-600 dark:text-blue-400 font-bold bg-blue-50 dark:bg-blue-900/40 px-1 rounded"
                   style={{ left: 2 }}
                 >
                   {boundary.label}
@@ -254,8 +254,8 @@ export default function TimelineEditor({
             {layers.map((layer, index) => (
               <div
                 key={`bg-${layer.id}`}
-                className={`absolute w-full border-b border-gray-100 ${
-                  index % 2 === 0 ? "bg-white" : "bg-gray-50/50"
+                className={`absolute w-full border-b border-gray-100 dark:border-gray-800 ${
+                  index % 2 === 0 ? "bg-white dark:bg-gray-900" : "bg-gray-50 dark:bg-gray-950"
                 }`}
                 style={{
                   top: index * (TRACK_HEIGHT + TRACK_GAP),
@@ -294,7 +294,7 @@ export default function TimelineEditor({
                 {rect.width > 30 && (
                   <span
                     className="absolute inset-0 flex items-center justify-center
-                      text-[8px] font-medium text-white truncate px-1"
+                      text-[8px] font-medium text-gray-900 dark:text-white truncate px-1"
                     style={{ textShadow: "0 1px 2px rgba(0,0,0,0.3)" }}
                   >
                     {rect.status === "RENDERING" && rect.progress !== undefined
@@ -306,7 +306,7 @@ export default function TimelineEditor({
                 {/* Progress bar overlay for rendering segments */}
                 {rect.status === "RENDERING" && rect.progress !== undefined && (
                   <div
-                    className="absolute bottom-0 left-0 h-1 bg-white/40 rounded-b-sm"
+                    className="absolute bottom-0 left-0 h-1 bg-white dark:bg-gray-900 rounded-b-sm"
                     style={{ width: `${rect.progress}%` }}
                   />
                 )}
@@ -337,20 +337,20 @@ export default function TimelineEditor({
             {sceneBoundaries.map((boundary) => (
               <div
                 key={`line-${boundary.sceneIndex}`}
-                className="absolute top-0 h-full border-l border-dashed border-blue-200 pointer-events-none"
+                className="absolute top-0 h-full border-l border-dashed border-blue-200 dark:border-blue-800 pointer-events-none"
                 style={{ left: boundary.x }}
               />
             ))}
           </div>
 
           {/* ── Duration Footer ────────────────────────────────────── */}
-          <div className="bg-gray-50 border-t border-gray-200 px-3 py-1 flex items-center justify-between">
-            <span className="text-[10px] text-gray-500">
+          <div className="bg-gray-50 dark:bg-gray-950 border-t border-gray-200 dark:border-gray-800 px-3 py-1 flex items-center justify-between">
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
               Total: {formatTime(totalDuration)} •{" "}
               {manifest.scenes?.length || 0} scenes •{" "}
               {segments.length} segments
             </span>
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-gray-500 dark:text-gray-400">
               Zoom: {(zoomLevel * 100).toFixed(0)}% •{" "}
               {PIXELS_PER_SECOND * zoomLevel}px/s
             </span>

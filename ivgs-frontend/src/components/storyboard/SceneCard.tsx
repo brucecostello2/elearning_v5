@@ -178,12 +178,12 @@ export default function SceneCard({
 
   return (
     <div
-      className={`relative group bg-gray-800 rounded-xl border transition-all duration-200 overflow-hidden ${
+      className={`relative group bg-gray-100 dark:bg-gray-800 rounded-xl border transition-all duration-200 overflow-hidden ${
         isSelected
           ? "border-blue-500 ring-2 ring-blue-500/30"
           : isDragging
           ? "border-blue-400 shadow-2xl"
-          : "border-gray-700 hover:border-gray-600"
+          : "border-gray-300 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
       } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
       onClick={handleCardClick}
       role="article"
@@ -202,19 +202,19 @@ export default function SceneCard({
               e.stopPropagation();
               onToggleSelect();
             }}
-            className="w-4 h-4 rounded border-gray-600 bg-gray-900 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-800"
+            className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-blue-500 dark:text-blue-400 focus:ring-blue-500 focus:ring-offset-gray-800"
             aria-label={`Select scene ${scene.scene_index + 1}`}
           />
         )}
         {canEdit && dragHandleProps && (
           <div
             {...dragHandleProps}
-            className="p-1 rounded hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing"
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing"
             aria-label={`Drag to reorder scene ${scene.scene_index + 1}`}
             onClick={(e) => e.stopPropagation()}
           >
             <svg
-              className="w-4 h-4 text-gray-400"
+              className="w-4 h-4 text-gray-500 dark:text-gray-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -232,13 +232,13 @@ export default function SceneCard({
 
       {/* ── Scene Index Badge ────────────────────────────────────── */}
       <div className="absolute top-2 right-2 z-10">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-900/80 text-xs font-bold text-white">
+        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white dark:bg-gray-900/80 text-xs font-bold text-gray-900 dark:text-white">
           {scene.scene_index + 1}
         </span>
       </div>
 
       {/* ── Thumbnail ───────────────────────────────────────────── */}
-      <div className="aspect-video bg-gray-900 relative">
+      <div className="aspect-video bg-white dark:bg-gray-900 relative">
         {scene.thumbnail_url && !thumbnailError ? (
           <img
             src={scene.thumbnail_url}
@@ -257,7 +257,7 @@ export default function SceneCard({
 
         {/* Duration overlay */}
         {scene.duration_seconds != null && scene.duration_seconds > 0 && (
-          <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs font-mono text-white">
+          <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs font-mono text-gray-900 dark:text-white">
             {formatDuration(scene.duration_seconds)}
           </div>
         )}
@@ -268,7 +268,7 @@ export default function SceneCard({
             {scene.status === "GENERATING" || scene.status === "REGENERATING" ? (
               <div className="flex items-center gap-2">
                 <svg
-                  className="w-5 h-5 text-blue-400 animate-spin"
+                  className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin"
                   fill="none"
                   viewBox="0 0 24 24"
                 >
@@ -286,12 +286,12 @@ export default function SceneCard({
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                   />
                 </svg>
-                <span className="text-sm font-medium text-white">
+                <span className="text-sm font-medium text-gray-900 dark:text-white">
                   {STATUS_LABELS[scene.status]}
                 </span>
               </div>
             ) : scene.status === "ERROR" ? (
-              <span className="text-sm font-medium text-red-400">
+              <span className="text-sm font-medium text-red-600 dark:text-red-400">
                 ⚠ Generation Failed
               </span>
             ) : null}
@@ -303,7 +303,7 @@ export default function SceneCard({
       <div className="p-4">
         {/* Media Type & Status Badges */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-700 text-xs text-gray-300">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300">
             {MEDIA_TYPE_ICONS[scene.media_type]}{" "}
             {MEDIA_TYPE_LABELS[scene.media_type]}
           </span>
@@ -317,13 +317,13 @@ export default function SceneCard({
         </div>
 
         {/* Narration Text */}
-        <p className="text-sm text-white font-medium mb-1 line-clamp-2">
+        <p className="text-sm text-gray-900 dark:text-white font-medium mb-1 line-clamp-2">
           {truncateText(scene.narration_text, 120)}
         </p>
 
         {/* Visual Description */}
         {scene.visual_description && (
-          <p className="text-xs text-gray-400 mb-3 line-clamp-2">
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 line-clamp-2">
             {truncateText(scene.visual_description, 100)}
           </p>
         )}
@@ -331,17 +331,17 @@ export default function SceneCard({
         {/* Camera Angle & Transition (if set) */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {scene.camera_angle && (
-            <span className="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-400">
+            <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700/50 rounded text-[10px] text-gray-500 dark:text-gray-400">
               📐 {scene.camera_angle}
             </span>
           )}
           {scene.transition_type && (
-            <span className="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-400">
+            <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700/50 rounded text-[10px] text-gray-500 dark:text-gray-400">
               🔀 {scene.transition_type}
             </span>
           )}
           {scene.effects && scene.effects.length > 0 && (
-            <span className="px-1.5 py-0.5 bg-gray-700/50 rounded text-[10px] text-gray-400">
+            <span className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700/50 rounded text-[10px] text-gray-500 dark:text-gray-400">
               ✨ {scene.effects.length} effect
               {scene.effects.length !== 1 ? "s" : ""}
             </span>
@@ -350,13 +350,13 @@ export default function SceneCard({
 
         {/* ── Action Buttons ──────────────────────────────────── */}
         {canEdit && (
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-700">
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-300 dark:border-gray-700">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onEdit();
               }}
-              className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-400 bg-blue-900/20 rounded hover:bg-blue-900/40 transition-colors"
+              className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
               aria-label={`Edit scene ${scene.scene_index + 1}`}
             >
               Edit
@@ -368,7 +368,7 @@ export default function SceneCard({
                 scene.status === "GENERATING" ||
                 scene.status === "REGENERATING"
               }
-              className="flex-1 px-2 py-1.5 text-xs font-medium text-yellow-400 bg-yellow-900/20 rounded hover:bg-yellow-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-2 py-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label={`Regenerate scene ${scene.scene_index + 1}`}
             >
               {isRegenerating ? "…" : "Regen"}
@@ -376,7 +376,7 @@ export default function SceneCard({
             <button
               onClick={handleDelete}
               disabled={isDeleting}
-              className="px-2 py-1.5 text-xs font-medium text-red-400 bg-red-900/20 rounded hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label={`Delete scene ${scene.scene_index + 1}`}
             >
               {isDeleting ? "…" : "✕"}

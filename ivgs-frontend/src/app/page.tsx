@@ -187,10 +187,10 @@ export default function GalleryPage(): React.ReactElement {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500 text-lg font-semibold">
+        <div className="text-red-500 dark:text-red-400 text-lg font-semibold">
           Failed to load projects
         </div>
-        <p className="text-gray-400 text-sm max-w-md text-center">
+        <p className="text-gray-500 dark:text-gray-400 text-sm max-w-md text-center">
           {error.message || "An unexpected error occurred while fetching projects."}
         </p>
         <button
@@ -209,8 +209,8 @@ export default function GalleryPage(): React.ReactElement {
         {/* ── Page Header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Video Gallery</h1>
-            <p className="mt-1 text-gray-400">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Video Gallery</h1>
+            <p className="mt-1 text-gray-500 dark:text-gray-400">
               {filteredProjects.length} project
               {filteredProjects.length !== 1 ? "s" : ""}
               {stateFilter !== "ALL" || languageFilter !== "ALL" || searchQuery
@@ -242,18 +242,18 @@ export default function GalleryPage(): React.ReactElement {
         </div>
 
         {/* ── Filter Bar ───────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 p-4 bg-gray-800 rounded-xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8 p-4 bg-gray-100 dark:bg-gray-800 rounded-xl">
           {/* Search */}
           <div className="lg:col-span-2">
             <label
               htmlFor="gallery-search"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Search
             </label>
             <div className="relative">
               <svg
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -274,7 +274,7 @@ export default function GalleryPage(): React.ReactElement {
                   setVisibleCount(PAGE_SIZE);
                 }}
                 placeholder="Search by name or description…"
-                className="w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
           </div>
@@ -283,7 +283,7 @@ export default function GalleryPage(): React.ReactElement {
           <div>
             <label
               htmlFor="state-filter"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               State
             </label>
@@ -294,7 +294,7 @@ export default function GalleryPage(): React.ReactElement {
                 setStateFilter(e.target.value as ProjectState | "ALL");
                 setVisibleCount(PAGE_SIZE);
               }}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">All States</option>
               {PROJECT_STATES.map((state) => (
@@ -309,7 +309,7 @@ export default function GalleryPage(): React.ReactElement {
           <div>
             <label
               htmlFor="language-filter"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Language
             </label>
@@ -320,7 +320,7 @@ export default function GalleryPage(): React.ReactElement {
                 setLanguageFilter(e.target.value);
                 setVisibleCount(PAGE_SIZE);
               }}
-              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="ALL">All Languages</option>
               {LANGUAGE_OPTIONS.map((lang) => (
@@ -335,7 +335,7 @@ export default function GalleryPage(): React.ReactElement {
           <div>
             <label
               htmlFor="sort-select"
-              className="block text-xs font-medium text-gray-400 mb-1"
+              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
             >
               Sort By
             </label>
@@ -346,7 +346,7 @@ export default function GalleryPage(): React.ReactElement {
                 onChange={(e) =>
                   setSortBy(e.target.value as "newest" | "oldest" | "name")
                 }
-                className="flex-1 px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="newest">Newest First</option>
                 <option value="oldest">Oldest First</option>
@@ -355,7 +355,7 @@ export default function GalleryPage(): React.ReactElement {
               <button
                 onClick={handleResetFilters}
                 title="Reset all filters"
-                className="px-3 py-2 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 hover:text-white hover:border-gray-500 transition-colors"
+                className="px-3 py-2 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:border-gray-500 transition-colors"
               >
                 <svg
                   className="w-4 h-4"
@@ -379,7 +379,7 @@ export default function GalleryPage(): React.ReactElement {
         {filteredProjects.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <svg
-              className="w-16 h-16 text-gray-600 mb-4"
+              className="w-16 h-16 text-gray-600 dark:text-gray-400 mb-4"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -391,10 +391,10 @@ export default function GalleryPage(): React.ReactElement {
                 d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
               />
             </svg>
-            <p className="text-gray-400 text-lg font-medium">
+            <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
               No projects found
             </p>
-            <p className="text-gray-500 text-sm mt-1">
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
               {searchQuery || stateFilter !== "ALL" || languageFilter !== "ALL"
                 ? "Try adjusting your filters"
                 : "Create your first project to get started"}
@@ -417,7 +417,7 @@ export default function GalleryPage(): React.ReactElement {
               <div className="flex justify-center mt-10">
                 <button
                   onClick={handleLoadMore}
-                  className="px-8 py-3 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 hover:text-white transition-colors border border-gray-700"
+                  className="px-8 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-white transition-colors border border-gray-300 dark:border-gray-700"
                 >
                   Load More ({filteredProjects.length - visibleCount} remaining)
                 </button>

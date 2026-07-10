@@ -71,7 +71,7 @@ export default function NodesPage(): React.ReactElement {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           Failed to load node status: {error.message}
         </div>
       </div>
@@ -83,19 +83,19 @@ export default function NodesPage(): React.ReactElement {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white">Node Monitor</h1>
-            <p className="text-gray-400 text-sm mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Node Monitor</h1>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
               {nodes?.length || 0} nodes — polling every 10s
             </p>
           </div>
           <div className="flex items-center gap-2 text-sm">
-            <span className="flex items-center gap-1 text-green-400">
+            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
               {nodes?.filter((n: NodeStatus) => n.status === "online").length || 0}{" "}
               online
             </span>
-            <span className="text-gray-600">|</span>
-            <span className="text-red-400">
+            <span className="text-gray-600 dark:text-gray-400">|</span>
+            <span className="text-red-600 dark:text-red-400">
               {nodes?.filter((n: NodeStatus) => n.status !== "online").length || 0}{" "}
               offline
             </span>
@@ -103,7 +103,7 @@ export default function NodesPage(): React.ReactElement {
         </div>
 
         {!nodes || nodes.length === 0 ? (
-          <div className="text-center py-16 text-gray-500">
+          <div className="text-center py-16 text-gray-500 dark:text-gray-400">
             No nodes registered in the cluster.
           </div>
         ) : (
@@ -126,22 +126,22 @@ export default function NodesPage(): React.ReactElement {
             onClick={handleCloseModal}
           >
             <div
-              className="bg-gray-900 border border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
+              className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300 dark:border-gray-700">
                 <div>
-                  <h3 className="text-lg font-bold text-white">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                     {selectedNode.hostname}
                   </h3>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
                     {selectedNode.gpu_model ?? "Unknown GPU"} — {selectedNode.status.charAt(0).toUpperCase() + selectedNode.status.slice(1)}
                   </p>
                 </div>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   <svg
                     className="w-6 h-6"
@@ -160,11 +160,11 @@ export default function NodesPage(): React.ReactElement {
               </div>
 
               {/* Log Controls */}
-              <div className="flex items-center gap-4 px-6 py-3 border-b border-gray-700">
+              <div className="flex items-center gap-4 px-6 py-3 border-b border-gray-300 dark:border-gray-700">
                 <select
                   value={logFilter}
                   onChange={(e) => setLogFilter(e.target.value)}
-                  className="px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All Levels</option>
                   <option value="error">Error</option>
@@ -177,34 +177,34 @@ export default function NodesPage(): React.ReactElement {
                   value={logSearch}
                   onChange={(e) => setLogSearch(e.target.value)}
                   placeholder="Search logs…"
-                  className="flex-1 px-3 py-1.5 bg-gray-800 border border-gray-600 rounded-lg text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
                 <a
                   href={`/api/v1/nodes/${selectedNode.hostname}/logs/download`}
                   download
-                  className="px-3 py-1.5 bg-gray-700 text-gray-300 rounded-lg hover:bg-gray-600 text-sm transition-colors"
+                  className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-600 text-sm transition-colors"
                 >
                   Download
                 </a>
               </div>
 
               {/* Live Log Stream */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-950 font-mono text-xs text-gray-300 min-h-[300px]">
-                <p className="text-gray-600 italic">
+              <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50 dark:bg-gray-950 font-mono text-xs text-gray-700 dark:text-gray-300 min-h-[300px]">
+                <p className="text-gray-600 dark:text-gray-400 italic">
                   Live log streaming via WebSocket — connect to
                   ws://node-01:8000/api/v1/nodes/{selectedNode.hostname}/logs/stream
                 </p>
-                <p className="text-gray-600 mt-2">
+                <p className="text-gray-600 dark:text-gray-400 mt-2">
                   [Log output will appear here in real-time]
                 </p>
               </div>
 
               {/* Historical Jobs */}
-              <div className="px-6 py-4 border-t border-gray-700">
-                <h4 className="text-sm font-medium text-gray-400 mb-2">
+              <div className="px-6 py-4 border-t border-gray-300 dark:border-gray-700">
+                <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
                   Recent Jobs on {selectedNode.hostname}
                 </h4>
-                <p className="text-xs text-gray-600 italic">
+                <p className="text-xs text-gray-600 dark:text-gray-400 italic">
                   Per-node job history not yet available. Pending Phase H multi-node
                   deployment; see GPU Fleet Monitoring Spec v1.1 carry-forward.
                 </p>

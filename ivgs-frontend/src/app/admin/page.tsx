@@ -97,8 +97,8 @@ export default function AdminPage(): React.ReactElement {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {/* Page header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-white">Administration</h1>
-          <p className="mt-1 text-sm text-gray-400">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Administration</h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             System administration and configuration. Welcome, {user?.username}.
           </p>
         </div>
@@ -106,21 +106,21 @@ export default function AdminPage(): React.ReactElement {
         {/* Quick stats bar */}
         {!usersLoading && users && (
           <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <p className="text-2xl font-bold text-white">{totalUsers}</p>
-              <p className="text-xs text-gray-400">Total Users</p>
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{totalUsers}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Total Users</p>
             </div>
-            <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <p className="text-2xl font-bold text-red-400">{adminCount}</p>
-              <p className="text-xs text-gray-400">Admins</p>
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{adminCount}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Admins</p>
             </div>
-            <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <p className="text-2xl font-bold text-blue-400">{operatorCount}</p>
-              <p className="text-xs text-gray-400">Operators</p>
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{operatorCount}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Operators</p>
             </div>
-            <div className="rounded-lg border border-gray-800 bg-gray-900 p-4">
-              <p className="text-2xl font-bold text-green-400">{viewerCount}</p>
-              <p className="text-xs text-gray-400">Viewers</p>
+            <div className="rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-4">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{viewerCount}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Viewers</p>
             </div>
           </div>
         )}
@@ -131,24 +131,24 @@ export default function AdminPage(): React.ReactElement {
             <Link
               key={card.href}
               href={card.href}
-              className="group rounded-lg border border-gray-800 bg-gray-900 p-6 transition-all hover:border-ivgs-600/50 hover:bg-gray-800/50"
+              className="group rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-6 transition-all hover:border-ivgs-600/50 hover:bg-gray-100 dark:hover:bg-gray-800/50"
             >
               <div className="flex items-start justify-between">
-                <div className="text-ivgs-400 transition-colors group-hover:text-ivgs-300">
+                <div className="text-ivgs-600 dark:text-ivgs-400 transition-colors group-hover:text-ivgs-800 dark:group-hover:text-ivgs-300">
                   {card.icon}
                 </div>
                 {card.stat && (
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-white">{card.stat}</p>
-                    <p className="text-[10px] text-gray-500">{card.statLabel}</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{card.stat}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400">{card.statLabel}</p>
                   </div>
                 )}
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-white group-hover:text-ivgs-300">
+              <h3 className="mt-4 text-lg font-semibold text-gray-900 dark:text-white group-hover:text-ivgs-800 dark:group-hover:text-ivgs-300">
                 {card.title}
               </h3>
-              <p className="mt-2 text-sm text-gray-400">{card.description}</p>
-              <div className="mt-4 flex items-center text-sm text-ivgs-400 group-hover:text-ivgs-300">
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">{card.description}</p>
+              <div className="mt-4 flex items-center text-sm text-ivgs-600 dark:text-ivgs-400 group-hover:text-ivgs-800 dark:group-hover:text-ivgs-300">
                 <span>Open</span>
                 <svg className="ml-1 h-4 w-4 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />

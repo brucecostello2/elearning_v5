@@ -251,7 +251,7 @@ export default function PromptHistory({
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="flex items-center gap-2 text-gray-400">
+        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
           <svg
             className="w-5 h-5 animate-spin"
             fill="none"
@@ -280,8 +280,8 @@ export default function PromptHistory({
   // ── Error State ──────────────────────────────────────────────────────
   if (error) {
     return (
-      <div className="p-4 bg-red-900/20 border border-red-700 rounded-lg">
-        <p className="text-sm text-red-400">{error}</p>
+      <div className="p-4 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
       </div>
     );
   }
@@ -289,13 +289,13 @@ export default function PromptHistory({
   return (
     <div className="space-y-4">
       {/* ── Prompt Info ──────────────────────────────────────────── */}
-      <div className="p-4 bg-gray-800 rounded-xl border border-gray-700">
+      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-sm font-medium text-white">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
               {prompt.prompt_type}
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
               Tier: {prompt.scope} · {versions.length} version
               {versions.length !== 1 ? "s" : ""}
             </p>
@@ -306,7 +306,7 @@ export default function PromptHistory({
               className={`px-3 py-1.5 text-xs rounded ${
                 viewMode === "list"
                   ? "bg-blue-600 text-white"
-                  : "bg-gray-700 text-gray-300"
+                  : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
               }`}
             >
               List
@@ -317,7 +317,7 @@ export default function PromptHistory({
                 className={`px-3 py-1.5 text-xs rounded ${
                   viewMode === "diff"
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                 }`}
               >
                 Diff
@@ -329,7 +329,7 @@ export default function PromptHistory({
                 className={`px-3 py-1.5 text-xs rounded ${
                   viewMode === "content"
                     ? "bg-blue-600 text-white"
-                    : "bg-gray-700 text-gray-300"
+                    : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"
                 }`}
               >
                 Content
@@ -341,10 +341,10 @@ export default function PromptHistory({
 
       {/* ── List View ───────────────────────────────────────────── */}
       {viewMode === "list" && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="divide-y divide-gray-700">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div className="divide-y divide-gray-300 dark:divide-gray-700">
             {versions.length === 0 ? (
-              <div className="px-4 py-8 text-center text-gray-500 text-sm">
+              <div className="px-4 py-8 text-center text-gray-500 dark:text-gray-400 text-sm">
                 No versions found for this prompt.
               </div>
             ) : (
@@ -353,38 +353,38 @@ export default function PromptHistory({
                   key={version.id}
                   className={`px-4 py-3 hover:bg-gray-750 transition-colors ${
                     version.is_active
-                      ? "border-l-2 border-l-green-500 bg-green-900/5"
+                      ? "border-l-2 border-l-green-500 bg-green-100 dark:bg-green-900/5"
                       : ""
                   } ${
                     selectedVersionId === version.id
-                      ? "bg-blue-900/10"
+                      ? "bg-blue-100 dark:bg-blue-900/10"
                       : ""
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-white">
+                      <span className="text-sm font-medium text-gray-900 dark:text-white">
                         v{version.version}
                       </span>
                       {version.is_active && (
-                        <span className="px-1.5 py-0.5 bg-green-900/30 text-green-400 text-[10px] rounded-full font-medium">
+                        <span className="px-1.5 py-0.5 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-[10px] rounded-full font-medium">
                           Active
                         </span>
                       )}
                     </div>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
                       {formatTimestamp(version.created_at)}
                     </span>
                   </div>
 
                   {version.change_note && (
-                    <p className="text-xs text-gray-400 mb-2">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                       {version.change_note}
                     </p>
                   )}
 
                   {version.created_by && (
-                    <p className="text-[10px] text-gray-500 mb-2">
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-2">
                       by {version.created_by}
                     </p>
                   )}
@@ -392,14 +392,14 @@ export default function PromptHistory({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleViewContent(version.id)}
-                      className="px-2 py-1 text-[10px] text-blue-400 bg-blue-900/20 rounded hover:bg-blue-900/40 transition-colors"
+                      className="px-2 py-1 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
                     >
                       View
                     </button>
                     <button
                       onClick={() => handleCompare(version.id)}
                       disabled={!selectedVersionId || selectedVersionId === version.id}
-                      className="px-2 py-1 text-[10px] text-gray-300 bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30"
+                      className="px-2 py-1 text-[10px] text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-600 transition-colors disabled:opacity-30"
                     >
                       Compare
                     </button>
@@ -407,7 +407,7 @@ export default function PromptHistory({
                       <button
                         onClick={() => handleRollback(version.id)}
                         disabled={isRollingBack === version.id}
-                        className="px-2 py-1 text-[10px] text-yellow-400 bg-yellow-900/20 rounded hover:bg-yellow-900/40 transition-colors disabled:opacity-50"
+                        className="px-2 py-1 text-[10px] text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors disabled:opacity-50"
                       >
                         {isRollingBack === version.id
                           ? "Rolling back…"
@@ -424,14 +424,14 @@ export default function PromptHistory({
 
       {/* ── Diff View ───────────────────────────────────────────── */}
       {viewMode === "diff" && diff && selectedVersion && compareVersion && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900/50 border-b border-gray-300 dark:border-gray-700">
             <div className="flex items-center gap-3 text-xs">
-              <span className="text-red-400">
+              <span className="text-red-600 dark:text-red-400">
                 − v{compareVersion.version}
               </span>
-              <span className="text-gray-500">→</span>
-              <span className="text-green-400">
+              <span className="text-gray-500 dark:text-gray-400">→</span>
+              <span className="text-green-600 dark:text-green-400">
                 + v{selectedVersion.version}
               </span>
             </div>
@@ -443,13 +443,13 @@ export default function PromptHistory({
                   key={i}
                   className={`px-2 py-0.5 ${
                     line.type === "add"
-                      ? "bg-green-900/20 text-green-300"
+                      ? "bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300"
                       : line.type === "remove"
-                      ? "bg-red-900/20 text-red-300"
-                      : "text-gray-400"
+                      ? "bg-red-100 dark:bg-red-900/20 text-red-800 dark:text-red-300"
+                      : "text-gray-500 dark:text-gray-400"
                   }`}
                 >
-                  <span className="inline-block w-4 text-gray-600">
+                  <span className="inline-block w-4 text-gray-600 dark:text-gray-400">
                     {line.type === "add"
                       ? "+"
                       : line.type === "remove"
@@ -466,18 +466,18 @@ export default function PromptHistory({
 
       {/* ── Content View ────────────────────────────────────────── */}
       {viewMode === "content" && selectedVersion && (
-        <div className="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-2 bg-gray-900/50 border-b border-gray-700">
-            <span className="text-xs text-gray-400">
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl border border-gray-300 dark:border-gray-700 overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2 bg-white dark:bg-gray-900/50 border-b border-gray-300 dark:border-gray-700">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               v{selectedVersion.version} — Full Content
             </span>
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-500 dark:text-gray-400">
               {selectedVersion.prompt_text.length} chars ·{" "}
               {selectedVersion.prompt_text.split("\n").length} lines
             </span>
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
-            <pre className="text-sm text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
+            <pre className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
               {selectedVersion.prompt_text}
             </pre>
           </div>

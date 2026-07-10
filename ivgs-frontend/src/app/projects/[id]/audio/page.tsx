@@ -157,10 +157,10 @@ function AudioScenePlayer({
       : "text-red-400 bg-red-900/30";
 
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-xl p-5">
+    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-white">
+          <span className="text-sm font-medium text-gray-900 dark:text-white">
             {asset.scene_label || asset.filename}
           </span>
           {asset.quality_score !== undefined && asset.quality_score !== null && (
@@ -175,7 +175,7 @@ function AudioScenePlayer({
           <button
             onClick={handleRegenerate}
             disabled={isRegenerating}
-            className="px-3 py-1 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50 transition-colors"
+            className="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
           >
             {isRegenerating ? "Regenerating…" : "Regenerate"}
           </button>
@@ -207,7 +207,7 @@ function AudioScenePlayer({
           )}
         </button>
 
-        <span className="text-xs text-gray-400 font-mono w-12">
+        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono w-12">
           {formatTime(currentTime)}
         </span>
 
@@ -221,7 +221,7 @@ function AudioScenePlayer({
           className="flex-1 h-1 accent-blue-500"
         />
 
-        <span className="text-xs text-gray-400 font-mono w-12 text-right">
+        <span className="text-xs text-gray-500 dark:text-gray-400 font-mono w-12 text-right">
           {formatTime(duration)}
         </span>
       </div>
@@ -287,7 +287,7 @@ export default function AudioPage(): React.ReactElement {
   if (error) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="p-4 bg-red-900/30 border border-red-700 rounded-lg text-red-400">
+        <div className="p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400">
           Failed to load audio: {error.message}
         </div>
       </div>
@@ -298,22 +298,22 @@ export default function AudioPage(): React.ReactElement {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-xl font-bold text-white">Audio</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Audio</h2>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
             {audioAssets.length} audio track
             {audioAssets.length !== 1 ? "s" : ""}
           </p>
         </div>
         <a
           href={`/projects/${projectId}`}
-          className="text-sm text-gray-400 hover:text-white transition-colors"
+          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           ← Back
         </a>
       </div>
 
       {audioAssets.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
+        <div className="text-center py-16 text-gray-500 dark:text-gray-400">
           No audio tracks generated yet.
         </div>
       ) : (

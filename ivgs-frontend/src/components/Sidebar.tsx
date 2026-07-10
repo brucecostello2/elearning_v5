@@ -125,12 +125,12 @@ export function Sidebar({ context, projectId }: SidebarProps) {
   const sections = sectionMap[context] ?? ADMIN_SECTIONS;
 
   return (
-    <aside className="w-56 shrink-0 border-r border-gray-800 bg-gray-950 py-4">
+    <aside className="w-56 shrink-0 border-r border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-950 py-4">
       {sections
         .filter((section) => hasAccess(user.role, section.minRole))
         .map((section) => (
           <div key={section.title} className="mb-6 px-3">
-            <h3 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            <h3 className="mb-2 px-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
               {section.title}
             </h3>
             <ul className="space-y-0.5">
@@ -158,7 +158,7 @@ export function Sidebar({ context, projectId }: SidebarProps) {
                       >
                         <span>{item.label}</span>
                         {item.badge && (
-                          <span className="rounded-full bg-ivgs-600/30 px-1.5 py-0.5 text-[10px] font-medium text-ivgs-300">
+                          <span className="rounded-full bg-ivgs-600/30 px-1.5 py-0.5 text-[10px] font-medium text-ivgs-800 dark:text-ivgs-300">
                             {item.badge}
                           </span>
                         )}

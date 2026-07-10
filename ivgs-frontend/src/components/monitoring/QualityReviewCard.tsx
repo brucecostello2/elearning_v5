@@ -132,9 +132,9 @@ export default function QualityReviewCard({
   }, [onReject, rejectReason]);
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow">
       {/* ── Asset Preview ──────────────────────────────────────────── */}
-      <div className="relative h-40 bg-gray-100 flex items-center justify-center">
+      <div className="relative h-40 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
         {asset.thumbnail_url ? (
           <img
             src={asset.thumbnail_url}
@@ -147,7 +147,7 @@ export default function QualityReviewCard({
           </span>
         )}
         {/* Type badge overlay */}
-        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
+        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-gray-900 dark:text-white text-xs rounded">
           {asset.asset_type}
         </span>
         {/* Score badge overlay */}
@@ -165,24 +165,24 @@ export default function QualityReviewCard({
       <div className="p-4 space-y-3">
         {/* Context */}
         <div>
-          <p className="text-sm font-medium text-gray-900 truncate">
+          <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
             {asset.project_name}
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Scene {asset.scene_index} • Asset {asset.asset_id.slice(0, 8)}…
           </p>
         </div>
 
         {/* Scores summary */}
         <div className="grid grid-cols-2 gap-2">
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <p className="text-xs text-gray-500">Quality</p>
+          <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Quality</p>
             <p className={`text-lg font-bold ${getScoreColor(asset.quality_score)}`}>
               {asset.quality_score}
             </p>
           </div>
-          <div className="text-center p-2 bg-gray-50 rounded">
-            <p className="text-xs text-gray-500">Safety</p>
+          <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Safety</p>
             <p
               className={`text-lg font-bold ${getScoreColor(
                 (asset.safety_score ?? 1) * 100
@@ -196,7 +196,7 @@ export default function QualityReviewCard({
         {/* Per-metric breakdown */}
         {asset.metrics && (Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics)).length > 0 && (
           <div className="space-y-1">
-            <p className="text-xs font-medium text-gray-600">Metric Breakdown</p>
+            <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Metric Breakdown</p>
             {(Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics).map(([k, v]: [string, any]) => ({ type: k, value: v }))).map((metric: any) => {
               const status = getMetricStatus(metric.type, metric.value);
               return (
@@ -205,7 +205,7 @@ export default function QualityReviewCard({
                   className={`flex items-center justify-between px-2 py-1
                     rounded text-xs ${METRIC_STATUS_BG[status]}`}
                 >
-                  <span className="text-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300">
                     {(metricLabels as Record<string, string>)[metric.type] || metric.type}
                   </span>
                   <span className={`font-mono font-medium ${METRIC_STATUS_COLORS[status]}`}>
@@ -221,14 +221,14 @@ export default function QualityReviewCard({
 
         {/* ── Actions ──────────────────────────────────────────────── */}
         {canAct && !showRejectForm && (
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+          <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
               onClick={onApprove}
               disabled={isProcessing}
               className="flex-1 inline-flex items-center justify-center gap-1
-                px-3 py-2 text-sm font-medium text-green-700 bg-green-50
-                border border-green-200 rounded-md hover:bg-green-100
+                px-3 py-2 text-sm font-medium text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/40
+                border border-green-200 dark:border-green-800 rounded-md hover:bg-green-100 dark:hover:bg-green-900/50
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {isProcessing ? (
@@ -245,8 +245,8 @@ export default function QualityReviewCard({
               onClick={() => setShowRejectForm(true)}
               disabled={isProcessing}
               className="flex-1 inline-flex items-center justify-center gap-1
-                px-3 py-2 text-sm font-medium text-red-700 bg-red-50
-                border border-red-200 rounded-md hover:bg-red-100
+                px-3 py-2 text-sm font-medium text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/40
+                border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/50
                 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -259,13 +259,13 @@ export default function QualityReviewCard({
 
         {/* Reject form */}
         {canAct && showRejectForm && (
-          <div className="pt-2 border-t border-gray-100 space-y-2">
+          <div className="pt-2 border-t border-gray-100 dark:border-gray-800 space-y-2">
             <input
               type="text"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Rejection reason (optional)…"
-              className="w-full rounded-md border-gray-300 text-xs shadow-sm
+              className="w-full rounded-md border-gray-300 dark:border-gray-700 text-xs shadow-sm
                 focus:border-blue-500 focus:ring-blue-500"
             />
             <div className="flex items-center gap-2">
@@ -285,7 +285,7 @@ export default function QualityReviewCard({
                   setShowRejectForm(false);
                   setRejectReason("");
                 }}
-                className="px-3 py-1.5 text-xs text-gray-600 hover:text-gray-900"
+                className="px-3 py-1.5 text-xs text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
               >
                 Cancel
               </button>

@@ -105,18 +105,18 @@ export default function StorageTierChart({
       {tierCharts.map(({ tier, data, options, used, allocated, percent, assetCount }) => (
         <div
           key={tier.id}
-          className="bg-white rounded-lg border border-gray-200 p-4"
+          className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4"
         >
           <div className="flex items-center gap-2 mb-3">
             <div
               className="w-3 h-3 rounded-sm"
               style={{ backgroundColor: tier.color }}
             />
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
               {tier.label}
             </h3>
           </div>
-          <p className="text-xs text-gray-500 mb-3">{tier.description}</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{tier.description}</p>
 
           {/* Doughnut Chart */}
           <div className="relative mx-auto" style={{ maxWidth: 150 }}>
@@ -126,10 +126,10 @@ export default function StorageTierChart({
               <span
                 className={`text-lg font-bold ${
                   percent > 90
-                    ? "text-red-600"
+                    ? "text-red-600 dark:text-red-400"
                     : percent > 75
-                    ? "text-amber-600"
-                    : "text-gray-900"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-gray-900 dark:text-gray-100"
                 }`}
               >
                 {percent}%
@@ -140,20 +140,20 @@ export default function StorageTierChart({
           {/* Stats below chart */}
           <div className="mt-3 space-y-1">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Used</span>
-              <span className="font-mono text-gray-900">
+              <span className="text-gray-500 dark:text-gray-400">Used</span>
+              <span className="font-mono text-gray-900 dark:text-gray-100">
                 {formatBytes(used)}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Allocated</span>
-              <span className="font-mono text-gray-600">
+              <span className="text-gray-500 dark:text-gray-400">Allocated</span>
+              <span className="font-mono text-gray-600 dark:text-gray-400">
                 {formatBytes(allocated)}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Assets</span>
-              <span className="font-mono text-gray-600">
+              <span className="text-gray-500 dark:text-gray-400">Assets</span>
+              <span className="font-mono text-gray-600 dark:text-gray-400">
                 {assetCount.toLocaleString()}
               </span>
             </div>
