@@ -24,7 +24,8 @@ export type ModelEngine =
   | "animatediff"
   | "latentsync"
   | "sadtalker"
-  | "remotion";
+  | "remotion"
+  | "ffmpeg";
 
 export type ModelTier = "prototype" | "production" | "both";
 
@@ -146,6 +147,7 @@ export const MODEL_ENGINES: ModelEngine[] = [
   "latentsync",
   "sadtalker",
   "remotion",
+  "ffmpeg",
 ];
 
 export const MODEL_TIERS: ModelTier[] = ["prototype", "production", "both"];

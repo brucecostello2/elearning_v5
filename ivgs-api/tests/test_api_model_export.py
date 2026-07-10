@@ -150,3 +150,31 @@ class TestIngest:
             )
         ).scalar_one()
         assert appr == 2  # trail preserved
+
+
+async def test_composition_bundle_with_ffmpeg_engine_accepted(
+    client, db_session, monkeypatch
+):
+    """0027: composition + supplied engine=ffmpeg passes validation -> 201."""
+    from shared.config import settings
+    from datetime import datetime, UTC
+    from uuid import uuid4
+    payload = {
+        "certification_id": str(uuid4()),
+        "model_id": str(uuid4()),
+        "model_name": "ffmpeg-concat",
+        "ivgs_stage": "composition",
+        "weight_tier": "certified",
+        "bundle_digest": "sha256:" + "a" * 64,
+        "bundle_manifest_url": "http://mbcp/engines/sha256:aa/manifest",
+        "engine": "ffmpeg",
+        "certified_at": datetime.now(UTC).isoformat(),
+        "certified_by": "test",
+    }
+    r = await client.post(
+        "/ad01/v1/certified-models",
+        json=payload,
+        headers={"X-Service-Token": settings.IVGS_MBCP_INGEST_TOKEN},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json().get("ad01_id")

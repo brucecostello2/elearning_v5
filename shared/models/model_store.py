@@ -99,6 +99,7 @@ class ModelEngine(str, enum.Enum):
     LATENTSYNC = "latentsync"
     SADTALKER = "sadtalker"
     REMOTION = "remotion"
+    FFMPEG = "ffmpeg"
 
 
 class CapabilityDimension(str, enum.Enum):
