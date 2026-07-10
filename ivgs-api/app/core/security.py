@@ -32,6 +32,7 @@ def create_access_token(
     user_id: str,
     role: str,
     expires_delta: Optional[timedelta] = None,
+    username: str | None = None,
 ) -> str:
     """
     Create a JWT access token.
@@ -48,6 +49,7 @@ def create_access_token(
     payload = {
         "sub": str(user_id),
         "role": role,
+        "username": username,
         "exp": expire,
         "iat": now,
         "jti": uuid.uuid4().hex,
@@ -56,7 +58,9 @@ def create_access_token(
     return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 
-def create_refresh_token(user_id: str, role: str) -> str:
+def create_refresh_token(user_id: str, role: str,
+    username: str | None = None,
+) -> str:
     """
     Create a JWT refresh token with 7-day expiration.
 
@@ -68,6 +72,7 @@ def create_refresh_token(user_id: str, role: str) -> str:
     payload = {
         "sub": str(user_id),
         "role": role,
+        "username": username,
         "exp": expire,
         "iat": now,
         "jti": uuid.uuid4().hex,

@@ -622,7 +622,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                                     Deprecate
                                   </button>
                                 )}
-                                {m.state !== "retired" && (
+                                {m.state === "deprecated" && (
                                   <button
                                     type="button"
                                     disabled={busy}

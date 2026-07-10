@@ -74,10 +74,12 @@ async def login(
     access_token = create_access_token(
         user_id=str(user.id),
         role=user.role,
+        username=user.username,
     )
     refresh_token = create_refresh_token(
         user_id=str(user.id),
         role=user.role,
+        username=user.username,
     )
 
     # Store refresh token JTI in Redis for invalidation support
@@ -153,6 +155,7 @@ async def refresh_tokens(refresh_token_str: str) -> dict:
     jti = payload.get("jti", "")
     user_id = payload.get("sub")
     role = payload.get("role")
+    username = payload.get("username")
 
     if not user_id or not role:
         raise TokenError("Invalid refresh token payload")
@@ -176,8 +179,8 @@ async def refresh_tokens(refresh_token_str: str) -> dict:
     await redis_client.delete(refresh_key)
 
     # Issue new token pair
-    new_access_token = create_access_token(user_id=user_id, role=role)
-    new_refresh_token = create_refresh_token(user_id=user_id, role=role)
+    new_access_token = create_access_token(user_id=user_id, role=role, username=username)
+    new_refresh_token = create_refresh_token(user_id=user_id, role=role, username=username)
 
     # Store new refresh token
     new_refresh_payload = decode_token(new_refresh_token)
