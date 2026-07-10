@@ -188,12 +188,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
             unknown
           >;
 
+          /* The API's error detail can be a nested object; rendering a
+             non-string crashes React (#31), so reduce to a string here. */
+          const pickMessage = (v: unknown): string | null => {
+            if (typeof v === "string") return v;
+            if (v && typeof v === "object" && !Array.isArray(v)) {
+              const o = v as Record<string, unknown>;
+              return (
+                pickMessage(o["message"]) ??
+                pickMessage(o["detail"]) ??
+                pickMessage(o["error"]) ??
+                null
+              );
+            }
+            return null;
+          };
+
           return {
             success: false,
-            error:
-              (errorData["message"] as string) ??
-              (errorData["detail"] as string) ??
-              "Authentication failed",
+            error: pickMessage(errorData) ?? "Authentication failed",
             remainingAttempts: errorData["remaining_attempts"] as
               | number
               | undefined,
