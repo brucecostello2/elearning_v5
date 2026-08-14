@@ -3,184 +3,219 @@
 | | |
 |---|---|
 | **Document** | Master Sequence Plan — the high-level path from current state to a fully deployed, production-ready system |
-| **Version** | v0.3 — 2026-06-08 (M1 duration+corruption + Pillar-2 head sync closed; M4 corrected vs functional spec; WS-H / AD-04 model-certification workstream added) |
-| **Authoritative as of** | `main` @ `b17397b`; workers `v5.4.23-h0` on node-01 (`celery-worker-default`/`-composition`) + node-04 (`v5.4.18-h0`). Pipeline proven **E2E Stages 1→7 with the talking-head composited into the draft**; **A/V duration + corruption (6/6) and AD-03 Pillar-2 head sync closed** (draft `f78eb063`, video==audio at 214.94s, single continuous head overlay); paused at `user_review`. **Open quality gate: the LatentSync head's lip-sync articulation is not production-viable → routed through AD-04/MBCP for a certified replacement.** |
-| **Companion ledgers** | `OUTSTANDING_WORK.md` (task-level single source of truth) + `OUTSTANDING_WORK_Addendum_A` (2026-06-05). **This plan sequences workstreams and milestones; the ledger tracks individual items.** |
+| **Version** | **v0.4 — 2026-08-14.** Supersedes v0.3 (2026-06-08). Stage status corrected (all 8 stages execute); WS-H closed on its Phase-1 driver; **WS-T orchestration migration added and sequenced**; milestones renumbered (map in §9). |
+| **Authoritative as of** | `main` @ `e613e844`; node-01 and `origin/main` in **exact sync** (0 ahead / 0 behind). Live: ivgs-api `v5.5.3-arch1`, ivgs-workers `v5.5.1-arch1`, ivgs-frontend `v5.4.2-themes`. Alembic head **0027**. **The tree at `e613e844` is byte-identical to the 2026-07-10 capture — no IVGS code has been committed since 2026-07-10.** |
+| **Companion ledger** | `OUTSTANDING_WORK.md` **v4.0** (task-level SoT, rebuilt 2026-08-14). **This plan sequences workstreams and milestones; the ledger tracks individual items.** |
 | **Operating principle** | *"Fix, don't park — clean as we go."* Walk the end-to-end happy path; fix bugs inline as they surface; defer nothing without recording it in the ledger. |
 
 ---
 
-## 1. Where we are (M0 — complete)
+## 1. Where we are
 
-**Pipeline.** Stages 1→7 run end-to-end for the test project: transcript refinement → storyboard → media generation (images/video/animation) → composition manifest → TTS audio → **talking-head render** → prototype draft. As of this session the talking-head (LatentSync) **renders, uploads, and composites into the 720p draft** (`num_layers: 3`, `scenes_failed: 0`), and the pipeline correctly pauses at the `user_review` gate. The 2026-06-05 image-generation regression (Addendum A / **A1**) is effectively behind us: the pipeline now produces images and advances cleanly through Stage 7.
+**The pipeline executes end-to-end, all eight stages.** Transcript refinement → storyboard → media generation → composition manifest → TTS audio → talking-head render → prototype draft → **final render**. Evidence on node-01: draft `f78eb063` (214.94s, 1280×720, corruption 6/6, operator-confirmed) and final `9007b2cf` (**215.07s, 1920×1080, 30fps, h264 High, AAC 48 kHz stereo**), the latter used as evidence in the AD-04 head-model judgment.
 
-**Fleet (AD-02 topology).** node-01 = CPU hub (Postgres / API / Redis / SeaweedFS / scheduler / orchestrator `celery-worker-default` / `celery-worker-composition` / beat). node-02 = LLM-only (Llama-3.3-70B-FP8). node-03 = video-only (CogVideoX/Wan2.1). node-04 = image + TTS + talking-head (RTX PRO 6000; ComfyUI/FLUX, Coqui, Kokoro, WhisperX, vLLM-midsize Mistral-24B, **LatentSync** built + proven). **node-05 = OFFLINE** (NVIDIA RTX 5080, 16 GB; per the functional spec §2.2: ComfyUI **SDXL/SD3.5 image fallback**, **Ollama** small-model **LLM fallback**, FFmpeg composition **overflow** + utility). **node-06 = OFFLINE** (Intel B70 Pro, 32 GB, oneAPI/IPEX — **no CUDA**; per spec: **Remotion** motion-graphics [lower-thirds, captions, animated titles, **Ken-Burns L2 fill**] and the **primary** FFmpeg compositor). Both are hardware-provisioned, not yet stood up. **Note: the spec puts the FFmpeg compositor on node-06 (primary)/node-05 (overflow) — the `celery-worker-composition` running on node-01 today is a bootstrap, not its permanent home.**
+> **Correction to v0.3.** v0.3 recorded Stage 8 as "wired but not yet validated" and the ledger showed Stage 6 as *BUILD REQUIRED*. Both are two months stale. **The remaining M1 work is validation and model-binding, not construction.**
 
-**Stage 8 (final render)** is wired for the head (orchestrator dispatch now passes `talking_head_asset_id` + `enable_talking_head`) but **not yet validated**.
+**Model certification is delivered.** The MBCP (AD-04) was built, the talking-head bake-off was run and settled, and certified models flow MBCP → IVGS Model Store as candidates with real weight refs and checksums. Backfill complete (21 exports + 2 composition; 24 revoked correctly skipped). The Approve/Deprecate/Retire lifecycle is live and GUI-only. **WS-H's Phase-1 driver is closed.**
 
-This session's six fixes that closed the Stage-6B loop are listed in §7.
+**But the certification chain terminates at a wall.** The live Stage-6 task (`talking_head_task.py`, the one `STAGE_TASK_MAP` dispatches) imports `LatentSyncClient` directly — the engine is **hardcoded**. The ARCH-1 provider-factory implementation lives in `stage6_talking_head.py`, the *dead duplicate* that nothing dispatches. **Certified models cannot be selected into production.** Swapping the head is a code change — precisely what AD-01 exists to prevent. This is the single item at the top of the critical path (ledger **P1.0 / ORCH-6**).
+
+**The orchestration layer carries four correctness defects and substantial dead weight.** A code audit of `e613e844` (2026-08-14) found: a broker visibility timeout below two tasks' hard time limits (duplicate GPU execution); a media join that advances prematurely on any Redis error and is not idempotent; a checkpoint subsystem that is a silent no-op, so `resume` has nothing to resume from; and GPU reservation releases that raise `TypeError` at every call site. Separately, ~1,957 lines of retry/DLQ/fallback machinery are wired to nothing (with 14 imports against a package that does not exist), while the 1,397-line live orchestrator has **zero test coverage** and 859 lines of tests cover the dead modules. Full detail: ledger **P0.1, P1.1–P1.3, P2.1–P2.3**.
+
+**Fleet.** node-01 = CPU hub (Postgres / API / Redis / SeaweedFS / scheduler / beat / `celery-worker-default` / `-composition`). node-02 = LLM-only. node-03 = video-only. node-04 = image + TTS + talking-head (96 GB RTX PRO 6000). **node-05 and node-06 remain OFFLINE**; node-02/03 trail on older worker tags. **node-06's card was physically swapped to an RTX 6000 96 GB**, so the AD-02 Draft-3 Intel→CUDA compose rewrite is mandatory and node-06 is redesignated as a second CUDA video node, primary compositor, and on-demand LLM failover. The `celery-worker-composition` on node-01 remains a bootstrap, not its permanent home.
 
 ---
 
 ## 2. Definition of "production ready"
 
-A non-technical operator can drive a course video from a raw transcript to a final 1080p/4k render — with a correctly placed, lip-synced talking-head presenter — **entirely through the UI**, reliably and repeatably, on the **full 6-node fleet**, with managed models, trustworthy monitoring, disaster recovery, and **no hand-edited secrets or runtime band-aids**. Concretely:
+A non-technical operator drives a course video from a raw transcript to a final 1080p/4K render — with a correctly placed, lip-synced talking-head presenter — **entirely through the UI**, reliably and repeatably, on the **full 6-node fleet**, with managed models, trustworthy monitoring, disaster recovery, and **no hand-edited secrets or runtime band-aids**. Concretely:
 
-- **E2E:** Stages 1→8 produce a correct final video (head synced and placed right; passes corruption/validation gates).
-- **Scale:** 30-minute videos render reliably (parallel, resumable); rendering distributes across the GPU fleet.
-- **Robustness:** GPU reservations actually reserve; no swallowed errors; pipeline/project state is truthful.
-- **Breadth:** SadTalker fallback live; AD-01 model management implemented; UI functional; nodes 05/06 online.
-- **Hardening:** secrets out of git; real service tokens; monitoring/alerting trustworthy; DR in place; runbooks written; load/soak-tested.
+- **E2E:** Stages 1→8 produce a correct final video that passes corruption/validation gates.
+- **Model agility:** a newly certified model enters production as a **GUI selection**, never a code change.
+- **Scale:** 30-minute videos render reliably — parallel and **resumable from failure**.
+- **Robustness:** no duplicate execution; no premature advancement; reservations actually reserve; state is truthful; failures are visible, not swallowed.
+- **Breadth:** SadTalker fallback live; nodes 05/06 online; UI functional.
+- **Hardening:** secrets out of git; real service tokens; trustworthy monitoring/alerting; DR in place; runbooks written; load/soak-tested.
 
 ---
 
 ## 3. Guiding principles
 
 1. **E2E-first.** Keep one working happy path and extend it; correctness of the whole chain beats local optimization.
-2. **Fix, don't park.** Bugs hit *during* any milestone are fixed inline. Anything genuinely deferred gets a ledger entry — never silent.
-3. **Correctness > speed.** Verify against authoritative sources (committed code, git history, real logs); don't reason forward from summaries.
-4. **One image, both fixes.** When a deploy is required, fold all in-tree fixes into a single rebuilt tag (avoid the A1-style "the build swept in other work" trap).
-5. **The ledger is the task SoT.** This plan is the map; `OUTSTANDING_WORK.md` is the backlog. Re-snapshot it on every close.
+2. **Fix, don't park.** Bugs hit *during* any milestone are fixed inline. Anything genuinely deferred gets a ledger entry with a re-open trigger — never silent.
+3. **Correctness > speed.** Verify against authoritative sources (committed code, git history, real logs); never reason forward from summaries.
+4. **One image, both fixes.** When a deploy is required, fold all in-tree fixes into a single rebuilt tag.
+5. **The ledger is the task SoT.** This plan is the map; `OUTSTANDING_WORK.md` is the backlog. Re-snapshot on every close.
+6. **Scope discipline on replacement work.** *(New in v0.4.)* When replacing a layer, name what is replaced, what is preserved, and what is untouched — before starting. If a session finds itself editing outside the named boundary, stop: scope control has been lost.
+7. **No half-migrations.** *(New in v0.4.)* A migration completes in one arc or is not started. The v1→v2 orchestrator migration has been half-done since June (ledger P2.3); that is the precedent to avoid, not repeat.
 
 ---
 
-## 4. Workstreams (parallel concerns)
+## 4. Workstreams
 
-| ID | Workstream | Scope |
-|----|-----------|-------|
-| **WS-A** | E2E pipeline completeness + quality | The happy-path spine: Stages 1→8 producing a correct final; A/V sync, head placement, draft/final validation. |
-| **WS-B** | Talking-head subsystem | LatentSync render quality, segment-rendering correctness, SadTalker fallback, long-video scale. |
-| **WS-C** | Documented-debt paydown | `OUTSTANDING_WORK` P1/P2 items + Addendum A (A2/A4/A5/A6/A7) + this session's new items. |
-| **WS-D** | Model management (AD-01) | Implement the AD-01 model lifecycle/versioning/serving design. |
-| **WS-E** | UI | Make the user-facing flow functional: project lifecycle, review gates, asset preview, approve/reject, download. |
-| **WS-F** | Composition + motion-graphics + fallback tier (06/05) | Stand up **node-06** (canonical FFmpeg compositor + Remotion captions/lower-thirds/Ken-Burns L2) and **node-05** (SDXL image + Ollama LLM fallbacks + composition overflow); migrate composition off the node-01 bootstrap. *(This is capability + resilience, not CUDA render-distribution — node-06 is Intel.)* |
-| **WS-G** | Production hardening | Secrets/tokens, monitoring/alerting, DR, runbooks, load/soak testing, hygiene. |
-| **WS-H** | Model evaluation & certification (AD-04) | Build the **MBCP** — benchmark, validate, and certify self-hostable models on real hardware; produce the AD-01.7 attestation. **Phase 1 settles the talking-head production model**; the full platform is AD-01's (M5) external acceptance process. |
+| ID | Workstream | Scope | Status |
+|----|-----------|-------|--------|
+| **WS-A** | E2E pipeline completeness + quality | The happy-path spine: Stages 1→8 producing a correct final; A/V sync, head placement, draft/final validation. | 🟡 near-complete — validation remains |
+| **WS-B** | Talking-head subsystem | Render quality, segment correctness, SadTalker fallback, long-video scale, **model binding**. | 🟡 renders; binding blocked (ORCH-6) |
+| **WS-C** | Documented-debt paydown | Ledger v4.0 P1/P2/P3 items. | 🟡 ongoing |
+| **WS-D** | Model management (AD-01) | Model lifecycle, versioning, serving, selection. | 🟢 substantially built — Model Store + factory + admin GUI live; per-project selection GUI + weight-fetch remain |
+| **WS-E** | UI | Project lifecycle, review gates, asset preview, approve/reject, download. | 🔴 not started |
+| **WS-F** | Composition + motion-graphics + fallback tier (05/06) | node-06 primary compositor + Remotion; node-05 SDXL/Ollama fallbacks + overflow. **Note: node-06 is now CUDA, not Intel.** | 🔴 not started |
+| **WS-G** | Production hardening | Secrets/tokens, monitoring/alerting, DR, runbooks, load/soak testing. | 🔴 not started |
+| **WS-H** | Model evaluation & certification (AD-04 / MBCP) | Benchmark, validate, certify self-hostable models; produce the AD-01.7 attestation. | 🟢 **Phase-1 driver CLOSED** (bake-off settled, connected mode live). Platform work continues — RuntimeClass refactor Tasks B/C/D awaiting approval; CogVideoX adapter graph broken (ledger P2.8/P2.9). |
+| **WS-T** | **Orchestration migration (Temporal)** *(new in v0.4)* | Replace the hand-rolled coordination layer with durable execution. Scope boundary in §6. | 🔴 not started — sequenced as M3 |
 
 ---
 
-## 5. Phased sequence
+## 5. Milestones
 
-> Milestones define **focus**, not rigid gates. Per principle #2, debt and quality work interleave with the spine. WS-D (AD-01) and WS-E (UI) can run **in parallel** with the M3/M4 track once contracts stabilize (post-M2).
+> Milestones define **focus**, not rigid gates. Debt and quality work interleave with the spine per principle #2.
 
-| Milestone | Goal | Exit criteria |
-|-----------|------|---------------|
-| **M1** | Close the happy path *at quality* | One project goes 1→8 clean; final reviewed correct (head synced + placed). |
-| **M2** | Make the single-job path robust | Happy path runs with no swallowed errors / orphans; reservations succeed; state is truthful. |
-| **M3** | Talking-head completeness + long videos | A 30-min video renders reliably (parallel, resumable); SadTalker fallback works. |
-| **M4** | Composition + motion-graphics + fallback tier (06/05) | **M4a:** node-06 is the FFmpeg compositor; Remotion renders captions/lower-thirds + Ken-Burns (L2); composition migrated off node-01. **M4b:** node-05 SDXL image + Ollama LLM fallbacks + composition overflow online. |
-| **M5** | Model management (AD-01) | Models managed per AD-01 (versioning, serving, swaps). |
-| **M6** | UI functional | A non-technical user drives a project end-to-end via the UI. |
-| **M7** | Production hardening | Production-readiness checklist green (security, monitoring, DR, runbooks, load test). |
-| **M8** | Production launch | Final acceptance + cutover. |
+| Milestone | Goal | Status |
+|-----------|------|--------|
+| **M0** | Pipeline executes Stages 1→8 | ✅ **Complete** |
+| **M1** | Close the happy path *at quality* | 🟡 In progress — ORCH-6 + Stage-8 validation |
+| **M2** | Orchestration correctness defects | 🔴 Not started (~1 session) |
+| **M3** | **Orchestration migration (Temporal)** | 🔴 Not started |
+| **M4** | Full 6-node fleet on the new architecture | 🔴 Not started |
+| **M5** | Long videos + talking-head scale | 🔴 Not started |
+| **M6** | UI functional (+ AD-01 remainder) | 🔴 Not started |
+| **M7** | Production hardening | 🔴 Not started |
+| **M8** | Production launch | 🔴 Not started |
 
-### M1 — Close the happy path at quality *(immediate — this is items 1–3 + the sync catch)*
-> **Update 2026-06-08.** Two AD-03 pillars are CLOSED: **(1) A/V duration + corruption** (Pillar 1, §11) — durations anchored on real audio end-to-end (`v5.4.22`); and **(2) Pillar-2 head sync** (`v5.4.23`) — the head is now composited **once** as a continuous timeline overlay (draft `f78eb063`, 214.94s, video==audio, corruption 6/6), so it tracks each scene instead of replaying the opening. The "215.5 vs 227.26" / "5/6" framing in the bullets below is superseded (real timeline **214.94s**; 215.5 was the head's own length). **Remaining mechanical M1** (model-agnostic): **Stage 8 with the head** (not yet validated) and the ~0.62s head A/V drift (frame-align). **Quality gate on M1 closure:** the LatentSync head's articulation is **not production-viable** — "final reviewed correct" now depends on a certified replacement head model via **AD-04/MBCP (WS-H)**. The composition path is model-agnostic, so the Stage-8 plumbing is validated now and the certified model drops into the same path.
-- **Head placement QA — spatial *and* temporal.** Inspect stage7's overlay filter to learn the *intended* layout (PiP vs full-frame vs lower-third), then eyeball the actual draft (`8e0c8531`). Resolve the **temporal** question: the head is 215.5s but the timeline is 227.26s — confirm whether the head is sliced per-scene against each scene's audio, stretched, or left short at the tail.
-- **A/V drift fix (~0.62s).** Segment rendering rounds each piece to whole frames (`ceil(slice_s × 30)`), accumulating ~0.62s of video-over-audio across 11 pieces. Fix with **frame-aligned splitting** (slice on 1/fps boundaries so pieces are whole-frame and sum exactly), or trim each rendered piece to its audio length. Regression introduced by the OAM-fix split; not present in single-render.
-- **Corruption check 5/6.** Identify the failing 6th check on the draft (fails identically on head-less and head drafts, so head-independent); decide whether it gates for drafts vs finals.
-- **Stage 8 final render with head.** Validate `final_render` (1080p, optionally 4k) carries the head correctly. *Do this last in M1.* **Build it to resolve the head model via the provider factory / AD-01 binding, not a hard-coded engine** (AD-04 §16) — so a newly certified production head (Wan2.2-S2V / MagiHuman / …) is a selection change, not a code change.
-- **Exit:** one project completes 1→8; the final video is reviewed and confirmed correct (head synced, placed, validation passing).
+### M1 — Close the happy path at quality
 
-### M2 — Make the single-job happy path robust
-- **GPU heartbeat / reservation (`total_nodes:0`).** Nodes don't register GPU presence with the node-01 scheduler, so `acquire_gpu_reservation` soft-skips ("No alive GPU nodes" — observed every render this session). Wire heartbeat registration so reservations actually reserve. Pair with the **Blackwell GPU-exporter CrashLoop** (monitoring metric-name panic) so telemetry is trustworthy. *(This unblocks M3/M4 distributed rendering.)*
-- **ORCH-5 — `projects.state` mapping.** State stays stale at `TRANSCRIPT_REFINEMENT` after a full run; the lenient `approve_storyboard` guard is empirically relied upon. Make state truthful, then tighten the guard. *(Prerequisite for an honest UI.)*
-- **Addendum-A cluster:** A2 (de-band-aid vLLM model name / `IVGS_VLLM_*` vs `VLLM_*`), A4 (401 scene-asset linkage), A5 (v1→v2 orchestrator dead-code excision), A6 (non-blocking 4xx cluster incl. **checkpoint POST 405**).
-- **Fleet image consistency.** node-02/03 still on older worker tags (`v5.4.0-h0`); node-01/04 on `v5.4.18-h0`. Align the fleet and adopt a consistent tag-bump discipline (the shell-shadow-`.env` trap).
-- **Lower-noise items:** clock drift (node-02/03 ~20s → NTP), API healthcheck wrong-port, talking-head asset metadata loss, `_upload_asset` unused params.
-- **Exit:** the happy path runs with no swallowed errors or orphan renders; reservations succeed; pipeline/project state is accurate.
+- **ORCH-6 — make the head model selectable** *(ledger P1.0; top of the critical path)*. Promote the provider-factory binding from `stage6_talking_head.py` into the live `talking_head_task.py`, preserving the live task's proven segment/OOM strategy, AD-03 Pillar-2 overlay, and correct upload URL; then delete the duplicate. Verify against `shared/providers/factory.py` + `app/services/model_selection.py`. **This is what makes the completed bake-off consumable.**
+  > *Note:* Stage 8 overlays a pre-rendered head asset by `asset_id` — it does not render the head. Addendum-B item B5 ("Stage 8 must bind via the factory") was misframed; the binding belongs at Stage 6.
+- **Stage-8 formal validation** *(ledger P1.4)*. Operator visual QA of `final_1080p_9007b2cf.mp4` at full screen. **Encoder note:** measured video bitrate is 506 kb/s, but the profile constants are correct per spec (`ffmpeg_client.py:144-148` — `crf=18, vbv_maxrate="8M", vbv_bufsize="16M"`). CRF targets *quality*, not bitrate, and near-static content encodes low legitimately. **Resolve by inspection, not by the number.** Exercise the never-run **4K profile**. Add a corruption-check assertion on output quality so this is measured next time.
+- **Frame-aligned segment splitting.** ~0.62s head A/V drift from `ceil(slice_s × 30)` per piece; compute boundaries in integer frames at target fps (AD-03 §4.4).
+- **Capture the known-good reference output** — the verification target for M3. *(= ledger WS-T.3.)*
+- **Exit:** one project completes 1→8; the final is reviewed and confirmed correct; the head model is a GUI selection; the reference output is banked.
 
-### M3 — Talking-head completeness + long videos
-- **Production head model (via AD-04/MBCP).** The production-tier talking-head is no longer assumed to be LatentSync — its articulation failed the viability bar — so the production head is whatever the MBCP (WS-H) certifies (Wan2.2-S2V / MagiHuman / HuMo candidates), composited via the existing model-agnostic overlay. The target is a **two-tier** render: fast LatentSync draft, certified model for production.
-- **SadTalker fallback.** Build the `sadtalker:7861` engine (currently a stub) as the alignment-gated fallback when the primary head model scores below threshold. (Robustness fallback, *not* the quality answer — that comes from the MBCP-certified production model above.)
-- **Segment-rendering quality:** frame-aligned splitting (from M1), pause-aligned (not even-split) seams, and tuning `MAX_SEGMENT_SECONDS` upward for fewer seams once RAM headroom is confirmed.
-- **Phase 2 — parallel piece rendering.** RAM-autosensed concurrency: an engine-side dynamic semaphore sized from real-time free RAM ÷ measured per-render budget, **reserving** budget per in-flight render (LatentSync's memory spike is late). Autosense over a static cap because node-04 RAM is shared across six engines.
-- **Phase 3 — per-piece Celery sub-tasks + resume.** Move pieces into `group`/`chord` sub-tasks; persist `render_segments` (table exists, 0 rows) and add the `/jobs/{id}/segments` tracking API so renders are resumable and a single task no longer spans hours.
-- **Exit:** a 30-minute video renders reliably — parallel, resumable, with the fallback exercised.
+### M2 — Orchestration correctness defects *(~1 session)*
 
-### M4 — Composition + motion-graphics + fallback tier (nodes 06/05)
-*Per the functional spec (§2.2, §6.3 Table 6-6, §7.1.8), 05/06 are **not** extra CUDA render nodes — node-06 is Intel (oneAPI/IPEX). They are the composition tier, the Remotion motion-graphics engine, and the image/LLM fallbacks. The old "rendering distributes across ≥4 GPU nodes" exit is dropped.*
+The four defects found in the 2026-08-14 audit. These are fixed **regardless** of M3, because a working system is needed while migrating.
 
-**M4a — node-06 (composition + Remotion).** Stand up node-06 (Intel B70 Pro): make it the **primary FFmpeg compositor** and **migrate composition off the node-01 bootstrap**; bring up the **Remotion** renderer for lower-thirds, captions, animated titles, and the **L2 Ken-Burns** still-fill (per the §6.3 fallback chain); QSV encode; Intel GPU exporter. *This is a **quality** enabler for M3 (proper long-scene fill + captions), and it does **not** hard-depend on M2's CUDA heartbeat — so it can be pulled forward.*
-- *Exit:* draft + final are composited on node-06; captions/lower-thirds render via Remotion; long scenes use Ken-Burns stills (L2) rather than stretched clips.
+- **P0.1 — broker visibility timeout.** `broker_visibility_timeout = 3600` sits below `time_limit = 3900` on `talking_head_task` and `video_generation_task`. With `acks_late`, Redis redelivers while the original still runs — and `gpu_video` is consumed by node-02 **and** node-03, so the duplicate can execute **concurrently on the other node**. Raise above the longest hard limit with margin; add a config-time assert. **One config line — not a broker swap** (M3 removes the mechanism entirely).
+- **P1.1 — media join.** `_decrement_media_task_count` returns `0` on Redis error and the caller reads `remaining <= 0` as "all done." Distinguish unknown from zero; add a per-`(job_id, scene_id)` SETNX idempotency guard.
+- **P1.2 — checkpoints.** No `POST /jobs/{id}/checkpoints` route exists; `save_checkpoint` returns `False` and no call site checks it. Add the route (~40 lines) and assert on the return. **Highest-leverage item in this milestone** — resume-from-failure collapses the M5 iteration loop for *every* bug class, not just orchestration ones.
+- **P1.3 — GPU reservations.** Fix the `release_gpu_reservation` signature at 3 sites; add `finally` releases at the other 5; decide whether reservation failure is fatal.
+- **Exit:** no duplicate execution possible at current durations; the join cannot advance on incomplete media; checkpoints persist and `resume` works; reservations release cleanly.
 
-**M4b — node-05 (fallbacks + overflow).** Stand up node-05 (NVIDIA RTX 5080): ComfyUI **SDXL/SD3.5 image fallback** behind node-04 FLUX; **Ollama** small-model **LLM fallback** behind node-02 vLLM (wired through the `OllamaProvider`, folds into AD-01/M5); FFmpeg composition **overflow** (NVENC). *This is **resilience**, less urgent than M4a.*
-- *Exit:* image and LLM fallbacks engage on primary-node failure; composition overflows to node-05 under load.
+### M3 — Orchestration migration (Temporal) *(new in v0.4)*
 
-**Standing both up** (de-conflict identity per the node-03 clone playbook; register workers) completes the full 6-node fleet — the prerequisite for DR in M7.
+**Why now, and why not later.** Three limits cannot be fixed in place: Redis-as-broker has no liveness signal, only a guessed timeout; at-least-once delivery requires a hand-written idempotency guard at every fan-out, forever; and crash recovery must be designed per-stage, eight separate times. Every remaining milestone pushes on exactly these — M4 adds five nodes, M5 multiplies runtimes tenfold and adds two new fan-outs.
 
-### M5 — Model management (AD-01)
-- Implement the AD-01 model-management design (lifecycle, versioning, mounted-weights convention, served-alias resolution, controlled swaps). Folds in the A2 config-naming source-of-truth cleanup.
-- **Exit:** models are managed per AD-01; no per-node hand-edited model names.
+**The cost comparison is not "migrate vs. do nothing."** It is migrate (~8–14 sessions) vs. finish the bespoke layer (~9–13 sessions: wire P2.1's three orphaned services into eight stage tasks, build checkpoint write + resume semantics, join idempotency, orchestrator tests, plus the still-unwritten `render_segments` resume and parallel talking-head fan-out). The midpoints are close; the **risk shapes differ**. The bespoke path's uncertainty sits at the end and is unbounded discovery work; the migration's sits at the front and is bounded, estimable work.
 
-### M6 — UI functional *(can begin in parallel after M2 stabilizes contracts)*
-- Repair the user-facing flow end-to-end: project create → live stage progress → the review gates (`storyboard_review`, `user_review`) → asset/draft preview → approve/reject/regenerate → final download.
-- **Depends on M2** for truthful state (ORCH-5) and stable API contracts.
-- **Exit:** a non-technical operator drives a project from transcript to final entirely in the UI.
+**Before the fleet, before long videos.** Building nodes 02/03/05/06 as Celery workers means configuring them twice. Long-video testing without execution history or resume means paying a full multi-hour render per bug observation *and* per fix verification.
+
+| Step | Item |
+|---|---|
+| **M3.1** | Author **AD-05 — Orchestration Migration**: workflow shape per stage, activity boundaries, the two human gates as signals, cutover + rollback, in-flight job handling. **§18 amendment — review-board approval before any code.** |
+| **M3.2** | Provision a dedicated Temporal node *(operator; **not** node-01)* |
+| **M3.3** | Migrate the coordinator across all 8 stages **in one arc** |
+| **M3.4** | Verify against M1's reference output; Celery path stays flag-gated until verified |
+| **M3.5** | Amend functional spec §2.1 / §6.2 / §6.4; retire ledger P0.1, P1.1–P1.2, P2.1–P2.3 together |
+
+- **Exit:** the pipeline runs on durable execution; a verified reference-output diff; ~5,200 lines net deleted; the Celery coordinator removed, not coexisting.
+
+### M4 — Full 6-node fleet on the new architecture
+
+Each node configured **once**, on the post-migration architecture.
+
+- **Compose deltas authored first** (AD-02 Draft 3): node-02 strip video; node-03 strip vLLM; **node-06 Intel→CUDA rewrite (mandatory — card swapped to RTX 6000 96 GB)** + `gpu_video` + composition + profile-gated stopped fp8-70B failover worker; node-05 SDXL image + Ollama LLM fallbacks + composition overflow.
+- **node-06 as primary compositor + Remotion** (captions, lower-thirds, animated titles, L2 Ken-Burns fill); migrate composition off the node-01 bootstrap.
+- **Trustworthy GPU telemetry** *(ledger P2.6)*: fix the Blackwell exporter CrashLoop; wire heartbeat registration so `total_nodes > 0` and reservations actually reserve. Pairs with M2's P1.3.
+- **Weight-fetch live pass** *(ledger P2.10)*: IVGS **pulls** weights from MBCP via `ivgs-models/mbcp_fetch.py`. Needs the serving token + signing key handoff. *(Direction is pull, not push.)*
+- **Exit:** all six nodes online and specialized; composition off node-01; telemetry trustworthy; weight-fetch exercised.
+
+### M5 — Long videos + talking-head scale
+
+- **30-minute videos**, parallel and **resumable** — as child workflows rather than new tables and watchdogs.
+- **SadTalker fallback** built (currently a stub, alignment-gated).
+- **Segment-rendering quality:** pause-aligned seams; tune `MAX_SEGMENT_SECONDS` upward once RAM headroom is confirmed.
+- **Two-tier head render:** fast LatentSync draft, certified model for production (enabled by M1's ORCH-6).
+- **Exit:** a 30-minute video renders reliably, resumes from mid-run failure, and the fallback is exercised.
+
+### M6 — UI functional *(+ AD-01 remainder)*
+
+- Operator flow end-to-end: create → live stage progress → review gates → asset/draft preview → approve/reject/regenerate → download.
+- **Per-project model-selection GUI** and auto-weight-fetch-on-approve (the remaining AD-01 slivers; API exists, GUI does not).
+- **Exit:** a non-technical operator drives a project transcript-to-final entirely in the UI.
 
 ### M7 — Production hardening
-- **Security:** secrets out of git (`.env.node0x` tracked — P1.7), real `IVGS_SERVICE_TOKEN` (drop the `dev-service-token` default), permission/role review.
-- **Disaster recovery:** the comprehensive DR design (git + `/mnt/models` weights + Postgres + SeaweedFS/Redis + per-node compose/.env to NAS + offsite). **Prereq per the ledger: full fleet (M4) + AD-01 (M5).**
-- **Observability:** trustworthy GPU telemetry (depends on the M2 exporter fix), alerting, dashboards.
-- **Operability:** `RUNBOOK.md`, the image-artifact recovery convention, hygiene bundle (A7: `.bak` cruft, stale `.env.node01`, dirty `checksums.sha256`, GPU source-tree drift).
-- **Validation:** load/soak testing; the deferred GPU-fleet acceptance bullets (P1.3); test-suite coverage.
+
+- **Security:** `.env.node01` gitignored *(the MBCP token has never been committed — prospective risk only)*; credential rotation; drop the `dev-service-token` default.
+- **DR:** the comprehensive design (git + weights + Postgres + SeaweedFS/Redis + per-node compose/`.env`, NAS + offsite). **Prereq: full fleet (M4).**
+- **Operability:** `RUNBOOK.md` *(also a prerequisite for delegating work to agents)*; image-artifact recovery convention; hygiene bundle.
+- **Validation:** load/soak testing; deferred GPU-fleet acceptance bullets; test-suite coverage.
 - **Exit:** production-readiness checklist green.
 
 ### M8 — Production launch
-- Final acceptance run, operator sign-off, cutover, go-live.
+
+Final acceptance run, operator sign-off, cutover, go-live.
 
 ---
 
-## 6. Critical path & parallelism
+## 6. WS-T scope boundary *(binding)*
+
+**Replace** — the coordination layer only: stage-transition maps, completion callbacks, join counters, the media-join watchdog, checkpointing, retry and dead-letter plumbing. ~6,283 lines, of which ~1,957 is orphaned and simply deleted.
+
+**Preserve, effectively untouched** — the eight stage bodies (~25,000 lines): the Jinja template fixes, extensible-WAV handling, scene linkage, AD-03 duration anchoring, ffmpeg logic, the clients, `quality_validator`. Each gets a thin activity wrapper and is otherwise left alone.
+
+**Keep entirely** — `ivgs-scheduler` (VRAM-aware bin packing across heterogeneous cards is domain logic), the API, the frontend, the DB schema, the MBCP seam, the Model Store.
+
+**Risks to manage.** *Half-migration* — mitigated by principle #7 and the flag-gate in M3.4. *node-01 capacity* — 8 vCPU / 16 GB already runs ~13 services; a dedicated node is provisioned in M3.2. If that changes, DBOS Transact (library-only, no new server, existing Postgres) is the resource-respecting alternative. *New failure modes* — determinism constraints, replay-only bugs, and versioning discipline for in-flight workflows during deploys, which multi-hour renders and multi-day gates make constant. *Not a quality fix* — WS-T addresses none of M1; it must not displace ORCH-6 or Stage-8 validation.
+
+---
+
+## 7. Critical path
 
 ```
-M1 ─> M2 ─┬─> M4a (node-06: FFmpeg compositor + Remotion) ─> M3 (TH complete + long video) ─┐
-          ├─> M4b (node-05: image/LLM fallback + compose overflow) ──────────────────────────┤
-          ├─> M5 (AD-01 model mgmt; absorbs Ollama provider) ───────────────────────────────┼─> M7 (harden + DR) ─> M8
-          └─> M6 (UI functional) ──────────────────────────────────────────────────────────┘
+M1 (ORCH-6 + Stage-8 validation + reference output)
+ └─> M2 (D1–D4 correctness)
+      └─> M3 (Temporal migration, one arc, verified vs reference)
+           ├─> M4 (fleet 02/03/05/06 + telemetry + weight-fetch) ─┐
+           │        └─> M5 (long videos, resumable) ──────────────┤
+           └─> M6 (UI + AD-01 remainder) ────────────────────────┴─> M7 (harden + DR) ─> M8
 ```
 
-- **Hard dependencies:** M2's GPU heartbeat/scheduler gates **CUDA parallel rendering** (M3 segment parallelism) — **not** M4 (the 06/05 composition/fallback tier doesn't need it); the **full fleet** (M4a + M4b) + M5 gate DR in M7; M2's state-truthfulness (ORCH-5) gates an honest UI in M6.
-- **Parallelizable once M2 lands:** M4a, M4b, M5, and M6 are largely independent of one another; M4a feeds M3's quality.
-- **Sequencing rationale:** correctness (M1) before optimization; a robust single-job path (M2) before fanning out. **M4a (node-06) is pulled forward toward M3** — the spec makes Ken-Burns stills the Phase-1 primary visual and puts captions/lower-thirds in Remotion, so M3's long-video *quality* leans on node-06. M4b (fallbacks) stays later as resilience.
+**Hard dependencies.** M1's reference output gates M3's verification. M3 precedes M4 so each node is configured once. M3 precedes M5 so long-video testing has execution history and resume. M4's full fleet gates DR in M7. M6 depends on M3 for truthful state (ORCH-5 becomes a workflow query).
 
-### Sequencing impact of the functional-spec reconciliation (2026-06-07)
-The spec review (05/06 roles, Remotion compositor, §6.3 fallback chain) shifts the plan in three concrete ways — recorded here, not silently:
-1. **M4 splits; node-06 pulls forward.** node-06 (canonical compositor + Remotion: captions, lower-thirds, **L2 Ken-Burns**) is a composition/quality tier, not scale-out, and is **not** gated by M2's CUDA heartbeat — so it moves up next to M3 (**M4a**). node-05 (image/LLM fallback + overflow) stays a later resilience milestone (**M4b**). The old "≥4 GPU render nodes" exit is dropped.
-2. **Visual-fill strategy reorders, and part ships now.** Per Table 6-6, AI-video (L1) is **Phase-2+** and the **Ken-Burns still (L2) is the Phase-1 default primary** — so today's "generate a 6s clip and stretch it" is off-plan. Near-term: ship an **ffmpeg `zoompan` (L3) on the node-01 bootstrap** to replace the frozen-frame fill (no node-06 needed); the richer **L2 Remotion Ken-Burns lands with M4a**. This retracts AD-03's "Pillar 3 = last/cosmetic." *(Operator call: how heavily to lean on the CogVideoX clip path before Phase 2 vs. leading with stills.)*
-3. **Composition migrates off node-01** (bootstrap → node-06 primary / node-05 overflow) — folded into M4a; the audio-anchored caption clock moves to Remotion there.
-
-**Unchanged:** M1 correctness (the node-01 bootstrap delivered a clean happy path); M2 (heartbeat / ORCH-5 / fleet-consistency still next, still gates CUDA parallelism + an honest UI); M5–M8 (M5/AD-01 now explicitly absorbs the Ollama fallback provider).
-
-### Sequencing impact of the head-model decision (2026-06-08)
-The LatentSync head's articulation is not production-viable, so a certified replacement is now on M1's *quality* critical path. This adds **WS-H** (the MBCP / AD-04): its **Phase 1** — the talking-head bake-off (LatentSync vs Wan2.2-S2V vs MagiHuman) — is pulled forward to settle the production head, and the **full platform** is the external acceptance process AD-01 (M5) needs to function at all. Mechanical M1 (Stage-8 plumbing, frame-align drift) stays model-agnostic and proceeds in parallel; **Stage 8 binds its head model through the provider factory** so the certified model is a selection change, not a rebuild.
+**Parallelizable.** M6 can begin alongside M4/M5 once M3's contracts stabilize. MBCP platform work (WS-H: RuntimeClass refactor, CogVideoX adapter) runs independently throughout.
 
 ---
 
-## 7. This session's items to fold into `OUTSTANDING_WORK.md`
+## 8. What changed from v0.3, and why
 
-**Closed this session (Stage-6B talking-head — evidence: commits/tags below):**
-1. Segment-based talking-head render, one segment per scene — fixes full-narration OOM. *(`29f854a` / v5.4.15)*
-2. Over-length scenes split into ≤30s sub-renders — fixes single-scene OOM; proven bounded (~15 GB peak/piece). *(`6a1324a` / v5.4.16)*
-3. Talking-head upload to the real endpoint `POST /projects/{id}/assets/upload`; read `seaweedfs_path`. *(`54d3281` / v5.4.17)*
-4. `save_checkpoint` call corrected to `stage_name`/`stage_index`/`status`. *(`0ca2e78`)*
-5. Orchestrator wiring: `prototype_draft` + `final_render` dispatch now resolve `talking_head_asset_id` via `_fetch_talking_head_asset` (was hardcoded `None`); `enable_talking_head` added to final_render. *(`8b07c88` / v5.4.18)*
-6. LatentSync engine built + proven on node-04. *(`latentsync-v5.2.7-h0`)*
-
-**New items to ADD (proposed priorities):**
-- **[P2 / quality]** Talking-head A/V drift ~0.62s — frame-aligned segment splitting *(M1)*.
-- **[P2 / quality]** Head temporal alignment vs timeline (215.5s head vs 227.26s timeline) — verify/fix *(M1)*.
-- **[P3 / quality]** Draft corruption check 5/6 — identify the failing check; decide gating *(M1)*.
-- **[P3]** Talking-head asset upload drops metadata (route has no metadata field) — add a field or accept the loss (model/alignment/dims still in logs + Stage6Output).
-- **[P3 / hygiene]** `_upload_asset` unused params (`sha256_hash`, `metadata`) — trim signature + call site.
-- **[P3 / hygiene]** 38 GB cgroup mem-cap on `ivgs-latentsync` → convert to a persistent `node04.yml` `mem_limit`.
-- **[P2 / consistency]** Fleet worker-tag drift: node-02/03 on `v5.4.0-h0`, node-01/04 on `v5.4.18-h0` — align.
-- **[P3 / hygiene]** Duplicate draft assets from re-fires (`0a83f6f2` superseded by `8e0c8531`); single talking-head (`b45b19ce`) — dedup/cleanup policy.
-- **[P2 / scaling]** Phase 2 (RAM-autosensed parallel pieces) + Phase 3 (per-piece sub-tasks + `render_segments` resume + `/jobs/{id}/segments` API) — for 30-min videos *(M3)*.
-- **[P3 / latent]** `acquire_gpu_reservation` extra-kwarg debt across other tasks — audit (the same class as the `save_checkpoint` bug just fixed).
-
-**Confirmed still open (observed this session):** GPU heartbeat registry empty / `total_nodes:0` → reservations skipped *(M2)*; checkpoint `POST 405` (A6) — now a non-fatal warning in talking-head too *(M2)*; ORCH-5 `projects.state` stale *(M2)*.
+1. **Stage status corrected.** v0.3 showed Stage 8 unvalidated and the ledger showed Stage 6 as BUILD REQUIRED. Both stages execute; evidence is on node-01. M1 is far closer to closing than v0.3 implies.
+2. **WS-H Phase-1 closed.** The bake-off is settled and MBCP serves certified models to IVGS. v0.3's M1 quality gate ("depends on a certified replacement head") is satisfied.
+3. **ORCH-6 discovered and promoted to the top of the critical path.** The AD-01 provider binding landed on the dead duplicate, so certified models cannot reach production. v0.3's B5 framing (bind at Stage 8) is superseded — the binding belongs at Stage 6.
+4. **WS-T added; M3 inserted.** A code audit found four correctness defects and ~1,957 orphaned lines against an untested 1,397-line orchestrator. The migration is sequenced **before** the fleet and **before** long-video testing, for the reasons in §5/M3.
+5. **Old M2 split.** Its correctness half becomes M2 (~1 session); ORCH-5 state-truthfulness is absorbed by M3 (a workflow query, so it is not fixed twice); GPU telemetry moves to M4, where it actually matters.
+6. **M4a/M4b merged into M4.** Both node bring-ups now happen post-migration on the new architecture. **node-06 is CUDA, not Intel** — the card was swapped to an RTX 6000 96 GB, making the AD-02 Draft-3 compose rewrite mandatory and redesignating node-06 as a second CUDA video node, primary compositor, and on-demand LLM failover.
+7. **Old M5 (AD-01) retired as a milestone.** Substantially delivered; the remaining slivers fold into M6.
+8. **RabbitMQ broker swap withdrawn.** Recommended earlier as a cheap fix for the visibility-timeout class — now throwaway work, since M3 removes the mechanism and M2's pre-migration testing stays short. P0.1 is closed with a config line.
+9. **Principles 6 and 7 added** — scope discipline and no-half-migrations, both drawn from the P2.3 precedent.
 
 ---
 
-*End of Master Sequence Plan v0.1. Next action: execute M1 (head-placement QA → A/V sync fix → corruption triage → Stage 8 final render with head).*
+## 9. Milestone renumbering map (v0.3 → v0.4)
+
+| v0.3 | v0.4 | Note |
+|---|---|---|
+| M0 | M0 | Expanded — now covers Stages 1→**8** |
+| M1 | M1 | Quality gate satisfied by WS-H; ORCH-6 added |
+| M2 | **M2** (correctness half) + **M3** (ORCH-5 absorbed) + **M4** (telemetry) | Split |
+| M3 (talking-head + long video) | **M5** | Displaced by the migration |
+| M4a + M4b | **M4** | Merged; post-migration; node-06 now CUDA |
+| M5 (AD-01) | — | Substantially closed; remainder → M6 |
+| M6 (UI) | **M6** | + AD-01 remainder |
+| M7 (hardening) | **M7** | Secret severity corrected |
+| M8 (launch) | **M8** | Unchanged |
+| — | **M3** | **New** — orchestration migration |
+
+---
+
+*End of Master Sequence Plan v0.4. Next action: M1 — ORCH-6 (promote the provider binding into the live Stage-6 task), then operator visual QA of the 1080p final. Next document: `IVGS_v5_Addendum_AD-05_Orchestration_Migration.md`.*

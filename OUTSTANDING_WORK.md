@@ -2,253 +2,337 @@
 
 | | |
 |---|---|
-| **Document version** | v3.1 — 2026-06-06 (post node-03↔04 GPU swap: Stages 1–5 re-validated e2e; merged to `main`) |
-| **Authoritative as of** | `main` @ `5657f95` (tag `stages-1-5-green-2026-06-06`; Stages 1–5 green end-to-end on the post-swap fleet; Stage 6 = build-required) |
-| **Repository / branch** | `brucecostello2/elearning_v5` on **`main`** (trunk as of 2026-06-06; `feat/phase-h0-make-main-honest` was merged `--ff-only` and is now redundant) |
-| **Supersedes / merges** | v2.1 (2026-05-30, `main` @ `31f61e8`, with appendix updates through 2026-06-03) **and** `OUTSTANDING_WORK_Addendum_A_2026-06-05.md` (the 06-04/05 arc). Both are folded in here; Addendum A's `A#` items are assigned final `P#` numbers (A1/A2/A4 closed by later work; A3→P1.6, A5→P2.26, A6→P2.27, A7→P3.7). |
-| **Live stack (deployed)** | API **`ivgs-api:v5.2.3-h0`** (node-01); workers **`ivgs-workers:v5.4.7-h0`** (node-01 + node-04 confirmed; node-02/03 may trail at `v5.4.4-h0` — no functional impact, they run no TTS). Engines on node-04: `comfyui-v5.2.7-h0` (FLUX), vLLM `mistral-24b`, `coqui`/`kokoro`/`whisperx` `*-v5.2.7-h0`. node-02 vLLM `llama-3.3-70b` (FP8). node-03 CogVideoX (`cogvideox-pilot-1`). **GPU swap (2026-06-06): node-04 now holds the 96 GB RTX PRO 6000 and node-03 the 48 GB RTX PRO 5000** (previously reversed) — aligns the image+TTS+talking-head host (node-04) with the larger card per AD-02 stacking; verified e2e (CogVideoX video peaked ~26 GB on the 48 GB card). |
-| **Purpose** | Single ledger of every known outstanding item. Each session updates this file before close. Items carry priority, source, scope, and a concrete carry-forward action. |
+| **Version** | **v4.1 — 2026-08-14 (evening).** Updates v4.0 with the storage migration, the backup remediation, and the Step-10 cross-system register. v4.0 superseded v3.1 + Addenda A/B, all folded in. |
+| **Repo state** | `brucecostello2/elearning_v5` @ `main` = **`e1f4c58`**. node-01 and `origin/main` in exact sync. `.env.node01` now untracked and gitignored (P1.5 CLOSED). |
+| **Live stack** | ivgs-api `v5.5.3-arch1`, ivgs-workers `v5.5.1-arch1`, ivgs-frontend `v5.4.2-themes`, ivgs-scheduler `latest` (unpinned — P2.11), ivgs-backup-worker `v5.1.0-stream-b`. Alembic head **0027**. |
+| **Code currency** | The tree at `e613e844` was byte-identical to the 2026-07-10 capture — no code had been committed for five weeks. Two commits landed 2026-08-14: `1f0fd31` (backup rsync/NFS) and `e1f4c58` (untrack `.env.node01`, record host config). |
+| **Infrastructure** | node-01 memory is **31 GB reduced to 16 GB** — every prior document said 16 GB and was wrong; the VM was over-provisioned. Proxmox host `n5Pro` was **OOM-killing VMs**; 32 GB swap added. Backup NAS migrated `.9` CIFS (100% full) → **`.7` NFS4.2** (22 TB). |
+| **Sources merged** | v3.1 ledger; Addendum A; Addendum B; `SESSION_HANDOFF_2026-07-09.md` register; `AD-04-v3` + its Phase-0 analysis; Master Plan v0.3; AD-01/02/03; direct code audit of `e613e844` (2026-08-14). |
+| **Operating principle** | *"Fix, don't park — clean as we go."* Nothing is deferred without an entry. Closures require evidence (commit SHA, image tag, file:line, or transcript pointer). |
+| **Companion docs** | `OUTSTANDING_WORK_archive_v3.1.md` (full historical closure detail — nothing lost); `IVGS_v5_Master_Sequence_Plan_to_Production.md` (milestone map); `IVGS_v5_Addendum_AD-05_Orchestration_Migration.md` (to be authored — WS-T). |
 
-## Operator policy on tech debt
-
-> "our general MO should be that when there is a bug we should fix, not park for some point in the future, we need to be clean as we go." (Phase 14 Stream B, 2026-05-29)
-
-Nothing is "deferred" without being recorded here. New deferrals require an entry. Closures require evidence (commit SHA, image tag, or transcript pointer).
+---
 
 ## Priority definitions
 
 - **P0 — Blocking.** System broken or unsafe; address before any other work.
-- **P1 — High.** Blocks dev velocity, hides regressions, or required for the next feature increment.
+- **P1 — High.** Blocks the critical path, hides regressions, or required for the next increment.
 - **P2 — Medium.** Real defect or hygiene work; will compound if deferred.
 - **P3 — Low.** Cosmetic, documentation, or strategic multi-session work.
+- **DEFERRED.** Consciously not-now, with a stated reason and a re-open trigger.
 
 ## Snapshot
 
-| Priority | Count | Headline items |
+| Priority | Count | Headline |
 |---|---|---|
-| **P0** | 0 | — (the A1 image-gen regression is **closed**; see Items-closed) |
-| **P1** | 5 | Defect #4 prompt ENUM (P1.1); prompt-mgmt browser smoke (P1.2); GPU acceptance bullets (P1.3); AD-02 governance/SPOF recording (P1.6); pre-prod secret-leak + credential rotation (P1.7) |
-| **P2** | ~32 | test-dir unification; `[object Object]` banner; `/nodes` status stub; CI scaffolding; RUNBOOK.md; v1→v2 orchestrator cleanup (P2.26); 4xx cluster (P2.27); ORCH-5 `projects.state` mapping (P2.28); Blackwell GPU monitoring + heartbeat (P2.29); manifest regenerate/reset (P2.30); animation asset-type (P2.31); audio duration not persisted (P2.32); non-unique audio path (P2.33); Stage-6 upload-URL pre-check (P2.34); rollback snapshot/restore unwired (P2.35); voiceover scene-audio 401 dead-PATCH (P2.36); `reference_clip` lookup 500 — Stage-6 pre-check (P2.37); + carried hygiene |
-| **P3** | ~13 | UPPERCASE dead code; empty seaweedfs volumes; **Phase H** multi-node (nodes 02/03/04 up; 05/06 + GPU-service validation remain); endpoint test coverage; manifest_version NULL; render_jobs `updated_at`; in-code Coqui default; audio-validator GUID; extensible-WAV readers; 06-04/05 hygiene (P3.7); comprehensive DR (strategic) |
+| **P0** | 1 | D1 broker visibility timeout → duplicate GPU execution *(P0.2 backup gap CLOSED 2026-08-14)* |
+| **P1** | 9 | ORCH-6 head-model binding on the dead file; D2 join; D3 checkpoints; D4 GPU reservations; backup reporting; prompt ENUM; smoke; GPU acceptance; AD-02 governance |
+| **P2** | 31 | orphaned operational layer (F1); zero orchestrator tests (F2); orchestrator cleanup (F3); 4xx cluster; ORCH-5 state; GPU telemetry; + carried hygiene |
+| **P3** | 17 | dead code; test coverage; UI polish; schema parity; observability |
+| **DEFERRED** | 2 | comprehensive DR; localisation |
+| **WS-T** | 7 | Temporal orchestration migration (new workstream) |
+| **§S** | 10 | Cross-system seam items (new — belong to neither register) |
 
-## Pipeline status (2026-06-06)
+## Pipeline status (2026-08-14)
 
 | Stage | State |
 |---|---|
-| 1 transcript_refinement | ✅ proven (Stage 2/2B, API-triggered, cross-node) |
-| 2 storyboard_generation | ✅ proven; scenes persisted; user-gate working |
-| 3 media (image/video/animation) | ✅ proven e2e; scene-linked; regression closed |
+| 1 transcript_refinement | ✅ proven e2e |
+| 2 storyboard_generation | ✅ proven e2e; user gate working |
+| 3 media (image/video/animation) | ✅ proven e2e; scene-linked |
 | 4 composition_manifest | ✅ proven e2e; server-side build, locked manifest |
-| 5 tts_audio (voiceover) | ✅ proven e2e; 6 scene-linked 48 kHz/24-bit assets |
-| 6 talking_head_render | ⛔ **BUILD REQUIRED** — LatentSync/SadTalker engine images do not exist (see Stage-6 section) |
-| 7 prototype_draft | ⏳ unbuilt/untested |
-| 8 final_render | ⏳ unbuilt/untested |
+| 5 tts_audio | ✅ proven e2e; 48 kHz/24-bit, scene-linked |
+| 6 talking_head_render | ✅ **runs** (LatentSync, node-04) — ⚠️ engine **hardcoded**, not AD-01-selectable (ORCH-6) |
+| 7 prototype_draft | ✅ proven — draft `f78eb063`, 214.94s, 1280×720, corruption 6/6 |
+| 8 final_render | ✅ **runs** — final `9007b2cf`, **215.07s, 1920×1080, 30fps, AAC 48k stereo**; used as evidence in the AD-04 head-model judgment. ⚠️ never formally validated; visual QA outstanding (M1-QA) |
 
-The orchestrator auto-advances correctly and currently parks at `talking_head_render` (correct terminus — the engines aren't deployed).
+> **Correction to all prior documents.** v3.1 and Addendum B show Stage 6 as *BUILD REQUIRED* and Stages 7/8 as *unbuilt/untested*. That is two months stale. **All eight stages execute end-to-end.** The remaining M1 work is validation and model-binding, not construction.
+
+## Critical path (in order)
+
+1. **ORCH-6** — make the head model selectable, else the entire MBCP certification chain is unconsumable.
+2. **M1-QA** — visual acceptance of `final_1080p_9007b2cf.mp4`; formal Stage-8 validation.
+3. **D1–D4** — the four orchestration correctness defects.
+4. **WS-T** — orchestration migration, before fleet rollout and before long-video testing.
 
 ---
 
 # P0 — Blocking
 
-*None.* (The 06-04/05 image-generation regression, formerly A1 [P0], is closed — see Items-closed.)
+## P0.1 — `broker_visibility_timeout` below two tasks' hard time limits → duplicate execution *(new, code audit 2026-08-14; was "D1")*
+**Status:** OPEN — live latent defect, verified at `e613e844`.
+`config.py:214-215` sets `broker_visibility_timeout = 3600`. `talking_head_task.py:284` and `video_generation_task.py:445` both declare `time_limit=3900`. With the Redis broker and `task_acks_late = True` (`celery_app.py:293`), a message unacked past the visibility timeout is **redelivered while the original still runs**.
+- `gpu_video` is consumed by node-02 **and** node-03 → the duplicate can execute **concurrently on the other node**, two CogVideoX jobs on the same scene contending for VRAM.
+- `gpu_talking_head` is node-04 only → duplicate runs sequentially, wasting a full render.
+- Either way the duplicate reaches the task tail and fires `handle_stage_completion` again → **double join decrement** (P1.2).
+
+Latent today only because renders are short; near-certain at the M3 30-minute target.
+**Scope/action:** raise `IVGS_BROKER_VISIBILITY_TIMEOUT` above the longest hard `time_limit` with margin (7200); add a config-time assert that `visibility_timeout > max(task time_limit)`. One config line + one guard. **Do not** swap the broker for this — WS-T removes the mechanism entirely.
 
 ---
 
 # P1 — High Priority
 
-## P1.1 — Defect #4: `Prompt.prompt_type` ENUM-as-String
-**Status:** OPEN (latent — prompt library empty). Will 500 on first INSERT with `DatatypeMismatchError`; architecturally identical to the fixed Defect #3 (`User.role`). Blocks P1.2.
-**Scope/action:** `app/models/prompt.py:40–43` — swap `String(32)` for `PG_ENUM` mirroring migration 0001's 10 values; the `.cast(String)` workarounds in `prompt_service.py:61,77` become dead. Build, CLI-verify an INSERT. ~45–60 min.
+## P1.0 — ORCH-6: live Stage-6 task hardcodes LatentSync; ARCH-1 provider binding is on the *dead* duplicate *(new, code audit 2026-08-14)*
+**Status:** OPEN — **top of the critical path.** Supersedes and reframes B5.
+`STAGE_TASK_MAP` dispatches `tasks.talking_head_task.render_talking_head`. That live file imports `LatentSyncClient` directly (`talking_head_task.py:42-47`) — the engine is hardcoded. The AD-01/ARCH-1 provider-factory implementation ("render via the AD-01-selected provider (ARCH-1: no engine here)") lives in `stage6_talking_head.py:43-48,297,338` — **the dead duplicate that nothing dispatches**.
 
-## P1.2 — Phase D.11: Prompt-management 9-step browser smoke
-**Status:** OPEN; code deployed in v5.1.8, never functionally smoke-tested. **Hard-blocked by P1.1.**
-**Scope/action:** seed 10 system-tier prompts → list → filter → detail → project-tier override → effective resolution → edit → delete → fallback. Run only after Defect #4 deploys clean. ~30–45 min once unblocked.
+**Consequence:** the completed MBCP bake-off cannot reach production. Certified models flow MBCP → IVGS Model Store → approved → and stop. Swapping the head model is a **code change**, exactly what AD-01 exists to prevent.
 
-## P1.3 — Spec v1.1 §9: GPU Fleet acceptance bullets (~18 of 24 deferred)
-**Status:** PARTIAL — ~6/24 walked via browser smoke (Session 9); ~18 edge cases unverified (range validation, 30-day bound, MAX_HISTORY_POINTS=5000 → 413, multi-node JOIN, sort stability, auth gate 403-vs-401, `power_tdp_w`, chart/legend variants, focus re-fetch, 4xx-no-retry, empty-vs-undefined). No longer hard-blocked (test infra restored via PR #48).
+**Scope/action:** promote the provider-factory implementation into the live path — port `stage6_talking_head.py`'s provider binding into `talking_head_task.py` (preferred: preserves the live task's proven segment/OOM strategy, AD-03 Pillar-2 overlay, and correct upload URL), then delete the duplicate. Verify against `shared/providers/factory.py` + `app/services/model_selection.py`. **Reframes P2.26(c): the duplicate is the *more correct* implementation — promote, don't just delete.**
+*(Note: Stage 8 consumes a pre-rendered head asset by `asset_id` and overlays it — it does not render the head. B5's "Stage 8 must bind via the factory" was misframed; the binding belongs at Stage 6. Recorded here so B5 is not lost.)*
+
+## P1.1 — Media join advances prematurely on Redis error; not idempotent *(new, code audit; was "D2")*
+**Status:** OPEN — correctness defect.
+`pipeline_orchestrator_v2.py:869-880` — `_decrement_media_task_count` returns **`0`** on any exception. The caller at `:672` treats `remaining <= 0` as *"all media reported, dispatch Stage 4."* A single transient Redis error during any one scene's callback **advances the pipeline with incomplete footage**. Same class: `_store_media_task_count` (`:856-866`) swallows its failure — if the counter was never written, `decr` on a missing key returns `-1`, `max(0,-1) == 0`, and the join collapses on the *first* scene to report.
+No idempotency: every media task fires the callback at the end of its body then returns (`stage3_images.py:736-741`, `video_generation_task.py:574-580`); with `acks_late` + `task_reject_on_worker_lost`, a worker death in that window requeues and re-decrements.
+**Scope/action:** distinguish "unknown" from "zero" (return `None` / raise and let the task retry); per-`(job_id, scene_id)` SETNX guard on the decrement.
+
+## P1.2 — Checkpoint subsystem is a silent no-op; `resume` has nothing to resume from *(new, code audit; was "D3"; supersedes the P2.27 405 line item)*
+**Status:** OPEN — **upgraded from P2.** Prior framing ("non-blocking 405 noise") understated it.
+`utils/error_handler.py:409` POSTs to `/jobs/{job_id}/checkpoints`. `ivgs-api/app/api/v1/checkpoints.py` declares only `GET /checkpoints` (`:79`), `GET /checkpoints/{stage}` (`:106`), `POST /resume` (`:137`), `DELETE /checkpoints` (`:175`). **There is no `POST /jobs/{id}/checkpoints`** — hence the 405. `save_checkpoint` logs a warning and returns `False` (`:435-441`); **no call site checks the return value**. Every stage calls it; nothing is ever written. `POST /jobs/{id}/resume` therefore resumes from an empty table.
+The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated mechanism for not re-running a 30-minute render after a transient failure — i.e. the single biggest lever on long-video test-cycle cost.
+**Scope/action:** add the POST route (~40 lines) + assert on the return value at call sites. Worth doing now regardless of WS-T, because it collapses the M3 iteration loop for *every* bug class, not just orchestration ones.
+
+## P1.3 — GPU reservations: 8 acquires, 3 releases, and those 3 raise `TypeError` *(new, code audit; was "D4"; absorbs old P3 "extra-kwarg debt")*
+**Status:** OPEN.
+`utils/gpu_utils.py:211` — `def release_gpu_reservation(reservation_id: str) -> bool:` takes **one** parameter. All three call sites pass two: `talking_head_task.py:543,699`, `video_generation_task.py:540` — `release_gpu_reservation(reservation, config)`. Every one raises `TypeError`. There are **8** `acquire_gpu_reservation(` call sites against 3 release attempts; stages 1/2/3/5/6 never release, relying on the 5-minute TTL. Every acquire is wrapped in `except Exception: log.warning("gpu_reservation_skipped")` (e.g. `stage1_transcript.py:526-530`) — the subsystem fails open and silently, which is why `total_nodes:0` (P2.29) has been invisible.
+**Scope/action:** fix the signature at 3 sites; add `finally`-block releases at the other 5; decide explicitly whether reservation failure should be fatal. Pairs with P2.29.
+
+## P1.4 — M1-QA: formal Stage-8 validation + visual acceptance *(new)*
+**Status:** OPEN — Stage 8 demonstrably runs but has never been formally validated.
+Evidence on node-01: `final_1080p_9007b2cf.mp4` — 215.07s, 1920×1080, 30fps, h264 High, AAC 48 kHz stereo; 0.13s from the draft's 214.94s. Segment planning, parallel render, concat, A/V alignment and head carry-through all work.
+**Open question — encoder:** measured video bitrate is 506 kb/s (draft 153 kb/s at 720p). The profile constants are **correct** per spec (`ffmpeg_client.py:144-148`: `crf=18, vbv_maxrate="8M", vbv_bufsize="16M"`, applied at `:560-567` and `:834-842`). CRF targets *quality*, not bitrate, and near-static content (stills + slow Ken Burns + 0.25-scale PiP head) legitimately encodes low. **This is not yet a defect — resolve by visual inspection, not by the number.** If full-screen playback is clean, close it; if soft, investigate whether `-crf` reaches the executed command.
+**Scope/action:** (a) operator visual QA at full screen; (b) 4K profile never exercised — run it; (c) add a corruption-check assertion on output bitrate/quality so this is measured, not eyeballed, next time; (d) record the run as the **known-good reference output** for WS-T verification.
+
+## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
+**Status:** OPEN — the reason a 75-day backup gap went undetected.
+Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.
+**Scope/action:** raise on non-zero return; `_update_record_failed` sets `completed_at` + `error_message` before raising; record coverage for all invocation paths; write `verified_at` not `completed_at`; frontend duration sanity clamp; real row counts or drop the check. Also investigate why the worker path takes 64 s for work the CLI does in under 1 s. **Agent plan WP-01.**
+
+## P1.5a — `verify_backup.sh` has never been able to pass *(new 2026-08-14)*
+**Status:** OPEN.
+It reads the **staging** directory (`/tmp/ivgs-backup/<date>`), not the NAS. Compounding this, `backup.sh` writes the checksum file with the staging path embedded, so `sha256sum -c` can never succeed from the NAS. It also spawns a sibling Postgres container with a 2 GB tmpfs via the mounted Docker socket — affordable on 31 GB, and it was never affordable when the box was thought to be 16 GB.
+**Scope/action:** point at the NAS directory; write checksums with bare filenames; use real row counts. **Do not run it until fixed.** Agent plan **WP-20**.
+
+## P1.5b — No alert on backup staleness *(new 2026-08-14)*
+**Status:** OPEN. `BackupFailed` fires on failure. Nothing fires when a backup simply does not happen — which is the actual failure mode, and was invisible for 75 days because of P1.5.
+**Scope/action:** alert on the age of the newest `full_database` record, beyond ~26 hours. Agent plan **WP-21**.
+
+## P1.6 — Defect #4: `Prompt.prompt_type` ENUM-as-String *(carried, v3.1 P1.1)*
+**Status:** OPEN (latent — prompt library empty). Will 500 on first INSERT with `DatatypeMismatchError`; architecturally identical to the fixed Defect #3 (`User.role`). **Blocks P1.7.**
+**Scope/action:** `app/models/prompt.py:40-43` — swap `String(32)` for `PG_ENUM` mirroring migration 0001's 10 values; the `.cast(String)` workarounds in `prompt_service.py:61,77` become dead. Build, CLI-verify an INSERT. ~45–60 min.
+
+## P1.7 — Prompt-management 9-step browser smoke *(carried, v3.1 P1.2)*
+**Status:** OPEN; code deployed in v5.1.8, never functionally smoke-tested. **Hard-blocked by P1.6.**
+**Scope/action:** seed 10 system-tier prompts → list → filter → detail → project-tier override → effective resolution → edit → delete → fallback. ~30–45 min once unblocked.
+
+## P1.8 — GPU Fleet acceptance bullets (~18 of 24 deferred) *(carried, v3.1 P1.3)*
+**Status:** PARTIAL — ~6/24 walked via browser smoke (Session 9); ~18 edge cases unverified (range validation, 30-day bound, `MAX_HISTORY_POINTS=5000` → 413, multi-node JOIN, sort stability, auth gate 403-vs-401, `power_tdp_w`, chart/legend variants, focus re-fetch, 4xx-no-retry, empty-vs-undefined). Unblocked (test infra restored via PR #48).
 **Scope/action:** write `TestGpuUtilizationHistory` covering the deferred bullets. 3–5 h.
 
-## P1.6 — Record AD-02 node-specialization deviation; document SPOF failover; long-context decision *(was Addendum A3)*
-**Status:** OPEN (governance/recording). AD-02 is **implemented + verified** (Items-closed), but the deviation and two decisions aren't captured.
-**Scope/action:** (a) mark **gap N23-4 (LLM-vs-video card contention) RESOLVED** by workload separation; (b) document per-stage manual-failover for the new SPOFs (node-02 = sole LLM, node-03 = sole video engine) per AD-02.11; (c) **open decision (AD-02.12 #1):** node-02 vLLM runs `--max-model-len 32768` (below the 128 K aspiration), no explicit `--kv-cache-dtype fp8` — interim pending KV-headroom validation; record + schedule. Source: `docs/IVGS_v5_Addendum_AD-02_Node_Specialization.md`.
+## P1.9 — AD-02 governance: record deviation, SPOF failover, long-context decision *(carried, v3.1 P1.6)*
+**Status:** OPEN (governance/recording). AD-02 is implemented + verified; the deviation and two decisions are not captured.
+**Scope/action:** (a) mark **gap N23-4** (LLM-vs-video card contention) RESOLVED by workload separation; (b) document per-stage manual failover for the new SPOFs (node-02 = sole LLM, node-03 = sole video engine) per AD-02.11; (c) **open decision (AD-02.12 #1):** node-02 vLLM runs `--max-model-len 32768` (below the 128 K aspiration), no explicit `--kv-cache-dtype fp8` — interim pending KV-headroom validation; record + schedule. **Update to AD-02 Draft 3** (node-06 Intel→CUDA, card swapped to RTX 6000 96GB).
 
-## P1.7 — Pre-production security: `.env.node01` secret leak + credential rotation
-**Status:** OPEN — recurring across appendices; genuinely high (security).
-**Scope/action:** `.env.node01` is **git-tracked** (secret leak) and carries a stale `IVGS_WORKERS_TAG` — `git rm --cached`, rotate, consider history purge. Rotate Postgres/Redis shared credentials (VLAN-reachable post-rebind; Redis has no auth). Operator-driven; security-sensitive.
+---
+
+# WS-T — Orchestration Migration (Temporal) *(new workstream)*
+
+**Rationale.** The orchestration layer is ~6,283 lines, of which ~1,957 is orphaned (P2.1) and the live 1,397-line orchestrator has zero test coverage (P2.2). Four correctness defects (P0.1, P1.1–P1.3) are instances of three structural limits that cannot be fixed in place: (a) Redis-as-broker has no liveness signal, only a guessed timeout; (b) at-least-once delivery requires a hand-written idempotency guard at every fan-out, forever; (c) crash recovery must be designed per-stage, eight times.
+
+**Decision context.** The alternative is not "do nothing" — it is finishing the bespoke layer: wiring P2.1's three services into eight stage tasks, building the checkpoint write path, join idempotency, orchestrator tests, plus the still-unwritten `render_segments` resume and parallel talking-head fan-out. That is ~9–13 sessions for a structurally weaker result maintained by one operator. Temporal is ~8–14 sessions, deletes ~5,200 lines net, and turns the last two items into child workflows.
+
+**Agreed sequence** (supersedes any earlier ordering):
+
+| ID | Item | Status |
+|---|---|---|
+| **WS-T.1** | Fix P0.1 + P1.1–P1.3 (config + point fixes; **not** a broker swap) | OPEN |
+| **WS-T.2** | Close M1: ORCH-6 (P1.0) + Stage-8 validation (P1.4) → verified end-to-end at short duration on node-01 + node-04 | OPEN |
+| **WS-T.3** | Capture the known-good short-job reference output (the migration's verification target) | OPEN |
+| **WS-T.4** | Author **AD-05 — Orchestration Migration** (§18 amendment artifact): workflow shape per stage, activity boundaries, the two human gates as signals, cutover + rollback, in-flight job handling. Review-board approval before code. | OPEN |
+| **WS-T.5** | Stand up the Temporal node (dedicated host — **not** node-01; see risk note) + migrate the coordinator across all 8 stages **in one arc** | OPEN |
+| **WS-T.6** | Verify against WS-T.3's reference output; keep the Celery path behind a flag until verified | OPEN |
+| **WS-T.7** | Roll out nodes 02/03/05/06 on the new architecture — each node configured **once** (absorbs P3.3 / handoff register #4) | OPEN |
+
+**Then:** long-video testing (M3) with resume-from-failure.
+
+**Scope discipline (hard).** Replace the coordination layer only — stage transitions, completion callbacks, join counters, watchdog, checkpointing, retry/DLQ plumbing. **Preserve** the eight stage bodies (~25,000 lines of June's hard-won domain knowledge: Jinja fixes, extensible-WAV handling, scene linkage, AD-03 duration anchoring, ffmpeg logic) as activities with thin wrappers. **Keep** `ivgs-scheduler`, the API, frontend, DB schema, MBCP seam, Model Store. *If a migration session finds itself editing stage internals, stop — scope control has been lost.*
+
+**Risks to manage.**
+- **Half-migration.** P2.3 is a v1→v2 orchestrator migration half-done since June. Mitigation: all 8 stages in one arc; no long-term coexistence; Celery path flag-gated until WS-T.6 passes.
+- **node-01 capacity.** 8 vCPU / 16 GB already runs ~13 services and is the P1.9 SPOF. Operator has confirmed additional compute is available — **provision a dedicated Temporal node.** If that changes, DBOS Transact (library-only, no new server, uses existing Postgres) is the resource-respecting alternative.
+- **New failure modes.** Determinism constraints; replay-only bugs; versioning discipline for in-flight workflows during deploys (multi-hour renders + multi-day gates make this constant, not occasional).
+- **Not a quality fix.** WS-T addresses none of M1. Do not let it displace P1.0/P1.4.
 
 ---
 
 # P2 — Medium Priority
 
-## P2.1 — Defect #10: Test directory scope unification
-**Status:** OPEN (spec authored: `Defect_10_Test_Directory_Scope_Unification.md`). Defect #8 restored only `ivgs-api/tests/`; `tests/` (9), `ivgs-workers/tests/` (16), `ivgs-scheduler/tests/` (4) remain unrunnable; `conftest.py` collision blocks a unified `testpaths`.
-**Scope/action:** catalog the 29 files; resolve the collision (`importmode=importlib`); decide keep/drop/migrate per dir; wire testcontainers+Alembic. 4–8 h.
+## P2.1 — 1,957 lines of orphaned operational machinery *(new, code audit; **decide before wiring**)*
+**Status:** OPEN — **this is the WS-T fork in the road.**
+`RetryEngine` (461), `DLQService` (754), `FallbackChain` (742) are **imported by no stage task**. They reference each other only in docstrings describing an integration that was never built (`dlq_service.py:18`, `fallback_chain.py:23`). Their internal lazy imports use a package that does not exist anywhere in the repo — there is no `ivgs_workers/` directory and nothing in `pyproject.toml` creates the alias — e.g. `fallback_chain.py:459`, `periodic_tasks.py:166`. **14 such imports.** Being inside function bodies they don't break registration; they would `ModuleNotFoundError` on first execution. This is why `periodic_tasks.py` is dormant: it cannot run.
+Meanwhile actual retry behaviour is ad-hoc `self.retry()` with hand-rolled `retry_config` lookups (`stage1_transcript.py:678-694`, `stage2_storyboard.py:702-718`), and Table 6-4's backoff sequences are re-encoded as decorator constants across eight files.
+**Scope/action:** **Do not wire these in pending the WS-T decision** — 2–4 sessions of work a durable engine makes redundant. **Do** extract `FallbackChain`'s L1→L4 *policy* (needed either way; it is domain logic). Under WS-T these 1,957 lines are deleted outright.
 
-## P2.3 — Defect #5: "[object Object]" validation banner
-**Status:** OPEN. Frontend error-handler doesn't string-coerce FastAPI's structured detail envelope (User Mgmt create/edit; likely DLQ replay, Quality approve/reject, Storage Quota). Extract `detail[0].msg`. 1–2 h. (Pairs with P2.7.)
+## P2.2 — Test coverage is inverted *(new, code audit)*
+**Status:** OPEN — most significant supportability finding.
+Zero tests reference `pipeline_orchestrator*`, `handle_stage_completion`, or the media join. Meanwhile `test_retry_engine.py` (236), `test_dlq_service.py` (379), `test_fallback_chain.py` (244) — **859 lines** — cover the P2.1 modules that never execute. The 1,397-line live orchestrator, source of most ledger incidents, is untested.
+**Scope/action:** if WS-T proceeds, write tests against the new workflow definitions rather than the doomed orchestrator. If it does not, orchestrator tests become P1.
 
-## P2.4 — Defect #9: `/api/v1/nodes` stub hardcodes `status="online"`
-**Status:** OPEN. `nodes.py:82` returns "online" unconditionally → "6 online" when only node-01 runs the stack. Interim ICMP/DNS ping (~1 h) or full fix at Phase 8. Don't add `test_nodes.py` until Phase 8 (would freeze the lie).
+## P2.3 — Orchestrator cleanup (v1→v2 remaining half) *(carried, v3.1 P2.26; **partially reframed by P1.0**)*
+**Status:** OPEN. Safe — nothing calls v1's stage orchestration (functional half closed in `9f692ab`).
+**Scope:** (a) excise v1 `pipeline_orchestrator.py` stage-orchestration (`dispatch_pipeline`, `handle_stage_completion`, stub maps) **but keep v1's 6 periodic tasks** that `beat_schedule` actually uses; (b) delete v2's dead inline `build_composition_manifest` (`pipeline_orchestrator_v2.py:~522`; the map dispatches `stage4_manifest`); (c) **dual talking-head file — see P1.0: promote the provider-factory version, don't simply delete it**; (d) the systemic filename-vs-registered-name off-by-one (below) — `9f692ab` aligned the *map*; do **not** rename tasks; (e) kill the dead worker-side `ManifestBuilder`; (f) consolidate `tasks/periodic_tasks.py` (dormant per P2.1); (g) the dead `stage6_talking_head.py:241` carries the wrong `/assets/upload` URL — dies with the file.
 
-## P2.5 — Stream A test bug: `test_fleet_counts_nodes_in_all_states`
-**Status:** OPEN. `test_service_gpu.py` references `online_count`/`offline_count`/`draining_count`; model exposes `*_nodes`. Inspect both occurrence sites, fix with context. 30 min.
+**Registered-name mismatch table (verified `e613e844`):**
 
-## P2.6 — Phase F.1: Migrate ad-hoc `fetch()` to centralized api-client
-**Status:** OPEN. 16 sites in 7 files + GPU-history call → `src/lib/api-client.ts`; add pre-commit hook blocking unprefixed `access_token` reads. Full session.
+| File | Registered name |
+|---|---|
+| `stage5_voiceover.py` | `tasks.stage4_voiceover.generate_voiceover_task` |
+| `stage6_talking_head.py` | `tasks.stage5_talking_head.generate_talking_head_task` *(in no map)* |
+| `stage7_prototype_draft.py` | `tasks.prototype_draft_task.assemble_prototype_draft` |
+| `stage8_final_render.py` | `tasks.final_render_task.render_final` |
 
-## P2.7 — Phase F.2: Backend UUID path-param validation (422 not 500)
-**Status:** OPEN. Class-level UUID validation (dependency or path converter); architectural decision on scope + error envelope. Pair with P2.3.
+Each is a runtime-only `next_stage_task_not_registered` waiting to happen; none is caught by any static check. *(Independently corroborated by AD-04-v3 §8, which flags the Stage-6 map entry.)* WS-T removes this class entirely (typed calls, import-time failure).
 
-## P2.8 — Phase F.3: Old GHCR image cleanup
-**Status:** OPEN. 14+ stale tags each for ivgs-api/ivgs-frontend (more now). Author retention policy (keep last N + session-close-tagged) → prune.
+## P2.4 — Residual 4xx cluster *(carried, v3.1 P2.27; checkpoint line item promoted to P1.2)*
+**Status:** OPEN — render proceeds through all of these.
+`POST /clip/score` → **404** (images get `quality_decision: flagged`, `clip_score: null`); `GET /assets?sha256=` → **404** (dedup absent → duplicate rows on re-fires; dedup also wouldn't backfill `scene_id`); `POST /quality-scores` → **404** (quality persistence absent). Re-enable dedup/quality when the quality/composition stages need them.
 
-## P2.10 — Phase F.5: bcrypt/passlib version warning
-**Status:** OPEN. `(trapped) error reading bcrypt version` at fastapi startup. Pin compatible passlib+bcrypt in `requirements.txt`. Schedule with next backend dep update.
+## P2.5 — ORCH-5: worker → `projects.state` mapping (+ tighten `approve_storyboard` guard) *(carried, v3.1 P2.28)*
+**Status:** OPEN — confirmed reproducing. After a full run `projects.state` stays stale even though the pipeline advanced; the dashboard view is misleading (render-job stage + dispatched tasks are the de facto truth). The deliberately lenient `approve_storyboard` guard (`project_service.py`) accepts pre-`STORYBOARD_GENERATION` states and is empirically relied upon by the e2e.
+**Scope/action:** update `projects.state` on each transition. **FIX-WHEN:** once state advances correctly, tighten the guard per spec Table 4-3. *(Under WS-T this becomes a workflow query — truthful by construction. Consider deferring the full fix into WS-T rather than fixing twice.)*
 
-## P2.11 — Phase F.6: `IVGS_SCHEDULER_TAG=latest` — pin or document
-**Status:** OPEN. §19.5 no-`:latest` violation. Confirmed `:v5.1.0` == `:latest` (same image ID), so pinning `=v5.1.0` is a **zero-behavior-change close** whenever desired.
+## P2.6 — GPU monitoring + heartbeat registry (Blackwell) *(carried, v3.1 P2.29)*
+**Status:** OPEN — two coupled gaps; dashboard GPU telemetry is **not trustworthy**.
+(a) **Exporter:** `utkuozdemir/nvidia_gpu_exporter:1.2.1` panics on Blackwell (`clocks_event_reasons_counters.sw_thermal_slowdown [us]` → invalid metric name) → CrashLoop on nodes 02/03/04. Restrict `--query-gpu`, bump to a name-sanitizing tag, or move to dcgm on a Blackwell tag. (b) **Heartbeat:** registry empty (`total_nodes:0` → `gpu_reservation_skipped`; scheduler `:8002` → 503). Wire node GPU heartbeat registration. **Pairs with P1.3** — the reservation subsystem fails open, which is why this stayed invisible. *Not addressed by WS-T.*
 
-## P2.13 — Phase F.11 / G: CI scaffolding (Actions + Playwright + pytest)
-**Status:** OPEN (unblocked by PR #48). (a) Playwright smoke for the 8-page + 9-step walks; (b) `build-images.yml` (lint/tsc/build/pytest on push; build+push on `v5.*` tag; Playwright on CI compose); (c) PR template (stale-base + tsc + migration-roundtrip + overlay-rule). Multi-session.
+## P2.7 — MBCP: `serving-authoring-loop-1` unhealthy *(new, handoff register #2)*
+**Status:** OPEN — pre-existing on `.51`. Diagnose.
 
-## P2.15 — MP F.3: Restore `@sha256` digest pins on base images
-**Status:** OPEN (compose half advanced — H.0 stripped fabricated GPU-node digests to tag-only). Identify base images that lost pins in `b933357` (FROM + `image:`), restore. (Also: SS19.5 — pin the live `v5.2.x/v5.4.x-h0` digests in compose.)
+## P2.8 — MBCP RuntimeClass refactor — **CLOSED** *(corrected 2026-08-14)*
+**Status:** CLOSED. The consolidation was **already merged as PR #48** — `mbcp_adapters/runtimes/comfyui.py` plus nine JSON graphs. The "awaiting approval on Tasks B/C/D" framing in v4.0 was stale, and the Option-B split decision taken on that basis is moot. Recorded so the trail is visible rather than silently dropped.
 
-## P2.16 — MP F.4: Properly type `FlaggedAsset.metrics`
-**Status:** OPEN. Currently `any`. Define a discriminated union (`{kind:"scalar",value} | {kind:"histogram",buckets}`).
+## P2.9 — MBCP: CogVideoX adapter — **rebuilt, never GPU-tested** *(corrected 2026-08-14)*
+**Status:** Code defect CLOSED; re-opened as MBCP **WP-A**. Verified in `cogvideox-5b.json`: `CLIPLoader`, `CogVideoTextEncode`, `CogVideoSampler`, `CogVideoDecode`, `DownloadAndLoadCogVideoModel` — the correct names, no X-suffixed phantoms. **But it has never touched a GPU.** MBCP WP-A is that smoke test and blocks WP-B. Every VRAM figure in `comfyui.py` remains `PROVISIONAL` (see S-7). Treat the first GPU smoke as a gate, not a formality.
 
-## P2.17 — Phase E.1: Update `IVGS_INFRASTRUCTURE_REFERENCE`
-**Status:** OPEN — still describes split-repo. Update to the monorepo at `/opt/ivgs` (`ivgs-api/`, `ivgs-frontend/`, `ivgs-infra/`, `ivgs-workers/`, `ivgs-scheduler/`).
+## P2.10 — Weight-fetch live pass *(carried, handoff register #5)*
+**Status:** OPEN — never exercised. IVGS **pulls** weights via `ivgs-models/mbcp_fetch.py` against `{serving_url}/weights/{model}/manifest`. Needs the fleet up (WS-T.7) plus `MBCP_SERVING_TOKEN` + `MBCP_WEIGHT_SIGNING_KEY` handoff. *(Direction is pull, not push — do not invert in docs or code.)*
 
-## P2.18 — Phase E.2: Author RUNBOOK.md
-**Status:** OPEN — more material than ever (S7–S9 lessons, Defect #8, Stream A/B, the cross-node bring-up, the consolidated-compose deploy pattern).
-**Scope:** §1 session-start gate; §2 deploy invariants (build from monorepo root; `--env-file` + `-f` overlay rules; `--force-recreate --no-deps <svc>`; pre-recreate compose-resolution gate); §3 the image-drift lesson; §4 backup; §5 incident-response (`git clean -fd` recovery). High institutional value.
+## P2.11 — `IVGS_SCHEDULER_TAG=latest` — pin *(carried, v3.1 P2.11)*
+**Status:** OPEN. §19.5 no-`:latest` violation; the only unpinned tag in `.env`. Confirmed `:v5.1.0` == `:latest` (same image ID) → pinning is a zero-behaviour-change close.
 
-## P2.19 — `docker-compose.base.yml` vs `node01.yml` reconciliation
-**Status:** OPEN — twice caused seaweedfs/redis/postgres recreate accidents. `base.yml` (seaweedfs 3.80, underscore volumes) vs `node01.yml` (3.71, hyphen volumes). Reconcile or delete `base.yml`.
+## P2.12 — No manifest regenerate/reset *(carried, v3.1 P2.30)*
+`composition_manifests.job_id` is UNIQUE with no reset endpoint; re-running Stage 4 can't regenerate. Add a reset/regenerate path.
 
-## P2.20 — Forensic correction: Session 5 close
-**Status:** OPEN. Record PR #45/#46/#47 merges; note the `deps.py` path typo.
+## P2.13 — Animation stored as `asset_type="image"` *(carried, v3.1 P2.31)*
+Interim relabel; the manifest groups animation as image. Give animation a distinct type for correct layer semantics.
 
-## P2.21 — Tag taxonomy doc
-**Status:** OPEN. Document `v*` (releases), `archive/*` (branch preservation — never delete without per-tag audit), `session-N-close` (bisect anchors). ~30 min; could fold into RUNBOOK.
+## P2.14 — `assets.duration_seconds` not persisted on upload *(carried, v3.1 P2.32 + Addendum B1 — merged)*
+The voiceover task computes real per-scene durations and the column exists, but `POST …/assets/upload` accepts only `file/asset_type/scene_id/language_code` → all audio rows `NULL`. Stage 7 works around it by re-deriving the timeline via `ffprobe`. **Root of the "duration disease"** — Stage-4 storyboard estimates (115s) were never reconciled against real narration (~214.94s). **Fix:** add a `duration` form field (plus `sample_rate`/`bit_depth`) or probe server-side.
 
-## P2.22 — Pre-commit hook: SSL keys
-**Status:** OPEN. Fail commits matching `*.key`/`*.crt`/`*.pem` under `configs/nginx/ssl/`. Pair with the IP-literal hook.
+## P2.15 — `seaweedfs_path` not unique per scene *(carried, v3.1 P2.33)*
+Server derives the audio path from project + language only, so all same-language audio share one path string with distinct FIDs; the worker reports a *different* path. Latent trap for anything reconstructing paths instead of using `seaweedfs_fid`/`asset_id`. Include `scene_id` in the server path; align the worker's reported path.
 
-## P2.24 — `tests/` pytest collection fails on SQLite
-**Status:** OPEN. `shared/database.py:31` passes `pool_size`/`max_overflow`/`pool_timeout` unconditionally; SQLite/NullPool → TypeError at `create_engine` → collection fails for all `tests/`. Make the factory dialect-aware. Pairs with P2.13/P2.1.
+## P2.16 — Rollback snapshot/restore unwired *(carried, v3.1 P2.35)*
+Storage-path crash fixed (`c3e8a1a`), but `rollback_service.py` (~164/241/244) still references `/ivgs/ivgs-api/config` and `/ivgs/.env`, and `rollback_to` restarts containers — full §14.3 rollback needs host-level `deploy-node.sh` integration. Decide: wire to the real layout, or remove.
 
-## P2.25 — `docker-compose.monitoring.yml` references non-existent external net `ivgs_default`
-**Status:** OPEN (latent). A full-stack `up -d` across node01+override+monitoring fails; deploys use `--no-deps <svc>` so it never bites today. Real net is `ivgs-infra_ivgs-net`. Reconcile (attach to the real net or create/name it). ~1 h in a maintenance window. Pairs with P2.19.
+## P2.17 — Voiceover dead scene→audio back-link PATCH (401) *(carried, v3.1 P2.36)*
+Fires 6×/run. Audio is already scene-linked via the upload form's `scene_id` (`eaddebb`), so the back-link adds nothing and is swallowed as a warning. Confirm nothing reads `scene.audio_asset_id`, then delete the call + helper. Bundle with P2.3.
 
-## P2.26 — Phase-2 orchestrator cleanup (remaining half of v1→v2 = H.1) *(was Addendum A5)*
-**Status:** OPEN — safe now that nothing calls v1's stage-orchestration (functional half closed in `9f692ab`).
-**Scope:** (a) excise v1 `pipeline_orchestrator.py` stage-orchestration (`dispatch_pipeline`, `handle_stage_completion`, stub `STAGE_TASK_MAP`/`STAGE_TRANSITIONS`) **but keep v1's 6 periodic tasks** (heartbeat/DLQ/cleanup/retention/backup/GPU-metrics) that `beat_schedule` uses; (b) delete v2's **dead inline `build_composition_manifest`** (`pipeline_orchestrator_v2.py:~522`; the map dispatches `stage4_manifest`); (c) resolve the **dual talking-head file** (`talking_head_task.py` live; `stage6_talking_head.py` dead duplicate); (d) note the systemic `stageN_*.py` filename vs `stage(N-1)_*`/`*_task` registered-name off-by-one — `9f692ab` aligned the *map*, do **not** rename tasks; (e) also kill the dead worker-side `ManifestBuilder` (off-spec, posts to `/composition-manifests`); (f) `tasks/periodic_tasks.py` dormant duplicate — consolidate. Rebuild + verify both periodic tasks and the pipeline.
+## P2.18 — `GET /assets?asset_type=reference_clip` returns 500 *(carried, v3.1 P2.37)*
+Orchestrator's presenter-clip lookup 500s; the orchestrator soft-continues so it doesn't block. A 5xx server bug — likely an enum/query mishandle in `list_assets`. Return empty list / clean 404 so Stage 6 can take the no-clip skip path.
 
-## P2.27 — Non-blocking 4xx cluster *(was Addendum A6)*
-**Status:** OPEN — render proceeds through all of these; address as downstream stages need them.
-**Scope:** `POST /jobs/{id}/checkpoints` → **405** (checkpointing disabled; worker calls wrong path); `POST /clip/score` → **404** (images get `quality_decision: flagged`, `clip_score: null`); `GET /assets?sha256=` → **404** (dedup absent → duplicate rows on re-fires; dedup also wouldn't backfill `scene_id`); `POST /quality-scores` → **404** (quality persistence absent). Re-enable dedup/quality when the quality/composition stages need them.
+## P2.19 — stage7 caption clock not audio-anchored *(carried, Addendum B2)*
+Latent until captions are enabled (Remotion on node-06, WS-T.7). Anchor the caption clock on real audio length, same principle as the Pillar-1 fix.
 
-## P2.28 — ORCH-5: worker → `projects.state` mapping (+ tighten `approve_storyboard` guard)
-**Status:** OPEN — confirmed reproducing. After a full run `projects.state` stays stale (e.g. `TRANSCRIPT_REFINEMENT`/`MEDIA_GENERATION`) even though the pipeline advanced; the dashboard view is misleading (render-job stage + dispatched tasks are the source of truth). The **deliberately lenient `approve_storyboard` guard** (`project_service.py`) accepts pre-`STORYBOARD_GENERATION` states and is empirically relied upon by the e2e.
-**Scope/action:** update `projects.state` on each orchestrator transition (MEDIA → MANIFEST → AUDIO → TALKING_HEAD → …). **FIX-WHEN:** once state advances correctly, tighten the guard to require `STORYBOARD_GENERATION` per spec Table 4-3. *(= work-package follow-on #1.)*
+## P2.20 — Duplicate/accumulated assets; no supersede-or-prune *(carried, Addendum B3)*
+Re-fires accumulated multiple draft assets (`0a83f6f2`, `8e0c8531`, `4a9ce479`, `061f64eb`, `f78eb063`) plus duplicate per-scene audio. Add an asset supersede/cleanup policy. Inflates SeaweedFS and muddies "current best".
 
-## P2.29 — GPU monitoring + heartbeat registry (Blackwell)
-**Status:** OPEN — two coupled gaps; dashboard GPU telemetry is **not trustworthy** (node liveness works via a separate check).
-**Scope:** (a) **Exporter:** committed `utkuozdemir/nvidia_gpu_exporter:1.2.1` panics on Blackwell (`clocks_event_reasons_counters.sw_thermal_slowdown [us]` → invalid metric name) → CrashLoop on nodes 02/03/04 (node-02 only "looks OK" via an older dcgm container). Restrict `--query-gpu` to a safe field set, bump to a name-sanitizing tag, or move to dcgm on a Blackwell tag; update `node02/03/04` compose + commit. (b) **Heartbeat:** registry empty (`total_nodes:0` → `gpu_reservation_skipped`, tasks soft-continue; scheduler `:8002` → 503). Wire node GPU heartbeat registration so `total_nodes > 0`.
+## P2.21 — Defect #5: "[object Object]" validation banner *(carried, v3.1 P2.3)*
+Frontend error-handler doesn't string-coerce FastAPI's structured detail envelope. Extract `detail[0].msg`. Pairs with P2.23.
 
-## P2.30 — No manifest regenerate/reset
-**Status:** OPEN. `composition_manifests.job_id` is UNIQUE and there's no reset endpoint; once a manifest exists, re-running Stage 4 for that job can't regenerate (the driver reuses the existing `draft`/`locked`). Add a reset/regenerate path for re-runs after asset changes. *(= work-package follow-on #4.)*
+## P2.22 — Defect #9: `/api/v1/nodes` stub hardcodes `status="online"` *(carried, v3.1 P2.4)*
+`nodes.py:82` returns "online" unconditionally → "6 online" when only node-01 runs. Interim ICMP/DNS ping, or full fix at fleet rollout. Don't add `test_nodes.py` until then (would freeze the lie).
 
-## P2.31 — Animation stored as `asset_type="image"`
-**Status:** OPEN. Interim relabel; the manifest groups animation as image. Give animation a distinct type for correct layer semantics. *(= follow-on #5.)*
+## P2.23 — Backend UUID path-param validation (422 not 500) *(carried, v3.1 P2.7)*
+Class-level UUID validation; architectural decision on scope + error envelope. Pair with P2.21.
 
-## P2.32 — `assets.duration_seconds` not persisted on upload *(Stage-5 → 6/7)*
-**Status:** OPEN. The voiceover task computes real per-scene durations (8.6 s … 57.7 s) and the column exists, but `POST …/assets/upload` accepts only `file/asset_type/scene_id/language_code` — so all audio rows are `duration_seconds = NULL`. Stage-6 lip-sync + Stage-7/8 timing want the **actual synthesized** duration.
-**Scope/action:** add a `duration` form field (and optionally `sample_rate`/`bit_depth`) to `upload_asset` and send it, or probe the file server-side — else downstream must `ffprobe`. *(= follow-on #10.)*
+## P2.24 — Migrate ad-hoc `fetch()` to centralized api-client *(carried, v3.1 P2.6)*
+16 sites in 7 files + GPU-history call → `src/lib/api-client.ts`; add a pre-commit hook blocking unprefixed `access_token` reads.
 
-## P2.33 — `seaweedfs_path` not unique per scene *(Stage-5; latent path-read trap)*
-**Status:** OPEN. The server derives the audio path from project + language only (`/ivgs/audio/{project_id}/{lang}.wav`), so all same-language audio assets **share one path string** with distinct FIDs. (a) the worker's result reports a *different* path (`…/{scene_id}/{lang}.wav`) that doesn't match the DB; (b) anything fetching by **reconstructing the path** instead of `seaweedfs_fid`/`asset_id` would collide. Always retrieve by FID or by `scene_id` query.
-**Scope/action:** include `scene_id` in the server path for uniqueness + debuggability; align the worker's reported path. *(= follow-on #11.)*
+## P2.25 — CI scaffolding (Actions + Playwright + pytest) *(carried, v3.1 P2.13)*
+(a) Playwright smoke for the 8-page + 9-step walks; (b) `build-images.yml`; (c) PR template (stale-base + tsc + migration-roundtrip + overlay-rule). Multi-session.
 
-## P2.34 — Stage-6 `talking_head_task.py` upload-URL pre-check
-**Status:** OPEN — pre-check before wiring Stage 6. The dead `stage6_talking_head.py:234` has the same wrong `/assets/upload` URL that bit Stage 5; confirm the **live** `talking_head_task.py` posts to `…/projects/{id}/assets/upload`. *(= follow-on #12; relates to P2.26(c).)*
+## P2.26 — Test directory scope unification *(carried, v3.1 P2.1)*
+`tests/` (9), `ivgs-workers/tests/` (16), `ivgs-scheduler/tests/` (4) unrunnable; `conftest.py` collision blocks a unified `testpaths`. Resolve via `importmode=importlib`; wire testcontainers + Alembic. Pairs with P2.27, P2.2.
 
-## P2.35 — Rollback feature snapshot/restore unwired
-**Status:** OPEN. The storage-path crash was fixed (`c3e8a1a`, repointed to `/mnt/ivgs-shared/rollback_points`), but `rollback_service.py` (~164/241/244) still references `/ivgs/ivgs-api/config` and `/ivgs/.env`, and `rollback_to` restarts containers — full §14.3 rollback needs host-level `deploy-node.sh` integration (the service runs in-container without host access). Decide: wire to the real layout, or remove. *(= follow-on #7.)*
+## P2.27 — `tests/` pytest collection fails on SQLite *(carried, v3.1 P2.24)*
+`shared/database.py:31` passes `pool_size`/`max_overflow`/`pool_timeout` unconditionally; SQLite/NullPool → TypeError at `create_engine`. Make the factory dialect-aware.
 
-## P2.36 — Voiceover `scene_audio_update_failed` 401 (dead scene→audio back-link PATCH) *(Stage-5)*
-**Status:** OPEN — fires 6×/run (once per scene) in the post-swap e2e (2026-06-06). After each audio `201` upload, `stage5_voiceover.py` makes a follow-up scene-update call that returns **401** (an operator-only endpoint the pipeline service token can't pass). It is **redundant**: the audio asset is already scene-linked via the upload form's `scene_id` (`eaddebb`), so the back-link adds nothing and is swallowed as a warning (TTS still completes 6/6). Same dead-PATCH pattern removed from `stage3_images.py` in `a914352` (A4).
-**Scope/action:** confirm nothing reads the scene→audio back-reference (`scene.audio_asset_id` or equivalent), then delete the dead PATCH (call + helper); or, if the back-link is wanted, open that endpoint to `get_service_or_user` and send `scene_id`. Bundle with the P2.26 dead-code pass. Source: post-swap e2e, transcript 2026-06-06.
+## P2.28 — Author RUNBOOK.md *(carried, v3.1 P2.18)*
+High institutional value; more material than ever. §1 session-start gate; §2 deploy invariants (build from monorepo root; `--env-file` + `-f` overlay rules; `--force-recreate --no-deps <svc>`; derive compose invocation from container labels); §3 image-drift lesson; §4 backup; §5 incident response. **Absorbs P2.21-tag-taxonomy from v3.1.** Prerequisite for delegating work to agents.
 
-## P2.37 — `GET /assets?asset_type=reference_clip` returns **500** (not empty/404) *(Stage-6 prerequisite)*
-**Status:** OPEN — observed on the Stage-6 advance in the post-swap e2e (2026-06-06): when `tts_audio` completes, the orchestrator's presenter-clip lookup (`GET …/projects/{id}/assets?asset_type=reference_clip&limit=1`) returns **500 Internal Server Error**. The orchestrator soft-continues (dispatches `talking_head_render` anyway) so it didn't block the run — but it's a **5xx server bug** (worse than the P2.27 4xx cluster), likely an enum/query mishandle of the `reference_clip` filter in `list_assets`.
-**Scope/action:** make the assets-list endpoint return an **empty list / clean 404** for `asset_type=reference_clip` when none exists — so Stage 6 can take the no-clip skip path — rather than 500; fix as part of Stage-6 wiring + the asset-endpoint sweep. Relates to P2.34 and the Stage-6 section. Source: post-swap e2e, transcript 2026-06-06.
+## P2.29 — Compose reconciliation: `base.yml` vs `node01.yml`; monitoring net *(merges v3.1 P2.19 + P2.25)*
+`base.yml` (seaweedfs 3.80, underscore volumes) vs `node01.yml` (3.71, hyphen volumes) — twice caused recreate accidents; reconcile or delete `base.yml`. `docker-compose.monitoring.yml` references non-existent external net `ivgs_default` (real net: `ivgs-infra_ivgs-net`) — latent because deploys use `--no-deps`.
+
+## P2.30 — Image/dependency hygiene *(merges v3.1 P2.8, P2.10, P2.15, P2.22)*
+(a) Old GHCR image cleanup — 14+ stale tags each for api/frontend; author a retention policy. (b) bcrypt/passlib version warning at startup — pin compatible versions. (c) Restore `@sha256` digest pins on base images lost in `b933357`; pin live `v5.5.x` digests in compose. (d) Pre-commit hook failing `*.key`/`*.crt`/`*.pem` under `configs/nginx/ssl/`.
+
+## P2.31 — Update `IVGS_INFRASTRUCTURE_REFERENCE` *(carried, v3.1 P2.17)*
+Still describes a split repo. Update to the monorepo at `/opt/ivgs`.
 
 ---
 
 # P3 — Low Priority
 
-## P3.1 — `GpuNodeStatus` UPPERCASE half (dead code)
-**Status:** OPEN. `types/api.ts` has both case variants; backend emits lowercase only. Delete UPPERCASE; `tsc --noEmit`.
-
-## P3.2 — Empty underscore-named seaweedfs volumes
-**Status:** OPEN (harmless). Four empty 4K volumes from an S5 mis-application. Verify no compose refs, then `docker volume rm`.
-
-## P3.3 — Phase H: Multi-node expansion
-**Status:** OPEN — substantially **advanced**: node-02 (LLM), node-03 (video), node-04 (image+TTS) are up and AD-02-specialized; cross-node pipeline proven (Stages 1–5). **Remaining:** nodes 05/06; full GPU-services validation per node; **H.5 task-layer remainder** (client base_urls done in `5d525a7`; H.0 repaired the broken task interfaces — `VLLMClient.chat`, `get_model_config`, stage wiring); definitive completion is per-node as services come online. Strategic, multi-session. (The v1→v2 cleanup half is now P2.26.)
-
-## P3.4 — Endpoint test coverage (9 modules)
-**Status:** OPEN (unblocked). No test files for `alerts`, `backup`(now covered by Stream B), `jobs`, `languages`, `manifests`, `nodes`, `quotas`, `rollback`, `ws_logs`. Priority: `jobs`/`rollback` (High), `alerts`/`manifests`/`quotas` (Med). `test_nodes.py` pairs with Phase 8.
-
-## P3.5 — Rogue-branch attribution investigation
-**Status:** OPEN (investigation only; branch force-deleted Session 9). 10 commits by `node01-ops <ops@ivgs>`. Check agent logs 2026-05-22/23, shell history for `git config user.email`, `/var/log/auth.log`. Operator-driven; blocks nothing.
-
-## P3.6 — Cosmetic / UI polish
-**Status:** OPEN. Banner auto-dismiss; action-message badge polish. ~5 min each.
-
-## P3.7 — 06-04/05 session hygiene bundle *(was Addendum A7; (a) already closed)*
-**Status:** OPEN — small, low-risk. (b) stale unused `.env.node01 IVGS_WORKERS_TAG` — remove (node-01 deploys read `.env`); (c) `.bak` cruft in `ivgs-workers/` (e.g. `celery_app.py.bak-…`) — delete; (d) GPU-node source-tree drift — keep `/opt/ivgs` trees in sync or document that source on GPU nodes is non-authoritative. *(A7(a) dirty `checksums.sha256` closed via `7569ed5`.)*
-
-## P3.8 — `composition_manifests.manifest_version` left NULL
-**Status:** OPEN. The API `generate` doesn't populate it — cosmetic, but should be set. *(= follow-on #2.)*
-
-## P3.9 — `render_jobs` has no `updated_at` column
-**Status:** OPEN. Minor schema inconsistency (hit when clearing a stale `failed` status). Add for audit parity if desired. *(= follow-on #6.)*
-
-## P3.10 — In-code Coqui default still wrong *(guarded)*
-**Status:** OPEN. `stage5_voiceover.py:~516` hardcodes `http://node-04:5002` as the Coqui fallback; harmless now that the env URLs override it (Stage-5 fix #5), but correct on the next workers build so it isn't a latent trap. *(= follow-on #13.)*
-
-## P3.11 — Audio validator doesn't parse the `WAVE_FORMAT_EXTENSIBLE` SubFormat GUID
-**Status:** OPEN. `audio_validator.py::_parse_wav_header` reads only the first 16 `fmt ` bytes, so for `wFormatTag=0xFFFE` (65534) it trusts the container without confirming the embedded SubFormat. Fine for current XTTS output (proven PCM, decoded + scored). A rigorous validator reads the GUID. Context: `39ee28d` added 65534 to the accepted set `(1,3,65534)`. *(= follow-on #8.)*
-
-## P3.12 — Downstream audio readers must tolerate extensible WAV *(Stage-5 → 6/7)*
-**Status:** OPEN. XTTS emits `WAVE_FORMAT_EXTENSIBLE` (0xFFFE), now accepted as valid Stage-5 output. Any later stage opening it with Python stdlib `wave` (raises on 0xFFFE) rather than ffmpeg/soundfile/librosa will fail. Verify the talking-head/compositor readers use a tolerant decoder, or transcode to `fmt=1` at the Stage-5 upload boundary. *(= follow-on #9.)*
-
-## P3.13 — Clients swallow real exceptions to `""`
-**Status:** OPEN (observability). `flux_client`/cogvideox/coqui clients catch errors and return `""`, masking root causes (the Stage-5 10 s Coqui timeout was hidden this way). Surface the real error.
-
-## P3.14 — Comprehensive disaster recovery *(strategic, deferred)*
-**Status:** DEFERRED (after full fleet + AD-01). Design DR using non-node location(s) — local NAS + offsite — covering ALL recoverable state (git repo, `/mnt/models` weights, Postgres, SeaweedFS/Redis as appropriate, per-node compose + `.env`). Closes the gap where `/mnt/ivgs-shared` backups live on node-01's disk and don't survive a node-01 failure. **Recovery/image-artifact policy (DECIDED 2026-06-02):** large GPU images are **not** pushed to GHCR (free-tier limits); recovery = Dockerfile-in-git + `docker save` artifact on owned storage (`scripts/save-image-artifact.sh` → `/mnt/ivgs-shared/image-artifacts/` with SHA-256 + MANIFEST) + re-acquirable weights; compose uses `pull_policy: never`. Full procedure in `RECOVERY.md`.
+| ID | Item | Note |
+|---|---|---|
+| P3.1 | `GpuNodeStatus` UPPERCASE half (dead code) | `types/api.ts`; backend emits lowercase only. Delete + `tsc --noEmit`. |
+| P3.2 | Empty underscore-named seaweedfs volumes | Four empty 4K volumes from an S5 mis-application. Verify no compose refs, then remove. |
+| P3.3 | Endpoint test coverage (9 modules) | No tests for `alerts`, `jobs`, `languages`, `manifests`, `nodes`, `quotas`, `rollback`, `ws_logs`. Priority `jobs`/`rollback`. |
+| P3.4 | Rogue-branch attribution investigation | 10 commits by `node01-ops <ops@ivgs>`; branch force-deleted Session 9. Operator-driven; blocks nothing. |
+| P3.5 | Cosmetic / UI polish | Banner auto-dismiss; action-message badge polish. |
+| P3.6 | Session hygiene bundle | `.bak` cruft in `ivgs-workers/`; GPU-node source-tree drift; ~30 `.env.bak.*` in `ivgs-infra`; `/root` tarball + stage cleanup on both hosts. *(Absorbs v3.1 P3.7 + handoff register #3.)* |
+| P3.7 | `composition_manifests.manifest_version` left NULL | API `generate` doesn't populate it. |
+| P3.8 | `render_jobs` has no `updated_at` column | Minor schema inconsistency; add for audit parity. |
+| P3.9 | In-code Coqui default still wrong (guarded) | `stage5_voiceover.py:~516` hardcodes `http://node-04:5002`; env URLs override. Correct on next build. |
+| P3.10 | Audio validator doesn't parse `WAVE_FORMAT_EXTENSIBLE` SubFormat GUID | `_parse_wav_header` reads only the first 16 `fmt ` bytes. Fine for current XTTS output. |
+| P3.11 | Downstream audio readers must tolerate extensible WAV | Any stage using stdlib `wave` (raises on `0xFFFE`) will fail. Verify tolerant decoders or transcode at the Stage-5 boundary. |
+| P3.12 | Clients swallow real exceptions to `""` | `flux_client`/cogvideox/coqui mask root causes (the Stage-5 10s Coqui timeout hid this way). Surface real errors. |
+| P3.13 | Properly type `FlaggedAsset.metrics` | Currently `any`; define a discriminated union. |
+| P3.14 | Forensic correction: Session 5 close | Record PR #45/#46/#47 merges; note the `deps.py` path typo. |
+| P3.15 | Dead `get_beat_schedule()` in `periodic_tasks.py` | *(handoff register #3)* Dies with P2.3(f). |
+| P3.16 | Backup-worker hardcoded DSN fallback | *(handoff register #3)* |
+| P3.17 | Per-project model-selection GUI + auto-weight-fetch-on-approve; light-mode contrast sweep; authenticated `/nodes` topology check | *(handoff register #6 — optional/future)* |
 
 ---
 
-# Stage 6 — Talking Head (LatentSync + SadTalker): BUILD REQUIRED
+# S — Cross-System (IVGS ↔ MBCP)
 
-**This is the next major build, not a deploy.** The compose declares both engine services (`docker-compose.node04.yml`: `latentsync` :7860, `sadtalker` :7861) but they are **parked placeholders** (`profiles: ["pending"]`, `pull_policy: never`) and the images **do not exist** in ghcr (`docker manifest inspect …:latentsync-v5.2.7-h0` / `…:sadtalker-v5.2.7-h0` → `manifest unknown`, confirmed 2026-06-06). The pipeline auto-advances and parks cleanly at `talking_head_render` (correct).
+**These belong to neither register and will be dropped by both unless owned.** Source: Step 10 reconciliation, 2026-08-14.
 
-**Placement decision (UPDATED 2026-06-06, post node-03↔04 GPU swap): node-04** — this **overturns** the earlier same-day node-03 decision, which was based on the pre-swap card layout. After the swap, **node-04 holds the 96 GB RTX PRO 6000** (measured idle ~38 GB used / ~59 GB free, vLLM-dominated — and vLLM fraction-scaled up to ~29 GB on the bigger card, cappable via `--gpu-memory-utilization` to reclaim headroom if needed), leaving ample room for LatentSync (~12 GB) + SadTalker (~8 GB) alongside FLUX/TTS at load; **node-03 is now the 48 GB RTX PRO 5000, video-only.** node-04 is also where the two engine services are **already declared** (`docker-compose.node04.yml`) and where the worker **already serves the `gpu_talking_head` queue** (per AD-02) — so this is the spec-aligned placement with **no compose porting**. (The swap was made specifically to enable this.)
+| ID | Item | Owner | Note |
+|---|---|---|---|
+| **S-1** | Coordinated ingest-token rotation | **Operator** | `MBCP_AD01_TOKEN` == `IVGS_MBCP_INGEST_TOKEN`. Exposed on the MBCP side 2026-08-04. Rotating one side alone breaks the seam **silently** — exports park in `drain-pending-exports` and retry every 5 min. Both hosts in one window. |
+| **S-2** | Stage taxonomy divergence | IVGS agent | IVGS has 8 **pipeline** stages; MBCP has 9 **capability** stages (`mbcp_core/enums.py`). MBCP's image/video/animation → IVGS Stage 3; `composition` collapses 4/7/8; `translation` is not an IVGS stage. AD-01's `(stage,tier)` key uses MBCP's taxonomy. Document in AD-01 §AD-01.16 + glossary. |
+| **S-3** | Addendum number collision | Operator | Two different AD-05s (IVGS orchestration, MBCP adapter authoring) and MBCP also has AD-06. **Decision D-7: namespace as `IVGS-AD-NN` / `MBCP-AD-NN`.** No renumbering. |
+| **S-4** | Weight-fetch unblocked earlier than assumed | IVGS agent | IVGS is cloned at `/root/IVGS` on `.51`, so `mbcp_fetch.py` can be proven now. Only the production pass needs M4. Sequence **after** S-1, since `WEIGHT_SIGNING_KEY` and `WEIGHT_SERVICE_TOKEN` are in that rotation set. |
+| **S-5** | Schema coupling with no test | MBCP agent | `e613e84` added `ffmpeg` to `ModelEngine` to unblock MBCP composition exports; MBCP added `ExportBundle.engine`. Coupled across two repos, **no test either side**. Agent plan **WP-17**. |
+| **S-6** | 8 of 18 certifications rest on audited overrides | MBCP (WP-I) | AD-01 treats certification as evidence for approval. IVGS cannot see which certificates are full-gate. Attestation should carry gate status. |
+| **S-7** | VRAM figures are `PROVISIONAL` | IVGS agent | 15 placeholders in MBCP's `comfyui.py`. **D-8: does `ivgs-scheduler` consume declared VRAM, or measure locally?** If declared, MBCP WP-A becomes an M4 prerequisite. Agent plan **WP-19**. |
+| **S-8** | CogVideoX resolution overclaim | MBCP (WP-B) | Declared 1920×1080; engine is 720×480. If IVGS ever sizes a request from these specs it will ask for the impossible. |
+| **S-9** | `.7` and `.53` absent from IVGS docs | IVGS agent | **Partially closed 2026-08-14** — `.7` is now IVGS's backup target and appears in `dev/CLAUDE.md` and `configs/systemd/README.md`. `.53` (authoring LLM, firewall permits only `.51`) still undocumented on the IVGS side. |
+| **S-10** | `.51` is a Proxmox clone with a parked twin | Operator | Shares `machine-id` and SSH host keys with the parked production VM. node-01 holds a known-hosts entry for `.51`. Regenerate before both run; expect to clear node-01's entry. |
 
-**Work breakdown:**
-1. **Build two GPU engine images** (the bulk): `ghcr.io/brucecostello2/ivgs-workers:{latentsync,sadtalker}-v5.2.7-h0`. Per engine: upstream model code + checkpoints (weights live in the mounted `/data/models`, not baked) + a server wrapper exposing `/health` + an inference endpoint matching the IVGS client contract + a Dockerfile on a Blackwell-capable CUDA base; build/push from node-01. Template: the existing engine builds (ComfyUI/Coqui/Kokoro/WhisperX `*-v5.2.7-h0`) and the `servers/common/` skeleton + `servers/cogvideox/` (async-job contract `POST /generate`, `GET /status/{id}`, `/download/{id}`, `/health`).
-2. **Wiring** (smaller, now simpler post-swap): the two service defs are **already on `docker-compose.node04.yml`** (un-park by dropping `profiles: ["pending"]` once the images exist) and the `gpu_talking_head` queue is **already served by node-04's worker** — so no porting; just add the LatentSync/SadTalker engine URLs to node-04's worker env via the consolidated-compose pattern. Implement the live `talking_head_task.py` client logic — LatentSync-primary **>0.85 alignment gate**, SadTalker fallback, DLQ, **600 s** timeout, output path, manifest binding (the `metrics`/`alignment_score` route from `servers/common/jobs.py` feeds the gate). Confirm the upload URL (P2.34) and fix the `reference_clip` lookup 500 (P2.37) so the no-clip skip path works.
-3. **Inputs:** presenter-clip upload (`POST /projects/{id}/upload-talking-head` → `asset_id`) + retrieve the Stage-5 audio; **skip Stage 6 cleanly** when no clip is uploaded. (The test project has no presenter clip — first run can exercise the skip path, or upload a test clip.)
-4. **Output:** spec path `/ivgs/talking-heads/{project_id}/{language_code}.mp4` — confirm the live mount (`/mnt/ivgs-shared`, per the rollback `/ivgs` lesson) before relying on it.
+# DEFERRED (conscious, with re-open trigger)
 
-**Risk — Blackwell (sm_120) compatibility.** LatentSync/SadTalker are 2023–2025 codebases likely pinning PyTorch/CUDA predating Blackwell → may need dependency bumps that cascade. Mitigant: FLUX/vLLM/TTS already run on this fleet (cu128/cu130 Blackwell base proven), so there's a working base image to copy. This is the main schedule unknown.
+## DEF.1 — Comprehensive disaster recovery *(carried, v3.1 P3.14 — **premise materially changed 2026-08-14**)*
+**Deferred until:** full fleet up + AD-01 complete. **Re-examine now:** the storage leg is done. Backups run to `.7` NFS (22 TB, hard mount) and 38 GB of image artifacts have an off-node copy with six verified checksums. v4.0's statement that backups lived on node-01's disk was wrong — they were on `.9` CIFS, now retired. What genuinely still needs the full fleet is per-node compose/`.env` capture and the fleet-wide restore procedure. **A restore drill against `.7` has not yet been run for IVGS** (MBCP has run one). Design DR using non-node location(s) — local NAS + offsite — covering git repo, `/mnt/models` weights, Postgres, SeaweedFS/Redis, per-node compose + `.env`. Closes the gap where `/mnt/ivgs-shared` backups live on node-01's disk and don't survive a node-01 failure.
+**Decided 2026-06-02 (recovery/image-artifact policy):** large GPU images are **not** pushed to GHCR (free-tier limits); recovery = Dockerfile-in-git + `docker save` artifact on owned storage (`scripts/save-image-artifact.sh` → `/mnt/ivgs-shared/image-artifacts/` with SHA-256 + MANIFEST) + re-acquirable weights; compose uses `pull_policy: never`. Procedure in `RECOVERY.md`.
 
-**Also build the missing `GET /projects/{id}/manifests` endpoint** (Stage 7/8's `_fetch_latest_manifest` GETs it; only `/jobs/{job_id}/manifest` exists) and the asset-endpoint auth sweep (`get_asset`/`download_asset` if a stage needs them) when wiring downstream stages.
+## DEF.2 — Localisation pipeline (§17)
+**Deferred until:** M8 / post-launch. `language_variants` table and state exist; no variant has been exercised end-to-end. Re-open when a second language is actually required.
 
 ---
 
@@ -256,66 +340,107 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 
 | Item | Notes |
 |---|---|
-| GPG private key off-network backup | Signing key `4F2243FAB5A25808` should have an off-node copy. Security-sensitive. |
-| `.env.node01` secret leak + credential rotation | See P1.7. Operator-driven. |
-| Trunk = `main` (done 2026-06-06) | `feat/phase-h0-make-main-honest` merged `--ff-only` → `main` @ `5657f95`; tag `stages-1-5-green-2026-06-06` pushed. node-01 is already on `main`. **Remaining:** switch GPU nodes 02/03/04 from the feature branch to `main` at the next deploy (`git checkout main` before `git pull --ff-only`); optionally delete the now-redundant feature branch (local + remote). |
+| GPG private key off-network backup | Signing key `4F2243FAB5A25808` needs an off-node copy. Security-sensitive. |
+| `.env.node01` gitignore + credential rotation | See P1.5. Operator-driven. |
+| Visual QA of `final_1080p_9007b2cf.mp4` | See P1.4(a). Only the operator can judge acceptance. |
+| MBCP serving token + weight-signing key handoff | Gates P2.10. |
+| Provision the Temporal node | Gates WS-T.5. |
+| Commit the two untracked docs | `docs/IVGS_v5_Addendum_AD-04-v3_…md` (451 lines) and `docs/MBCP_Dev_VM_Setup_verified.md` (214) exist only on node-01 — SSOT material with no version control. Scan for tokens/IP literals first. |
 
 ---
 
-# Items closed (evidence)
+# Items closed (compressed evidence)
 
-### Closed this arc (regression + Stages 3/4/5, 2026-06-05 → 06)
+*Full narrative detail preserved in `OUTSTANDING_WORK_archive_v3.1.md`.*
 
-| Item | Closed in | Evidence |
+### Closed since v3.1 (2026-06-08 → 2026-08-14)
+
+| Item | Closed | Evidence |
 |---|---|---|
-| **A1 — image-generation regression** | 2026-06-05 (`d3d1fb4`, config-only) | NOT a code regression (overturns the Forensic Report): `config.py`/clients byte-identical across images; cause was a latent `IVGS_*`-prefixed-vs-deployment env-name mismatch sprung by `--force-recreate`. Cure = move canonical `IVGS_*` names into the **tracked** `docker-compose.node0X.yml` `environment:` blocks. Image 3 + 1 animation via FLUX (0 failed) + video 2 via CogVideoX proven post-fix. |
-| **A2 — de-band-aid node-04 vLLM model name** | 2026-06-05 (`d3d1fb4`) | `IVGS_VLLM_MIDSIZE_MODEL=mistral-24b` (+ `IVGS_COMFYUI_URL=http://comfyui:8188`) now set in tracked compose; no longer a hand-edited gitignored `.env.node04`. |
-| **A4 — 401 scene-asset linkage (image/animation `scene_id` NULL)** | 2026-06-05 (`a914352`, workers `v5.4.3-h0`) | Root cause **worker-side** (not API-side as A4 hypothesized): `stage3_images.py::_upload_to_seaweedfs` omitted `scene_id`; added it + deleted the dead operator-only 401 scene-PATCH. Animation rides the same task. e2e: all assets scene-linked, no `__global__` orphans. |
-| **Stage 4 — composition manifest (e2e PASS)** | 2026-06-05 (`a91cdce`; workers `v5.4.4-h0`, API `v5.2.1-h0`) | Manifest built **server-side** by `POST /api/v1/jobs/{id}/manifest/generate` (groups assets by `scene_id`, NULL→`__global__`); worker `build_composition_manifest` is a thin idempotent driver (GET→404→generate→validate→lock→`handle_stage_completion`). Manifests router remounted `/manifests`→`/jobs` (also fixes the in-repo frontend timeline editor); all 4 endpoints → `get_service_or_user`. (The worker-side `ManifestBuilder` is now dead — excise via P2.26.) Run: manifest `b636fe87` locked, `total_duration_ms 115000`, scene_count 6. |
-| Stage-4 media-join failure decrement (soft-continue) | 2026-06-05 (`35d9226`, workers `v5.4.1-h0`) | Failure path now decrements + advances with a `failed_count` (was: only decremented on success → a failed media stage hung the join forever). |
-| Stage-4 media-join crash watchdog | 2026-06-05 (`0bde15e`, workers `v5.4.2-h0`) | Celery-beat `media_join_watchdog` (5 min) drains joins stranded by a hard worker crash. |
-| Infra hygiene (closes A7(a)) | 2026-06-05 (`7569ed5`) | Dropped obsolete compose `version:`; committed `ivgs-models/checksums.sha256` (was dirty per A7(a)); gitignored smoke-test compose. |
-| API `/ivgs` crash (rollback storage) | 2026-06-05 (`c3e8a1a`, API `v5.2.2-h0`) | `rollback_service.py` ran `mkdir` on hardcoded `/ivgs` at import (unmounted; API runs non-root) → crash-looped the API. Repointed `ROLLBACK_STORAGE_DIR` → `/mnt/ivgs-shared/rollback_points`. (Full rollback wiring remains — P2.35.) |
-| **Stage 5 — TTS/voiceover (e2e PASS)** | 2026-06-06 (5 commits; API `v5.2.3-h0`, workers `v5.4.7-h0`) | Final run `3cb8c4d6` (42.6 s): 6/6 scenes → Coqui XTTS v2 `200` → validated → uploaded `201`; **48 kHz/24-bit, approved, SNR 60 dB**, six distinct `seaweedfs_fid`, all scene-linked. Seven fixes: **auth** (`92616f7`, API `v5.2.3-h0`) `list_scenes`+`list_assets` → `get_service_or_user`; **`CoquiClient` ctor + retry raise-None** (`82d9490`, workers `v5.4.5-h0`); **TTS engine URLs in worker env** (`db264c5`, compose); **validator accepts `WAVE_FORMAT_EXTENSIBLE`** (`39ee28d`, workers `v5.4.6-h0`); **upload URL + `scene_id`/`language_code`** (`eaddebb`, workers `v5.4.7-h0`). Auto-advances to `talking_head_render`. |
-| Voiceover auto-advance — confirmed present | 2026-06-06 | The Stage-5 task calls `handle_stage_completion` on success (dispatched `talking_head_render` unprompted) — no gap at the TTS→talking-head boundary. |
-| **node-03↔04 GPU swap + full Stages 1–5 e2e re-validation** | 2026-06-06 | Operator relocated the cards so **node-04 = 96 GB RTX PRO 6000**, **node-03 = 48 GB RTX PRO 5000** (aligns the image+TTS+talking-head host with the larger card per AD-02; un-blocks Stage-6 placement on node-04 with no compose porting — see Stage-6 section). Full media→manifest→audio e2e on project `3814f845`: FLUX 4/4 images+animation (node-04), CogVideoX **2/2 videos with peak ~26 GB on the 48 GB card** (218/224 s, ample headroom), manifest reused (`b636fe87` locked), voiceover 6/6 (48 kHz/24-bit), parked cleanly at `talking_head_render`. Re-fire driven via `dispatch_media_generation` `send_task` with `id`→`scene_id` mapped. |
-| **Make Main Honest — merged to `main`** | 2026-06-06 (`5657f95`, tag `stages-1-5-green-2026-06-06`) | `feat/phase-h0-make-main-honest` (70 commits, strict ancestor of `main`) merged **`--ff-only`** into `main` — all commit SHAs preserved, linear history, no squash. `main` adopted as trunk. (Fleet branch-switch + optional feat-branch deletion remain — see Operator tasks.) |
+| **B4 — LatentSync not production-viable → certified replacement** | 2026-07/08 | MBCP built and operating; bake-off complete; certified models serving to IVGS. *(Consumption blocked by P1.0 — the decision is closed, the plumbing is not.)* |
+| **Stage 6 — talking head: BUILD REQUIRED** | 2026-06-07 | LatentSync engine built + proven on node-04 (`latentsync-v5.2.7-h0`); head renders, uploads, composites. |
+| **Stage 7 — prototype draft** | 2026-06-07/08 | Draft `f78eb063`, 214.94s, 1280×720, corruption 6/6, operator-confirmed. |
+| **Stage 8 — final render executes** | 2026-06-08 | `final_1080p_9007b2cf.mp4`, 215.07s, 1920×1080/30fps, AAC 48k stereo; used as evidence in the AD-04 head judgment. *(Formal validation → P1.4.)* |
+| **AD-03 Pillar 1 — A/V duration + corruption** | 2026-06-08 (`v5.4.22-h0`, `4c38240`+`10b2290`) | Scene durations anchored on real audio; draft `061f64eb` 214.97s, video==audio (3.7 ms), corruption 6/6. |
+| **AD-03 Pillar 2 — head per-scene desync** | 2026-06-08 (`v5.4.23-h0`, `f0b1f9a`) | Head composited once as a continuous timeline overlay; `num_layers` 3→2; draft `f78eb063` ≈5 ms A/V. |
+| **ARCH-1 — Model Store + selection-aware provider factory** | 2026-07-09 | `shared/providers/{factory,binding}.py`, `app/services/model_selection.py`; stages 1/2/3/5 bound. *(Stage 6 → P1.0.)* |
+| **AD-01 admin GUI — model lifecycle** | 2026-07-09 | `/admin/models`: candidate → approve (attestation) → set-default (transactional per-(stage,tier)) → deprecate (auto-clears default) → retire. GUI-only. |
+| **MBCP ↔ IVGS connected mode** | 2026-07-09 | AD-01 seam receiver `/ad01/v1` + `X-Service-Token`; node self-registration + 30s availability poller; migration 0027 (`ffmpeg` enum) + `ExportBundle.engine`. |
+| **MBCP certification backfill** | 2026-07-09 | 21 exports + 2 composition transmitted; all non-revoked certs landed as CANDIDATEs; 24 revoked correctly skipped. |
+| **MBCP "Export to IVGS" button** | 2026-07-12 | `docs/MBCP_Delivery_20260712_ExportButton_WSTEST.md`. *(Handoff register #1.)* |
+| **P1.5 (old) — `.env.node01` secret hygiene** | 2026-08-14 (`e1f4c58`) | `git rm --cached` + gitignored. Token verified never committed (single added line, no removal; last commit to the file `fa6f4db`, May). File remains on disk. |
+| **P0.2 — 75-day database backup gap** | 2026-08-14 | Six root causes: host cron used `POSTGRES_HOST=localhost` against a containerised Postgres (exit 4 daily); `/var/run/ivgs` root-owned so the container path failed on the lock file; `set -euo pipefail` aborted before the rsync check; checksum files recorded the staging path; `.9` was 100% full; Proxmox was OOM-killing the VM. Backup verified: `a4cee889…`, decrypts to 38 `CREATE TABLE`, 12,673 rows. |
+| **Storage migration `.9` → `.7`** | 2026-08-14 | 100 GB copied and verified by dry-run rsync; fstab updated to NFS4.2 `hard`; all four backup types (db/assets/config/wal) writing to `.7`. Asset backup 47.7 GB — first since 20 July. `.9` retired, retained as fallback. |
+| **Image artifacts off node-01** | 2026-08-14 | 38 GB to `/mnt/store/ivgs-archive`, six checksums verified against the copies. First off-node copy; these are the only reliable recovery route for the Blackwell engine images. |
+| **Proxmox host OOM-killing VMs** | 2026-08-14 | Host `n5Pro`, 61 GB, swap fully consumed; killed VM 102 twice during NFS transfers. node-01 reduced 31 GB → 16 GB; 32 GB swap file added. Guest logs were clean because the kills came from outside. |
+| **`.61` reference sweep** | 2026-08-14 | Zero references in repo, env files, fstab, mounts, systemd, hosts, cron or container environments. The `.61` NAS does not exist; the retired share was `//192.168.1.9/elearning` over CIFS. |
+| **P2.34 — Stage-6 upload-URL pre-check** | verified 2026-08-14 | `talking_head_task.py:155` posts to the correct `…/projects/{id}/assets/upload`. *(The wrong URL survives only in the dead duplicate → P2.3.)* |
+| Light/dark theming; login crash fixes; JWT username claim; celery-beat pidfile; AD-02 Draft-3 topology in `nodes.py`; Tier-0 harness; backup-test closeout | 2026-07-09 | Per `SESSION_HANDOFF_2026-07-09.md` §1. |
 
-### Closed in the 06-04/05 arc (Addendum A §B)
+### Closed in v3.1 and earlier (one line each)
 
-| Item | Closed in | Evidence |
+| Item | Closed | Evidence |
 |---|---|---|
-| Storyboard prompt-truncation (empty/off-topic output) | 2026-06-04 (`a9b2e47`); baked + verified 2026-06-05 | Root cause = truncated Jinja templates committed at v5.0.0; reconstructed `stage1_user/system.j2`, `stage2_system.j2`; baked into `v5.4.0-h0`, NFS override dropped. On-topic in two fresh e2e runs. |
-| AD-02 node specialization — implemented | 2026-06-04 (`AD-02`); verified at Stage 3 | node-02 LLM-only (Llama-3.3-70B-FP8), node-03 video-only, node-04 image+TTS; Stage-3 topology conformance PASS. (Governance recording remains — P1.6.) |
-| `MEDIA_GENERATION` park — root-caused + unparked (functional half of v1→v2) | 2026-06-05 (`9f692ab`, `v5.4.0-h0`) | Partial v1→v2 migration: 6 call-site repoints v1→v2 + 3 added v2 advances + 4 `STAGE_TASK_MAP` name fixes. Proven e2e (no `next_stage_task_not_registered`). Phase-2 cleanup remains — P2.26. |
-| node-04 vLLM-midsize (Mistral-24B w4a16) live | 2026-06-05 | `mistral-24b` at `vllm:8000`, HTTP 200 for image-prompt generation. |
-| Profile-gating of AD-02 standby services | 2026-06-05 (`68ac33b`) | `profiles: ["standby"]` on node-02 cogvideox + node-03 vllm/worker so a plain `up` can't resurrect disabled services. |
-| Signature-drift + DNS concerns — non-reproducing | Stage-3 report §3.3 | `acquire_gpu_reservation(vram_mb=)`/`save_checkpoint(stage=)` TypeError + name-resolution worries do not reproduce on the deployed image. |
+| A1 — image-generation regression | 2026-06-05 (`d3d1fb4`) | Not a code regression; latent `IVGS_*` env-name mismatch sprung by `--force-recreate`. Cure = canonical names in tracked compose. |
+| A2 — node-04 vLLM model name de-band-aided | 2026-06-05 (`d3d1fb4`) | `IVGS_VLLM_MIDSIZE_MODEL=mistral-24b` in tracked compose. |
+| A4 — scene-asset linkage (`scene_id` NULL) | 2026-06-05 (`a914352`) | Worker-side root cause; `_upload_to_seaweedfs` omitted `scene_id`. |
+| Stage 3 — media generation e2e | 2026-06-05/06 | FLUX 4/4 images+animation; CogVideoX 2/2 videos, ~26 GB peak on the 48 GB card. |
+| Stage 4 — composition manifest e2e | 2026-06-05 (`a91cdce`) | Server-side build; manifest `b636fe87` locked, scene_count 6. |
+| Stage 4 — media-join failure decrement | 2026-06-05 (`35d9226`) | Failure path decrements + advances with `failed_count`. *(Superseded by P1.1.)* |
+| Stage 4 — media-join crash watchdog | 2026-06-05 (`0bde15e`) | Beat `media_join_watchdog` (5 min). *(Compensating code — deleted under WS-T.)* |
+| Stage 5 — TTS/voiceover e2e | 2026-06-06 (7 fixes) | Run `3cb8c4d6`: 6/6 scenes, 48 kHz/24-bit, SNR 60 dB, all scene-linked. |
+| Storyboard prompt truncation | 2026-06-04 (`a9b2e47`) | Truncated Jinja templates at v5.0.0; reconstructed + baked. |
+| AD-02 node specialization implemented | 2026-06-04 | node-02 LLM-only, node-03 video-only, node-04 image+TTS; Stage-3 conformance PASS. *(Governance → P1.9.)* |
+| `MEDIA_GENERATION` park (functional half of v1→v2) | 2026-06-05 (`9f692ab`) | 6 call-site repoints + 3 advances + 4 map fixes. *(Cleanup half → P2.3.)* |
+| node-03↔04 GPU swap + Stages 1–5 re-validation | 2026-06-06 | node-04 = 96 GB RTX PRO 6000; node-03 = 48 GB RTX PRO 5000. |
+| Make Main Honest — merged to `main` | 2026-06-06 (`5657f95`) | 70 commits `--ff-only`; tag `stages-1-5-green-2026-06-06`. |
+| API `/ivgs` crash (rollback storage) | 2026-06-05 (`c3e8a1a`) | Repointed to `/mnt/ivgs-shared/rollback_points`. *(Full wiring → P2.16.)* |
+| Profile-gating of AD-02 standby services | 2026-06-05 (`68ac33b`) | `profiles: ["standby"]` prevents accidental resurrection. |
+| P1.5 — API never dispatches the orchestrator | 2026-06-01 | `trigger_pipeline` → `dispatch_pipeline`; broker options aligned. |
+| P2.2 — config externalization (2a–2h) | 2026-05-29/30 | Node IPs single-sourced; `10.10.0.x` eliminated + guarded. |
+| P2.12 — Nginx dynamic-resolution hardening | 2026-05-29 (`7173797`) | resolver + variable `proxy_pass` (7 sites) + http2. |
+| P2.14 — pre-commit guard for `10.10.0.x` | 2026-05-30 (`e5816d8`) | Hook + `test_no_hardcoded_ips.py`. |
+| P2.23 — workers image broken HEALTHCHECK | H.0 (`d349c46`) | Module `worker` → `celery_app`. |
+| Phase H.0 — Make Main Honest (code surgery) | 2026-05-31 (`d349c46`) | Provider refactor repaired; all 8 stages wired; 22-task registration green. |
+| Defect #8 — test suite restoration | PR #48 (`a836668`) | 512 tests passing; 28 bugs fixed. |
+| Phase 14 backup (Stream A + B) | PR #49 | NAS/GPG/pushgateway/WAL/cron + `ivgs-backup-worker`. |
+| Engine images (ComfyUI/Coqui/Kokoro/WhisperX) | 2026-06-02+ | Blackwell cu128/sm_120; deployed + healthy on node-04. |
+| NFS bulk-transfer wedge | 2026-06-03 | Root cause = inter-switch path, not NIC offload. |
+| Node Configuration admin GUI; P1.4 backup-worker GHCR push; P2.9 compose `version:`; Stage-0/2 bring-up; node-02/03/04 de-conflict | May–June | See archive. |
 
-### Closed earlier (v2.1 era + appended milestones)
+---
 
-| Item | Closed in | Evidence |
-|---|---|---|
-| P1.4 — push ivgs-backup-worker to GHCR | 2026-05-29 (`379292a`) | `:v5.1.0-stream-b` pushed; override pins via `${IVGS_BACKUP_WORKER_TAG}`. |
-| **P1.5 — API never dispatches the orchestrator** | 2026-06-01 (Stage 2B, `699986b`+`76d2735`, branch `…@564e343`) | `trigger_pipeline` now dispatches `dispatch_pipeline`; producer `broker_transport_options`/`global_keyprefix` aligned. Real `POST /trigger` drove transcript→storyboard→user-gate e2e. (Remaining sub-items folded into P2.28/P3.3.) |
-| P1.5 item 2 — approval → media dispatch | 2026-06-03 (`19bf90d`+`78c3684`) | `POST /scenes/approve` → `dispatch_media_generation`; proven 3/2/1 fan-out, scene_id-validated. (Lenient guard = tracked deviation → P2.28.) |
-| Stage 2B API batch (scenes/transcript persistence) | 2026-06-01 (`ivgs-api:v5.1.22-scenes`) | `POST /projects/{id}/scenes` (service-auth) persists 6 rows; transcript upload + refined-text PATCH work. |
-| P2.2 — config externalization (phases 2a–2h) | 2026-05-29/30 | All node-IP refs single-sourced to the `NODE_0x_IP` registry; obsolete `10.10.0.x` eliminated + guarded. Live-startup risk half deployed + verified. (Task-layer remainder → P3.3 H.5.) |
-| P2.9 — obsolete compose `version:` | 2026-05-29 (`fbbafb5`) | Removed; parses clean. |
-| P2.12 — Nginx dynamic-resolution hardening | 2026-05-29 (`7173797`) | resolver + variable `proxy_pass` (7 sites) + http2; verified via forced-IP auto-recovery. |
-| P2.14 — pre-commit guard for `10.10.0.x` | 2026-05-30 (`e5816d8`) | Hook + `test_no_hardcoded_ips.py` backstop. |
-| **P2.23 — workers image baked broken HEALTHCHECK** | H.0 (`d349c46`); effective in deployed `v5.2.4-h0`+ | Dockerfile `HEALTHCHECK` module `worker` → `celery_app`. Deployed image is `v5.4.7-h0`, so effective fleet-wide. |
-| Phase H.0 — Make Main Honest | 2026-05-31 (`d349c46`) | No-GPU code-surgery: repaired provider refactor, added `get_model_config`, wired all 8 stages, removed off-plan residue, reconciled node02-06 compose. Build + 22-task-registration green. |
-| Stage 0 — node-01 rebind + node-02 DR | 2026-05-31 (`bf78a23`,`663fe9e`) | node-01 services rebound to `${NODE_01_IP}`; node-02 CogVideoX recipe + compose committed. |
-| Stage 2 — cross-node transport | 2026-06-01 | `refine_transcript_task` dispatched node-01 → executed node-02 vLLM → result via shared DB. |
-| node-02/03/04 bring-up + de-conflict | 2026-06-02/01 | node-02 frozen baseline; node-03 twin live (`46eb806`); node-04 provisioned (image+TTS, video pruned). |
-| Node Configuration admin GUI | 2026-05-30 (`0538ae0`+`145b366`) | `/admin` node-IP registry editor; host watcher applies via `--no-deps`. |
-| Defect #8 — test suite restoration | Session 11/12 (PR #48, `a836668`) | 512 tests passing; 28 bugs fixed. |
-| Phase 14 backup (Stream A + B) | Session 13/14/15 (PR #49) | NAS/GPG/pushgateway/WAL/cron + `ivgs-backup-worker`. |
-| ComfyUI/Coqui/Kokoro/WhisperX engine images | 2026-06-02+ | Built for Blackwell (cu128, sm_120), weights mounted; deployed + healthy on node-04 (`*-v5.2.7-h0`). Recovery artifacts banked. |
-| NFS bulk-transfer wedge | RESOLVED 2026-06-03 | Root cause = the inter-switch path (NOT NIC offload); mitigations: save local-first then copy; `systemctl restart nfs-server` fast-reset. |
+# Renumbering map (v3.1 → v4.0)
 
-*(Older v1.0/Session-5–9 closures and the full per-increment config-externalization log live in v2.1 history and the transcripts.)*
+*Nothing was dropped. Every v3.1 / Addendum ID resolves here.*
+
+| Old | New | Old | New |
+|---|---|---|---|
+| P1.1 | P1.6 | P2.27 | P2.4 *(405 → P1.2)* |
+| P1.2 | P1.7 | P2.28 | P2.5 |
+| P1.3 | P1.8 | P2.29 | P2.6 |
+| P1.6 | P1.9 | P2.30 | P2.12 |
+| P1.7 | P1.5 *(severity revised)* | P2.31 | P2.13 |
+| P2.1 | P2.26 | P2.32 + B1 | P2.14 *(merged)* |
+| P2.3 | P2.21 | P2.33 | P2.15 |
+| P2.4 | P2.22 | P2.34 | **CLOSED** |
+| P2.5 | **CLOSED** *(fixed in PR #48 sweep)* | P2.35 | P2.16 |
+| P2.6 | P2.24 | P2.36 | P2.17 |
+| P2.7 | P2.23 | P2.37 | P2.18 |
+| P2.8, P2.10, P2.15, P2.22 | P2.30 *(merged)* | P3.1–P3.2 | P3.1–P3.2 |
+| P2.11 | P2.11 | P3.3 | **WS-T.7** |
+| P2.13 | P2.25 | P3.4 | P3.3 |
+| P2.17 | P2.31 | P3.5 | P3.4 |
+| P2.18 + P2.21 | P2.28 *(merged)* | P3.6 | P3.5 |
+| P2.19 + P2.25 | P2.29 *(merged)* | P3.7 | P3.6 |
+| P2.20 | P3.14 | P3.8–P3.13 | P3.7–P3.12 |
+| P2.24 | P2.27 | P3.14 | **DEF.1** |
+| P2.26 | P2.3 | B2 | P2.19 |
+| Stage-6 BUILD REQUIRED | **CLOSED** | B3 | P2.20 |
+| B4 | **CLOSED** | B5 | **P1.0** *(reframed)* |
+| Handoff #1 | **CLOSED** | Handoff #2 | P2.7 |
+| Handoff #3 | P1.5, P3.6, P3.15, P3.16 | Handoff #4 | **WS-T.7** |
+| Handoff #5 | P2.10 | Handoff #6 | P3.17 |
 
 ---
 
@@ -323,29 +448,25 @@ The orchestrator auto-advances correctly and currently parks at `talking_head_re
 
 | Path | Notes |
 |---|---|
-| `/mnt/transcripts/*.txt` + `journal.txt` | Primary historical record; journal first to navigate. |
-| `IVGS_Stage4_Closure_and_Stage5-6_Work_Package_2026-06-05.md` | This arc's working doc (regression close, Stage 4/5 closures, the 13 follow-ons, Stage-6 plan). |
-| `IVGS_v5_Forensic_Report_ImageGen_Regression_2026-06-05.md` | A1/A2 detail — §6.2/§9.C **overturned** by the config root cause. |
-| `IVGS_Stage3_E2E_Test_Report_2026-06-05.md` | Known-good baseline; the proven re-fire recipe. |
-| `docs/IVGS_v5_Addendum_AD-02_Node_Specialization.md` | Authoritative topology; AD-02 deviation (P1.6). |
-| `IVGS_v5_Addendum_AD-01_Model_Management.md` | Model management (gated; do-not-build). |
-| `ivgs_v5_functional_spec.md` | §5.2.5 manifest API, §6.1 stages, Stage-5 TTS spec, Stage-6 LatentSync/SadTalker spec, §14.3 rollback. |
-| `IVGS_Phase_H0_Closure_Addendum.md` | H.0 + Stage-2B runtime closure. |
-| `RECOVERY.md` | Image-artifact recovery procedure (P3.14). |
-| `OUTSTANDING_WORK_Addendum_A_2026-06-05.md` | Now merged here (A1/A2/A4 closed; A3/A5/A6/A7 → P1.6/P2.26/P2.27/P3.7). |
+| `OUTSTANDING_WORK_archive_v3.1.md` | Full closure narrative preserved from v3.1 + Addenda A/B. |
+| `SESSION_HANDOFF_2026-07-09.md` | Live-state snapshot; register folded in above. |
+| `IVGS_v5_Master_Sequence_Plan_to_Production.md` | Milestone map — **needs v0.4 to absorb WS-T + the corrected stage status.** |
+| `docs/IVGS_v5_Addendum_AD-01_Model_Management.md` | Model lifecycle; the consumer of certifications. |
+| `docs/IVGS_v5_Addendum_AD-02_Node_Specialization_Draft3.md` | Authoritative topology; node-06 Intel→CUDA. |
+| `docs/IVGS_v5_Addendum_AD-03_Composition_Fidelity.md` | Pillars 1–3; frame-aligned splitting. |
+| `docs/IVGS_v5_Addendum_AD-04-v3_…md` | MBCP design spec — **untracked on node-01; commit it.** |
+| `ivgs_v5_functional_spec.md` | §1.4 SSOT — **§2.1/§6.2/§6.4 need amendment under WS-T.4.** |
+| `MBCP_RuntimeClass_Refactor_TaskA_Audit.md` | MBCP adapter audit; drives P2.8/P2.9. |
+| `/mnt/transcripts/*.txt` + `journal.txt` | Primary historical record. |
 
 ---
 
 # Update protocol
 
-Each session that closes should, before final commit:
+1. Every closure records evidence: commit SHA, image tag, `file:line`, or transcript pointer.
+2. New deferrals require a `DEF.n` entry with a stated re-open trigger. Nothing is parked silently.
+3. Re-snapshot the counts table at every session close.
+4. **Verify against committed code, not summaries** — this document is a map, the repo is the territory.
+5. When WS-T lands, retire P2.1/P2.2/P2.3 and the P0.1/P1.1–P1.2 entries together, in one arc, with the reference-output diff as evidence.
 
-1. **Add** any new deferred item discovered this session (source = transcript path/date).
-2. **Update** the status of any item touched — move closures to the *Items-closed* table with evidence; don't delete.
-3. **Re-snapshot** the priority counts.
-4. **Commit** as `chore(docs): update OUTSTANDING_WORK.md — <session summary>` and push.
-5. **Update** `/mnt/transcripts/journal.txt` to note the session's relationship to this file.
-
-The discipline: nothing is "deferred" without going into this file.
-
-*— End of ledger (v3.1, 2026-06-06 — post-swap e2e re-validation + merged to `main`) —*
+*Rebuilt 2026-08-14 against `e613e844` (node-01 == origin/main). Next: Master Plan v0.4, then AD-05.*
