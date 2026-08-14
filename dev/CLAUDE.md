@@ -1,0 +1,156 @@
+# CLAUDE.md - IVGS working rules
+
+Cold-start brief. A fresh session reading only this file must be able to work
+safely without breaking anything.
+
+**Repo:** brucecostello2/elearning_v5 at /opt/ivgs
+**Companion:** MBCP (brucecostello2/MBCP), read-only clone at /opt/MBCP
+
+## 1. Authority
+
+The operator holds sole merge authority. Claude authors code and proposes.
+Claude does NOT commit, push, merge, or deploy. Claude does not run commands
+on any node other than node-01 unless explicitly handed over.
+
+## 2. Fleet - label EVERY command with its node
+
+| Node | Address | Role |
+|---|---|---|
+| node-01 | 192.168.1.90 | This machine. CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers. 16 GB. |
+| node-02 | 192.168.1.91 | LLM only (vLLM) |
+| node-03 | 192.168.1.92 | Video only |
+| node-04 | 192.168.1.93 | Image + TTS + talking head. RTX PRO 6000 96 GB. |
+| node-05 | 192.168.1.94 | OFFLINE |
+| node-06 | 192.168.1.95 | OFFLINE. Card swapped to RTX 6000 96 GB - now CUDA, not Intel. |
+| .7 | 192.168.1.7 | TrueNAS. Backup target: /mnt/store/ivgs and /mnt/store/ivgs-archive |
+| .9 | 192.168.1.9 | RETIRED CIFS NAS. Do not write to it. |
+| .51 | 192.168.1.51 | MBCP management plane |
+
+## 3. Never touch
+
+- `ivgs-infra/.env.node01` - carries IVGS_MBCP_INGEST_TOKEN. Untracked and
+  gitignored as of e1f4c58. Never `git add` it, never print its contents.
+- `git clean`, `git rm`, or any destructive git operation.
+- The eight stage task bodies during the orchestration migration - the scope
+  boundary in AD-05 section 8 is binding. Wrapping is allowed; editing is not.
+- `.9` - retired, retained read-only as fallback.
+
+## 4. Ground truth beats documentation
+
+Verify against committed code and running containers. Do not trust summaries,
+handoff documents, or recollection - including this file. Cite file:line for
+every claim about system behaviour. State plainly when something is unverified.
+
+Documents found contradicting production in one 2026-08 sweep: ADR-004 (claimed
+TimescaleDB, runs postgres:17.2), docs/stage-numbering-map.md (listed files that
+do not exist), MBCP CUSTOM_NODES.txt (listed nodes that do not exist).
+
+## 5. Command block rules
+
+- Node-labelled, single, self-gating, plain ASCII bash.
+- Never `exit` in a block meant for an interactive shell - it kills the login
+  session. Wrap in `( ... )` or use if/then/fi.
+- Pipe script output through `tr -cd '\11\12\15\40-\176'` - several scripts
+  emit non-ASCII that mangles PuTTY.
+- Never paste code containing angle brackets through PuTTY. Ship files via
+  WinSCP with a SHA gate.
+
+## 6. Deployment
+
+Derive the compose invocation from container labels, never guess:
+
+    docker inspect <container> --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}'
+
+node-01 uses three -f files: docker-compose.node01.yml +
+docker-compose.override.node01.yml + docker-compose.monitoring.yml, with
+--env-file ivgs-infra/.env
+
+Always `--no-deps` on a single-service recreate, or Postgres restarts too.
+After any recreate, verify with `docker exec <c> env`, not by reading .env -
+compose only passes variables the YAML references.
+
+## 7. Known traps
+
+| Trap | Reality |
+|---|---|
+| Filenames are not task identities | Four stage files register Celery names that do not match their filenames. The orchestrator dispatches by registered name. See docs/stage-numbering-map.md. |
+| stage6_talking_head.py looks dead | It is not dispatched, but it holds the AD-01 provider binding. PROMOTE it into talking_head_task.py, do not delete. Ledger P1.0. |
+| Checkpoint resume | Does not exist. No POST /jobs/{id}/checkpoints route was ever built. Assume any pipeline failure means a full re-run. |
+| GPU reservations | Fail open silently: acquire_gpu_reservation RAISES (gpu_utils.py:202), but its 6 call sites catch Exception and continue, e.g. stage3_images.py:631. Registry is empty (total_nodes:0). UNVERIFIED and contradictory: this file previously asserted release_gpu_reservation raises TypeError at all 3 call sites, while OUTSTANDING_WORK.md:293 records that the same signature drift does NOT reproduce on the deployed image. Neither claim has been tested. Operator to resolve; do not act on either as fact. |
+| Long tasks can execute twice | broker_visibility_timeout 3600 is below time_limit 3900 on talking_head and video_generation. gpu_video spans node-02 and node-03. |
+| node-01 memory | 16 GB, NOT 31 - reduced 2026-08-14. `free` shows ~15 GB usable. The Proxmox host OOM-killed this VM twice that day. Anything that spawns a sibling container with a multi-GB tmpfs (verify_backup.sh: 2 GB) can take the node down. Check headroom before running one. |
+| Swallowed failures | Backup tasks returned {'status':'failed'} and Celery recorded success - FIXED and deployed 2026-08-14, they now raise BackupTaskError. Same pattern still open in _decrement_media_task_count (returns 0 on error, pipeline_orchestrator_v2.py:880,893), save_checkpoint (returns False unchecked at all 5 call sites, error_handler.py:442,450), and run_backup_verification (a stub returning {'status':'ok'} on a daily schedule, pipeline_orchestrator.py:620). NOT acquire_gpu_reservation - it raises (gpu_utils.py:202); the swallow is at its 6 call sites, e.g. stage3_images.py:631. Five instances, ledger at workpackages/reports/WP-00-SWALLOWED-FAILURES_2026-08-14.md. |
+| set -euo pipefail + trap EXIT | Aborts before any `if [ $? -ne 0 ]` check. Those checks are dead code. Capture with `|| rc=$?`. |
+| rsync to NFS | Returns 23 (cannot set attributes) even on success. Treat 23/24 as non-fatal. |
+
+## 8. Backups
+
+Target is .7 NFS as of 2026-08-14. All four types working: db, assets, config, wal.
+/run/ivgs must exist owned by uid 999 - see configs/systemd/. Without it the
+backup lock file fails.
+
+verify_backup.sh is SAFE TO RUN as of 2026-08-14 and is scheduled again at
+05:00. It no longer uses a 2 GB tmpfs - the throwaway Postgres now has PGDATA
+on disk and runs with --memory=512m --memory-swap=512m, so it cannot pressure
+a 16 GB node. It always read the NAS for the dump; what failed was the
+CHECKSUM FILE, which backup.sh used to write with the absolute staging path
+(/tmp/ivgs-backup/<date>/...), so sha256sum --check looked for a file that does
+not exist on the NAS. backup.sh now writes a bare filename and the verifier
+compares hashes directly, which also works on older checksum files.
+Gated both ways before re-enabling: PASSES on a known-good backup (exit 0, 4s),
+FAILS on a byte-corrupted copy (exit 1, caught at the checksum).
+It still spawns a sibling container via the mounted Docker socket.
+
+## 9. Authoritative documents
+
+- `OUTSTANDING_WORK.md` - task backlog, single source of truth
+- `IVGS_v5_Master_Sequence_Plan_to_Production.md` - milestones
+- `docs/ivgs_v5_functional_spec.md` - functional SSOT
+- `docs/deployment/runbook.md` - operations
+
+Read the backlog before starting anything.
+
+## 10. Working principles
+
+Correctness over speed. Fix, don't band-aid. No parked bugs. Architectural
+completeness over speed. Terse, plain English. Options as tables with
+implications, for genuine decisions only.
+
+## 11. MBCP reference clone
+
+`/opt/MBCP` is a READ-ONLY reference clone of brucecostello2/MBCP.
+
+MBCP commits happen on 192.168.1.51, never here. This clone exists so the
+AD-01 seam can be read against real code rather than assumed: the export
+receiver, weight fetch by bundle_digest, and the ffmpeg engine enum coupling
+(IVGS commit e613e84 added `ffmpeg` to ModelEngine specifically to unblock
+MBCP composition exports - the two schemas are coupled with no test on
+either side).
+
+Read `/opt/MBCP/dev/CLAUDE.md` and `/opt/MBCP/dev/workorders/WORK_PACKAGES.md`
+before touching anything seam-related.
+
+Terminology trap: IVGS has EIGHT pipeline stages; MBCP has NINE capability
+stages (mbcp_core/enums.py). They are different taxonomies. MBCP's
+image_generation / video_generation / animation_generation all map to IVGS
+Stage 3; MBCP's `composition` collapses IVGS Stages 4, 7 and 8; MBCP's
+`translation` is not an IVGS pipeline stage at all. The AD-01 selection key
+(stage, tier) uses MBCP's taxonomy.
+
+## 12. Reports
+
+Every work package produces a report in /opt/ivgs/dev/workpackages/reports/,
+named WP-<NAME>_<YYYY-MM-DD>.md. This path is INSIDE the repo and is
+committed - reports are project record, not scratch. /home/dev/workpackages
+is a symlink to it, so the old path still works.
+
+WP-00-SWALLOWED-FAILURES_2026-08-14.md is a standing REGISTER, not a
+closed report. Add instances as they are found; do not close one without
+observed evidence that the failure now surfaces.
+
+Two passes: findings and proposed fix BEFORE writing code (stop and show the
+operator), then what changed and how it was verified after.
+
+Record what was verified live versus what was inferred from reading code.
+Never claim a fix works unless you observed it working. An exit code of 0 is
+not proof - check the artifact.
