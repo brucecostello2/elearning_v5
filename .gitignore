@@ -119,3 +119,4 @@ ivgs-infra/.env.node0*
 
 # local per-node model smoke-test compose files (not for the repo)
 ivgs-infra/docker-compose.smoke-*.yml
+ivgs-infra/.env.node01
