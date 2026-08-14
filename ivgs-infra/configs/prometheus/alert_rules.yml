@@ -163,6 +163,49 @@ groups:
           action: "Investigate backup failure. Check disk space, GPG keys, and network connectivity to NAS."
           runbook: "docs/runbooks/backup-failed.md"
 
+      # -----------------------------------------------------------------------
+      # Alert 5b: BackupStale
+      # Condition: no backup of a given type has reported in for over 26 hours
+      # Duration: instant (see below)
+      # Severity: Critical
+      # Action: Alert ops immediately
+      #
+      # WHY THIS EXISTS. BackupFailed above catches "a backup ran and failed".
+      # It cannot catch "no backup ran at all", which is the failure mode that
+      # actually occurred: the pushgateway retains the last pushed value
+      # indefinitely, so if the schedule stops after a success the gauge holds
+      # 1 forever and nothing contradicts it. Between 2026-05-29 and 2026-08-14
+      # the database backup did not run to completion once, and no alert could
+      # have said so from ivgs_backup_last_status alone.
+      #
+      # Shape is taken from WorkerDown (this file, ~line 68), which applies the
+      # same time()-minus-timestamp test to worker heartbeats.
+      #
+      # 26h, not 24h, so a daily 02:00 backup that is merely slow or briefly
+      # delayed does not page anyone. No `for:` clause: the expression is a
+      # timestamp comparison and cannot flap, and BackupFailed is likewise
+      # instant -- an inhibit_rule in alertmanager.yml stops the two from
+      # double-paging for the same backup_type.
+      # -----------------------------------------------------------------------
+      - alert: BackupStale
+        expr: |
+          time() - ivgs_backup_last_timestamp > 93600
+        labels:
+          severity: critical
+          team: infrastructure
+          component: backup
+        annotations:
+          summary: "No {{ $labels.backup_type }} backup in over 26 hours on node-01"
+          description: >-
+            No {{ $labels.backup_type }} backup has reported a completion
+            timestamp for more than 26 hours. This means the backup is not
+            running at all -- distinct from BackupFailed, which means it ran
+            and failed. Check the Celery beat schedule in
+            ivgs-backup-worker/celery_app.py for the database backup, and the
+            root crontab for asset and config backups.
+          action: "Confirm the schedule is firing before assuming the backup itself is broken."
+          runbook: "docs/runbooks/backup-failed.md"
+
   # =========================================================================
   # Group 2: Warning Alerts — Require Investigation
   # =========================================================================

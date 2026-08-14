@@ -23,6 +23,23 @@ global:
     cluster: "ivgs-v5"
     environment: "production"
 
+# ---------------------------------------------------------------------------
+# Alertmanager
+# ---------------------------------------------------------------------------
+# Without this block Prometheus evaluates every rule in alert_rules.yml and
+# routes the results nowhere. BackupFailed had been firing correctly and
+# reaching nobody -- it was firing at the moment this was added on 2026-08-14.
+#
+# Resolved by Docker's embedded DNS at 127.0.0.11. Prometheus's Go resolver
+# uses it directly; note that `getent`/`wget` inside the prom image cannot,
+# so shell-based DNS tests from that container are misleading.
+# ---------------------------------------------------------------------------
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
 rule_files:
   - "/etc/prometheus/alert_rules.yml"
 

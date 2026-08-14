@@ -437,6 +437,18 @@ main() {
     end_time="$(date +%s)"
     local duration=$(( end_time - start_time ))
 
+    # Clear ivgs_backup_last_status on success.
+    #
+    # The failure path (cleanup) pushes this gauge to 0, but nothing ever
+    # pushed it back to 1 -- so a single failed verification pinned
+    # BackupFailed firing permanently, no matter how many later verifications
+    # passed. Observed 2026-08-14: the alert had been firing continuously since
+    # 19:20 for exactly this reason. An alert that can never clear trains the
+    # operator to ignore it, which is the failure mode this whole work package
+    # exists to remove. The label set must match the failure push exactly or
+    # the two produce separate series and neither cancels the other.
+    push_metric "ivgs_backup_last_status" "1" \
+        "backup_type=\"database\",target_path=\"${BACKUP_NAS_DIR}\",node=\"node-01\""
     push_metric "ivgs_backup_verification_status" "1" \
         "verify_date=\"${VERIFY_DATE}\""
     push_metric "ivgs_backup_verification_duration_seconds" "${duration}" \
