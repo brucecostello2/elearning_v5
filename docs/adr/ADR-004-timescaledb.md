@@ -10,4 +10,6 @@ policies, reducing operational overhead. The Docker image changes from
 postgres:17 to timescale/timescaledb:latest-pg17.
 
 ## Status
+
+**SUPERSEDED by ADR-006** (2026-08-14) - never implemented; postgres:17.2 runs.
 Accepted. Change request filed to amend §3.3 and §4.2.
