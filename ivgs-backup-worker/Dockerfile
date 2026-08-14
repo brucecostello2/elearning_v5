@@ -90,7 +90,15 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # --prefetch-multiplier=1 means each worker pulls one task at a time
 # (no over-buffering, important for long-running tasks like full DB backup).
 # -Ofair distributes tasks fairly when concurrency > 1.
+#
+# --beat embeds the scheduler in this process (see BEAT_SCHEDULE in
+# celery_app.py).  Embedded beat is normally discouraged because it cannot be
+# scaled past one process — here that is the requirement, not a limitation:
+# this service runs exactly one replica, and a second scheduler would
+# double-fire every backup.  It also keeps the scheduler in the only container
+# whose app carries the "ivgs_backup_" keyprefix the worker consumes under.
 CMD ["celery", "-A", "celery_app", "worker", \
+     "--beat", \
      "--loglevel=info", \
      "--queues=backup", \
      "--concurrency=1", \

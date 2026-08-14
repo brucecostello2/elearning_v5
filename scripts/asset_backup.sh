@@ -86,6 +86,17 @@ readonly TARGET_DIR="${BACKUP_NAS_DIR}/${TIMESTAMP}"
 readonly RECORD_FILE="${TARGET_DIR}/backup_record.json"
 
 # ---------------------------------------------------------------------------
+# backup_records row ownership
+# ---------------------------------------------------------------------------
+# This script, not the Celery task, owns the row — see the header of
+# lib/backup_record.sh. Without this, a cron or direct `docker exec` asset
+# backup produced files on the NAS that the GUI could not see.
+BACKUP_RECORD_TYPE="asset_backup"
+# shellcheck source=lib/backup_record.sh
+. "$(dirname "$0")/lib/backup_record.sh"
+ensure_backup_id
+
+# ---------------------------------------------------------------------------
 # Structured JSON logging
 # ---------------------------------------------------------------------------
 log_json() {
@@ -159,6 +170,7 @@ cleanup() {
     rm -f "${LOCK_FILE}" 2>/dev/null || true
     if [ ${exit_code} -ne 0 ]; then
         log_error "Asset backup failed with exit code ${exit_code}"
+        record_failed "${exit_code}" "${LOG_FILE}"
         push_asset_backup_status 0 0 0
     fi
     exit ${exit_code}
@@ -171,6 +183,11 @@ trap cleanup EXIT INT TERM
 # ---------------------------------------------------------------------------
 preflight_checks() {
     log_info "Starting pre-flight checks"
+
+    # Open the row before anything that can fail — the lock-file write below
+    # included. On 2026-08-14 that write failed with "Permission denied" on
+    # /var/run/ivgs/asset-backup.lock.
+    record_running
 
     # Lock file check (prevent concurrent runs)
     if [ -f "${LOCK_FILE}" ]; then
@@ -400,6 +417,8 @@ main() {
     end_time="$(date +%s)"
     local duration=$(( end_time - start_time ))
 
+    record_completed "${total_size}" "${BACKUP_NAS_DIR}/${TIMESTAMP}"
+
     push_asset_backup_status 1 "${duration}" "${total_size}"
 
     log_info "=== IVGS v5 Asset Backup Completed Successfully ===" \
@@ -407,10 +426,11 @@ main() {
 
     # Stream B API integration: emit KEY=VALUE lines on stdout for the
     # FastAPI _run_backup code to parse.
-    local effective_id="${BACKUP_ID:-${TIMESTAMP}}"
-    echo "backup_id=${effective_id}"
+    echo "backup_id=${BACKUP_ID}"
     echo "size_bytes=${total_size}"
     echo "backup_path=${BACKUP_NAS_DIR}/${TIMESTAMP}"
+    # ok | failed — the worker raises on "failed".
+    echo "record_write=${RECORD_WRITE}"
 }
 
 main "$@"

@@ -62,6 +62,17 @@ readonly ENCRYPTED_FILE="${ARCHIVE_FILE}.gpg"
 readonly NAS_TARGET="${BACKUP_NAS_DIR}/${TIMESTAMP}/"
 
 # ---------------------------------------------------------------------------
+# backup_records row ownership
+# ---------------------------------------------------------------------------
+# This script, not the Celery task, owns the row — see the header of
+# lib/backup_record.sh. The library carries its own POSTGRES_* defaults, so
+# this script needs no Postgres configuration of its own.
+BACKUP_RECORD_TYPE="config_backup"
+# shellcheck source=lib/backup_record.sh
+. "$(dirname "$0")/lib/backup_record.sh"
+ensure_backup_id
+
+# ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
 log_entry() {
@@ -106,6 +117,7 @@ cleanup() {
     # If we're exiting non-zero, push a failure status so BackupFailed alert fires.
     if [ "${exit_code}" -ne 0 ]; then
         push_status 0 2>/dev/null || true
+        record_failed "${exit_code}" "${LOG_FILE}"
         log_entry "ERROR" "Config backup failed with exit code ${exit_code}"
     fi
 
@@ -120,6 +132,10 @@ trap cleanup EXIT
 # ---------------------------------------------------------------------------
 preflight() {
     log_entry "INFO" "Running pre-flight checks"
+
+    # Open the row before anything that can fail, so a run that dies in
+    # pre-flight is still visible in the GUI.
+    record_running
 
     if [ -z "${BACKUP_GPG_RECIPIENT:-}" ]; then
         log_entry "ERROR" "BACKUP_GPG_RECIPIENT is not set"
@@ -298,10 +314,14 @@ main() {
     # Stream B API integration: emit KEY=VALUE lines for FastAPI to parse.
     local size_bytes
     size_bytes="$(stat -c%s "${NAS_TARGET}/$(basename "${ENCRYPTED_FILE}")" 2>/dev/null || echo 0)"
-    local effective_id="${BACKUP_ID:-${TIMESTAMP}}"
-    echo "backup_id=${effective_id}"
+
+    record_completed "${size_bytes}" "${NAS_TARGET}"
+
+    echo "backup_id=${BACKUP_ID}"
     echo "size_bytes=${size_bytes}"
     echo "backup_path=${NAS_TARGET}"
+    # ok | failed — the worker raises on "failed".
+    echo "record_write=${RECORD_WRITE}"
 }
 
 main "$@"

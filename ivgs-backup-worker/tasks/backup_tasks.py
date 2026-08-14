@@ -4,18 +4,34 @@ IVGS v5 — Backup Celery Tasks
 
 Four Celery tasks corresponding to the four backup operations:
 
-    run_full_database_backup(backup_id)   → invokes backup.sh
-    run_asset_backup(backup_id)            → invokes asset_backup.sh
-    run_config_backup(backup_id)           → invokes config_backup.sh
-    run_verification(backup_id, verify_date) → invokes verify_backup.sh
+    run_full_database_backup(backup_id=None)   → invokes backup.sh
+    run_asset_backup(backup_id=None)           → invokes asset_backup.sh
+    run_config_backup(backup_id=None)          → invokes config_backup.sh
+    run_verification(backup_id, verify_date)   → invokes verify_backup.sh
+
+The first three take backup_id optionally.  Given one (the API path), the task
+updates that row as a backstop.  Given none (the Celery beat path), the script
+mints its own UUID and owns the row end to end — beat schedules static
+arguments and cannot mint a UUID per firing.
 
 Each task:
   1. Updates backup_records.status to 'running' on entry
   2. Spawns the backup shell script as a subprocess (passing --backup-id)
   3. Parses the script's KEY=VALUE stdout (backup_id, size_bytes, backup_path,
-     checksum) to capture authoritative results
+     checksum, record_write) to capture authoritative results
   4. Updates backup_records to 'completed' (success) or 'failed' on exit
-  5. On 'failed', writes error_message with last ~2000 chars of stderr
+  5. On 'failed', writes error_message with last ~2000 chars of stderr, then
+     RAISES BackupTaskError
+
+Point 5 is load-bearing.  These tasks used to *return* {'status': 'failed'},
+so Celery logged "Task ... succeeded" for a failed backup and no alert
+downstream of Celery could fire.  A failure must leave the task in state
+FAILURE; the DB row is detail, not the signal.
+
+The backup_records row itself is written by the shell scripts (see
+scripts/lib/backup_record.sh), so cron and direct `docker exec` runs are
+recorded too.  The updates here are the API path's belt-and-braces: they also
+cover the case where the script died before it could write anything.
 
 Tasks ARE idempotent via the backup_id: if a task is re-delivered (Celery
 acks_late + worker death), the second invocation finds an existing record
@@ -32,7 +48,7 @@ import os
 import re
 import subprocess
 from datetime import datetime, timezone
-from typing import Dict, Optional
+from typing import Dict, NoReturn, Optional
 
 from celery import shared_task
 from celery_app import celery_app  # noqa: F401  - ensures app is configured
@@ -41,6 +57,18 @@ import psycopg2
 import psycopg2.extras
 
 logger = logging.getLogger("ivgs.backup_worker.tasks")
+
+
+class BackupTaskError(RuntimeError):
+    """
+    A backup or verification run did not succeed.
+
+    Raised — never returned — so that Celery records the task as FAILURE.
+    Returning {'status': 'failed'} made Celery log "Task ... succeeded", which
+    is how a 75-day gap in database backups went unnoticed: every alerting
+    surface downstream of Celery saw an unbroken run of successes.
+    """
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -104,16 +132,53 @@ def _update_record_success(
 
 
 def _update_record_failed(backup_id: str, error_message: str) -> None:
-    """Mark a backup record as failed with error_message preserved."""
+    """
+    Mark a backup record as failed with error_message preserved.
+
+    completed_at is COALESCEd rather than assigned. A row that already carries
+    a genuine completion time must keep it: stamping now() on a row started
+    months earlier is what produced the 110,502-minute durations in the GUI,
+    which derives duration as completed_at - started_at.
+    """
     with _get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE backup_records "
                 "SET status = 'failed', "
                 "    error_message = %s, "
-                "    completed_at = %s "
+                "    completed_at = COALESCE(completed_at, %s) "
                 "WHERE id = %s::uuid",
                 (error_message[:2000], datetime.now(timezone.utc), backup_id),
+            )
+        conn.commit()
+
+
+def _update_record_verification_failed(backup_id: str, error_message: str) -> None:
+    """
+    Record that a verification attempt failed, without rewriting the backup.
+
+    A failed verification says something about the verification run, not about
+    the dump on the NAS. Marking the record 'failed' destroyed the status of
+    backups that had completed — and, for rows verified months earlier, moved
+    completed_at forward to now(). Both are why every row in the GUI read
+    'failed'.
+
+    So this touches error_message only:
+      - status stays 'completed' or 'verified' (the API already gates verify
+        to those two states, backup.py:346)
+      - completed_at is left alone
+      - verified_at is left alone; the success path is the only writer, and a
+        historical successful verification is not erased by a later failure
+
+    The Celery task still raises, which is the signal that the attempt failed.
+    """
+    with _get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE backup_records "
+                "SET error_message = %s "
+                "WHERE id = %s::uuid",
+                (error_message[:2000], backup_id),
             )
         conn.commit()
 
@@ -130,7 +195,10 @@ def _update_record_verified(
                 "UPDATE backup_records "
                 "SET status = 'verified', "
                 "    verification_checksum = %s, "
-                "    verified_at = %s "
+                "    verified_at = %s, "
+                # Clear any error left by an earlier failed attempt, so the
+                # row does not carry a stale message alongside a pass.
+                "    error_message = NULL "
                 "WHERE id = %s::uuid",
                 (verification_checksum, verified_at, backup_id),
             )
@@ -185,7 +253,7 @@ def _safe_int(value: Optional[str], default: int = 0) -> int:
 # ---------------------------------------------------------------------------
 
 def _run_backup_script(
-    backup_id: str,
+    backup_id: Optional[str],
     script_name: str,
     extra_args: Optional[list] = None,
 ) -> Dict:
@@ -209,7 +277,12 @@ def _run_backup_script(
             "stdout_tail": "",
         }
 
-    cmd = [script_path, f"--backup-id={backup_id}"]
+    # No backup_id means a scheduled (beat) run: omit the flag entirely and let
+    # the script mint its own UUID and own its row end to end.  See
+    # scripts/lib/backup_record.sh: ensure_backup_id.
+    cmd = [script_path]
+    if backup_id is not None:
+        cmd.append(f"--backup-id={backup_id}")
     if extra_args:
         cmd.extend(extra_args)
 
@@ -245,46 +318,78 @@ def _run_backup_script(
     autoretry_for=(),   # do NOT auto-retry; we want manual control
     max_retries=0,
 )
-def run_full_database_backup(self, backup_id: str) -> Dict:
+def run_full_database_backup(self, backup_id: Optional[str] = None) -> Dict:
     """
-    Invoke /scripts/backup.sh --backup-id=<uuid>.
+    Invoke /scripts/backup.sh, optionally with --backup-id=<uuid>.
+
+    Two calling conventions:
+
+      backup_id given (API path)
+          The API has already inserted a 'running' row and needs the id back
+          synchronously.  This task updates that row as a backstop, in case the
+          script dies before it can write anything itself.
+
+      backup_id omitted (Celery beat / scheduled path)
+          The script mints its own UUID and owns the row end to end.  This task
+          writes nothing to backup_records and only supervises the exit code.
+          Beat schedules static arguments and cannot mint a UUID per firing,
+          which is why this convention exists.
 
     Returns a dict that Celery stores in the result backend.  The DB row is
     the source of truth — the returned dict is for debugging / Flower / etc.
+
+    Raises BackupTaskError on any failure, so the Celery task state is FAILURE.
     """
     logger.info("run_full_database_backup START", extra={"backup_id": backup_id})
 
-    try:
-        _update_record_running(backup_id)
-    except Exception as exc:
-        logger.exception("Failed to mark record as running",
-                         extra={"backup_id": backup_id})
-        return {"backup_id": backup_id, "status": "error",
-                "error": f"DB pre-update failed: {exc}"}
+    if backup_id is not None:
+        try:
+            _update_record_running(backup_id)
+        except Exception as exc:
+            logger.exception("Failed to mark record as running",
+                             extra={"backup_id": backup_id})
+            raise BackupTaskError(
+                f"backup {backup_id}: DB pre-update failed: {exc}"
+            ) from exc
 
     result = _run_backup_script(backup_id, "backup.sh")
 
     if result["returncode"] == 0:
         size = _safe_int(result["kv"].get("size_bytes"), 0)
         path = result["kv"].get("backup_path", "")
-        try:
-            _update_record_success(
-                backup_id=backup_id,
-                size_bytes=size,
-                backup_path=path,
-                completed_at=datetime.now(timezone.utc),
+        # On the scheduled path the id is whatever the script minted; read it
+        # back off stdout so the result payload still identifies the row.
+        effective_id = backup_id or result["kv"].get("backup_id", "")
+        if backup_id is not None:
+            try:
+                _update_record_success(
+                    backup_id=backup_id,
+                    size_bytes=size,
+                    backup_path=path,
+                    completed_at=datetime.now(timezone.utc),
+                )
+            except Exception as exc:
+                logger.exception("Failed to mark record as completed",
+                                 extra={"backup_id": backup_id})
+                raise BackupTaskError(
+                    f"backup {backup_id}: DB post-update failed: {exc}"
+                ) from exc
+
+        # The script writes its own row (see backup.sh "backup_records row
+        # ownership"). If that write failed it exits 0 anyway — the dump is
+        # good — but the run is not fully successful and must not be reported
+        # as such.
+        if result["kv"].get("record_write") == "failed":
+            raise BackupTaskError(
+                f"backup {effective_id}: dump succeeded but backup.sh could not "
+                f"write its backup_records row; see /var/log/ivgs/backup.log"
             )
-        except Exception as exc:
-            logger.exception("Failed to mark record as completed",
-                             extra={"backup_id": backup_id})
-            return {"backup_id": backup_id, "status": "error",
-                    "error": f"DB post-update failed: {exc}",
-                    "script_kv": result["kv"]}
+
         logger.info("run_full_database_backup OK", extra={
-            "backup_id": backup_id, "size_bytes": size, "backup_path": path,
+            "backup_id": effective_id, "size_bytes": size, "backup_path": path,
         })
         return {
-            "backup_id": backup_id,
+            "backup_id": effective_id,
             "status": "completed",
             "size_bytes": size,
             "backup_path": path,
@@ -297,13 +402,20 @@ def run_full_database_backup(self, backup_id: str) -> Dict:
                  extra={"backup_id": backup_id,
                         "returncode": result["returncode"],
                         "stderr_tail": err[-500:]})
-    try:
-        _update_record_failed(backup_id, err)
-    except Exception:
-        logger.exception("Failed to mark record as failed",
-                         extra={"backup_id": backup_id})
-    return {"backup_id": backup_id, "status": "failed",
-            "returncode": result["returncode"], "stderr_tail": err[-500:]}
+    # On the scheduled path the script's EXIT trap has already marked its own
+    # row failed; there is no id here to update.
+    if backup_id is not None:
+        try:
+            _update_record_failed(backup_id, err)
+        except Exception:
+            # Best effort: the raise below is what makes the failure visible,
+            # so a DB write problem here must not mask it.
+            logger.exception("Failed to mark record as failed",
+                             extra={"backup_id": backup_id})
+    raise BackupTaskError(
+        f"backup.sh exited {result['returncode']} for backup "
+        f"{backup_id or '(scheduled)'}: {err[-500:]}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -316,29 +428,53 @@ def run_full_database_backup(self, backup_id: str) -> Dict:
     autoretry_for=(),
     max_retries=0,
 )
-def run_asset_backup(self, backup_id: str) -> Dict:
-    """Invoke /scripts/asset_backup.sh --backup-id=<uuid>."""
+def run_asset_backup(self, backup_id: Optional[str] = None) -> Dict:
+    """
+    Invoke /scripts/asset_backup.sh --backup-id=<uuid>.
+
+    Raises BackupTaskError on any failure.
+    """
     logger.info("run_asset_backup START", extra={"backup_id": backup_id})
-    try:
-        _update_record_running(backup_id)
-    except Exception as exc:
-        return {"backup_id": backup_id, "status": "error",
-                "error": f"DB pre-update failed: {exc}"}
+    if backup_id is not None:
+        try:
+            _update_record_running(backup_id)
+        except Exception as exc:
+            raise BackupTaskError(
+                f"asset backup {backup_id}: DB pre-update failed: {exc}"
+            ) from exc
 
     result = _run_backup_script(backup_id, "asset_backup.sh")
 
     if result["returncode"] == 0:
         size = _safe_int(result["kv"].get("size_bytes"), 0)
         path = result["kv"].get("backup_path", "")
-        _update_record_success(backup_id, size, path,
-                               datetime.now(timezone.utc))
-        return {"backup_id": backup_id, "status": "completed",
+        effective_id = backup_id or result["kv"].get("backup_id", "")
+        if backup_id is not None:
+            _update_record_success(backup_id, size, path,
+                                   datetime.now(timezone.utc))
+        if result["kv"].get("record_write") == "failed":
+            raise BackupTaskError(
+                f"asset backup {effective_id}: archive succeeded but "
+                f"asset_backup.sh could not write its backup_records row"
+            )
+        return {"backup_id": effective_id, "status": "completed",
                 "size_bytes": size, "backup_path": path}
 
     err = result["stderr"] or f"script exited {result['returncode']}"
-    _update_record_failed(backup_id, err)
-    return {"backup_id": backup_id, "status": "failed",
-            "returncode": result["returncode"], "stderr_tail": err[-500:]}
+    logger.error("run_asset_backup FAILED",
+                 extra={"backup_id": backup_id,
+                        "returncode": result["returncode"],
+                        "stderr_tail": err[-500:]})
+    if backup_id is not None:
+        try:
+            _update_record_failed(backup_id, err)
+        except Exception:
+            logger.exception("Failed to mark record as failed",
+                             extra={"backup_id": backup_id})
+    raise BackupTaskError(
+        f"asset_backup.sh exited {result['returncode']} for backup "
+        f"{backup_id or '(scheduled)'}: {err[-500:]}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -351,29 +487,53 @@ def run_asset_backup(self, backup_id: str) -> Dict:
     autoretry_for=(),
     max_retries=0,
 )
-def run_config_backup(self, backup_id: str) -> Dict:
-    """Invoke /scripts/config_backup.sh --backup-id=<uuid>."""
+def run_config_backup(self, backup_id: Optional[str] = None) -> Dict:
+    """
+    Invoke /scripts/config_backup.sh --backup-id=<uuid>.
+
+    Raises BackupTaskError on any failure.
+    """
     logger.info("run_config_backup START", extra={"backup_id": backup_id})
-    try:
-        _update_record_running(backup_id)
-    except Exception as exc:
-        return {"backup_id": backup_id, "status": "error",
-                "error": f"DB pre-update failed: {exc}"}
+    if backup_id is not None:
+        try:
+            _update_record_running(backup_id)
+        except Exception as exc:
+            raise BackupTaskError(
+                f"config backup {backup_id}: DB pre-update failed: {exc}"
+            ) from exc
 
     result = _run_backup_script(backup_id, "config_backup.sh")
 
     if result["returncode"] == 0:
         size = _safe_int(result["kv"].get("size_bytes"), 0)
         path = result["kv"].get("backup_path", "")
-        _update_record_success(backup_id, size, path,
-                               datetime.now(timezone.utc))
-        return {"backup_id": backup_id, "status": "completed",
+        effective_id = backup_id or result["kv"].get("backup_id", "")
+        if backup_id is not None:
+            _update_record_success(backup_id, size, path,
+                                   datetime.now(timezone.utc))
+        if result["kv"].get("record_write") == "failed":
+            raise BackupTaskError(
+                f"config backup {effective_id}: archive succeeded but "
+                f"config_backup.sh could not write its backup_records row"
+            )
+        return {"backup_id": effective_id, "status": "completed",
                 "size_bytes": size, "backup_path": path}
 
     err = result["stderr"] or f"script exited {result['returncode']}"
-    _update_record_failed(backup_id, err)
-    return {"backup_id": backup_id, "status": "failed",
-            "returncode": result["returncode"], "stderr_tail": err[-500:]}
+    logger.error("run_config_backup FAILED",
+                 extra={"backup_id": backup_id,
+                        "returncode": result["returncode"],
+                        "stderr_tail": err[-500:]})
+    if backup_id is not None:
+        try:
+            _update_record_failed(backup_id, err)
+        except Exception:
+            logger.exception("Failed to mark record as failed",
+                             extra={"backup_id": backup_id})
+    raise BackupTaskError(
+        f"config_backup.sh exited {result['returncode']} for backup "
+        f"{backup_id or '(scheduled)'}: {err[-500:]}"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -413,11 +573,30 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
       - status                 -> 'verified' (durable success)
       - verification_checksum  -> SHA-256 from ivgs_backup.sha256 file
       - verified_at            -> now()
-    OR
-      - status                 -> 'failed' with error_message
+    OR, on failure:
+      - error_message only.  See _update_record_verification_failed: a failed
+        verification is not a failed backup, and must not rewrite the backup's
+        status or its completed_at.  The raised BackupTaskError is the signal
+        that the attempt failed.
     """
     import json
     from pathlib import Path
+
+    def _fail(err: str) -> NoReturn:
+        """Record the verification failure and raise so Celery sees FAILURE."""
+        logger.error("run_verification FAILED",
+                     extra={"backup_id": backup_id,
+                            "verify_date": verify_date,
+                            "error": err[-500:]})
+        try:
+            _update_record_verification_failed(backup_id, err)
+        except Exception:
+            logger.exception("Failed to record verification failure",
+                             extra={"backup_id": backup_id})
+        raise BackupTaskError(
+            f"verification of backup {backup_id} ({verify_date}) failed: "
+            f"{err[-500:]}"
+        )
 
     logger.info("run_verification START", extra={
         "backup_id": backup_id, "verify_date": verify_date,
@@ -430,9 +609,7 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
 
     script_path = os.path.join(SCRIPTS_DIR, "verify_backup.sh")
     if not os.path.isfile(script_path):
-        err = f"Script not found: {script_path}"
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "error", "error": err}
+        _fail(f"Script not found: {script_path}")
 
     cmd = [script_path, verify_date]
     logger.info("Spawning verify subprocess",
@@ -442,61 +619,39 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
 
     if proc.returncode != 0:
         err = proc.stderr or f"verify script exited {proc.returncode}"
-        logger.error("verify_backup.sh FAILED", extra={
-            "backup_id": backup_id, "returncode": proc.returncode,
-            "stderr_tail": err[-500:],
-        })
-        _update_record_failed(backup_id, f"Verification failed: {err}")
-        return {"backup_id": backup_id, "status": "failed",
-                "returncode": proc.returncode,
-                "stderr_tail": err[-500:]}
+        _fail(f"Verification failed: {err}")
 
     # Script reported success.  Confirm the durable artifacts exist.
 
     # 1. Verification block must be in backup_record.json on disk.
     if not record_path.is_file():
-        err = (
+        _fail(
             f"verify_backup.sh exited 0 but backup_record.json is missing "
             f"at {record_path}.  The script claimed success but didn't "
             f"persist its verification block."
         )
-        logger.error("Durability check failed (record missing)",
-                     extra={"backup_id": backup_id, "path": str(record_path)})
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "failed", "error": err}
 
+    record_data = None
     try:
         with open(record_path) as f:
             record_data = json.load(f)
     except Exception as exc:
-        err = f"backup_record.json unreadable/unparseable: {exc}"
-        logger.error("Durability check failed (record unreadable)",
-                     extra={"backup_id": backup_id, "path": str(record_path)})
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "failed", "error": err}
+        _fail(f"backup_record.json unreadable/unparseable: {exc}")
 
     verification = record_data.get("verification")
     if not verification or verification.get("status") != "passed":
-        err = (
+        _fail(
             f"verify_backup.sh exited 0 but backup_record.json does not "
             f"have verification.status == 'passed'.  Actual verification "
             f"block: {verification!r}"
         )
-        logger.error("Durability check failed (block missing or wrong status)",
-                     extra={"backup_id": backup_id})
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "failed", "error": err}
 
     # 2. Canonical checksum file must exist.
     if not checksum_path.is_file():
-        err = (
+        _fail(
             f"verify_backup.sh exited 0 but ivgs_backup.sha256 is missing "
             f"at {checksum_path}."
         )
-        logger.error("Durability check failed (checksum file missing)",
-                     extra={"backup_id": backup_id, "path": str(checksum_path)})
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "failed", "error": err}
 
     try:
         checksum_line = checksum_path.read_text().strip()
@@ -508,11 +663,7 @@ def run_verification(self, backup_id: str, verify_date: str) -> Dict:
                 f"Unexpected sha256 file contents: {checksum_line!r}"
             )
     except Exception as exc:
-        err = f"Failed to read/parse sha256 file: {exc}"
-        logger.error("Durability check failed (checksum unreadable)",
-                     extra={"backup_id": backup_id})
-        _update_record_failed(backup_id, err)
-        return {"backup_id": backup_id, "status": "failed", "error": err}
+        _fail(f"Failed to read/parse sha256 file: {exc}")
 
     # All durable artifacts confirmed.  Mark verified.
     _update_record_verified(

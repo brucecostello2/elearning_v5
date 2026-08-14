@@ -40,13 +40,17 @@ set -euo pipefail
 # Supported flags (all optional):
 #   --backup-id=<uuid>  Backup ID supplied by API caller. Recorded in metadata
 #                       and emitted on stdout so API can correlate. If absent,
-#                       cron invocations use the date-based timestamp.
+#                       the script generates its own UUID — see
+#                       ensure_backup_id in lib/backup_record.sh — so that a
+#                       cron or direct run keys a backup_records row exactly
+#                       as an API-triggered one does.
 #
 # On success, the script emits to STDOUT in addition to its JSON log file:
-#   backup_id=<uuid-or-date>
+#   backup_id=<uuid>
 #   size_bytes=<int>
 #   backup_path=<host-path>
 #   checksum=<sha256>
+#   record_write=<ok|failed>
 # These KEY=VALUE lines are parsed by the API's _parse_backup_size and the
 # backup.py response builder. They must NOT contain spaces or extra fields.
 
@@ -149,6 +153,17 @@ ${metric_name}${labels} ${metric_value}
 EOF
 }
 
+# ---------------------------------------------------------------------------
+# backup_records row ownership
+# ---------------------------------------------------------------------------
+# This script, not the Celery task, owns the row — see the header of
+# lib/backup_record.sh for why. Provides record_running / record_completed /
+# record_failed / ensure_backup_id and the RECORD_WRITE flag.
+BACKUP_RECORD_TYPE="full_database"
+# shellcheck source=lib/backup_record.sh
+. "${SCRIPT_DIR}/lib/backup_record.sh"
+ensure_backup_id
+
 push_backup_status() {
     local status="$1"  # 1=success, 0=failure
     local duration="$2"
@@ -168,6 +183,7 @@ cleanup() {
     rm -f "${LOCK_FILE}" 2>/dev/null || true
     if [ ${exit_code} -ne 0 ]; then
         log_error "Backup failed with exit code ${exit_code}"
+        record_failed "${exit_code}"
         push_backup_status 0 0 0
     fi
     exit ${exit_code}
@@ -190,6 +206,12 @@ preflight_checks() {
         log_error "BACKUP_GPG_RECIPIENT is not set"
         exit 1
     fi
+
+    # Open the backup_records row before anything that can fail. The lock-file
+    # write below is one such thing: on 2026-08-14 it failed with "Permission
+    # denied" on /var/run/ivgs/backup.lock, and only the API path recorded it
+    # because only the API had pre-created a row.
+    record_running
 
     # Lock file check (prevent concurrent runs)
     if [ -f "${LOCK_FILE}" ]; then
@@ -365,13 +387,29 @@ compute_checksum() {
 capture_row_counts() {
     log_info "Capturing row counts for verification"
 
+    # Exact counts, not n_live_tup. n_live_tup is a planner estimate that
+    # autovacuum maintains and an unclean shutdown resets: on 2026-08-14 it
+    # reported backup_records=1 against 13 real rows, users=0 against 4, and
+    # alembic_version=0 against 1. Comparing that against a restored database
+    # to within 1% is comparing noise, so verify_row_counts in
+    # verify_backup.sh now expects these numbers to match exactly.
+    #
+    # query_to_xml runs a real count(*) per table in a single round trip.
+    # That is a full scan of every user table; on this database (38 tables,
+    # ~12.9k rows) it is sub-second. Revisit if the dataset grows by orders
+    # of magnitude.
     local row_counts
     row_counts=$(PGPASSWORD="${POSTGRES_PASSWORD}" psql \
         -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" \
         -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" \
         -t -A -F',' \
         -c "SELECT schemaname || '.' || relname AS table_name,
-                   n_live_tup AS row_count
+                   (xpath('/row/c/text()',
+                          query_to_xml(
+                              format('SELECT count(*) AS c FROM %I.%I',
+                                     schemaname, relname),
+                              false, true, '')
+                    ))[1]::text::bigint AS row_count
             FROM pg_stat_user_tables
             ORDER BY schemaname, relname;" 2>/dev/null)
 
@@ -482,6 +520,8 @@ main() {
     local backup_size
     backup_size="$(stat -c%s "${ENCRYPTED_FILE}" 2>/dev/null || echo 0)"
 
+    record_completed "${backup_size}" "${BACKUP_NAS_DIR}/${TIMESTAMP}"
+
     push_backup_status 1 "${duration}" "${backup_size}"
 
     log_info "=== IVGS v5 Daily Database Backup Completed Successfully ===" \
@@ -491,11 +531,13 @@ main() {
     # FastAPI _run_backup / _parse_backup_size code can pick up the size,
     # path, and checksum without parsing the JSON log file.
     # Format is strict KEY=VALUE, one per line, no spaces in values.
-    local effective_id="${BACKUP_ID:-${TIMESTAMP}}"
-    echo "backup_id=${effective_id}"
+    echo "backup_id=${BACKUP_ID}"
     echo "size_bytes=${backup_size}"
     echo "backup_path=${BACKUP_NAS_DIR}/${TIMESTAMP}"
     echo "checksum=${checksum}"
+    # ok | failed — the worker raises on "failed" so a backup whose row never
+    # landed cannot be reported as a clean success.
+    echo "record_write=${RECORD_WRITE}"
 }
 
 main "$@"

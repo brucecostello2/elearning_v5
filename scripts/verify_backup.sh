@@ -248,20 +248,33 @@ verify_row_counts() {
     local expected_total
     expected_total="$(python3 -c "import json; d=json.load(open('${RECORD_FILE}')); print(d.get('total_rows', 0))" 2>/dev/null || echo "0")"
 
+    # Exact counts on both sides. This used to be SUM(n_live_tup), a planner
+    # estimate that autovacuum maintains and an unclean shutdown resets — so
+    # the comparison was estimate-vs-estimate to within 1%, i.e. noise
+    # compared against noise. backup.sh now records real counts via
+    # query_to_xml; this is the matching read on the restored instance.
     local actual_total
     actual_total="$(docker exec -e PGPASSWORD="${TEMP_PG_PASSWORD}" \
         "${TEMP_PG_CONTAINER}" \
         psql \
         -U postgres -d ivgs \
         -t -A \
-        -c "SELECT COALESCE(SUM(n_live_tup), 0) FROM pg_stat_user_tables;" 2>/dev/null || echo "0")"
+        -c "SELECT COALESCE(SUM(c), 0) FROM (
+                SELECT (xpath('/row/c/text()',
+                              query_to_xml(
+                                  format('SELECT count(*) AS c FROM %I.%I',
+                                         schemaname, relname),
+                                  false, true, '')
+                        ))[1]::text::bigint AS c
+                FROM pg_stat_user_tables) t;" 2>/dev/null || echo "0")"
 
     log_info "Row count comparison" \
         "{\"expected\":${expected_total},\"actual\":${actual_total}}"
 
-    # Tolerance: 1% or minimum 5 rows
-    local tolerance
-    tolerance="$(python3 -c "print(max(int(${expected_total} * 0.01), 5))" 2>/dev/null || echo "10")"
+    # Both sides are exact counts of the same dump, so they must match. There
+    # is no legitimate source of drift to absorb: a restored dump either has
+    # the rows it was taken with or it does not.
+    local tolerance=0
     local diff
     diff="$(python3 -c "print(abs(${expected_total} - ${actual_total}))" 2>/dev/null || echo "0")"
 
@@ -288,8 +301,9 @@ verify_row_counts() {
         else
             local table_diff
             table_diff="$(python3 -c "print(abs(${expected_count} - ${actual_count}))" 2>/dev/null || echo "0")"
-            local table_tolerance
-            table_tolerance="$(python3 -c "print(max(int(${expected_count} * 0.01), 2))" 2>/dev/null || echo "2")"
+            # Exact on both sides (the restored side already used COUNT(*));
+            # no tolerance, same reasoning as the aggregate above.
+            local table_tolerance=0
             if [ "${table_diff}" -gt "${table_tolerance}" ]; then
                 log_warn "Table ${table_name}: expected=${expected_count}, actual=${actual_count}"
                 ((table_mismatches++)) || true

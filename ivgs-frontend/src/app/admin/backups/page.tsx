@@ -54,9 +54,25 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
+/**
+ * Longest duration we are willing to render as a real number.
+ *
+ * A backup that genuinely ran for over a day is not a backup, it is a fault,
+ * and the number shown would be misleading either way. Anything beyond this
+ * means completed_at and started_at do not describe the same run — which is
+ * what produced the 110,502-minute rows: a verification attempt stamped
+ * completed_at = now() on records started months earlier.
+ *
+ * The write side of that is fixed (backup_tasks.py
+ * _update_record_verification_failed), but historical rows still carry the
+ * bad timestamps, and no clamp here means the next such bug renders as fact.
+ */
+const MAX_PLAUSIBLE_DURATION_SECS = 24 * 60 * 60;
+
 /** Format seconds to human-readable duration */
 function formatDuration(seconds: number | null): string {
   if (seconds === null || seconds === undefined) return "—";
+  if (seconds < 0 || seconds > MAX_PLAUSIBLE_DURATION_SECS) return "unknown";
   if (seconds < 60) return `${seconds}s`;
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
@@ -271,12 +287,15 @@ export default function BackupsPage(): React.ReactElement {
               <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
                 {records.map((record: BackupRecord) => {
                   const statusBadge = STATUS_BADGES[record.status] ?? STATUS_BADGES.running;
-                  // Derive duration client-side: completed_at - started_at
+                  // Derive duration client-side: completed_at - started_at.
+                  // Not clamped to 0 here — a negative difference is bad data
+                  // and formatDuration renders it as "unknown" rather than
+                  // dressing it up as an instantaneous backup.
                   const durationSecs: number | null =
                     record.completed_at
-                      ? Math.max(0, Math.floor(
+                      ? Math.floor(
                           (new Date(record.completed_at).getTime()
-                            - new Date(record.started_at).getTime()) / 1000))
+                            - new Date(record.started_at).getTime()) / 1000)
                       : null;
 
                   return (
@@ -298,14 +317,18 @@ export default function BackupsPage(): React.ReactElement {
                       <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
                         {formatDuration(durationSecs)}
                       </td>
+                      {/*
+                        Keyed on verified_at, not on status. A backup's status
+                        describes the backup; whether it has been verified is
+                        the presence of a verification timestamp. Reading
+                        status === "failed" as "verification failed" conflated
+                        the two, and a failed verification no longer rewrites
+                        the backup's status at all.
+                      */}
                       <td className="whitespace-nowrap px-4 py-3">
-                        {record.status === "verified" ? (
+                        {record.verified_at ? (
                           <span className="inline-flex rounded-full bg-emerald-100 dark:bg-emerald-900/30 px-2 py-0.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                            verified
-                          </span>
-                        ) : record.status === "failed" ? (
-                          <span className="inline-flex rounded-full bg-red-100 dark:bg-red-900/30 px-2 py-0.5 text-xs font-medium text-red-600 dark:text-red-400">
-                            failed
+                            {formatTimestamp(record.verified_at)}
                           </span>
                         ) : (
                           <span className="inline-flex rounded-full bg-gray-100 dark:bg-gray-800 px-2 py-0.5 text-xs font-medium text-gray-500 dark:text-gray-400">
