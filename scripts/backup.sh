@@ -370,7 +370,21 @@ COMPUTED_CHECKSUM=""
 compute_checksum() {
     log_info "Computing SHA-256 checksum"
 
-    sha256sum "${ENCRYPTED_FILE}" > "${CHECKSUM_FILE}"
+    # Write a BARE FILENAME, computed from inside the target directory.
+    #
+    # This used to be `sha256sum "${ENCRYPTED_FILE}"`, which records the
+    # absolute STAGING path (/tmp/ivgs-backup/<date>/ivgs_backup.sql.gz.gpg).
+    # rsync then carries that file to the NAS, where the recorded path does not
+    # exist -- so `sha256sum --check` against the NAS copy failed with
+    # "No such file or directory" even though the dump was byte-perfect.
+    # Verified 2026-08-14: the recorded hash matched the NAS file exactly; only
+    # the path was wrong. The dumps were never corrupt, but the checksum file
+    # was unusable at the one place it matters.
+    #
+    # A bare filename makes the checksum portable: it verifies from whichever
+    # directory the file currently lives in, staging or NAS.
+    ( cd "$(dirname "${ENCRYPTED_FILE}")" \
+      && sha256sum "$(basename "${ENCRYPTED_FILE}")" ) > "${CHECKSUM_FILE}"
 
     local checksum
     checksum="$(awk '{print $1}' "${CHECKSUM_FILE}")"

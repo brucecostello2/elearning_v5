@@ -40,6 +40,9 @@ readonly ENCRYPTED_FILE="${BACKUP_DIR}/ivgs_backup.sql.gz.gpg"
 readonly CHECKSUM_FILE="${BACKUP_DIR}/ivgs_backup.sha256"
 readonly RECORD_FILE="${BACKUP_DIR}/backup_record.json"
 readonly RESTORE_SQL="/tmp/ivgs_verify_${VERIFY_DATE}_$$.sql"
+# PGDATA for the throwaway verify instance. On disk, not tmpfs -- see
+# start_temp_postgres. Removed by the EXIT trap.
+readonly TEMP_PG_DATA="/var/tmp/ivgs-verify-pgdata-$$"
 
 VERIFICATION_PASSED=false
 
@@ -95,6 +98,13 @@ cleanup() {
     # Stop and remove temporary PostgreSQL container
     docker rm -f "${TEMP_PG_CONTAINER}" 2>/dev/null || true
 
+    # Remove its on-disk PGDATA. Ordered AFTER the container is gone so
+    # nothing is writing into it. postgres runs as uid 999 in the image and
+    # creates root-owned-ish files, so this may need the -f.
+    if [ -n "${TEMP_PG_DATA:-}" ] && [ -d "${TEMP_PG_DATA}" ]; then
+        rm -rf "${TEMP_PG_DATA}" 2>/dev/null || true
+    fi
+
     if [ "${VERIFICATION_PASSED}" = false ]; then
         log_error "Backup verification FAILED — triggering BackupFailed alert"
         push_metric "ivgs_backup_last_status" "0" \
@@ -132,14 +142,35 @@ verify_checksum() {
     log_info "Verifying SHA-256 checksum"
 
     if [ ! -f "${CHECKSUM_FILE}" ]; then
-        log_warn "Checksum file not found — skipping checksum verification"
-        return 0
+        # A missing checksum file is not a pass. Verification whose only
+        # integrity check can be skipped into success is not verification.
+        log_error "Checksum file not found: ${CHECKSUM_FILE}"
+        exit 1
     fi
 
-    if (cd "${BACKUP_DIR}" && sha256sum --check "${CHECKSUM_FILE}" --quiet); then
-        log_info "SHA-256 checksum VERIFIED"
+    # Compare hashes directly rather than running `sha256sum --check`.
+    #
+    # --check resolves whatever path the checksum file records. Backups written
+    # before 2026-08-14 recorded the absolute STAGING path, so --check looked
+    # for /tmp/ivgs-backup/<date>/... and failed on the NAS copy even when the
+    # dump was intact -- that is the historical "verification failed" noise.
+    # backup.sh now writes a bare filename, but the NAS still holds older files
+    # in the old format. Reading only the hash field makes this work for both,
+    # and makes it unambiguous that the file being hashed is the one ON THE NAS.
+    local expected actual
+    expected="$(awk 'NR==1 {print $1}' "${CHECKSUM_FILE}")"
+    actual="$(cd "${BACKUP_DIR}" && sha256sum "$(basename "${ENCRYPTED_FILE}")" | awk '{print $1}')"
+
+    if [ -z "${expected}" ] || [ ${#expected} -ne 64 ]; then
+        log_error "Checksum file unreadable or malformed: ${CHECKSUM_FILE}"
+        exit 1
+    fi
+
+    if [ "${expected}" = "${actual}" ]; then
+        log_info "SHA-256 checksum VERIFIED" "{\"sha256\":\"${actual}\"}"
     else
-        log_error "SHA-256 checksum FAILED — backup file may be corrupted"
+        log_error "SHA-256 checksum FAILED — backup file may be corrupted" \
+            "{\"expected\":\"${expected}\",\"actual\":\"${actual}\"}"
         exit 1
     fi
 }
@@ -174,12 +205,30 @@ start_temp_postgres() {
     # network.  We connect via 'docker exec' (which works identically
     # from cron-on-host and from the backup-worker container — both
     # have docker.sock access).  No port mapping needed.
+    # PGDATA on DISK, not tmpfs, and the container is memory-capped.
+    #
+    # This used to be `--tmpfs /var/lib/postgresql/data:size=2g`, i.e. up to 2 GB
+    # of the host's RAM. node-01 was reduced to 16 GB on 2026-08-14 and the
+    # Proxmox host OOM-killed this VM twice that day; a 2 GB RAM disk spawned
+    # unattended at 05:00 is a real risk of taking the node down, and this
+    # script runs as a sibling container via the mounted docker socket, so
+    # nothing else bounds it.
+    #
+    # Disk costs nothing here: / has ~261 GB free and the whole dump is under
+    # 1 MB. --memory caps the container so a pathological restore cannot grow
+    # into the host, and --memory-swap equal to --memory forbids swap rather
+    # than pushing the pressure onto disk silently.
+    mkdir -p "${TEMP_PG_DATA}"
+
     docker run -d \
         --name "${TEMP_PG_CONTAINER}" \
         --network ivgs-infra_ivgs-net \
         -e POSTGRES_PASSWORD="${TEMP_PG_PASSWORD}" \
         -e POSTGRES_DB="postgres" \
-        --tmpfs /var/lib/postgresql/data:rw,noexec,nosuid,size=2g \
+        -v "${TEMP_PG_DATA}:/var/lib/postgresql/data" \
+        --memory=512m \
+        --memory-swap=512m \
+        --shm-size=128m \
         postgres:17-alpine \
         >/dev/null
 
