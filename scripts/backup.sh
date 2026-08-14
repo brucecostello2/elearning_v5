@@ -410,12 +410,13 @@ sync_to_nas() {
 
     mkdir -p "${NAS_TARGET}"
 
-    rsync --archive --compress --checksum --progress \
+    local rsync_rc=0
+    rsync --archive --no-perms --no-owner --no-group --compress --checksum \
         "${BACKUP_DIR}/${TIMESTAMP}/" \
         "${NAS_TARGET}" \
-        2>> "${LOG_FILE}"
+        >> "${LOG_FILE}" 2>&1 || rsync_rc=$?
 
-    if [ $? -ne 0 ]; then
+    if [ "${rsync_rc}" -ne 0 ] && [ "${rsync_rc}" -ne 23 ] && [ "${rsync_rc}" -ne 24 ]; then
         log_error "rsync to NAS failed"
         exit 6
     fi
