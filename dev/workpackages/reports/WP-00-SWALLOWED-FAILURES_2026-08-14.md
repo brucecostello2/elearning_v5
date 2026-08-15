@@ -373,6 +373,68 @@ and this may share a cause with ledger P2.0a (node-04 worker traffic not appeari
 checkpoints), then make the failure surface - assert on the return, or raise. Check
 `update_job_status`'s sibling calls for the same gap.
 
+### 14. Stage 7 swallows an ffmpeg failure and reports `task_succeeded` - OPEN
+
+*Added 2026-08-15 during WP-03 Option D, verified live. Owned by WP-27-MANIFEST-BUILDER.*
+
+Job `7980c0b9-8d9e-4d3b-955e-f2b97bf137dd`, 2026-08-15 11:25:18, on
+`ivgs-celery-composition`:
+
+```
+{"cmd_head": "ffmpeg -y -i /tmp/ivgs_stage7_.../bg_8e25826c-....bin.png ...",
+ "returncode": 1, "stderr": "..."}
+{"error": "FFmpeg failed (rc=1): ...", "scene_count": 6}
+{"event": "task_succeeded", "task_name": "tasks.prototype_draft_task.assemble_prototype_draft"}
+```
+
+The non-zero ffmpeg return is logged, and the task then returns normally and Celery
+records SUCCESS. **No draft was produced.** Anything downstream - the orchestrator,
+the job row, an operator reading task state - sees a successful Stage 7.
+
+This is the register's defining shape and it is also **a detector case**: the rule that
+should catch it is a stage task that logs an error-level event and then returns a
+success-shaped result rather than raising. `scripts/swallow_detector.py` does not
+currently model "logged an error, then returned normally without raising" at task
+scope - SF005 only fires on a `status` key with a failure literal, and this task's
+return carries no such key. Worth a new rule.
+
+**Scope/action (WP-27):** raise on `rc != 0` instead of returning. Then re-check
+whether a detector rule can express this shape.
+
+### 15. Stage-4 manifest builder binds every scene asset as a background layer - OPEN
+
+*Added 2026-08-15 during WP-03 Option D, verified live. Owned by WP-27-MANIFEST-BUILDER.*
+
+Recorded here at the operator's instruction. **This is not itself a swallowed failure**
+- it is a correctness defect. It belongs in this register because instance 14 is what
+concealed it: without Stage 7 reporting a false success, this would have surfaced the
+moment it occurred.
+
+| Manifest | layers per scene | contents |
+|---|---|---|
+| June, job `79b90f48` | **1** | background |
+| 2026-08-15, job `7980c0b9` | **4** | 2 images **and 2 audio**, all `layer_type: background` |
+
+Scene 0's layer list, all `0-10000 ms`, all typed `background`:
+
+```
+d83c6ac7  audio   <- first, so ffmpeg receives a WAV as the background input
+be4453e8  audio
+7de1b630  image
+ca6d7f83  image
+```
+
+The builder applies **no `asset_type` filter and no deduplication**. It appeared
+correct in June only because there was one asset per scene then; AD-03 S11.5 records
+duplicate audio assets accumulating from re-runs since. The duplicates exposed a filter
+that never existed.
+
+Compounding, and independent: most scenes on the reference project have **0 images and
+2 audio**, so for those there is no valid background asset to select at all.
+
+**Scope/action (WP-27):** filter background layers to image/video asset types; dedupe
+to the latest per scene. The zero-image scenes are a separate media-generation gap.
+
 ---
 
 ## Proposed detector

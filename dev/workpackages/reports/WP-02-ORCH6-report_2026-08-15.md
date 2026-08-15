@@ -965,6 +965,32 @@ git commit -m "feat(stage6): resolve the head model through the AD-01 provider f
 Note the two deletions need `git rm`; they are currently deleted in the working tree
 only. Do not `git add -A` - the untracked work-package briefs are not part of this.
 
+## 2.11 Post-commit sync of node-04, 2026-08-15
+
+After the operator's push (`134c34f`), node-04's checkout was reconciled to the repo
+over SSH. It was **38 commits behind** at `54d3281`, with my direct compose edit as its
+only local modification.
+
+```
+git checkout -- ivgs-infra/docker-compose.node04.yml   # discard the local edit
+git pull --ff-only origin main                          # 54d3281 -> 134c34f
+rm docker-compose.node04.yml.bak.pre-asyncpg
+```
+
+Verified afterwards: HEAD `134c34f`; clean tree; compose sha256
+`dad3daa8c985...` identical to node-01's committed copy; `postgresql+asyncpg` present
+and `postgresql+psycopg://` absent; `docker compose config` exits 0; the running
+container still `v5.5.2-orch6` with `DATABASE_URL` scheme `postgresql+asyncpg`
+unchanged. No container was recreated - the synced file is functionally identical to
+the one it replaced (the repo version adds only an explanatory comment).
+
+`--ff-only` was used deliberately so no merge commit could be created on that node.
+
+**Worth noting:** node-04's checkout had drifted 38 commits. Containers run from
+images so this did not affect execution, but every compose file on that node was
+that stale - which is how the `+psycopg` line survived unnoticed. Nodes 02, 03, 05
+and 06 are unreachable and have not been checked; assume similar drift at M4.
+
 ---
 
 # STATUS

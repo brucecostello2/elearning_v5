@@ -89,10 +89,55 @@ class CorruptionDetector:
         ffprobe_path: str = "ffprobe",
         duration_tolerance: float = 0.10,
         frame_count_tolerance: float = 0.05,
+        min_video_bitrate_bps: int = 20_000,
     ):
         self._ffprobe = ffprobe_path
         self._duration_tolerance = duration_tolerance
         self._frame_count_tolerance = frame_count_tolerance
+        # Collapse floor, not a quality bar - see the video_bitrate_floor check.
+        # 20 kb/s is ~7x below the lowest known-good measurement (153 kb/s draft).
+        self._min_video_bitrate_bps = min_video_bitrate_bps
+
+    def _probe_video_bitrate(self, file_path: str) -> Optional[int]:
+        """Video-stream bitrate in bps, or None if it cannot be determined.
+
+        Falls back to (file size * 8 / duration) when the stream carries no
+        bit_rate tag, which some muxers omit. Returns None rather than 0 on
+        failure so the caller skips the check instead of reporting a false
+        collapse - a probe failure is not evidence of a bad video.
+        """
+        try:
+            proc = subprocess.run(
+                [
+                    self._ffprobe, "-v", "error",
+                    "-select_streams", "v:0",
+                    "-show_entries", "stream=bit_rate",
+                    "-show_entries", "format=duration,size",
+                    "-of", "default=noprint_wrappers=1:nokey=0",
+                    file_path,
+                ],
+                capture_output=True, text=True, timeout=60, check=False,
+            )
+            if proc.returncode != 0:
+                return None
+            fields: Dict[str, str] = {}
+            for line in proc.stdout.splitlines():
+                if "=" in line:
+                    k, _, v = line.partition("=")
+                    fields[k.strip()] = v.strip()
+
+            raw = fields.get("bit_rate", "")
+            if raw.isdigit() and int(raw) > 0:
+                return int(raw)
+
+            size = float(fields.get("size", 0) or 0)
+            duration = float(fields.get("duration", 0) or 0)
+            if size > 0 and duration > 0:
+                return int(size * 8 / duration)
+            return None
+        except Exception as e:  # probe failure is not a corruption verdict
+            logger.warning("video_bitrate_probe_failed", error=str(e))
+            return None
 
     # ----- Video validation -----
 
@@ -274,6 +319,37 @@ class CorruptionDetector:
 
         if not truncation_ok:
             result.is_valid = False
+
+        # Check: video bitrate floor (WP-03 / AD-03 S14, ledger P1.4c).
+        #
+        # This catches COLLAPSE - a black, frozen or near-empty video stream -
+        # not low bitrate as such. AD-03 S14 is explicit that the measured
+        # 506 kb/s at 1080p is NOT established as a defect: CRF targets quality
+        # and lets bitrate fall where content complexity allows, and this
+        # material is near-static stills with a 0.25-scale PiP head. The VBV
+        # maxrate is a ceiling, not a floor.
+        #
+        # The floor is therefore set far below every known-good reference
+        # measured on 2026-08-15, so it cannot fail them:
+        #     720p draft  153 kb/s     1080p final  506 kb/s
+        #     4K final    939 kb/s
+        # A real collapse lands one to two orders of magnitude below these.
+        # Severity WARNING, not CRITICAL: it must not fail a render on its own
+        # until it has a track record. Raise the floor once it has one.
+        video_bitrate = self._probe_video_bitrate(file_path)
+        if video_bitrate is not None:
+            bitrate_ok = video_bitrate >= self._min_video_bitrate_bps
+            result.checks.append(CorruptionCheck(
+                check_name="video_bitrate_floor",
+                passed=bitrate_ok,
+                severity=CorruptionSeverity.WARNING,
+                expected=f"at least {self._min_video_bitrate_bps} bps",
+                actual=f"{video_bitrate} bps",
+                message=(
+                    "Video bitrate collapsed - check for a black or frozen stream"
+                    if not bitrate_ok else "Video bitrate above the collapse floor"
+                ),
+            ))
 
         log.info(
             "corruption_validation_complete",
