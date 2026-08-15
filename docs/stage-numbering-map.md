@@ -1,6 +1,6 @@
 # Stage Numbering: Spec vs Files vs Registered Task Names
 
-> **Verified against `brucecostello2/elearning_v5` @ `e613e844`, 2026-08-14.**
+> **Verified against `brucecostello2/elearning_v5` @ `d4665ae`, 2026-08-15.**
 > Re-verify on any change to task registration. The previous version of this document listed three files that do not exist and one that is dead code; it is the document that should have caught the mismatches below and did not.
 
 ## Why three columns
@@ -19,8 +19,7 @@ A mismatch between the map and a registered name is a runtime-only `next_stage_t
 | 3 | Media — video clip | `video_generation_task.py` | `tasks.video_generation_task.generate_video_clips` | `gpu_video` |
 | 4 | Composition Manifest | `stage4_manifest.py` | `tasks.stage4_manifest.build_composition_manifest` | `default` |
 | 5 | Audio / TTS | `stage5_voiceover.py` | ⚠️ `tasks.stage4_voiceover.generate_voiceover_task` | `gpu_tts` |
-| 6 | Talking Head | **`talking_head_task.py`** *(live)* | `tasks.talking_head_task.render_talking_head` | `gpu_talking_head` |
-| 6 | *(dead duplicate)* | `stage6_talking_head.py` | ⚠️ `tasks.stage5_talking_head.generate_talking_head_task` — **in no map; never dispatched** | — |
+| 6 | Talking Head | `talking_head_task.py` | `tasks.talking_head_task.render_talking_head` | `gpu_talking_head` |
 | 7 | Prototype Draft | `stage7_prototype_draft.py` | ⚠️ `tasks.prototype_draft_task.assemble_prototype_draft` | `composition` |
 | 8 | Final Render | `stage8_final_render.py` | ⚠️ `tasks.final_render_task.render_final` | `composition` |
 
@@ -39,11 +38,26 @@ A mismatch between the map and a registered name is a runtime-only `next_stage_t
 | | `…supervise_worker_heartbeats`, `process_dead_letter_queue`, `run_orphan_cleanup`, `run_retention_migration`, `run_backup_verification`, `collect_gpu_fleet_metrics` | ✅ **the live Beat schedule** |
 | `periodic_tasks.py` | `ivgs_workers.tasks.periodic_tasks.*` | ❌ dormant duplicates — internal imports reference a package that does not exist. **Only** `poll_model_node_availability` is scheduled. |
 
-## Two traps this table exists to prevent
+## Two traps this table existed to prevent (both now resolved)
 
-**1. The dead talking-head file is the ARCH-1 implementation.** `stage6_talking_head.py` — never dispatched — is the one that resolves the head model through the AD-01 provider factory. The **live** `talking_head_task.py` imports `LatentSyncClient` directly, so the engine is hardcoded and certified models cannot be selected. This is ledger **P1.0 / ORCH-6**, top of the critical path. The resolution is to **promote** the provider binding into the live file, not simply delete the duplicate.
+**1. The talking-head duplicate is gone (resolved 2026-08-15).** `stage6_talking_head.py`
+— never dispatched, but the only file that resolved the head model through the AD-01
+provider factory — was the reason certified models could not be selected. The binding has
+been **promoted** into the live `talking_head_task.py` and the duplicate deleted
+(WP-02-ORCH6, ledger P1.0 / ORCH-6). The registered task name is unchanged.
 
-**2. The dead file also carries a wrong upload URL.** `stage6_talking_head.py:241` posts to `…/assets/upload`; the live `talking_head_task.py:155` correctly posts to `…/projects/{id}/assets/upload`. The same wrong URL previously broke Stage 5. Anyone reviving the dead file inherits the bug.
+Two consequences worth carrying forward. Stage 6 now **fails loudly** with
+`SelectionError` when no approved, enabled, default `talking_head` model exists — it does
+not fall back to a hardcoded engine, because a silent fallback would make a GUI swap
+appear to work when it had not. And the SadTalker *fallback* inside Stage 6 is still
+engine-direct: the shared SadTalker provider requires a per-scene still image that this
+whole-project stage does not have, so a `sadtalker`-engine selection fails at render time
+(WP-02-ORCH6 finding F2).
+
+**2. The wrong upload URL died with the duplicate.** `stage6_talking_head.py:241` posted
+to `…/assets/upload`; the live `talking_head_task.py` correctly posts to
+`…/projects/{id}/assets/upload`. That file no longer exists, so the bug can no longer be
+inherited by reviving it.
 
 ## Under AD-05
 

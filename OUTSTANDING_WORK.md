@@ -74,13 +74,59 @@ Latent today only because renders are short; near-certain at the M3 30-minute ta
 # P1 — High Priority
 
 ## P1.0 — ORCH-6: live Stage-6 task hardcodes LatentSync; ARCH-1 provider binding is on the *dead* duplicate *(new, code audit 2026-08-14)*
-**Status:** OPEN — **top of the critical path.** Supersedes and reframes B5.
-`STAGE_TASK_MAP` dispatches `tasks.talking_head_task.render_talking_head`. That live file imports `LatentSyncClient` directly (`talking_head_task.py:42-47`) — the engine is hardcoded. The AD-01/ARCH-1 provider-factory implementation ("render via the AD-01-selected provider (ARCH-1: no engine here)") lives in `stage6_talking_head.py:43-48,297,338` — **the dead duplicate that nothing dispatches**.
+**Status:** **CLOSED 2026-08-15** by WP-02-ORCH6 — code complete and unit-verified on
+node-01; **the on-hardware GUI-swap gate is outstanding and is operator-run** (node-04).
+Report: `dev/workpackages/reports/WP-02-ORCH6-report_2026-08-15.md`.
 
-**Consequence:** the completed MBCP bake-off cannot reach production. Certified models flow MBCP → IVGS Model Store → approved → and stop. Swapping the head model is a **code change**, exactly what AD-01 exists to prevent.
+**What was wrong.** `STAGE_TASK_MAP` dispatches `tasks.talking_head_task.render_talking_head`.
+That live file imported `LatentSyncClient` directly — the engine was hardcoded. The
+AD-01/ARCH-1 provider-factory implementation lived in `stage6_talking_head.py`, the dead
+duplicate nothing dispatched. Certified MBCP models could not be selected.
 
-**Scope/action:** promote the provider-factory implementation into the live path — port `stage6_talking_head.py`'s provider binding into `talking_head_task.py` (preferred: preserves the live task's proven segment/OOM strategy, AD-03 Pillar-2 overlay, and correct upload URL), then delete the duplicate. Verify against `shared/providers/factory.py` + `app/services/model_selection.py`. **Reframes P2.26(c): the duplicate is the *more correct* implementation — promote, don't just delete.**
-*(Note: Stage 8 consumes a pre-rendered head asset by `asset_id` and overlays it — it does not render the head. B5's "Stage 8 must bind via the factory" was misframed; the binding belongs at Stage 6. Recorded here so B5 is not lost.)*
+**What changed.** The binding was promoted into the live task: `ensure_registered()` +
+`get_binding("talking_head", project_id=..., tier=...)` + `build_provider(...)` resolved
+once per job, the GPU reservation now asks for `binding.name` /
+`provider.vram_requirement_mb()`, each segment renders through `provider.render(...)`, and
+`model_used` is stamped from `binding.name`. The duplicate and its test are deleted; all
+map, route, `imports` and `__all__` references are cleaned. The registered task name,
+segment/OOM strategy, AD-03 Pillar-2 behaviour and the correct
+`/projects/{id}/assets/upload` URL are unchanged.
+
+**Three things this did NOT close — carried forward.**
+
+1. **The SadTalker fallback is still engine-direct.** `SadTalkerProvider` requires a
+   per-scene still image that this whole-project stage does not have, so a
+   `sadtalker`-engine selection raises `ValueError` at render time. A true cross-engine
+   GUI swap needs that provider fixed. *(New item — see P1.0a.)*
+2. **AD-01.13 criterion 5 remains open.** Stage 6 renders once and both Stage 7 and
+   Stage 8 consume the single asset, so prototype- and production-tier models cannot be
+   applied to draft and final respectively without a pipeline change. `tier` is a
+   constant (`"prototype"`) on `Stage6Input`.
+3. **Stage 6 now fails loudly** with `SelectionError` when no approved, enabled, default
+   `talking_head` model exists. Deliberate: a silent fallback to a hardcoded engine would
+   make a GUI swap appear to work when it had not.
+
+*(Note: Stage 8 consumes a pre-rendered head asset by `asset_id` and overlays it — it does
+not render the head. B5's "Stage 8 must bind via the factory" was misframed; the binding
+belongs at Stage 6. Recorded here so B5 is not lost.)*
+
+## P1.0a — Stage-6 SadTalker fallback is not selection-driven *(new, WP-02-ORCH6 finding F2, 2026-08-15)*
+**Status:** OPEN — blocks a true cross-engine GUI swap at Stage 6.
+`ivgs-workers/providers/talking_head.py` `SadTalkerProvider.render` raises
+`ValueError("sadtalker provider requires scene image and voiceover audio")` unless a
+per-scene still is supplied. Stage 6 renders the presenter from the reference clip against
+narration audio and has no scene image, so the provider cannot serve this stage. The live
+task therefore keeps its own engine-direct `_render_with_sadtalker` fallback.
+
+Second, independent defect in the same provider: `_spill` writes bytes to a **worker-local**
+`tempfile.TemporaryDirectory()`, and `SadTalkerClient._submit_job` posts those paths as JSON
+to the remote SadTalker service, which cannot open them unless it shares the worker's
+`/tmp`. **Unverified against a running SadTalker service** — node-04 was out of scope.
+
+Three mutually incompatible SadTalker contracts now exist: the live task's
+`POST {base}/generate` multipart (the only one exercised), `SadTalkerClient`'s
+`POST /api/render` JSON-of-paths, and `SadTalkerProvider`'s worker-local paths handed to the
+second. **Which one node-04 actually implements is unknown and should be established first.**
 
 ## P1.1 — Media join advances prematurely on Redis error; not idempotent *(new, code audit; was "D2")*
 **Status:** OPEN — correctness defect.

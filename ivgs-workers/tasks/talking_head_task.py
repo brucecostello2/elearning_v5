@@ -4,23 +4,32 @@ IVGS v5 — Stage 6: Talking Head Rendering Task
 
 Pipeline Stage 6 per §6.1:
 - Input: User-uploaded talking head reference clip + per-scene narration audio (segment-based)
-- Primary: LatentSync on node-04 (lip-sync score threshold >0.85)
-- Fallback: SadTalker on node-04
+- Primary: the AD-01-selected talking_head model, resolved per (project, tier)
+  through the ARCH-1 provider factory. Default today is LatentSync on node-04
+  (lip-sync score threshold >0.85). Swapping the production head is a GUI
+  action in /admin/models — never a code change (AD-01.1).
+- Fallback: SadTalker on node-04, still engine-direct. The shared SadTalker
+  provider requires a per-scene still image, which this whole-project stage
+  does not have, so the fallback is NOT yet selection-driven. See
+  WP-02-ORCH6 F2.
 - Output: Full lip-synced talking head video at /ivgs/talking-heads/{project_id}/{language_code}.mp4
 - Timeout: 3600 seconds (wraps the per-segment render loop)
 - Retry: 2 retries with 30s→90s backoff
 
 Processing:
-    1. Download user-uploaded reference clip from SeaweedFS
-    2. Concatenate all scene audio files into a single audio track
-    3. Acquire GPU reservation (LatentSync: 16GB VRAM)
-    4. Render one lip-synced segment per scene via LatentSync, then concat (bounded memory)
-    5. Validate: alignment score >0.85 (§11.1)
-    6. On LatentSync failure/low score: fallback to SadTalker (8GB VRAM)
-    7. Run corruption detection (§11.2)
-    8. Upload to SeaweedFS
-    9. Update project talking_head_asset_id
-    10. Save checkpoint and dispatch stage completion
+    1. Resolve the AD-01 binding and build the provider (fails the task loudly
+       if no model is selected or default for (talking_head, tier))
+    2. Download user-uploaded reference clip from SeaweedFS
+    3. Concatenate all scene audio files into a single audio track
+    4. Acquire GPU reservation for the selected model (VRAM from its binding)
+    5. Render one lip-synced segment per scene via the provider, then concat
+       (bounded memory — a whole-scene render OOM'd the engine)
+    6. Validate: alignment score >0.85 (§11.1)
+    7. On render failure/low score: fallback to SadTalker (8GB VRAM)
+    8. Run corruption detection (§11.2)
+    9. Upload to SeaweedFS
+    10. Update project talking_head_asset_id
+    11. Save checkpoint and dispatch stage completion
 """
 
 from __future__ import annotations
@@ -38,17 +47,21 @@ import httpx
 import structlog
 from pydantic import BaseModel, Field
 
+from uuid import UUID
+
 from celery_app import IVGSBaseTask, celery_app
-from clients.latentsync_client import (
-    LatentSyncClient,
-    LatentSyncError,
-    LatentSyncMode,
-    LatentSyncParams,
-    LatentSyncResult,
-)
 from clients.ffmpeg_client import FFmpegClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
+from providers import ensure_registered  # registers engine builders (ARCH-1)
+from shared.providers import (
+    ModelBinding,
+    TalkingHeadParams,
+    TalkingHeadProvider,
+    TalkingHeadResult,
+    build_provider,
+    get_binding,
+)
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
 from utils.media_converter import compute_asset_sha256
@@ -63,6 +76,13 @@ logger = structlog.get_logger("ivgs.stage6.talking_head")
 # engine). Total length scales by segment count, not per-render RAM.
 MAX_SEGMENT_RETRIES = 2
 MAX_SEGMENT_SECONDS = 30.0
+
+# Render modes the talking-head engines accept. Mirrors the engine-side enum;
+# kept as plain strings here so this task carries no engine import (ARCH-1).
+# An unrecognised mode falls back to full_frame, preserving the pre-ARCH-1
+# behaviour of this task rather than letting the provider raise.
+VALID_RENDER_MODES = ("full_frame", "pip", "chroma_key")
+DEFAULT_RENDER_MODE = "full_frame"
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +103,12 @@ class Stage6Input(BaseModel):
     project_id: str
     project_name: str = ""
     language_code: str = "en-US"
+    # AD-01 selection tier. Stage 6 renders ONCE and the single asset it
+    # produces is consumed by both Stage 7 (draft) and Stage 8 (final), so
+    # there is no per-tier render today and this is a constant in practice.
+    # AD-01.13 criterion 5 ("prototype and production models applied to draft
+    # and final respectively") therefore remains open — see WP-02-ORCH6 F3.
+    tier: str = "prototype"
     reference_clip_asset_id: Optional[str] = None
     scene_audio_refs: List[SceneAudioRef] = Field(default_factory=list)
     output_width: int = 1920
@@ -193,47 +219,42 @@ async def _concatenate_scene_audio(
     return concat_path
 
 
-async def _render_with_latentsync(
-    reference_clip_path: str,
-    audio_path: str,
+def _resolve_render_mode(requested: str) -> str:
+    """Normalise the requested render mode, defaulting to full_frame."""
+    return requested if requested in VALID_RENDER_MODES else DEFAULT_RENDER_MODE
+
+
+async def _render_segment(
+    provider: TalkingHeadProvider,
+    reference_clip_data: bytes,
+    audio_data: bytes,
     task_input: Stage6Input,
-    config: WorkerConfig,
-    temp_dir: str,
-) -> LatentSyncResult:
-    """Render lip-synced video using LatentSync."""
-    latentsync_config = config.get_model_config("latentsync")
-    client = LatentSyncClient(
-        base_url=latentsync_config.get("api_url", "http://node-04:8300"),
-        timeout=600.0,
-    )
+) -> TalkingHeadResult:
+    """Render one lip-synced segment through the AD-01-selected provider.
 
-    try:
-        mode = LatentSyncMode(task_input.latentsync_mode)
-    except ValueError:
-        mode = LatentSyncMode.FULL_FRAME
+    ARCH-1: no engine identity here. The provider was built from the binding
+    resolved once per job; this function only maps task parameters onto the
+    shared TalkingHeadParams contract.
 
-    with open(reference_clip_path, "rb") as _vf:
-        reference_video_data = _vf.read()
-    with open(audio_path, "rb") as _af:
-        audio_data = _af.read()
-
-    params = LatentSyncParams(
-        reference_video_data=reference_video_data,
-        audio_data=audio_data,
+    Note there is no ``scene_image_data``: Stage 6 renders the presenter from
+    the reference clip against narration audio, and Stage 7/8 composite the
+    result as a single continuous timeline overlay (AD-03 Pillar 2). Providers
+    that require a per-scene still cannot serve this stage — see WP-02-ORCH6 F2.
+    """
+    params = TalkingHeadParams(
+        voiceover_audio_data=audio_data,
+        reference_clip_data=reference_clip_data,
+        mode=_resolve_render_mode(task_input.latentsync_mode),
         output_width=task_input.output_width,
         output_height=task_input.output_height,
         output_fps=task_input.output_fps,
-        mode=mode,
         face_enhance=task_input.enable_face_enhance,
         lip_sync_strength=task_input.lip_sync_strength,
         pip_position=task_input.pip_position,
         pip_scale=task_input.pip_scale,
+        alignment_threshold=task_input.alignment_threshold,
     )
-
-    try:
-        return await client.render(params)
-    finally:
-        await client.close()
+    return await provider.render(params)
 
 
 async def _render_with_sadtalker(
@@ -293,7 +314,7 @@ def render_talking_head(
     Celery task: render full talking head video.
 
     1. Download reference clip and concatenate audio
-    2. Render with LatentSync (primary)
+    2. Render with the AD-01-selected provider (primary)
     3. Validate alignment score
     4. Fallback to SadTalker if needed
     5. Run corruption detection
@@ -331,6 +352,43 @@ def render_talking_head(
         )
         return skip_dict
 
+    # ARCH-1 / AD-01: resolve the model selection for this (project, tier) and
+    # build the provider. No engine identity is hard-coded in this task, so a
+    # head-model swap is a GUI action (/admin/models set-default), not a code
+    # change — which is the guarantee AD-01.1 exists to provide.
+    #
+    # Deliberately OUTSIDE the try/finally below: a SelectionError must
+    # propagate and fail the Celery task, not be converted into a returned
+    # {'status': 'failed'} that Celery records as SUCCESS (WP-00 register
+    # instance 6). Resolving here also means nothing is allocated yet, so a
+    # selection failure cannot leak the temp directory.
+    ensure_registered()
+    binding_loop = asyncio.new_event_loop()
+    try:
+        binding: ModelBinding = binding_loop.run_until_complete(
+            get_binding(
+                "talking_head",
+                project_id=UUID(project_id),
+                tier=task_input.tier,
+            )
+        )
+    finally:
+        binding_loop.close()
+
+    log = log.bind(
+        model=binding.name,
+        engine=binding.engine,
+        endpoint=binding.endpoint,
+        tier=binding.tier,
+    )
+    log.info("stage6_model_bound", binding=binding.describe())
+
+    provider: TalkingHeadProvider = build_provider(
+        binding,
+        timeout=config.timeouts.latentsync_timeout,
+        alignment_threshold=task_input.alignment_threshold,
+    )
+
     temp_dir = tempfile.mkdtemp(prefix="ivgs_stage6_")
     reservation = None
 
@@ -353,12 +411,15 @@ def render_talking_head(
             )
         )
 
-        # 3. Acquire GPU reservation
+        # 3. Acquire GPU reservation for the SELECTED model (binding-driven).
+        # vram_requirement_mb comes from the binding, falling back to the
+        # engine default in providers/talking_head.py — 16384 for latentsync,
+        # i.e. unchanged from the previous hardcoded value.
         try:
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
-                model_name="latentsync",
-                vram_requirement_mb=16384,
+                model_name=binding.name,
+                vram_requirement_mb=provider.vram_requirement_mb(),
             )
         except Exception as e:
             log.warning("gpu_reservation_failed", error=str(e))
@@ -369,7 +430,7 @@ def render_talking_head(
         model_used = ""
         fallback_used = False
 
-        # 4. Render with LatentSync (primary)
+        # 4. Render with the AD-01-selected provider (primary)
         try:
             # Segment-based render (spec 6.1): render in per-scene segments, splitting any
             # scene longer than MAX_SEGMENT_SECONDS into equal sub-renders. Each render
@@ -436,16 +497,23 @@ def render_talking_head(
             seg_checksums: Dict[str, str] = {}
             seg_alignments: List[float] = []
 
+            # The reference clip is identical for every segment; read it once
+            # rather than re-reading the file per segment per attempt.
+            with open(reference_path, "rb") as _ref_f:
+                reference_clip_bytes = _ref_f.read()
+
             for seg_idx, piece in enumerate(render_pieces):
                 seg_audio_path = piece["audio"]
+                with open(seg_audio_path, "rb") as _seg_af:
+                    seg_audio_bytes = _seg_af.read()
                 seg_result = None
                 last_seg_err = None
                 for attempt in range(MAX_SEGMENT_RETRIES + 1):
                     try:
                         seg_result = loop.run_until_complete(
-                            _render_with_latentsync(
-                                reference_path, seg_audio_path,
-                                task_input, config, temp_dir,
+                            _render_segment(
+                                provider, reference_clip_bytes,
+                                seg_audio_bytes, task_input,
                             )
                         )
                         break
@@ -511,7 +579,12 @@ def render_talking_head(
                 round(sum(seg_alignments) / len(seg_alignments), 4)
                 if seg_alignments else 0.0
             )
-            model_used = "latentsync"
+            # AD-01: attribute the render to the SELECTED model, not to a
+            # hard-coded engine name. Event names below are deliberately
+            # unchanged — they are the operator's existing evidence surface
+            # for the segment/OOM strategy, and every line already carries
+            # model/engine/endpoint/tier from the bound logger.
+            model_used = binding.name
 
             log.info(
                 "latentsync_segmented_render_complete",
@@ -529,7 +602,10 @@ def render_talking_head(
                 )
                 video_data = None  # Force fallback
 
-        except (LatentSyncError, Exception) as e:
+        except Exception as e:
+            # Was `except (LatentSyncError, Exception)`; Exception already
+            # subsumed LatentSyncError, and the engine-specific class is no
+            # longer imported here (ARCH-1).
             log.warning("latentsync_render_failed", error=str(e))
             video_data = None
 
@@ -538,7 +614,7 @@ def render_talking_head(
             log.info("falling_back_to_sadtalker")
             fallback_used = True
 
-            # Release LatentSync reservation, acquire SadTalker
+            # Release the selected model's reservation, acquire SadTalker's
             if reservation:
                 release_gpu_reservation(reservation, config)
             try:
@@ -584,7 +660,9 @@ def render_talking_head(
             except Exception as e:
                 log.error("sadtalker_render_failed", error=str(e))
                 output.status = StageStatus.FAILED
-                output.errors.append(f"Both LatentSync and SadTalker failed: {e}")
+                output.errors.append(
+                    f"Both {binding.name} and the SadTalker fallback failed: {e}"
+                )
                 output.generation_time_seconds = round(time.monotonic() - start_time, 2)
                 output.completed_at = datetime.now(timezone.utc)
 
@@ -695,6 +773,18 @@ def render_talking_head(
         update_job_status(job_id, "failed", error_message=f"Stage 6 error: {e}")
 
     finally:
+        # Release the provider's HTTP client. Uses its own short-lived loop:
+        # the main loop is closed at the end of the try block, and this must
+        # also run when we arrive here from the except branch.
+        provider_close = getattr(provider, "close", None)
+        if provider_close is not None:
+            close_loop = asyncio.new_event_loop()
+            try:
+                close_loop.run_until_complete(provider_close())
+            except Exception as close_err:
+                log.warning("provider_close_failed", error=str(close_err))
+            finally:
+                close_loop.close()
         if reservation:
             release_gpu_reservation(reservation, config)
         # Cleanup temp files

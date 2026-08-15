@@ -1,10 +1,14 @@
-"""Stage-6 ARCH-1 wiring — the per-scene path renders through the bound
-provider and stamps ``binding.name`` as ``model_used``.
+"""Stage-6 ARCH-1 wiring — the LIVE task renders through the bound provider.
+
+Retargeted from the dead ``tasks.stage6_talking_head`` duplicate onto the task
+the orchestrator actually dispatches, ``tasks.talking_head_task`` (WP-02-ORCH6).
+The dead module implemented a per-scene architecture that AD-03 Pillar 2
+retired; the live task renders the whole project as one continuous head track,
+segmented for bounded memory.
 
 The Celery task body is exercised on hardware (live-verify runbook); here we
-drive ``_process_single_talking_head`` directly with a fake provider and
-monkeypatched asset/upload/validator seams, proving the params mapping and
-model attribution without any engine service.
+drive ``_render_segment`` directly with a fake provider, proving the params
+mapping and the binding-driven model attribution without any engine service.
 """
 from __future__ import annotations
 
@@ -12,7 +16,6 @@ import os
 import sys
 import uuid
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
@@ -39,6 +42,7 @@ pytestmark = pytest.mark.asyncio
 class FakeProvider(TalkingHeadProvider):
     def __init__(self) -> None:
         self.seen: list[TalkingHeadParams] = []
+        self.closed = False
 
     async def render(self, params: TalkingHeadParams) -> TalkingHeadResult:
         self.seen.append(params)
@@ -62,95 +66,124 @@ class FakeProvider(TalkingHeadProvider):
     def provider_name(self) -> str:
         return "fake"
 
+    async def close(self) -> None:
+        self.closed = True
 
-def _binding() -> ModelBinding:
+
+def _binding(name: str = "latentsync", engine: str = "latentsync") -> ModelBinding:
     return ModelBinding(
         model_id=uuid.uuid4(),
-        name="sadtalker-v2",
-        display_name="SadTalker V2",
+        name=name,
+        display_name=name.title(),
         stage="talking_head",
-        engine="sadtalker",
+        engine=engine,
         tier="prototype",
-        endpoint="http://node-04:8301",
+        endpoint="http://node-04:8300",
     )
 
 
-async def test_per_scene_path_uses_provider_and_binding(monkeypatch):
-    import tasks.stage6_talking_head as stage6
+async def test_segment_render_maps_params_to_the_provider():
+    """The live segment render feeds the shared contract, not an engine client."""
+    import tasks.talking_head_task as th
 
     provider = FakeProvider()
-    binding = _binding()
-
-    async def fake_download(asset_id, config):
-        return f"BYTES:{asset_id}".encode()
-
-    async def fake_upload(video_data, project_id, scene_id, config):
-        return ("asset-1", f"/ivgs/talking-heads/{project_id}/{scene_id}.mp4")
-
-    async def fake_update(project_id, scene_id, asset_id, config):
-        return None
-
-    monkeypatch.setattr(stage6, "_download_asset", fake_download)
-    monkeypatch.setattr(stage6, "_upload_video_to_seaweedfs", fake_upload)
-    monkeypatch.setattr(stage6, "_update_scene_talking_head", fake_update)
-
-    validation = SimpleNamespace(
-        is_valid=True,
-        quality_score=0.97,
-        errors=[],
-        decision=SimpleNamespace(value="pass"),
-    )
-    validator = SimpleNamespace(validate_bytes=lambda **kw: validation)
-    converter = SimpleNamespace()
-
-    scene = stage6.SceneTalkingHeadInput(
-        scene_id="scene-1",
-        scene_index=0,
-        image_asset_id="img-1",
-        audio_asset_id="aud-1",
-        narration_duration_seconds=4.2,
-        render_mode="pip",
-    )
-    task_input = stage6.Stage5Input(
+    task_input = th.Stage6Input(
         job_id="job-1",
         project_id=str(uuid.uuid4()),
-        scenes=[scene],
         reference_clip_asset_id="ref-1",
-        enable_dedup=False,
-        auto_detect_mode=False,
+        latentsync_mode="pip",
+        pip_position="bottom_left",
+        pip_scale=0.4,
+        lip_sync_strength=0.8,
+        enable_face_enhance=False,
+        alignment_threshold=0.9,
     )
 
-    result = await stage6._process_single_talking_head(
-        scene=scene,
-        task_input=task_input,
-        reference_clip_data=b"REF-BYTES",
+    result = await th._render_segment(
         provider=provider,
-        binding=binding,
-        vllm_client=None,
-        video_validator=validator,
-        video_converter=converter,
-        config=stage6.WorkerConfig(),
+        reference_clip_data=b"REF-BYTES",
+        audio_data=b"AUDIO-BYTES",
+        task_input=task_input,
     )
 
-    assert result.status == "success"
-    assert result.model_used == "sadtalker-v2"  # binding, not engine result
-    assert result.render_mode == "pip"
     assert result.alignment_score == 0.93
+    assert result.width == 1920
 
     params = provider.seen[0]
-    assert params.scene_image_data == b"BYTES:img-1"
-    assert params.voiceover_audio_data == b"BYTES:aud-1"
+    assert params.voiceover_audio_data == b"AUDIO-BYTES"
     assert params.reference_clip_data == b"REF-BYTES"
+    # Stage 6 renders the presenter from the reference clip; there is no
+    # per-scene still. A provider that requires one cannot serve this stage.
+    assert params.scene_image_data is None
     assert params.mode == "pip"
+    assert params.pip_position == "bottom_left"
+    assert params.pip_scale == 0.4
+    assert params.lip_sync_strength == 0.8
+    assert params.face_enhance is False
+    assert params.alignment_threshold == 0.9
     assert params.output_width == 1920
+    assert params.output_height == 1080
+    assert params.output_fps == 30
 
 
-async def test_stage6_module_has_no_hardcoded_engine():
+async def test_unknown_render_mode_falls_back_instead_of_raising():
+    """Pre-ARCH-1 behaviour preserved: a bad mode degrades, it does not raise.
+
+    The engine enum would reject an unknown mode inside the provider; the task
+    normalises first, exactly as the old LatentSyncMode try/except did.
+    """
+    import tasks.talking_head_task as th
+
+    assert th._resolve_render_mode("full_frame") == "full_frame"
+    assert th._resolve_render_mode("pip") == "pip"
+    assert th._resolve_render_mode("chroma_key") == "chroma_key"
+    assert th._resolve_render_mode("overlay") == "full_frame"
+    assert th._resolve_render_mode("") == "full_frame"
+
+    provider = FakeProvider()
+    task_input = th.Stage6Input(
+        job_id="job-1",
+        project_id=str(uuid.uuid4()),
+        reference_clip_asset_id="ref-1",
+        latentsync_mode="not-a-real-mode",
+    )
+    await th._render_segment(provider, b"REF", b"AUDIO", task_input)
+    assert provider.seen[0].mode == "full_frame"
+
+
+async def test_live_stage6_module_has_no_hardcoded_engine():
+    """The guarantee this work package exists to deliver.
+
+    Asserted against the module ``STAGE_TASK_MAP`` dispatches, not a duplicate.
+    """
     import inspect
 
-    import tasks.stage6_talking_head as stage6
+    import tasks.talking_head_task as th
 
-    source = inspect.getsource(stage6)
+    source = inspect.getsource(th)
     assert "LatentSyncClient(" not in source
+    assert "from clients.latentsync_client import" not in source
     assert "get_binding" in source
     assert "build_provider" in source
+
+    # The registered name is the dispatch identity and must not drift.
+    assert th.render_talking_head.name == "tasks.talking_head_task.render_talking_head"
+
+
+async def test_model_attribution_comes_from_the_binding():
+    """``model_used`` must name the AD-01 selection, not the engine's own label.
+
+    FakeProvider returns model="engine-side-name-ignored"; the task stamps
+    ``binding.name``. Without this, a GUI swap would not be visible in the
+    stage output or in the logs.
+    """
+    import inspect
+
+    import tasks.talking_head_task as th
+
+    source = inspect.getsource(th.render_talking_head)
+    assert "model_used = binding.name" in source
+    assert 'model_used = "latentsync"' not in source
+
+    binding = _binding(name="latentsync-v1.6")
+    assert binding.describe().startswith("latentsync-v1.6 [latentsync]")

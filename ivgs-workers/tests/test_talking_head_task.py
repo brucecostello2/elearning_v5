@@ -3,7 +3,7 @@ IVGS v5 — Stage 6: Talking Head Task Tests
 =============================================
 
 Test suite for Stage 6 talking head rendering:
-- LatentSync primary render path
+- Primary render path through the AD-01-selected provider (ARCH-1)
 - SadTalker fallback path
 - Alignment score validation
 - Audio concatenation
@@ -19,16 +19,17 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from clients.latentsync_client import (
-    LatentSyncError,
-    LatentSyncResult,
+from shared.providers import (
+    TalkingHeadParams,
+    TalkingHeadProvider,
+    TalkingHeadResult,
 )
 from tasks.talking_head_task import (
     SceneAudioRef,
     Stage6Input,
     Stage6Output,
     _concatenate_scene_audio,
-    _render_with_latentsync,
+    _render_segment,
 )
 from validators.lipsync_validator import (
     LipsyncDecision,
@@ -183,85 +184,98 @@ class TestStage6Output:
         assert len(output.errors) == 1
 
 
-class TestLatentSyncRender:
-    """Test LatentSync rendering path."""
+class _StubProvider(TalkingHeadProvider):
+    """Stands in for whatever engine the AD-01 binding selected."""
+
+    def __init__(self, result=None, error=None):
+        self._result = result
+        self._error = error
+        self.seen: list[TalkingHeadParams] = []
+
+    async def render(self, params: TalkingHeadParams) -> TalkingHeadResult:
+        self.seen.append(params)
+        if self._error is not None:
+            raise self._error
+        return self._result
+
+    async def check_health(self) -> bool:
+        return True
+
+    def vram_requirement_mb(self) -> int:
+        return 16384
+
+    def provider_name(self) -> str:
+        return "stub"
+
+
+def _stage6_input(**overrides) -> Stage6Input:
+    base = dict(
+        job_id="j1",
+        project_id="p1",
+        reference_clip_asset_id="ref",
+        scene_audio_refs=[
+            SceneAudioRef(
+                scene_id="s1",
+                scene_index=0,
+                audio_asset_id="a1",
+                duration_seconds=22.0,
+            ),
+        ],
+    )
+    base.update(overrides)
+    return Stage6Input(**base)
+
+
+class TestSegmentRender:
+    """Segment rendering goes through the bound provider, not an engine client.
+
+    Rewritten for WP-02-ORCH6: the task no longer constructs a LatentSync
+    client, so there is nothing engine-specific left to patch. The seam under
+    test is _render_segment(provider, ...).
+    """
 
     @pytest.mark.asyncio
-    @patch("tasks.talking_head_task.LatentSyncClient")
-    async def test_successful_render(
-        self,
-        mock_client_cls,
-        sample_mp4_bytes,
-        mock_config,
-    ):
-        mock_client = AsyncMock()
-        mock_client.render.return_value = LatentSyncResult(
-            video_data=sample_mp4_bytes,
-            width=1920,
-            height=1080,
-            fps=30,
-            duration_seconds=22.0,
-            alignment_score=0.92,
-            model_used="latentsync",
-            render_time_seconds=45.0,
+    async def test_successful_render(self, sample_mp4_bytes):
+        provider = _StubProvider(
+            result=TalkingHeadResult(
+                video_data=sample_mp4_bytes,
+                width=1920,
+                height=1080,
+                fps=30,
+                duration_seconds=22.0,
+                alignment_score=0.92,
+                model="whatever-the-engine-calls-itself",
+                generation_time_seconds=45.0,
+            )
         )
-        mock_client.close = AsyncMock()
-        mock_client_cls.return_value = mock_client
 
-        _result = await _render_with_latentsync(  # noqa: F841
-            reference_clip_path="/tmp/ref.mp4",
-            audio_path="/tmp/audio.wav",
-            task_input=Stage6Input(
-                job_id="j1",
-                project_id="p1",
-                reference_clip_asset_id="ref",
-                scene_audio_refs=[
-                    SceneAudioRef(
-                        scene_id="s1",
-                        scene_index=0,
-                        audio_asset_id="a1",
-                        duration_seconds=22.0,
-                    ),
-                ],
-            ),
-            config=mock_config,
-            temp_dir="/tmp",
+        result = await _render_segment(
+            provider=provider,
+            reference_clip_data=b"REF",
+            audio_data=b"AUDIO",
+            task_input=_stage6_input(),
         )
 
         assert result.alignment_score >= 0.85
         assert result.width == 1920
 
-    @pytest.mark.asyncio
-    @patch("tasks.talking_head_task.LatentSyncClient")
-    async def test_latentsync_failure_triggers_fallback(
-        self,
-        mock_client_cls,
-        mock_config,
-    ):
-        mock_client = AsyncMock()
-        mock_client.render.side_effect = LatentSyncError("GPU OOM")
-        mock_client.close = AsyncMock()
-        mock_client_cls.return_value = mock_client
+        # Stage 6 supplies reference clip + audio and no per-scene still.
+        params = provider.seen[0]
+        assert params.reference_clip_data == b"REF"
+        assert params.voiceover_audio_data == b"AUDIO"
+        assert params.scene_image_data is None
 
-        with pytest.raises(LatentSyncError):
-            await _render_with_latentsync(
-                reference_clip_path="/tmp/ref.mp4",
-                audio_path="/tmp/audio.wav",
-                task_input=Stage6Input(
-                    job_id="j1",
-                    project_id="p1",
-                    reference_clip_asset_id="ref",
-                    scene_audio_refs=[
-                        SceneAudioRef(
-                            scene_id="s1",
-                            scene_index=0,
-                            audio_asset_id="a1",
-                            duration_seconds=10.0,
-                        ),
-                    ],
-                ),
-                config=mock_config,
-                temp_dir="/tmp",
+    @pytest.mark.asyncio
+    async def test_render_failure_propagates_to_the_caller(self):
+        """The segment loop needs the error, so it can retry then fall back."""
+        provider = _StubProvider(error=RuntimeError("GPU OOM"))
+
+        with pytest.raises(RuntimeError, match="GPU OOM"):
+            await _render_segment(
+                provider=provider,
+                reference_clip_data=b"REF",
+                audio_data=b"AUDIO",
+                task_input=_stage6_input(),
             )
 
 

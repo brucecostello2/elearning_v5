@@ -119,7 +119,6 @@ TASK_ROUTES: Dict[str, Dict[str, str]] = {
     # Keys match the registered task NAME (Celery routes by name), which for
     # several modules differs from the filename (H.0 WI-4 finding):
     #   stage5_voiceover.py       -> tasks.stage4_voiceover.*
-    #   stage6_talking_head.py    -> tasks.stage5_talking_head.*
     #   stage7_prototype_draft.py -> tasks.prototype_draft_task.*
     #   stage8_final_render.py    -> tasks.final_render_task.*
     # The orchestrator dispatches each stage with an explicit queue= (its
@@ -147,10 +146,6 @@ TASK_ROUTES: Dict[str, Dict[str, str]] = {
     "tasks.stage4_voiceover.*": {
         "queue": "gpu_tts",
         "routing_key": "gpu.tts",
-    },
-    "tasks.stage5_talking_head.*": {
-        "queue": "gpu_talking_head",
-        "routing_key": "gpu.talking_head",
     },
     "tasks.talking_head_task.*": {
         "queue": "gpu_talking_head",
@@ -326,7 +321,6 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
         "tasks.stage3_images",
         "tasks.stage4_manifest",
         "tasks.stage5_voiceover",
-        "tasks.stage6_talking_head",
         "tasks.stage7_prototype_draft",
         "tasks.stage8_final_render",
         "tasks.video_generation_task",

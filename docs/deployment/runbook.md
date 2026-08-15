@@ -239,11 +239,28 @@ Untracked and gitignored; the file remains on disk. The token was verified never
 **Cause:** four stage files register Celery task names that do not match their filenames. The orchestrator dispatches by **registered name**.
 **Cure:** consult `docs/stage-numbering-map.md` (rewritten 2026-08-14, three columns, registered name authoritative). Never infer a task name from a filename. Ledger P2.3. *Eliminated at M3 — typed calls fail at import.*
 
-### 6.5 The dead talking-head file is the better implementation
+### 6.5 The head model is a GUI selection, not a code change — RESOLVED 2026-08-15
 
-**Symptom:** a reviewer deletes `stage6_talking_head.py` as dead code.
-**Cause:** it is not dispatched, but it holds the AD-01 provider-factory binding. The live `talking_head_task.py` hardcodes LatentSync.
-**Cure:** **promote, do not delete** — port the binding into the live file first. It also carries a wrong upload URL (`:241`) that previously broke Stage 5. Ledger P1.0.
+**Was:** `stage6_talking_head.py` held the AD-01 provider binding but was never
+dispatched, while the live `talking_head_task.py` hardcoded LatentSync — so certified
+models could not be selected. Ledger P1.0 / ORCH-6.
+
+**Now:** the binding is promoted into the live `talking_head_task.py`, and the
+duplicate is deleted (WP-02-ORCH6). Stage 6 resolves its model through
+`get_binding("talking_head", project_id=..., tier=...)`.
+
+**Symptom:** Stage 6 fails with `SelectionError: no selection and no enabled APPROVED
+default model for stage='talking_head'`.
+**Cause:** no approved, enabled, `is_default` talking_head model exists in the Model
+Store. This is deliberate — the task fails loudly rather than silently falling back to
+a hardcoded engine, which would make a GUI swap appear to work when it had not.
+**Cure:** in `/admin/models`, approve a talking_head model and set it default. Verify
+with `docker exec ivgs-celery-default python -c "..."` calling `get_binding`.
+
+**Still true:** the SadTalker *fallback* inside Stage 6 is not yet selection-driven —
+the shared SadTalker provider requires a per-scene still image, which this
+whole-project stage does not have. Selecting a `sadtalker`-engine model will fail at
+render time. See the WP-02-ORCH6 report, finding F2.
 
 ### 6.6 Checkpoint resume does not exist
 
