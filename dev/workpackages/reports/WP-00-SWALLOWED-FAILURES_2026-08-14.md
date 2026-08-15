@@ -305,6 +305,74 @@ This also bears on the contradiction recorded in CLAUDE.md §7 about
 `release_gpu_reservation` raising `TypeError`. **Still untested** — the detector reports
 shape, not runtime behaviour, and resolves nothing about that contradiction.
 
+### 12. Stage 6 cannot distinguish a fresh render from a dedup hit - OPEN
+
+*Added 2026-08-15 during WP-02-ORCH6 check-5 verification, verified live.*
+
+Stage 6 uploaded a 50 MB render and reported:
+
+```
+status: success   asset_id: b45b19ce-c12a-459f-bdf0-1dcae7625a4e
+seaweedfs_path: /ivgs/talking-heads/3814f845-.../talking_head_en.mp4
+```
+
+That asset row was created **2026-06-07**. The upload was content-hash
+deduplicated (`ivgs-api/app/services/asset_service.py:136-160`, spec S10.4):
+`reference_count` went 1 -> 2, `last_accessed_at` was stamped, and **no bytes were
+written**. Verified on the volume server - fid `5,5b66d602e3` still reports
+`Last-Modified: Sun, 07 Jun 2026 17:56:18 GMT`.
+
+**The dedup is correct.** The defect is that nothing downstream can tell the two
+cases apart. `Stage6Output` has no `was_deduplicated` field, so a render that
+produced new footage and a render whose output was discarded as redundant emit an
+identical success payload. An operator reading the stage output, the job row, or
+the asset id cannot answer "did this job actually render anything?".
+
+Note the *dead* per-scene file carried `SceneTalkingHeadResult.was_deduplicated`
+(`stage6_talking_head.py:124`, deleted by WP-02). The signal existed in the
+architecture AD-03 Pillar 2 retired and was not carried into the live one.
+
+**Scope/action:** add `was_deduplicated: bool` to `Stage6Output`, set it from the
+upload response (the API already returns the pre-existing row, so compare the
+returned `created_at` or have the endpoint report it), and log it. Same treatment
+for any other stage whose upload can dedup.
+
+### 13. `_update_job_celery_task_id` writes nothing and nobody notices - OPEN
+
+*Added 2026-08-15 during WP-02 check-6b, verified live.*
+
+`pipeline_orchestrator_v2.py:206` calls
+`_update_job_celery_task_id(job_id, result.id, config)` immediately after dispatching
+a stage. On the check-6b run - with a **valid** `job_id`, so this is not the mangled-id
+artefact - the row shows:
+
+```
+id            a3d2d3fc-97aa-4920-ad89-ca1cf4e06bf6
+status        running        <- update_job_status DID land
+celery_task_id (null)        <- _update_job_celery_task_id did NOT
+started_at    (null)
+```
+
+Both helpers write through the same Pipeline API with the same service token in the
+same task, moments apart. One took effect and the other did not, and the dispatch
+reported success either way. Whatever the cause - missing route, wrong verb, rejected
+payload - it is invisible: the caller does not check, and the orchestrator logs
+`pipeline_stage_dispatched` regardless.
+
+**Consequence.** `render_jobs.celery_task_id` is the only link from a job row back to
+the Celery task that ran it. Without it there is no way to correlate a job with its
+worker logs, its retries, or its failure - exactly the correlation an operator needs
+during an incident. `started_at` being null compounds it: job duration is
+unmeasurable.
+
+**Verified live; root cause NOT diagnosed.** The API-side behaviour was not traced,
+and this may share a cause with ledger P2.0a (node-04 worker traffic not appearing in
+`ivgs-fastapi`'s access log). Do not assume they are the same bug without evidence.
+
+**Scope/action:** trace the call against the API route table (as P1.2 did for
+checkpoints), then make the failure surface - assert on the return, or raise. Check
+`update_job_status`'s sibling calls for the same gap.
+
 ---
 
 ## Proposed detector

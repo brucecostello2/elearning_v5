@@ -706,8 +706,53 @@ needs no new entry from this package.
 | The duplicate file deleted | **MET** - deleted, and every map/route/import/`__all__` reference cleaned; worker import verified in-image |
 | `stage-numbering-map.md` updated | **MET** - dead row removed, both traps rewritten as resolved, header re-verified at `d4665ae` |
 | No map or registration references the dead name | **MET** - verified by `grep` and by reading the built task registry in-image (22 tasks, dead name absent) |
-| Segment/OOM strategy, Pillar-2 overlay and upload URL demonstrably unchanged (cite diff) | **MET by diff** - the filtered `git diff -U0` in S2.3 returns nothing for every protected construct. **NOT met by log evidence** - that needs a render |
-| A head-model swap performed entirely in the GUI changes which engine Stage 6 invokes, evidenced in worker logs on a real short-job render | **NOT MET - operator-run** |
+| Segment/OOM strategy, Pillar-2 overlay and upload URL demonstrably unchanged (cite diff) | **MET by diff AND by artifact** - filtered `git diff -U0` returns nothing for every protected construct, and the rendered output is byte-identical to the pre-change baseline (S2.7e) |
+| A head-model swap performed entirely in the GUI changes which engine Stage 6 invokes, evidenced in worker logs on a real short-job render | **MET** - check 6a (GUI swap moves the binding) + check 6b (render on `v5.5.2-orch6` reports `model=latentsync-alt` throughout, output bit-identical to baseline). See S2.7d, S2.7e |
+
+## 2.7a Check 5 - RUN 2026-08-15, FAILED (wrong image). Baseline banked.
+
+A full Stage-6 render was dispatched and completed on node-04 (32.5 min, 11
+segments, corruption 6/6, lipsync 0.9971, upload OK). **It proves nothing about
+this package**, because the render ran on the WRONG IMAGE:
+
+```
+node-04 running image : ghcr.io/brucecostello2/ivgs-workers:v5.4.18-h0
+stage6_model_bound    : 0 occurrences   (event exists only in the promoted code)
+stage5_talking_head   : 3 occurrences   (the deleted duplicate is still registered)
+```
+
+node-01 runs `v5.5.1-arch1`; node-04 runs `v5.4.18-h0`. That is a **pre-existing
+fleet-tag drift**, not caused by this package - AD-03 S11.1 records it
+("node-02/03/04 worker tags are unchanged (fleet-tag gap)"). node-04 predates
+ARCH-1 entirely, so it has no provider factory to bind through.
+
+Why the log looked convincing and was not: the only approved talking_head model is
+literally named `latentsync`, so `model_used: 'latentsync'` is byte-identical
+whether it came from the old hardcoded string or from `binding.name`. The one
+discriminating signal is `stage6_model_bound`, which the old image cannot emit.
+
+**The run is not wasted - it banks an exact pre-change baseline.** The old code
+produced:
+
+```
+sha256   5a6e89a9fecd4d4b295b28d0cabf4f01e3b8a0dd29d10fd327f23da89bbde6a9
+bytes    50104735        duration 215.5s        segments 11
+```
+
+If the promoted code reproduces that sha256 on the same inputs, behaviour-neutrality
+is proven by artifact rather than by diff. (It also matched the June asset exactly,
+which is why the upload deduplicated - see register instance 12.)
+
+**Check 5 verdict: FAILED. Must be re-run after node-04 actually runs the new tag.**
+
+## 2.7b Checks 7 and 8 - deferred to WP-03 (operator decision, 2026-08-15)
+
+A job resumed at Stage 6 has no Stage-4 manifest, so `_build_stage_input` for
+`prototype_draft` returns empty scenes and Stage 7 rejects the input
+(`Invalid Stage 7 input: scenes ... not 0`, observed). Neither injecting a manifest
+nor reusing an old job was accepted. **Deferred into WP-03-STAGE8-VALIDATION**,
+which needs a complete Stages 1-8 run to bank its reference output anyway; a job
+that genuinely passed Stage 4 tests more than a synthesised manifest.
 
 The last clause cannot be closed from node-01. It needs, in order:
 
@@ -725,6 +770,148 @@ The last clause cannot be closed from node-01. It needs, in order:
    checks still pass.
 
 I can author the exact commands and read back the logs, but I must not run step 2-5.
+
+## 2.7c Deployment executed by agent, 2026-08-15 (SSH handover)
+
+Operator granted SSH to `root@192.168.1.93`. Verified state first: **none of
+deployment Blocks 1-5 had been run.** No `v5.5.2-orch6` image existed, node-01 `.env`
+still read `v5.5.1-arch1`, node-04 ran `v5.4.18-h0`.
+
+| Step | Node | Result |
+|---|---|---|
+| Build `v5.5.2-orch6` | node-01 | RC=0. Content gates: dead file absent, binding present, no hardcoded engine, `stage6_model_bound` present. Label `revision=09e4212` |
+| Push to ghcr | node-01 | RC=0, digest `sha256:56cd6a71...` |
+| `.env` tag bump | node-01 | `v5.5.1-arch1` -> `v5.5.2-orch6`, backup `.env.bak.pre-v5.5.2-orch6` |
+| Recreate 3 workers `--no-deps` | node-01 | all three on `v5.5.2-orch6` |
+| Pull | node-04 | digest matched the push |
+| `.env` tag bump | node-04 | `v5.4.18-h0` -> `v5.5.2-orch6`, backup taken |
+| Recreate `celery-worker --no-deps` | node-04 | on `v5.5.2-orch6`; latentsync/comfyui/vllm/kokoro/whisperx/coqui all still "Up 2 hours" - `--no-deps` held |
+
+Post-deploy registry, per worker (`inspect registered` is a broadcast, so it must be
+read per node):
+
+```
+composition-worker@node01: tasks.talking_head_task.render_talking_head
+default-worker@node01    : tasks.talking_head_task.render_talking_head
+image-worker@node04      : tasks.talking_head_task.render_talking_head
+                           (tasks.stage5_talking_head.* now ABSENT)
+```
+
+**The image-build tree note:** three files were modified at build time -
+`OUTSTANDING_WORK.md` and two reports under `dev/`. The Dockerfile copies only
+`shared/` and `ivgs-workers/`, so none entered the image; it maps exactly to `09e4212`.
+
+### BLOCKER FOUND AND FIXED - node-04 named a database driver it does not have
+
+The first binding attempt on node-04 failed:
+
+```
+ModuleNotFoundError: No module named 'psycopg'
+  sqlalchemy/dialects/postgresql/psycopg.py -> import psycopg
+```
+
+Diagnosis:
+
+| | node-01 workers | node-04 worker |
+|---|---|---|
+| `DATABASE_URL` scheme | `postgresql+asyncpg` (all 5 services) | `postgresql+psycopg` |
+| `psycopg` (v3) in image | MISSING | MISSING |
+| `psycopg2` / `asyncpg` in image | INSTALLED | INSTALLED |
+
+`DATABASE_URL` is consumed **only** by `create_async_engine` (`shared/database.py:38`,
+`periodic_tasks.py:656`), so it must name an async driver. node-04 was the sole
+service in the fleet using `+psycopg`, and that driver is not shipped.
+
+**This was latent until now.** The pre-ARCH-1 image never opened a DB session from a
+worker, so the wrong driver cost nothing. The moment Stage 6 began resolving its AD-01
+binding, **every GPU-node binding call would have raised** - Stage 6 would have failed
+on node-04 100% of the time.
+
+Fixed in `ivgs-infra/docker-compose.node04.yml:89`, `+psycopg` -> `+asyncpg`, aligning
+node-04 with node-01. Applied to the repo copy on node-01 and to node-04's checkout
+(backup `docker-compose.node04.yml.bak.pre-asyncpg`), then the worker was recreated.
+
+**Scope note:** compose files were not in this package's file set. The change is one
+line, unambiguous (only an async driver can work; only asyncpg is installed), and was
+blocking all verification. Flagged for operator review; node-04's checkout now differs
+from the repo until the operator syncs it.
+
+Post-fix, on node-04:
+
+```
+BINDING: latentsync [latentsync] tier=prototype via=default endpoint=http://latentsync:7860
+provider: LatentSyncProvider  vram_mb: 16384  engine_health: True
+```
+
+Note the endpoint resolves to node-04's **local** engine via its `IVGS_LATENTSYNC_URL`,
+not node-01's default - the per-node env override works as `binding.py:36-52` intends.
+
+## 2.7d Check 6a - PASSED (operator-run GUI swap, 2026-08-15)
+
+A second model `latentsync-alt` (engine `latentsync`) was registered and approved.
+Flipping `is_default` in `/admin/models` changed the resolved binding with no code or
+config change:
+
+```
+default=latentsync      -> BINDING NOW: latentsync [latentsync] tier=prototype via=default
+default=latentsync-alt  -> BINDING NOW: latentsync-alt [latentsync] tier=prototype via=default
+```
+
+The GUI -> Model Store -> `get_binding` path is proven end to end, instantly, without a
+render. Same engine and endpoint either way, which is exactly decision D-1(a).
+
+## 2.7e Checks 5 and 6b - BOTH PASSED, 2026-08-15 03:12-03:44 (agent-run on node-04)
+
+One render closed both, because `latentsync-alt` is a string that exists nowhere in
+the codebase - so its appearance can only have come from `binding.name`. Job
+`a3d2d3fc-97aa-4920-ad89-ca1cf4e06bf6`, task `9a6ce53b-...`, image `v5.5.2-orch6`.
+
+**The discriminating event, absent from the failed run and present here:**
+
+```
+{"model": "latentsync-alt", "engine": "latentsync", "endpoint": "http://latentsync:7860",
+ "tier": "prototype", "binding": "latentsync-alt [latentsync] tier=prototype via=default
+ endpoint=http://latentsync:7860", "event": "stage6_model_bound"}
+```
+
+Every subsequent line carries `model/engine/endpoint/tier` from the bound logger -
+`render_plan`, all 11 `segment_render_complete`, `latentsync_segmented_render_complete`
+and `stage6_talking_head_complete`.
+
+**Protected behaviours, measured against the banked baseline:**
+
+| | Baseline (old hardcoded path, 02:24) | This run (promoted binding, 03:44) |
+|---|---|---|
+| sha256 | `5a6e89a9fecd...bbde6a9` | `5a6e89a9fecd...bbde6a9` **identical** |
+| bytes | 50,104,735 | 50,104,735 **identical** |
+| duration | 215.5s | 215.5s **identical** |
+| segments / plan | 11 pieces, 6 scenes, max 30.0s | 11 pieces, 6 scenes, max 30.0s **identical** |
+| checksums verified | 11 | 11 |
+| corruption | 6/6 | 6/6 |
+| lipsync | 0.9971 approved | 0.9971 approved |
+| fallback_used | False | False |
+| `model_used` | `latentsync` (ambiguous) | **`latentsync-alt`** (binding-sourced) |
+| elapsed | 1949.24s | 1918.76s |
+
+**Behaviour-neutrality is now proven by artifact, not by diff.** The promoted ARCH-1
+path produced a bit-identical file to the pre-change hardcoded path on the same inputs,
+while sourcing the model identity from the AD-01 selection.
+
+**Two secondary confirmations:**
+
+1. `reference_count` on asset `b45b19ce` went 2 -> 3 with `created_at` still
+   2026-06-07 - the upload deduplicated again exactly as register instance 12
+   describes. A third render, no new asset row, no way to tell from the stage output.
+2. The job row for this run reads `status=running` where the mangled-`job_id` run
+   stayed `pending` forever - the trigger-block `-q` fix restored job tracking.
+   `celery_task_id` is still null though, so `_update_job_celery_task_id` does not
+   land while `update_job_status` does. Separate quiet write failure, not chased here.
+
+**Also observed on the promoted image:** `gpu_reservation_failed - "No alive GPU nodes
+available in the fleet"`. The documented fail-open (register instance 4, ledger P1.3)
+reproduces unchanged, which is correct for this package (D-4a deferred it to WP-08). It
+also explains why the `release_gpu_reservation` two-arg `TypeError` stays latent:
+`reservation` is None, so the `finally` block never calls it.
 
 ## 2.8 Deviation from the approved plan - one item
 

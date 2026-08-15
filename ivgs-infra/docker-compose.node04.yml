@@ -86,7 +86,13 @@ services:
       - .env.node04
     environment:
       REDIS_URL: redis://${NODE_01_IP}:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      # asyncpg, not psycopg: DATABASE_URL is consumed ONLY by create_async_engine
+      # (shared/database.py:38, periodic_tasks.py:656), and the workers image ships
+      # psycopg2 + asyncpg but NOT psycopg (v3). The previous +psycopg value made
+      # every DB session from this node raise ModuleNotFoundError, which surfaced
+      # the moment Stage 6 began resolving its AD-01 binding (WP-02 check 6b).
+      # node-01 uses +asyncpg for all five of its services; this aligns node-04.
+      DATABASE_URL: postgresql+asyncpg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
       IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
       IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
       API_BASE_URL: "http://${NODE_01_IP}:8001"

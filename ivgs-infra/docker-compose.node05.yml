@@ -112,7 +112,10 @@ services:
       - .env.node05
     environment:
       REDIS_URL: redis://${NODE_01_IP}:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      # asyncpg, not psycopg: the workers image ships psycopg2 + asyncpg, not
+      # psycopg (v3), and DATABASE_URL is consumed only by create_async_engine.
+      # Ledger P1.0b.
+      DATABASE_URL: postgresql+asyncpg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-05
       C_FORCE_ROOT: "1"
@@ -140,7 +143,10 @@ services:
       - .env.node05
     environment:
       REDIS_URL: redis://${NODE_01_IP}:6379/0
-      DATABASE_URL: postgresql+psycopg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
+      # asyncpg, not psycopg: the workers image ships psycopg2 + asyncpg, not
+      # psycopg (v3), and DATABASE_URL is consumed only by create_async_engine.
+      # Ledger P1.0b.
+      DATABASE_URL: postgresql+asyncpg://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       COMFYUI_FALLBACK_URL: http://comfyui:8188

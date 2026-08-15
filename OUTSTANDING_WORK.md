@@ -128,6 +128,61 @@ Three mutually incompatible SadTalker contracts now exist: the live task's
 `POST /api/render` JSON-of-paths, and `SadTalkerProvider`'s worker-local paths handed to the
 second. **Which one node-04 actually implements is unknown and should be established first.**
 
+## P1.0b — Every GPU node except node-01 names a database driver that is not installed; this blocks the entire AD-01 binding on the fleet *(new, WP-02 check-6b deployment, 2026-08-15)*
+**Status:** OPEN — **node-04 fixed; nodes 02, 03, 05, 06 still broken.** Severity proposed P1; operator to confirm.
+
+**The defect.** `DATABASE_URL` in the per-node compose files:
+
+```
+docker-compose.node01.yml   postgresql+asyncpg     <- correct
+docker-compose.node02.yml   postgresql+psycopg     <- broken
+docker-compose.node03.yml   postgresql+psycopg     <- broken
+docker-compose.node04.yml   postgresql+asyncpg     <- FIXED 2026-08-15 (was +psycopg)
+docker-compose.node05.yml   postgresql+psycopg     <- broken
+docker-compose.node06.yml   postgresql+psycopg     <- broken
+```
+
+The workers image ships **`psycopg2` and `asyncpg`, not `psycopg` (v3)** — verified by
+import inside `ghcr.io/brucecostello2/ivgs-workers:v5.5.2-orch6` on both nodes. So
+SQLAlchemy's `postgresql+psycopg` dialect raises at engine creation:
+
+```
+ModuleNotFoundError: No module named 'psycopg'
+  sqlalchemy/dialects/postgresql/psycopg.py -> import psycopg
+```
+
+`DATABASE_URL` is consumed **only** by `create_async_engine` (`shared/database.py:38`,
+`ivgs-workers/tasks/periodic_tasks.py:656`), so it must name an **async** driver
+regardless — `psycopg2` would not work either. `asyncpg` is the only installed async
+driver, and node-01 has used it successfully throughout.
+
+**Why it was invisible until now.** Pre-ARCH-1 worker images never opened a database
+session from a worker, so the wrong driver cost nothing. ARCH-1 changed that:
+`get_binding` opens a short-lived session (`factory.py:218-221`). **Any GPU node
+running an ARCH-1 image cannot resolve a model binding** — which fails Stages 1, 2, 3
+and 5 (already factory-bound per AD-01.12) as well as Stage 6 (WP-02).
+
+**Observed.** On node-04 with `v5.5.2-orch6` and the original `+psycopg`, the first
+`get_binding` call raised `ModuleNotFoundError`. After changing the line to `+asyncpg`
+and recreating, the same call returned
+`latentsync-alt [latentsync] tier=prototype via=default endpoint=http://latentsync:7860`
+and `LatentSyncProvider` built with `engine_health: True`.
+
+**This is a hard blocker for M4 (fleet rollout).** Standing up nodes 02/03/05/06 on any
+ARCH-1 image without this fix will fail every model-bound stage on those nodes, and the
+failure surfaces as a Python import error deep in SQLAlchemy rather than as anything
+that names the real cause.
+
+**Scope/action:** change `postgresql+psycopg` to `postgresql+asyncpg` in
+`docker-compose.node02.yml`, `node03`, `node05`, `node06` (one line each; node-04 is
+done). Leave `db+postgresql+psycopg2` result-backend URLs alone — psycopg2 **is**
+installed and that path is sync. Consider a start-up assertion in the worker that
+resolves the configured driver and fails loudly at boot rather than at first query.
+
+*(node-04's on-disk checkout was edited directly to unblock verification and now differs
+from the repo until synced; a backup `docker-compose.node04.yml.bak.pre-asyncpg` sits
+beside it.)*
+
 ## P1.1 — Media join advances prematurely on Redis error; not idempotent *(new, code audit; was "D2")*
 **Status:** OPEN — correctness defect.
 `pipeline_orchestrator_v2.py:869-880` — `_decrement_media_task_count` returns **`0`** on any exception. The caller at `:672` treats `remaining <= 0` as *"all media reported, dispatch Stage 4."* A single transient Redis error during any one scene's callback **advances the pipeline with incomplete footage**. Same class: `_store_media_task_count` (`:856-866`) swallows its failure — if the counter was never written, `decr` on a missing key returns `-1`, `max(0,-1) == 0`, and the join collapses on the *first* scene to report.
@@ -214,6 +269,54 @@ It reads the **staging** directory (`/tmp/ivgs-backup/<date>`), not the NAS. Com
 ---
 
 # P2 — Medium Priority
+
+## P2.0a — Establish which API endpoint node-04 workers actually call, and why its traffic does not appear in `ivgs-fastapi`'s access log *(new, WP-02 check-5 verification, 2026-08-15)*
+**Status:** OPEN — unresolved observability gap. Not a known-broken path: the calls **succeed**.
+
+**What was observed.** During the WP-02 check-5 Stage-6 render on node-04
+(2026-08-15 01:54–02:24), the worker demonstrably made successful Pipeline-API
+calls against **this** database:
+
+- It downloaded 13 assets (1 reference clip + 12 scene audio) via
+  `GET /assets/{id}/download` — the render could not have produced output otherwise.
+- Its upload was content-hash deduplicated against asset
+  `b45b19ce-c12a-459f-bdf0-1dcae7625a4e`, whose `reference_count` went 1 → 2 and
+  whose `last_accessed_at` was stamped `2026-08-15 02:24:01.236` — 33 ms before the
+  task's own `stage6_talking_head_complete` at `02:24:01.269`.
+- Its checkpoint POST returned **405**, which matches `ivgs-fastapi`'s actual route
+  table exactly (GET-only on `/jobs/{id}/checkpoints`, ledger P1.2) — so whatever
+  answered behaves like this API.
+
+**What contradicts it.**
+
+- `docker logs ivgs-fastapi` contains **zero** `/assets` or `/jobs` requests across
+  **74,969 lines**, spanning container start (2026-08-14 16:48) through the render.
+- The access log **does** capture that route family — a control probe from node-01
+  appears as `192.168.1.90 … "GET /api/v1/projects/{uuid}/assets" 403 Forbidden`.
+- `pg_stat_activity` showed **no** client connection from `192.168.1.93`; only the
+  node-01 docker-bridge clients `172.20.0.6` and `172.20.0.12`.
+
+**Candidate explanations — none asserted, all untested:**
+
+1. A second API instance somewhere (on node-04, or elsewhere) sharing this Postgres.
+2. A different ingress path (nginx, another published port, or a proxy) whose
+   requests are attributed differently.
+3. Access-log level or filtering that suppresses these specific routes under some
+   condition not reproduced by the control probe.
+4. Worker environment on node-04 pointing `API_BASE_URL` at an unexpected URL.
+
+**Why it matters.** Until this is settled, `ivgs-fastapi`'s access log cannot be
+used as evidence of what the fleet did or did not call — which is precisely the
+kind of blind spot the WP-00 register exists to eliminate. It also means any
+audit, rate-limit, or incident timeline built on that log is incomplete for
+worker traffic.
+
+**Scope/action:** on node-04, read the worker's effective `API_BASE_URL` and
+`full_base_url`, `curl` the resolved host, and trace where the request terminates
+(`ss`, `iptables -t nat -L`, container inspect). Then reconcile against
+`ivgs-fastapi`'s logging configuration. Cross-node work — operator-run.
+*(Deliberately not investigated at discovery time; recorded to avoid an unbounded
+detour mid-verification.)*
 
 ## P2.1 — 1,957 lines of orphaned operational machinery *(new, code audit; **decide before wiring**)*
 **Status:** OPEN — **this is the WS-T fork in the road.**
