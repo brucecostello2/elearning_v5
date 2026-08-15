@@ -3,7 +3,7 @@
 ## Model Management Subsystem & Content-Aware Model Selection
 
 **Addendum to:** IVGS v5.0 Functional Specification (18 May 2026)
-**Addendum version:** AD-01, Draft 1
+**Addendum version:** AD-01, **Draft 2 — 2026-08-14** (Draft 1 amended in place; AD-01.1–AD-01.11 and Appendices AD-A/AD-B unchanged and authoritative. AD-01.12–AD-01.14 replaced; AD-01.15–AD-01.16 added.)
 **Classification:** Internal Working Document
 **Change-control status:** Draft for review (per §18 change-control process)
 **Depends on:** Provider abstraction layer (§19.1), pipeline orchestration (§5–§6), GPU scheduler (§12), prompt-management inheritance model (§9)
@@ -155,7 +155,7 @@ The poller asserts **availability**, never **suitability**. A model can be appro
 
 ## AD-01.7 Pre-approval and external compatibility vetting (mandatory boundary)
 
-This subsystem is an **allow-list of pre-vetted models, not a validation harness.** Admins may add models to the store, but a model may only reach `APPROVED` after passing an acceptance process performed **outside this system**, against the actual target hardware. This boundary is deliberate: validating a model against six heterogeneous GPU nodes (mixed NVIDIA Blackwell and Intel B70 Pro), specific CUDA/driver/quantization combinations, and engine versions is an operational, hardware-in-the-loop activity that the IVGS application is not equipped to perform safely. Registering a model is an **assertion that this external acceptance has already succeeded.**
+This subsystem is an **allow-list of pre-vetted models, not a validation harness.** Admins may add models to the store, but a model may only reach `APPROVED` after passing an acceptance process performed **outside this system**, against the actual target hardware. This boundary is deliberate: validating a model against five heterogeneous GPU nodes (mixed NVIDIA Blackwell generations and VRAM sizes), specific CUDA/driver/quantization combinations, and engine versions is an operational, hardware-in-the-loop activity that the IVGS application is not equipped to perform safely. Registering a model is an **assertion that this external acceptance has already succeeded.**
 
 > **Operationalized by AD-04 (2026-06-08).** This external acceptance process is now defined as a standalone platform — the **Model Benchmarking & Certification Platform (MBCP, AD-04)**. The MBCP runs the AD-01.7.1 checklist on representative content against the real target hardware, measures performance and quality, and issues a **certification record**; that record is the attestation AD-01.7.2 requires for `CANDIDATE → APPROVED`. AD-01 remains the allow-list and selection/serving layer; AD-04 is the validation layer that feeds it.
 
@@ -224,47 +224,88 @@ Admins (any project) and operators (own projects) may override any auto-selectio
 - The self-hosted mandate is enforced at registration: any engine implying an external API is rejected.
 - Provenance fields (`weights_checksum`, `source_url`, `license`) are required for `APPROVED`.
 
-## AD-01.12 Rollout plan and relationship to outstanding gaps
+## AD-01.12 Rollout plan — **status as at 2026-08-14** *(replaces Draft 1 §AD-01.12)*
 
-This feature has hard prerequisites among the current gap set; it must not be built ahead of them.
+**Prerequisites — both closed.**
 
-**Prerequisites (fix first, shaped toward this addendum):**
+- **ARCH-1 — provider abstraction as a selection-aware factory.** ✅ **Delivered.** `shared/providers/factory.py`, `shared/providers/binding.py`, `ivgs-api/app/services/model_selection.py`. Built as a selection-aware factory as Draft 1 required, not as static per-engine config — the "fix once, the right way" item was honoured.
+- **ORCH-1 / ORCH-2 — runnable pipeline.** ✅ **Delivered.** All eight stages execute end-to-end.
 
-- **ARCH-1 — provider abstraction.** Must be implemented as a **selection-aware factory**, not static per-engine config. Building it any other way forces a rebuild later. This is the single most important "fix once, the right way" item.
-- **ORCH-1 / ORCH-2 — runnable pipeline.** There must be an executing pipeline with a working storyboard→media transition for selections to attach to and for `MODEL_PLANNING` to slot into.
+**Delivery phases.**
 
-**Fold into the foundation work (avoid double effort):**
+| Phase | Scope | Status |
+|---|---|---|
+| **A — Registry** | Schema, registry service, availability poller, admin CRUD | ✅ **Complete.** Migrations 0026 (AD-01 tables) + 0027 (`ffmpeg` engine enum). Node self-registration and a 30-second availability poller are live. |
+| **B — Binding** | Provider factory reads selections; per-(stage, tier) defaults; scheduler carries model identity | 🟡 **Largely complete — one gap.** Stages 1, 2, 3 and 5 resolve through the factory. **Stage 6 does not.** See AD-01.15. |
+| **C — Intelligence & UX** | Per-scene capability inference, scene-level overrides, full admin UI, test action | 🟡 **Partial.** The `/admin/models` lifecycle GUI is live and GUI-only. The **per-project selection GUI does not exist** (the API does). `MODEL_PLANNING` as a distinct pipeline stage is **not implemented**; selection resolves per job at execution time instead. |
 
-- **N23-1/2/3 — video selection, `scene_type`, `preferred_model`.** These are a degenerate special case of this subsystem. Persist `scene_type` as part of the capability-inference input; expose `preferred_model` as a scene-level manual selection.
-- **N04-1 / N05-1 — Kokoro and Ollama fallbacks.** These are simply additional approved store entries with appropriate tiers; building them as providers behind §19.1 directly serves the registry.
+**What shipped beyond Draft 1's plan.**
 
-**Delivery phases (each backward-compatible):**
+- **`/admin/models` lifecycle GUI**, state-machine-gated: candidate → approve (attestation required) → set-default (transactional per-(stage, tier) swap; only APPROVED models eligible) → deprecate (auto-clears default) → retire (only from deprecated). **GUI-only, no CLI path** — the hard requirement is met.
+- **Selection resolution per job:** project override → (stage, tier) default → error. Implemented as designed.
+- **MBCP integration in connected mode** — AD-01.7's external acceptance process is now a real system, not a checklist. See AD-01.16.
 
-1. **Phase A — Registry.** Schema, registry service, poller, admin CRUD. No effect on execution: with no selections present, tasks fall back to current static defaults. Fully backward compatible.
-2. **Phase B — Binding.** `MODEL_PLANNING` stage, project production profile, provider factory reads selections, scheduler carries `model_id`. Auto-selection becomes live; absence of a selection still falls back to defaults.
-3. **Phase C — Intelligence & UX.** Per-scene capability inference, scene-level overrides, full admin/operator UI, test action.
+**Backward-compatibility guarantee — upheld.** With no `project_model_selections` row for a (stage, tier), the factory uses the `is_default` model. No existing project was broken.
 
-**Backward-compatibility guarantee:** if no `project_model_selections` row exists for a (stage, tier), the provider factory uses the `is_default` model, which is configured to today's static choice. Existing projects continue to run unchanged.
+## AD-01.13 Acceptance criteria — **verification status** *(replaces Draft 1 §AD-01.13)*
 
-## AD-01.13 Acceptance criteria
+| # | Criterion | Status |
+|---|---|---|
+| 1 | Admin registers a `CANDIDATE`; not selectable until approved | ✅ Verified |
+| 2 | No `APPROVED` transition without a complete attestation record | ✅ Verified |
+| 3 | Model Management page shows models by stage with live per-node availability badges | 🟡 Page live; badges read `nodes:0` until the GPU fleet rolls (M4) |
+| 4 | `MODEL_PLANNING` produces a persisted per-stage selection with rationale | ❌ **Not implemented** — no `MODEL_PLANNING` stage; selection resolves at execution |
+| 5 | Prototype-tier and production-tier models applied to draft and final respectively | ❌ **Blocked by AD-01.15** |
+| 6 | Two contrasting production profiles resolve to different models | ❌ Not demonstrated |
+| 7 | Operator overrides at project and scene level, honoured and recorded | 🟡 API exists; **no GUI** |
+| 8 | An unserved vLLM model is never selected | 🟡 Constraint implemented; not exercised across the fleet |
+| 9 | With no selection present, execution falls back to the default | ✅ Verified |
+| 10 | All store mutations and approvals appear in `audit_log` | ✅ Verified |
 
-- An admin can register a model as `CANDIDATE`, attach capability tags, strengths/weaknesses, source URL, license, and declared VRAM, and the model is **not** selectable until approved. ✓
-- A model cannot transition to `APPROVED` without a complete attestation record (`model_approvals`); the system records but does not perform the external checks. ✓
-- The Model Management page shows all models by stage with live per-node availability badges sourced from the poller. ✓
-- On a new project with a stated production profile, the `MODEL_PLANNING` stage produces a persisted selection per stage (and per scene for media stages) with a human-readable rationale. ✓
-- A prototype-tier and a production-tier model are selected and applied to the draft and final render respectively, for at least one project. ✓
-- Two projects with contrasting production profiles (e.g., flat vector explainer vs photorealistic cinematic) demonstrably resolve to different image/video models for comparable scenes. ✓
-- An operator can override a selection at project and scene level; the override is honored at execution and recorded with rationale. ✓
-- A vLLM model that is not currently served is never selected; selection respects the `dynamically_loadable` / `served` constraint. ✓
-- With no selection present, execution falls back to the configured default model (existing behavior); no existing project is broken. ✓
-- All store mutations and approvals appear in `audit_log`. ✓
+**Four of ten fully verified.** Criteria 4–6 depend on work not yet done; 3 and 8 depend on the fleet (M4); 7 needs the per-project GUI (M6).
 
-## AD-01.14 Open design decisions (for review)
+## AD-01.14 Open design decisions *(replaces Draft 1 §AD-01.14)*
 
-1. **Capability inference cost.** Per-scene LLM classification adds an LLM pass before media generation. Acceptable, or restrict inference to project-level with scene-level only on explicit operator request?
-2. **vLLM served set management.** Should the store *drive* which LLMs vLLM serves (triggering ops action / scheduler-managed multi-server), or only *reflect* the served set decided by ops? Draft assumes "reflect."
-3. **Default taxonomy.** Appendix AD-A proposes a starter taxonomy; the dimension/value set should be ratified before Phase A schema freeze, as it shapes the tags table and the inference prompt.
-4. **Scoring transparency.** Should the planner's score breakdown (not just the rationale string) be persisted for tuning?
+| # | Decision | Status |
+|---|---|---|
+| 1 | Capability inference cost — per-scene LLM classification vs project-level only | **Open**, and now cheaper to defer: `MODEL_PLANNING` was not built, so nothing depends on it |
+| 2 | vLLM served-set management — store *drives* or *reflects* the served set | **Resolved: reflects.** The availability poller reports what is served; the store does not command ops |
+| 3 | Default taxonomy ratification before Phase A schema freeze | **Superseded.** Phase A shipped; the taxonomy is whatever migration 0026 froze. Re-ratify only if inference (decision 1) is built |
+| 4 | Persist the planner's score breakdown, not just the rationale string | **Moot** while `MODEL_PLANNING` is unbuilt |
+
+**New decision.** *(D-5)* Should approving a model **auto-trigger a weight fetch** from MBCP, or remain a separate operator action? Currently separate and untested (ledger P2.10). Recommend keeping it explicit until the pull path has been exercised once against the live serving endpoint.
+
+## AD-01.15 — **ORCH-6: the binding gap at Stage 6** *(new)*
+
+> **This is AD-01's most significant open defect.** It is recorded here because it defeats the addendum's central promise at the one stage where model choice matters most.
+
+**The finding.** `STAGE_TASK_MAP` dispatches `tasks.talking_head_task.render_talking_head`. That live file imports `LatentSyncClient` directly (`talking_head_task.py:42-47`) — **the engine is hardcoded**. The ARCH-1 provider-factory implementation ("render via the AD-01-selected provider (ARCH-1: no engine here)") lives in `stage6_talking_head.py:43-48, 297, 338` — **a dead duplicate that nothing dispatches**.
+
+The AD-01 binding work was done, correctly, on the wrong file.
+
+**Why it matters.** MBCP was built specifically to settle the talking-head model question. That bake-off is complete and certified models flow MBCP → Model Store → approved. They then stop: nothing in the live path can select one. Swapping the production head is a **code change** — precisely the condition AD-01.1 exists to eliminate.
+
+Every downstream commitment inherits this: the two-tier draft/production head render (AD-01.13 #5), Addendum-B item B5, and Master Plan M5's certified-model rollout.
+
+**Resolution.** **Promote**, do not merely delete. Port the provider binding from `stage6_talking_head.py` into the live `talking_head_task.py`, preserving the live task's proven segment/OOM strategy, AD-03 Pillar-2 continuous overlay, and correct upload URL (`talking_head_task.py:155` — the dead file at `:241` carries the wrong URL that previously broke Stage 5). Then delete the duplicate.
+
+Tracked as `OUTSTANDING_WORK.md` v4.0 **P1.0**; sequenced as Master Plan **M1**, ahead of the AD-05 migration so the fix is not carried forward into the new architecture.
+
+**Note on B5.** Addendum B recorded this as "Stage 8 must bind the head model via the provider factory." That framing was wrong: Stage 8 overlays a **pre-rendered** head asset by `asset_id` and does not render the head. The binding belongs at Stage 6. B5 is superseded by this section.
+
+> *Line references in this section were audited at `e613e844`. Re-verify before relying on them.*
+
+## AD-01.16 — Relationship to MBCP (AD-04) *(new)*
+
+AD-01.7 required an external acceptance process performed outside IVGS and recorded as an in-system attestation. That process is now **MBCP** (AD-04-v3), operating in connected mode.
+
+- **Seam:** AD-01 receiver at `/ad01/v1`, authenticated by `X-Service-Token`. Certification export dedups by `certification_id`, so re-export is safe.
+- **Direction:** **IVGS pulls weights from MBCP** (`ivgs-models/mbcp_fetch.py` against `{serving_url}/weights/{model}/manifest`). MBCP does not push. *This distinction must not be inverted in any document or implementation.*
+- **Backfill complete:** 21 exports plus 2 composition transmitted; all non-revoked certifications landed as CANDIDATEs; 24 revoked correctly skipped.
+- **Certify ≠ export.** Certification happens in MBCP; export is a distinct admin action. The per-certification "Export to IVGS" button was delivered 2026-07-12.
+- **Not yet exercised:** the weight-fetch pull path itself (ledger P2.10), pending the fleet (M4) and the serving-token / signing-key handoff.
+
+**Boundary.** MBCP certifies; AD-01 governs lifecycle and selection. A certification is evidence, not an approval — approval remains a deliberate in-IVGS act with attestation. **AD-01 must never auto-approve on certification receipt.**
 
 ---
 

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Document** | Implementation-grounded design specification for a standalone platform that **stores, serves, benchmarks, evaluates, and certifies** self-hostable generative models for the IVGS pipeline. |
-| **Version** | v3.0 — 2026-06-08. Supersedes v2.0 (2026-06-08). Corrects the architecture, removes the reused scheduler, decides the open code-sharing boundary, reconciles weight-serving with reality, makes the standalone/stubbed-AD-01 strategy explicit, and adds a **Phase 0 code-level implementation-plan review gate**. |
+| **Version** | **v3.1 — 2026-08-14.** Records delivered state: MBCP is built and in production use, Phases 0–4 delivered, connected mode live, the talking-head bake-off settled. §3.1–§3.18 and Appendix AD-04-v3-A are unchanged and remain authoritative; §3.19–§3.21 are replaced and §3.22–§3.24 are new. The Phase-0 framing throughout §3.18 is historical. Supersedes v3.0 — 2026-06-08, which superseded v2.0 (2026-06-08). Corrects the architecture, removes the reused scheduler, decides the open code-sharing boundary, reconciles weight-serving with reality, makes the standalone/stubbed-AD-01 strategy explicit, and adds a **Phase 0 code-level implementation-plan review gate**. |
 | **Classification** | Internal Working Document |
 | **Change-control status** | Draft for review (per §18 change-control process) |
 | **Source of truth** | The v2 codebase evidence map (Appendix A) is carried forward unchanged except where this document explicitly corrects it. All v3 *additions* are design decisions taken in the 2026-06-08 working session; they are flagged as decisions, not as audited facts. |
@@ -391,32 +391,112 @@ Same Docker conventions as the IVGS monorepo: multi-stage Dockerfiles (backend/w
 
 **Review gate.** Claude reviews A–H against this spec — contract completeness, schema correctness, the stub boundaries, and the load-bearing skeletons. Approval unblocks the build; no build precedes the review.
 
-## AD-04-v3.19 Phased build (revises v2 §2.17)
+## AD-04-v3.19 Phased build — **delivered status** *(replaces v3.0 §3.19)*
 
-0. **Phase 0 — Code-level implementation plan + review (§3.18).** Deliverable reviewed before any build.
-1. **Phase 1 — Spike + MVP / talking-head bake-off.** Vendor-copy the LatentSync client + UI primitives; stand up Management (Postgres schema `models`/`adapters`/`stored_weights`/`fixtures`/`test_suites`/`runs`/`run_results`/`hardware_profiles`), Serving (weight ingest + read-only serve), and one Benchmark worker (serial). **Lead with the spike** (LatentSync + one new model end-to-end + manual compare), then add the second/third candidate. Performance metrics (time, **real VRAM**, throughput); SeaweedFS artifacts; upload sandbox (Stage 6) + minimal UI (run builder + results table + **synchronized N-up `VideoPlayer`**). *Outcome:* the talking-head decision made on data; the adapter contract proven; HF-free weight serving working — **all standalone, AD-01 stubbed.**
-2. **Phase 2 — Automated quality.** LSE-C/D + sync offset, ASR round-trip WER (WhisperX `STTProvider`), FID/FVD, ArcFace, CLIP, audio SNR/clipping; leaderboards and scorecard dashboards.
-3. **Phase 3 — Human evaluation + certification.** Blind pairwise/Likert UI + Elo aggregation; the certification workflow, records, thresholds, lifecycle; the `LocalPendingExport` seam exercised end-to-end.
-4. **Phase 4 — AD-01 integration + ops.** Flip `MBCP_AD01_MODE` to connected: `AD01Export` to `model_approvals`, VRAM-matrix correction, weight-reference publication; the **new IVGS-side weight-fetch mechanism** in `ivgs-models`; the shared adapter contract wired to `get_provider()` (**requires ARCH-1**); full monitoring; regression re-benchmarking.
-5. **Phase 5 — Generalize.** Adapters, metric profiles, and testing suites for all IVGS model classes and all 8 stages (image: FLUX/SDXL/SD3.5; scene video: CogVideoX/Wan; TTS: Coqui/Kokoro; LLM: vLLM/Ollama; composition regression: FFmpeg/Remotion).
+| Phase | Scope | Status |
+|---|---|---|
+| **0** | Code-level implementation plan + review gate | ✅ **Complete.** Gate served its purpose and is closed; the Phase-0 framing throughout this document (§3.18 in particular) is now historical |
+| **1** | Spike + MVP / talking-head bake-off | ✅ **Complete.** Adapter contract proven; HF-free weight serving working; synchronized N-up comparison player delivered |
+| **2** | Automated quality metrics | ✅ **Substantially complete.** Scoring, aggregates and scorecards live |
+| **3** | Human evaluation + certification | ✅ **Complete.** Human-eval queue, aggregates, certification records, revocation with reason, lifecycle |
+| **4** | AD-01 integration + ops | ✅ **Complete on the MBCP side** — connected mode live. 🟡 **The IVGS-side weight-fetch pull has never been exercised** (ledger P2.10) |
+| **5** | Generalise to all model classes and all 8 stages | 🟡 **Partial.** Adapters exist across stages; **the CogVideoX adapter is broken** (§3.23) |
 
-## AD-04-v3.20 Relationship to the Master Sequence Plan
+**The headline outcome is achieved.** The talking-head production model decision — the reason MBCP was built and the M1 quality blocker — is settled on data.
 
-The MBCP is workstream **WS-H — Model evaluation & certification**. **Phases 0–1 are pulled forward now**, in **parallel with the IVGS M2/M3 track**, to settle the talking-head production model — the headline M1 *quality* unblocker. The **full platform** is a companion/prerequisite to **M5 (AD-01 model management)**, since AD-01's approval path is non-functional without this external acceptance process and its weight provisioning benefits from this origin store. One recorded allowance carries forward: **Stage-8 final rendering must resolve its talking-head (and later other) model through the provider factory / AD-01 binding**, not a hard-coded engine — reinforcing that **ARCH-1 must be implemented as a selection-aware factory** before AD-01/AD-04 are fully wired (Phase 4). (This session ported AD-03 Pillar 2 into Stage 8 and validated a 1080p final with the head overlaid; the *model* behind that head is what WS-H replaces.)
+## AD-04-v3.20 Relationship to the Master Sequence Plan *(replaces v3.0 §3.20)*
 
-## AD-04-v3.21 Open design decisions (revises v2 §2.19)
+Against **Master Plan v0.4**:
 
-**Closed in v3:**
-- **Code-sharing boundary** *(was #2)* → **vendor-copy** the few stable seams; no shared package (correction #4, §3.4.8).
-- **GPU node dedication** *(was #3)* → **float** on any free RTX 6000 during dev (mode-switch); **dedicate** a box in prod. Logical arch invariant (§3.5).
-- **Scheduler** → **removed**; serial, isolated benchmarking (correction #2, §3.10).
+- **WS-H's Phase-1 driver is CLOSED.** v0.3's M1 quality gate ("depends on a certified replacement head model") is satisfied.
+- **WS-H continues as platform work** — the RuntimeClass refactor and the CogVideoX adapter rebuild (§3.23), running independently of the IVGS milestone track.
+- **AD-01's approval path is now functional.** v3.0 correctly stated AD-01 is non-operable without an external acceptance process; that process exists and is connected.
 
-**Still open (for review):**
-1. **Decisive vs advisory metrics** — which automated metrics gate certification versus inform it, and the exact production talking-head thresholds (LSE-C floor, WER ceiling, human win-rate bar, VRAM headroom vs node-04's real budget).
-2. **Weight-serving protocol detail** *(narrowed from v2 #4)* — the concrete transport for the new IVGS-side fetch mechanism (HTTP vs rsync vs filer client) and how checksum verification is enforced on the production side. (The *need* for a new mechanism, not a repoint, is settled — §3.7a.)
-3. **Fixture curation** — who ratifies the golden suite; how IVGS content categories map onto it; the sandbox→fixture promotion policy.
-4. **Certification expiry policy** — which changes force re-certification (engine/driver/CUDA/model-version/quantization) and the default expiry window.
-5. **ARCH-1 sequencing** — whether the MBCP adapter framework is the *vehicle* that delivers `get_provider()` for IVGS, or whether ARCH-1 is delivered separately in IVGS and the MBCP consumes it. *(Leaning: deliver ARCH-1 in IVGS; the MBCP adapter shape stays compatible so promotion is unchanged once it lands.)*
+**One carried allowance requires correction.** v3.0 §3.20 states *"Stage-8 final rendering must resolve its talking-head model through the provider factory / AD-01 binding."* **That placement is wrong.** Stage 8 overlays a **pre-rendered** head asset by `asset_id`; it does not render the head. The binding belongs at **Stage 6**.
+
+More seriously, the binding **is not present in the live Stage-6 task**: `talking_head_task.py` imports `LatentSyncClient` directly, while the provider-factory implementation sits in the dead duplicate `stage6_talking_head.py`.
+
+**Consequence for MBCP: the certification chain terminates at a wall.** Certified models flow MBCP → Model Store → approved → and cannot be selected. **MBCP's entire output is currently unconsumable by the pipeline stage it was built to serve.** Tracked as ledger **P1.0 / ORCH-6**; AD-01 Draft 2 §AD-01.15; Master Plan **M1**.
+
+*This does not diminish MBCP's delivery — the platform works and the decision is made. It is one wiring defect on the IVGS side, and it is the highest-priority item in the programme.*
+
+## AD-04-v3.21 Open design decisions — **status** *(replaces v3.0 §3.21)*
+
+**Closed by implementation:**
+
+| # | Decision | Resolution |
+|---|---|---|
+| 5 | ARCH-1 sequencing — MBCP delivers `get_provider()`, or IVGS does | **IVGS delivered it.** `shared/providers/factory.py` + `binding.py`; the MBCP adapter shape stayed compatible as the leaning anticipated |
+| 2 | Weight-serving transport | **HTTP** — `ivgs-models/mbcp_fetch.py` against `{serving_url}/weights/{model}/manifest`, with checksum verification. **Direction is pull: IVGS pulls, MBCP does not push.** Not yet exercised end-to-end (ledger P2.10) |
+
+Also closed in v3.0 and unchanged: the code-sharing boundary (vendor-copy, §3.4.8), GPU node dedication (float in dev, dedicate in prod, §3.5), and scheduler removal (§3.10).
+
+**Still open:**
+
+| # | Decision | Note |
+|---|---|---|
+| 1 | Decisive vs advisory metrics; production talking-head thresholds | Still open, but **less urgent** — the bake-off was settled with human evaluation in the loop. Needed before certification is delegated or automated |
+| 3 | Fixture curation and sandbox→fixture promotion policy | Open |
+| 4 | Certification expiry policy — what forces re-certification | Open, and **increasingly load-bearing**: the M4 fleet rollout changes driver/CUDA/hardware context across five nodes. Settle before M4, or every existing certification silently becomes of uncertain validity |
+
+**New decision.** *(D-6)* Should MBCP certification records carry the **IVGS Model Store model ID** after a successful export, giving a bidirectional link? Currently the receiver dedups by `certification_id` but MBCP holds no reference back. Would make "which certification is running in production?" answerable from either side.
+
+## AD-04-v3.22 — Delivered integration state *(new in v3.1)*
+
+**Connected mode, live since 2026-07-09.**
+
+- **Seam:** IVGS receiver `/ad01/v1`, `X-Service-Token` authenticated. `MBCP_AD01_MODE=connected`.
+- **Certify ≠ export.** Export is a distinct admin action, `POST /api/v1/exports {certification_id}`. The receiver dedups by `certification_id`, so re-export is safe.
+- **Drain:** `drain-pending-exports` every 5 minutes retries parked rows.
+- **Backfill complete:** 21 exports plus 2 composition transmitted; all non-revoked certifications landed in IVGS as CANDIDATEs (including FFmpeg-composition, engine `ffmpeg`); 24 revoked correctly skipped.
+- **Schema changes both sides:** IVGS migration 0027 added `ffmpeg` to `ModelEngine`; MBCP added `ExportBundle.engine`. AD-01 rejections surface as `502 AD01_REJECTED` rather than a raw 500.
+- **Export-to-IVGS GUI button** delivered 2026-07-12 (`docs/MBCP_Delivery_20260712_ExportButton_WSTEST.md`), closing v3.0's "no GUI button" gap.
+
+**Boundary, restated.** MBCP certifies; AD-01 governs lifecycle and selection. A certification is **evidence, not an approval** — approval remains a deliberate in-IVGS act with attestation. **AD-01 must never auto-approve on certification receipt.**
+
+## AD-04-v3.23 — Adapter framework defects *(new in v3.1)*
+
+The RuntimeClass audit (Task A, complete, no code changed) found:
+
+**Fragmentation is narrower than assumed.** vLLM is already a single runtime class; TTS is a single adapter. **Only ComfyUI is fragmented** — three per-model adapters each embedding a full workflow graph.
+
+**The CogVideoX adapter is broken.** Its embedded graph references **four node types that do not exist** in the installed `CogVideoXWrapper`:
+
+| Embedded | Reality |
+|---|---|
+| `CogVideoXTextEncoderLoader` | Does not exist — T5 loads via core `CLIPLoader` with `type="sd3"` |
+| `CogVideoXTextEncode` | Real node is `CogVideoTextEncode` (no "X") |
+| `CogVideoXSampler` | Real node is `CogVideoSampler`; adapter also wrongly injects width/height |
+| `CogVideoXDecode` | Real node is `CogVideoDecode` |
+
+Plus wrong parameter keys on two loaders that do exist. The correct graph shape has been derived from the wrapper's source and the pinned example workflow; the adapter must be **rebuilt, not extracted**.
+
+**Consequence:** the video stage has **no working benchmark path**. CogVideoX is IVGS's video engine on nodes 02/03 (and node-06 after the AD-02 Draft-3 redesignation), so no video model can be certified before those nodes roll at M4.
+
+`engines/comfyui/CUSTOM_NODES.txt` compounds this — it lists the same non-existent X-prefixed names.
+
+**Approved resolution (2026-08-14): split into two PRs.**
+
+1. **PR 1** — extract FLUX and AnimateDiff graphs to JSON. Both validated as matching installed nodes; low risk; mergeable without GPU access.
+2. **PR 2** — rebuild the CogVideoX graph against installed nodes; correct `CUSTOM_NODES.txt`. **Validatable only at a real GPU smoke test — treat that smoke as a gate, not a formality**, since the rebuild is derived from source reading rather than from a working render.
+
+Rationale for splitting: the two pieces carry different risk profiles and should not share a fate. Tracked as ledger **P2.8** and **P2.9**.
+
+*These findings are MBCP-side and live in the MBCP repository on `.51`; they are recorded here because they gate the IVGS video stage's certification path.*
+
+## AD-04-v3.24 — Open operational items *(new in v3.1)*
+
+| Item | Status |
+|---|---|
+| `serving-authoring-loop-1` **unhealthy** on `.51` | Pre-existing; undiagnosed (ledger P2.7) |
+| Weight-fetch pull path | Never exercised. Needs the fleet (M4) plus `MBCP_SERVING_TOKEN` and `MBCP_WEIGHT_SIGNING_KEY` handoff (ledger P2.10) |
+| `docs/MBCP_Dev_VM_Setup_verified.md` | 214 lines, verified 2026-06-08. **CLOSED** — committed to `elearning_v5` at `b09b70f`; the amendment recorded it as untracked, which was true when drafted |
+| MBCP SSOT v3.3 | Requires reconciliation to v3.4 against 2026-08-05 state |
+| MBCP `docs/` set (~20 files) | Per-slice requirements and run reports; most should move to `docs/archive/` |
+
+**Note on MBCP's own orchestration.** MBCP shares IVGS's hand-rolled pattern — Postgres status-column ledgers, monolithic Celery tasks with guarded transitions, a `sweep_stuck_runs` zombie reaper, a bespoke `export_drain` retry queue with poison-row parking, and a custom DB-polling Beat subclass. AD-05 addresses **IVGS only**.
+
+MBCP is a materially better candidate for a later migration than IVGS was — it has no in-flight state to preserve at cutover — but **it is explicitly out of scope for now**. Recorded here so the question is deferred deliberately rather than forgotten. Re-open after IVGS's M3 completes and the migration's real cost is known rather than estimated.
 
 ---
 

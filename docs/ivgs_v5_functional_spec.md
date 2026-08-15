@@ -2,13 +2,13 @@ INSTRUCTIONAL TECHNOLOGY GROUP
 
 Instructional Video Generation System
 (IVGS)
-Version 5.0 Functional Specification
+Version 5.1 Functional Specification
 
 Document Date:
 Version:
 
-May 18, 2026
-5.0
+August 14, 2026
+5.1
 
 Supersedes:
 
@@ -39,12 +39,12 @@ Value
 
 Document Title
 
-Instructional Video Generation System (IVGS) — Version 5.0 Functional
+Instructional Video Generation System (IVGS) — Version 5.1 Functional
 Specification
 
 Version
 
-5.0
+5.1
 
 Status
 
@@ -52,7 +52,7 @@ AUTHORITATIVE — Single Source of Truth
 
 Issue Date
 
-May 18, 2026
+August 14, 2026 (v5.1); May 18, 2026 (v5.0 baseline)
 
 Supersedes
 
@@ -138,6 +138,28 @@ IVE
 removed. Strict change control process introduced. This document supersedes all
 prior versions.
 
+5.1
+
+August 14,
+
+CURRENT —
+
+Amendment to v5.0 approved by the change review board 2026-08-14. Six
+
+2026
+
+AUTHORITAT
+
+sections and the glossary amended: orchestration layer moves from Celery/Redis
+
+IVE
+
+to Temporal durable execution (AD-05, ADR-005); node-06 hardware corrected from
+Intel B70 Pro to NVIDIA RTX 6000 Blackwell 96 GB, CUDA (AD-02 Draft 3); the
+§6.1 stage-count errata is closed (ADR-003). The orchestration amendments
+describe the TARGET architecture and take effect at M3 cutover; the transitional
+note in §6.4 records what is running until then. All other sections unchanged.
+
 Change Control Requirements
 All amendments to this specification require:
 
@@ -201,6 +223,60 @@ IVGS v4 Phased Deployment Roadmap
 
 Internal working document used to produce this
 specification
+
+IVGS v5 Functional Specification Amendment
+
+Applied
+
+The amendment applied to produce v5.1; retained as the
+
+to v5.1 (2026-08-14)
+
+record of what changed and why
+
+AD-02 Node Specialization, Draft 3
+
+Authoritati
+
+node-06 hardware swap (Intel B70 Pro → RTX 6000
+
+(2026-07-07)
+
+ve
+
+Blackwell 96 GB, CUDA) and role redesignation; source
+for the §2.2 / §3.1 / §3.2 corrections in v5.1
+
+AD-05 Orchestration Migration (2026-
+
+Authoritati
+
+Celery/Redis → Temporal durable execution; source for
+
+08-14)
+
+ve
+
+the §2.1, §2.4, §2.5, §4.2, §6.2 and §6.4 amendments in
+v5.1. Effective at M3 cutover
+
+ADR-003 Pipeline Stage Count Errata
+
+Resolved
+
+Closed by v5.1 §6.1 ("Eight-Stage")
+
+ADR-005 Durable Execution Engine
+
+Accepted
+
+Engine selection rationale and rejected alternatives
+
+ADR-006 Native Postgres Partitioning
+
+Accepted
+
+Supersedes ADR-004 (TimescaleDB, never implemented)
 
 3
 
@@ -311,7 +387,7 @@ INTERNAL USE ONLY
 
 34
 
-6.1 Seven-Stage Pipeline
+6.1 Eight-Stage Pipeline
 
 34
 
@@ -323,7 +399,7 @@ INTERNAL USE ONLY
 
 38
 
-6.4 Celery Task Orchestration
+6.4 Workflow Orchestration
 
 39
 
@@ -539,11 +615,30 @@ conducted post-deployment.
 
 2. System Architecture
 2.1 Architectural Pattern
-IVGS v5 uses a microservices architecture with a distributed task queue for pipeline execution. All
-services run as Docker containers orchestrated via Docker Compose, with one Compose file per physical
-node. The frontend communicates with the FastAPI backend via Nginx on node-01; the backend
-dispatches pipeline jobs to Celery workers on GPU nodes via Redis. Binary assets are stored in
-SeaweedFS on node-01; metadata, prompts, and operational state are stored in PostgreSQL 17 on node01.
+(v5.1: target architecture, effective at M3 cutover. Until cutover the Celery implementation described in
+the §6.4 transitional note remains live.)
+
+IVGS v5 uses a microservices architecture with durable workflow execution for pipeline orchestration.
+All services run as Docker containers orchestrated via Docker Compose, with one Compose file per
+physical node. The frontend communicates with the FastAPI backend via Nginx on node-01.
+
+Pipeline execution is coordinated by a Temporal server on a dedicated orchestration node. A render job
+is a single durable workflow spanning all eight stages; each stage executes as an activity on a
+capability-scoped task queue, dispatched to workers on the GPU nodes. Workflow state, execution
+history, retries and timers are persisted by the orchestration engine, so a job survives worker or node
+failure and resumes from its last completed step without operator intervention.
+
+The two human review gates (storyboard approval, draft approval) are implemented as workflow signals:
+the workflow blocks at the gate for an unbounded period — days are normal — and resumes when the API
+signals approval.
+
+Binary assets are stored in SeaweedFS on node-01; metadata, prompts, and operational state are stored in
+PostgreSQL 17 on node-01. Redis is retained as a cache and worker-heartbeat store; it is not a pipeline
+message broker. GPU admission control remains the responsibility of the ivgs-scheduler microservice
+(§12), which the pipeline invokes from an activity.
+
+Engine rationale and rejected alternatives: ADR-005. Migration design, scope boundary and cutover
+procedure: AD-05.
 
 9
 
@@ -574,15 +669,20 @@ node-01
 log streaming
 Orchestration
 
+Temporal server + Web UI; VideoPipelineWorkflow (8 stages);
+
+node-07 (server/UI),
+
+activity workers; Temporal Schedules for periodic operations
+
+node-01–06 (activity workers)
+
+(v5.1: target architecture, effective at M3 cutover. Until then the
+orchestration layer is the Celery task graph, pipeline state machine, Redis
+broker and Celery Beat scheduler — node-01 (broker), node-02–06 (workers).
+See the §6.4 transitional note.)
+
 GPU Scheduling
-
-Celery task graph, pipeline state machine, Redis broker,
-
-node-01 (broker), node-02–06
-
-Celery Beat scheduler
-
-(workers)
 
 ivgs-scheduler microservice (VRAM-aware, admission
 
@@ -626,11 +726,16 @@ node-05, node-06
 
 Storage
 
-PostgreSQL 17 (metadata), SeaweedFS (binary assets), Redis
+PostgreSQL 17 (metadata), SeaweedFS (binary assets)
 
 node-01
 
-(cache/queue)
+Cache / Heartbeat
+
+Redis 7.4 — result cache, worker heartbeat registry
+
+node-01
+
 Monitoring
 
 Prometheus + node-exporter + GPU exporters; Grafana
@@ -753,15 +858,19 @@ GB
 
 utility tasks
 
-Intel B70 Pro
+NVIDIA RTX 6000
 
-32
+96
 
-Remotion renderer (lower-thirds, animations), FFmpeg overflow composition, Celery
+Primary FFmpeg compositor; Remotion renderer (lower-thirds, captions, animated
+
+Blackwell
 
 GB
 
-overflow workers
+titles, Ken-Burns L2 fill); second CUDA video generation node ( gpu_video );
+
+on-demand fp8-70B LLM failover (profile-gated, stopped by default)
 
 05
 nod
@@ -851,7 +960,7 @@ node-06
 
 1 TB NVMe
 
-Intel B70 Pro 32 GB
+RTX 6000 Blackwell 96 GB (#3)
 
 11
 
@@ -859,9 +968,9 @@ Intel B70 Pro 32 GB
 
 INTERNAL USE ONLY
 
-All nodes run Ubuntu 24.04 LTS. GPU nodes (node-02 through node-05) use IOMMU/VFIO passthrough
-with NVIDIA Container Toolkit. node-06 uses Intel oneAPI/IPEX. Proxmox Backup Server (PBS) is
-configured for weekly VM snapshots on all nodes.
+All nodes run Ubuntu 24.04 LTS. GPU nodes (node-02 through node-06) use IOMMU/VFIO passthrough
+with the NVIDIA Container Toolkit. Every GPU-bearing node is CUDA; the Intel oneAPI/IPEX path is
+withdrawn. Proxmox Backup Server (PBS) is configured for weekly VM snapshots on all nodes.
 
 2.3 Network Architecture
 All inter-node traffic runs on a private VLAN (192.168.1.0/24). Static IP assignments: node-01 =
@@ -1049,7 +1158,7 @@ ivgs-scheduler ,
 
 celery-worker-
 
-default , celery-beat , postgres , redis , seaweedfs-master , seaweedfs-volume , seaweedfsfiler ,
+default , postgres , redis , seaweedfs-master , seaweedfs-volume , seaweedfsfiler ,
 
 prometheus ,
 
@@ -1076,8 +1185,17 @@ sadtalker , celery-worker , node-exporter , nvidia-gpu-exporter .
 node-05 (Image Generation, Utility)
 Services: comfyui (SDXL/SD3.5 fallback), ollama , ffmpeg-worker , celery-worker , nodeexporter , nvidia-gpu-exporter .
 
-node-06 (Intel GPU, Remotion, Overflow)
-Services: remotion-renderer , ffmpeg-worker , celery-worker , node-exporter , intel-gpuexporter .
+node-06 (Composition, Motion Graphics, Second Video Node)
+Services: remotion-renderer , ffmpeg-worker , cogvideox , temporal-worker , node-exporter ,
+nvidia-gpu-exporter , and a profile-gated vllm failover service (stopped by default; started on
+demand per AD-02 Draft 3, Option C).
+
+node-07 (Orchestration)
+Services: temporal , temporal-ui , temporal-worker (default queue), node-exporter .
+
+(v5.1: node-07 and every temporal-worker service are target architecture, effective at M3 cutover.
+Until then the GPU nodes run celery-worker and node-01 runs celery-beat . See the §6.4 transitional
+note.)
 
 13
 
@@ -1134,33 +1252,49 @@ admission control, load balancing
 
 ivgs-
 
-Celery (Python)
+Temporal Python SDK
 
-node-02 –
+node-01 –
 
-Distributed GPU workers — execute pipeline stage tasks
-
-monitoring
+Activity workers — execute pipeline stage activities on
 
 workers
-ivgs-celery-
 
 node-06
-Celery Beat
 
-node-01
+capability-scoped task queues
 
-beat
+temporal
 
-Periodic task scheduler — DLQ processing, orphan cleanup,
-retention, heartbeat supervision
+Temporal (Go)
+
+node-07
+
+Durable workflow engine — execution history, timers, retries,
+signals, schedules
+
+temporal-ui
+
+Temporal Web
+
+node-07
+
+Operator run inspection: history, inputs/outputs, retries,
+timings, failure detail
+
+Periodic operations formerly run by Celery Beat (heartbeat supervision, DLQ processing, orphan cleanup,
+retention migration, backup verification, GPU fleet metrics) become Temporal Schedules; the
+ivgs-celery-beat microservice is withdrawn.
+
+(v5.1: target architecture, effective at M3 cutover. Until then ivgs-workers runs Celery on node-02 –
+node-06 and ivgs-celery-beat runs Celery Beat on node-01. See the §6.4 transitional note.)
 
 3. Hardware Configuration
 3.1 Node Specifications
 All six nodes are Proxmox VMs running on Ryzen 9 host machines with 64 GB host RAM. The full
 hardware specifications are defined in Section 2.2. GPU nodes use IOMMU/VFIO passthrough; GPU
-workloads run inside Docker containers with NVIDIA Container Toolkit (nodes 02–05) or Intel
-oneAPI/IPEX (node-06).
+workloads run inside Docker containers with the NVIDIA Container Toolkit (nodes 02–06). All GPU-bearing
+nodes are CUDA; the Intel oneAPI/IPEX path is withdrawn (AD-02 Draft 3).
 Table 3-1 Per-Node Resource Summary
 Node
 
@@ -1308,16 +1442,20 @@ M
 Primary Models Served
 
 GB
-Intel B70 Pro
+NVIDIA RTX 6000
 
-32
+96
 
-Remotion (CPU/Intel GPU), FFmpeg composition
+CogVideoX 5B / Wan2.1 (second video node), Remotion, FFmpeg composition,
+
+Blackwell
 
 GB
 
+Llama-3.3-70B-FP8 (failover only)
+
 NVIDIA driver version 570.x or later required. CUDA 12.4+ required for Blackwell architecture GPUs.
-Intel oneAPI 2024.x required for node-06.
+All GPU-bearing nodes (node-02 through node-06) are CUDA; the Intel oneAPI/IPEX path is withdrawn.
 
 15
 
@@ -2227,6 +2365,15 @@ TIMESTAMPTZ NOT NULL
 Record creation timestamp
 
 Index: (job_id, stage_name)
+
+v5.1 note. From M3 cutover, workflow execution history is the recovery mechanism; recovery is
+inherent to the orchestration engine rather than an application concern. pipeline_checkpoints is
+retained for historical rows and audit continuity. New rows are not written and
+POST /api/v1/jobs/{id}/resume is superseded by workflow reset.
+
+(Historical note: the v5.0 checkpoint write path was never operable — no POST /jobs/{id}/checkpoints
+route existed, and the worker-side write failed silently. No checkpoint rows were ever persisted. See
+OUTSTANDING_WORK.md v4.0 P1.2.)
 
 22
 
@@ -3675,7 +3822,7 @@ Unhandled exception
 Unexpected server errors (logged)
 
 6. Pipeline Processing
-6.1 Seven-Stage Content Creation Pipeline
+6.1 Eight-Stage Content Creation Pipeline
 
 34
 
@@ -3697,8 +3844,8 @@ Input: Refined transcripts. LLM Engine: vLLM, Llama 3.3 70B, storyboard_generati
 Output JSON per scene: scene_index , narration_text , visual_description , media_type
 (image/video_clip/animation), duration_seconds . Storage: storyboard_scenes table. User gate:
 Review, reorder, edit, or regenerate individual scenes. Timeout: 120 seconds.
-Stage 3 — Media Generation (Parallel Celery Tasks)
-Dispatches parallel Celery tasks per scene, routed to appropriate nodes based on media_type and GPU
+Stage 3 — Media Generation (Parallel Scene Activities)
+Dispatches one parallel activity per scene, routed to appropriate nodes based on media_type and GPU
 availability.
 Table 6-1 Media Generation Task Routing
 Media Type
@@ -3801,6 +3948,13 @@ Stage 6 — Talking Head Rendering
 Input: Uploaded talking-head video clip + full concatenated audio track. Primary Engine: LatentSync
 on node-04 (lip-sync score threshold > 0.85). Fallback Engine: SadTalker on node-04. Output: Lipsynced talking-head video stored at /ivgs/talking-heads/{project_id}/{language_code}.mp4 .
 Timeout: 600 seconds.
+
+Stage 6 resolves its rendering engine through the AD-01 provider factory using the per-(stage, tier)
+model selection, not a hard-coded engine client. A newly certified talking-head model enters production
+as a GUI selection, never a code change. (LatentSync and SadTalker above are the current default and
+fallback selections, not fixed engines. AD-01 Draft 2 §AD-01.15 records that the live Stage-6 task does
+not yet honour this — ledger P1.0 / ORCH-6.)
+
 Stage 7 — Prototype Draft Assembly
 Compositor: FFmpeg on node-06 (primary), node-05 (overflow). Components: talking-head overlay,
 scene media, audio track, lower-thirds and captions (Remotion on node-06). Resolution: 720p draft for
@@ -3899,19 +4053,26 @@ TTS voice track (WAV 48 kHz)
 
 6.2 Operational Layer
 Every pipeline stage in v5 is wrapped with the following operational guarantees:
-Checkpoint System
-Each stage saves a checkpoint to pipeline_checkpoints before execution begins and updates it upon
-completion. On failure, pipeline resume ( POST /api/v1/jobs/{id}/resume ) skips all stages with
-status = complete
+(v5.1: the subsections below describe the target architecture under AD-05, effective at M3 cutover.
+Until then the Celery implementation and its recorded defects apply — see the §6.4 transitional note.)
 
-and restarts from the last incomplete stage using persisted checkpoint data. This
-
-eliminates full-pipeline restarts for transient failures.
+Durable Execution
+Every stage runs as an activity within a durable workflow. Workflow state and every completed step are
+persisted to execution history as they occur. On worker crash, node failure, or restart, the workflow
+resumes from its last completed step — completed stages are never re-executed. No application-level
+checkpointing is required.
 Retry Policies
+Retry is declared per activity and enforced by the orchestration engine. The per-stage attempt counts and
+backoff sequences below are preserved as configured values.
+
+Non-retriable failures are declared as non_retryable_error_types and fail immediately rather than
+consuming attempts. The dead_letter_messages table (Table 15) is retained as the operator audit
+record; replay is performed by workflow reset rather than by re-queueing a message.
+
 Table 6-4 Retry Policy per Stage Type
 Stage Type
 
-Max Retries
+Max attempts
 
 Backoff Sequence
 
@@ -3923,7 +4084,7 @@ LLM (transcript, storyboard)
 
 5s → 15s → 45s → 135s
 
-DLQ
+Workflow failure, operator-visible
 
 Image generation
 
@@ -3931,7 +4092,7 @@ Image generation
 
 10s → 30s → 90s
 
-Fallback + DLQ
+Fallback chain, then workflow failure
 
 Video generation
 
@@ -3939,7 +4100,7 @@ Video generation
 
 30s → 90s
 
-Fallback chain + DLQ
+Fallback chain, then workflow failure
 
 TTS audio
 
@@ -3947,7 +4108,7 @@ TTS audio
 
 10s → 30s → 90s
 
-Kokoro fallback + DLQ
+Kokoro fallback, then workflow failure
 
 Talking head
 
@@ -3955,7 +4116,7 @@ Talking head
 
 30s → 90s
 
-SadTalker fallback + DLQ
+SadTalker fallback, then workflow failure
 
 Composition / FFmpeg
 
@@ -3963,7 +4124,7 @@ Composition / FFmpeg
 
 30s → 90s
 
-DLQ
+Workflow failure
 
 37
 
@@ -3971,7 +4132,15 @@ DLQ
 
 INTERNAL USE ONLY
 
-Timeout Policies
+Timeout and Liveness Policies
+Each activity declares a start_to_close_timeout — the per-model values of Table 6-5 — and a
+heartbeat_timeout . Long-running activities (video generation, talking-head render, FFmpeg segment
+render) heartbeat while working.
+
+Liveness is therefore reported, not inferred. An activity that is slow but progressing is not interrupted;
+one that has stopped progressing fails within its heartbeat timeout. There is no message visibility timeout
+and no possibility of a task being redelivered while still executing.
+
 Table 6-5 Per-Model Timeout Thresholds
 Model / Service
 
@@ -4021,16 +4190,25 @@ FFmpeg composition
 
 450s, 675s, 900s
 
-Idempotency Guards
-Before executing any generation task, the worker computes a SHA-256 hash of the task parameters
-( generation_params_hash ). If a completed asset with the same hash exists in the database, the task
-returns the cached result without re-executing. This prevents duplicate generation on worker restart or
-message redelivery.
-Worker Heartbeats
-Every Celery worker sends a heartbeat to Redis every 10 seconds, recording GPU temperature, memory
-usage, and utilization. The supervisor checks every 30 seconds; workers missing more than 60 seconds of
-heartbeats are marked suspected_dead . After 120 seconds the worker is marked confirmed_dead and
-its active jobs are rescheduled via the GPU scheduler.
+Idempotency
+Deduplication is provided at two levels. Each render job runs under a deterministic workflow ID, so a
+duplicate trigger attaches to the running workflow rather than starting a second one. Within Stage 3, the
+generation_params_hash content check is retained: before executing any generation activity the worker
+computes a SHA-256 hash of the activity parameters, and if a completed asset with the same hash exists
+in the database the activity returns the cached result without re-executing.
+
+Worker Liveness
+Workers report liveness by polling their task queues; a worker that stops polling has its in-flight activities
+timed out and retried on another worker of the same capability. The separate 10-second Redis heartbeat is
+retained for GPU telemetry (temperature, memory, utilisation) feeding the scheduler and dashboards — a
+monitoring concern, distinct from work distribution.
+
+GPU Reservation
+Each GPU-bearing stage brackets its work with acquire_gpu_reservation and
+release_gpu_reservation activities against ivgs-scheduler (§12), with release guaranteed in the
+workflow's finally block. Reservation failure is fatal to the stage and retried under the stage's retry
+policy — it does not soft-skip. (v5.0 behaviour was fail-open, which concealed an empty node registry for
+an extended period; see OUTSTANDING_WORK.md v4.0 P1.3 and P2.6.)
 
 6.3 Fallback Chains
 Media generation failures trigger a 4-level fallback chain before routing to the DLQ:
@@ -4100,33 +4278,57 @@ Pan/Zoom
 Fallback chain configuration is stored in the fallback_policies table, configurable per scene type
 (action, talking_head, broll, title_card).
 
-6.4 Celery Task Orchestration
-The pipeline uses event-driven dispatch (not Celery chains) via handle_stage_completion callbacks.
-When a stage completes successfully, the callback determines the next stage and enqueues the
-corresponding task. This enables partial pipeline restart from checkpoints without reconstructing the full
-chain.
-Table 6-7 Celery Queue Routing
+6.4 Workflow Orchestration
+A render job executes as a single durable workflow, VideoPipelineWorkflow , spanning all eight stages.
+Sequencing is expressed as ordinary control flow — each stage is an awaited activity call — rather than as
+a lookup table of task names. A reference to a non-existent stage is therefore a load-time error, not a
+runtime dispatch failure.
+
+Stage sequence. Stages 1 → 2 → [gate] → 3 → 4 → 5 → 6 → 7 → [gate] → 8, as defined in §6.1.
+
+Fan-out and join. Stage 3 fans out one activity per scene and joins by awaiting all handles. There is no
+counter, no join watchdog, and no compensating sweeper. A failed scene is drained and recorded; the
+workflow advances to Stage 4 with a failed_count and whatever media rendered (partial advance),
+preserving v5.0 behaviour.
+
+Human gates. Both review gates are workflow signals. The workflow blocks at wait_condition until the
+API signals approval; the API's approval endpoints signal the running workflow rather than dispatching a
+task. Gates additionally accept reject / regenerate signals, and every workflow accepts cancel_job .
+
+Segment rendering. Stage 8's segment render, and the parallel talking-head render, execute as child
+workflows — one per segment — each with its own retry policy and heartbeating. Segment planning
+remains application logic ( segment_planner ); the render_segments table is an operator-facing record,
+not the resume mechanism.
+
+Progress and state. Pipeline state is exposed by workflow query and is truthful by construction.
+projects.state is retained as a denormalised read model for the dashboard, written from the workflow; it
+is not the source of truth.
+
+Table 6-7 Task Queue Routing
+
+Celery queues become Temporal task queues. Node assignments follow AD-02 Draft 3 and differ from the
+v5.0 table: node-02 is LLM-only, node-03 is video-only, and node-06 becomes a second video node and the
+primary compositor.
+
 Queue
 
 Workers
 
-Task Types
+Activity types
 
 default
 
-node-01
+node-01, node-07
 
-Orchestration, admin tasks, periodic tasks (Celery Beat)
+Orchestration, admin, scheduled operations
 
 gpu_llm
 
-node-02, node-03, node-
+node-02, node-04 (node-06
 
-vLLM inference tasks (transcript refinement, storyboard
+vLLM inference — transcript refinement, storyboard
 
-04
-
-generation)
+failover)
 
 gpu_image
 
@@ -4136,9 +4338,9 @@ ComfyUI image and animation generation
 
 gpu_video
 
-node-02, node-03
+node-03, node-06
 
-CogVideoX and Wan2.1 video generation
+CogVideoX / Wan2.1 video generation
 
 gpu_tts
 
@@ -4150,9 +4352,9 @@ gpu_talking_hea
 
 node-04
 
-LatentSync, SadTalker lip-sync rendering
+Provider-resolved lip-sync rendering
 
-node-05, node-06
+node-06, node-05
 
 FFmpeg composition, Remotion rendering
 
@@ -4165,25 +4367,27 @@ composition
 
 INTERNAL USE ONLY
 
-Key Celery Configuration: task_acks_late = True (message not acknowledged until task
-completes),
+Key configuration. Activity concurrency of 1 per worker on GPU queues prevents VRAM contention.
+Workflow code is deterministic and performs no I/O; all external interaction occurs in activities. Workflow
+logic changes ship behind version gates, and a replay test runs against captured histories before any
+worker deployment — a requirement, not a convention, because multi-hour renders and multi-day review
+gates mean workflows are always in flight during a deployment.
 
-worker_prefetch_multiplier
+Scheduled operations (heartbeat supervision, DLQ processing, orphan cleanup, retention migration,
+backup verification, GPU fleet metrics) run as Temporal Schedules. Celery Beat is withdrawn.
 
-=
-
-1
-
-(prevents
-
-VRAM
-
-starvation),
-
-task_reject_on_worker_lost = True (auto-requeue on worker crash). Celery Beat is REQUIRED in
-
-v5 for: DLQ processing (every 5 minutes), orphan cleanup (daily), retention tier migration (daily), backup
-verification (daily), heartbeat supervision (every 30 seconds).
+Transitional note (v5.1, until M3 cutover). The implementation at the time of this amendment uses
+Celery with a Redis broker and event-driven handle_stage_completion callbacks, per v5.0 §6.4. In that
+implementation the pipeline uses event-driven dispatch (not Celery chains): when a stage completes
+successfully the callback determines the next stage and enqueues the corresponding task. Its key Celery
+configuration is task_acks_late = True (message not acknowledged until the task completes),
+worker_prefetch_multiplier = 1 (prevents VRAM starvation), and
+task_reject_on_worker_lost = True (auto-requeue on worker crash); Celery Beat is REQUIRED for DLQ
+processing (every 5 minutes), orphan cleanup (daily), retention tier migration (daily), backup verification
+(daily) and heartbeat supervision (every 30 seconds). That implementation carries four recorded
+correctness defects ( OUTSTANDING_WORK.md v4.0 P0.1, P1.1–P1.3), remediated under Master Plan M2.
+This section describes the architecture approved under AD-05 and takes effect at M3 cutover. Migration
+sequence, scope boundary, verification gate and rollback: AD-05 §11–§12.
 
 7. AI Model Specifications
 7.1 Mandatory Self-Hosted Models
@@ -5895,23 +6099,13 @@ nvidia-gpu-exporter (02–
 
 GPU utilization %, VRAM used/total, temperature, power draw, clock
 
-05)
-
-speeds
-
-intel-gpu-exporter (node-
-
-node-
-
 06)
 
-06:9401/metrics
+speeds
 
 postgres-exporter
 
 node-
-
-Intel GPU utilization, memory, power
 
 Connection pool, query latency, deadlock count, table bloat
 
@@ -6115,13 +6309,7 @@ nvidia-gpu-exporter
 
 REQUIRED
 
-node-02 through node-05
-
-intel-gpu-exporter
-
-REQUIRED
-
-node-06
+node-02 through node-06
 
 node-exporter 1.7+
 
@@ -7422,21 +7610,23 @@ SDXL (10 GB) or Ollama (5–8 GB)
 
 ~6 GB for utility tasks
 
-node-06 (32
+node-06 (96
 
-32 GB
+96 GB
 
-Remotion/FFmpeg (CPU-intensive, uses Intel GPU
+CogVideoX 5B (24 GB) or Wan2.1 (16 GB) alongside
 
-Most of 32 GB for composition
+~70 GB free for composition and
 
 GB)
 
-(Intel)
+Remotion/FFmpeg composition; Llama-3.3-70B-FP8
 
-for acceleration)
+Remotion tasks when no video job
 
-tasks
+(failover only, profile-gated, stopped by default)
+
+is running
 
 node-02 (96
 
@@ -7751,14 +7941,27 @@ ADR
 Architecture Decision Record — a document capturing a significant architectural decision, its
 context, and consequences
 
+Activity
+
+A single unit of work invoked by a workflow. May perform I/O, may fail and be retried
+independently, and heartbeats while running. Each IVGS pipeline stage is an activity
+
+Activity
+
+A progress report from a running activity. Distinguishes a slow activity from a stalled one,
+
+heartbeat
+
+replacing statically guessed timeouts
+
 BCP-47
 
 IETF language tag standard used for language codes (e.g., en-US, zh-CN)
 
 Celery
 
-Distributed task queue for Python; used for asynchronous pipeline stage execution across GPU
-nodes
+Distributed task queue for Python. Used for pipeline stage execution in v5.0; withdrawn at
+M3 cutover in favour of Temporal (AD-05)
 
 79
 
@@ -7768,11 +7971,19 @@ INTERNAL USE ONLY
 
 Celery
 
-Celery periodic task scheduler; required in v5 for DLQ processing, orphan cleanup, and retention
+Celery's periodic task scheduler; required in v5.0 for DLQ processing, orphan cleanup, and
 
 Beat
 
-management
+retention management. Withdrawn at M3 cutover; replaced by Temporal Schedules
+
+Child
+
+A workflow started by another workflow, with independent retry and history. IVGS uses one
+
+workflow
+
+per render segment
 
 CLIP
 
@@ -7804,6 +8015,11 @@ DLQ
 
 Dead Letter Queue — storage for pipeline tasks that exhausted all retry attempts; requires human review
 before replay or discard
+
+Event history
+
+The persisted, replayable record of every step in a workflow execution. The recovery
+mechanism and the operator's primary diagnostic record
 
 FLUX.1
 
@@ -7884,6 +8100,11 @@ Remotion
 React-based programmatic video generation framework; used for lower-thirds, animations, and Ken
 Burns effects on node-06
 
+Replay
+
+Reconstructing workflow state by re-executing deterministic workflow code against event
+history. The reason workflow code must be deterministic and versioned
+
 RPO
 
 Recovery Point Objective — maximum acceptable data loss; v5 target: 24 hours
@@ -7905,6 +8126,11 @@ SeaweedFS
 Open-source distributed file system used as the binary asset store; deployed in single-node mode on
 node-01 with hot/warm tiers
 
+Signal
+
+An asynchronous message delivered to a running workflow. IVGS's two human review gates are
+implemented as signals
+
 SNR
 
 Signal-to-Noise Ratio — audio quality metric; IVGS v5 minimum threshold: 20 dB
@@ -7916,6 +8142,12 @@ Speech Synthesis Markup Language — markup for TTS voice style, pace, and empha
 TTS
 
 Text-to-Speech — audio synthesis from text input; Coqui XTTS v2 is the primary engine
+
+Temporal
+
+Open-source (MIT) durable execution engine. Persists workflow state and execution history so
+long-running, multi-step processes survive process and host failure. IVGS's pipeline
+orchestrator from M3 (ADR-005)
 
 Tensor
 
@@ -7948,6 +8180,11 @@ WhisperX
 
 Enhanced Whisper implementation with word-level timestamp alignment; used for caption
 generation on node-04
+
+Workflow
+
+A durable, resumable function defining a job's control flow. Must be deterministic and perform
+no I/O directly
 
 APPENDIX F
 
