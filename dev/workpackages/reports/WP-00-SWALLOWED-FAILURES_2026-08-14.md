@@ -31,6 +31,16 @@ because of this pattern.
 | 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | Open |
 | 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | Open — **scope-blocked** |
 | 5 | `ivgs-workers/tasks/pipeline_orchestrator.py:620` | Manufactures a success | Open |
+| 6 | `ivgs-workers/tasks/pipeline_orchestrator.py` — 5 sites in 3 scheduled tasks + `dispatch_pipeline` | Celery task returns `{'status':'error'}` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 7 | `ivgs-workers/tasks/pipeline_orchestrator.py:601, :612` | Two more scheduled stubs manufacturing success | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 8 | `ivgs-workers/utils/error_handler.py:313, :383` | DLQ routing and job-status write failures → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 9 | `shared/redis_client.py` — 8 methods | Every Redis error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+
+**A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
+makes this class machine-detectable. Instances 6–11 below were found by running it
+rather than by review. It is **not** wired into CI — see that package's report.
 
 ---
 
@@ -176,7 +186,138 @@ Recorded at the operator's instruction, from `WP-BACKUP-SCHEDULE_2026-08-14.md`
 
 ---
 
+### 6. Orchestrator Celery tasks return failure as a value — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR (rule SF005), verified at `16ea217`.*
+
+This is **instance 1's exact shape**, unfixed, in the orchestrator. Celery records
+SUCCESS for every one of these:
+
+```
+ivgs-workers/tasks/pipeline_orchestrator.py:485   supervise_worker_heartbeats  {"status":"error","reason":"fleet_fetch_failed"}
+                                           :531   supervise_worker_heartbeats  {"status":"error","error":str(e)}
+                                           :564   process_dead_letter_queue    {"status":"error","reason":"dlq_fetch_failed"}
+                                           :590   process_dead_letter_queue    {"status":"error","error":str(e)}
+                                           :653   collect_gpu_fleet_metrics    {"status":"error","reason":f"HTTP {code}"}
+                                           :655   collect_gpu_fleet_metrics    {"status":"error","error":str(e)}
+                                           :157   dispatch_pipeline            {"status":"failed", ...}
+ivgs-workers/tasks/pipeline_orchestrator_v2.py:195  dispatch_pipeline          {"status":"failed", ...}
+                                              :996  media_join_watchdog        {"status":"error","reason":"redis_unavailable"}
+```
+
+The first six are on **beat schedules**. `supervise_worker_heartbeats` and
+`process_dead_letter_queue` are the two tasks whose entire job is to notice that
+something else is broken; when they themselves break, they report SUCCESS.
+
+**Partial mitigation, verified:** both `dispatch_pipeline` sites call
+`update_job_status(job_id, "failed", ...)` before returning, so the database row is
+marked failed even though the Celery task state is SUCCESS. The scheduled six have no
+such mitigation.
+
+**Verified by reading and by detector run; not reproduced at runtime.**
+
+### 7. Two further scheduled stubs manufacture success — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR (rule SF006), verified at `16ea217`.*
+
+```
+ivgs-workers/tasks/pipeline_orchestrator.py:601  run_orphan_cleanup
+    return {"status": "ok", "message": "Orphan cleanup — stub (Phase 8)"}
+                                           :612  run_retention_migration
+    return {"status": "ok", "message": "Retention migration — stub (Phase 8)"}
+```
+
+Same shape as instance 5, same file, found by the same rule. Instance 5 was recorded
+individually; these two sat beside it unrecorded. All three are on beat schedules
+(`celery_app.py`), so retention migration and orphan cleanup have also reported green
+daily while doing nothing.
+
+### 8. DLQ routing and job-status writes fail silently — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR (rules SF001/SF002), verified at `16ea217`.*
+
+```
+ivgs-workers/utils/error_handler.py:313, :322   route_to_dead_letter_queue -> False
+                                   :383, :388   update_job_status          -> False
+```
+
+Same file and same shape as instance 3. `route_to_dead_letter_queue` returning `False`
+means a task that exhausted its retries was **not** recorded in the DLQ, and nothing
+learns of it — the DLQ is the operator's last audit surface for lost work.
+`update_job_status` returning `False` means the job row keeps its previous state; a
+failed job can therefore remain displayed as running.
+
+Call sites were **not** audited for whether they check the return. That audit is the
+first task if this instance is picked up.
+
+### 9. `RedisClient` converts every Redis error into a value — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR (rule SF002), verified at `16ea217`.*
+
+Eight of the nine methods in `shared/redis_client.py` catch `Exception`, log, and
+return a sentinel:
+
+```
+:39  get       -> None      :50  set       -> False    :58  delete  -> False
+:66  exists    -> False     :74  incr      -> None     :82  expire  -> False
+:97  get_json  -> None      :107 set_json  -> False
+```
+
+`get`/`get_json` returning `None` is indistinguishable from a cache miss; `incr`
+returning `None` is indistinguishable from nothing. This is the same ambiguity as
+instance 2, one layer down and repository-wide.
+
+`ping()` (`:119`) is **excluded** — it is a health predicate whose contract is a bool,
+and it is allowlisted in `scripts/swallow_allowlist.json` with that justification.
+
+### 10. `SeaweedFSClient` converts every asset-store error into a value — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR (rules SF001/SF002), verified at `16ea217`.*
+
+```
+shared/seaweedfs_client.py:68, :82, :92   upload_file      -> None
+                          :124            upload_to_filer  -> False
+                          :153, :162      download_file    -> None
+                          :182, :193      delete_file      -> False
+```
+
+An `upload_file` returning `None` means the binary asset was never stored. This is the
+asset store for every generated image, audio file and render.
+
+`check_health` (`:215`) is **excluded** and allowlisted, same reasoning as `ping`.
+
+### 11. `release_gpu_reservation` and `send_heartbeat` return `False` — OPEN
+
+*Added 2026-08-14 by WP-00-DETECTOR, verified at `16ea217`.*
+
+```
+ivgs-workers/utils/gpu_utils.py:230, :237   release_gpu_reservation -> False
+                               :274         send_heartbeat          -> False
+```
+
+The companion to instance 4. `acquire_gpu_reservation` raises; **`release_` does not** —
+it returns `False`. A failed release leaks the reservation until its 5-minute TTL
+expires, and no caller learns of it. Four call sites discard the return value entirely
+(`celery_app.py:607`, `talking_head_task.py:543`, `:699`, `video_generation_task.py:540`),
+detected by rule SF004.
+
+This also bears on the contradiction recorded in CLAUDE.md §7 about
+`release_gpu_reservation` raising `TypeError`. **Still untested** — the detector reports
+shape, not runtime behaviour, and resolves nothing about that contradiction.
+
+---
+
 ## Proposed detector
+
+> **Status 2026-08-14: partly delivered.** WP-00-DETECTOR built a **static** check
+> (`scripts/swallow_detector.py`) instead of the runtime handler proposed below,
+> because the brief asked for a CI gate and because the runtime handler cannot see
+> instances 2, 3 and 4 — they are plain function returns, not task returns. The
+> static check catches all of instances 2–11.
+>
+> The runtime `task_postrun` handler described here is **still worth building** and
+> remains open. It is complementary, not superseded: it observes what actually ran,
+> which no static rule can. Neither tool has been enabled in CI or deployed.
 
 Kept out of WP-BACKUP-REPORTING deliberately; recorded here as the register's own
 first work item.

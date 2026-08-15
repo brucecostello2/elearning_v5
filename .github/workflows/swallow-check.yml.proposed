@@ -1,0 +1,59 @@
+# =============================================================================
+# IVGS v5 - Swallowed-Failure Check  [PROPOSED - NOT ENABLED]
+# =============================================================================
+# Ledger reference: dev/workpackages/reports/WP-00-SWALLOWED-FAILURES_2026-08-14.md
+# Work package:     dev/workpackages/WP-00-DETECTOR.md
+#
+# THIS FILE DOES NOT RUN.
+# GitHub Actions only reads .github/workflows/*.yml and *.yaml. The .proposed
+# suffix makes this inert. To enable, the operator renames it:
+#
+#     git mv .github/workflows/swallow-check.yml.proposed \
+#            .github/workflows/swallow-check.yml
+#
+# DO NOT ENABLE YET. The check currently reports 94 findings at 16ea217 - see
+# the WP-00-DETECTOR report S2.4. Enabling it now blocks every push. The
+# intended sequence is:
+#
+#   1. Operator reviews the 94 findings and the 9 allowlist entries.
+#   2. Each finding is either fixed (WP-06 / WP-07 / WP-08 own the big ones),
+#      or given an allowlist entry with a written justification.
+#   3. Once the check reports PASS on main, enable it - from then on it fails
+#      only on NEW instances, which is the point.
+#
+# An interim option, if the operator wants signal before step 2 completes:
+# add `continue-on-error: true` to the scan step. It then annotates without
+# blocking. That is a deliberate half-measure and should carry an expiry date,
+# because a warning nobody must act on is how this defect class started.
+# =============================================================================
+
+name: Swallowed-Failure Check
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  swallow-scan:
+    name: "Swallowed-failure pattern scan (WP-00)"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # No pip install step: the detector is stdlib-only by design, so this
+      # job cannot be broken by a dependency resolution failure.
+      - name: "Rule table"
+        run: python scripts/swallow_detector.py --list-rules
+
+      - name: "Scan for swallowed-failure patterns"
+        run: python scripts/swallow_detector.py --show-suppressed
+
+      - name: "Summary"
+        if: always()
+        run: echo "See dev/workpackages/reports/WP-00-SWALLOWED-FAILURES_2026-08-14.md"

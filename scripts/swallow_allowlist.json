@@ -1,0 +1,78 @@
+{
+  "_readme": [
+    "Suppressions for scripts/swallow_detector.py (IVGS WP-00).",
+    "",
+    "EVERY entry needs a non-empty 'justification'. The tool refuses to load the",
+    "file otherwise. There is deliberately no --baseline / auto-generate mode:",
+    "machine-generated suppression is how this defect class accumulated in the",
+    "first place. Each line below is a human claim that someone checked the site.",
+    "",
+    "Entries are keyed by file + rule + symbol, NOT by line number, so edits above",
+    "a site do not silently un-suppress or re-suppress it.",
+    "",
+    "The bar for an entry: the sentinel is the function's DECLARED CONTRACT, it",
+    "fails in the SAFE direction, and the call sites were read and do check it.",
+    "'It has always been like that' is not a justification.",
+    "",
+    "Added 2026-08-14 under WP-00-DETECTOR. Every entry below was verified by",
+    "reading the function and its call sites at 16ea217; see the WP-00-DETECTOR",
+    "report S2.3 for the evidence."
+  ],
+
+  "allow": [
+    {
+      "file": "ivgs-api/app/core/security.py",
+      "rule": "SF002",
+      "symbol": "decode_token",
+      "justification": "Declared contract: signature is -> Optional[dict] and the docstring states 'None on any error'. Returning None DENIES authentication, so it fails closed. All 9 call sites assign the result and branch on it (auth.py:56, ws_logs.py:43, rate_limit.py:56, audit.py:159, auth_service.py:86/113/122/147/186). Verified at 16ea217."
+    },
+    {
+      "file": "ivgs-api/app/api/v1/ws_logs.py",
+      "rule": "SF002",
+      "symbol": "_authenticate_ws",
+      "justification": "Fails closed and the failure is already surfaced: the handler calls websocket.close(code=1008, reason='Authentication error') before returning False, so the client is disconnected. The bool is the caller's signal, not a swallowed error. Verified at 16ea217."
+    },
+    {
+      "file": "ivgs-workers/validators/corruption_detector.py",
+      "rule": "SF002",
+      "symbol": "CorruptionDetector._check_truncation",
+      "justification": "Inverted polarity: False means 'truncated / not ok'. Returning False on an unreadable file is the SAFE direction - it reports corruption rather than concealing it. Caller checks it (corruption_detector.py:267, 'truncation_ok = self._check_truncation(...)'). Verified at 16ea217."
+    },
+    {
+      "file": "shared/database.py",
+      "rule": "SF002",
+      "symbol": "check_db_connection",
+      "justification": "Health predicate. Its entire purpose is to answer 'is the database reachable' as a bool; False on exception IS the correct answer and fails closed. Verified at 16ea217."
+    },
+    {
+      "file": "shared/redis_client.py",
+      "rule": "SF002",
+      "symbol": "RedisClient.ping",
+      "justification": "Health predicate, same reasoning as check_db_connection. False on exception means 'not reachable', which is true. NOTE: only ping() is allowlisted in this file - the other eight RedisClient methods ARE flagged instances and are recorded in the WP-00 register. Verified at 16ea217."
+    },
+    {
+      "file": "shared/seaweedfs_client.py",
+      "rule": "SF002",
+      "symbol": "SeaweedFSClient.check_health",
+      "justification": "Health predicate; False on exception means 'not reachable'. NOTE: only check_health is allowlisted here - upload_file, upload_to_filer, download_file and delete_file ARE flagged and are recorded in the WP-00 register. Verified at 16ea217."
+    },
+    {
+      "file": "ivgs-workers/clients/latentsync_client.py",
+      "rule": "SF002",
+      "symbol": "LatentSyncClient.check_health",
+      "justification": "Health predicate; False on exception means the LatentSync service is not answering, which is the fact being asked for. Fails closed. Verified at 16ea217."
+    },
+    {
+      "file": "ivgs-workers/clients/sadtalker_client.py",
+      "rule": "SF002",
+      "symbol": "SadTalkerClient.check_health",
+      "justification": "Health predicate; same reasoning as latentsync_client.check_health. Verified at 16ea217."
+    },
+    {
+      "file": "ivgs-workers/clients/remotion_client.py",
+      "rule": "SF002",
+      "symbol": "RemotionClient.check_health",
+      "justification": "Health predicate; same reasoning as latentsync_client.check_health. NOTE: list_compositions in the same file is NOT allowlisted - an empty list there is indistinguishable from 'no compositions exist'. Verified at 16ea217."
+    }
+  ]
+}
