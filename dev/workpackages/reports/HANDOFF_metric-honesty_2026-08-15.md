@@ -112,6 +112,21 @@ not forgotten once the constraint lifts.
 
 ## 6. IVGS-3 and IVGS-4 remain deferred — and why it is a hard constraint
 
+> **ERRATUM 2026-08-22 — the address below is wrong.** node-04 is **`192.168.1.93`**, as
+> `dev/CLAUDE.md` §2 has always said. Established by measurement
+> (WP-DEPLOY-R2-R5-NODE04 §6.1): `.93` answers ping and tcp/22, is in `known_hosts`, and
+> returns `hostname: node-04` over ssh; `.52` is DOWN, port closed, absent from
+> `known_hosts`. Read every `192.168.1.52` below as `192.168.1.93`, including the MBCP
+> endpoint URL. The rest of the section — one shared instance, coordinated changes only —
+> is unaffected and still binding.
+>
+> **Also superseded:** "The image cannot be re-pulled … It exists only in Docker storage."
+> As of 2026-08-22 19:32 UTC it is banked at
+> `/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_latentsync-v5.2.7-h0.tar.zst`
+> (7.7G, sha256 `2da83e5a2bb60f4f…`, verified restorable), and that store **is** covered by
+> the `.7` asset backup. Still treat the running container as irreplaceable — but the image
+> is no longer a single copy.
+
 There is **ONE** LatentSync instance: `192.168.1.52` (which is node-04), container
 `ivgs-latentsync` from `ghcr.io/brucecostello2/ivgs-workers:latentsync-v5.2.7-h0`. MBCP
 reaches it at `http://192.168.1.52:7860`. **The instance IVGS renders against IS the

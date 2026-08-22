@@ -159,6 +159,12 @@ divergence `0 0`, empty index, 16 files in five groups. Nothing about them needs
 
 ## R4 - verify against the containers, not the env file (runbook §3.4)
 
+> **AMENDED 2026-08-22 (WP-DEPLOY-R2-R5-NODE04 section 4.1).** This block originally ran
+> `env | grep IVGS_`, which prints `IVGS_MBCP_INGEST_TOKEN` -- the one variable CLAUDE.md
+> section 3 forbids printing -- and the Postgres password inside
+> `IVGS_CELERY_RESULT_BACKEND`. Both were exposed once before this amendment and are
+> pending rotation under ledger **S-1**. Never widen the grep below.
+
 ```
 # RUN ON: IVGS node-01 (192.168.1.90)
 ( echo "== images (all three want v5.5.4-metrics) =="
@@ -166,8 +172,9 @@ divergence `0 0`, empty index, 16 files in five groups. Nothing about them needs
   echo "== fixes present in the running container =="
   docker exec ivgs-celery-default grep -c alignment_gate_non_functional /app/tasks/talking_head_task.py
   docker exec ivgs-celery-default grep -c video_bitrate_floor /app/validators/corruption_detector.py
-  echo "== container environment, not the env file =="
-  docker exec ivgs-celery-default env | grep IVGS_ | sort | head -20
+  echo "== container environment: TAG vars only =="
+  docker exec ivgs-celery-default env | grep -E '^IVGS_[A-Z]*_TAG=' | sort
+  echo "(tag vars are STALE by design - CLAUDE.md section 6. The image line above is the truth.)"
   echo "== celery answering =="
   docker exec ivgs-celery-default celery -A celery_app inspect ping --timeout=5
   echo "== nothing else restarted =="

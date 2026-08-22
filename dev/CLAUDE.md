@@ -66,8 +66,25 @@ docker-compose.override.node01.yml + docker-compose.monitoring.yml, with
 --env-file ivgs-infra/.env
 
 Always `--no-deps` on a single-service recreate, or Postgres restarts too.
-After any recreate, verify with `docker exec <c> env`, not by reading .env -
-compose only passes variables the YAML references.
+A service can also carry `depends_on` - node-04's `celery-worker` depends on
+`comfyui` - so without `--no-deps` a single-service recreate reaches further
+than its name suggests.
+
+After any recreate, verify CONFIG variables with `docker exec <c> env`, not by
+reading .env - compose only passes variables the YAML references.
+
+**That check does NOT tell you which image is running.** Corrected 2026-08-22
+(WP-DEPLOY-R2-R5-NODE04). The service-level `env_file: .env.node01` /
+`.env.node04` injects its own stale `IVGS_*_TAG` values into the container,
+independent of the compose-level `--env-file .env` that actually selects the
+image. Measured the same day: the node-01 container reported
+`IVGS_WORKERS_TAG=v5.1.1-pidbox-fix` and node-04 reported `v5.4.0-h0`, while
+both genuinely ran `v5.5.4-metrics`.
+
+    Which image is running:  docker ps  /  docker inspect <c> --format '{{.Config.Image}}'
+    Config variables:        docker exec <c> env
+
+Never read a tag variable out of a container and believe it.
 
 ## 7. Known traps
 

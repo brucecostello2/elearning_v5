@@ -103,10 +103,47 @@ docker compose <derived -f set> --env-file <derived> up -d --force-recreate --no
 **Check the container's environment, not the env file.** Compose only passes variables the YAML actually references — a variable can be correctly present in `.env` and absent from the container:
 
 ```
-docker exec <container> env | grep IVGS_
+docker exec <container> env | grep -E '^IVGS_[A-Z]*_TAG='      # tags
+docker exec <container> env | grep -E '^IVGS_' | grep -viE 'token|secret|password|api_key'   # config
 ```
 
 This is the check that would have caught the 2026-06-05 image-generation regression on the day it appeared.
+
+> **Never run a bare `env | grep IVGS_`.** Amended 2026-08-22 (WP-DEPLOY-R2-R5-NODE04 §4.1).
+> It prints `IVGS_MBCP_INGEST_TOKEN` — which CLAUDE.md §3 forbids printing — and the
+> Postgres password inside `IVGS_CELERY_RESULT_BACKEND`. Both were exposed once that day
+> and are pending rotation under ledger **S-1**.
+
+> **This check does NOT tell you which image is running.** The service-level
+> `env_file: .env.node0X` injects **stale** `IVGS_*_TAG` values, independent of the
+> compose-level `--env-file .env` that selects the image. On 2026-08-22 both nodes
+> reported wrong tags in-container while genuinely running `v5.5.4-metrics`. For the
+> image, use `docker ps` or `docker inspect <c> --format '{{.Config.Image}}'`. See
+> CLAUDE.md §6.
+
+### 3.5a Bank before you push, and never couple the two
+
+**Save the registry-independent artifact BEFORE attempting any registry push, and keep
+them in separate steps.** Added 2026-08-22 (WP-DEPLOY-R2-R5-NODE04 §1.1, §5).
+
+The original R5 block ran `docker push && … && save-image-artifact.sh`. The push failed on
+one blob with an HTTP 400, the block exited non-zero, and **the artifact save never ran** —
+an optional step suppressed the durable one. The 400 turned out to be transient and the
+identical image pushed cleanly on retry, so the failure bought nothing and cost the backup.
+
+```
+sudo scripts/save-image-artifact.sh <image-ref>     # durable copy first, verify it
+sudo docker push <image-ref>                        # optional, separate, may fail freely
+```
+
+Two further rules from the same incident:
+
+- **Verify from the registry or the filesystem, never from an exit code.** A detached
+  `nohup script.sh &` reports the *launcher's* status, not the script's — that run reported
+  exit 0 while the push had failed. Write the real `$?` to a file, and confirm with
+  `docker manifest inspect` or `ls` on the artifact.
+- **Never rebuild to work around a push failure.** A rebuild changes the digest and breaks
+  parity with whatever is already deployed. Retry the identical image.
 
 ### 3.5 One image, both fixes
 
