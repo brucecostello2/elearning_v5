@@ -423,6 +423,62 @@ MBCP documents. MBCP's layout does not govern here. Recorded in CLAUDE.md §12 a
 a cold-start session sees it without reading the ledger. If an incoming order names
 `dev/workorders/`, **amend the order** — do not create the directory.
 
+## P1.4j — v5.5.4-metrics deployed to node-01 AND node-04; five doc defects closed *(2026-08-22)*
+**Status:** DEPLOY **CLOSED**. Five findings **CLOSED by edit**. One item OPEN (rotation, folded into S-1).
+
+**What shipped.** `ghcr.io/brucecostello2/ivgs-workers:v5.5.4-metrics`, built from `874a0c8`,
+digest `sha256:7eb3db3388847ba9f40401f0fe85da0763a3494f6ca21d009a00a7a234388cf9` — identical
+across node-01's store, node-04's store and GHCR. Carries **P1.4e / IVGS-5** (alignment gate
+marked non-functional, `av_drift_seconds`, face-detection abort) and **P1.4(c)/WP-03** (the
+`video_bitrate_floor` assertion). Both verified present *inside the running containers* on
+both nodes (`1` / `2` / `0`). Report:
+`dev/workpackages/reports/WP-DEPLOY-R2-R5-NODE04_2026-08-22.md`.
+
+**Node-04 address contradiction — RESOLVED.** CLAUDE.md §2 was right: node-04 is
+**`192.168.1.93`**. `.93` answers ping and tcp/22, is in `known_hosts`, and returns
+`hostname: node-04`; `.52` is DOWN and absent from `known_hosts`. The incident report §8.4
+held that the node-04 block could not be labelled honestly until this was settled — it is now.
+Dated erratum added to `HANDOFF_metric-honesty_2026-08-15.md` §6.
+
+**LatentSync is no longer a single copy.** `latentsync-v5.2.7-h0` (23.3GB, irreplaceable —
+absent from ghcr.io) is banked at
+`/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_latentsync-v5.2.7-h0.tar.zst`,
+7.7G, sha256 `2da83e5a2bb60f4f…`. Verified **restorable**, not merely present: checksum,
+`zstd -t`, `tar -t`, and `manifest.json` `RepoTags`.
+
+**Five documentation/tooling defects, all closed by edit in this package:**
+
+| # | Defect | Fix |
+|---|---|---|
+| 1 | CLAUDE.md §6 said to verify a recreate with `docker exec <c> env` — **misleading for tag variables**. `env_file: .env.node0X` injects stale `IVGS_*_TAG` independent of the `--env-file .env` that selects the image. Both nodes reported wrong tags while running the right image | §6 rewritten: `docker ps` / `.Config.Image` for the image, `env` for config only. `depends_on` note added |
+| 2 | `save-image-artifact.sh` needs root (store is `root:root 0755`); it failed at the redirect *after* `docker save` began, reading as a save failure | Usage says `sudo`; an explicit writability precheck now fails fast with a clear message |
+| 3 | The R4 block printed two secrets | Narrowed to `^IVGS_[A-Z]*_TAG=` in the R4 block **and** runbook §3.4, which carried the same live grep |
+| 4 | Handoff §6 gave node-04's address as `.52` | Dated erratum |
+| 5 | R5 coupled push-and-bank, so a transient push failure suppressed the durable artifact save | Runbook **§3.5a**: bank first, separate steps, verify from the registry/filesystem never an exit code, never rebuild to work around a push failure |
+
+**`.7` backup coverage of the artifact store — CONFIRMED, with one gap.** `asset_backup.sh:71`
+takes `/mnt/ivgs-shared` wholesale as `SRC_SHARED_VOLUME`, rsynced to `shared-volume/` with
+**no `--exclude` anywhere in the script**; daily 03:00 host cron; 14-day retention;
+hard-linked across generations. Verified on `.7`:
+`/mnt/backup/ivgs/assets/2026-08-22/shared-volume/image-artifacts/` holds the artifacts, with
+daily directories 08-15 → 08-22. **This corrects the residual-risk note in
+`WP-DEPLOY-R2-R5-NODE04` §10, which said coverage was unconfirmed — it is confirmed, and
+DEF.1 already recorded it.**
+
+**The gap that IS real:** the 03:00 cron means a freshly banked artifact spends up to ~24 h on
+node-01's disk alone. Today's run was 03:00; the two new artifacts were banked at 19:26 and
+19:32, so they reach `.7` at 03:00 on 2026-08-23. **One-line fix — run the asset backup by
+hand immediately after banking anything irreplaceable:**
+
+    (set -a; . /etc/ivgs/cron-backup-env; set +a; sudo /opt/ivgs/scripts/asset_backup.sh)
+
+Not run in this package: it is a multi-GB rsync on a 16 GB node with a documented OOM history
+(CLAUDE.md §7), and no ruling covered it. **Operator decision.**
+
+**Also observed, not acted on.** node-04's `ivgs-infra/.env` carries `IVGS_API_TAG=v5.1.18-node-config`
+and `IVGS_FRONTEND_TAG=v5.2.16-node-config`. node-04 runs neither service, so these are
+probably vestigial — but that is inference, not measurement.
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.
@@ -680,7 +736,7 @@ Still describes a split repo. Update to the monorepo at `/opt/ivgs`.
 
 | ID | Item | Owner | Note |
 |---|---|---|---|
-| **S-1** | Coordinated ingest-token rotation | **Operator** | `MBCP_AD01_TOKEN` == `IVGS_MBCP_INGEST_TOKEN`. Exposed on the MBCP side 2026-08-04. Rotating one side alone breaks the seam **silently** — exports park in `drain-pending-exports` and retry every 5 min. Both hosts in one window. |
+| **S-1** | Coordinated ingest-token rotation **+ Postgres password** | **Operator** | `MBCP_AD01_TOKEN` == `IVGS_MBCP_INGEST_TOKEN`. Exposed on the MBCP side 2026-08-04. Rotating one side alone breaks the seam **silently** — exports park in `drain-pending-exports` and retry every 5 min. Both hosts in one window. **WIDENED 2026-08-22 (WP-DEPLOY-R2-R5-NODE04 §4.1):** the incident report's R4 verification block ran `docker exec … env \| grep IVGS_`, printing **`IVGS_MBCP_INGEST_TOKEN`** — the one variable CLAUDE.md §3 forbids printing — **and the Postgres password**, carried in clear text inside `IVGS_CELERY_RESULT_BACKEND`. Both reached a terminal and an agent transcript. **The Postgres password is now in this rotation set**; it was not before. Blast radius is wider than the token's: `DATABASE_URL`, `IVGS_CELERY_RESULT_BACKEND`, `ivgs-infra/.env`, `.env.node0*` on every node, `/etc/ivgs/cron-backup-env`, and the backup scripts. The offending grep has been narrowed in all four places it appeared (R4 block, runbook §3.4, CLAUDE.md §6, and this package's own report). |
 | **S-2** | Stage taxonomy divergence | IVGS agent | IVGS has 8 **pipeline** stages; MBCP has 9 **capability** stages (`mbcp_core/enums.py`). MBCP's image/video/animation → IVGS Stage 3; `composition` collapses 4/7/8; `translation` is not an IVGS stage. AD-01's `(stage,tier)` key uses MBCP's taxonomy. Document in AD-01 §AD-01.16 + glossary. |
 | **S-3** | Addendum number collision | Operator | Two different AD-05s (IVGS orchestration, MBCP adapter authoring) and MBCP also has AD-06. **Decision D-7: namespace as `IVGS-AD-NN` / `MBCP-AD-NN`.** No renumbering. |
 | **S-4** | Weight-fetch unblocked earlier than assumed | IVGS agent | IVGS is cloned at `/root/IVGS` on `.51`, so `mbcp_fetch.py` can be proven now. Only the production pass needs M4. Sequence **after** S-1, since `WEIGHT_SIGNING_KEY` and `WEIGHT_SERVICE_TOKEN` are in that rotation set. |
