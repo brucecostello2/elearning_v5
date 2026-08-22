@@ -93,11 +93,11 @@ why WP-03 could only bank a narrow reference.
 
    **Do not approve a talking-head model on quality grounds without this.** Swapping
    `latentsync` for `latentsync-alt` changes the binding but not the engine, so it
-   cannot improve lip-sync. Ledger **P1.7**.
+   cannot improve lip-sync. Ledger **P1.4d**.
 
-   *Data-integrity note found while checking:* `model_approvals` holds 26 rows across
-   **13 distinct `model_id`s**, but `models` has only **12** rows. At least one
-   attestation references a model that no longer exists. Worth resolving while in here.
+   *(An earlier draft of this brief flagged an orphaned attestation. **Retracted** —
+   it was a snapshot artefact of counting `models` before `latentsync-alt` was created.
+   Re-measured 2026-08-15: 13 models, 13 distinct approval `model_id`s, 0 orphans.)*
 
 6. **The full Stages 1→8 run** that re-banks the definitive reference, superseding
    `dev/workpackages/reference/REFERENCE-OUTPUT_2026-08-15.md`. **This full reference
