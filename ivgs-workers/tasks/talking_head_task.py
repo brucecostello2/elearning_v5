@@ -6,7 +6,8 @@ Pipeline Stage 6 per §6.1:
 - Input: User-uploaded talking head reference clip + per-scene narration audio (segment-based)
 - Primary: the AD-01-selected talking_head model, resolved per (project, tier)
   through the ARCH-1 provider factory. Default today is LatentSync on node-04
-  (lip-sync score threshold >0.85). Swapping the production head is a GUI
+  (its alignment_score is a constant, not a measurement - see ledger P1.4e).
+  Swapping the production head is a GUI
   action in /admin/models — never a code change (AD-01.1).
 - Fallback: SadTalker on node-04, still engine-direct. The shared SadTalker
   provider requires a per-scene still image, which this whole-project stage
@@ -24,8 +25,12 @@ Processing:
     4. Acquire GPU reservation for the selected model (VRAM from its binding)
     5. Render one lip-synced segment per scene via the provider, then concat
        (bounded memory — a whole-scene render OOM'd the engine)
-    6. Validate: alignment score >0.85 (§11.1)
-    7. On render failure/low score: fallback to SadTalker (8GB VRAM)
+    6. Record quality signals. NOTE: no metric here measures lip-sync
+       articulation - the engine's alignment_score is a constant and the
+       validator's score is A/V duration agreement. The one real signal
+       is av_drift_seconds. Ledger P1.4e.
+    7. On render failure: fallback to SadTalker (8GB VRAM). NOT triggered
+       by a low score - that gate was non-functional and is disabled.
     8. Run corruption detection (§11.2)
     9. Upload to SeaweedFS
     10. Update project talking_head_asset_id
@@ -136,7 +141,18 @@ class Stage6Output(BaseModel):
     fps: int = 0
     duration_seconds: float = 0.0
     file_size_bytes: int = 0
+    # NOTE ON alignment_score: this is NOT a lip-sync measurement.
+    # It is lipsync_validator's A/V duration agreement (1 - drift/audio_len),
+    # whose base term saturates at 1.0. Ledger P1.4e. The two fields below
+    # exist so a reader cannot mistake it for a quality signal.
     alignment_score: float = 0.0
+    # False whenever the engine reported "scored": False - i.e. its
+    # alignment_score is the DEFAULT_ALIGNMENT constant, not a measurement.
+    alignment_scored: bool = False
+    # The one genuinely measured quality signal at this stage: absolute
+    # video-minus-audio duration drift. Gated by av_drift_seconds in
+    # quality_thresholds.yaml. Lower is better.
+    av_drift_seconds: float = 0.0
     model_used: str = ""
     render_mode: str = ""
     generation_time_seconds: float = 0.0
@@ -217,6 +233,20 @@ async def _concatenate_scene_audio(
     ffmpeg.concat_audio(audio_paths, concat_path)
 
     return concat_path
+
+
+# IVGS-5: engine-side face detection raises a bare RuntimeError("Face not
+# detected"). Matched on message because a typed exception would require
+# server.py, whose image digest is pinned by MBCP certificate provenance
+# (deferred with IVGS-3/4). Deliberately narrow - a broad match would
+# suppress retries for genuinely transient errors.
+_FACE_FAILURE_MARKERS = ("face not detected", "no face detected", "face detection failed")
+
+
+def _is_face_detection_failure(err: BaseException) -> bool:
+    """True if this error means the reference clip has no usable face."""
+    text = str(err).lower()
+    return any(marker in text for marker in _FACE_FAILURE_MARKERS)
 
 
 def _resolve_render_mode(requested: str) -> str:
@@ -518,6 +548,40 @@ def render_talking_head(
                         )
                         break
                     except Exception as seg_err:
+                        # IVGS-5: face detection failure is DETERMINISTIC - the
+                        # same reference clip fails identically every time, so
+                        # retrying it is pure waste. Without this, a clip with
+                        # no detectable face burns 3 attempts x N segments and
+                        # then falls back to SadTalker, which cannot serve this
+                        # stage at all (it requires a per-scene still Stage 6
+                        # never has - ledger P1.0a). Abort immediately instead,
+                        # with a message naming the cause and the remedy.
+                        #
+                        # Detected by message rather than by exception type
+                        # because the engine raises a bare RuntimeError; a
+                        # typed error needs server.py, which is deferred with
+                        # IVGS-3/4 (image digest is pinned by MBCP provenance).
+                        if _is_face_detection_failure(seg_err):
+                            log.error(
+                                "reference_clip_no_face_detected",
+                                segment_index=seg_idx,
+                                scene_index=piece["scene_index"],
+                                attempt=attempt,
+                                error=str(seg_err),
+                                remedy=(
+                                    "re-upload a reference clip with a clear, "
+                                    "front-facing face visible throughout"
+                                ),
+                            )
+                            raise RuntimeError(
+                                "Stage 6 aborted: no face detected in the "
+                                "uploaded reference clip "
+                                f"(asset {task_input.reference_clip_asset_id}). "
+                                "Re-upload a clip with a clear, front-facing "
+                                "face visible throughout. This is an input "
+                                "problem, not a render failure - retrying will "
+                                "not help."
+                            ) from seg_err
                         last_seg_err = seg_err
                         log.warning(
                             "segment_render_attempt_failed",
@@ -593,14 +657,30 @@ def render_talking_head(
                 duration=output.duration_seconds,
             )
 
-            # 5. Validate alignment score
-            if alignment_score < task_input.alignment_threshold:
-                log.warning(
-                    "latentsync_low_alignment",
-                    score=alignment_score,
-                    threshold=task_input.alignment_threshold,
-                )
-                video_data = None  # Force fallback
+            # 5. Alignment gate - NON-FUNCTIONAL, deliberately not gating.
+            #
+            # This compared the engine's alignment_score against 0.85. That
+            # score is a CONSTANT: servers/latentsync/server.py:39 sets
+            # DEFAULT_ALIGNMENT = 0.90 and :123 emits it with "scored": False.
+            # 0.90 >= 0.85 always, so this branch could never fire and the
+            # fallback it guarded could never trigger. It read as a quality
+            # gate and was not one. Ledger P1.4e.
+            #
+            # It is NOT re-enabled with a different threshold, because there is
+            # nothing real to threshold - no metric in IVGS or MBCP measures
+            # lip-sync articulation, the defect that made LatentSync non-viable
+            # on 2026-06-08. Inventing a number here would restore false
+            # assurance rather than remove it.
+            #
+            # The value is still recorded and surfaced as unscored, so the
+            # output states plainly what it is.
+            log.info(
+                "alignment_gate_non_functional",
+                engine_alignment_score=alignment_score,
+                threshold=task_input.alignment_threshold,
+                scored=False,
+                note="engine score is a constant; gate disabled, see P1.4e",
+            )
 
         except Exception as e:
             # Was `except (LatentSyncError, Exception)`; Exception already
@@ -709,6 +789,21 @@ def render_talking_head(
             threshold=task_input.alignment_threshold,
         )
         output.alignment_score = lipsync_result.alignment_score
+        # The engine's own score is a constant emitted with "scored": False,
+        # and this task never passes it to the validator, so nothing in this
+        # output is a scored lip-sync measurement. Say so explicitly rather
+        # than letting a 0.99 read as quality. Ledger P1.4e.
+        output.alignment_scored = False
+        output.av_drift_seconds = round(
+            getattr(lipsync_result, "duration_mismatch_seconds", 0.0), 4
+        )
+        log.info(
+            "talking_head_quality_summary",
+            av_drift_seconds=output.av_drift_seconds,
+            av_duration_agreement=output.alignment_score,
+            alignment_scored=False,
+            note="no metric here measures lip-sync articulation; see P1.4e",
+        )
 
         # 9. Compute SHA-256 and upload
         sha256 = compute_asset_sha256(video_data)

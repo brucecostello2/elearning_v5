@@ -82,11 +82,61 @@ quality_thresholds:
       weight: 0.3
 
   talking_head:
-    lip_sync_score:
-      description: "LatentSync alignment score"
+    # ------------------------------------------------------------------
+    # NOTHING HERE MEASURES LIP-SYNC ARTICULATION. See ledger P1.4e.
+    #
+    # Four metrics existed across IVGS and MBCP; none could detect the
+    # defect that made LatentSync non-viable on 2026-06-08 (mouth shapes
+    # failing to form words). The only real measurement of articulation
+    # ever taken is that human verdict.
+    # ------------------------------------------------------------------
+
+    # RENAMED from `lip_sync_score` on 2026-08-15. The old name was wrong:
+    # this never measured lip-sync. `lipsync_validator` computes
+    #     1 - (abs(video_duration - audio_duration) / audio_duration)
+    # and its base_score saturates at 1.0 via min(1.0, (frame+energy)/2 + 0.2),
+    # so the result is A/V DURATION AGREEMENT and nothing else. It read
+    # 0.9971 on 2026-06-08 and again on 2026-08-15 because the durations did
+    # not change - it is unmoved by any articulation change whatsoever.
+    #
+    # NON-FUNCTIONAL: weight 0.0 so it no longer contributes a false pass.
+    # Retained (not deleted) so the number stays visible and its history is
+    # legible. Do NOT restore a weight until something real backs it.
+    av_duration_agreement:
+      description: >-
+        A/V duration agreement, NOT lip-sync. Non-functional as a gate.
+        See ledger P1.4e.
+      status: non_functional
+      non_functional_since: "2026-08-15"
+      non_functional_reason: >-
+        Measures duration only and saturates; cannot fail on articulation,
+        which is the defect that matters.
       approve_threshold: 0.85
       flag_threshold: 0.70
       reject_threshold: 0.50
+      weight: 0.0
+
+    # The one genuinely working check IVGS has at this stage.
+    #
+    # Promoted 2026-08-15 from the `duration_penalty` term that was buried
+    # inside the score above. This IS a real measurement - it would have
+    # caught the 0.6187 s head A/V drift that AD-03 S10 criterion 3 records
+    # as open (owned by WP-04-FRAME-ALIGN).
+    #
+    # Thresholds are drift in SECONDS, so LOWER IS BETTER - the inverse of
+    # every other entry in this file. Read the comparison direction before
+    # editing.
+    #   approve  <= 0.0334 s  = 1 frame at 30 fps, the AD-03 criterion-3 target
+    #   flag     <= 1.0    s  = measurable drift, viewable but wrong
+    #   reject    > 1.0    s  = gross desync
+    # Measured 2026-08-15: 0.6187 s -> FLAGGED. That is correct and expected;
+    # WP-04 closes it. Do not relax these to make it pass.
+    av_drift_seconds:
+      description: "Absolute video-minus-audio duration drift, in seconds"
+      comparison: lower_is_better
+      approve_threshold: 0.0334
+      flag_threshold: 1.0
+      reject_threshold: 1.0
       weight: 1.0
 
 # Overall decision rules
