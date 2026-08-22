@@ -37,8 +37,25 @@ jobs:
       - name: "Rule 1: Prohibited environment variables"
         run: |
           echo "Scanning for prohibited env vars..."
+          # Match only REAL, UNCOMMENTED assignments: start of line, optional
+          # whitespace, the variable name, optional whitespace, then = or :.
+          #
+          # Fixed 2026-08-22 (ledger P1.4l). The previous pattern was a bare
+          # substring match, so it fired on the prohibition comments that
+          # document the policy -- "# OPENAI_API_KEY - NEVER" in .env.template
+          # and all six .env.node0X.template files. Those comments ARE the
+          # policy's documentation and must not have to hide from its
+          # enforcement, so the rule was narrowed rather than the templates
+          # edited. It also fired on the scanner's own test fixtures in
+          # tests/test_compliance_scanner.py, which are quoted string literals
+          # and so no longer match either.
+          #
+          # The [=:] alternation also closes a real gap: this rule scans *.yml
+          # and *.yaml, where a leak would read "OPENAI_API_KEY: sk-..." with a
+          # colon. The old substring pattern caught that only by accident; an
+          # "=" -only anchor would have missed it entirely.
           if grep -rE \
-            "OPENAI_API_KEY|ANTHROPIC_API_KEY|ELEVENLABS_API_KEY|DID_API_KEY|SYNTHESIA_API_KEY" \
+            "^[[:space:]]*(OPENAI_API_KEY|ANTHROPIC_API_KEY|ELEVENLABS_API_KEY|DID_API_KEY|SYNTHESIA_API_KEY)[[:space:]]*[=:]" \
             --include="*.env*" --include="*.yml" --include="*.yaml" --include="*.py" \
             --exclude-dir=".git" \
             --exclude="compliance_scanner.py" \
