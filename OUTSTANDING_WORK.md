@@ -479,6 +479,82 @@ Not run in this package: it is a multi-GB rsync on a 16 GB node with a documente
 and `IVGS_FRONTEND_TAG=v5.2.16-node-config`. node-04 runs neither service, so these are
 probably vestigial — but that is inference, not measurement.
 
+## P1.4k — The CI gate has been blind for 87 days; runner revival DEFERRED *(2026-08-22)*
+**Status:** Gate **RESTORED** by moving off self-hosted. CD workflow **DISABLED**. Runner
+revival **DEFERRED** with binding conditions. Blindness window **recorded, not remediable** —
+see below.
+
+### What was wrong
+`.github/workflows/compliance-check.yml` and all three `cd-deploy.yml` jobs specify
+`runs-on: [self-hosted, linux, x64, ivgs-infra]`. **No such runner has existed since
+2026-05-26T22:41:36Z** — `ivgs-github-runner` started and exited 0.145 s later, exit 0, zero
+log output, no restarts, no systemd unit, though still declared at
+`docker-compose.node01.yml:557`.
+
+**The failure mode is silence, not red.** A job with no matching runner does not fail; it
+**queues indefinitely**. GitHub shows "queued", never a failure, and nothing raises an alarm.
+Spec §F.2 describes this workflow as "fail build on any violation". **It has gated nothing for
+87 days**, including all five commits of 2026-08-22. Every green CI signal in that period came
+from `ci.yml`, which is entirely `ubuntu-latest` — and whose two Python jobs are `if: false`.
+Recorded as WP-00 instance **16**.
+
+Discovered only because run **#341** was noticed sitting queued against `a918fb9`. Nothing in
+the tooling would have reported it.
+
+### What was done
+| Action | Detail |
+|---|---|
+| Compliance Audit restored | `runs-on: ubuntu-latest`. It needs nothing from node-01 — checkout, setup-python, four greps, `scripts/compliance_scanner.py .`, all against the checked-out repo. No docker, ssh, host path or network. Runs on the next push, with no runner and no host exposure |
+| CD Deploy disabled | `push:` trigger removed (`workflow_dispatch` only) **and** `if: false` on all three jobs, matching `ci.yml`'s existing convention. Original trigger preserved verbatim in the header comment so re-enabling is exact |
+
+**Correction to an earlier assumption.** CD Deploy did **not** queue a phantom run on every
+push to main — its `push:` trigger carries a `paths:` filter (`docker-compose.*.yml`,
+`.env.*.template`, `scripts/deploy-node.sh`, `configs/**`). Checked against all nine commits
+of 2026-08-22: **none matched**, so it fired on none of them. It was disabled on the other
+two grounds, not on trigger frequency.
+
+**Why CD Deploy stays off regardless of the runner.** It runs `scripts/deploy-node.sh`, which
+does `docker compose down` on the **whole stack** and pulls from GHCR — precisely what the
+runbook's `--no-deps` rule and the `--pull never` correction exist to prevent
+(`WP-DEPLOY-INCIDENT` §4). It would restart Postgres to deploy a worker. It carries
+`environment: production` with real secrets and auto-triggers on a path match. Manual
+deployment as practised on 2026-08-22 is gated, verified and reversible; this is not.
+
+### Runner revival — DEFERRED
+**Re-open trigger:** a decision that CD should be automated at all, or another workflow that
+genuinely needs node-01. Not needed for the compliance gate, which now runs GitHub-hosted.
+
+Four requirements, all necessary — the service as written cannot work even if started:
+1. **A fresh registration token.** `GITHUB_RUNNER_TOKEN` in `.env` is non-empty but ~3 months
+   stale; registration tokens expire in about an hour.
+   `gh api -X POST /repos/{owner}/{repo}/actions/runners/registration-token`
+2. **A `command:`/entrypoint.** The compose block has neither. The official
+   `ghcr.io/actions/actions-runner` image does not self-register — it ships `config.sh` and
+   `run.sh` and must be told to run them. This is why it exits in 0.145 s.
+3. **A named volume** for runner config and `_work`. Only `/var/run/docker.sock` is mounted
+   today, so registration would live in the container layer and vanish on any recreate.
+4. **A decision on the Docker socket** — see condition A.
+
+**TWO BINDING CONDITIONS, operator ruling 2026-08-22. Neither is advisory.**
+
+> **A. No Docker socket mounted unless a specific job demonstrably needs it.** The service
+> currently mounts `/var/run/docker.sock`. A self-hosted runner holding the host Docker
+> socket while executing workflow-authored code is root on node-01 for whoever authored that
+> code. If some job genuinely needs it, that job gets it — not the runner as a standing grant.
+>
+> **B. `pull_request` never targets self-hosted.** `compliance-check.yml:17` triggers on
+> `pull_request`; combined with A, that was root on node-01 for whoever opened a PR.
+> GitHub's fork-approval default is a policy setting, not a guarantee, and is the wrong
+> thing to rely on. Now moot for the compliance audit — it is GitHub-hosted — and it must
+> stay moot.
+
+### Not verified
+No GitHub-side state was inspected: there is no `gh` credential on node-01 (`gh auth status`:
+not logged in). Whether other runners are registered, how many runs sit queued behind #341,
+and whether repo settings permit fork workflows are all unknown from this box. **Run #341 and
+any siblings will stay queued until cancelled in the UI** — the fix stops new ones, it does
+not drain the existing queue.
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.

@@ -505,3 +505,67 @@ node-01 (`gh auth status`: not logged in). Whether the repo shows other register
 how many runs are queued behind #341, and whether repo settings permit fork workflows are
 all unknown from this box and should be checked in the GitHub UI.
 
+---
+
+# 13. Rulings actioned, 2026-08-22 (second round)
+
+| Ruling | Action | Evidence |
+|---|---|---|
+| 1. Compliance Audit to GitHub-hosted | `compliance-check.yml:23` -> `runs-on: ubuntu-latest`, with the reason inline | YAML parses; job `compliance-scan` resolves `runs-on=ubuntu-latest`; triggers still `push` + `pull_request` on `**` |
+| 2. CD Deploy disabled | `push:` trigger removed (`workflow_dispatch` only) **and** `if: false` on all three jobs | YAML parses; `name: CD Deploy (DISABLED)`; triggers `['workflow_dispatch']`; all three jobs `if=False` |
+| 3. Runner revival deferred | Ledger **P1.4k** - four requirements plus the two binding conditions, quoted as a block so they cannot be skimmed past | `OUTSTANDING_WORK.md` |
+| 4. Gate blindness recorded | Ledger **P1.4k**; WP-00 register **instance 16** | Both files |
+
+## 13.1 A correction I owe on ruling 2
+
+The ruling was conditional - disable **if** it queues a phantom run on every push to main.
+**It does not.** `cd-deploy.yml`'s `push:` trigger carries a `paths:` filter
+(`docker-compose.*.yml`, `.env.*.template`, `scripts/deploy-node.sh`, `configs/**`). Checked
+against all nine commits of 2026-08-22: **not one matched**, so it fired on none of them. My
+section 12 said the self-hosted workflows "queue indefinitely" without distinguishing
+compliance-check (which triggers on every push, and did queue) from cd-deploy (which is
+path-filtered, and did not).
+
+It was disabled anyway, on the other two grounds, which the ruling states independently and
+which do not depend on trigger frequency: it runs `deploy-node.sh` - whole-stack
+`compose down` plus a GHCR pull, exactly what the runbook's `--no-deps` and `--pull never`
+corrections exist to prevent - and it carries `environment: production` with real secrets on
+an automatic trigger. **Flagged because the ruling's stated premise was not what I found.**
+
+## 13.2 Belt and braces on the disable, and why
+
+Either mechanism alone would suffice. Both were used because they fail differently: removing
+`push:` prevents a run being created at all, while `if: false` prevents execution even if
+someone restores the trigger without reading the header. The original trigger block is kept
+**verbatim in a comment**, so re-enabling is an exact restoration rather than a
+reconstruction from memory.
+
+## 13.3 WP-00 instance 16 recorded as a VARIANT, deliberately
+
+The register's stated pattern is a *return-value* swallow - code detects a failure and
+returns it as an ordinary value. Instance 16 is not that: no code swallows anything, the job
+never starts. It was recorded as an explicitly-marked **variant**, with the boundary stated,
+so the register does not quietly widen into "anything that hides a failure" and lose the
+precision that makes it useful. Instance 5 already stretches the definition the same way (a
+stub that manufactures success), so there is precedent.
+
+It is **not** closed. Per the register's own closing rule, an instance closes only on observed
+evidence that the failure now surfaces - here, the next push producing a Compliance Audit run
+that actually **executes**. Until that is seen it is fixed-pending-observation.
+
+## 13.4 Found in passing - reported, not fixed
+
+**The WP-00 summary table is four rows short.** It carries rows 1-11 plus the new 16, but the
+register has sections **12, 13, 14 and 15** with no matching table rows - an omission from
+whichever session added them, predating this package. I added row 16 rather than silently
+renumbering or backfilling someone else's entries. The table is a poor index until 12-15 are
+added; four one-line additions.
+
+## 13.5 Still not verified
+
+No GitHub-side state was inspected - there is no `gh` credential on node-01. **Run #341 and
+any siblings remain queued and must be cancelled in the UI**; these changes stop new phantom
+runs, they do not drain the existing queue. Whether the compliance gate now genuinely passes
+is also unknown until the next push actually runs it - and it may well fail, since it has
+gated nothing for 87 days and may have real violations waiting behind it.
+

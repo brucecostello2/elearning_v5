@@ -37,6 +37,7 @@ because of this pattern.
 | 9 | `shared/redis_client.py` — 8 methods | Every Redis error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **Fixed** for the compliance gate 2026-08-22 (moved to `ubuntu-latest`); CD workflow disabled — P1.4k. **Variant instance, see note** |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -472,6 +473,60 @@ Suggested order if this register is worked: the detector first (cheap, broad,
 unblocked), then instance 3 (`save_checkpoint`, since checkpoint resume is being
 built out anyway), then instance 2, then instance 4 once the orchestration
 migration lifts the scope freeze.
+
+---
+
+### 16. A CI gate that queues instead of failing - FIXED (compliance) / DISABLED (CD)
+
+**Added 2026-08-22.** Recorded here on the operator's instruction, and marked a **variant**
+rather than a plain instance, so the register does not drift into "anything that hides a
+failure".
+
+**How it fits.** The register's stated pattern is a *return value* swallow: code detects a
+failure, converts it to `{'status':'failed'}` / `0` / `False`, and returns normally. This is
+not that. **No code swallows anything** - the job never starts. But the consequence is the
+register's consequence exactly, and instance 5 already stretches the definition the same way
+(a stub that *manufactures* a success rather than swallowing a real failure). The operator's
+formulation is the right one: **a gate that queues instead of failing is success manufactured
+by silence.**
+
+**How it differs, stated so the boundary stays legible.** Instances 1-15 are all in-process
+and all detectable by `scripts/swallow_detector.py`. This one is in CI orchestration, is
+invisible to that detector, and its "swallow" is the *absence* of an executor rather than the
+mishandling of a result. A detector for this class would have to compare every `runs-on:`
+label against the set of live registered runners - a different tool.
+
+**Evidence.**
+
+```
+compliance-check.yml:23   runs-on: [self-hosted, linux, x64, ivgs-infra]
+cd-deploy.yml:37,:69,:110 runs-on: [self-hosted, linux, x64, ivgs-infra]
+
+ivgs-github-runner   started  2026-05-26T22:41:36.358Z
+                     finished 2026-05-26T22:41:36.503Z   (0.145 s, exit 0, no logs)
+                     restarts 0   systemd unit: none
+```
+
+**Consequence, measured.** **87 days** in which spec section F.2's "fail build on any
+violation" gated nothing, while GitHub showed no failure - only a growing queue nobody read.
+All five commits of 2026-08-22 landed inside that window. Discovered only because run **#341**
+was noticed sitting queued; no tooling reported it.
+
+**Why it is the purest form of the class.** Every other instance at least *runs* and returns
+a wrong answer. This one produces no signal at all, and the absence of a red mark was read as
+a green one - by me, in this session, when I reported "CI green" without checking which jobs
+that green covered.
+
+**Disposition.** Compliance gate **fixed** - `runs-on: ubuntu-latest`, no runner needed, live
+on the next push. CD Deploy **disabled** (`workflow_dispatch` only, `if: false` on all three
+jobs). Runner revival deferred under **P1.4k** with two binding conditions. **Not closed as a
+class:** per this register's own rule, an instance is not closed without observed evidence
+that the failure now surfaces - that evidence is the next push producing a Compliance Audit
+run that actually **executes**. Until then this is fixed-pending-observation.
+
+**Open sibling, not fixed here.** Nothing checks that a workflow's `runs-on` labels match a
+live runner. If a future workflow targets `self-hosted` again, it will queue silently exactly
+as this one did, and nothing will say so.
 
 ---
 
