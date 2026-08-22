@@ -45,11 +45,13 @@ from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
 from providers import ensure_registered
 from shared.providers import TTSParams
+from providers._common import engine_model_id
 from shared.providers.binding import ModelBinding
 from shared.providers.factory import build_provider, get_binding
 from utils.audio_validator import AudioValidator
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation
+from utils.llm_binding import resolve_text_llm_binding
 from utils.media_converter import (
     AudioConverter,
     check_duplicate_asset,
@@ -153,10 +155,15 @@ async def _optimize_narration_text(
     scene: SceneVoiceoverInput,
     project_context: Dict[str, Any],
     vllm_client: VLLMClient,
+    text_binding: ModelBinding,
     config: WorkerConfig,
 ) -> str:
-    """Optimize narration text for TTS using vLLM."""
-    vllm_config = config.get_vllm_config_for_stage("image_generation")
+    """Optimize narration text for TTS using the bound chat LLM."""
+    # IVGS-0.2: this used to request the "image_generation" vLLM profile to do
+    # a text job. Only the sampling limits come from the profile now; which
+    # model runs and where is the binding's business. The profile is read from
+    # the transcript-refinement stage, the text stage this call borrows.
+    vllm_config = config.get_vllm_config_for_stage("transcript_refinement")
 
     system_template = _load_system_prompt()
     system_prompt = jinja_env.from_string(system_template).render(
@@ -176,11 +183,11 @@ async def _optimize_narration_text(
     response = await vllm_client.chat(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
-        model=vllm_config["model"],
-        base_url=vllm_config["base_url"],
+        model=engine_model_id(text_binding),
+        base_url=text_binding.endpoint,
         max_tokens=2048,
         temperature=0.3,
-        timeout=60,
+        timeout=vllm_config["timeout"],
     )
 
     return response.content.strip()
@@ -263,6 +270,7 @@ async def _process_single_voiceover(
     tts_provider: Any,
     tts_binding: ModelBinding,
     vllm_client: Optional[VLLMClient],
+    text_binding: Optional[ModelBinding],
     audio_validator: AudioValidator,
     audio_converter: AudioConverter,
     config: WorkerConfig,
@@ -280,7 +288,7 @@ async def _process_single_voiceover(
         narration_text = scene.narration_text
 
         # 1. Optionally optimize text for TTS
-        if task_input.optimize_text and vllm_client:
+        if task_input.optimize_text and vllm_client and text_binding:
             try:
                 log.info("optimizing_narration_text")
                 narration_text = await _optimize_narration_text(
@@ -291,6 +299,7 @@ async def _process_single_voiceover(
                         "target_audience": task_input.target_audience,
                     },
                     vllm_client=vllm_client,
+                    text_binding=text_binding,
                     config=config,
                 )
             except Exception as opt_err:
@@ -554,8 +563,20 @@ def generate_voiceover_task(
         audio_converter = AudioConverter()
 
         vllm_client = None
+        text_binding = None
         if task_input.optimize_text:
             vllm_client = VLLMClient(config.vllm)
+            # IVGS-0.2: the TTS binding is a Coqui/Kokoro voice and cannot
+            # serve a chat call. The narration optimiser borrows the
+            # transcript-refinement model — the text-rewriting stage.
+            text_binding = loop.run_until_complete(
+                resolve_text_llm_binding(
+                    "transcript_refinement",
+                    project_id=task_input.project_id,
+                    tier=task_input.tier,
+                    purpose="Stage 5 narration text optimiser",
+                )
+            )
 
         for scene in task_input.scenes:
             result = loop.run_until_complete(
@@ -565,6 +586,7 @@ def generate_voiceover_task(
                     tts_provider=tts_provider,
                     tts_binding=tts_binding,
                     vllm_client=vllm_client,
+                    text_binding=text_binding,
                     audio_validator=audio_validator,
                     audio_converter=audio_converter,
                     config=config,

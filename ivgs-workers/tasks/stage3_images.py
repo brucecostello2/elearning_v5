@@ -54,6 +54,7 @@ from models.task_result import (
 )
 from providers import ensure_registered
 from providers._common import engine_model_id
+from shared.providers.binding import ModelBinding
 from shared.providers.factory import build_provider, get_binding
 from utils.error_handler import (
     save_checkpoint,
@@ -61,6 +62,7 @@ from utils.error_handler import (
 )
 from utils.gpu_utils import acquire_gpu_reservation
 from utils.image_validator import ImageValidator
+from utils.llm_binding import resolve_text_llm_binding
 from utils.media_converter import (
     ImageConverter,
     check_duplicate_asset,
@@ -161,6 +163,7 @@ async def _generate_image_prompt(
     scene: SceneImageInput,
     project_context: Dict[str, Any],
     vllm_client: VLLMClient,
+    prompt_binding: ModelBinding,
     config: WorkerConfig,
 ) -> Tuple[str, str]:
     """
@@ -187,11 +190,13 @@ async def _generate_image_prompt(
         f"Duration: {scene.duration_seconds}s\n"
     )
 
+    # IVGS-0.2: the prompt writer runs on the AD-01 binding, not the env
+    # profile. Same pattern as Stage 2.
     response = await vllm_client.chat(
         system_prompt=system_prompt,
         user_prompt=user_prompt,
-        model=vllm_config["model"],
-        base_url=vllm_config["base_url"],
+        model=engine_model_id(prompt_binding),
+        base_url=prompt_binding.endpoint,
         max_tokens=512,
         temperature=0.7,
         timeout=vllm_config["timeout"],
@@ -299,6 +304,7 @@ async def _process_single_scene(
     scene: SceneImageInput,
     task_input: Stage3Input,
     vllm_client: VLLMClient,
+    prompt_binding: ModelBinding,
     image_validator: ImageValidator,
     config: WorkerConfig,
     *,
@@ -326,6 +332,7 @@ async def _process_single_scene(
                 "visual_style": task_input.visual_style,
             },
             vllm_client=vllm_client,
+            prompt_binding=prompt_binding,
             config=config,
         )
 
@@ -634,6 +641,18 @@ def generate_scene_images_task(
         # Prompt-generation LLM is constructed once; image/video providers are
         # resolved per scene inside _process_single_scene (ARCH-1 scene scope).
         vllm_client = VLLMClient(config.vllm)
+        # IVGS-0.2: the prompt writer is a chat-LLM call and needs a chat-LLM
+        # binding. The image binding is ComfyUI and cannot serve one, so the
+        # writer borrows the storyboard-generation model — the stage whose work
+        # (scene description -> creative visual text) it most resembles.
+        prompt_binding = loop.run_until_complete(
+            resolve_text_llm_binding(
+                "storyboard_generation",
+                project_id=task_input.project_id,
+                tier=task_input.tier,
+                purpose="Stage 3 image-prompt writer",
+            )
+        )
         image_validator = ImageValidator()
 
         for scene in task_input.scenes:
@@ -642,6 +661,7 @@ def generate_scene_images_task(
                     scene=scene,
                     task_input=task_input,
                     vllm_client=vllm_client,
+                    prompt_binding=prompt_binding,
                     image_validator=image_validator,
                     config=config,
                     project_id=task_input.project_id,

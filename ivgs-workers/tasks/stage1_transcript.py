@@ -52,6 +52,8 @@ from models.task_result import (
     TranscriptRefinementOutput,
 )
 from providers import ensure_registered
+from providers._common import engine_model_id
+from shared.providers.binding import ModelBinding
 from shared.providers.factory import build_provider, get_binding
 from utils.error_handler import (
     compute_backoff_delay,
@@ -311,6 +313,7 @@ async def _refine_single_transcript(
     user_prompt_template: str,
     job_context: Dict[str, Any],
     vllm_client: VLLMClient,
+    binding: ModelBinding,
     config: WorkerConfig,
 ) -> Tuple[Optional[RefinedTranscript], Optional[Dict[str, Any]]]:
     """
@@ -336,11 +339,15 @@ async def _refine_single_transcript(
     )
 
     try:
+        # IVGS-0.2: the AD-01 binding decides which model runs and where, not
+        # the env-config profile. Previously the call went to the env endpoint
+        # with the env model while output.model_used reported binding.name, so
+        # the run and the record disagreed. Same pattern as Stage 2.
         response = await vllm_client.chat(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            model=vllm_config["model"],
-            base_url=vllm_config["base_url"],
+            model=engine_model_id(binding),
+            base_url=binding.endpoint,
             max_tokens=vllm_config["max_tokens"],
             temperature=vllm_config["temperature"],
             timeout=vllm_config["timeout"],
@@ -569,6 +576,10 @@ async def _run_refinement(
     errors: List[Dict[str, Any]] = []
     total_input_tokens = 0
     total_output_tokens = 0
+    # IVGS-0.2: what the engine says it served, seeded with the engine-native
+    # handle of the model we asked for. Never binding.name on its own — that is
+    # the Model Store label, not evidence of what ran.
+    served_model = engine_model_id(binding)
 
     async with build_provider(binding) as vllm_client:
         for transcript in transcripts:
@@ -591,12 +602,14 @@ async def _run_refinement(
                     "total_transcripts": len(transcripts),
                 },
                 vllm_client=vllm_client,
+                binding=binding,
                 config=config,
             )
 
             if result:
                 refined_results.append(result)
                 meta = result.refinement_metadata
+                served_model = meta.get("model") or served_model
                 total_input_tokens += meta.get("prompt_tokens", 0)
                 total_output_tokens += meta.get("completion_tokens", 0)
 
@@ -655,7 +668,7 @@ async def _run_refinement(
         total_input_tokens=total_input_tokens,
         total_output_tokens=total_output_tokens,
         processing_time_seconds=round(elapsed, 3),
-        model_used=binding.name,
+        model_used=served_model,
         idempotency_hash=idempotency_hash,
         errors=errors,
         completed_at=datetime.now(timezone.utc),

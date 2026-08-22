@@ -37,6 +37,25 @@ from models.task_result import (
 )
 
 
+# WP-IVGS-0.2: _refine_single_transcript now takes the AD-01 binding, because
+# the vLLM call is made against the binding's endpoint and model rather than
+# the env-config profile.
+def _stub_binding():
+    import uuid
+
+    from shared.providers.binding import ModelBinding
+
+    return ModelBinding(
+        model_id=uuid.uuid4(),
+        name="test-model",
+        display_name="Test Model",
+        stage="transcript_refinement",
+        engine="vllm",
+        tier="prototype",
+        endpoint="http://localhost:8000",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -340,6 +359,7 @@ class TestVLLMInteraction:
                 user_prompt_template="Refine: {{ transcript_text }}",
                 job_context={"project_name": "Test"},
                 vllm_client=mock_client,
+                binding=_stub_binding(),
                 config=mock_cfg,
             )
 
@@ -379,6 +399,7 @@ class TestVLLMInteraction:
                 user_prompt_template="{{ transcript_text }}",
                 job_context={},
                 vllm_client=mock_client,
+                binding=_stub_binding(),
                 config=mock_cfg,
             )
 
@@ -417,6 +438,7 @@ class TestVLLMInteraction:
                 user_prompt_template="{{ transcript_text }}",
                 job_context={},
                 vllm_client=mock_client,
+                binding=_stub_binding(),
                 config=mock_cfg,
             )
 
