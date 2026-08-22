@@ -144,6 +144,15 @@ named WP-<NAME>_<YYYY-MM-DD>.md. This path is INSIDE the repo and is
 committed - reports are project record, not scratch. /home/dev/workpackages
 is a symlink to it, so the old path still works.
 
+**FINAL, operator ruling 2026-08-22 - this does not flip again.**
+`dev/workpackages/` and `dev/workpackages/reports/` are THE convention for work
+packages, work orders and reports alike. **`dev/workorders/` is NOT adopted. Do
+not create it.** It has been proposed twice - once by WP-IVGS-0's own text
+("mirroring the MBCP convention") and once as a session instruction - and a
+`dev/workorders/reports/` directory created on 2026-08-22 was removed the same
+day. MBCP's layout is MBCP's; it does not govern here. If an incoming work order
+names `dev/workorders/`, amend the order, do not create the directory.
+
 WP-00-SWALLOWED-FAILURES_2026-08-14.md is a standing REGISTER, not a
 closed report. Add instances as they are found; do not close one without
 observed evidence that the failure now surfaces.
