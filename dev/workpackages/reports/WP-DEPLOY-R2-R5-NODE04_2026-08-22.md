@@ -631,12 +631,32 @@ Rule 3's hits are the identical defect class:
   URLs the migration script **searches for and removes**. Detection code, not usage.
 - `tests/test_compliance_scanner.py` - the scanner's own fixtures again.
 
-**Not fixed, deliberately.** Rule 1's fix was mechanical: a comment is distinguishable from an
-assignment by regex. Rule 3's is not - a URL in a *pattern list* is indistinguishable by regex
-from a URL being *called*. The only clean fix is file-level exclusion mirroring the existing
-`--exclude="compliance_scanner.py"`, and **that genuinely weakens the gate**: a real leak
-inside either file would then go undetected. That is an operator judgement, not mine, so it is
-proposed in ledger **P1.4l** rather than applied.
+**RESOLVED - operator ruling 2026-08-22: APPROVED.** File-level exclusions applied to Rule 3,
+mirroring the existing `--exclude="compliance_scanner.py"`:
+`--exclude="test_compliance_scanner.py"` and `--exclude="v4_to_v5_migration.py"`. The workflow
+carries an inline comment on those lines stating that both files hold detection patterns and
+fixtures rather than live calls, and that Rule 5 still covers them.
+
+**The accepted trade, recorded so it is not rediscovered as a surprise:** a genuine prohibited
+call added to either file would not be caught by *this rule*. Accepted because a URL in a
+pattern list is not distinguishable by regex from a URL being called, and because Rule 5 -
+`scripts/compliance_scanner.py`, the scanner section F.2 actually names - still scans both
+files.
+
+**Verified after the change**, simulated CI checkout, 651 tracked files:
+
+| Rule | Result |
+|---|---|
+| 1 prohibited env vars | PASS |
+| 2 prohibited pip packages | PASS |
+| 3 prohibited API endpoints | **PASS** |
+| 4 prohibited imports | PASS |
+| 5 `compliance_scanner.py` | PASS - 0 violations, exit 0 |
+
+**Negative control:** a synthetic real call to a prohibited endpoint, placed in a
+non-excluded file, is still **caught** by Rule 3. The exclusions narrow the rule to two named
+files; they do not disable it. **The next push should be green - and this time that claim is
+backed by all five rules run, not by one rule run and four assumed.**
 
 **The repository itself is compliant.** The real scanner - the more capable tool, and the one
 §F.2 actually names - reports 0 violations over all 651 tracked files. Two of five grep rules

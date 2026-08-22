@@ -555,8 +555,9 @@ and whether repo settings permit fork workflows are all unknown from this box. *
 any siblings will stay queued until cancelled in the UI** — the fix stops new ones, it does
 not drain the existing queue.
 
-## P1.4l — Compliance Rule 1 fixed; Rule 3 has the SAME defect and is NOT yet fixed *(2026-08-22)*
-**Status:** Rule 1 **FIXED**. Rule 3 **OPEN — blocks a green run.** Node-20 deprecation **P3, noted**.
+## P1.4l — Compliance Rules 1 and 3 fixed; gate green — **RESOLVED** *(2026-08-22)*
+**Status:** **RESOLVED.** Rule 1 **FIXED**. Rule 3 **FIXED** by operator ruling 2026-08-22.
+All five rules verified passing against a simulated CI checkout. Node-20 deprecation **P3, noted**.
 
 ### Rule 1 — fixed
 The rule was a bare substring match, so it fired on the prohibition comments that *document*
@@ -586,12 +587,31 @@ the enforcement.** But the fix is a genuine judgement call rather than a mechani
 is recorded here rather than applied. A comment is distinguishable from an assignment by
 regex; a URL in a *pattern list* is not distinguishable from a URL being *called*.
 
-**Proposed fix, needing an operator ruling:** file-level exclusions mirroring the existing
-`--exclude="compliance_scanner.py"`, i.e. add `--exclude="test_compliance_scanner.py"` and
-`--exclude="v4_to_v5_migration.py"`, each with an inline reason. **This is a real weakening** —
-a genuine leak inside either file would then go undetected. The alternative is to move both
-pattern lists behind an obfuscation the rule cannot match, which trades a readable list for a
-gate-shaped contortion. **Operator decision.**
+**RESOLVED — operator ruling 2026-08-22: APPROVED.** File-level exclusions applied to Rule 3,
+mirroring the existing `--exclude="compliance_scanner.py"`:
+`--exclude="test_compliance_scanner.py"` and `--exclude="v4_to_v5_migration.py"`, with an
+inline comment in the workflow stating that both hold detection patterns and fixtures rather
+than live calls, and that Rule 5 still covers them.
+
+**The accepted trade, stated plainly so it is not rediscovered as a surprise:** a genuine
+prohibited call added to either file would not be caught by *this rule*. Accepted because a
+URL in a pattern list is not distinguishable by regex from a URL being called, and because
+**Rule 5 — `scripts/compliance_scanner.py`, the scanner §F.2 actually names — still scans both
+files** and reports 0 violations across all 651 tracked files.
+
+**Verified after the change**, against a simulated CI checkout built from tracked files only:
+
+| Rule | Result |
+|---|---|
+| 1 prohibited env vars | PASS |
+| 2 prohibited pip packages | PASS |
+| 3 prohibited API endpoints | **PASS** |
+| 4 prohibited imports | PASS |
+| 5 `compliance_scanner.py` | PASS — 0 violations, 651 files, exit 0 |
+
+**Negative control:** a synthetic `httpx.post("https://api.openai.com/...")` dropped into a
+non-excluded file is still **caught** by Rule 3. The exclusions narrow the rule to two named
+files; they do not disable it.
 
 **Reassurance on the substance:** `scripts/compliance_scanner.py`, the actual §F.2 scanner and
 the more capable tool, was run over the same simulated checkout and reports **0 violations
