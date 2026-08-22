@@ -23,7 +23,7 @@ from app.core.rbac import require_admin, require_operator_or_admin
 from app.models.user import User
 from app.schemas.base import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
-from app.services.project_service import ProjectService
+from app.services.project_service import DEFAULT_RENDER_TIER, ProjectService
 from app.services.asset_service import AssetService
 
 logger = logging.getLogger(__name__)
@@ -150,14 +150,27 @@ async def delete_project(
 )
 async def trigger_pipeline(
     project_id: UUID,
+    tier: str = Query(
+        default=DEFAULT_RENDER_TIER,
+        description=(
+            "AD-01 model-selection tier for this run: prototype or production. "
+            "Defaults to prototype."
+        ),
+    ),
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
     """Trigger pipeline execution from current state."""
     service = ProjectService(db)
     try:
-        result = await service.trigger_pipeline(project_id, current_user)
+        result = await service.trigger_pipeline(project_id, current_user, tier=tier)
     except ValueError as e:
+        # IVGS-0.3: an unknown tier is a bad request, not a state conflict.
+        if "render tier" in str(e):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+            )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": str(e)}},

@@ -11,7 +11,7 @@ import logging
 from typing import List
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
@@ -145,6 +145,13 @@ async def regenerate_scene(
 )
 async def approve_storyboard(
     project_id: UUID,
+    tier: str = Query(
+        default="prototype",
+        description=(
+            "AD-01 model-selection tier for the media-generation run: "
+            "prototype or production. Defaults to prototype."
+        ),
+    ),
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
@@ -153,7 +160,9 @@ async def approve_storyboard(
 
     service = ProjectService(db)
     try:
-        result = await service.approve_storyboard(project_id, current_user)
+        result = await service.approve_storyboard(
+            project_id, current_user, tier=tier,
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

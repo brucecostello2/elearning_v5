@@ -32,6 +32,29 @@ from shared.models.enums import ProjectState, PROJECT_STATE_TRANSITIONS, UserRol
 logger = logging.getLogger(__name__)
 
 
+# IVGS-0.3: the AD-01 selection tier a run renders at. It was never sent, so
+# PipelineJobContext.tier defaulted to "prototype" and every get_binding call in
+# every stage resolved prototype — the production tier was unreachable from the
+# API. Tier belongs to the RUN, not the project: a project is drafted many times
+# before it is rendered for real. The smallest honest version is therefore a
+# dispatch parameter defaulting to prototype, so the plumbing exists end to end
+# and the API route can surface a per-run choice later without a schema change.
+DEFAULT_RENDER_TIER = "prototype"
+VALID_RENDER_TIERS = ("prototype", "production")
+
+
+def _validate_tier(tier: Optional[str]) -> str:
+    """Return a known tier, or raise. Never silently coerce to prototype."""
+    if tier is None:
+        return DEFAULT_RENDER_TIER
+    if tier not in VALID_RENDER_TIERS:
+        raise ValueError(
+            f"Invalid render tier '{tier}'. "
+            f"Allowed: {', '.join(VALID_RENDER_TIERS)}"
+        )
+    return tier
+
+
 class ProjectService:
     """Business logic for project management."""
 
@@ -222,14 +245,17 @@ class ProjectService:
         self,
         project_id: UUID,
         current_user: User,
+        tier: str = DEFAULT_RENDER_TIER,
     ) -> Optional[ProjectResponse]:
         """
         Trigger pipeline execution from current state.
 
-        Stub: In Phase 5, this dispatches a Celery task.
-        For now, validates the project is in a triggerable state
-        and transitions to the next pipeline stage.
+        Validates the project is in a triggerable state, transitions to the
+        next pipeline stage and dispatches the worker orchestrator.
+
+        ``tier`` is the AD-01 selection tier this run renders at (IVGS-0.3).
         """
+        tier = _validate_tier(tier)
         project = await self._get_project_or_none(project_id, current_user)
         if project is None:
             return None
@@ -295,6 +321,7 @@ class ProjectService:
                 "target_audience": getattr(project, "target_audience", "") or "",
                 "language_code": getattr(project, "language_code", "en-US") or "en-US",
                 "priority": "normal",
+                "tier": tier,
                 "current_stage": "transcript_refinement",
             }
             # IVGS-0.1: the project's real runtime budget must reach the stage
@@ -323,6 +350,7 @@ class ProjectService:
         self,
         project_id: UUID,
         current_user: User,
+        tier: str = DEFAULT_RENDER_TIER,
     ) -> Optional[ProjectResponse]:
         """
         P1.5 item 2 - approve the storyboard and start media generation.
@@ -409,6 +437,7 @@ class ProjectService:
             "target_audience": getattr(project, "target_audience", "") or "general",
             "language_code": getattr(project, "language_code", "en-US") or "en-US",
             "priority": "normal",
+            "tier": _validate_tier(tier),
             "scenes": scenes,
         }
         _max_runtime = getattr(project, "max_runtime_seconds", None)

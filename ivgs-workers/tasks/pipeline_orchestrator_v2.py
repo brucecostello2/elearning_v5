@@ -446,6 +446,7 @@ def dispatch_media_generation(
         "target_audience": _resume_context.target_audience or "general",
         "language_code": _resume_context.language_code,
         "max_runtime_seconds": _resume_context.max_runtime_seconds,
+        "tier": _resume_context.tier,
     }
 
     # Dispatch image generation
@@ -792,6 +793,10 @@ def _build_stage_input(
         "project_description": context.get("project_description", ""),
         "target_audience": context.get("target_audience", "") or "general",
         "max_runtime_seconds": context.get("max_runtime_seconds", 600),
+        # IVGS-0.3: the flat-input stages (3, 5, 6) read tier off the top level.
+        # Without it every get_binding call resolved prototype regardless of
+        # what the run asked for.
+        "tier": context.get("tier", "prototype"),
     }
 
     if stage == PipelineStage.TRANSCRIPT_REFINEMENT.value:
