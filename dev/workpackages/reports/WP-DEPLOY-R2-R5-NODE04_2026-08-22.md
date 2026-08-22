@@ -345,6 +345,39 @@ and MANIFEST.txt is an operational record. Removing a line from it, or changing 
 script's registration behaviour, is beyond what this package was asked to do. Both are
 one-line changes and are offered.
 
+### RESOLVED 2026-08-22 - operator ruled yes to both
+
+**Script.** The MANIFEST append now sits inside the save branch, so registration records
+*saves, not invocations*. Gated four ways before commit, against a throwaway store
+(`IVGS_IMAGE_ARTIFACTS`) so the real inventory was never a test subject:
+
+| Path | Expected | Result |
+|---|---|---|
+| Fresh save | registers | MANIFEST 1 line |
+| Re-run, artifact present | does NOT register | MANIFEST still 1 line |
+| Re-run, checksum file | untouched | mtime unchanged |
+| Unprivileged run | fails fast, before `docker save` | `ERROR: ... Re-run with sudo.` |
+
+**Wider than the literal instruction, flagged for objection.** `SIZE` and `SHA` exist only
+to build the MANIFEST line, so moving that line moved `sha256sum` with it. The side effect
+is that a re-run no longer recomputes and **overwrites** `$OUT.sha256`. That overwrite was a
+latent hazard in its own right: had an artifact silently corrupted on disk, the next re-run
+would have replaced the good checksum with one matching the corrupt bytes, destroying the
+only evidence of the corruption. The skip branch now prints the stored checksum and the
+`sha256sum -c` command to verify it, and warns if the checksum file is missing for an
+artifact that is present. If the operator would rather the re-hash stayed, it is a two-line
+revert.
+
+**Inventory.** The duplicate `19:44:17` line was removed from
+`/mnt/ivgs-shared/image-artifacts/MANIFEST.txt` on 2026-08-22 per operator ruling - a
+correction to an inventory, not a rewrite of history. Method: back up first to
+`MANIFEST.txt.bak-pre-dedupe-20260822` (kept in place, in the store, as evidence), remove by
+exact-string match with an assertion that exactly one line matched and exactly one line was
+lost, then `diff` against the backup to prove nothing else moved. `diff` output was the
+single deletion `8d7`. The `19:26:31` entry - the real save - stands. All seven banked
+artifacts now carry exactly one MANIFEST entry each, confirmed by
+`awk '{print $2}' MANIFEST.txt | sort | uniq -c`.
+
 ## 11.3 Does `.7` cover the artifact store? YES - verified both ways
 
 **By configuration:** `scripts/asset_backup.sh:71` sets

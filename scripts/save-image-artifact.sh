@@ -30,17 +30,27 @@ else
 fi
 OUT="$STORE/$NAME.$EXT"
 
+# Registration happens ONLY on an actual save. Before 2026-08-22 the MANIFEST
+# append sat outside this guard, so every re-run against an already-banked image
+# added a duplicate line -- same path, same digest, new timestamp -- which made
+# MANIFEST.txt a poor inventory over time. Ruling of 2026-08-22, P1.4j.
 if [ -s "$OUT" ]; then
   echo "artifact already present, skipping save: $OUT"
+  echo "not re-registering: MANIFEST.txt records saves, not invocations"
+  if [ -s "$OUT.sha256" ]; then
+    echo "existing checksum: $(cut -d' ' -f1 "$OUT.sha256")"
+    echo "to verify it: ( cd $STORE && sha256sum -c $(basename "$OUT").sha256 )"
+  else
+    echo "WARNING: $OUT.sha256 is missing for an artifact that is present" >&2
+  fi
 else
   echo "saving $REF -> $OUT"
   docker save "$REF" | $COMP > "$OUT"
+  sha256sum "$OUT" | tee "$OUT.sha256"
+  SIZE="$(du -h "$OUT" | cut -f1)"
+  SHA="$(cut -d' ' -f1 "$OUT.sha256")"
+  echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)  $REF  $OUT  $SIZE  sha256:$SHA" >> "$STORE/MANIFEST.txt"
+  echo "registered in $STORE/MANIFEST.txt"
 fi
 
-sha256sum "$OUT" | tee "$OUT.sha256"
-SIZE="$(du -h "$OUT" | cut -f1)"
-SHA="$(cut -d' ' -f1 "$OUT.sha256")"
-echo "$(date -u +%Y-%m-%dT%H:%M:%SZ)  $REF  $OUT  $SIZE  sha256:$SHA" >> "$STORE/MANIFEST.txt"
-
-echo "registered in $STORE/MANIFEST.txt"
 echo "restore: $DECOMP $OUT | docker load"
