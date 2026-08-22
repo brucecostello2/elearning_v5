@@ -37,7 +37,7 @@ because of this pattern.
 | 9 | `shared/redis_client.py` — 8 methods | Every Redis error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
-| 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **Fixed** for the compliance gate 2026-08-22 (moved to `ubuntu-latest`); CD workflow disabled — P1.4k. **Variant instance, see note** |
+| 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **CLOSED 2026-08-22** — the gate observably executed and failed loudly. Evidence below. **Variant instance, see note** |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -517,12 +517,20 @@ a wrong answer. This one produces no signal at all, and the absence of a red mar
 a green one - by me, in this session, when I reported "CI green" without checking which jobs
 that green covered.
 
-**Disposition.** Compliance gate **fixed** - `runs-on: ubuntu-latest`, no runner needed, live
-on the next push. CD Deploy **disabled** (`workflow_dispatch` only, `if: false` on all three
-jobs). Runner revival deferred under **P1.4k** with two binding conditions. **Not closed as a
-class:** per this register's own rule, an instance is not closed without observed evidence
-that the failure now surfaces - that evidence is the next push producing a Compliance Audit
-run that actually **executes**. Until then this is fixed-pending-observation.
+**Disposition: CLOSED 2026-08-22.** Compliance gate moved to `runs-on: ubuntu-latest`; CD
+Deploy disabled (`workflow_dispatch` only, `if: false` on all three jobs); runner revival
+deferred under **P1.4k** with two binding conditions.
+
+**The closing evidence, which is the point of this register's closing rule.** The next push
+produced a Compliance Audit run that **executed and failed RED**. That is exactly the
+observation required: the gate no longer queues, it runs, and when it finds something it says
+so loudly. A red run is the proof the instance is fixed - a green one would have been weaker
+evidence, since green is also what silence looks like from a distance.
+
+Note that the failure was a **false positive** - the rule fired on the prohibition comments
+documenting the policy, fixed separately under **P1.4l**. That does not weaken the closure
+here. This instance was about a gate that could not report; it now reports. Whether it reports
+*accurately* is a different defect with its own ledger entry.
 
 **Open sibling, not fixed here.** Nothing checks that a workflow's `runs-on` labels match a
 live runner. If a future workflow targets `self-hosted` again, it will queue silently exactly

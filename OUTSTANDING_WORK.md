@@ -555,6 +555,56 @@ and whether repo settings permit fork workflows are all unknown from this box. *
 any siblings will stay queued until cancelled in the UI** — the fix stops new ones, it does
 not drain the existing queue.
 
+## P1.4l — Compliance Rule 1 fixed; Rule 3 has the SAME defect and is NOT yet fixed *(2026-08-22)*
+**Status:** Rule 1 **FIXED**. Rule 3 **OPEN — blocks a green run.** Node-20 deprecation **P3, noted**.
+
+### Rule 1 — fixed
+The rule was a bare substring match, so it fired on the prohibition comments that *document*
+the policy — `# OPENAI_API_KEY — NEVER` in `.env.template` and all six
+`.env.node0X.template` files — and on the scanner's own test fixtures in
+`tests/test_compliance_scanner.py`. **Operator ruling: fix the rule, not the sources** —
+those comments are the policy's documentation and must not have to hide from its enforcement.
+
+Now anchored: `^[[:space:]]*(VAR1|...)[[:space:]]*[=:]` — start of line, optional whitespace,
+name, optional whitespace, `=` or `:`. Gated both ways: **zero** hits across a simulated CI
+checkout (651 tracked files), and it still catches a synthetic real assignment at column 0,
+an indented one, and the YAML `KEY: value` form. The `[=:]` alternation closes a real gap —
+this rule scans `*.yml`/`*.yaml`, where a leak reads `OPENAI_API_KEY: sk-...` with a colon,
+which an `=`-only anchor would miss entirely.
+
+### Rule 3 — the same defect, newly found, NOT fixed
+**Each rule `exit 1`s on its first hit, so the job stopped at Rule 1 and Rules 2-5 never
+ran.** Fixing Rule 1 does not produce a green run; it reveals Rule 3, which fails on:
+
+| File | Lines | What it actually is |
+|---|---|---|
+| `ivgs-infra/scripts/v4_to_v5_migration.py:52-56` | 3 | `CLOUD_ASSET_PATTERNS` — the list of cloud URLs the migration script **searches for and removes**. Detection code, not usage |
+| `tests/test_compliance_scanner.py` | 4 | The scanner's own test fixtures |
+
+Identical class to Rule 1: **the enforcement's own references to the thing it forbids trip
+the enforcement.** But the fix is a genuine judgement call rather than a mechanical one, so it
+is recorded here rather than applied. A comment is distinguishable from an assignment by
+regex; a URL in a *pattern list* is not distinguishable from a URL being *called*.
+
+**Proposed fix, needing an operator ruling:** file-level exclusions mirroring the existing
+`--exclude="compliance_scanner.py"`, i.e. add `--exclude="test_compliance_scanner.py"` and
+`--exclude="v4_to_v5_migration.py"`, each with an inline reason. **This is a real weakening** —
+a genuine leak inside either file would then go undetected. The alternative is to move both
+pattern lists behind an obfuscation the rule cannot match, which trades a readable list for a
+gate-shaped contortion. **Operator decision.**
+
+**Reassurance on the substance:** `scripts/compliance_scanner.py`, the actual §F.2 scanner and
+the more capable tool, was run over the same simulated checkout and reports **0 violations
+across 651 files, exit 0**. Rules 2 and 4 also pass. The repository is compliant; only two of
+the five grep rules mis-classify their own enforcement code.
+
+### P3 — actions run on deprecated Node 20
+`actions/checkout@v4` and `actions/setup-python@v5` execute on the Node 20 runtime, which
+GitHub has scheduled for deprecation; runs emit a warning. Cosmetic today, breaking whenever
+GitHub retires the runtime. **Fix when convenient:** bump to whatever major currently ships a
+Node 24 runtime. Not urgent, not touched here — it is a warning, not a failure, and bumping
+action majors unreviewed is how unrelated breakage arrives.
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.

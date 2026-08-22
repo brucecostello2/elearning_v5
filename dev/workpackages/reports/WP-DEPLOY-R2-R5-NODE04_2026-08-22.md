@@ -569,3 +569,81 @@ runs, they do not drain the existing queue. Whether the compliance gate now genu
 is also unknown until the next push actually runs it - and it may well fail, since it has
 gated nothing for 87 days and may have real violations waiting behind it.
 
+---
+
+# 14. The gate executed RED - instance 16 closes, and a second rule is found
+
+## 14.1 Instance 16 CLOSED
+The Compliance Audit ran and failed. Per WP-00's own closing rule - no instance closes without
+observed evidence the failure now surfaces - **that red run is the evidence**, and a green one
+would have been weaker: green is also what silence looks like from a distance.
+
+## 14.2 Rule 1 fixed - gated both ways
+Anchored to `^[[:space:]]*(VAR|...)[[:space:]]*[=:]`.
+
+| Test | Expected | Result |
+|---|---|---|
+| Simulated CI checkout, 651 tracked files | zero hits | **0** |
+| Synthetic real assignment, `OPENAI_API_KEY` at column 0 with a key-shaped value | caught | caught |
+| Same, indented three spaces, `ELEVENLABS_API_KEY` | caught | caught |
+| YAML colon form, `ANTHROPIC_API_KEY` indented six spaces | caught | caught |
+| `# OPENAI_API_KEY - NEVER` (x31 across 7 tracked template files) | ignored | ignored |
+| The quoted test fixtures in `tests/test_compliance_scanner.py` | ignored | ignored |
+
+`[=:]` rather than `=` alone because this rule scans `*.yml`/`*.yaml`, where a real leak reads
+`OPENAI_API_KEY: sk-...`. An `=`-only anchor would have missed that entirely - the old
+substring pattern caught it only by accident.
+
+## 14.3 Two corrections to the ruling's premise
+
+**a. My own measurement was wrong first, and I nearly shipped on it.** My initial local
+reproduction found 9 hits and none in the `.env.node0X.template` files. That was an artifact
+of **this shell**: `grep` here is a Claude Code function wrapping `ugrep --ignore-files`,
+which honours gitignore-style rules; GNU grep on the runner does not. Re-run with
+`command grep` the picture changed completely. **Any local reproduction of a CI grep in this
+environment must use `command grep`.** Recorded because it would silently mislead the next
+session the same way.
+
+**b. The count and location differ from the ruling's description.** The ruling said ten hits
+in `.env.node0X.template`. Measured over a simulated CI checkout: **33 hits across 7 tracked
+files** - all six `.env.node0X.template` (4-5 each), `.env.template` (4), and
+`ivgs-infra/.env.node02.example` (4) - plus 5 quoted fixtures in
+`tests/test_compliance_scanner.py`. The *substance* of the ruling was exactly right: every
+one is a prohibition comment or a test fixture, and **no real prohibited assignment exists
+anywhere in the tree**. Only the tally differed.
+
+## 14.4 The next push will still be RED - at Rule 3
+
+**Each rule `exit 1`s on its first hit, so the job stopped at Rule 1 and Rules 2-5 never ran.**
+That is why only Rule 1's hits were visible. Running all five against the simulated checkout:
+
+| Rule | Result |
+|---|---|
+| 1 prohibited env vars | **PASS** (after the fix) |
+| 2 prohibited pip packages | PASS |
+| **3 prohibited API endpoints** | **FAIL - 7 hits** |
+| 4 prohibited imports | PASS |
+| 5 `scripts/compliance_scanner.py` | **PASS - 0 violations, 651 files, exit 0** |
+
+Rule 3's hits are the identical defect class:
+
+- `ivgs-infra/scripts/v4_to_v5_migration.py:52-56` - `CLOUD_ASSET_PATTERNS`, the list of cloud
+  URLs the migration script **searches for and removes**. Detection code, not usage.
+- `tests/test_compliance_scanner.py` - the scanner's own fixtures again.
+
+**Not fixed, deliberately.** Rule 1's fix was mechanical: a comment is distinguishable from an
+assignment by regex. Rule 3's is not - a URL in a *pattern list* is indistinguishable by regex
+from a URL being *called*. The only clean fix is file-level exclusion mirroring the existing
+`--exclude="compliance_scanner.py"`, and **that genuinely weakens the gate**: a real leak
+inside either file would then go undetected. That is an operator judgement, not mine, so it is
+proposed in ledger **P1.4l** rather than applied.
+
+**The repository itself is compliant.** The real scanner - the more capable tool, and the one
+§F.2 actually names - reports 0 violations over all 651 tracked files. Two of five grep rules
+mis-classify their own enforcement code; nothing prohibited is present.
+
+
+> **Note on this section.** The synthetic leak values used in the tests above are described
+> rather than quoted. They were fake, but a report is the wrong place for key-shaped literals -
+> and this package's own commit gate refused the file until they were removed, which is the
+> gate working as intended on its author.
