@@ -1,6 +1,10 @@
 import useSWR, { type KeyedMutator } from "swr";
 import { apiClient } from "@/lib/api-client";
-import type { Project, LanguageVariant } from "@/types/api";
+import type {
+  Project,
+  LanguageVariant,
+  ProjectCreatePayload,
+} from "@/types/api";
 
 /**
  * Projects data fetching and mutations hook.
@@ -9,13 +13,22 @@ import type { Project, LanguageVariant } from "@/types/api";
  * When called with an ID, fetches a single project with full details.
  */
 
+/** Asset types the New Project form uploads against a project. */
+export type ProjectAssetType = "reference_clip" | "document";
+
 interface UseProjectsReturn {
   projects: Project[] | undefined;
   project: Project | undefined;
   isLoading: boolean;
   error: Error | undefined;
   mutate: KeyedMutator<Project[] | Project>;
-  createProject: (formData: FormData) => Promise<any>;
+  createProject: (payload: ProjectCreatePayload) => Promise<Project>;
+  uploadProjectAsset: (
+    projectId: string,
+    file: File,
+    assetType: ProjectAssetType
+  ) => Promise<{ id: string }>;
+  uploadTranscripts: (projectId: string, files: File[]) => Promise<unknown>;
   addLanguage: (languageCode: string) => Promise<any>;
   retryLanguage: (languageCode: string) => Promise<void>;
 }
@@ -69,15 +82,61 @@ export function useProjects(projectId?: string): UseProjectsReturn {
   );
 
   /**
-   * Create a new project via multipart form upload.
+   * Create a new project.
+   *
+   * IVGS-0.5: this used to POST multipart/form-data to a JSON Pydantic
+   * endpoint, through an apiClient.post that JSON.stringify's whatever it is
+   * given — so the body arrived as "{}" and the request could never succeed.
+   * POST /api/v1/projects takes ProjectCreate: name, description,
+   * max_runtime_seconds, target_languages. Files are separate uploads.
    */
-  const createProject = async (formData: FormData): Promise<any> => {
-    const response = await apiClient.post<{ data: Project }>(
+  const createProject = async (
+    payload: ProjectCreatePayload
+  ): Promise<Project> => {
+    const response = await apiClient.post<Project>(
       "/api/v1/projects",
-      formData,
-      { headers: { "Content-Type": "multipart/form-data" } }
+      payload
     );
     listMutate();
+    return response.data;
+  };
+
+  /**
+   * Upload one file against a project through the existing assets route.
+   *
+   * IVGS-0.5: the talking-head clip goes up as `reference_clip`, which is what
+   * the orchestrator looks for when it builds the Stage 6 input
+   * (_fetch_reference_clip_id queries asset_type=reference_clip).
+   */
+  const uploadProjectAsset = async (
+    projectId: string,
+    file: File,
+    assetType: ProjectAssetType
+  ): Promise<{ id: string }> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("asset_type", assetType);
+    const response = await apiClient.upload<{ id: string }>(
+      `/api/v1/projects/${projectId}/assets/upload`,
+      formData
+    );
+    return response.data;
+  };
+
+  /**
+   * Upload transcript files. The pipeline refuses to start without at least
+   * one ("Cannot trigger pipeline: no transcripts uploaded").
+   */
+  const uploadTranscripts = async (
+    projectId: string,
+    files: File[]
+  ): Promise<unknown> => {
+    const formData = new FormData();
+    files.forEach((f) => formData.append("files", f));
+    const response = await apiClient.upload<unknown>(
+      `/api/v1/projects/${projectId}/transcripts/upload`,
+      formData
+    );
     return response.data;
   };
 
@@ -116,6 +175,8 @@ export function useProjects(projectId?: string): UseProjectsReturn {
       Project[] | Project
     >,
     createProject,
+    uploadProjectAsset,
+    uploadTranscripts,
     addLanguage,
     retryLanguage,
   };

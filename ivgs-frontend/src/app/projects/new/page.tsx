@@ -23,18 +23,24 @@ import type { ProjectCreatePayload } from "@/types/api";
  *   - Target Languages: multi-select dropdown, optional at creation
  */
 
-/** Available target languages per §17 Localization */
+/**
+ * Available target languages per §17 Localization.
+ *
+ * IVGS-0.5: these were bare ISO-639 codes ("en", "es", ...). The server's
+ * validator (schemas/project.py ProjectCreate.validate_languages) accepts only
+ * BCP-47 codes, so every selection was rejected. This list is now exactly the
+ * server's allow-list — adding a language here without adding it there will
+ * fail at create time.
+ */
 const TARGET_LANGUAGES: { code: string; label: string }[] = [
-  { code: "en", label: "English" },
-  { code: "es", label: "Spanish" },
-  { code: "fr", label: "French" },
-  { code: "de", label: "German" },
-  { code: "pt", label: "Portuguese" },
-  { code: "ja", label: "Japanese" },
-  { code: "zh", label: "Chinese (Mandarin)" },
-  { code: "ko", label: "Korean" },
-  { code: "ar", label: "Arabic" },
-  { code: "hi", label: "Hindi" },
+  { code: "en-US", label: "English (US)" },
+  { code: "en-GB", label: "English (UK)" },
+  { code: "es-ES", label: "Spanish" },
+  { code: "fr-FR", label: "French" },
+  { code: "de-DE", label: "German" },
+  { code: "zh-CN", label: "Chinese (Mandarin)" },
+  { code: "ja-JP", label: "Japanese" },
+  { code: "ar-SA", label: "Arabic" },
 ];
 
 /** Maximum talking head file size: 500 MB per Table 8-1 */
@@ -66,7 +72,8 @@ interface FormErrors {
 export default function NewProjectPage(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
-  const { createProject } = useProjects();
+  const { createProject, uploadProjectAsset, uploadTranscripts } =
+    useProjects();
 
   // ── Form Fields ─────────────────────────────────────────────────────
   const [name, setName] = useState<string>("");
@@ -201,7 +208,8 @@ export default function NewProjectPage(): React.ReactElement {
   }, []);
 
   /**
-   * Submit the form: build FormData, POST to /api/v1/projects.
+   * Submit the form: create the project as JSON, then attach the files
+   * through the routes that exist (IVGS-0.5).
    */
   const handleSubmit = useCallback(
     async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
@@ -212,34 +220,45 @@ export default function NewProjectPage(): React.ReactElement {
       setErrors({});
 
       try {
-        const formData = new FormData();
-        formData.append("name", name.trim());
-        formData.append("description", description.trim());
-        formData.append(
-          "max_runtime_seconds",
-          String(runtimeMinutes * 60 + runtimeSeconds)
-        );
-
-        if (talkingHeadFile) {
-          formData.append("talking_head_clip", talkingHeadFile);
+        // IVGS-0.5: create the project from the four fields the endpoint
+        // actually takes, then attach the files through the routes that exist.
+        // The old single multipart POST could never succeed: the endpoint is a
+        // JSON Pydantic route and has no handler for any of the file fields.
+        const payload: ProjectCreatePayload = {
+          name: name.trim(),
+          max_runtime_seconds: runtimeMinutes * 60 + runtimeSeconds,
+        };
+        if (description.trim()) {
+          payload.description = description.trim();
         }
-
-        transcriptFiles.forEach((tf, idx) => {
-          formData.append("transcripts", tf.file);
-          formData.append("transcript_order", String(idx));
-        });
-
-        if (storyboardFile) {
-          formData.append("existing_storyboard", storyboardFile);
-        }
-
         if (selectedLanguages.length > 0) {
-          formData.append("target_languages", JSON.stringify(selectedLanguages));
+          payload.target_languages = selectedLanguages;
         }
 
-        const project = await createProject(formData);
+        const project = await createProject(payload);
 
-        setToastMessage("Project created successfully!");
+        // The talking-head clip goes up as `reference_clip` — the asset type
+        // the pipeline reads when it builds the Stage 6 input.
+        if (talkingHeadFile) {
+          await uploadProjectAsset(project.id, talkingHeadFile, "reference_clip");
+        }
+
+        // Transcripts are required before the pipeline can be triggered.
+        if (transcriptFiles.length > 0) {
+          await uploadTranscripts(
+            project.id,
+            transcriptFiles.map((tf) => tf.file)
+          );
+        }
+
+        // The storyboard is stored as a project document. Nothing on the
+        // server reads it yet — see the note beside the field. It is kept
+        // rather than dropped so the user's file is not silently discarded.
+        if (storyboardFile) {
+          await uploadProjectAsset(project.id, storyboardFile, "document");
+        }
+
+        setToastMessage("Project created.");
         setToastType("success");
         setShowToast(true);
 
@@ -271,6 +290,8 @@ export default function NewProjectPage(): React.ReactElement {
       storyboardFile,
       selectedLanguages,
       createProject,
+      uploadProjectAsset,
+      uploadTranscripts,
       router,
     ]
   );
@@ -518,6 +539,11 @@ export default function NewProjectPage(): React.ReactElement {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
             Existing Storyboard (PDF/DOCX, optional)
           </label>
+          <p className="text-gray-500 dark:text-gray-400 text-xs mb-2">
+            Saved with the project — not yet used. Nothing in the pipeline reads
+            this file today; it is kept so you do not have to upload it again
+            when support arrives.
+          </p>
           <AssetUploader
             accept={STORYBOARD_ACCEPT}
             onFileSelect={(files) => {
