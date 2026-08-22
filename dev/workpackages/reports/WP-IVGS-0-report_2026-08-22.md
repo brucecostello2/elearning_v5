@@ -1,8 +1,10 @@
 # WP-IVGS-0 — Five defect fixes that gate everything else
 
 **Report date:** 2026-08-22 · **Node:** node-01 (192.168.1.90) · **Branch:** `main`
-**Start HEAD:** `4c21460` (clean tree, `HEAD == origin/main`) · **End HEAD:** `9262944`
-**Status:** all five defects fixed, five commits, **HELD — nothing pushed, nothing deployed, no running service touched.**
+**Start HEAD:** `4c21460` (clean tree, `HEAD == origin/main`) · **End HEAD:** see §8
+**Status:** all five defects fixed, plus the seven operator rulings of 2026-08-22 actioned. **HELD — nothing pushed, nothing deployed, no running service modified.**
+
+> **Updated in place 2026-08-22 (second pass)** after the operator's rulings on the seven decisions in §6. New material: §6 now records each ruling and what was done; §5 findings F6 and F9 are **fixed**; a new finding **F13** — the pre-deploy gate the operator asked for — reports that the Model Store **cannot bind eight of the nine pipeline stages**, so Stage 1 cannot run today for reasons entirely independent of this package.
 
 Path and naming per CLAUDE.md §12 (`dev/workpackages/reports/`, amended 2026-08-22). No `dev/workorders/` directory was created.
 
@@ -15,8 +17,9 @@ Path and naming per CLAUDE.md §12 (`dev/workpackages/reports/`, amended 2026-08
 3. [Per-defect verdicts](#verdicts)
 4. [What was NOT verified](#not-verified)
 5. [Found along the way — reported, not fixed](#found)
-6. [Decisions needed from the operator](#decisions)
-7. [Commits](#commits)
+6. [Operator rulings, and what was done](#decisions)
+7. [Pre-deploy gate: the Model Store](#modelstore)
+8. [Commits](#commits)
 
 ---
 
@@ -64,8 +67,8 @@ The single baseline API failure is `ivgs-api/tests/test_health.py::test_health_c
 
 | Gate | After | Delta |
 |---|---|---|
-| API | **1 failed, 620 passed** | +42 passed, **same single failure** |
-| Workers (repo config, no PYTHONPATH needed) | **14 failed, 120 passed, 22 errors, 7 collection errors** | +29 passed, **failure and error sets byte-identical to baseline** |
+| API | **1 failed, 624 passed** | +46 passed, **same single failure** |
+| Workers (repo config, no PYTHONPATH needed) | **14 failed, 128 passed, 22 errors, 7 collection errors** | +37 passed, **failure and error sets byte-identical to baseline** |
 | Root `tests/` | unchanged — still uncollectable | not in scope |
 | Frontend `tsc --noEmit` | **exit 0** | unchanged |
 | Compliance | **PASSED, 0 violations** | unchanged |
@@ -213,8 +216,8 @@ Stated plainly, because a claim without evidence is a defect in the report.
 1. **Nothing was run against a live pipeline.** No Celery task was dispatched to a real worker, no vLLM endpoint was called, no image or audio was generated. Every worker-side claim rests on unit and integration tests with the HTTP client, the binding resolver, or Celery's `send_task` stubbed. **Observed working means observed in tests, not observed in production.**
 2. **No browser was driven and no screenshots exist for IVGS-0.5.** The frontend change is verified by `tsc --noEmit`, by source-level cross-checks, and by an API-level replay of the request sequence — not by a human clicking the form. Whether the page *renders and behaves* correctly is unverified.
 3. **The Redis job-context store (IVGS-0.1) was never exercised against a real Redis.** `_store_job_context` / `_get_job_context` are patched in the tests. The claim that a Redis write failure fails the dispatch loudly rests on reading `config.py:293-295` (redis_url is the broker), not on an observed outage.
-4. **The borrowed bindings (IVGS-0.2) were never resolved against the real Model Store.** `get_binding` is stubbed throughout. Whether a `storyboard_generation` or `transcript_refinement` binding actually resolves on this fleet today is unverified — the Model Store's seeded state was not inspected. If either is absent, Stage 3's prompt writer and Stage 5's optimiser will now raise where they previously fell back to the env profile. **This is a deliberate behaviour change and the operator should be aware of it before deploy.**
-5. **IVGS-0.3's tier was never carried through a real `get_binding` to a real production-tier model.** The test asserts `get_binding` receives `tier="production"`; whether a production-tier model exists for any stage in the Model Store was not checked.
+4. **The borrowed bindings (IVGS-0.2) were never resolved against a real `get_binding` call.** It is stubbed throughout the tests. *Updated second pass:* the Model Store's state **has** now been inspected read-only under ruling 3, and **neither `storyboard_generation` nor `transcript_refinement` resolves** — see §7. So the deliberate behaviour change flagged here is not hypothetical: Stage 3's prompt writer will raise where it previously fell through to the env profile. What remains unverified is the *runtime* behaviour — no task was executed to observe it.
+5. **IVGS-0.3's tier was never carried through a real `get_binding` to a real production-tier model.** The test asserts `get_binding` receives `tier="production"`. *Updated second pass:* the Model Store was checked (§7) and **only `talking_head` resolves at either tier**, so no production-tier render is reachable for any other stage regardless of what the dispatch now carries. The plumbing is correct and tested; there is nothing for it to reach yet.
 6. **The `?tier=` query parameters were not exercised over HTTP.** They were verified at the service layer; the route wiring is verified only by `tsc`-equivalent reasoning and the API test suite passing unchanged.
 7. **Root `tests/` (e2e, integration, smoke, providers, spec_compliance) never ran** — the directory is uncollectable at baseline (`aiosqlite` missing) and remains so. Nothing in this package changed that, and nothing in this package is covered by it.
 8. **7 worker test files remain uncollectable** and 22 worker tests remain in error, all pre-existing. Those code paths were not exercised.
@@ -235,42 +238,151 @@ Stated plainly, because a claim without evidence is a defect in the report.
 
 **F5 — `test_stage1.py` imports the wrong `VLLMResponse`.** It imports from `models.task_result` (the pydantic model, which has **no** `.content` or `.finish_reason` property) rather than `clients.vllm_client` (the dataclass, which has both). Two tests have therefore been failing on `AttributeError: 'VLLMResponse' object has no attribute 'content'` — not on anything about Stage 1. Left failing so the baseline comparison stays honest. One-line fix when someone wants it.
 
-> **F6 — SERIOUS: IVGS-0.4's fix alone does not make seeded DB prompts work.**
-> The seeded templates and the workers disagree on variable names. `ivgs-api/seed/default_prompts/transcript_refinement.j2` uses `{{ project_title }}`, `{{ max_duration_seconds }}` and **`{{ narration_text }}`**. `stage1_transcript._render_user_prompt` binds `project_title` ✓, `max_duration_seconds` ✓ — and **`transcript_text`**, not `narration_text`. `storyboard_generation.j2` has the identical mismatch against `stage2_storyboard._render_user_prompt`, which binds `combined_transcript`.
+> **F6 — SERIOUS: IVGS-0.4's fix alone did not make seeded DB prompts work.** · **FIXED** · `cf3d59b`
+> The seeded templates and the workers disagreed on variable names.
+> `ivgs-api/seed/default_prompts/transcript_refinement.j2` used `{{ project_title }}`,
+> `{{ max_duration_seconds }}` and **`{{ narration_text }}`**. `stage1_transcript._render_user_prompt`
+> binds `project_title` ✓, `max_duration_seconds` ✓ — and **`transcript_text`**, not `narration_text`.
+> `storyboard_generation.j2` had the identical mismatch against `stage2_storyboard._render_user_prompt`,
+> which binds `combined_transcript`.
 >
-> So with prompts seeded, Stage 1 now correctly receives the `transcript_refinement` template — and Jinja still renders `{{ narration_text }}` as empty, so **the transcript still vanishes**. The order attributed the empty render to the translation template's variables; the same defect exists in the *correct* template. IVGS-0.4 fixes which prompt is selected, which was genuinely broken and is genuinely fixed. It does not fix what that prompt renders to.
+> So with prompts seeded, Stage 1 correctly received the `transcript_refinement` template — and Jinja
+> still rendered `{{ narration_text }}` as empty, so **the transcript still vanished**. The order
+> attributed the empty render to the translation template's variables; the same defect existed in the
+> *correct* template. IVGS-0.4 fixed which prompt is selected. It did not fix what that prompt rendered to.
 >
-> Not fixed: it needs an operator decision on whether the templates are renamed to the workers' variables or the workers bind the templates' names, and it touches the seed data that may already be in the live database.
+> **Operator ruling: fix the seed templates, not the workers** — the workers' names are the proven
+> contract. Done in `cf3d59b`: `{{ narration_text }}` → `{{ transcript_text }}` (Stage 1) and
+> `{{ combined_transcript }}` (Stage 2). `translation.j2` deliberately untouched — `narration_text` is
+> that template's own correct variable and no worker fetches it.
+>
+> **Guard:** `ivgs-workers/tests/test_wp_ivgs_0_seed_template_contract.py` (8 tests) calls the worker's
+> **real** render function on the **real** seed file with a unique sentinel behind every binding and
+> asserts each sentinel appears. It also asserts the `max_duration_seconds` bind beats the template's own
+> `| default(1800)`, that the seed directory and the consumer map have not diverged, and that only
+> stage1 and stage2 fetch prompts from the API — so wiring up a third stage fails this module until its
+> bind context is added. **4 of the 8 fail on the pre-rename templates.**
+>
+> **Eight of the ten seeded types have no reader at all.** Only `transcript_refinement` and
+> `storyboard_generation` are fetched; Stages 3 and 5 load their own templates from
+> `ivgs-workers/prompts/` and never call the prompts endpoint. Recorded in the test's consumer map
+> rather than left implicit.
+
+> **F6a — the live database still carries the defect. Corrective SQL is authored and HELD.**
+> Read-only inspection of the live `ivgs` database, 2026-08-22 (SELECT only; nothing executed):
+> `prompts` holds 10 rows, one active GLOBAL per type, **no project- or scene-level overrides**.
+> Three rows contain `{{ narration_text }}`: `transcript_refinement`
+> (`6a922c1e-e256-4eee-910c-0a1173827f46`, v1), `storyboard_generation`
+> (`63835b0d-c2ba-4e81-8786-a810aa884348`, v1), and `translation` (correct — leave alone).
+> Both target rows are **md5-identical** to the pre-fix seed files
+> (`20d0983d…`, `397998b2…`) and were created by `system` at 2026-05-23 15:42:45+00 — untouched seed
+> data, no hand edits.
+>
+> **Re-running the seeder will not repair them:** `seed_prompts.py:52-62` skips any type that already
+> has an active global prompt.
+>
+> `dev/workpackages/WP-IVGS-0-F6-corrective-prompts.sql` inserts a v2 and deactivates v1 — the same
+> thing `PromptService.create_prompt` does — inside one transaction, behind md5 guards that abort if
+> the database is not in the measured state, with post-condition checks that abort if the result is
+> wrong. It was **validated by replaying it against md5-identical replicas of the live rows in the
+> disposable `ivgs_reconciliation_test` database**: guards passed, 2 rows deactivated, 2 v2 rows
+> inserted with the corrected variables, post-checks passed, `translation` untouched; a **second run
+> aborted on the md5 guard and left state unchanged**. Rendering the replica rows through Stage 1's
+> real render function, before and after:
+>
+> ```
+> --- BEFORE (v1, what is live today) ---     --- AFTER (v2, corrected) ---
+> INPUT TRANSCRIPT:                           INPUT TRANSCRIPT:
+>                                             THE ACTUAL TRANSCRIPT BODY
+> OUTPUT: Provide the refined transcript…     OUTPUT: Provide the refined transcript…
+> ```
+>
+> That is the defect and the fix, measured. **The operator runs the SQL; this session did not.**
 
 **F7 — `POST /projects/{id}/upload-talking-head` feeds nothing.** It stores `asset_type="talking_head"` (`projects.py:216-224`) and sets `project.talking_head_asset_id`. The orchestrator's `_fetch_reference_clip_id` queries `asset_type="reference_clip"`. A clip uploaded through the dedicated route will never be found as the Stage 6 reference clip. The fixed form deliberately uses the generic assets route with `reference_clip` instead. The dedicated route was left alone.
 
 **F8 — `shared/models/enums.py:AssetType` is missing `reference_clip`.** The database enum has it (migration `0025_add_reference_clip_asset_type`), `asset_service.ASSET_TYPE_PATHS` and `MAX_FILE_SIZES` have it, `app/models/asset.py:42` has it. Only the shared enum does not. Anything validating against `AssetType` will reject a legitimate asset type.
 
-**F9 — `projectFetcher` in `useProjects.ts:45` unwraps a wrapper that is not there.** It returns `response.data.data` for `GET /api/v1/projects/{id}`, but that route has `response_model=ProjectResponse` and returns the object **unwrapped** (`ivgs-api/tests/test_projects.py:114,120` reads `response.json()["id"]` directly). The project **detail** page therefore receives `undefined`. `projectsFetcher` at `:39` is correct, because the *list* route genuinely returns `PaginatedResponse`. This is on the page the fixed New Project form navigates to after a successful create. **Not fixed** — it is a different route from the one this order names, and the order says report, don't fix. It is a one-line change and I recommend it be scheduled next.
+**F9 — `projectFetcher` unwrapped a wrapper that is not there.** · **FIXED** · `17c8b8c`
+It returned `response.data.data` for `GET /api/v1/projects/{id}`, but that route has
+`response_model=ProjectResponse` and returns the object **unwrapped** (`ivgs-api/tests/test_projects.py:114,120`
+reads `response.json()["id"]` directly). The project **detail** page therefore received `undefined` — on the
+very page the fixed New Project form navigates to after a successful create. `projectsFetcher` is correct,
+because the *list* route genuinely returns `PaginatedResponse`; the asymmetry is real and is now stated in a
+comment so nobody "makes them consistent" in the wrong direction.
+
+Fixed under operator ruling as its own commit. `ivgs-api/tests/test_wp_ivgs_0_f9_project_fetcher.py`
+(4 tests) pins **both** server shapes — single flat, list wrapped — and cross-checks each fetcher against its
+own route. The code check strips comments before asserting, because the new comment legitimately names the
+old expression it replaced. `test_project_fetcher_does_not_double_unwrap` fails on the pre-fix file.
 
 **F10 — CI's Python jobs are switched off.** `.github/workflows/ci.yml`: `lint-python` and `test-python` both carry `if: false`. `docker-build` declares `needs: [test-python, ...]`, so it depends on a job that never runs. No Python test or lint gate runs in CI; local node-01 runs are the only signal, which matches the comment in the file.
 
 **F11 — the frontend has no lint gate and no test framework.** `npx next lint` drops into an interactive ESLint setup prompt (no config present), so it cannot run unattended; CI wraps it in `|| true` anyway. `package.json` has no jest/vitest.
 
-**F12 — files not mine appeared in the working tree mid-session.** `dev/workpackages/WP-31-TEMPORAL-GROUNDWORK.md` (owned by `root`, timestamped 21:42) and `configs/temporal/` were created by something outside this session while it was running. One was swept into the IVGS-0.1 commit by a `git add -A` and was **removed from that commit by amend** before anything else happened; every later commit used explicit paths. Both remain **untracked and untouched** — nothing was deleted (CLAUDE.md §3 / the order's no-deletion rule).
+**F12 — files not mine appeared in the working tree mid-session.** `dev/workpackages/WP-31-TEMPORAL-GROUNDWORK.md` (owned by `root`, timestamped 21:42) and `configs/temporal/` were created by something outside this session while it was running. One was swept into the IVGS-0.1 commit by a `git add -A` and was **removed from that commit by amend** before anything else happened; every later commit used explicit paths. Both remain **untracked and untouched** — nothing was deleted (CLAUDE.md §3 / the order's no-deletion rule). **Operator ruling: these belong to a second agent session running WP-31 concurrently in this tree.** Left untouched; every commit in this package used explicit paths, never `git add -A`. A third, `dev/spikes/`, appeared later and was treated the same way.
+
+**F13 — the Model Store cannot bind eight of the nine pipeline stages. See §7 — this is the pre-deploy gate, and it FAILS.**
 
 ---
 
 <a name="decisions"></a>
-## 6. Decisions needed from the operator
+## 6. Operator rulings, and what was done
 
-1. **F6 — the seeded prompt templates.** Rename the template variables to the workers' names (`transcript_text`, `combined_transcript`), or change the workers to bind the templates' names (`narration_text`)? Until one happens, a seeded `transcript_refinement` prompt renders with an empty transcript. This touches seed data that may already be live.
-2. **IVGS-0.2 borrowed bindings.** Stage 3's prompt writer borrows `storyboard_generation` and Stage 5's optimiser borrows `transcript_refinement`. Both are my judgement calls, recorded at the call site. If AD-01 should instead grow a ModelStage for auxiliary text generation, these are the two call sites to repoint.
-3. **IVGS-0.2 behaviour change on deploy.** Stages 3 and 5 now **raise** if their borrowed binding resolves to a non-chat engine, where they previously fell back to the env profile. Confirm the Model Store has servable `storyboard_generation` and `transcript_refinement` bindings on this fleet before deploying, or Stage 3 and Stage 5 will fail where they used to (wrongly) proceed.
-4. **IVGS-0.3 tier surface.** `?tier=` is on both routes but nothing in the UI sets it. Is a per-run tier selector wanted on the frontend, and where?
-5. **F9 — the project detail fetcher.** Shall I fix the one-line `response.data.data` bug next? It is on the page the New Project form navigates to.
-6. **F1/F2/F3 — the test gates.** Three of the four Python test paths cannot run under the repo's own configuration. Do you want a follow-up package to make `pytest` work as a single command?
-7. **F12 — the foreign files.** `dev/workpackages/WP-31-TEMPORAL-GROUNDWORK.md` and `configs/temporal/` are untracked in the tree and are not mine. Leave, commit, or remove — your call; I have not touched them.
+All seven decisions raised in the first pass were ruled on by the operator on 2026-08-22. Each ruling and its outcome:
+
+| # | Ruling | Done |
+|---|---|---|
+| 1 | **F6 APPROVED** — fix the seed templates, not the workers; add a render-contract test; check the live DB read-only and HOLD any corrective SQL | `cf3d59b`. Templates renamed, 8-test guard added, live DB inspected read-only, SQL authored and **held unexecuted**. See F6/F6a. |
+| 2 | **Borrowed bindings: KEEP** as implemented; record a proposed AD-01 amendment | Kept unchanged. Ledger **P2.35** added. |
+| 3 | **APPROVED** — verify read-only that the Model Store has servable `storyboard_generation` and `transcript_refinement` bindings; pre-deploy gate | Done. **The gate FAILS.** See §7 and ledger **P1.4m**. |
+| 4 | **Tier selector UI DEFERRED to M6**; one-line ledger entry | Ledger **P2.36** added. No code change. |
+| 5 | **F9 APPROVED** — fix now, with a source cross-check test, as its own commit | `17c8b8c`. See F9. |
+| 6 | **APPROVED as a follow-up** — author `WP-32-TEST-GATES.md` from F1/F2/F3/F5; author only | `dev/workpackages/WP-32-TEST-GATES.md` written. **Not executed.** |
+| 7 | **F12** — the foreign files belong to a concurrent WP-31 session; leave them | Left untouched throughout; all commits used explicit paths. |
+
+Two things worth the operator's eye that the rulings did not anticipate:
+
+- **Ruling 3's answer changes the deployment picture entirely.** §7 below.
+- **Ruling 6's measured evidence differs from the first-pass summary.** F3 originally attributed most of the seven worker collection errors to `tasks.prototype_draft_task`. Measured file-by-file while authoring WP-32, the dominant cause is **`ivgs_workers` (5 of 7 files)**; `prototype_draft_task` accounts for one and `stage4_voiceover` for one. WP-32 carries the measured table, not the estimate.
+
+---
+
+<a name="modelstore"></a>
+## 7. Pre-deploy gate: the Model Store — **FAILS**
+
+Ruling 3 asked whether the Model Store has servable `storyboard_generation` and `transcript_refinement` bindings on this fleet. It has neither, and the picture is much wider than the question.
+
+**Method — read-only.** `SELECT` only, against the live `ivgs` database on `ivgs-postgres`. No write, no schema change, no service touched. `get_binding` (`shared/providers/factory.py:171-190`) falls back to the `(stage, tier)` default only for a model that is `is_default` **and** `state=approved` **and** `enabled`; the query below replicates that predicate exactly rather than approximating it.
+
+| Stage | prototype | production |
+|---|---|---|
+| `talking_head` | RESOLVES | RESOLVES |
+| `transcript_refinement` | **SelectionError** | **SelectionError** |
+| `storyboard_generation` | **SelectionError** | **SelectionError** |
+| `image_generation` | **SelectionError** | **SelectionError** |
+| `video_generation` | **SelectionError** | **SelectionError** |
+| `animation_generation` | **SelectionError** | **SelectionError** |
+| `voiceover_tts` | **SelectionError** | **SelectionError** |
+| `composition` | **SelectionError** | **SelectionError** |
+| `translation` | **SelectionError** | **SelectionError** |
+
+Supporting counts: `models` holds 13 rows — 2 `approved` (both `talking_head`), 10 `candidate`, 1 `retired`. **There is no `transcript_refinement` model at all**, and `storyboard_generation` has exactly one: `test-model-1`, `state=retired`, `enabled=false`. `project_model_selections` holds **0 rows**, so nothing reaches the selection branch either. `model_node_availability` holds **0 rows**, so any binding that did resolve would carry `node_id=None`.
+
+**What this means.**
+
+1. **Stage 1 cannot run today.** `stage1_transcript.py:498` resolves its binding before any prompt or vLLM work. It raises `SelectionError` on every job. Nothing downstream is reachable. **This is pre-existing and has nothing to do with this package** — the line is unchanged by it.
+2. **Every defect this package fixed is real, tested, and currently unobservable end to end.** The fixes are correct; the gate in front of them is shut. Deploying WP-IVGS-0 will not produce a working pipeline on its own, and the report would be lying if it implied otherwise.
+3. **One behaviour change is worth knowing before deploy.** IVGS-0.2 makes Stage 3's prompt writer resolve a `storyboard_generation` binding at `stage3_images.py:649` and raise if it cannot, where it previously fell through to the env profile. With the store in this state that turns Stage 3 from "every scene reports failed" into "the task raises". Moot while Stage 1 cannot run, and the loud failure is the intended design, but it is a genuine change and is recorded so it is not rediscovered as a regression. Stage 5 is unaffected in practice: its own `voiceover_tts` binding at `stage5_voiceover.py:542` fails first, before the borrowed binding is reached.
+
+**Recorded as ledger P1.4m.** Closing it needs an operator decision on which models are certified enough to mark `approved` — P1.4f already tracks Model Store hygiene. Not actioned here: approving models is a certification judgement, not a defect fix.
 
 ---
 
 <a name="commits"></a>
-## 7. Commits — HELD, not pushed
+## 8. Commits — HELD, not pushed
+
+**First pass — the five defects:**
 
 | # | Hash | Defect | Subject |
 |---|---|---|---|
@@ -279,8 +391,25 @@ Stated plainly, because a claim without evidence is a defect in the report.
 | 3 | `07bcd96` | IVGS-0.3 | make the production tier reachable |
 | 4 | `8092cd8` | IVGS-0.4 | stop the translation template replacing Stage 1's |
 | 5 | `9262944` | IVGS-0.5 | the New Project form could not succeed as built |
+| 6 | `4dfc0c3` | — | this report, first pass |
 
-Base `4c21460`. Each commit is one defect, gated on the compliance scanner (PASSED, 0 violations, at every step) and on the API and worker suites with the failure set diffed against the previous commit.
+**Second pass — the operator rulings:**
+
+| # | Hash | Ruling | Subject |
+|---|---|---|---|
+| 7 | `cf3d59b` | 1 | F6 — bind the seed templates to the variables the workers pass |
+| 8 | `17c8b8c` | 5 | F9 — projectFetcher unwrapped a wrapper that is not there |
+| 9 | *(this commit)* | 2, 3, 4, 6 | ledger P1.4m/P2.35/P2.36, WP-32 authored, this report updated |
+
+Base `4c21460`. Each commit is one defect or one ruling, gated on the compliance scanner (PASSED, 0 violations, at every step) and on the API and worker suites with the failure set diffed against the previous commit. Every commit used **explicit paths** — never `git add -A` — because a concurrent WP-31 session is writing to this tree (F12).
+
+**Not pushed, and no push block is printed here** — the operator takes one combined push block in the morning covering both sessions.
+
+`main` is ahead of `origin/main` by **10** commits, not 9: the concurrent WP-31 session's
+`9498310` ("docs(AD-05)+infra(temporal): WP-31 — review dossier, node-07 dev cluster, resume
+spike") landed between this package's `4dfc0c3` and `cf3d59b`. It is **not** part of WP-IVGS-0
+and nothing in this report speaks to it; it is named here only so the combined push is
+unambiguous about what is on the branch.
 
 Files changed across the package:
 
@@ -310,4 +439,19 @@ Files changed across the package:
  ivgs-workers/tests/test_wp_ivgs_0_prompt_type.py        +151  -0   (new)
 ```
 
-**Nothing has been pushed. Nothing has been deployed. No running service was modified.** The operator reviews this report before anything leaves node-01.
+Second pass (rulings):
+
+```
+ ivgs-api/seed/default_prompts/transcript_refinement.j2      +1  -1
+ ivgs-api/seed/default_prompts/storyboard_generation.j2      +1  -1
+ ivgs-frontend/src/hooks/useProjects.ts                     +10  -3
+ OUTSTANDING_WORK.md                               P1.4m, P2.35, P2.36
+ dev/workpackages/WP-IVGS-0-F6-corrective-prompts.sql             (new, HELD)
+ dev/workpackages/WP-32-TEST-GATES.md                             (new, authored only)
+ ivgs-workers/tests/test_wp_ivgs_0_seed_template_contract.py      (new)
+ ivgs-api/tests/test_wp_ivgs_0_f9_project_fetcher.py              (new)
+```
+
+**Nothing has been pushed. Nothing has been deployed. No running service was modified.** The only contact with a running service was `SELECT`-only inspection of the live `ivgs` database for findings F6a and F13; the corrective SQL that inspection produced is held, unexecuted, at `dev/workpackages/WP-IVGS-0-F6-corrective-prompts.sql`.
+
+**Read §7 before deploying anything.** The five defects are fixed and tested; the Model Store gate in front of them is shut.

@@ -625,6 +625,40 @@ GitHub retires the runtime. **Fix when convenient:** bump to whatever major curr
 Node 24 runtime. Not urgent, not touched here — it is a warning, not a failure, and bumping
 action majors unreviewed is how unrelated breakage arrives.
 
+## P1.4m — The Model Store cannot bind eight of nine stages; Stage 1 dies before it starts *(new, WP-IVGS-0 pre-deploy gate, operator ruling 2026-08-22)*
+**Status:** OPEN — **blocks the whole pipeline.** Read-only measurement of the live `ivgs`
+database, 2026-08-22. Not caused by WP-IVGS-0; found by its pre-deploy gate.
+
+`get_binding` (AD-01.9, `shared/providers/factory.py:171-190`) falls back to the
+`(stage, tier)` default only for a model that is `is_default` **and** `state=approved`
+**and** `enabled`. Measured against every (stage, tier) pair:
+
+| Stage | prototype | production |
+|---|---|---|
+| `talking_head` | RESOLVES | RESOLVES |
+| **all eight others** | **SelectionError** | **SelectionError** |
+
+`project_model_selections` holds **0 rows**, so nothing reaches the selection branch either;
+`model_node_availability` holds **0 rows**, so any binding that did resolve would carry
+`node_id=None`. Of 13 models, only the two `talking_head` rows are `approved`; the rest are
+`candidate` (11) or `retired` (1), and **no `transcript_refinement` model exists at all**.
+
+**Consequence:** `stage1_transcript.py:498` resolves its binding before any prompt or vLLM
+work, so **Stage 1 raises `SelectionError` on every run today** and nothing downstream is
+reachable. This is independent of, and prior to, every defect WP-IVGS-0 fixed — those fixes
+are correct and tested, and none of them can be observed end to end until this is resolved.
+
+**Interaction with WP-IVGS-0.2** (recorded so it is not rediscovered): Stage 3's prompt
+writer now resolves a `storyboard_generation` binding at `stage3_images.py:649` and raises if
+it cannot, where it previously fell through to the env profile. With the store in this state
+that turns Stage 3 from "every scene reports failed" into "the task raises". Moot while
+Stage 1 cannot run, and the loud failure is the intended behaviour, but it is a real change.
+
+**Action:** approve and enable a default model per stage, or create selection rows. Needs an
+operator decision on which models are certified enough to mark `approved`; P1.4f already
+records Model Store hygiene items. **Do not deploy WP-IVGS-0 expecting a working pipeline
+until this is closed** — the package fixes real defects but this gate sits in front of them.
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.
@@ -954,6 +988,12 @@ which of the two owns the field, or the same conflict is rebuilt one layer up.
 | **S-8** | CogVideoX resolution overclaim | MBCP (WP-B) | Declared 1920×1080; engine is 720×480. If IVGS ever sizes a request from these specs it will ask for the impossible. |
 | **S-9** | `.7` and `.53` absent from IVGS docs | IVGS agent | **Partially closed 2026-08-14** — `.7` is now IVGS's backup target and appears in `dev/CLAUDE.md` and `configs/systemd/README.md`. `.53` (authoring LLM, firewall permits only `.51`) still undocumented on the IVGS side. |
 | **S-10** | `.51` is a Proxmox clone with a parked twin | Operator | Shares `machine-id` and SSH host keys with the parked production VM. node-01 holds a known-hosts entry for `.51`. Regenerate before both run; expect to clear node-01's entry. |
+
+## P2.35 — Proposed AD-01 amendment: an auxiliary text-generation ModelStage *(new, WP-IVGS-0.2, operator ruling 2026-08-22)*
+`ModelStage` has nine members and none covers an auxiliary chat-LLM call, so Stage 3's image-prompt writer borrows `storyboard_generation` and Stage 5's narration optimiser borrows `transcript_refinement` (`utils/llm_binding.py`; bindings KEPT as implemented by ruling) — propose a dedicated stage at the next AD-01 amendment and repoint those two call sites.
+
+## P2.36 — Per-run tier selector in the UI — DEFERRED to M6 *(new, WP-IVGS-0.3, operator ruling 2026-08-22)*
+`?tier=` is plumbed end to end on `POST /projects/{id}/trigger` and `POST /projects/{id}/storyboard/approve` and defaults to prototype, but nothing in the frontend sets it; surface a per-run choice at M6.
 
 # DEFERRED (conscious, with re-open trigger)
 
