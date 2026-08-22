@@ -184,6 +184,11 @@ def dispatch_pipeline(
 
     update_job_status(job_id, "running")
 
+    # IVGS-0.1: stash the full context before anything is dispatched. Every
+    # later stage reads it back; _extract_context is no longer a source of
+    # project facts.
+    _store_job_context(job_id, job_context.model_dump(mode="json"), config)
+
     # Dispatch the starting stage
     task_name = STAGE_TASK_MAP.get(start_stage)
     if not task_name:
@@ -385,6 +390,20 @@ def dispatch_media_generation(
     )
     log.info("media_generation_dispatch_starting")
 
+    # IVGS-0.1: this is the second entry point into the pipeline (storyboard
+    # approval resumes at media generation), so it must seed the job context
+    # exactly as dispatch_pipeline does. Unknown keys in dispatch_input are
+    # dropped by the model; absent ones fall back to the model's defaults.
+    _resume_context = PipelineJobContext(
+        **{
+            k: v
+            for k, v in dispatch_input.items()
+            if k in PipelineJobContext.model_fields and k != "current_stage"
+        },
+        current_stage=PipelineStage.IMAGE_GENERATION.value,
+    )
+    _store_job_context(job_id, _resume_context.model_dump(mode="json"), config)
+
     # Stash the minimal context the media-join watchdog needs to rebuild the
     # composition-manifest input if a crashed media task strands this join.
     _store_media_join_context(
@@ -419,14 +438,22 @@ def dispatch_media_generation(
     # Track total expected completions in Redis/DB
     total_media_tasks = 0
 
+    # IVGS-0.1: description and runtime budget travel with every media task, so
+    # Stage 3's prompt writer sees the real project rather than empty strings.
+    _media_facts = {
+        "project_name": _resume_context.project_name,
+        "project_description": _resume_context.project_description,
+        "target_audience": _resume_context.target_audience or "general",
+        "language_code": _resume_context.language_code,
+        "max_runtime_seconds": _resume_context.max_runtime_seconds,
+    }
+
     # Dispatch image generation
     if image_scenes:
         task_input = {
             "job_id": job_id,
             "project_id": project_id,
-            "project_name": dispatch_input.get("project_name", ""),
-            "target_audience": dispatch_input.get("target_audience", "general"),
-            "language_code": dispatch_input.get("language_code", "en-US"),
+            **_media_facts,
             "scenes": image_scenes,
             "enable_dedup": True,
         }
@@ -447,9 +474,7 @@ def dispatch_media_generation(
         task_input = {
             "job_id": job_id,
             "project_id": project_id,
-            "project_name": dispatch_input.get("project_name", ""),
-            "target_audience": dispatch_input.get("target_audience", "general"),
-            "language_code": dispatch_input.get("language_code", "en-US"),
+            **_media_facts,
             "scenes": video_scenes,
             "enable_dedup": True,
         }
@@ -470,9 +495,7 @@ def dispatch_media_generation(
         task_input = {
             "job_id": job_id,
             "project_id": project_id,
-            "project_name": dispatch_input.get("project_name", ""),
-            "target_audience": dispatch_input.get("target_audience", "general"),
-            "language_code": dispatch_input.get("language_code", "en-US"),
+            **_media_facts,
             "scenes": animation_scenes,
             "enable_dedup": True,
         }
@@ -732,11 +755,29 @@ def _build_stage_input(
     previous_output: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Build task input dict for a given stage."""
-    context = (
-        job_context.model_dump(mode="json")
-        if job_context
-        else _extract_context(previous_output)
-    )
+    # IVGS-0.1: precedence is (1) the context handed in, (2) the context stored
+    # at dispatch, (3) — only if both are missing — the four keys that survive
+    # in the previous stage's output. (3) is a degraded mode and says so.
+    if job_context is not None:
+        context = job_context.model_dump(mode="json")
+    else:
+        stored = _get_job_context(
+            (previous_output or {}).get("job_id", ""), config,
+        )
+        if stored is not None:
+            context = stored
+        else:
+            context = _extract_context(previous_output)
+            logger.error(
+                "job_context_store_miss",
+                stage=stage,
+                job_id=context.get("job_id", ""),
+                detail=(
+                    "no stored job context; falling back to the previous "
+                    "stage output. project_description, max_runtime_seconds "
+                    "and tier are LOST for this stage."
+                ),
+            )
 
     base_input = {
         "job_context": context,
@@ -744,6 +785,13 @@ def _build_stage_input(
         "project_id": context.get("project_id", ""),
         "project_name": context.get("project_name", ""),
         "language_code": context.get("language_code", "en-US"),
+        # IVGS-0.1: stages whose input model is a flat dict (3, 5, video) read
+        # these off the top level, not out of job_context. Without them the
+        # stage falls back to its own field defaults and the user's project
+        # facts never arrive.
+        "project_description": context.get("project_description", ""),
+        "target_audience": context.get("target_audience", "") or "general",
+        "max_runtime_seconds": context.get("max_runtime_seconds", 600),
     }
 
     if stage == PipelineStage.TRANSCRIPT_REFINEMENT.value:
@@ -803,7 +851,13 @@ def _build_stage_input(
 
 
 def _extract_context(output: Optional[Dict[str, Any]]) -> Dict[str, Any]:
-    """Extract job context from a stage output dict."""
+    """Last-resort context salvage from a stage output dict.
+
+    IVGS-0.1: this is NOT a source of project facts. A stage output carries
+    four keys; project_description, max_runtime_seconds and tier are not among
+    them. Only _build_stage_input calls this, and only after the stored job
+    context has been shown to be missing — which it logs as an error.
+    """
     if not output:
         return {}
     return {
@@ -851,6 +905,52 @@ MEDIA_JOIN_TTL_SECONDS = 86400
 # so for concurrent projects raise IVGS_MEDIA_JOIN_TIMEOUT_SECONDS to cover the
 # queue depth (~video hard limit * concurrent projects + buffer). Default ~2h.
 MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS = 7200
+
+
+# IVGS-0.1: the job context is the single source of project facts for every
+# stage of a job. It is written once at dispatch and read back by
+# _build_stage_input for every subsequent stage, because handle_stage_completion
+# only ever sees the previous stage's output dict. TTL matches the media-join
+# TTL: a job that outlives it has bigger problems than a stale context.
+JOB_CONTEXT_TTL_SECONDS = MEDIA_JOIN_TTL_SECONDS
+
+
+def _store_job_context(
+    job_id: str, context: Dict[str, Any], config: WorkerConfig,
+) -> None:
+    """Persist the job context for the life of the job.
+
+    Deliberately NOT best-effort. ``config.redis_url`` IS the Celery broker
+    (config.py:293-295), so a Redis that cannot take this write cannot take the
+    dispatch either — failing here fails the dispatch loudly instead of letting
+    the pipeline run on a context rebuilt from four keys.
+    """
+    import json
+    import redis
+
+    r = redis.Redis.from_url(config.redis_url)
+    r.set(
+        f"ivgs:job_context:{job_id}",
+        json.dumps(context),
+        ex=JOB_CONTEXT_TTL_SECONDS,
+    )
+
+
+def _get_job_context(
+    job_id: str, config: WorkerConfig,
+) -> Optional[Dict[str, Any]]:
+    """Return the stored job context for ``job_id`` (None if absent)."""
+    if not job_id:
+        return None
+    try:
+        import json
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        val = r.get(f"ivgs:job_context:{job_id}")
+        return json.loads(val) if val is not None else None
+    except Exception as e:
+        logger.error("job_context_read_failed", job_id=job_id, error=str(e))
+        return None
 
 
 def _store_media_task_count(

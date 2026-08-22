@@ -297,6 +297,13 @@ class ProjectService:
                 "priority": "normal",
                 "current_stage": "transcript_refinement",
             }
+            # IVGS-0.1: the project's real runtime budget must reach the stage
+            # prompts. Omitted (not defaulted here) when the project genuinely
+            # has no value, so PipelineJobContext's 600s default is the ONLY
+            # source of that fallback and stays visible as such.
+            _max_runtime = getattr(project, "max_runtime_seconds", None)
+            if _max_runtime is not None:
+                job_context["max_runtime_seconds"] = int(_max_runtime)
             dispatch = _pipeline_celery.send_task(
                 "tasks.pipeline_orchestrator_v2.dispatch_pipeline",
                 kwargs={"job_context_dict": job_context},
@@ -395,10 +402,18 @@ class ProjectService:
             "job_id": str(job.id),
             "project_id": str(project.id),
             "project_name": getattr(project, "name", "") or "",
+            # IVGS-0.1: the media-resume dispatch carries the same project facts
+            # as the pipeline-start dispatch. Without them every stage from here
+            # on rebuilt its context from the previous stage's 4-key output.
+            "project_description": getattr(project, "description", "") or "",
             "target_audience": getattr(project, "target_audience", "") or "general",
             "language_code": getattr(project, "language_code", "en-US") or "en-US",
+            "priority": "normal",
             "scenes": scenes,
         }
+        _max_runtime = getattr(project, "max_runtime_seconds", None)
+        if _max_runtime is not None:
+            dispatch_input["max_runtime_seconds"] = int(_max_runtime)
         dispatch = _pipeline_celery.send_task(
             "tasks.pipeline_orchestrator_v2.dispatch_media_generation",
             kwargs={"dispatch_input": dispatch_input},
