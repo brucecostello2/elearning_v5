@@ -266,6 +266,21 @@ The measured 506 kb/s video stream (draft: 153 kb/s at 720p) is far below what a
 
 **Regardless of outcome, add a bitrate/quality assertion to the corruption checks.** This should have been measured rather than eyeballed, and Pillar 3 will change the content-complexity profile substantially — pushing bitrate up and invalidating any baseline set now. Tracked as ledger **P1.4(c)**.
 
+> **CLOSED 2026-08-15 — not a defect.** Operator visual QA at full screen on both the
+> 1080p and the 4K finals: **both PASS on picture quality.** The measured 506 kb/s
+> (1080p) and 939 kb/s (4K) against an 8/20 Mbps VBV ceiling are CRF behaving correctly
+> on near-static content, exactly as this section anticipated. `-crf` reaches the
+> executed command — the encoded output carries the profile's `libx265` / `yuv420p10le`
+> at 3840x2160 (WP-03 S2.2). **Ledger P1.4(a) done.**
+>
+> The bitrate assertion of P1.4(c) was still built (WP-03 S2.3) and remains worthwhile:
+> it is a collapse floor for future regressions, not a verdict on this material.
+>
+> **Separate finding from the same QA session: lip-sync quality is poor.** That is the
+> known LatentSync limitation the MBCP bake-off was run to settle - it is not an
+> encoder or composition defect and does not reopen this section. Remediation is to
+> consume the certified bake-off winner; see ledger P1.4d.
+
 > *Line references in this section were audited at `e613e844`. Re-verify before relying on them.*
 
 ## 15. Re-sequencing against Master Plan v0.4 *(new in v0.4; supersedes the v0.3 §9 mapping)*

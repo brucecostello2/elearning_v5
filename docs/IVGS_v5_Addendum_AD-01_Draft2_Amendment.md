@@ -80,6 +80,35 @@ Every downstream commitment inherits this: the two-tier draft/production head re
 
 Tracked as `OUTSTANDING_WORK.md` v4.0 **P1.0**; sequenced as Master Plan **M1**, ahead of the AD-05 migration so the fix is not carried forward into the new architecture.
 
+> **ERRATUM 2026-08-15 — the bake-off has NOT been run.** This section states or
+> implies that the talking-head comparison is complete and settled. **The platform is
+> complete; the comparison is not.** Evidence:
+>
+> - MBCP's weight store holds three talking-head models — davinci-magihuman (171 GB),
+>   humo-17B (130 GB) and latentsync (4 GB) — but **all four talking-head certificates
+>   are LatentSync**, because MagiHuman and HuMo have **no adapters** (MBCP work
+>   package **R-11**, still open). A model without an adapter cannot be benchmarked,
+>   so it cannot be certified or exported.
+> - LatentSync therefore "won" a field of one — and it is the model already judged
+>   non-viable for articulation on 2026-06-08
+>   (`docs/archive/OUTSTANDING_WORK_Addendum_B_2026-06-08.md:32`, "a deal-breaker").
+> - The two LatentSync certificates IVGS holds (`9e0fc3cd`, `7b26811f`) are
+>   **unsupported**: MBCP's lip-sync gate was scored against a fixture whose
+>   `audio_matched.wav` is the presenter clip's own soundtrack (RMS difference
+>   -135.4 dB, 102 dB below baseline). It could not fail.
+> - No IVGS or MBCP metric measures lip-sync **articulation** — the defect that
+>   matters. Ledger **P1.4e**.
+>
+> **The blocker is MBCP R-11**: adapters for MagiHuman and HuMo. Until those exist
+> there is no comparison, no winner, and nothing for IVGS to consume. A win by either
+> would additionally need an IVGS provider builder that does not exist
+> (`registered_engines()` lists only cogvideox, comfyui, coqui, kokoro, latentsync,
+> sadtalker, vllm).
+>
+> Amended, not rewritten: "bake-off complete" was a genuine belief on the information
+> then available, and the record of that belief is part of the evidence. Ledger P1.4d.
+
+
 **Note on B5.** Addendum B recorded this as "Stage 8 must bind the head model via the provider factory." That framing was wrong: Stage 8 overlays a **pre-rendered** head asset by `asset_id` and does not render the head. The binding belongs at Stage 6. B5 is superseded by this section.
 
 ## AD-01.16 — Relationship to MBCP (AD-04) *(new)*

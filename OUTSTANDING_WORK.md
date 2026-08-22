@@ -201,10 +201,227 @@ The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated 
 **Scope/action:** fix the signature at 3 sites; add `finally`-block releases at the other 5; decide explicitly whether reservation failure should be fatal. Pairs with P2.29.
 
 ## P1.4 — M1-QA: formal Stage-8 validation + visual acceptance *(new)*
-**Status:** OPEN — Stage 8 demonstrably runs but has never been formally validated.
+**Status:** **(a), (b), (c) all DONE 2026-08-15 by WP-03-STAGE8-VALIDATION.** Report:
+`dev/workpackages/reports/WP-03-STAGE8-VALIDATION-report_2026-08-15.md`.
+
+- **(a) Operator visual QA — DONE. Both the 1080p and the 4K finals PASS on picture
+  quality at full screen.** The encoder question is **CLOSED as not-a-defect**: the
+  measured 506 kb/s (1080p) and 939 kb/s (4K) against 8/20 Mbps VBV ceilings are CRF
+  behaving correctly on near-static content, exactly as AD-03 §14 predicted. `-crf`
+  demonstrably reaches the executed command — the output carries `libx265` /
+  `yuv420p10le` at 3840×2160. AD-03 §14 annotated closed.
+- **(b) 4K profile — DONE, exercised for the first time ever.** hevc, 3840×2160,
+  yuv420p10le, 30 fps, 215.067 s, 31,149,351 bytes, corruption checks passed.
+- **(c) Bitrate assertion — DONE.** `video_bitrate_floor` in
+  `validators/corruption_detector.py`: a 20 kb/s *collapse* floor at WARNING severity,
+  set far below every known-good measurement so it cannot fail a reference. Passes the
+  reference at 939,325 bps; fires on black at 10,501 bps. **Not yet in a deployed
+  image** — ships on the next rebuild.
+
+Reference banked at `dev/workpackages/reference/REFERENCE-OUTPUT_2026-08-15.md`
+(narrow — see P1.0b/WP-26; Stages 1–5 were not run).
+
+**Remaining under P1.4: nothing.** The lip-sync finding from the same QA session is a
+separate item — see **P1.4d**.
+
+## P1.4e — Neither system has ever measured lip-sync articulation: three unfailable metrics *(new, 2026-08-15, IVGS+MBCP joint investigation)*
+**Status:** OPEN. Investigation complete; no code proposed yet.
+
+**Three metrics, none of which can detect the defect that matters.**
+
+| # | Metric | Where | Why it cannot fail |
+|---|---|---|---|
+| 1 | `alignment_score = 0.90` | `servers/latentsync/server.py:39,120` — `DEFAULT_ALIGNMENT`, env-overridable, emitted with `"scored": False` | A constant. Gated at 0.85 by the segment check in `talking_head_task.py` |
+| 2 | `lip_sync_score = 0.9971` | `validators/lipsync_validator.py` | Computed, but measures **A/V duration agreement only**: `1 - (mismatch / audio_duration)`. `base_score` saturates at 1.0 via `min(1.0, (frame+energy)/2 + 0.2)`. Gated at 0.85 by `quality_thresholds.yaml` |
+| 3 | `lse_c 6.58 / 6.68` | MBCP, on `.52` | **TH1**: the benchmark fixture's `audio_matched.wav` IS `presenter_face.mp4`'s own soundtrack. RMS difference -135.4 dB, 102 dB below baseline; durations differ by 104 microseconds |
+
+**Metric 2 in detail.** `talking_head_task.py` calls `lipsync_validator.validate()`
+**without** `latentsync_score`, so the engine's 0.90 is discarded and the module falls
+to its ffprobe heuristic. Verified arithmetic against tonight's log:
+`0.618667 / 214.881333 = 0.00287911` (logged exactly) and
+`1.0 - 0.00287911 = 0.9971`. `base_score` was exactly 1.0, so `correlation` was
+saturated. The module docstring advertises "Audio-visual correlation analysis" and
+"Phoneme-to-viseme timing verification"; **neither is implemented.**
+
+**Why 0.9971 was identical on 2026-06-08 and 2026-08-15:** it tracks duration, and the
+duration mismatch (0.6187 s, the WP-04 frame-align defect) and audio length have not
+changed. It would be unmoved by any articulation change.
+
+**Consequence.** The only real measurement of articulation that has ever been taken is
+the human verdict of 2026-06-08 (`docs/archive/OUTSTANDING_WORK_Addendum_B_2026-06-08.md:32`,
+"a deal-breaker"). Both automated systems have reported approval ever since. Certificates
+`9e0fc3cd` and `7b26811f` are unsupported (operator, MBCP side).
+
+**Scope/action:** IVGS-2 addresses the two IVGS-side gates — **DONE 2026-08-15**
+(both marked non-functional; `av_drift_seconds` added as the first working check).
+Metric 3 is MBCP's. Metric 1 needs `server.py` and is deferred with IVGS-3/4
+(digest/provenance coupling).
+
+**Follow-up tied to IVGS-3/4 — typed face-detection error.** IVGS-5 detects
+face-detection failure by matching the exception *message*, because the engine raises a
+bare `RuntimeError("Face not detected")` and a typed exception would require `server.py`.
+That file's image digest is pinned by MBCP certificate provenance, so it cannot be
+rebuilt unilaterally. **When `server.py` is eventually rebuilt under IVGS-3/4, replace
+the message predicate `_is_face_detection_failure` in `talking_head_task.py` with a
+typed error.** Recorded so the compromise is not forgotten once the constraint lifts.
+
+## P1.4f — Model Store hygiene items *(new, 2026-08-15; record only, do not act)*
+**Status:** OPEN, recorded at operator instruction.
+
+1. **`latentsync-alt` must never become a production default.** A deliberate test model
+   created to debug the WP-02 check-6b GUI swap — not an error. **Once WP-02 is closed,
+   retire it or move it out of `approved`** so it cannot be selected. Currently
+   `state=approved`.
+2. **Can IVGS distinguish attested-by-certificate from attested-by-free-text?**
+   `model_approvals.vetting_reference` is free text. 22 of 26 rows hold certificate
+   UUIDs; 4 hold prose (`"a test model"`, `"MBCP bake-off 2026-07"`, `"anything text"`).
+   **Nothing in the schema or the enumeration path distinguishes them**, so an
+   approved-models listing cannot tell a certified model from a hand-attested one.
+   Gap worth knowing independently of `latentsync-alt`.
+3. **20 of 26 attestations belong to models still in `candidate`.** Attestation exists,
+   approval never happened. **Flag whether that is intended** — if attestation is meant
+   to imply approval-readiness, 20 models are sitting one click away with nobody having
+   decided.
+4. **A MagiHuman or HuMo win needs an IVGS provider builder that does not exist.**
+   `registered_engines()` on 2026-08-15: `cogvideox, comfyui, coqui, kokoro, latentsync,
+   sadtalker, vllm`. Neither engine is present, and `build_provider` raises
+   `EngineNotRegisteredError` for an unregistered engine. **Scope this now** so it is not
+   discovered after MBCP R-11 delivers adapters.
+
+## P1.4d — Lip-sync quality is poor. Diagnostic only: NO model swap is scoped *(new, operator visual QA 2026-08-15; scope clarified by operator 2026-08-15)*
+
+> **SCOPE CLARIFICATION, operator, 2026-08-15.** The talking-head model is **NOT being
+> swapped out.** Substantial IVGS development continues on the current model. Everything
+> recorded under P1.4d/e/f is **diagnostic and metric-honesty work, which stands
+> regardless of which model runs.** If LatentSync later proves unsuitable that is a
+> separate decision at a later date. **Do not scope, plan or prepare a model swap.**
+> The earlier framing of this item ("remediation is to consume the certified winner")
+> is superseded by this paragraph.
+
+> **SUPERSEDED IN PART — operator ruling, 2026-08-22.** The
+> `IVGS_Directive_Consume_MBCP_Envelope_2026-08-19.md` directive **supersedes this
+> item's hold** to the following extent, and no further:
+>
+> - **Proceeds now:** the operating-envelope / `EngineDeploymentSpec` ingest, the
+>   placement check at engine bring-up, and digest-pinned launch. **This is generic
+>   infrastructure** — it is about whether a machine can run a model at all, and it is
+>   correct regardless of which model IVGS runs. Tracked as **P1.4g**.
+> - **Still held:** the model swap itself. It waits for a certified MagiHuman bundle
+>   carrying a *measured* envelope. **P1.4f.4 remains in force — record only, do not
+>   act** on a provider builder for MagiHuman or HuMo.
+> - Unchanged: the 2026-08-15 clarification above still governs everything in
+>   P1.4d/e/f. Building the machinery is not scoping a swap; do not read it as one.
+
+**Status:** OPEN. **Not** an encoder or composition defect — does not reopen P1.4 or
+AD-03 §14.
+
+Operator visual QA on 2026-08-15 records lip-sync quality as poor on both finals. That
+is the **known LatentSync limitation** the MBCP bake-off was built and run to settle
+(AD-04 §3.19: "the talking-head production model decision — the reason MBCP was built
+and the M1 quality blocker — is settled on data").
+
+**The problem: the winner is not in the Model Store.** `stage='talking_head'` holds
+exactly two rows, measured 2026-08-15:
+
+```
+latentsync      engine=latentsync  approved  is_default=t
+latentsync-alt  engine=latentsync  approved  is_default=f
+```
+
+Both are the **same engine**, so the GUI swap proved in WP-02 check 6b changes the
+binding but **cannot improve lip-sync**. The certified winner was never landed.
+
+**Scope/action:** folded into **WP-26-MODEL-STORE task 5** — establish which model MBCP
+certified, whether an export was ever attempted (AD-04 §3.22: certification and export
+are distinct admin actions, so certifying alone would not have landed it), whether it
+failed or was parked by `drain-pending-exports` or simply never clicked, and what it
+takes to land it including whether its engine has a registered provider builder.
+
+*Data-integrity note — RETRACTED 2026-08-15.* An earlier note here claimed an orphaned
+attestation (13 distinct `model_id`s vs 12 `models` rows). That was a **snapshot
+artefact**: `models` was counted at 12 before `latentsync-alt` was created and approvals
+at 13 after. Re-measured: 13 models, 13 distinct approval `model_id`s, **0 orphans**.
+No integrity problem exists.
 Evidence on node-01: `final_1080p_9007b2cf.mp4` — 215.07s, 1920×1080, 30fps, h264 High, AAC 48 kHz stereo; 0.13s from the draft's 214.94s. Segment planning, parallel render, concat, A/V alignment and head carry-through all work.
 **Open question — encoder:** measured video bitrate is 506 kb/s (draft 153 kb/s at 720p). The profile constants are **correct** per spec (`ffmpeg_client.py:144-148`: `crf=18, vbv_maxrate="8M", vbv_bufsize="16M"`, applied at `:560-567` and `:834-842`). CRF targets *quality*, not bitrate, and near-static content (stills + slow Ken Burns + 0.25-scale PiP head) legitimately encodes low. **This is not yet a defect — resolve by visual inspection, not by the number.** If full-screen playback is clean, close it; if soft, investigate whether `-crf` reaches the executed command.
 **Scope/action:** (a) operator visual QA at full screen; (b) 4K profile never exercised — run it; (c) add a corruption-check assertion on output bitrate/quality so this is measured, not eyeballed, next time; (d) record the run as the **known-good reference output** for WS-T verification.
+
+## P1.4g — Consume MBCP's operating envelope and deployment spec *(new; operator directive 2026-08-19, ruled in force 2026-08-22)*
+**Status:** OPEN, **in scope and proceeding.** Brief:
+`dev/workpackages/IVGS_Directive_Consume_MBCP_Envelope_2026-08-19.md`.
+
+**Why.** MBCP proved daVinci-MagiHuman renders 1080p talking heads, but only on a host
+with 82 GB RAM and a 128 GB swapfile, in an environment that **permits paging**. Every
+earlier attempt "proved" the model needed more memory than existed, because container
+limits silently forbade swap — a memory-swap cap equal to the memory cap forbids paging
+and the failure then blames the model. That cost three weeks on the MBCP side. If IVGS
+stands a model up from the weight bundle alone it will faithfully reproduce the failure
+and misdiagnose it the same way.
+
+**The rule:** a certified model arrives with its machine requirements, and IVGS refuses
+to schedule it onto a machine that cannot meet them — **loudly, before any GPU time,
+naming the node, the requirement and the shortfall.** Never a mid-render death.
+
+**Scope/action:** (1) ingest and store `operating_envelope` and `deployment`
+(`EngineDeploymentSpec`) with the AD-01 candidate record — they are part of the model's
+identity, not documentation; (2) placement check at engine bring-up covering host RAM,
+swap **and whether the execution environment actually permits paging**, scratch disk and
+GPU VRAM; (3) launch from the digest-pinned deployment spec, never a hand-written service
+definition — the digest carries the patches; (4) honour request-side constraints already
+travelling with the adapter (MagiHuman: dimensions divisible by 32, so 1080p renders at
+1920×1088 and is trimmed on delivery; frame rate fixed by engine config); (5) surface
+envelope satisfaction wherever IVGS shows which model serves a stage.
+
+**Absent is a fact, not a default.** A bundle may carry neither block; historical
+certificates say "not recorded". Treat a missing envelope as *"requirements unknown —
+operator decision to schedule"*, never as *"no requirements"*.
+
+**Acceptance:** IVGS takes a bundle for a model it has never seen, answers "which of my
+nodes can run this?" without consulting any MBCP document or person, places it correctly,
+and refuses incorrect placement in a sentence a human can act on.
+
+**Boundary:** this is the machinery only. Landing MagiHuman as a production head remains
+held under P1.4d and P1.4f.4. The figures in the directive are provisional pending MBCP's
+30-second measurement round — **build against the contract shape, not those numbers.**
+
+## P1.4h — IVGS-0.6: animation scenes render a still image *(new, operator ruling 2026-08-22)*
+**Status:** OPEN, **numbered but not yet in any work order.**
+
+AD-07 §4.6 records that IVGS animation scenes render a still image rather than motion,
+and calls it "defect IVGS-0.5". **That number is already taken** — IVGS-0.5 in both
+WP-IVGS-0 and AD-07 §5.1 item 5 is the New Project form. Operator ruling 2026-08-22:
+**do not renumber the existing defects.** The animation-stills defect takes the next free
+number, **IVGS-0.6**.
+
+**Two consequences, both recorded rather than acted on:**
+1. **AD-07 §4.6 carries a mis-citation** — "defect IVGS-0.5" should read "defect
+   IVGS-0.6". AD-07 is an unratified draft and is committed as record unedited;
+   **correct this at ratification**, not before.
+2. **IVGS-0.6 is not in WP-IVGS-0's scope.** That order is operator-approved and
+   standalone at five defects; a sixth is not added to it here. IVGS-0.6 needs its own
+   order, and AD-07 §4.6 already describes the intended shape — split the capability into
+   a deterministic `motion_graphic` renderer (adopting the orphaned
+   `services/motion_graphics.py`) and the existing pose-guided `animation_generation`,
+   and stop presenting one as the other.
+
+## P1.4i — Report/work-order path convention: FINAL *(operator ruling 2026-08-22)*
+**Status:** CLOSED by ruling. Recorded so it cannot be re-litigated.
+
+`dev/workpackages/` and `dev/workpackages/reports/` are **the** convention for work
+packages, work orders and reports. **`dev/workorders/` is not adopted and must not be
+created.**
+
+It has now been proposed twice: by `WP-IVGS-0_Defect_Fixes.md`'s own STEP 0.3 ("mirroring
+the MBCP convention") and again as a session instruction on 2026-08-22, under which a
+`dev/workorders/reports/` directory **was** created and one report written into it. Both
+were reversed the same day: the directory removed, the report moved to
+`dev/workpackages/reports/WP-DEPLOY-INCIDENT_2026-08-22.md`, and WP-IVGS-0's two path
+references amended.
+
+**Why it kept flipping:** MBCP genuinely uses `workorders/`, and this repo's agents read
+MBCP documents. MBCP's layout does not govern here. Recorded in CLAUDE.md §12 as well, so
+a cold-start session sees it without reading the ledger. If an incoming order names
+`dev/workorders/`, **amend the order** — do not create the directory.
 
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.

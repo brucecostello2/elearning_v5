@@ -404,6 +404,35 @@ Same Docker conventions as the IVGS monorepo: multi-stage Dockerfiles (backend/w
 
 **The headline outcome is achieved.** The talking-head production model decision — the reason MBCP was built and the M1 quality blocker — is settled on data.
 
+> **ERRATUM 2026-08-15 — the bake-off has NOT been run.** This section states or
+> implies that the talking-head comparison is complete and settled. **The platform is
+> complete; the comparison is not.** Evidence:
+>
+> - MBCP's weight store holds three talking-head models — davinci-magihuman (171 GB),
+>   humo-17B (130 GB) and latentsync (4 GB) — but **all four talking-head certificates
+>   are LatentSync**, because MagiHuman and HuMo have **no adapters** (MBCP work
+>   package **R-11**, still open). A model without an adapter cannot be benchmarked,
+>   so it cannot be certified or exported.
+> - LatentSync therefore "won" a field of one — and it is the model already judged
+>   non-viable for articulation on 2026-06-08
+>   (`docs/archive/OUTSTANDING_WORK_Addendum_B_2026-06-08.md:32`, "a deal-breaker").
+> - The two LatentSync certificates IVGS holds (`9e0fc3cd`, `7b26811f`) are
+>   **unsupported**: MBCP's lip-sync gate was scored against a fixture whose
+>   `audio_matched.wav` is the presenter clip's own soundtrack (RMS difference
+>   -135.4 dB, 102 dB below baseline). It could not fail.
+> - No IVGS or MBCP metric measures lip-sync **articulation** — the defect that
+>   matters. Ledger **P1.4e**.
+>
+> **The blocker is MBCP R-11**: adapters for MagiHuman and HuMo. Until those exist
+> there is no comparison, no winner, and nothing for IVGS to consume. A win by either
+> would additionally need an IVGS provider builder that does not exist
+> (`registered_engines()` lists only cogvideox, comfyui, coqui, kokoro, latentsync,
+> sadtalker, vllm).
+>
+> Amended, not rewritten: "bake-off complete" was a genuine belief on the information
+> then available, and the record of that belief is part of the evidence. Ledger P1.4d.
+
+
 ## AD-04-v3.20 Relationship to the Master Sequence Plan *(replaces v3.0 §3.20)*
 
 Against **Master Plan v0.4**:
