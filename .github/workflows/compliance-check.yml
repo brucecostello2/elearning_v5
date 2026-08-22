@@ -20,7 +20,13 @@ on:
 jobs:
   compliance-scan:
     name: "Prohibited Dependency Scan (§F.2)"
-    runs-on: [self-hosted, linux, x64, ivgs-infra]
+    # Moved off self-hosted 2026-08-22 (operator ruling; ledger P1.4k).
+    # The self-hosted runner has been dead since 2026-05-26, so every run of this
+    # workflow QUEUED rather than failed -- 87 days in which the section F.2 gate
+    # gated nothing while the UI showed no red. This job needs nothing from node-01:
+    # checkout, setup-python, four greps and scripts/compliance_scanner.py, all
+    # against the checked-out repo. No docker, no ssh, no host path, no network.
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
