@@ -852,6 +852,68 @@ Still describes a split repo. Update to the monorepo at `/opt/ivgs`.
 
 ---
 
+
+## P2.32 — AD-07 v2.x contract extension: style bible, continuity IDs, source refs *(new 2026-08-22)*
+**Status:** OPEN — **recording only, nothing implemented.**
+**Origin:** operator-commissioned external design review, 2026-08-22. Working note on node-01
+at `docs/Assessment_External_Orchestrator_Prompt_vs_IVGS_2026-08-22.md` — **currently
+untracked**; commit it if this entry is to have a durable citation.
+
+Extend the AD-07 Scene Contract (§2.2) with three additions:
+
+1. **`style_bible`** — a per-project block, authored once and carried whole, describing the
+   visual language every generated asset must obey.
+2. **Persistent continuity IDs** — stable identifiers for characters, environments and
+   reusable assets, so the same person or place is recognisably the same across scenes and
+   across regenerations.
+3. **`source_refs` per scene** — optional, pointing at the material a scene was derived from.
+
+**Gate — this is the point of the entry.** This extension MUST be drafted **and ratified**
+before implementation of **WS-H (certified head model)** begins. Generated-visual continuity
+depends on it: standing up a certified head without a continuity contract produces a model
+that is certified against a looser private contract than the one the pipeline needs, which is
+exactly the drift AD-07 §6.3 exists to prevent.
+
+**Relationship to AD-07 as ratified.** This is a v2.x *extension*, not an amendment to what is
+already ratified — the Brief and Scene Contract v2 stand unchanged. It needs its own draft and
+its own ratification.
+
+## P2.33 — Stage-2 computes a duration total and never checks it *(new 2026-08-22)*
+**Status:** OPEN — **recording only.** Cheap; **Track P candidate.**
+
+`stage2_storyboard.py` computes `total_duration` but never compares it against
+`max_runtime_seconds`. The runtime target reaches the model as a **prompt suggestion only**,
+so a storyboard may plan well past the user's stated budget and nothing says so at plan time.
+The first hint arrives after audio and render time have already been spent.
+
+**Scope/action:** add an **advisory** check — warn or flag when the planned total falls outside
+`runtime_tolerance_pct` of `runtime_target_seconds`.
+
+**Binding constraint on the fix.** It must **never override the AD-03 measured-audio anchor.**
+Measured audio is ground truth for duration; this check is a plan-time smell test, not an
+authority. A gate that trims scenes to hit a planned number, in preference to what the audio
+actually measures, would be a regression dressed as a feature.
+
+**Relationship to AD-07.** AD-07 §2.2 specifies a real duration validator with a body. This
+entry is the cheap advisory version available **now**, on the current contract, and is not a
+substitute for that validator.
+
+## P2.34 — `visual_style` is a dead knob *(new 2026-08-22)*
+**Status:** OPEN — **recording only.**
+
+`stage3_images.py` reads `visual_style` from `project_context`, but **nothing in `ivgs-api`
+ever populates it**. Every project therefore generates with the hardcoded default, and the
+knob appears to exist while doing nothing.
+
+**Same defect family as WP-IVGS-0 defect 0.1** — a user-facing field that never reaches the
+stage that would consume it, the read side built and the write side absent. See
+`dev/workpackages/WP-IVGS-0_Defect_Fixes.md`.
+
+**Scope/action:** fix alongside **P2.32** (where `style_bible` supersedes a bare
+`visual_style` and the field needs designing rather than merely wiring), or as part of the
+WP-IVGS-0 follow-up if that lands first. **Do not wire it in isolation** without deciding
+which of the two owns the field, or the same conflict is rebuilt one layer up.
+
 # P3 — Low Priority
 
 | ID | Item | Note |
@@ -901,6 +963,31 @@ Still describes a split repo. Update to the monorepo at `/opt/ivgs`.
 
 ## DEF.2 — Localisation pipeline (§17)
 **Deferred until:** M8 / post-launch. `language_variants` table and state exist; no variant has been exercised end-to-end. Re-open when a second language is actually required.
+
+## DEF.3 — PowerPoint ingestion *(new 2026-08-22 — backlog, no milestone)*
+**Deferred until:** PPT input becomes a **real requirement**. **Re-open trigger:** a stated
+need to ingest customer decks — not an assumption that it would be nice. Nothing is scheduled
+and nothing should be built speculatively.
+
+**Shape, recorded so the idea is not re-derived from scratch.** Ingestion is **per-slide
+triage**, not bulk conversion. Each slide is classified into one of six dispositions:
+
+| Disposition | Meaning |
+|---|---|
+| `REUSE` | take the slide essentially as-is |
+| `RESTYLE` | keep content, regenerate to the project's visual language |
+| `REBUILD` | keep intent, author the visual afresh |
+| `EXTRACT` | harvest specific content (a figure, a table) and discard the rest |
+| `REFERENCE_ONLY` | informs the script; never appears on screen |
+| `OMIT` | drop entirely |
+
+**Speaker notes are a separate source** from slide content, with their own path into the
+pipeline — they are usually the narration intent, while the slide is usually the visual, and
+collapsing the two loses exactly the distinction that makes a deck worth ingesting.
+
+**Requires its own addendum.** This touches the Brief, the Scene Contract and the asset model
+at once; it is not a work package against the current contract. **Origin:**
+operator-commissioned external design review, 2026-08-22.
 
 ---
 

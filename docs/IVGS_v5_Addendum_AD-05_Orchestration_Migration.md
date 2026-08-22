@@ -119,6 +119,8 @@ Per-worker activity concurrency of 1 on GPU queues preserves the current `worker
 
 Stage order, queue routing and gate placement are unchanged from spec §6.1. What changes is that sequencing is **expressed as control flow** rather than as a lookup table — so a mis-referenced stage is an import-time error, eliminating ledger P2.3's entire defect class.
 
+**Design input, added 2026-08-22 (ledger P2.32 context).** The workflow design MUST support compiling the storyboard into an **explicit dependency DAG** — per-scene `depends_on` and parallel groups — rather than hardcoding the stage sequence shown above. The listing is the *current* shape, not the contract: once scenes can declare dependencies on one another, execution order is derived from the storyboard rather than fixed in the workflow body. Design for that now; retrofitting a DAG onto a hardcoded sequence is the same lookup-table trap this section removes, one level up.
+
 ### 5.2 Media fan-out (replaces the Redis join)
 
 `asyncio.gather()` over per-scene activity handles. This deletes:
