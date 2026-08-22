@@ -120,3 +120,10 @@ ivgs-infra/.env.node0*
 # local per-node model smoke-test compose files (not for the repo)
 ivgs-infra/docker-compose.smoke-*.yml
 ivgs-infra/.env.node01
+
+# Pipeline evidence artifacts at the repository ROOT only (WP-TREE-TRIAGE 2026-08-22).
+# draft_pillar2_f78eb063.mp4, final_1080p_9007b2cf.mp4 and presenter.mp4 are the
+# cited evidence for ledger P1.4 and the 2026-08-14 status doc. Kept on disk, never
+# tracked -- 38 MB of binary that a stray `git add .` would put in history for good.
+# Root-anchored so fixtures and test media elsewhere in the tree are unaffected.
+/*.mp4
