@@ -79,6 +79,23 @@ jobs:
 
       - name: "Rule 3: Prohibited API endpoints"
         run: |
+          # The two extra --exclude entries below (operator ruling 2026-08-22,
+          # ledger P1.4l RESOLVED) mirror the existing compliance_scanner.py
+          # exclusion, and for the same reason: these files contain DETECTION
+          # PATTERNS and TEST FIXTURES, not live calls.
+          #
+          #   test_compliance_scanner.py  - fixtures asserting the scanner
+          #                                 detects each prohibited endpoint
+          #   v4_to_v5_migration.py       - CLOUD_ASSET_PATTERNS, the list of
+          #                                 cloud URLs the migration script
+          #                                 SEARCHES FOR AND REMOVES
+          #
+          # This is a real narrowing: a genuine prohibited call added to either
+          # file would not be caught by THIS rule. It is accepted because a URL
+          # in a pattern list is not distinguishable by regex from a URL being
+          # called, and because Rule 5 below - scripts/compliance_scanner.py,
+          # the scanner section F.2 actually names - still scans both files and
+          # reports 0 violations across the whole tree.
           echo "Scanning for prohibited API endpoints..."
           if grep -rE \
             "api\.openai\.com|api\.anthropic\.com|api\.elevenlabs\.io|api\.d-id\.com" \
@@ -86,6 +103,8 @@ jobs:
             --exclude-dir=".git" \
             --exclude="compliance_scanner.py" \
             --exclude="compliance-check.yml" \
+            --exclude="test_compliance_scanner.py" \
+            --exclude="v4_to_v5_migration.py" \
             . ; then
             echo "::error::PROHIBITED API endpoints found!"
             exit 1
