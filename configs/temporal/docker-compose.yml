@@ -1,0 +1,104 @@
+# IVGS — Temporal dev cluster (node-07 / 192.168.1.96, hostname "temporal")
+#
+# Provisioned by WP-31-TEMPORAL-GROUNDWORK, 2026-08-22.
+#
+# This is the M3.2 dev cluster. It is NOT production and is NOT wired to the
+# pipeline: it has its own Postgres and its own volumes, entirely on node-07.
+# No IVGS database is reachable from this stack.
+#
+# EVERY image is pinned to an explicit version tag. Do not reintroduce
+# `latest` here — that is the WP-09 lesson.
+#
+# Deploy on node-07:
+#   cd /opt/temporal && sudo docker compose --env-file .env up -d
+#
+# The password lives in /opt/temporal/.env on node-07, which is untracked.
+# See .env.example for the variable names.
+
+name: temporal
+
+services:
+  postgresql:
+    image: postgres:17.11-alpine
+    container_name: temporal-postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # MUST be `temporal` (i.e. equal to POSTGRES_USER). auto-setup.sh:207
+      # skips its own create-database step when DBNAME == POSTGRES_USER, on the
+      # assumption that the Postgres image created it at initdb time. Setting
+      # this to `postgres` leaves auto-setup looping on
+      # `pq: database "temporal" does not exist`. Verified on node-07 2026-08-22.
+      POSTGRES_DB: temporal
+    volumes:
+      - temporal-pgdata:/var/lib/postgresql/data
+    ports:
+      # Bound to loopback only: nothing outside node-07 needs the event store.
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d temporal"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  temporal:
+    image: temporalio/auto-setup:1.29.7
+    container_name: temporal
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    environment:
+      DB: postgres12          # correct driver name for all PostgreSQL >= 12, including 17
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PWD: ${POSTGRES_PASSWORD}
+      POSTGRES_SEEDS: postgresql
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development-sql.yaml
+      # Without this the server binds only to the container IP (verified on
+      # node-07 2026-08-22: LISTEN 172.18.0.3:7233), so any healthcheck or
+      # in-container client addressing 127.0.0.1 is refused.
+      BIND_ON_IP: 0.0.0.0
+    volumes:
+      - ./dynamicconfig:/etc/temporal/config/dynamicconfig:ro
+    ports:
+      # LAN-visible: fleet workers connect here.
+      - "7233:7233"
+    healthcheck:
+      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "127.0.0.1:7233"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+
+  temporal-ui:
+    image: temporalio/ui:2.53.3
+    container_name: temporal-ui
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    ports:
+      # LAN-visible: this UI is the deciding feature per AD-05 section 3.
+      - "8080:8080"
+
+  temporal-admin-tools:
+    image: temporalio/admin-tools:1.29.7-tctl-1.18.4-cli-1.7.2
+    container_name: temporal-admin-tools
+    restart: unless-stopped
+    depends_on:
+      temporal:
+        condition: service_healthy
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CLI_ADDRESS: temporal:7233
+    stdin_open: true
+    tty: true
+
+volumes:
+  temporal-pgdata:
+    name: temporal-pgdata

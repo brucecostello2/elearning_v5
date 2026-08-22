@@ -1,0 +1,2 @@
+# The real cluster password never enters the repo.
+.env

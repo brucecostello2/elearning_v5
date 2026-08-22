@@ -1,0 +1,2 @@
+# WP-31 Lane C spike. Pinned, like everything else in this package.
+temporalio==1.31.0

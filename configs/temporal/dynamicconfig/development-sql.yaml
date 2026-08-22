@@ -1,0 +1,12 @@
+# Temporal dynamic config — node-07 dev cluster (WP-31).
+# Deliberately minimal. Retention is left at the namespace default here;
+# AD-05 open decision O-4 (event-history retention) is the operator's call
+# and is recorded in the WP-31 report under DECISIONS REQUESTED.
+
+limit.maxIDLength:
+  - value: 255
+    constraints: {}
+
+system.forceSearchAttributesCacheRefreshOnRead:
+  - value: true   # dev only: makes newly-registered search attributes visible immediately
+    constraints: {}
