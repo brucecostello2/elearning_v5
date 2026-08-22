@@ -453,12 +453,47 @@ async def playground_save(
 )
 async def list_project_prompts(
     project_id: UUID,
+    prompt_type: Optional[str] = Query(
+        default=None,
+        description=(
+            "Return only this prompt type. Callers that need one type MUST "
+            "pass it: the unfiltered response is all ten types in enum order."
+        ),
+    ),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """List project-level prompts with effective source (SCENE/PROJECT/GLOBAL)."""
+    """List project-level prompts with effective source (SCENE/PROJECT/GLOBAL).
+
+    IVGS-0.4: the workers have always sent ``?prompt_type=...`` and this
+    endpoint has always ignored it, returning all ten types. The worker then
+    picked one by substring, and the last enum member — TRANSLATION — won.
+    The filter is now honoured, and an unknown type is a 400 rather than an
+    empty list that a caller could mistake for "not configured".
+    """
+    if prompt_type is not None:
+        from shared.models.enums import PromptType
+
+        valid = {pt.value for pt in PromptType}
+        if prompt_type not in valid:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "error": {
+                        "code": "VALIDATION_ERROR",
+                        "message": (
+                            f"Unknown prompt_type '{prompt_type}'. "
+                            f"Allowed: {', '.join(sorted(valid))}"
+                        ),
+                    }
+                },
+            )
+
     service = PromptService(db)
-    return await service.resolve_effective_prompts(project_id)
+    effective = await service.resolve_effective_prompts(project_id)
+    if prompt_type is not None:
+        effective = [p for p in effective if p.prompt_type == prompt_type]
+    return effective
 
 
 @project_prompt_router.post(

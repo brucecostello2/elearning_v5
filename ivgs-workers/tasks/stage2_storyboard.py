@@ -61,6 +61,7 @@ from utils.gpu_utils import (
     acquire_gpu_reservation,
     get_vram_requirement,
 )
+from utils.prompt_selection import _select_prompt_text
 
 logger = structlog.get_logger("ivgs.stage2.storyboard")
 
@@ -146,7 +147,15 @@ def _resolve_prompts_from_api(
     project_id: str,
     config: WorkerConfig,
 ) -> Tuple[Optional[str], Optional[str]]:
-    """Resolve storyboard prompts from Pipeline API 3-tier hierarchy."""
+    """Resolve the Stage 2 prompt from the Pipeline API 3-tier hierarchy.
+
+    Returns ``(system_prompt, user_prompt_template)``. The system slot is always
+    ``None``: a PromptType row carries exactly one text, so the API can only
+    supply the user template. The system prompt comes from stage2_system.j2.
+
+    IVGS-0.4: same fix as Stage 1 — exact type match, and a mismatched type is
+    refused rather than substituted. That refusal is not caught here.
+    """
     api_url = (
         f"{config.pipeline_api.full_base_url}"
         f"/projects/{project_id}/prompts"
@@ -163,27 +172,18 @@ def _resolve_prompts_from_api(
                 api_url,
                 params={"prompt_type": "storyboard_generation"},
             )
-            if resp.status_code == 200:
-                prompts = resp.json()
-                system_prompt = None
-                user_prompt = None
-                for p in (
-                    prompts if isinstance(prompts, list)
-                    else prompts.get("items", [])
-                ):
-                    text = p.get("prompt_text", "")
-                    if "system" in p.get("prompt_type", "").lower():
-                        system_prompt = text
-                    else:
-                        user_prompt = text
-                return system_prompt, user_prompt
+            payload = resp.json() if resp.status_code == 200 else None
     except Exception as e:
         logger.warning(
             "storyboard_prompt_api_resolution_failed",
             project_id=project_id,
             error=str(e),
         )
-    return None, None
+        return None, None
+
+    if payload is None:
+        return None, None
+    return None, _select_prompt_text(payload, "storyboard_generation")
 
 
 # ---------------------------------------------------------------------------

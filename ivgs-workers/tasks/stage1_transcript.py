@@ -64,6 +64,7 @@ from utils.gpu_utils import (
     acquire_gpu_reservation,
     get_vram_requirement,
 )
+from utils.prompt_selection import _select_prompt_text
 
 logger = structlog.get_logger("ivgs.stage1.transcript")
 
@@ -257,8 +258,17 @@ def _resolve_prompts_from_api(
     config: WorkerConfig,
 ) -> Tuple[Optional[str], Optional[str]]:
     """
-    Resolve prompts from the Pipeline API 3-tier hierarchy.
+    Resolve the Stage 1 prompt from the Pipeline API 3-tier hierarchy.
     GET /api/v1/projects/{project_id}/prompts?prompt_type=transcript_refinement
+
+    Returns ``(system_prompt, user_prompt_template)``. The system slot is always
+    ``None``: a PromptType row carries exactly one text, so the API can only
+    supply the user template. The system prompt comes from stage1_system.j2.
+    Pretending otherwise is what the old "system"-substring classifier did.
+
+    IVGS-0.4: a returned prompt whose declared type is not the requested one is
+    REFUSED. That error is deliberately not caught here — silently substituting
+    another type is the defect, and it must reach the caller.
     """
     api_url = (
         f"{config.pipeline_api.full_base_url}"
@@ -276,31 +286,20 @@ def _resolve_prompts_from_api(
                 api_url,
                 params={"prompt_type": "transcript_refinement"},
             )
-            if resp.status_code == 200:
-                prompts = resp.json()
-                # Find system and user prompts from resolved list
-                system_prompt = None
-                user_prompt = None
-                for p in (
-                    prompts if isinstance(prompts, list)
-                    else prompts.get("items", [])
-                ):
-                    text = p.get("prompt_text", "")
-                    _scope = p.get("scope", p.get("source", ""))  # noqa: F841
-                    if "system" in p.get("prompt_type", "").lower() or "system" in text[:100].lower():
-                        system_prompt = text
-                    else:
-                        user_prompt = text
-
-                return system_prompt, user_prompt
+            payload = resp.json() if resp.status_code == 200 else None
     except Exception as e:
+        # Transport and API faults are non-fatal: the .j2 fallback is correct.
         logger.warning(
             "prompt_api_resolution_failed",
             project_id=project_id,
             error=str(e),
         )
+        return None, None
 
-    return None, None
+    if payload is None:
+        return None, None
+    # Outside the try: PromptTypeMismatchError must NOT be swallowed.
+    return None, _select_prompt_text(payload, "transcript_refinement")
 
 
 # ---------------------------------------------------------------------------
