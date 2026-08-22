@@ -170,6 +170,12 @@ not create it.** It has been proposed twice - once by WP-IVGS-0's own text
 day. MBCP's layout is MBCP's; it does not govern here. If an incoming work order
 names `dev/workorders/`, amend the order, do not create the directory.
 
+`dev/spikes/` IS an accepted repo path (operator ruling 2026-08-22, WP-31
+D-3): throwaway evidence code that proves a property before a design is
+approved. It imports nothing from production paths, nothing imports it, and
+its README must say it is evidence, not foundation. Delete it once the design
+it evidences is built.
+
 WP-00-SWALLOWED-FAILURES_2026-08-14.md is a standing REGISTER, not a
 closed report. Add instances as they are found; do not close one without
 observed evidence that the failure now surfaces.

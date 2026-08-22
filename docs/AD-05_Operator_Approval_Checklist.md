@@ -1,6 +1,9 @@
 # AD-05 — Operator approval checklist
 
 **One page. Produced by WP-31 Lane A, 2026-08-22, against `8092cd8`.**
+**Revised same day with operator rulings D-1…D-6.** Items marked
+**PRE-RULED** are already decided and are shown for the record, not for
+re-decision.
 
 This is the §18 review-board gate. Approving AD-05 authorises migration code
 to be written; it does not authorise cutover (§12 gates that separately).
@@ -17,10 +20,11 @@ Read alongside `IVGS_v5_Addendum_AD-05_Draft2_Amendment.md`. Each item is a
 | **A-1** | **Temporal replaces the Celery coordination layer.** Engine choice per ADR-005. | You take on a new server to operate, a new failure mode (workflow determinism), and 8–14 sessions of work. If it stalls half-done you have two orchestrators — the exact P2.3 situation, one level up. | You finish the bespoke layer instead: ~9–13 sessions of unbounded discovery work, ending with weaker machinery that one person maintains. D1–D4 stay a recurring class, not a fixed list. |
 | **A-2** | **Temporal runs on node-07, persisting to its own Postgres on node-07.** (Draft 1 O-1.) | One more machine to keep alive. If node-07 dies, no renders start — but nothing already-running is lost, because history is durable. | Persisting to node-01's Postgres extends the P1.9 SPOF onto the 16 GB node that already runs ~13 services. |
 | **A-3** | **Sequencing moves into workflow code, expressed as a DAG.** (Draft 2 §5.) | The workflow becomes the single place stage order is decided. A mistake there affects every job. | `STAGE_TASK_MAP` stays: a stringly-typed lookup where a typo is a runtime-only error no static check catches. P2.3's defect class stays open forever. |
-| **A-4** | **The migration may edit stage files at exactly 23 `send_task` sites** — and nowhere else. (Draft 2 §4.3, amended §8.) | The §8 "don't touch stage bodies" rule now has an exception, and exceptions get widened. | §8 as written forbids the edits the migration *requires*. A migration session hits site #11, reads the stop-rule, and either stops wrongly or widens scope silently. |
+| **A-4** ✅ **PRE-RULED** | **The migration may edit stage files at exactly 23 `send_task` sites** — and nowhere else. (Draft 2 §4.3, amended §8.) **Wording accepted as drafted, 2026-08-22 (D-6).** | The §8 "don't touch stage bodies" rule now has an exception, and exceptions get widened. | §8 as written forbids the edits the migration *requires*. A migration session hits site #11, reads the stop-rule, and either stops wrongly or widens scope silently. |
 | **A-5** | **Every writing activity must be made idempotent on `(job_id, stage, scene_index)`.** (Draft 2 §6.) | Real work on all 8 stages, over and above the wrappers. Not free. | **Measured on node-07 2026-08-22:** a killed worker re-ran two scene activities. Without idempotency that is duplicate renders and duplicate uploads, silently, on every worker restart. |
 | **A-6** | **Versioning (`workflow.patched()`) and a CI replay test from the first workflow written.** (Draft 1 §7.2.) | Discipline overhead on every workflow change, starting immediately. | Multi-hour renders plus multi-day gates mean in-flight workflows during every deploy. Retrofitting versioning after in-flight jobs exist is the documented failure mode. |
 | **A-7** | **Periodic tasks move to Temporal Schedules; Celery Beat is removed.** (Draft 1 O-5.) | Beat's schedules must be re-created; one of them (`poll_model_node_availability`, every 30 s) is **live today** and must be re-homed before `periodic_tasks.py` is deleted. | Celery survives as a second orchestrator, which is the half-migration risk you are trying to avoid. |
+| **A-8** ✅ **PRE-RULED** | **GPU reservation failure is fatal, with retry** (Draft 1 O-3). **Ruled 2026-08-22 (D-1), contingent on ledger P2.6 having made the heartbeat registry real by implementation time.** | If P2.6 has *not* landed by §11.2 step 4, shipping fatal against an empty registry (`total_nodes:0`) fails every GPU stage. **The contingency is the safeguard: if P2.6 is not done, this reopens — it does not ship anyway.** | Today's silent fail-open is carried into the new architecture, where it will be exactly as invisible as it was for the months `total_nodes:0` went unnoticed. |
 
 ---
 
@@ -32,21 +36,45 @@ These are Draft 1 §11.1. **Approval does not waive them.**
       Without the reference output there is nothing to verify the migration against.
 - [ ] **M2 closed** — D1–D4 fixed. You migrate *from* a working system, not onto a broken one.
 - [ ] **Node-07 reachable from all fleet nodes.** WP-31 verified node-01 → node-07
-      (gRPC 7233 and UI 8080). **Nodes 02, 03, 04 were NOT tested** — outside WP-31's boundary.
+      (gRPC 7233 and UI 8080). **Nodes 02, 03, 04 → node-07 remains UNTESTED.** WP-31
+      could not open a shell on those nodes: `dev@` is rejected by publickey on
+      node-02, node-03 and node-04 (node-07 accepts it). Fleet facts below were
+      established via the Celery broker instead, which does not prove node→node-07
+      reachability. **Test this before §11.2 step 1.**
 - [ ] **Cutover happens in a quiet window** with no in-flight jobs (§11.3).
 
 ---
 
-## C. Decisions still open — you must rule, or explicitly defer
+## C. Decisions — **all ruled 2026-08-22**
 
-| # | Question | Recommendation | Consequence of deferring |
-|---|---|---|---|
-| **D-1** (O-3) | Is GPU reservation failure **fatal**, or does it fail open as today? | **Fatal with retry**, once P2.6 makes the registry real. Failing open silently is why `total_nodes:0` went unnoticed for months. | The migration carries the current silent-fail-open behaviour into the new architecture, and it will be just as invisible there. |
-| **D-2** (O-4) | Event-history **retention period**. | 30 days is ample. A 6-scene shadow run produced **71 events / ~10.4 KB** — kilobytes per job, not megabytes. Cheap either way. | Defaults apply. Low risk now; revisit before M5's long runs. |
-| **D-3** | Is the **estimate** (8–14 sessions, 600–900 replacement lines) accepted as the basis for approval? | Treat as an estimate. WP-31 measured nothing that confirms or refutes it. | You approve a plan whose cost is unmeasured. Stating that explicitly is better than implying it was verified. |
-| **D-4** | Does D1's premise — **`gpu_video` consumed by node-02 *and* node-03** — hold? | **Verify before relying on it.** WP-31's boundary permitted node-01 read-only and node-07 only; this is unverified. | D1's *concurrent duplicate execution* consequence rests on an unchecked premise. The queue name and time limits are confirmed; the two-node claim is not. |
+Retained for the record. Nothing here is outstanding.
 
----
+| # | Question | **Ruling** |
+|---|---|---|
+| **D-1** (O-3) | Is GPU reservation failure fatal? | **(a) fatal with retry**, explicitly **contingent on ledger P2.6 making the heartbeat registry real by implementation time.** If P2.6 has not landed, this reopens rather than shipping. Carried as pre-ruled item **A-8**. |
+| **D-2** (O-4) | Event-history retention period | **90 days.** Applied as configuration **at M3.3 — nothing applied now.** The node-07 dev cluster stays at its default. Supporting measurement: 71 events / ~10.4 KB for a 6-scene run. |
+| **D-3** | Is `dev/spikes/` an accepted repo path? | **Yes, accepted.** Recorded in `dev/CLAUDE.md` §12. |
+| **D-4** | Does D1's node-02 **and** node-03 `gpu_video` premise hold? | **NO — measured, and it is false as deployed.** Only `cogvideox-worker@node03` consumes `gpu_video`; node-02 serves `gpu_llm`. Node-02's `gpu_video` worker is `profiles: ["standby"]` and is not running. **D1's severity is downgraded** — see Draft 2 §4.5 and item C-1 below. |
+| **D-5** | Should the node-07 cluster keep running? | **Leave running.** `restart: unless-stopped`; survives reboot. |
+| **D-6** | §8 amendment permitting 23 in-stage `send_task` edits | **Accepted as drafted.** Carried as pre-ruled item **A-4**. |
+
+### C-1. The one thing D-4 changes about the case for migrating
+
+D1 was presented as: a redelivered task can execute **concurrently on a second
+node**. Measured, that is not true in the deployed fleet — `gpu_video` has a
+single active consumer at `--concurrency=1`, so a duplicate serialises behind
+the original rather than racing it on another GPU.
+
+**The defect is still real** — `visibility_timeout 3600` under
+`time_limit 3900` with `acks_late` means a long video task **is** redelivered
+and **does** run twice. Only the blast radius shrinks.
+
+**Do not read this as "D1 was overstated, so the case is weaker."** The
+premise is one `--profile standby` away from being exactly true: start
+node-02's standby worker and two nodes consume `gpu_video`. That is the
+argument of §2.2(1) in miniature — correctness resting on a guessed timeout
+plus a deployment detail nobody re-checks. If you weigh D1 lower, weigh
+§2.2's structural argument correspondingly higher.
 
 ## D. What WP-31 already de-risked (no approval needed — evidence, not proposals)
 
@@ -63,6 +91,9 @@ Verified live on node-07, 2026-08-22. Details in
   the entire migration exists to buy, and it works.**
 - Bounded retries with the failure surfaced in queryable workflow state, not
   swallowed. **Working.**
+- Fleet queue consumption established from the running workers themselves
+  (`celery inspect active_queues`, 5 workers online), settling D-4 and
+  correcting D1's severity. **Measured, not inferred from config alone.**
 
 ---
 
@@ -70,8 +101,8 @@ Verified live on node-07, 2026-08-22. Details in
 
 | | |
 |---|---|
-| Approve A-1 … A-7 (list any withheld) | ______________________ |
-| Rule on D-1 … D-4 | ______________________ |
+| Approve A-1 … A-8 (list any withheld; A-4 and A-8 are pre-ruled) | ______________________ |
+| D-1 … D-6 — **all ruled 2026-08-22**, no action required | ✅ |
 | Approved by | ______________________ |
 | Date | ______________________ |
 

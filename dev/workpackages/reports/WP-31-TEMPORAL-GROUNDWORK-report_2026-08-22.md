@@ -8,6 +8,7 @@
 | **Repo basis** | `brucecostello2/elearning_v5` @ **`8092cd8`** (node-01) |
 | **Nodes touched** | node-01 (repo work + read-only inspection), node-07 = 192.168.1.96 (Temporal cluster) |
 | **Outcome** | **All three lanes complete.** Nothing blocked. |
+| **Addendum** | **Rulings round, same day.** Operator ruled D-1…D-6; D-4 measured against the live fleet. See "Rulings applied" below. |
 | **Commits** | Authored and **HELD**. Operator pushes. |
 
 ## Access note
@@ -22,7 +23,7 @@ Node hostname confirmed as **`temporal`**. No root login was attempted.
 
 | Lane | Result |
 |---|---|
-| **A** — AD-05 review dossier | **Complete.** All Draft 1 factual claims verified against HEAD. 9 exact, 11 drifted, **3 materially wrong**, 1 unverifiable within boundary. Amendment (Draft 2) and approval checklist written. |
+| **A** — AD-05 review dossier | **Complete.** All Draft 1 factual claims verified against HEAD. 9 exact, 11 drifted, **4 materially wrong**, **0 left unverified** (the last, D1's two-node premise, was measured in the rulings round). Amendment (Draft 2) and approval checklist written. |
 | **B** — Temporal dev cluster on node-07 | **Complete.** Greenfield → running 4-container stack, every image pinned. Smoke workflow verified via CLI. Persistence proven across a full restart. Two real config bugs found and fixed. |
 | **C** — shadow-workflow spike | **Complete.** DAG-driven 8-stage workflow, signal gates, 6-scene fan-out. **Resume demonstration succeeded**: 13 activities, 13 completions, each exactly once, across a `SIGKILL`. Bounded retries surfaced, not swallowed. |
 
@@ -112,13 +113,45 @@ Acquire sites number **seven**, not eight.
 > question and is **not** resolved here. `CLAUDE.md`'s instruction not to act
 > on either claim as fact still stands for the deployed-image question.
 
-### Not verifiable within this package
+### D1's two-node premise — MEASURED, and it is false as deployed
 
-D1's premise that **`gpu_video` is consumed by node-02 *and* node-03** —
-confirming it requires inspecting node-02 and node-03, outside WP-31's
-boundary (node-01 read-only, node-07 only). The queue name and both time
-limits are confirmed; the two-node claim is **unverified**, and D1's
-concurrent-duplicate-execution consequence rests on it. Checklist item D-4.
+Originally recorded here as unverifiable. It was measured in the rulings round
+(D-4) and is now a **fourth material correction**. Full write-up: Draft 2 §4.5.
+
+`celery inspect active_queues` against the live broker, five workers online:
+
+```
+celery-worker@node02      gpu_llm
+cogvideox-worker@node03   gpu_video
+image-worker@node04       gpu_image, gpu_tts, gpu_talking_head
+default-worker@node01     default, notifications, cleanup
+composition-worker@node01 composition
+```
+
+**Only node-03 consumes `gpu_video`. Node-02 does not.** Node-02 defines such
+a worker (`docker-compose.node02.yml:126`) but it carries
+`profiles: ["standby"]` (`:95`) and is not started; node-03's `gpu_llm` worker
+is the standby half (`docker-compose.node03.yml:160`). It is an
+**active/standby pair, not two concurrent consumers.**
+
+The redelivery defect survives unchanged — `visibility_timeout 3600` under
+`time_limit 3900` with `acks_late` still means a long video task is
+redelivered and runs twice. What does not survive is D1's *concurrency*
+claim: with one active consumer at `--concurrency=1` the duplicate serialises
+behind the original instead of racing it on a second GPU. **D1's severity is
+lower than Draft 1 states.**
+
+Confirmed a third way, on the nodes themselves (read-only, `root@`):
+
+```
+node-02  ivgs-celery-node02            Up (healthy)   --queues=gpu_llm   --concurrency=2
+         ivgs-cogvideox-worker         Exited (0) 2 months ago      <- the gpu_video worker
+node-03  ivgs-cogvideox-worker-node03  Up (healthy)   --queues=gpu_video --concurrency=1
+         ivgs-celery-node03            Exited (0) 2 months ago      <- the gpu_llm worker
+```
+
+The premise becomes true the moment anyone starts node-02's `standby` profile.
+Latent, not retired.
 
 ### Other findings recorded for the register
 
@@ -413,24 +446,68 @@ contrast with the swallowed-failure register.
 
 ---
 
-# DECISIONS REQUESTED
+# Rulings applied
 
-Per the unattended profile: recorded, **nothing picked**.
+All six decisions were ruled by the operator on 2026-08-22 and are applied in
+this commit. Nothing is outstanding.
 
-| # | Decision | Options | WP-31's read |
-|---|---|---|---|
-| **D-1** | **AD-05 O-3** — is GPU reservation failure fatal? | (a) fatal with retry; (b) fail open as today | Draft 1 recommends (a) once P2.6 makes the registry real. Unrefuted by anything measured here. Not picked. |
-| **D-2** | **AD-05 O-4** — event-history retention period | (a) 30 days; (b) 90 days; (c) default | Measured: **71 events / ~10.4 KB** for a 6-scene run. Kilobytes per job. Cheap either way. Cluster left at the **default**; no retention policy was set. |
-| **D-3** | Is `dev/spikes/` an accepted repo path? | (a) yes, keep; (b) relocate; (c) do not commit spike code | The brief mandates `dev/spikes/temporal/` explicitly, so it was created and committed. `CLAUDE.md` §12 rules on `workpackages/` vs `workorders/` but is silent on `spikes/`. Flagged because §12's history shows directory conventions are contentious here. |
-| **D-4** | Does D1's node-02 **and** node-03 `gpu_video` premise hold? | verify / correct AD-05 | **Unverified** — outside WP-31's node boundary. D1's concurrent-duplicate consequence depends on it. |
-| **D-5** | Should the node-07 cluster keep running? | (a) leave up; (b) stop until M3.3 | **Left running** (`restart: unless-stopped`, so it survives reboot). It consumes ~4 containers on an otherwise idle node and is needed for any further AD-05 evidence. Stop with `docker compose --env-file .env down` in `/opt/temporal`. |
-| **D-6** | AD-05 §8 amendment permitting 23 in-stage `send_task` edits | accept / reject / reword | Drafted in Draft 2 §4.3 as checklist item A-4. The boundary as originally written forbids edits the migration requires, so **something** must change; the specific wording is the operator's call. |
+| # | Ruling | Applied where |
+|---|---|---|
+| **D-1** | **(a) fatal-with-retry**, explicitly **contingent on ledger P2.6 making the heartbeat registry real by implementation time** — if P2.6 has not landed, the decision reopens rather than shipping fatal against an empty registry | Draft 2 §7 (O-3); checklist item **A-8**, marked pre-ruled |
+| **D-2** | **90 days** event-history retention, applied as configuration **at M3.3 — nothing applied now** | Draft 2 §7 (O-4); checklist C. **The node-07 cluster was deliberately left at its default; no retention config was touched.** |
+| **D-3** | `dev/spikes/` **is** an accepted repo path | `dev/CLAUDE.md` §12, one paragraph after the `dev/workorders/` ruling |
+| **D-4** | **Measured: NO.** Only node-03 consumes `gpu_video` | Draft 2 §4.5 (rewritten, now a 4th material correction); checklist C-1; Lane A above |
+| **D-5** | Leave the node-07 cluster running | No action — `restart: unless-stopped`; verified still healthy |
+| **D-6** | §8 amendment wording **accepted as drafted** | Draft 2 §4.3; checklist item **A-4**, marked pre-ruled |
 
----
+## What D-4 changed, and what it did not
+
+D-4 is the only ruling that altered a factual claim rather than settling a
+preference, so it is called out separately.
+
+**Changed.** D1's headline consequence — "the duplicate can execute
+concurrently on the other node" — is **false in the deployed fleet.**
+`gpu_video` has a single active consumer, `cogvideox-worker@node03`, at
+`--concurrency=1`. Node-02's `gpu_video` worker exists but has been stopped
+for two months. **D1's severity is downgraded**, and Draft 2 and the checklist
+now say so.
+
+**Not changed.** The defect itself. `broker_visibility_timeout = 3600`
+(`config.py:214-215`) still sits below `time_limit = 3900`
+(`video_generation_task.py:445`) with `task_acks_late = True`
+(`celery_app.py:288`). A video task exceeding 3600 s **is** redelivered and
+**does** execute twice. Only the blast radius shrank: serialised behind the
+original on one worker, not racing it on a second GPU.
+
+**The honest reading for the board.** This is not "D1 was overstated, so the
+case is weaker." The premise is one `--profile standby` away from being
+exactly true. It is §2.2(1)'s argument in miniature — correctness resting on a
+guessed timeout plus a deployment detail nobody re-checks. **If D1 is weighted
+lower, §2.2's structural argument should be weighted correspondingly higher.**
+
+## Access correction
+
+The rulings round initially failed to reach node-02 and node-03: `dev@` is
+rejected by publickey there. The operator corrected the handover — **nodes
+02–06 use `root@`; only node-07 uses `dev@`.** With `root@` both nodes were
+reachable and were inspected read-only (`docker ps`, `docker inspect`; no
+state changed). The earlier broker-based measurement and the later on-node
+measurement agree exactly.
+
+**Still untested:** reachability from nodes 02–06 *to node-07* on 7233. The
+broker route answers what workers consume; it says nothing about whether those
+nodes can reach the Temporal cluster. Flagged in the checklist preconditions
+as a pre-§11.2-step-1 check.
 
 # Verified live vs inferred
 
 **Verified live** — observed on a running system this session:
+
+- **D1's two-node `gpu_video` premise (rulings round).** Measured three ways:
+  repo compose profiles, `celery inspect active_queues` against the live
+  broker (5 workers online), and the running container commands read on
+  node-02 and node-03 themselves. All three agree: **only node-03 consumes
+  `gpu_video`.**
 
 - node-07 hostname, OS, RAM, disk, absence of Docker; installed Docker/Compose versions
 - All four container images pulled at their pinned tags and running healthy
@@ -450,8 +527,9 @@ Per the unattended profile: recorded, **nothing picked**.
 - **The deployed-image question for D4.** The signature drift is confirmed *in
   source at HEAD*. No call site was executed and no running container was
   inspected. `CLAUDE.md`'s caution about the deployed image still stands.
-- **D1's node-02/node-03 `gpu_video` premise.** Outside the node boundary.
-- **Reachability from nodes 02–06.** Only node-01 → node-07 was tested.
+
+- **Reachability from nodes 02–06 to node-07.** Only node-01 → node-07 was
+  tested. Opening a shell on node-02/03 does not establish this.
 - **The 8–14 session / 600–900 line estimates.** Carried forward from Draft 1
   unchanged. Nothing here measures them; Draft 2 says so explicitly.
 - **The claim that the 23 in-stage `send_task` sites are *all* the stage-body
@@ -467,13 +545,14 @@ Per the unattended profile: recorded, **nothing picked**.
 | Constraint | Status |
 |---|---|
 | **No migration code** | Honoured. Nothing in `ivgs-api/`, `ivgs-workers/`, `ivgs-scheduler/`, `shared/`, or any compose file for nodes 01–06 was modified. |
-| Software installed on node-07 only | Honoured. node-01 saw read-only inspection plus new files under `docs/`, `configs/temporal/`, `dev/`. |
+| Software installed on node-07 only | Honoured. node-01 saw read-only inspection plus new files under `docs/`, `configs/temporal/`, `dev/`. In the rulings round node-02 and node-03 were inspected **read-only** (`docker ps`, `docker inspect`) under the operator's explicit D-4 instruction; nothing was installed, started, stopped or changed on either. |
 | Spike isolated | Honoured. `dev/spikes/temporal/` imports nothing from IVGS; nothing imports it; README states it is throwaway. |
 | No pipeline database access | Honoured. The cluster has its own Postgres on node-07. |
 | Disjoint from concurrent WP-IVGS-0 | Honoured. WP-IVGS-0's changes were already committed at `8092cd8` before this session began; the working tree held only this package's own files. **Only explicitly listed paths were staged.** |
-| Never block on a decision | Honoured — 6 recorded above, none picked. |
+| Never block on a decision | Honoured — 6 recorded, none picked by WP-31. All six subsequently **ruled by the operator** and applied; see "Rulings applied". |
 | Max 3 retries on a failing dependency | Honoured. The cluster took 3 deploy attempts (initial, B-1 fix, B-2 fix), each a diagnosed root cause, not a blind retry. |
-| Commit and HOLD | Honoured. Nothing pushed. |
+| Commit and HOLD | Honoured. Nothing pushed, in either round. |
+| Concurrent-session hygiene (rulings round) | Honoured. Another session committed `cf3d59b`, `17c8b8c`, `d5d8e7d` during the pause; those are untouched and only WP-31 paths plus the operator-directed `dev/CLAUDE.md` line were staged. |
 
 ---
 

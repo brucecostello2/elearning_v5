@@ -25,14 +25,16 @@ Lane A of WP-31 checked **every one of them** against HEAD. The result:
 |---|---|
 | Confirmed exactly, including line numbers | 9 |
 | Confirmed in substance, line references drifted | 11 |
-| **Materially wrong — corrected below** | **3** |
-| Could not be verified within this package's boundary | 1 |
+| **Materially wrong — corrected below** | **4** |
+| Could not be verified | **0** — the last open item, D1's two-node premise, was measured 2026-08-22 and is §4.5 |
 
 **The architectural case in Draft 1 survives verification.** D1–D4 are all real
 at HEAD, the orphaned-code numbers are exact, and the structural argument in
-§2.2 is unaffected. The three material corrections do not weaken the case;
-one of them (§4.3) strengthens it, and one (§4.2) removes an argument the
-board should not rely on.
+§2.2 is unaffected. The four material corrections do not weaken the case;
+one of them (§4.3) strengthens it, and two (§4.2, §4.5) remove arguments the
+board should not rely on. **§4.5 is the one that changes a severity rating**:
+D1's headline consequence — a duplicate executing concurrently on a second
+node — does not hold in the deployed fleet.
 
 Draft 2 also adds two things Draft 1 lacked and the board needs: an explicit
 **DAG compilation design** (§5), and a **statement of the idempotency
@@ -54,6 +56,7 @@ WP-31 Lane C, not inferred.
 | C-7 | New §6: activity idempotency is now a **binding requirement**, not a note |
 | C-8 | New §7: O-1 and O-4 answered with measurement; O-3 restated for decision |
 | C-9 | Appendix B: Celery touchpoint census. Appendix C: activity-boundary table |
+| C-10 | §4.5 **D1's "node-02 *and* node-03" premise measured and corrected** — it is false as deployed; D1's severity is downgraded accordingly |
 
 ---
 
@@ -177,7 +180,9 @@ edit stage files, at 13 sites, in direct tension with §8's stop-rule.
 This is not a reason to reject the migration. It is a reason to state the
 boundary precisely, so that a migration session hitting the eleventh of these
 does not read §8's "if you find yourself editing stage internals, stop" and
-either stop wrongly or quietly widen scope. **§8 is amended** to read:
+either stop wrongly or quietly widen scope. **§8 is amended** to read
+(wording **accepted by the operator 2026-08-22**, WP-31 ruling D-6; pre-ruled
+as checklist item A-4):
 
 > Removing a stage body's trailing `send_task` dispatch (23 sites, enumerated
 > in AD-05 Draft 2 §4.3) is **in scope** and is the only permitted edit to a
@@ -224,14 +229,73 @@ not 8 against 3. The defect is real and the argument is unchanged.
 > *deployed image* differs from HEAD is a separate question and is **not**
 > resolved here. No call site was executed.
 
-### 4.5 Not verified within this package
+### 4.5 CORRECTED: D1's "node-02 **and** node-03" premise is false as deployed (C-10)
 
-**D1's "`gpu_video` is consumed by node-02 **and** node-03."** WP-31's boundary
-permits read-only commands on node-01 and software installation on node-07
-only. Confirming which nodes consume `gpu_video` requires inspecting node-02
-and node-03. **Unverified.** The queue-name and time-limit halves of D1 are
-confirmed; the concurrent-duplicate-execution consequence rests on this
-unverified premise and should be checked before the board relies on it.
+> Draft 1 D1: *"`gpu_video` is consumed by node-02 **and** node-03, so the
+> duplicate can execute **concurrently on the other node**."*
+
+**Measured 2026-08-22**, fleet-wide, from the running workers' own
+`celery inspect active_queues` self-report against the live broker — five
+workers online:
+
+| Worker | Queues actually consumed |
+|---|---|
+| `default-worker@node01` | `default`, `notifications`, `cleanup` |
+| `composition-worker@node01` | `composition` |
+| `celery-worker@node02` | **`gpu_llm`** |
+| `cogvideox-worker@node03` | **`gpu_video`** |
+| `image-worker@node04` | `gpu_image`, `gpu_tts`, `gpu_talking_head` |
+
+**Exactly one worker consumes `gpu_video`, and it is node-03. Node-02 does
+not.**
+
+Confirmed **three independent ways**, which is why this correction is stated
+flatly rather than hedged:
+
+1. **Repo configuration.** Node-02 defines a `gpu_video` worker
+   (`ivgs-infra/docker-compose.node02.yml:126`, `-n cogvideox-worker@node02`)
+   but it carries `profiles: ["standby"]` (`:95`). Symmetrically, node-03's
+   `gpu_llm` worker is the standby half (`docker-compose.node03.yml:160`).
+2. **Broker self-report.** The `active_queues` table above — the workers'
+   own answer, not an inference.
+3. **The running containers, read on the nodes themselves** (read-only,
+   `root@192.168.1.91` / `.92`, 2026-08-22):
+
+```
+node-02  ivgs-celery-node02             Up (healthy)
+         celery -A celery_app worker --queues=gpu_llm   --concurrency=2 -n celery-worker@node02
+         ivgs-cogvideox-worker          Exited (0) 2 months ago      <- the gpu_video worker
+
+node-03  ivgs-cogvideox-worker-node03   Up (healthy)
+         celery -A celery_app worker --queues=gpu_video --concurrency=1 -n cogvideox-worker@node03
+         ivgs-celery-node03             Exited (0) 2 months ago      <- the gpu_llm worker
+```
+
+The pair is **active/standby, not two concurrent consumers**, and the standby
+halves have been down for two months.
+
+**What survives, and what does not:**
+
+- **Survives.** The redelivery defect is real and unchanged:
+  `broker_visibility_timeout = 3600` (`config.py:214-215`) sits below
+  `time_limit = 3900` (`video_generation_task.py:445`) with
+  `task_acks_late = True` (`celery_app.py:288`). A video task running past
+  3600 s **is** redelivered and **will** execute twice.
+- **Does not survive.** The *concurrency* claim. With one active consumer at
+  `--concurrency=1`, the duplicate is serialised behind the original on the
+  same worker — bad, but not two GPUs rendering the same scene at once.
+
+**D1's severity is therefore lower than Draft 1 states**, and the board should
+be told so before approving on the strength of it. The defect remains
+correctness-critical; its blast radius does not include cross-node concurrent
+execution **in the current configuration**.
+
+> **The premise becomes true the moment anyone starts node-02's `standby`
+> profile.** Two workers would then consume `gpu_video`, and D1 would read
+> exactly as written. This is a live latent hazard, not a retired one, and it
+> is one `--profile standby` away. It is precisely the class of failure §2.2(1)
+> describes: correctness resting on a pre-guessed timeout plus a deployment
+> detail nobody re-checks.
 
 ---
 
@@ -336,8 +400,8 @@ does not say so.
 |---|---|---|
 | **O-1** | persistence: node-01 Postgres or local? | **Answered: local.** Provisioned and running on node-07 with its own `postgres:17.11-alpine` and its own volume. Node-01's Postgres is untouched, and the ledger P1.9 SPOF is not extended. Recommend the board ratify this as decided. |
 | **O-2** | one workflow, or parent + per-stage children? | **Unchanged: single workflow**, children only for segment fan-out. The Lane C spike ran the whole eight-stage graph as one workflow; final history was 71 events / 10,683 bytes for a 6-scene run — well inside comfortable bounds. |
-| **O-3** | should GPU reservation failure be fatal? | **Still open. Operator decision — see the WP-31 report, DECISIONS REQUESTED D-1.** Draft 1's recommendation (fatal-with-retry once P2.6 makes the registry real) is unchanged and unrefuted. |
-| **O-4** | event-history retention period | **Still open, now measurable.** A 6-scene shadow run with two gates produced 71 events / ~10.4 KB. A real 8-stage run with retries will be larger but the order of magnitude is kilobytes-per-job, not megabytes. Retention is a cheap decision; **see report D-2.** |
+| **O-3** | should GPU reservation failure be fatal? | **RULED 2026-08-22 (operator): (a) fatal-with-retry** — explicitly **contingent on ledger P2.6 having made the heartbeat registry real by implementation time.** If P2.6 has not landed when Step 4 of §11.2 is reached, this decision reopens rather than shipping fatal against an empty registry (`total_nodes:0`), which would fail every GPU stage. Pre-ruled as checklist item A-8. |
+| **O-4** | event-history retention period | **RULED 2026-08-22 (operator): 90 days.** Applied as configuration at **M3.3, not now** — the node-07 dev cluster is deliberately left at its default. Measurement supporting the choice: a 6-scene shadow run with two gates produced 71 events / ~10.4 KB, i.e. kilobytes per job. 90 days is comfortably affordable. |
 | **O-5** | Schedules, or a minimal Beat? | **Unchanged: Schedules.** §4.2 adds the migration item this implies: re-home `poll_model_node_availability` before deleting `periodic_tasks.py`. |
 
 ---
@@ -424,7 +488,9 @@ structurally rather than by renaming files.
 
 ---
 
-*AD-05 Draft 2 — 2026-08-22. Status: **awaiting review-board approval per §18.**
+*AD-05 Draft 2 — 2026-08-22 (revised same day with operator rulings D-1…D-6;
+§4.5 rewritten from measurement, O-3 and O-4 ruled, §8 amendment accepted).
+Status: **awaiting review-board approval per §18.**
 No migration code may be written before approval. WP-31 wrote none: its spike
 code lives in `dev/spikes/temporal/`, imports nothing from IVGS, and is
 evidence rather than foundation.*
