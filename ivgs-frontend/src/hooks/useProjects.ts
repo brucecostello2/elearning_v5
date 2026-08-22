@@ -40,9 +40,16 @@ const projectsFetcher = async (url: string): Promise<Project[]> => {
 };
 
 const projectFetcher = async (url: string): Promise<Project> => {
-  const response = await apiClient.get<{ data: Project }>(url);
-  // API returns { data: { ...project } } — unwrap.
-  return response.data.data;
+  // WP-IVGS-0 F9: GET /api/v1/projects/{id} has response_model=ProjectResponse
+  // and returns the project UNWRAPPED. This used to read response.data.data, so
+  // the project detail page — the page the New Project form navigates to after
+  // a successful create — received undefined.
+  //
+  // The list route above is different and genuinely does wrap: it returns
+  // PaginatedResponse { data: [...], total, page, ... }. Only the single-project
+  // route is flat. Do not "fix" projectsFetcher to match this one.
+  const response = await apiClient.get<Project>(url);
+  return response.data;
 };
 
 export function useProjects(projectId?: string): UseProjectsReturn {
