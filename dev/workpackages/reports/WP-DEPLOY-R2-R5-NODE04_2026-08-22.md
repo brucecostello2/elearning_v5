@@ -416,3 +416,92 @@ hand straight after banking anything irreplaceable:
 **Not run in this package.** It is a multi-GB rsync on a 16 GB node with a documented
 Proxmox OOM history (CLAUDE.md section 7), it takes the same lock as the scheduled job, and
 no ruling covered it. Offered, not taken.
+
+---
+
+# 12. The self-hosted runner is dead - "Compliance Audit #341" will never start
+
+Asked 2026-08-22 after GitHub showed run #341 queued against `a918fb9`.
+
+## 12.1 The two answers
+
+**1. Self-hosted.** `.github/workflows/compliance-check.yml:23` -
+`runs-on: [self-hosted, linux, x64, ivgs-infra]`. So are all three `cd-deploy.yml` jobs
+(`:37`, `:69`, `:110`). Every one of `ci.yml`'s six jobs is `ubuntu-latest`.
+
+**2. The runner is absent.** `ivgs-github-runner` exists only as a stopped container.
+
+| Fact | Value |
+|---|---|
+| Created / last started | 2026-05-22 / **2026-05-26T22:41:36Z** |
+| Finished | 2026-05-26T22:41:36Z - **0.145 seconds later** |
+| Exit code / restarts | 0 / 0 |
+| Log output | **none at all** |
+| Dead for | **87 days** |
+| systemd unit | none |
+| Defined in compose? | yes - `docker-compose.node01.yml:557`, and present in the resolved service list |
+
+It is a declared service that is simply not running - not a service that was removed.
+
+## 12.2 Why it exits in 0.145 s
+
+The compose block has **no `command:` and no `entrypoint:`**. The official
+`ghcr.io/actions/actions-runner` image does not self-register: it ships `config.sh` and
+`run.sh` and expects to be told to run them. With no command it runs the image default and
+exits immediately, which is exactly the observed 0.145 s and zero log output.
+
+Two further reasons it could not work as written even with a command:
+
+- **No volume for runner state.** Only `/var/run/docker.sock` is mounted. Registration and
+  `_work` would live in the container layer and vanish on any recreate.
+- **`GITHUB_RUNNER_TOKEN` is a *registration* token.** Those expire about an hour after
+  issue. The value in `.env` is non-empty but roughly three months stale, so it is dead
+  regardless.
+
+## 12.3 What this means for "green"
+
+`ci.yml` is entirely `ubuntu-latest`, and its two Python jobs are `if: false` (disabled:
+"CI environment was never configured to match how our tests expect to run"). **Every green
+CI signal since 2026-05-26 came from GitHub-hosted frontend jobs only.** No self-hosted
+workflow - Compliance Audit or cd-deploy - has executed in 87 days. Runs targeting them do
+not fail; they queue indefinitely, which is why #341 shows queued rather than red. **A
+queued self-hosted job is not a passing job, and nothing in the GitHub UI says so.**
+
+Worth stating plainly: the compliance gate described in spec section F.2 as "fail build on
+any violation" **has not gated anything since 2026-05-26**, including all five commits of
+2026-08-22.
+
+## 12.4 Proposals - NOT started, per instruction
+
+**Recommended, and it is one line.** Compliance Audit has no reason to be self-hosted. Its
+whole body is `actions/checkout`, `actions/setup-python`, four `grep` rules, and
+`python scripts/compliance_scanner.py .` - all against the checked-out repo. No docker, no
+ssh, no host path, no network. Change `compliance-check.yml:23` to `runs-on: ubuntu-latest`
+and the audit runs on the next push with no runner, no token and no host exposure. **This
+restores the gate immediately and is the cheapest correct fix.**
+
+**If a self-hosted runner is genuinely wanted** (cd-deploy does need node-01 access, since
+it deploys there), it needs all four of:
+
+1. A **fresh** registration token - they expire in ~1 hour.
+   `gh api -X POST /repos/{owner}/{repo}/actions/runners/registration-token`
+2. A `command:`/entrypoint that runs `config.sh --unattended --url ... --token ...
+   --labels self-hosted,linux,x64,ivgs-infra` and then `run.sh`.
+3. A **named volume** for runner config and `_work`, so registration survives a recreate.
+4. A decision on `/var/run/docker.sock`.
+
+**Security note on item 4, which should be settled before anything is started.** The
+service mounts the host Docker socket, and `compliance-check.yml:17` triggers on
+`pull_request`. A self-hosted runner with the host Docker socket, executing workflow code
+from a pull request, is root on node-01 for whoever opened the PR. GitHub requires approval
+for first-time fork contributors, but that is a policy setting, not a guarantee, and it is
+the wrong thing to be relying on. **If the runner comes back, it should not hold the Docker
+socket unless a specific job needs it, and `pull_request` should not target self-hosted at
+all.** Recommendation stands: move the compliance audit to `ubuntu-latest` and leave the
+runner for `cd-deploy` alone, which is `push`/`workflow_dispatch` driven.
+
+**Not verified.** GitHub-side state was not inspected - no `gh` credential exists on
+node-01 (`gh auth status`: not logged in). Whether the repo shows other registered runners,
+how many runs are queued behind #341, and whether repo settings permit fork workflows are
+all unknown from this box and should be checked in the GitHub UI.
+
