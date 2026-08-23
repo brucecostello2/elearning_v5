@@ -11,6 +11,8 @@ import { useWebSocket } from "@/hooks/useWebSocket";
 import PipelineDAG from "@/components/monitoring/PipelineDAG";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { averageDurationMs } from "@/lib/jobs";
+import type { AggregatedJob } from "@/hooks/useMonitoring";
 import type {
   PipelineJob,
   PipelineStage,
@@ -38,8 +40,9 @@ import type {
  *   - viewer: no access (redirected)
  *
  * Data sources:
- *   - GET /api/v1/projects/{id}/jobs — job listing
- *   - GET /api/v1/jobs/{id} — job detail with checkpoints
+ *   - GET /api/v1/projects + GET /api/v1/projects/{id}/jobs — job listing
+ *     (aggregated client-side; there is no cross-project job route)
+ *   - GET /api/v1/jobs/{id} — job detail (no checkpoints in this payload)
  *   - GET /api/v1/jobs/{id}/checkpoints — stage checkpoints
  *   - POST /api/v1/jobs/{id}/resume — resume from checkpoint
  *   - WS /api/v1/jobs/{id}/status — real-time job progress
@@ -114,9 +117,12 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
 
   // ── Data Fetching ───────────────────────────────────────────────────
   /**
-   * usePipelineJobs fetches from GET /api/v1/projects (with jobs expanded)
-   * Polling interval: 15 seconds per §8.2.1 real-time requirement.
-   * SWR handles caching, deduplication, and background revalidation.
+   * usePipelineJobs aggregates GET /api/v1/projects/{id}/jobs across every
+   * project -- this API has no cross-project job route. It previously read
+   * GET /api/v1/projects?expand=jobs, which returns PROJECTS; see WP-40
+   * Task 2 and the note on the hook. Filters are applied client-side there
+   * because the projects route ignored every one of them.
+   * Polling interval: 15 seconds per §8.2.1.
    */
   const {
     jobs,
@@ -241,6 +247,21 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
    * Compute summary statistics from the current job list.
    * Used for the status summary bar at the top of the page.
    */
+  /**
+   * WP-40 Task 2. The counters read 0 over 16 rows for two compounding
+   * reasons: the rows were PROJECTS, and even against real jobs the
+   * comparison was wrong -- `render_jobs.status` is lowercase
+   * (`success`/`failed`) and this compared against COMPLETE/ERROR.
+   * `usePipelineJobs` now yields real jobs with normalised uppercase
+   * statuses, so these filters finally match something.
+   *
+   * `avgDuration` is `null`, not 0, when nothing is measurable. Job-level
+   * `started_at`/`completed_at` are NULL on every row in `render_jobs` and
+   * nothing in the system ever writes them, so the duration comes from each
+   * job's checkpoint span (see @/lib/jobs). Reporting an unmeasurable
+   * average as 0 is what made this read "—" and left the operator unable to
+   * tell "instant" from "not recorded".
+   */
   const summaryStats = useMemo(() => {
     if (!jobs || jobs.length === 0) {
       return {
@@ -249,57 +270,26 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
         complete: 0,
         error: 0,
         pending: 0,
-        avgDuration: 0,
+        avgDuration: null as number | null,
+        timedJobs: 0,
       };
     }
 
-    const running = jobs.filter(
-      (j: PipelineJob) =>
-        j.status === "RUNNING" ||
-        j.status === "TRANSCRIPT_REFINEMENT" ||
-        j.status === "STORYBOARD_GENERATION" ||
-        j.status === "MEDIA_GENERATION" ||
-        j.status === "MANIFEST_GENERATION" ||
-        j.status === "AUDIO_GENERATION" ||
-        j.status === "TALKING_HEAD_RENDER" ||
-        j.status === "PROTOTYPE_DRAFT" ||
-        j.status === "FINAL_RENDER"
-    ).length;
+    const countOf = (status: string): number =>
+      jobs.filter((j) => j.status === status).length;
 
-    const complete = jobs.filter(
-      (j: PipelineJob) => j.status === "COMPLETE"
-    ).length;
-
-    const error = jobs.filter(
-      (j: PipelineJob) => j.status === "ERROR"
-    ).length;
-
-    const pending = jobs.filter(
-      (j: PipelineJob) => j.status === "PENDING" || j.status === "DRAFT"
-    ).length;
-
-    /** Calculate average duration from completed jobs */
-    const completedJobs = jobs.filter(
-      (j: PipelineJob) =>
-        j.status === "COMPLETE" && j.started_at && j.completed_at
-    );
-
-    const avgDuration =
-      completedJobs.length > 0
-        ? completedJobs.reduce((sum: number, j: PipelineJob) => {
-            const start = new Date(j.started_at!).getTime();
-            const end = new Date(j.completed_at!).getTime();
-            return sum + (end - start);
-          }, 0) / completedJobs.length
-        : 0;
+    const durations = jobs.map((j) => j.duration_ms ?? null);
+    const avgDuration = averageDurationMs(durations);
+    const timedJobs = durations.filter((d) => d !== null).length;
 
     return {
       total: jobs.length,
-      running,
-      complete,
-      error,
-      pending,
+      running: countOf("RUNNING"),
+      complete: countOf("COMPLETE"),
+      error: countOf("ERROR"),
+      pending: countOf("PENDING"),
       avgDuration,
+      timedJobs,
     };
   }, [jobs]);
 
@@ -308,7 +298,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
    * E.g., 125000 → "2m 5s"
    */
   const formatDuration = useCallback((ms: number): string => {
-    if (ms <= 0) return "—";
+    if (!Number.isFinite(ms) || ms < 0) return "—";
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
@@ -469,7 +459,16 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                 Avg Duration
               </p>
               <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {formatDuration(summaryStats.avgDuration)}
+                {summaryStats.avgDuration === null
+                  ? "—"
+                  : formatDuration(summaryStats.avgDuration)}
+              </p>
+              <p className="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+                {summaryStats.avgDuration === null
+                  ? "no timing data recorded"
+                  : `over ${summaryStats.timedJobs} timed job${
+                      summaryStats.timedJobs === 1 ? "" : "s"
+                    }`}
               </p>
             </div>
           </div>
@@ -648,7 +647,7 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                         No pipeline jobs match the current filters.
                       </div>
                     ) : (
-                      jobs.map((job: PipelineJob) => (
+                      jobs.map((job: AggregatedJob) => (
                         <button
                           key={job.id}
                           type="button"
@@ -662,12 +661,23 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
                         >
                           <div className="flex items-center justify-between">
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                                {job.project_name}
+                              {/* WP-40 Task 2: this said "Job #c12fa967" --
+                                  the PROJECT id -- because the list was the
+                                  project list. Job id, project name and job
+                                  type are all distinct facts and all shown. */}
+                              <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate font-mono">
+                                Job #{job.id.slice(0, 8)}
+                                {job.job_type ? (
+                                  <span className="ml-2 font-sans font-normal text-gray-600 dark:text-gray-400">
+                                    {job.job_type}
+                                  </span>
+                                ) : null}
                               </p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                                Job #{job.id.slice(0, 8)} •{" "}
-                                {formatDate(job.created_at)}
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+                                {job.project_name} • {formatDate(job.created_at)}
+                                {job.duration_ms !== null
+                                  ? ` • ${formatDuration(job.duration_ms)}`
+                                  : ""}
                               </p>
                             </div>
                             <div className="ml-3 flex items-center gap-2">

@@ -1,6 +1,17 @@
 import useSWR, { type SWRConfiguration, type KeyedMutator } from "swr";
 import { api } from "@/lib/api";
+import { unwrapList } from "@/lib/unwrap";
+import type { DisplayCheckpoint } from "@/lib/jobs";
+import {
+  isTerminalStatus,
+  jobDurationMs,
+  mergeCheckpoints,
+  normalizeJobStatus,
+} from "@/lib/jobs";
 import type {
+  CheckpointData,
+  FallbackLevel,
+  PipelineStage,
   PipelineJob,
   PipelineJobDetail,
   GPUNode,
@@ -65,41 +76,184 @@ interface PipelineJobFilters {
 }
 
 /**
- * usePipelineJobs — Fetches pipeline jobs with filtering.
+ * usePipelineJobs — the cross-project render-job list.
+ *
+ * WP-40 Task 2. This hook used to fetch `/api/v1/projects?expand=jobs` and
+ * return `data.data` -- the PROJECT list. `expand` is not a parameter that
+ * route implements (verified live 2026-08-23: no `jobs` key in the
+ * response), so the Pipeline Tracker was rendering 16 projects as if they
+ * were jobs. Every one of the page's symptoms follows from that:
+ *
+ *   - "16 jobs" was 16 projects.
+ *   - RUNNING/COMPLETE/ERROR/PENDING all 0, because a project carries
+ *     `state`, not `status` -- and even against real jobs the counters would
+ *     still have read 0, since `render_jobs.status` is lowercase
+ *     (`success`/`failed`) and the filters compared against COMPLETE/ERROR.
+ *   - AVG DURATION "—", because a project has no started_at/completed_at.
+ *   - Rows labelled "Job #c12fa967", which is the project's id.
+ *
+ * There is no cross-project job route on this API (jobs.py exposes only
+ * `GET /projects/{id}/jobs` and `GET /jobs/{id}`), so the list is assembled
+ * client-side: projects, then that project's jobs, then -- for terminal jobs
+ * only -- the checkpoints that carry the sole timing this system records.
+ *
+ * Filters are applied here too. They were previously sent as query params to
+ * the projects route, which ignores every one of them, so the state, search
+ * and date controls did nothing.
  *
  * Polls every 15 seconds per §8.2.1.
- * Source: multiple endpoints aggregated server-side or via
- * GET /api/v1/projects with ?expand=jobs parameter.
- *
- * @param filters - Optional filter parameters
- * @returns Pipeline job data, loading state, error, and mutator
  */
+
+/**
+ * Checkpoint spans for jobs that have finished, memoised for the session.
+ *
+ * A terminal job's checkpoints never change, so re-fetching them on every
+ * 15-second poll would be pure waste. Only jobs never seen before cost a
+ * request, and only up to MAX_CHECKPOINT_LOOKUPS of them per pass.
+ */
+const durationCache = new Map<string, number | null>();
+
+/** Per-pass ceiling on checkpoint lookups. Surfaced, never silent. */
+const MAX_CHECKPOINT_LOOKUPS = 40;
+
+interface WireJob {
+  id: string;
+  project_id: string;
+  job_type?: string | null;
+  status?: string | null;
+  started_at?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  error_message?: string | null;
+  retry_count?: number | null;
+  node_id?: string | null;
+}
+
+/** A job row as the monitoring page consumes it. */
+export interface AggregatedJob extends PipelineJob {
+  project_id: string;
+  job_type: string | null;
+  duration_ms: number | null;
+  error_message: string | null;
+}
+
+async function fetchAggregatedJobs(): Promise<AggregatedJob[]> {
+  const projectsResp = await fetcher("/api/v1/projects?per_page=100");
+  const projects = unwrapList<{ id: string; name?: string }>(projectsResp);
+
+  const perProject = await Promise.all(
+    projects.map(async (project) => {
+      try {
+        const resp = await fetcher(
+          `/api/v1/projects/${project.id}/jobs?per_page=100`
+        );
+        const jobs = unwrapList<WireJob>(resp);
+        return jobs.map((job) => ({ job, project }));
+      } catch {
+        /* One unreadable project must not blank the whole tracker. */
+        return [];
+      }
+    })
+  );
+
+  const flat = perProject.flat();
+
+  /* Timing, for terminal jobs we have not measured yet. */
+  const pending = flat
+    .filter(({ job }) => isTerminalStatus(job.status) && !durationCache.has(job.id))
+    .slice(0, MAX_CHECKPOINT_LOOKUPS);
+
+  if (pending.length > 0) {
+    await Promise.all(
+      pending.map(async ({ job }) => {
+        try {
+          const resp = await fetcher(`/api/v1/jobs/${job.id}/checkpoints`);
+          const checkpoints = Array.isArray(resp?.checkpoints) ? resp.checkpoints : [];
+          durationCache.set(job.id, jobDurationMs(job, checkpoints));
+        } catch {
+          durationCache.set(job.id, null);
+        }
+      })
+    );
+  }
+
+  return flat
+    .map(({ job, project }) => ({
+      id: job.id,
+      project_id: job.project_id,
+      project_name: project.name ?? job.project_id,
+      job_type: job.job_type ?? null,
+      status: normalizeJobStatus(job.status),
+      progress: 0,
+      created_at: job.created_at,
+      started_at: job.started_at ?? null,
+      completed_at: job.completed_at ?? null,
+      estimated_completion: null,
+      fallback_level: "L1" as FallbackLevel,
+      duration_ms: durationCache.get(job.id) ?? jobDurationMs(job, null),
+      error_message: job.error_message ?? null,
+    }))
+    .sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+}
+
+function applyJobFilters(
+  jobs: AggregatedJob[],
+  filters: PipelineJobFilters
+): AggregatedJob[] {
+  let result = jobs;
+
+  if (filters.state && filters.state !== "ALL") {
+    result = result.filter((j) => j.status === filters.state);
+  }
+
+  if (filters.search && filters.search.trim()) {
+    const q = filters.search.trim().toLowerCase();
+    result = result.filter((j) =>
+      [j.id, j.project_name, j.job_type ?? "", j.project_id]
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }
+
+  if (filters.dateFrom) {
+    const from = new Date(filters.dateFrom).getTime();
+    if (Number.isFinite(from)) {
+      result = result.filter((j) => new Date(j.created_at).getTime() >= from);
+    }
+  }
+
+  if (filters.dateTo) {
+    /* Inclusive of the whole day the operator picked. */
+    const to = new Date(filters.dateTo).getTime() + 24 * 60 * 60 * 1000 - 1;
+    if (Number.isFinite(to)) {
+      result = result.filter((j) => new Date(j.created_at).getTime() <= to);
+    }
+  }
+
+  return result;
+}
+
 export function usePipelineJobs(filters: PipelineJobFilters = {}): {
-  jobs: PipelineJob[] | undefined;
+  jobs: AggregatedJob[] | undefined;
   isLoading: boolean;
   error: Error | undefined;
-  mutate: KeyedMutator<{ jobs: PipelineJob[] }>;
+  mutate: KeyedMutator<AggregatedJob[]>;
 } {
-  const params = new URLSearchParams();
-  if (filters.state) params.set("state", filters.state);
-  if (filters.search) params.set("search", filters.search);
-  if (filters.dateFrom) params.set("from_date", filters.dateFrom);
-  if (filters.dateTo) params.set("to_date", filters.dateTo);
-  params.set("expand", "jobs");
-
-  const queryString = params.toString();
-  const key = `/api/v1/projects?${queryString}`;
-
   const config: SWRConfiguration = {
     refreshInterval: 15_000,
     revalidateOnFocus: true,
     dedupingInterval: 5_000,
   };
 
-  const { data, error, isLoading, mutate } = useSWR(key, fetcher, config);
+  const { data, error, isLoading, mutate } = useSWR<AggregatedJob[]>(
+    "pipeline-jobs-aggregate",
+    fetchAggregatedJobs,
+    config
+  );
 
   return {
-    jobs: data?.data ?? data?.jobs ?? data?.results?.flatMap((p: any) => p.jobs) ?? (Array.isArray(data) ? data : []),
+    jobs: data ? applyJobFilters(data, filters) : undefined,
     isLoading,
     error,
     mutate,
@@ -107,13 +261,18 @@ export function usePipelineJobs(filters: PipelineJobFilters = {}): {
 }
 
 /**
- * usePipelineJobDetail — Fetches detailed info for a single pipeline job.
+ * usePipelineJobDetail — a single job plus its checkpoints.
  *
- * Includes checkpoint data, retry history, and error details.
- * Source: GET /api/v1/jobs/{id} + GET /api/v1/jobs/{id}/checkpoints
+ * WP-40 Task 2. Two problems, both invisible while the list handed this hook
+ * a PROJECT id (every detail fetch 404'd):
  *
- * @param jobId - Job ID to fetch detail for (null to skip)
- * @returns Job detail data, loading state, error
+ *   1. `GET /api/v1/jobs/{id}` returns `JobResponse`, which has no
+ *      checkpoints at all. The stage table read `jobDetail.checkpoints` and
+ *      therefore drew eight PENDING rows for every job, finished or not.
+ *   2. `GET /api/v1/jobs/{id}/checkpoints` -- which does have them -- keys
+ *      each row by `stage_name` at worker granularity
+ *      (`image_generation`, `tts_audio`, ...), while the page's DAG is keyed
+ *      by the eight spec stages. `mergeCheckpoints` maps and collapses them.
  */
 export function usePipelineJobDetail(jobId: string | null): {
   jobDetail: PipelineJobDetail | undefined;
@@ -125,9 +284,31 @@ export function usePipelineJobDetail(jobId: string | null): {
     revalidateOnFocus: true,
   };
 
-  const { data, error, isLoading } = useSWR(
-    jobId ? `/api/v1/jobs/${jobId}` : null,
-    fetcher,
+  const { data, error, isLoading } = useSWR<PipelineJobDetail>(
+    jobId ? `job-detail:${jobId}` : null,
+    async (): Promise<PipelineJobDetail> => {
+      const [job, cps] = await Promise.all([
+        fetcher(`/api/v1/jobs/${jobId}`),
+        fetcher(`/api/v1/jobs/${jobId}/checkpoints`).catch(() => null),
+      ]);
+
+      const checkpoints = mergeCheckpoints(
+        Array.isArray(cps?.checkpoints) ? cps.checkpoints : []
+      ) as unknown as CheckpointData[];
+
+      const failed = checkpoints.find((c) => c.status === "FAILED");
+      const running = checkpoints.find((c) => c.status === "RUNNING");
+
+      return {
+        id: job?.id ?? String(jobId),
+        status: normalizeJobStatus(job?.status),
+        current_stage: (running?.stage ?? null) as PipelineStage | null,
+        error_stage: (failed?.stage ?? null) as PipelineStage | null,
+        error_message: job?.error_message ?? null,
+        fallback_level: "L1",
+        checkpoints,
+      };
+    },
     config
   );
 
@@ -183,6 +364,31 @@ export function useGPUFleetStatus(): {
     error,
     mutate,
   };
+}
+
+/**
+ * useJobCheckpoints — the stage checkpoints for one render job.
+ *
+ * WP-40 Task 2. `GET /api/v1/jobs/{id}` carries no checkpoints, and the
+ * checkpoint route keys rows by worker stage name; `mergeCheckpoints` maps
+ * them onto the eight spec stages the UI draws. Shared by the monitoring
+ * page's stage table and the project Overview's Pipeline Progress strip,
+ * which is the other component that had no real stage data to show.
+ */
+export function useJobCheckpoints(jobId: string | null | undefined): {
+  checkpoints: DisplayCheckpoint[];
+  isLoading: boolean;
+} {
+  const { data, isLoading } = useSWR<DisplayCheckpoint[]>(
+    jobId ? `job-checkpoints:${jobId}` : null,
+    async (): Promise<DisplayCheckpoint[]> => {
+      const resp = await fetcher(`/api/v1/jobs/${jobId}/checkpoints`);
+      return mergeCheckpoints(Array.isArray(resp?.checkpoints) ? resp.checkpoints : []);
+    },
+    { refreshInterval: 15_000, dedupingInterval: 5_000 }
+  );
+
+  return { checkpoints: data ?? [], isLoading };
 }
 
 /**
@@ -502,55 +708,82 @@ export function useStorageAnalytics(): {
   };
 }
 /**
- * useStorageQuotas — Fetches per-user quota utilization.
+ * useStorageQuotas — per-user quota utilisation.
  *
- * Admin-only. Polls every 120 seconds.
+ * WP-40 Task 4. The console filled with 404s from
+ * `/api/v1/quotas/user/{id}`. Two corrections to the premise, both verified
+ * live on 2026-08-23:
  *
- * Implementation note: the API does not expose a bulk
- * /api/v1/quotas/user/all endpoint. This hook fetches the user list
- * from /api/v1/users and then issues a parallel quota lookup per user
- * against /api/v1/quotas/user/{user_id}. Users with no quota record
- * (404 from the quota endpoint) are reported with used_bytes=0 and
- * quota_bytes=0 so the row still appears in the admin table.
+ *   1. The route EXISTS. `quotas.py:33` is
+ *      `GET /quotas/{entity_type}/{entity_id}`, mounted at `/api/v1/quotas`.
+ *      The 404 is its own honest answer -- `storage_quotas` has 0 rows, so
+ *      every lookup raises RESOURCE_NOT_FOUND "No quota for user/{id}".
+ *   2. It is not called on project pages. The only caller is this hook, and
+ *      the only mount is /monitoring/storage's admin Quotas tab. The spam is
+ *      four 404s (one per user) on every poll and every window refocus.
  *
- * Trade-off: per-user fetch errors are swallowed and reported as
- * empty quota rows. If individual quota endpoints start returning
- * 500s, those failures will be silent. Phase F backlog item:
- * surface fetch errors per row in the admin UI.
+ * The fix is to stop asking a question already answered. A 404 means "this
+ * entity has no quota record", which cannot change without an admin PUT, so
+ * it is remembered for the session and never re-requested. First load costs
+ * one probe per user; every later poll costs none.
  *
- * @param enabled - Whether to fetch (false for non-admin users)
- * @returns Quota entries, loading state
+ * Rows now carry `has_quota`, so the UI can say "no quota data" instead of
+ * rendering 0 / 0 -- which reads as a real zero-byte quota and is worse than
+ * saying nothing.
+ *
+ * NOTE: nothing anywhere writes `storage_quotas`; there is no quota
+ * provisioning path in this system. That is backend scope and is NOT fixed
+ * here -- WP-40 explicitly forbids building a quotas API.
  */
+
+/** Entities known to have no quota record. Session-lived, never re-probed. */
+const quotaMisses = new Set<string>();
+
 export function useStorageQuotas(enabled: boolean): {
   quotas: QuotaEntry[] | undefined;
   isLoading: boolean;
+  /** True when no user in the list has a quota record at all. */
+  noQuotaData: boolean;
 } {
   const config: SWRConfiguration = {
     refreshInterval: 120_000,
     dedupingInterval: 60_000,
+    /* A refocus must not re-run the probe sweep. */
+    revalidateOnFocus: false,
+    /* A 404 here is data, not a transient fault; retrying cannot help. */
+    shouldRetryOnError: false,
   };
+
   const { data, isLoading } = useSWR<QuotaEntry[]>(
     enabled ? "/api/v1/quotas/user/aggregated" : null,
     async (): Promise<QuotaEntry[]> => {
       const usersResp = await fetcher("/api/v1/users");
-      const users: User[] = usersResp?.data ?? [];
+      const users = unwrapList<User>(usersResp);
+
       const entries = await Promise.all(
         users.map(async (u): Promise<QuotaEntry> => {
+          const base = { user_id: u.id, username: u.username };
+
+          /* Already established that this user has no quota record. */
+          if (quotaMisses.has(u.id)) {
+            return { ...base, used_bytes: 0, quota_bytes: 0, has_quota: false };
+          }
+
           try {
             const quota = await fetcher(`/api/v1/quotas/user/${u.id}`);
             return {
-              user_id: u.id,
-              username: u.username,
+              ...base,
               used_bytes: quota?.used_bytes ?? 0,
               quota_bytes: quota?.quota_bytes ?? 0,
+              has_quota: true,
             };
-          } catch {
-            return {
-              user_id: u.id,
-              username: u.username,
-              used_bytes: 0,
-              quota_bytes: 0,
-            };
+          } catch (err: unknown) {
+            /* 404 = no record for this entity. Remember it; ask once, ever.
+               Anything else is a real fault and is not memoised, so it will
+               be retried on the next poll. */
+            const status = (err as { status?: number })?.status;
+            if (status === 404) quotaMisses.add(u.id);
+            return { ...base, used_bytes: 0, quota_bytes: 0, has_quota: false };
           }
         })
       );
@@ -558,9 +791,11 @@ export function useStorageQuotas(enabled: boolean): {
     },
     config
   );
+
   return {
     quotas: data,
     isLoading,
+    noQuotaData: Array.isArray(data) && data.every((q) => !q.has_quota),
   };
 }
 

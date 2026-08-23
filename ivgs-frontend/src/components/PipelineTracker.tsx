@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { useJobs } from "@/hooks/useJobs";
+import { useJobCheckpoints } from "@/hooks/useMonitoring";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
 /**
@@ -13,14 +14,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
  *   - Estimated completion time
  *   - Fallback level indicator (L1–L4 or DLQ)
  *
- * Pipeline stages per §6 (7 stages):
- *   1. Script Refinement
- *   2. Storyboard Generation
- *   3. Visual Asset Creation
- *   4. Audio Production
- *   5. Talking-Head Lip Sync
- *   6. Composition & Rendering
- *   7. Quality Assurance
+ * Pipeline stages per §6.1, the same eight the /monitoring DAG draws.
  */
 
 interface PipelineStage {
@@ -29,14 +23,30 @@ interface PipelineStage {
   number: number;
 }
 
+/**
+ * WP-40 Task 2 — the stage ids now match the rest of the app.
+ *
+ * This strip had its own seven-name vocabulary
+ * (`script_refinement`, `visual_asset_creation`, `quality_assurance`, ...)
+ * that nothing on the wire ever produced, and it read stage data from
+ * `latestJob.stage_statuses` -- a field `JobResponse`
+ * (schemas/render_job.py) does not send. So every node rendered grey
+ * "pending" no matter what the run had done, including after a complete
+ * end-to-end run.
+ *
+ * These are the same eight spec stages the /monitoring DAG draws, fed from
+ * the same source: `pipeline_checkpoints` via
+ * GET /api/v1/jobs/{id}/checkpoints, mapped by `mergeCheckpoints`.
+ */
 const PIPELINE_STAGES: PipelineStage[] = [
-  { id: "script_refinement", label: "Script Refinement", number: 1 },
-  { id: "storyboard_generation", label: "Storyboard Generation", number: 2 },
-  { id: "visual_asset_creation", label: "Visual Assets", number: 3 },
-  { id: "audio_production", label: "Audio Production", number: 4 },
-  { id: "talking_head_lipsync", label: "Talking-Head Sync", number: 5 },
-  { id: "composition_rendering", label: "Composition", number: 6 },
-  { id: "quality_assurance", label: "Quality Assurance", number: 7 },
+  { id: "TRANSCRIPT_REFINEMENT", label: "Transcript Refinement", number: 1 },
+  { id: "STORYBOARD_GENERATION", label: "Storyboard Generation", number: 2 },
+  { id: "MEDIA_GENERATION", label: "Media Generation", number: 3 },
+  { id: "MANIFEST_GENERATION", label: "Manifest", number: 4 },
+  { id: "AUDIO_GENERATION", label: "Audio Generation", number: 5 },
+  { id: "TALKING_HEAD_RENDER", label: "Talking-Head Sync", number: 6 },
+  { id: "PROTOTYPE_DRAFT", label: "Prototype Draft", number: 7 },
+  { id: "FINAL_RENDER", label: "Final Render", number: 8 },
 ];
 
 interface StageStatus {
@@ -56,13 +66,21 @@ export default function PipelineTracker({
 }: PipelineTrackerProps): React.ReactElement {
   const { jobs, isLoading } = useJobs(projectId);
 
+  /* The project's most recent render job -- the run this strip describes.
+     WP-35: `Array.isArray` is the guard that actually holds; a paginated
+     envelope is truthy and its `.length` is undefined. */
+  const latestJobId =
+    Array.isArray(jobs) && jobs.length > 0 ? (jobs[0] as { id?: string })?.id ?? null : null;
+
+  const { checkpoints, isLoading: checkpointsLoading } =
+    useJobCheckpoints(latestJobId);
+
   /**
-   * Derive stage statuses from the most recent job.
+   * Derive stage statuses from that job's checkpoints.
    */
   const stageStatuses = useMemo<Map<string, StageStatus>>(() => {
     const statusMap = new Map<string, StageStatus>();
 
-    // Initialize all stages as pending
     for (const stage of PIPELINE_STAGES) {
       statusMap.set(stage.id, {
         stage_id: stage.id,
@@ -71,22 +89,25 @@ export default function PipelineTracker({
       });
     }
 
-    // WP-35: `!jobs || jobs.length === 0` passed a non-array straight through --
-    // an envelope object is truthy and its `.length` is undefined, so the guard
-    // returned false and execution continued on a value that was never a list.
-    // Array.isArray is the check that actually holds.
-    if (!Array.isArray(jobs) || jobs.length === 0) return statusMap;
-
-    // Use the most recent job's stage data
-    const latestJob = jobs[0];
-    if (latestJob?.stage_statuses) {
-      for (const ss of Object.values(latestJob.stage_statuses) as any[]) {
-        statusMap.set(ss.stage_id, ss);
-      }
+    for (const cp of checkpoints) {
+      if (!statusMap.has(cp.stage)) continue;
+      const status: StageStatus["status"] =
+        cp.status === "COMPLETE"
+          ? "complete"
+          : cp.status === "FAILED"
+          ? "failed"
+          : cp.status === "RUNNING"
+          ? "running"
+          : "pending";
+      statusMap.set(cp.stage, {
+        stage_id: cp.stage,
+        status,
+        progress_percent: status === "complete" ? 100 : status === "running" ? 50 : 0,
+      });
     }
 
     return statusMap;
-  }, [jobs]);
+  }, [checkpoints]);
 
   const getStatusColor = (
     status: string
@@ -139,7 +160,7 @@ export default function PipelineTracker({
     return `~${mins}m`;
   };
 
-  if (isLoading) {
+  if (isLoading || checkpointsLoading) {
     return <LoadingSpinner size="sm" label="Loading pipeline…" />;
   }
 

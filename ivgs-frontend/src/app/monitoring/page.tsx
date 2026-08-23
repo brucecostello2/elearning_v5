@@ -38,8 +38,14 @@ export default function MonitoringPage(): React.ReactElement {
   const { messages: dlqMessages, isLoading: dlqLoading } = useDLQMessages({ page: 1, pageSize: 1 });
   const { totalUsed, isLoading: storageLoading } = useStorageAnalytics();
 
-  const activeJobs = jobs?.filter((j) => j.status === "running").length ?? 0;
-  const failedJobs = jobs?.filter((j) => j.status === "failed").length ?? 0;
+  /**
+   * WP-40 Task 2: these read 0 for the same reason the Pipeline Tracker's
+   * counters did -- `usePipelineJobs` returned PROJECTS, and the comparison
+   * used lowercase wire values against a list that carried neither. The hook
+   * now yields real jobs with normalised uppercase statuses.
+   */
+  const activeJobs = jobs?.filter((j) => j.status === "RUNNING").length ?? 0;
+  const failedJobs = jobs?.filter((j) => j.status === "ERROR").length ?? 0;
   const onlineNodes = nodes?.filter((n) => n.status === "online").length ?? 0;
   const totalNodes = nodes?.length ?? 0;
 
