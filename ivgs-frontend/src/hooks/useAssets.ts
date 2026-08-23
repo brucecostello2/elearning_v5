@@ -58,10 +58,17 @@ export function useAssets(projectId: string): UseAssetsReturn {
   /**
    * Trigger regeneration of a specific asset via the pipeline.
    */
+  /**
+   * WP-40 Task 1: the path was wrong and always 404'd.
+   *
+   * The asset-scoped router is mounted at `/assets` (assets.py:33); only the
+   * LIST and UPLOAD routes are project-scoped. The regenerate route is
+   * `POST /api/v1/assets/{id}/regenerate` (assets.py:154), not
+   * `/api/v1/projects/{pid}/assets/{id}/regenerate`. Every press of the
+   * card's Regenerate button raised a 404 toast.
+   */
   const regenerateAsset = async (assetId: string): Promise<void> => {
-    await apiClient.post(
-      `/api/v1/projects/${projectId}/assets/${assetId}/regenerate`
-    );
+    await apiClient.post(`/api/v1/assets/${assetId}/regenerate`);
     mutate();
   };
 

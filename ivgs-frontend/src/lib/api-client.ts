@@ -117,6 +117,61 @@ async function refreshAccessToken(): Promise<boolean> {
 // Core Fetch Wrapper
 // ---------------------------------------------------------------------------
 
+/**
+ * Perform an authenticated fetch, transparently refreshing the access token
+ * once on a 401 and routing a token-less 403 to the login page.
+ *
+ * Extracted from `request` (WP-40) so that `blob()` -- which must not parse
+ * the body as JSON -- shares exactly the same auth handling. Before this,
+ * the Bearer token lived only inside the JSON path, which is why nothing in
+ * the app could load a protected binary: `<img src>` cannot carry a header.
+ */
+async function authedFetch(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  const accessToken = getAccessToken();
+
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  let response = await fetch(path, {
+    ...options,
+    headers,
+    credentials: "same-origin",
+  });
+
+  if (response.status === 401 && accessToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      const newToken = getAccessToken();
+      if (newToken) {
+        headers["Authorization"] = `Bearer ${newToken}`;
+      }
+      response = await fetch(path, {
+        ...options,
+        headers,
+        credentials: "same-origin",
+      });
+    } else {
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
+      throw new ApiRequestError({
+        status: 401,
+        message: "Session expired. Please sign in again.",
+      });
+    }
+  }
+
+  return response;
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
@@ -284,5 +339,41 @@ export const apiClient = {
       method: "POST",
       body: formData,
     });
+  },
+
+  /**
+   * GET a binary body with the Bearer token attached.
+   *
+   * WP-40 Task 1. Every media route on this API sits behind
+   * `Depends(get_service_or_user)`, so the token must travel in a header --
+   * and a header is exactly what a browser will not send for `<img src>`,
+   * `<video src>` or an `<a download>`. Fetching the bytes here and handing
+   * the caller an object URL is the only way a protected asset can be
+   * displayed without a new unauthenticated API route.
+   *
+   * Returns the blob plus the server's own `Content-Type` and the filename
+   * from `Content-Disposition`, both of which the download proxy sets.
+   */
+  blob: async (
+    path: string,
+  ): Promise<{ blob: Blob; mimeType: string; filename: string | null }> => {
+    const response = await authedFetch(path, { method: "GET" });
+
+    if (!response.ok) {
+      throw new ApiRequestError({
+        status: response.status,
+        message: `Media request failed with status ${response.status}`,
+      });
+    }
+
+    const blob = await response.blob();
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const match = /filename\*?=(?:UTF-8'')?"?([^\";]+)"?/i.exec(disposition);
+
+    return {
+      blob,
+      mimeType: response.headers.get("content-type") || blob.type || "",
+      filename: match && match[1] ? decodeURIComponent(match[1]) : null,
+    };
   },
 };

@@ -9,6 +9,7 @@ import AssetUploader from "@/components/AssetUploader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Toast from "@/components/Toast";
 import type { Asset } from "@/types/api";
+import { assetMediaKind, assetSearchText, type MediaKind } from "@/lib/media";
 
 /**
  * §8.1.3 Table 8-2 — Media Assets Tab
@@ -27,7 +28,24 @@ import type { Asset } from "@/types/api";
  */
 
 type ViewMode = "grid" | "list";
-type AssetFilter = "all" | "image" | "video" | "animation";
+/**
+ * WP-40 Task 1: filter on the DERIVED media kind, not on `asset_type`.
+ *
+ * `asset_type` is a pipeline role, and the live project holds seven of them
+ * -- image, audio, video, final_render, talking_head, document,
+ * reference_clip. The old tabs offered image / video / animation, so the
+ * eighteen audio assets and the finished 720p draft were unreachable by any
+ * filter, and "animation" matched nothing at all.
+ */
+type AssetFilter = "all" | MediaKind;
+
+const ASSET_FILTERS: { id: AssetFilter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "image", label: "Images" },
+  { id: "video", label: "Video" },
+  { id: "audio", label: "Audio" },
+  { id: "other", label: "Other" },
+];
 
 export default function AssetsPage(): React.ReactElement {
   const params = useParams();
@@ -61,17 +79,15 @@ export default function AssetsPage(): React.ReactElement {
     let result = [...assets];
 
     if (filter !== "all") {
-      result = result.filter((a: Asset) => a.asset_type === filter);
+      result = result.filter((a: Asset) => assetMediaKind(a) === filter);
     }
 
     if (searchQuery.trim()) {
+      // The old haystack was filename / scene_label / generation_prompt --
+      // three fields the API does not send, so typing anything emptied the
+      // grid. `assetSearchText` searches what actually arrives.
       const q = searchQuery.toLowerCase();
-      result = result.filter(
-        (a: Asset) =>
-          a.filename?.toLowerCase().includes(q) ||
-          a.scene_label?.toLowerCase().includes(q) ||
-          a.generation_prompt?.toLowerCase().includes(q)
-      );
+      result = result.filter((a: Asset) => assetSearchText(a).includes(q));
     }
 
     return result;
@@ -223,21 +239,19 @@ export default function AssetsPage(): React.ReactElement {
         </div>
 
         <div className="flex items-center gap-2">
-          {(["all", "image", "video", "animation"] as AssetFilter[]).map(
-            (f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
-                  filter === f
-                    ? "bg-blue-600 text-white"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-white border border-gray-300 dark:border-gray-600"
-                }`}
-              >
-                {f.charAt(0).toUpperCase() + f.slice(1)}
-              </button>
-            )
-          )}
+          {ASSET_FILTERS.map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${
+                filter === f.id
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:text-white border border-gray-300 dark:border-gray-600"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
         <div className="flex items-center gap-1 ml-auto">
