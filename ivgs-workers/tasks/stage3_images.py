@@ -107,6 +107,14 @@ class Stage3Input(BaseModel):
     target_height: int = 1080
     enable_clip_scoring: bool = True
     enable_dedup: bool = True
+    # WP-39. This task serves TWO pipeline stages: STAGE_TASK_MAP maps both
+    # image_generation and animation_generation to it. The media join counts one
+    # report per dispatched stage and de-duplicates on (job_id, stage), so a run
+    # dispatched as the animation stage MUST report as animation_generation or
+    # its completion is swallowed as a duplicate of the image run's and the join
+    # never closes (job bd99fe37, 2026-08-23). The orchestrator sets this;
+    # absent, this is the image stage, as it always was.
+    join_stage: Optional[str] = None
 
 
 class SceneImageResult(BaseModel):
@@ -133,6 +141,9 @@ class Stage3Output(BaseModel):
     """Output from Stage 3: Scene Image Generation."""
     job_id: str
     project_id: str
+    # WP-39: set from Stage3Input.join_stage at construction. The default is the
+    # image stage, so a caller that does not set join_stage behaves exactly as
+    # before.
     stage: str = PipelineStage.IMAGE_GENERATION.value
     status: StageStatus = StageStatus.SUCCESS
     scene_results: List[SceneImageResult] = Field(default_factory=list)
@@ -580,10 +591,15 @@ def generate_scene_images_task(
     task_input = Stage3Input(**task_input_dict)
     config = WorkerConfig()
 
+    # WP-39: the stage label this run reports under. image_generation unless the
+    # orchestrator dispatched us as the animation stage.
+    join_stage = task_input.join_stage or PipelineStage.IMAGE_GENERATION.value
+
     log = self.structured_logger.bind(
         job_id=task_input.job_id,
         project_id=task_input.project_id,
         total_scenes=len(task_input.scenes),
+        join_stage=join_stage,
     )
     log.info("stage3_starting")
 
@@ -733,6 +749,7 @@ def generate_scene_images_task(
     output = Stage3Output(
         job_id=task_input.job_id,
         project_id=task_input.project_id,
+        stage=join_stage,
         status=overall_status,
         scene_results=scene_results,
         total_scenes=len(task_input.scenes),
@@ -747,7 +764,10 @@ def generate_scene_images_task(
     if config.enable_checkpoint_saving:
         save_checkpoint(
             job_id=task_input.job_id,
-            stage_name=PipelineStage.IMAGE_GENERATION.value,
+            # WP-39: checkpoints are upserted on (job_id, stage_name), so the
+            # animation run writing under image_generation overwrote the image
+            # run's row and one of the two stages had no checkpoint at all.
+            stage_name=join_stage,
             stage_index=3,
             status=overall_status.value,
             checkpoint_data={

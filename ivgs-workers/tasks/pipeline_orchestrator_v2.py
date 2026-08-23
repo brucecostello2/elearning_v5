@@ -419,19 +419,6 @@ def dispatch_media_generation(
     )
     _store_job_context(job_id, _resume_context.model_dump(mode="json"), config)
 
-    # Stash the minimal context the media-join watchdog needs to rebuild the
-    # composition-manifest input if a crashed media task strands this join.
-    _store_media_join_context(
-        job_id,
-        {
-            "job_id": job_id,
-            "project_id": project_id,
-            "project_name": dispatch_input.get("project_name", ""),
-            "language_code": dispatch_input.get("language_code", "en-US"),
-        },
-        config,
-    )
-
     # Group scenes by media type
     image_scenes: List[Dict[str, Any]] = []
     video_scenes: List[Dict[str, Any]] = []
@@ -464,66 +451,67 @@ def dispatch_media_generation(
         "tier": _resume_context.tier,
     }
 
-    # Dispatch image generation
-    if image_scenes:
-        task_input = {
-            "job_id": job_id,
-            "project_id": project_id,
-            **_media_facts,
-            "scenes": image_scenes,
-            "enable_dedup": True,
-        }
-        result = celery_app.send_task(
-            STAGE_TASK_MAP[PipelineStage.IMAGE_GENERATION.value],
-            kwargs={"task_input_dict": task_input},
-            queue="gpu_image",
-        )
-        dispatched.append({
-            "stage": PipelineStage.IMAGE_GENERATION.value,
-            "celery_task_id": result.id,
-            "scene_count": len(image_scenes),
-        })
-        total_media_tasks += 1
+    # WP-39: the join counts one report per dispatched media STAGE and guards
+    # each with a (job_id, stage) idempotency key, so every dispatch here MUST
+    # report back under a distinct stage label. Animation did not.
+    # STAGE_TASK_MAP routes animation_generation to the same Celery task as
+    # image_generation (tasks.stage3_images.generate_scene_images_task), and
+    # that task stamped its output with a hardcoded "image_generation" - so the
+    # animation run's completion was indistinguishable from the image run's and
+    # the duplicate guard dropped it. Measured on job bd99fe37 (2026-08-23):
+    # armed at 3; image reported (remaining 2); animation reported and was
+    # dropped as media_stage_duplicate_report_ignored; video reported
+    # (remaining 1); counter stuck at 1 with all 18 assets already in SeaweedFS.
+    #
+    # `join_stage` travels with the task input and comes back on the completion
+    # (stage3_images.Stage3Output.stage, video_generation_task.
+    # VideoGenerationOutput.stage), so each dispatch reports under its own label
+    # even when two of them share a task.
+    dispatch_plan = (
+        (PipelineStage.IMAGE_GENERATION.value, "gpu_image", image_scenes),
+        (PipelineStage.VIDEO_GENERATION.value, "gpu_video", video_scenes),
+        (PipelineStage.ANIMATION_GENERATION.value, "gpu_image", animation_scenes),
+    )
+    expected_stages: List[str] = [
+        stage_label for stage_label, _, stage_scenes in dispatch_plan if stage_scenes
+    ]
 
-    # Dispatch video generation
-    if video_scenes:
-        task_input = {
+    # Stash the minimal context the media-join watchdog needs to rebuild the
+    # composition-manifest input if a crashed media task strands this join.
+    # expected_stages goes with it so the watchdog can NAME the stage that never
+    # reported instead of only counting it.
+    _store_media_join_context(
+        job_id,
+        {
             "job_id": job_id,
             "project_id": project_id,
-            **_media_facts,
-            "scenes": video_scenes,
-            "enable_dedup": True,
-        }
-        result = celery_app.send_task(
-            STAGE_TASK_MAP[PipelineStage.VIDEO_GENERATION.value],
-            kwargs={"task_input_dict": task_input},
-            queue="gpu_video",
-        )
-        dispatched.append({
-            "stage": PipelineStage.VIDEO_GENERATION.value,
-            "celery_task_id": result.id,
-            "scene_count": len(video_scenes),
-        })
-        total_media_tasks += 1
+            "project_name": dispatch_input.get("project_name", ""),
+            "language_code": dispatch_input.get("language_code", "en-US"),
+            "expected_stages": expected_stages,
+        },
+        config,
+    )
 
-    # Dispatch animation generation (route to image queue)
-    if animation_scenes:
+    for stage_label, queue_name, stage_scenes in dispatch_plan:
+        if not stage_scenes:
+            continue
         task_input = {
             "job_id": job_id,
             "project_id": project_id,
             **_media_facts,
-            "scenes": animation_scenes,
+            "scenes": stage_scenes,
             "enable_dedup": True,
+            "join_stage": stage_label,
         }
         result = celery_app.send_task(
-            STAGE_TASK_MAP[PipelineStage.ANIMATION_GENERATION.value],
+            STAGE_TASK_MAP[stage_label],
             kwargs={"task_input_dict": task_input},
-            queue="gpu_image",
+            queue=queue_name,
         )
         dispatched.append({
-            "stage": PipelineStage.ANIMATION_GENERATION.value,
+            "stage": stage_label,
             "celery_task_id": result.id,
-            "scene_count": len(animation_scenes),
+            "scene_count": len(stage_scenes),
         })
         total_media_tasks += 1
 
@@ -540,6 +528,7 @@ def dispatch_media_generation(
         video_scenes=len(video_scenes),
         animation_scenes=len(animation_scenes),
         total_tasks=total_media_tasks,
+        expected_stages=expected_stages,
     )
 
     return {
@@ -547,6 +536,7 @@ def dispatch_media_generation(
         "action": "media_generation_dispatched",
         "dispatched": dispatched,
         "total_tasks": total_media_tasks,
+        "expected_stages": expected_stages,
     }
 
 
@@ -1237,6 +1227,42 @@ def _get_media_join_context(
         return None
 
 
+def _outstanding_media_stages(
+    job_id: str, ctx: Optional[Dict[str, Any]], config: WorkerConfig,
+) -> Optional[List[str]]:
+    """Name the media stages that were dispatched but never reported.
+
+    WP-39. The join counter is a bare integer: it can say "one task is still
+    outstanding" but never which one, which is why a stranded join read as an
+    anonymous hang. dispatch_media_generation records the stage labels it
+    dispatched in the join context, and each report leaves a ``media_join_seen``
+    key behind, so the difference names the missing stage.
+
+    Diagnostic only - no join decision is taken on this value. ``None`` is "could
+    not tell" (no recorded expectation, or Redis unreachable); an empty LIST is
+    "every dispatched stage reported". The two are logged as different values
+    rather than collapsed into one, which is the mistake this package is named
+    after.
+    """
+    expected = list((ctx or {}).get("expected_stages") or [])
+    if not expected:
+        return None
+
+    unreported: Optional[List[str]] = None
+    try:
+        import redis
+        r = redis.Redis.from_url(config.redis_url)
+        unreported = [
+            stage for stage in expected
+            if not r.exists(_media_join_seen_key(job_id, stage))
+        ]
+    except Exception as e:
+        logger.warning(
+            "redis_outstanding_media_stages_failed", job_id=job_id, error=str(e),
+        )
+    return unreported
+
+
 def _cleanup_media_join_keys(job_id: str, config: WorkerConfig) -> None:
     """Delete every per-job media-join key (counter, failures, context)."""
     try:
@@ -1292,7 +1318,11 @@ def media_join_watchdog() -> Dict[str, Any]:
         import redis
         r = redis.Redis.from_url(config.redis_url)
     except Exception as e:
-        log.warning("media_join_watchdog_redis_unavailable", error=str(e))
+        # WP-39 swallow register: this is the recovery mechanism for stranded
+        # joins. If it cannot reach Redis it recovers nothing, which is an error
+        # condition, not a warning - and previously it was the ONLY line this
+        # task ever emitted, on a run that did no work.
+        log.error("media_join_watchdog_redis_unavailable", error=str(e))
         return {"status": "error", "reason": "redis_unavailable"}
 
     for raw_key in r.scan_iter(match="ivgs:media_tasks:*", count=100):
@@ -1310,8 +1340,24 @@ def media_join_watchdog() -> Dict[str, Any]:
         remaining = int(val) if val is not None else 0
         if remaining <= 0:
             continue
+
+        age_s = MEDIA_JOIN_TTL_SECONDS - ttl if (ttl is not None and ttl >= 0) else None
         if ttl is None or ttl < 0 or ttl >= min_ttl:
+            # WP-39: an outstanding join used to be silent until the deadline
+            # fired, so a job could sit half-joined for two hours with nothing
+            # in any log naming it. One line per sweep per outstanding join,
+            # with the stage that has not reported.
             skipped_recent += 1
+            log.info(
+                "media_join_watchdog_join_outstanding",
+                job_id=job_id,
+                remaining_tasks=remaining,
+                age_seconds=age_s,
+                deadline_seconds=timeout_s,
+                outstanding_stages=_outstanding_media_stages(
+                    job_id, _get_media_join_context(job_id, config), config,
+                ),
+            )
             continue
 
         # Atomically claim: only the run that reads a > 0 value here owns the job.
@@ -1326,6 +1372,7 @@ def media_join_watchdog() -> Dict[str, Any]:
         existing_failures = _get_media_failure_count(job_id, config)
         total_failed = existing_failures + claimed
         ctx = _get_media_join_context(job_id, config)
+        outstanding = _outstanding_media_stages(job_id, ctx, config)
 
         log.warning(
             "media_join_watchdog_stranded_job",
@@ -1334,6 +1381,8 @@ def media_join_watchdog() -> Dict[str, Any]:
             recorded_failures=existing_failures,
             total_failed=total_failed,
             timeout_seconds=timeout_s,
+            age_seconds=age_s,
+            outstanding_stages=outstanding,
             have_context=bool(ctx),
         )
 
@@ -1371,6 +1420,7 @@ def media_join_watchdog() -> Dict[str, Any]:
                 next_stage=next_stage,
                 celery_task_id=result.id,
                 failed_count=total_failed,
+                outstanding_stages=outstanding,
             )
         except Exception as e:
             log.error("media_join_watchdog_advance_failed", job_id=job_id, error=str(e))
@@ -1384,6 +1434,20 @@ def media_join_watchdog() -> Dict[str, Any]:
             failed += 1
         finally:
             _cleanup_media_join_keys(job_id, config)
+
+    # WP-39 swallow register. This sweep is the pipeline's only recovery path
+    # for a lost media join, and it emitted nothing at all on a run that found
+    # nothing - so "the watchdog never executes" and "the watchdog executes and
+    # finds nothing" looked identical in every log we have. They are not the
+    # same fact. One line per run, always.
+    log.info(
+        "media_join_watchdog_sweep",
+        swept=swept,
+        advanced=advanced,
+        failed=failed,
+        skipped_recent=skipped_recent,
+        deadline_seconds=timeout_s,
+    )
 
     return {
         "status": "ok",

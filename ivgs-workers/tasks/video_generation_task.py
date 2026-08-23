@@ -87,6 +87,12 @@ class VideoGenerationInput(BaseModel):
     language_code: str = "en-US"
     scenes: List[SceneVideoInput] = Field(min_length=1)
     enable_dedup: bool = True
+    # WP-39: the media join keys each report on its stage label. Video is the
+    # only stage with a task of its own, so this is always video_generation -
+    # carried anyway so every media dispatch has the same shape and the
+    # orchestrator's join_stage key is explicit here rather than silently
+    # dropped by pydantic.
+    join_stage: Optional[str] = None
 
 
 class SceneVideoResult(BaseModel):
@@ -467,6 +473,7 @@ def generate_video_clips(
 
     job_id = task_input.job_id
     project_id = task_input.project_id
+    join_stage = task_input.join_stage or PipelineStage.VIDEO_GENERATION.value
     log = logger.bind(job_id=job_id, project_id=project_id, total_scenes=len(task_input.scenes))
     log.info("video_generation_starting")
 
@@ -575,6 +582,7 @@ def generate_video_clips(
     output = VideoGenerationOutput(
         job_id=job_id,
         project_id=project_id,
+        stage=join_stage,
         scene_results=results,
         total_scenes=len(results),
         successful_count=len(successful),
@@ -591,6 +599,28 @@ def generate_video_clips(
         output.status = StageStatus.PARTIAL_SUCCESS
     else:
         output.status = StageStatus.SUCCESS
+
+    # WP-39 ledger (c). Only the per-scene checkpoints above were ever written,
+    # all with status="running" -> checkpoint_status 'pending', so after both
+    # clips succeeded the video_generation row still read pending and nothing in
+    # the database distinguished "rendering" from "done" (job bd99fe37,
+    # 2026-08-23). Stage 3 writes a terminal checkpoint at the same point
+    # (stage3_images.py); this is that write, with the same shape, the same
+    # enable_checkpoint_saving guard, and the same loud CheckpointWriteError on
+    # failure.
+    if config.enable_checkpoint_saving:
+        save_checkpoint(
+            job_id=job_id,
+            stage_name=join_stage,
+            stage_index=3,
+            status=output.status.value,
+            checkpoint_data={
+                "successful_count": len(successful),
+                "failed_count": len(failed),
+                "deduplicated_count": len(deduplicated),
+                "total_generation_time": output.total_generation_time_seconds,
+            },
+        )
 
     log.info(
         "video_generation_complete",

@@ -35,6 +35,7 @@ User gates:
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
@@ -452,6 +453,55 @@ def _update_job_celery_task_id(
 # Celery Beat periodic tasks
 # ---------------------------------------------------------------------------
 
+def _heartbeat_age_seconds(
+    node: Dict[str, Any], now: float,
+) -> Optional[float]:
+    """Seconds since this fleet node last heartbeat, or None if unknowable.
+
+    WP-39 ledger (a). The supervisor read ``last_heartbeat_epoch`` and
+    ``status`` off each /fleet node. FleetNodeStatus (ivgs-scheduler/main.py,
+    class FleetResponse) publishes NEITHER: it carries ``node_id``,
+    ``last_heartbeat`` (ISO-8601), ``is_alive`` and ``is_draining``. The
+    registry keeps ``last_heartbeat_epoch`` internally but does not expose it.
+
+    So ``node.get("last_heartbeat_epoch", 0)`` was 0 on every node, elapsed was
+    the full Unix epoch (~1.79e9 s), and every node in the fleet was declared
+    confirmed_dead every 30 seconds - which is also why a node that really died
+    would have looked exactly like the three that had not. Measured on node-01
+    2026-08-23: three live nodes, three worker_confirmed_dead lines per tick,
+    node_hostname null, seconds_since_heartbeat 1787504720.
+
+    ``last_heartbeat_epoch`` is still preferred if a future scheduler publishes
+    it; the ISO field is the one that exists today.
+    """
+    epoch = node.get("last_heartbeat_epoch")
+    if isinstance(epoch, (int, float)) and epoch > 0:
+        return now - float(epoch)
+
+    iso = node.get("last_heartbeat")
+    if not isinstance(iso, str) or not iso:
+        return None
+
+    parsed: Optional[datetime] = None
+    try:
+        parsed = datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        # Named, not swallowed: an unparseable timestamp is a scheduler contract
+        # break and the caller reports it as worker_heartbeat_age_unknown, which
+        # is a different fact from "this node is dead".
+        logger.warning(
+            "fleet_heartbeat_timestamp_unparseable",
+            node_id=node.get("node_id"),
+            last_heartbeat=iso,
+        )
+
+    if parsed is None:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return now - parsed.timestamp()
+
+
 @celery_app.task(
     name="tasks.pipeline_orchestrator.supervise_worker_heartbeats",
     queue="default",
@@ -491,39 +541,60 @@ def supervise_worker_heartbeats() -> Dict[str, Any]:
             suspected_dead = 0
             confirmed_dead = 0
 
-            for node in nodes:
-                last_heartbeat = node.get("last_heartbeat_epoch", 0)
-                elapsed = now - last_heartbeat
+            unknown_heartbeat = 0
 
-                if elapsed > 120 and node.get("status") != "confirmed_dead":
+            for node in nodes:
+                node_id = node.get("node_id") or node.get("node_hostname")
+                elapsed = _heartbeat_age_seconds(node, now)
+
+                if elapsed is None:
+                    # WP-39: "the scheduler did not tell us when this node last
+                    # checked in" is its own fact. It is NOT a death, and
+                    # reporting it as one is what made the real ones invisible.
+                    unknown_heartbeat += 1
+                    log.warning(
+                        "worker_heartbeat_age_unknown",
+                        node_id=node_id,
+                        note="fleet row carries no usable heartbeat timestamp",
+                    )
+                    continue
+
+                # is_alive is the scheduler's own verdict against its registry
+                # cutoff (gpu_registry.py). Absent on an older scheduler, in
+                # which case the elapsed threshold decides alone.
+                alive = node.get("is_alive")
+
+                if elapsed > 120 and alive is not True:
                     confirmed_dead += 1
                     log.error(
                         "worker_confirmed_dead",
-                        node_hostname=node.get("node_hostname"),
+                        node_id=node_id,
                         seconds_since_heartbeat=round(elapsed),
                     )
-                    # Mark as dead and reschedule jobs
-                    client.patch(
-                        f"/nodes/{node.get('id')}",
-                        json={"status": "confirmed_dead"},
-                    )
-                elif elapsed > 60 and node.get("status") == "online":
+                elif elapsed > 60:
                     suspected_dead += 1
                     log.warning(
                         "worker_suspected_dead",
-                        node_hostname=node.get("node_hostname"),
+                        node_id=node_id,
                         seconds_since_heartbeat=round(elapsed),
                     )
-                    client.patch(
-                        f"/nodes/{node.get('id')}",
-                        json={"status": "suspected_dead"},
-                    )
 
+            # WP-39: the two client.patch("/nodes/{id}", ...) remediation calls
+            # that used to sit in the branches above are gone. ivgs-scheduler
+            # exposes no PATCH /nodes route at all (main.py registers /schedule,
+            # /register, /heartbeat, DELETE, /fleet, /drain/{node_id}, /health,
+            # /metrics) and the node id key they interpolated does not exist in
+            # the payload either, so every call was a literal
+            # `PATCH /nodes/None -> 404`, three per tick, forever. Supervision
+            # is observation until a real "mark dead" edge exists; the scheduler
+            # already ages nodes out of the registry itself via is_alive.
+            # Recorded as a WP-39 ledger item - do not re-add without a route.
             return {
                 "status": "ok",
                 "total_nodes": len(nodes),
                 "suspected_dead": suspected_dead,
                 "confirmed_dead": confirmed_dead,
+                "unknown_heartbeat": unknown_heartbeat,
             }
 
     except Exception as e:
@@ -646,7 +717,11 @@ def collect_gpu_fleet_metrics() -> Dict[str, Any]:
                 return {
                     "status": "ok",
                     "total_nodes": fleet.get("total_nodes", 0),
-                    "online_nodes": fleet.get("online_nodes", 0),
+                    # WP-39: FleetResponse publishes alive_nodes, never
+                    # online_nodes, so this metric read 0 with three live nodes
+                    # on every tick. Same schema mismatch as the heartbeat
+                    # supervisor above, found while fixing it.
+                    "online_nodes": fleet.get("alive_nodes", fleet.get("online_nodes", 0)),
                     "total_vram_mb": fleet.get("total_vram_mb", 0),
                     "used_vram_mb": fleet.get("used_vram_mb", 0),
                 }
