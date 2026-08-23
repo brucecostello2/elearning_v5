@@ -378,17 +378,18 @@ state (S4).
 ( cd /opt/ivgs || exit 1
   if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then echo "ABORT: not on main"; exit 1; fi
   if [ -n "$(git status --porcelain --untracked-files=no)" ]; then echo "ABORT: tracked files dirty"; exit 1; fi
-  if [ "$(git rev-parse HEAD)" != "bf4e42a12a28fe500e8643445d0f729f81969e81" ]; then echo "ABORT: HEAD moved since WP-38"; exit 1; fi
   git fetch origin --quiet || { echo "ABORT: fetch failed"; exit 1; }
   if [ "$(git rev-list --count HEAD..origin/main)" != "0" ]; then echo "ABORT: origin/main moved - rebase first"; exit 1; fi
-  if [ "$(git rev-list --count origin/main..HEAD)" != "3" ]; then echo "ABORT: expected exactly 3 held commit(s)"; exit 1; fi
+  if [ "$(git rev-list --count origin/main..HEAD)" != "4" ]; then echo "ABORT: expected exactly 4 held commits"; exit 1; fi
   if git diff --name-only origin/main..HEAD | grep -qE '(^|/)\.env'; then echo "ABORT: an .env file is in the range"; exit 1; fi
-  echo "pushing 3 commit(s): 7c23cc9 -> bf4e42a"
+  echo "pushing 4 commits: 7c23cc9 -> $(git rev-parse --short HEAD)"
   git push origin main
 ) | tr -cd '\11\12\15\40-\176'
 ```
 
-**Held state at the time of writing:** branch `main`, tree clean, **3 commits ahead, 0 behind**. `origin/main` = `7c23cc9` → HEAD = `bf4e42a12a28fe500e8643445d0f729f81969e81`. No `.env*` in the range.
+**Held state:** branch `main`, tree clean, **4 commits ahead of `7c23cc9`, 0 behind**, no `.env*` anywhere in the range.
+
+> The guard deliberately pins the **count**, not a tip SHA. An earlier draft hardcoded HEAD and was invalidated by the very commit that recorded it - the count plus clean-tree, on-main, not-behind and no-`.env` checks determine the push safely without that circularity.
 
 ---
 
