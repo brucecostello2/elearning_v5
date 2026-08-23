@@ -138,8 +138,11 @@ export function useStoryboard(
             updates
           );
           // Refetch to get server-confirmed data
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData,
@@ -172,8 +175,11 @@ export function useStoryboard(
           await api.delete(
             `/api/v1/projects/${projectId}/scenes/${sceneId}`
           );
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData,
@@ -208,8 +214,11 @@ export function useStoryboard(
             `/api/v1/projects/${projectId}/scenes/batch-delete`,
             { scene_ids: sceneIds }
           );
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData,
@@ -262,8 +271,11 @@ export function useStoryboard(
             `/api/v1/projects/${projectId}/scenes/reorder`,
             payload
           );
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData: reorderedScenes,
@@ -299,8 +311,11 @@ export function useStoryboard(
           await api.post(
             `/api/v1/projects/${projectId}/scenes/${sceneId}/regenerate`
           );
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData,
@@ -337,8 +352,11 @@ export function useStoryboard(
             `/api/v1/projects/${projectId}/scenes/batch-regenerate`,
             { scene_ids: sceneIds }
           );
-          const response = await api.get<StoryboardResponse>(cacheKey);
-          return response.data.scenes;
+          // WP-38: same bare-array route as fetchScenes above. Every mutation
+          // re-read had this too, so after any edit the list would have blanked
+          // even once the initial load was fixed.
+          const response = await api.get<unknown>(cacheKey);
+          return unwrapList<Scene>(response.data);
         },
         {
           optimisticData,

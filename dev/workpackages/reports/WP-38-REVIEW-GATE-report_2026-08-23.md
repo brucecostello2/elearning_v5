@@ -65,6 +65,14 @@ This is the **third** direction of one recurring defect:
 **Fix:** `return unwrapList<Scene>(response.data)` — WP-35's helper, which accepts either shape,
 so this cannot break again if the route ever gains an envelope. One line plus the import.
 
+> **The content gate caught a miss of mine, which is what it is for.** The first fix changed only
+> the SWR fetcher. A negative gate asserting `response.data.scenes` was gone came back **7**, not
+> 0: six more copies live in the mutation handlers (update, delete, batch-delete, reorder,
+> regenerate, batch-regenerate), each re-reading the same bare-array route after a write. Left
+> alone, the initial load would have worked and the list would have **blanked after any edit** —
+> a worse bug than the one being fixed, and one a human would have reported as new. All seven now
+> use `unwrapList`.
+
 **Tests** (`src/lib/__tests__/scenes-shape.test.mjs`, WP-35 pattern, `npm run test:logic` —
 **10 passed** including the four new): the bug reproduced (`.scenes` on the live wire shape is
 `undefined`, and that drives the empty state); the fix returns all 18 with indices 0 and 17
