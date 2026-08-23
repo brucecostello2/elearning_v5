@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { asText, splitLines } from "@/lib/text";
 
 /**
  * §8.1.3 Table 8-2 — Transcript Side-by-Side Diff Editor
@@ -10,12 +11,29 @@ import React, { useMemo } from "react";
  * In edit mode: editable textarea for the refined text.
  */
 
+/**
+ * WP-40 Task 5 / ledger P1.4r.
+ *
+ * `originalText` is typed nullable BECAUSE IT IS. The transcript API sends no
+ * `original_text` field (schemas/transcript.py:13) and the `transcripts`
+ * table has no such column -- the source document is an asset referenced by
+ * `original_asset_id`. The page passed `transcript.original_text`, i.e.
+ * `undefined`, and `original.split("\n")` threw
+ * "Cannot read properties of undefined (reading 'split')" on the project
+ * detail chunk. Declaring the prop honestly is what stops that recurring;
+ * the guards below are what stop it crashing when it does.
+ */
 interface TranscriptEditorProps {
-  originalText: string;
-  refinedText: string;
+  originalText: string | null | undefined;
+  refinedText: string | null | undefined;
   onChange?: (text: string) => void;
   readOnly?: boolean;
 }
+
+/** Shown in the "Original" pane when the API has no original text to give. */
+const ABSENT_ORIGINAL =
+  "No original text is stored for this transcript. The uploaded source " +
+  "document is kept as an asset; the refined text is on the right.";
 
 interface DiffLine {
   type: "unchanged" | "added" | "removed";
@@ -27,11 +45,11 @@ interface DiffLine {
  * Not a full Myers diff — sufficient for transcript comparison.
  */
 function computeLineDiff(
-  original: string,
-  refined: string
+  original: string | null | undefined,
+  refined: string | null | undefined
 ): { left: DiffLine[]; right: DiffLine[] } {
-  const origLines = original.split("\n");
-  const refLines = refined.split("\n");
+  const origLines = splitLines(original);
+  const refLines = splitLines(refined);
   const left: DiffLine[] = [];
   const right: DiffLine[] = [];
 
@@ -67,6 +85,8 @@ export default function TranscriptEditor({
   onChange,
   readOnly = true,
 }: TranscriptEditorProps): React.ReactElement {
+  const hasOriginal = typeof originalText === "string" && originalText.length > 0;
+
   const diff = useMemo(
     () => computeLineDiff(originalText, refinedText),
     [originalText, refinedText]
@@ -102,8 +122,14 @@ export default function TranscriptEditor({
           <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase mb-2">
             Original
           </h4>
-          <div className="p-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap font-mono max-h-[500px] overflow-y-auto">
-            {originalText}
+          <div
+            className={`p-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-sm whitespace-pre-wrap max-h-[500px] overflow-y-auto ${
+              hasOriginal
+                ? "text-gray-700 dark:text-gray-300 font-mono"
+                : "text-gray-500 dark:text-gray-400 italic"
+            }`}
+          >
+            {hasOriginal ? originalText : ABSENT_ORIGINAL}
           </div>
         </div>
         <div>
@@ -111,10 +137,10 @@ export default function TranscriptEditor({
             Refined (editing)
           </h4>
           <textarea
-            value={refinedText}
+            value={asText(refinedText)}
             onChange={(e) => onChange(e.target.value)}
             className="w-full p-4 bg-white dark:bg-gray-900 border border-blue-600 rounded-lg text-sm text-gray-900 dark:text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[200px] max-h-[500px]"
-            rows={Math.max(10, refinedText.split("\n").length)}
+            rows={Math.max(10, splitLines(refinedText).length)}
           />
         </div>
       </div>
@@ -129,6 +155,11 @@ export default function TranscriptEditor({
           Original
         </h4>
         <div className="bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg overflow-hidden max-h-[500px] overflow-y-auto">
+          {!hasOriginal && (
+            <p className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 italic">
+              {ABSENT_ORIGINAL}
+            </p>
+          )}
           {diff.left.map((line, idx) => (
             <div
               key={idx}

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useMemo, useEffect } from "react";
+import { asText, splitLines } from "@/lib/text";
 import { usePrompts } from "@/hooks/usePrompts";
 import type { PromptRecord, PromptVersion } from "@/types/prompts";
 
@@ -42,11 +43,13 @@ interface PromptHistoryProps {
  * Produces a line-by-line diff with + / - / (space) markers.
  */
 function computeUnifiedDiff(
-  oldText: string,
-  newText: string
+  oldText: string | null | undefined,
+  newText: string | null | undefined
 ): { type: "add" | "remove" | "same"; content: string }[] {
-  const oldLines = oldText.split("\n");
-  const newLines = newText.split("\n");
+  // WP-40 Task 5: `prompt_text` is Optional on the wire, and a version row
+  // that lost its body must render an empty diff, not crash the page.
+  const oldLines = splitLines(oldText);
+  const newLines = splitLines(newText);
   const diff: { type: "add" | "remove" | "same"; content: string }[] = [];
 
   // Simple LCS-based diff
@@ -472,13 +475,13 @@ export default function PromptHistory({
               v{selectedVersion.version} — Full Content
             </span>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              {selectedVersion.prompt_text.length} chars ·{" "}
-              {selectedVersion.prompt_text.split("\n").length} lines
+              {asText(selectedVersion.prompt_text).length} chars ·{" "}
+              {splitLines(selectedVersion.prompt_text).length} lines
             </span>
           </div>
           <div className="p-4 max-h-96 overflow-y-auto">
             <pre className="text-sm text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap leading-relaxed">
-              {selectedVersion.prompt_text}
+              {asText(selectedVersion.prompt_text) || "(this version has no content)"}
             </pre>
           </div>
         </div>

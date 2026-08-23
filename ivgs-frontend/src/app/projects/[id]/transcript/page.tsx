@@ -53,7 +53,7 @@ export default function TranscriptPage(): React.ReactElement {
     (transcript: Transcript): void => {
       if (!canEdit) return;
       setEditingId(transcript.id);
-      setEditText(transcript.refined_text || transcript.original_text);
+      setEditText(transcript.refined_text ?? "");
     },
     [canEdit]
   );
@@ -250,7 +250,7 @@ export default function TranscriptPage(): React.ReactElement {
               {editingId === transcript.id ? (
                 <div className="p-6">
                   <TranscriptEditor
-                    originalText={transcript.original_text}
+                    originalText={transcript.original_text ?? null}
                     refinedText={editText}
                     onChange={setEditText}
                     readOnly={false}
@@ -274,9 +274,9 @@ export default function TranscriptPage(): React.ReactElement {
               ) : (
                 <div className="p-6">
                   <TranscriptEditor
-                    originalText={transcript.original_text}
+                    originalText={transcript.original_text ?? null}
                     refinedText={
-                      transcript.refined_text || transcript.original_text
+                      transcript.refined_text ?? transcript.original_text ?? null
                     }
                     readOnly={true}
                   />

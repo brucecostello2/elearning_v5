@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useRef } from "react";
+import { splitOn } from "@/lib/text";
 
 /**
  * Reusable drag-and-drop file upload component.
@@ -47,10 +48,16 @@ export default function AssetUploader({
         return false;
       }
 
-      if (accept) {
-        const acceptedTypes = accept.split(",").map((t) => t.trim());
-        const fileExt = `.${file.name.split(".").pop()?.toLowerCase()}`;
-        const fileMime = file.type;
+      // WP-40 Task 5: `accept` is an optional prop and `file.name` can be
+      // extensionless. `splitOn` returns [] rather than throwing, and an
+      // empty accepted-type list means "accept anything" -- the same
+      // behaviour as omitting the prop.
+      const acceptedTypes = splitOn(accept, ",").map((t) => t.trim()).filter(Boolean);
+      if (acceptedTypes.length > 0) {
+        const nameParts = splitOn(file?.name, ".");
+        const fileExt =
+          nameParts.length > 1 ? `.${String(nameParts.pop()).toLowerCase()}` : "";
+        const fileMime = file?.type ?? "";
 
         const isAccepted = acceptedTypes.some((type) => {
           if (type.startsWith(".")) {

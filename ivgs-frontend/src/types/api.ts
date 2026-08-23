@@ -228,25 +228,66 @@ export interface AssetSummary {
 // Asset Types (§5.1.4, Table 6)
 // ---------------------------------------------------------------------------
 
+/**
+ * WP-40 Task 1 — this now matches the wire.
+ *
+ * `AssetResponse` (ivgs-api/app/schemas/asset.py:27) sends exactly the
+ * fields below. It does NOT send `url`, `thumbnail_url`, `filename`,
+ * `scene_label`, `generation_prompt`, `storage_path`, `metadata`,
+ * `quality_score` or `quality_decision`. This interface previously declared
+ * all nine -- four of them as REQUIRED -- so `asset.thumbnail_url ||
+ * asset.url` type-checked and evaluated to `undefined`, and
+ * `<img src={undefined}>` renders with no `src`: zero image requests over
+ * 40 real assets.
+ *
+ * The nine phantom fields are kept below as `never`-adjacent optionals ONLY
+ * where a sibling tab still reads them (see the deprecation note); nothing
+ * new should use them. Use `@/lib/media` to derive a filename, media kind
+ * and download path from what the API really sends.
+ *
+ * Quality scores are a separate table (`asset_quality_scores`) behind
+ * `/api/v1/quality/...`; they were never part of this payload.
+ */
 export interface AssetResponse {
   id: string;
   project_id: string;
   scene_id: string | null;
   asset_type: AssetType;
-  storage_path: string;
-  file_size_bytes: number;
+  seaweedfs_fid: string | null;
+  seaweedfs_path: string | null;
+  mime_type: string | null;
+  file_size_bytes: number | null;
+  duration_seconds: number | null;
+  language_code: string | null;
+  generation_prompt_id: string | null;
+  storage_tier: StorageTier;
+  preserve_flag: boolean;
   content_hash: string | null;
   reference_count: number;
-  storage_tier: StorageTier;
-  metadata: Record<string, unknown>;
-  quality_score: number | null;
-  quality_decision: QualityDecision | null;
   created_at: string;
+
+  /**
+   * @deprecated Not sent by the API. Still read by the audio, talking-head,
+   * draft and renders tabs, which have the same defect this package fixed on
+   * the Media Assets grid (WP-40 report §1, scoped follow-on). Kept optional
+   * so those pages compile and degrade rather than being silently rewritten
+   * outside this package's scope.
+   */
   url?: string;
+  /** @deprecated Not sent by the API. Use `assetFilename()` from @/lib/media. */
   filename?: string;
+  /** @deprecated Not sent by the API. */
   scene_label?: string;
+  /** @deprecated Not sent by the API. */
   generation_prompt?: string;
+  /** @deprecated Not sent by the API. There is no thumbnail route. */
   thumbnail_url?: string;
+  /** @deprecated Not sent by the API. See `/api/v1/quality/...`. */
+  quality_score?: number | null;
+  /** @deprecated Not sent by the API. */
+  quality_decision?: QualityDecision | null;
+  /** @deprecated Not sent by the API. */
+  metadata?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -272,15 +313,36 @@ export interface JobResponse {
 // Transcript Types (§5.1.3, Table 2)
 // ---------------------------------------------------------------------------
 
+/**
+ * WP-40 Task 5 — this now matches the wire.
+ *
+ * `TranscriptResponse` (ivgs-api/app/schemas/transcript.py:13) sends id,
+ * project_id, sequence_order, original_asset_id, refined_text,
+ * language_code, created_at, updated_at. There is no `original_text` field
+ * and no `original_text` COLUMN on the `transcripts` table -- the uploaded
+ * source document is an asset referenced by `original_asset_id`.
+ *
+ * Declaring `original_text: string` here is what let the transcript page
+ * pass `undefined` into `TranscriptEditor`, where `original.split("\n")`
+ * threw "Cannot read properties of undefined (reading 'split')" -- ledger
+ * P1.4r.
+ */
 export interface TranscriptResponse {
   id: string;
   project_id: string;
-  original_filename: string;
-  original_text: string;
-  refined_text: string;
-  language_code: string;
   sequence_order: number;
-  status: string;
+  original_asset_id: string | null;
+  refined_text: string | null;
+  language_code: string | null;
+  created_at: string;
+  updated_at: string;
+
+  /** @deprecated Not sent by the API and not stored. See the note above. */
+  original_text?: string;
+  /** @deprecated Not sent by the API. */
+  original_filename?: string;
+  /** @deprecated Not sent by the API. */
+  status?: string;
 }
 
 // ---------------------------------------------------------------------------

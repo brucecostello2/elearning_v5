@@ -11,7 +11,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.{ts,tsx,css}'",
     "format:check": "prettier --check 'src/**/*.{ts,tsx,css}'",
-    "test:logic": "tsc src/lib/unwrap.ts --outDir .test-build --module es2022 --target es2022 --moduleResolution bundler --skipLibCheck && node --test src/lib/__tests__/*.test.mjs"
+    "test:logic": "tsc src/lib/unwrap.ts src/lib/media.ts src/lib/text.ts src/lib/jobs.ts --outDir .test-build --module es2022 --target es2022 --moduleResolution bundler --skipLibCheck && node --test src/lib/__tests__/*.test.mjs"
   },
   "dependencies": {
     "chart.js": "4.4.4",

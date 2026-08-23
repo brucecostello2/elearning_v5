@@ -7,6 +7,7 @@ import React, {
   useMemo,
   useEffect,
 } from "react";
+import { asText, splitLines } from "@/lib/text";
 import type {
   PromptType,
   PromptTier,
@@ -346,8 +347,10 @@ export default function PromptEditor({
   onCancel,
 }: PromptEditorProps): React.ReactElement {
   // ── State ────────────────────────────────────────────────────────────
+  // WP-40 Task 5: `asText` collapses a null `prompt_text` -- which the wire
+  // permits -- to "" here rather than letting it reach `.split(` below.
   const [templateContent, setTemplateContent] = useState<string>(
-    existingPrompt?.prompt_text ?? DEFAULT_TEMPLATES[promptType] ?? ""
+    asText(existingPrompt?.prompt_text) || DEFAULT_TEMPLATES[promptType] || ""
   );
   const [description, setDescription] = useState<string>(
     existingPrompt?.change_note ?? ""
@@ -375,8 +378,8 @@ export default function PromptEditor({
 
   /** Template stats */
   const templateStats = useMemo(() => {
-    const lines = templateContent.split("\n").length;
-    const chars = templateContent.length;
+    const lines = splitLines(templateContent).length;
+    const chars = asText(templateContent).length;
     const variables = (
       templateContent.match(/\{\{\s*\w+\s*\}\}/g) || []
     ).length;
