@@ -172,3 +172,75 @@ Both appended to `OUTSTANDING_WORK.md`:
 - **P1.4r** — frontend `Cannot read properties of undefined (reading 'split')` in the
   `page-*.js` chunk on the project detail page; the page renders. Same family as WP-35 (unguarded
   access against a shape the API does not send). To the frontend fix list.
+
+---
+
+# BUILD AND DEPLOY — `v5.6.4-stage2output`, all four nodes
+
+Built from `43190ac` (committed tree), under WP-34's binding rules.
+
+| | `ivgs-api` | `ivgs-workers` |
+|---|---|---|
+| Image id | `sha256:bac969dccabf…` | `sha256:74aee2adb080…` |
+| Banked **before** push | sha256 rc 0, `zstd -t` rc 0, 1 MANIFEST line, config blob inside | same |
+| Push (separate) | rc 0, registry digest **matches** local id | rc 0, **matches** |
+
+**Content gates — all pass**, including a *behavioural* one rather than only greps. Run inside
+the built worker image with node-02's real `IVGS_VLLM_MAX_TOKENS=2048`:
+
+```
+storyboard_generation max_tokens = 8192
+transcript_refinement max_tokens = 2048
+```
+
+which is the whole point of making it a separate variable, demonstrated rather than asserted.
+API gates: `list_project_prompts` uses the service-capable gate, no longer `get_current_user`, and
+**exactly one** prompt route is widened.
+
+**Registry off the deploy path.** Nodes 02/03/04 were fed from `/mnt/ivgs-shared` via
+`zstd -d | docker load`; each node verified `sha256` rc 0 and `zstd -t` rc 0 on the artifact
+before loading, was presence-gated before its `.env` was written, and had its rollback tag read
+from `.Config.Image` with `v5.6.3-checkpointauth` confirmed still present. Only the single worker
+service was recreated per node, `--force-recreate --no-deps --pull never`, label-derived compose.
+Every `.env` backed up to `.env.bak.pre-wp37-<ts>`; none committed. Only `^IVGS_[A-Z_]*TAG=`
+greps were used.
+
+Untouched and verified: Postgres, Redis, SeaweedFS, the scheduler (all "Up 8 days"),
+`ivgs-nextjs`, and node-04's engine containers.
+
+## Post-deploy verification, inside the running containers
+
+**node-02 — the node that runs stage 2:**
+
+```
+IVGS_VLLM_MAX_TOKENS=2048                     <- untouched, still 2048
+  storyboard_generation max_tokens = 8192     <- no longer capped by it
+  transcript_refinement max_tokens = 2048     <- deliberately unchanged
+  truncation error class present: VLLMTruncatedResponseError
+  extractor tolerates prose+fence: {'a': 1}
+  truncated input still refused: None         <- no repair
+```
+
+**Task 2, with the worker's real credential from inside `ivgs-celery-node02`:**
+
+```
+GET /projects/{id}/prompts                      -> 200   (was 401)
+  ...with ?prompt_type=storyboard_generation    -> 200
+GET /prompts  (human library, must stay closed) -> 401
+```
+
+The widening is surgical: the route the worker reads opened, the human library route did not.
+
+**Fleet:** `celery inspect active_queues` — 5 workers online, queue map **identical** to the
+pre-batch baseline.
+
+## Not verified
+
+- **No pipeline run.** Stage 2 has not been re-run. What is proven is that the budget is 8192 on
+  the node that runs it, that truncation now raises a truthful error, and that the worker can read
+  prompts. Whether an 8192-token storyboard actually completes and parses is the next end-to-end
+  run's answer.
+- **Register instance 21 is not closed** — nobody has yet watched a real stage-2 run either
+  succeed at the new budget or fail with the honest message.
+- **P1.4q and P1.4r are record-only**, as instructed. P1.4q still bites: project `c12fa967` reads
+  `TRANSCRIPT_REFINEMENT` right now and needs the manual `UPDATE` before any retrigger.
