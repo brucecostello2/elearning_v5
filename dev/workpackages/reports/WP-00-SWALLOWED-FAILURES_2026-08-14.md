@@ -27,7 +27,7 @@ because of this pattern.
 | # | Site | Swallows | Disposition |
 |---|---|---|---|
 | 1 | `ivgs-backup-worker/tasks/backup_tasks.py` — 4 tasks, 10 return sites | Script exit codes | **Fixed**, pending deploy — WP-BACKUP-REPORTING |
-| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | Open |
+| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **CLOSED 2026-08-23** by WP-06-MEDIA-JOIN, with evidence. See below. |
 | 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | Open |
 | 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | Open — **scope-blocked** |
 | 5 | `ivgs-workers/tasks/pipeline_orchestrator.py:620` | Manufactures a success | Open |
@@ -74,7 +74,42 @@ returns 0. The fix has never executed.
 
 ---
 
-### 2. `_decrement_media_task_count` returns 0 on Redis error — OPEN
+### 2. `_decrement_media_task_count` returns 0 on Redis error — **CLOSED 2026-08-23**
+
+> **Closed by WP-06-MEDIA-JOIN**, report
+> `dev/workpackages/reports/WP-06-MEDIA-JOIN-report_2026-08-23.md`, commit on `main`
+> the same day. Sites were `pipeline_orchestrator_v2.py:974-984` at `9af5a48` (the
+> `:869` below is the `e1f4c58` line number).
+>
+> **What changed.** The function no longer returns an int at all. It returns
+> `(outcome, remaining)` where `outcome` is one of `decremented` / `duplicate` /
+> `unknown`, so "Redis is down" and "all media reported" are no longer the same
+> value. On the unknown path `_handle_media_generation_completion` raises
+> `MediaJoinUnknownError` and `handle_stage_completion` retries; it cannot advance.
+> `_store_media_task_count` now raises `MediaJoinStoreError` instead of logging and
+> returning `None`.
+>
+> **Evidence the failure now surfaces** (the register's bar for closing an entry -
+> not "the code looks right"). Against a real Redis, with `config.redis_url` pointed
+> at a port with nothing listening, so the connection genuinely fails:
+>
+> - `test_connection_failure_reports_unknown_not_complete` - outcome is `unknown`,
+>   never `decremented`.
+> - `test_the_caller_raises_rather_than_dispatching_stage_4` - the caller raises and
+>   `celery_app.send_task` is asserted **not called**. Under the old code this same
+>   input dispatched Stage 4.
+> - `test_pre_fix_arithmetic_would_have_read_it_as_complete` - runs the old
+>   expression `max(0, r.decr(key))` on a missing key, asserts it yields `0`, then
+>   runs the new function on the same state and asserts `unknown`. The defect and
+>   its fix are both executable in one test.
+>
+> 19 tests, all passing. Two sibling helpers in the same file
+> (`_record_media_failure`, `_get_media_failure_count`) still return `0` on error by
+> deliberate choice - they only make `failed_count` under-report and cannot advance
+> the pipeline - but they now log at `error` with `unknown=True` rather than at
+> `warning`. **Those two remain open as a lower-severity variant of this entry.**
+
+
 
 ```
 ivgs-workers/tasks/pipeline_orchestrator_v2.py:869   def _decrement_media_task_count(

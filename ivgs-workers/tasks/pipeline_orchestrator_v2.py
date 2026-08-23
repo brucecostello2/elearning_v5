@@ -282,12 +282,27 @@ def handle_stage_completion(
 
     # Handle media generation stages (parallel completion tracking)
     if completed_stage in MEDIA_GENERATION_STAGES:
-        return _handle_media_generation_completion(
-            completed_stage=completed_stage,
-            stage_output=stage_output_dict,
-            config=config,
-            log=log,
-        )
+        try:
+            return _handle_media_generation_completion(
+                completed_stage=completed_stage,
+                stage_output=stage_output_dict,
+                config=config,
+                log=log,
+            )
+        except MediaJoinUnknownError as exc:
+            # WP-06 / P1.1. The join could not tell us how many media tasks are
+            # outstanding. Retry rather than guess; IVGSBaseTask sets no
+            # autoretry_for, so without this the task would simply fail and the
+            # report would be lost. After max_retries it goes to the DLQ, which
+            # is the loud outcome - the quiet one was dispatching Stage 4 over
+            # incomplete footage.
+            log.warning(
+                "media_join_unknown_retrying",
+                stage=completed_stage,
+                retries=self.request.retries,
+                max_retries=self.max_retries,
+            )
+            raise self.retry(exc=exc, countdown=10) from exc
 
     # Determine next stage
     next_stage = STAGE_TRANSITIONS.get(completed_stage)
@@ -512,7 +527,11 @@ def dispatch_media_generation(
         })
         total_media_tasks += 1
 
-    # Store expected completion count for tracking
+    # Arm the join. Raises MediaJoinStoreError if the counter could not be
+    # written - deliberately NOT swallowed (WP-06 / P1.1). An unarmed counter
+    # makes DECR return -1 on a missing key, which the old caller read as
+    # "all media reported" and acted on. Letting this propagate retries the
+    # dispatch (max_retries=2) instead of starting a join nothing can report to.
     _store_media_task_count(job_id, total_media_tasks, config)
 
     log.info(
@@ -676,8 +695,45 @@ def _handle_media_generation_completion(
     status = stage_output.get("status", "")
     failed = status in (StageStatus.FAILED.value, "failed")
 
-    # Always decrement: every media task reporting in moves the join forward.
-    remaining = _decrement_media_task_count(job_id, config)
+    # Always report: every media task reporting in moves the join forward,
+    # success or failure (partial-advance, commit 35d9226). The guard is inside
+    # the report, so a duplicate delivery of THIS stage's completion decrements
+    # exactly once.
+    outcome, remaining = _decrement_media_task_count(job_id, completed_stage, config)
+
+    if outcome == JOIN_DUPLICATE:
+        # The callback fires before the ack (stage3_images.py:757,
+        # video_generation_task.py:576) and acks_late + task_reject_on_worker_lost
+        # requeue the media task if the worker dies in that window. The re-run
+        # sends a second completion for the same (job_id, stage); it must not
+        # decrement again.
+        log.warning(
+            "media_stage_duplicate_report_ignored",
+            stage=completed_stage,
+            note="already counted; join not advanced",
+        )
+        return {
+            "job_id": job_id,
+            "action": "duplicate_ignored",
+            "completed_stage": completed_stage,
+            "message": "This media stage already reported; join unchanged",
+        }
+
+    if outcome == JOIN_UNKNOWN:
+        # NOT a value the caller may read as completion. Raising lets
+        # handle_stage_completion retry (bind=True, max_retries=3). If the
+        # retries are exhausted the task goes to the DLQ - loud - rather than
+        # dispatching Stage 4 over footage that may still be rendering.
+        log.error(
+            "media_join_state_unknown",
+            stage=completed_stage,
+            note="join state could not be established; retrying, not advancing",
+        )
+        raise MediaJoinUnknownError(
+            f"media-join state for job {job_id} could not be established while "
+            f"reporting stage {completed_stage}. Not advancing to Stage 4 - "
+            "'unknown' is not 'complete'."
+        )
 
     if failed:
         failures = _record_media_failure(job_id, config)
@@ -958,31 +1014,145 @@ def _get_job_context(
         return None
 
 
+class MediaJoinStoreError(RuntimeError):
+    """The media-join counter could not be armed.
+
+    Ledger P1.1 / WP-06. This used to be logged and swallowed, returning None
+    either way. The counter key then did not exist, `DECR` on a missing key
+    returns -1, `max(0, -1)` is 0, and the FIRST media stage to report collapsed
+    the join and dispatched Stage 4 over a third of the footage. Raising lets
+    dispatch_media_generation retry instead of arming a join that was never armed.
+    """
+
+
+class MediaJoinUnknownError(RuntimeError):
+    """The join's remaining count could not be established.
+
+    Ledger P1.1 / WP-06. Deliberately NOT a value the caller can read as
+    completion. Raised so handle_stage_completion retries; a transient Redis
+    error must never advance the pipeline on incomplete footage.
+    """
+
+
+# Outcomes of one join report. Kept as an explicit tri-state rather than an int,
+# because the whole defect this package closes was an int that meant three
+# different things - "none left", "clamped negative", and "I have no idea".
+JOIN_DECREMENTED = "decremented"
+JOIN_DUPLICATE = "duplicate"
+JOIN_UNKNOWN = "unknown"
+
+
+# Guard + decrement in ONE server-side step.
+#
+# The two-step version (SETNX, then DECR, then delete the guard if the DECR
+# failed) has a hole: if the undo also fails, the guard is stuck set, the task's
+# retry looks like a duplicate, and the join stalls forever. Atomic means a Redis
+# failure leaves NOTHING done, so the retry is clean.
+#
+# KEYS[1] = ivgs:media_tasks:{job_id}          the join counter
+# KEYS[2] = ivgs:media_join_seen:{job_id}:{stage}   the per-report guard
+# ARGV[1] = guard TTL in seconds
+_MEDIA_JOIN_REPORT_LUA = """
+if redis.call('SETNX', KEYS[2], '1') == 0 then
+    return {1, 0}
+end
+redis.call('EXPIRE', KEYS[2], ARGV[1])
+if redis.call('EXISTS', KEYS[1]) == 0 then
+    return {2, 0}
+end
+return {0, redis.call('DECR', KEYS[1])}
+"""
+
+
+def _media_join_seen_key(job_id: str, stage: str) -> str:
+    """Idempotency key for one media stage's completion report.
+
+    NOT (job_id, scene_id). The WP-06 brief says scene_id, but the join does not
+    count scenes: dispatch_media_generation increments total_media_tasks once per
+    media STAGE dispatched (image / video / animation, lines 471, 491, 512), so
+    the counter's maximum is 3. Each stage sends exactly one whole-stage
+    completion and carries no scene_id. (job_id, stage) is the real granularity.
+    """
+    return f"ivgs:media_join_seen:{job_id}:{stage}"
+
+
 def _store_media_task_count(
     job_id: str, count: int, config: WorkerConfig,
 ) -> None:
-    """Store expected media task count in Redis."""
+    """Arm the media-join counter. Raises MediaJoinStoreError if it cannot.
+
+    Also clears the per-stage guards, so a re-dispatch of the same job re-arms a
+    join that can actually be reported against.
+    """
     try:
         import redis
         r = redis.Redis.from_url(config.redis_url)
         r.set(f"ivgs:media_tasks:{job_id}", count, ex=MEDIA_JOIN_TTL_SECONDS)
         r.delete(f"ivgs:media_failures:{job_id}")
+        for stage in MEDIA_GENERATION_STAGES:
+            r.delete(_media_join_seen_key(job_id, stage))
     except Exception as e:
-        logger.warning("redis_store_media_count_failed", error=str(e))
+        logger.error(
+            "redis_store_media_count_failed",
+            job_id=job_id,
+            count=count,
+            error=str(e),
+        )
+        raise MediaJoinStoreError(
+            f"could not arm the media-join counter for job {job_id} "
+            f"(expected {count} media task(s)): {e}. Not advancing - an unarmed "
+            "counter reads as complete on the first stage to report."
+        ) from e
 
 
 def _decrement_media_task_count(
-    job_id: str, config: WorkerConfig,
-) -> int:
-    """Decrement and return remaining media task count."""
+    job_id: str, stage: str, config: WorkerConfig,
+) -> tuple:
+    """Report one media stage against the join. Returns (outcome, remaining).
+
+    ``outcome`` is one of JOIN_DECREMENTED / JOIN_DUPLICATE / JOIN_UNKNOWN.
+    ``remaining`` is meaningful only for JOIN_DECREMENTED.
+
+    Never returns a bare int. The pre-WP-06 signature returned ``max(0, remaining)``
+    and returned 0 from its exception handler, so "Redis is down" and "all media
+    reported" were the same value to the caller.
+    """
     try:
         import redis
         r = redis.Redis.from_url(config.redis_url)
-        remaining = r.decr(f"ivgs:media_tasks:{job_id}")
-        return max(0, remaining)
+        result = r.eval(
+            _MEDIA_JOIN_REPORT_LUA,
+            2,
+            f"ivgs:media_tasks:{job_id}",
+            _media_join_seen_key(job_id, stage),
+            MEDIA_JOIN_TTL_SECONDS,
+        )
     except Exception as e:
-        logger.warning("redis_decrement_media_count_failed", error=str(e))
-        return 0
+        logger.error(
+            "redis_decrement_media_count_failed",
+            job_id=job_id,
+            stage=stage,
+            error=str(e),
+            outcome=JOIN_UNKNOWN,
+        )
+        return (JOIN_UNKNOWN, 0)
+
+    code = int(result[0])
+    value = int(result[1])
+    if code == 1:
+        return (JOIN_DUPLICATE, 0)
+    if code == 2:
+        # Counter key absent: never armed, TTL expired, or the watchdog claimed
+        # the job and deleted it. All three are "unknown", none is "complete".
+        logger.error(
+            "media_join_counter_missing",
+            job_id=job_id,
+            stage=stage,
+            outcome=JOIN_UNKNOWN,
+            note="counter absent - never armed, expired, or watchdog-claimed",
+        )
+        return (JOIN_UNKNOWN, 0)
+    return (JOIN_DECREMENTED, max(0, value))
 
 
 def _record_media_failure(job_id: str, config: WorkerConfig) -> int:
@@ -994,7 +1164,17 @@ def _record_media_failure(job_id: str, config: WorkerConfig) -> int:
         r.expire(f"ivgs:media_failures:{job_id}", MEDIA_JOIN_TTL_SECONDS)
         return int(failures)
     except Exception as e:
-        logger.warning("redis_record_media_failure_failed", error=str(e))
+        # Same "unknown != zero" shape as the counter, far smaller blast radius:
+        # this only makes failed_count under-report, it does not advance the
+        # pipeline. Not raised, because stranding a job over a cosmetic counter
+        # would be a worse trade. Logged at error with unknown=True so the
+        # partial-advance line below is not mistaken for a clean run. WP-06 F5.
+        logger.error(
+            "redis_record_media_failure_failed",
+            job_id=job_id,
+            error=str(e),
+            unknown=True,
+        )
         return 0
 
 
@@ -1006,7 +1186,15 @@ def _get_media_failure_count(job_id: str, config: WorkerConfig) -> int:
         val = r.get(f"ivgs:media_failures:{job_id}")
         return int(val) if val is not None else 0
     except Exception as e:
-        logger.warning("redis_get_media_failure_failed", error=str(e))
+        # See _record_media_failure: the 0 here means "could not read", not
+        # "no failures". Reported as unknown=True so it is legible in the log.
+        # WP-06 F5.
+        logger.error(
+            "redis_get_media_failure_failed",
+            job_id=job_id,
+            error=str(e),
+            unknown=True,
+        )
         return 0
 
 
