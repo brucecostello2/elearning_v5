@@ -616,6 +616,23 @@ return carries no such key. Worth a new rule.
 **Scope/action (WP-27):** raise on `rc != 0` instead of returning. Then re-check
 whether a detector rule can express this shape.
 
+> **FIXED 2026-08-23 by WP-27 and DEPLOYED in `ivgs-workers:v5.6.1-ops`. STILL OPEN.**
+>
+> `Stage7RenderError` is raised after `handle_stage_completion` is dispatched, on all
+> three paths that set FAILED (the register named only the ffmpeg one). Probed inside
+> the deployed `ivgs-celery-composition` -- the container that actually runs Stage 7:
+>
+>     instance 14: RAISES -> Stage 7 produced no draft for job wp27-probe:
+>                  FFmpeg failed (rc=1): probe (scenes_composed=0, scenes_failed=0)
+>     instance 14: dispatch at 6287 precedes raise at 11118 -> True
+>
+> **Not closed, deliberately.** The probe drove the terminal decision and read the
+> deployed source; it did not make a real `ffmpeg` invocation fail inside a real
+> `assemble_prototype_draft` run. That is weaker than the probes that closed instances
+> 2 and 3, which called the real functions. Closing this needs one Stage 7 execution
+> that fails -- and running the pipeline was outside the 2026-08-23 batch's authority.
+> **The remaining step is exactly one job with a failing render.**
+
 ### 15. Stage-4 manifest builder binds every scene asset as a background layer - OPEN
 
 *Added 2026-08-15 during WP-03 Option D, verified live. Owned by WP-27-MANIFEST-BUILDER.*
@@ -649,6 +666,26 @@ Compounding, and independent: most scenes on the reference project have **0 imag
 
 **Scope/action (WP-27):** filter background layers to image/video asset types; dedupe
 to the latest per scene. The zero-image scenes are a separate media-generation gap.
+
+> **FIXED 2026-08-23 by WP-27 and DEPLOYED in `ivgs-api:v5.6.1-ops`. STILL OPEN.**
+>
+> The diagnosis above is incomplete and is corrected here: the dominant cause was not
+> the missing filter but that `_asset_type_to_layer` was keyed on asset-type names this
+> schema has never used -- only `talking_head` of its eight keys was real -- combined
+> with a `"background"` catch-all default. 44 of the 45 assets on the reference project
+> took that default. See instance 19.
+>
+> Probed inside the deployed `ivgs-fastapi`, calling the real function:
+>
+>     types wrongly mapped to background: NONE
+>     audio -> audio | document -> None | reference_clip -> None
+>     unknown_new_type -> None
+>
+> **Not closed.** The function is right; nobody has yet generated a manifest from a real
+> job and confirmed one background layer per scene. That write was outside the batch's
+> authority. **The operator may reasonably judge the function-level evidence sufficient**
+> -- this entry is a correctness defect rather than a swallowed failure, so the
+> register's "failure now surfaces" rule fits it awkwardly. Left open pending that call.
 
 ---
 
