@@ -88,6 +88,27 @@ class VLLMConfig:
     connect_timeout_seconds: int = _env("IVGS_VLLM_CONNECT_TIMEOUT", 10, int)
     max_retries: int = _env("IVGS_VLLM_MAX_RETRIES", 2, int)
     max_tokens: int = _env("IVGS_VLLM_MAX_TOKENS", 4096, int)
+    # WP-37. Stage 2 emits a whole storyboard as one JSON document, so its output
+    # budget is a property of THAT STAGE, not of the fleet-wide LLM default -
+    # which is why it gets its own knob rather than inheriting max_tokens above.
+    #
+    # It has to be its own variable, not a bigger default: node-02's .env.node02
+    # pins IVGS_VLLM_MAX_TOKENS=2048, so raising the shared default would have
+    # changed nothing on the node where stage 2 actually runs. That 2048 is what
+    # truncated job e408515a four times (~8 KB of JSON each attempt).
+    #
+    # 8192 is sized from measurement, not habit:
+    #   input  ~2,000 tokens  (stage2 templates 5,066 chars ~1,266; the refined
+    #                          transcript 2,241 chars ~560; project context ~100)
+    #   output  8,192 tokens
+    #   total  ~10,200 against node-02's 32,768 serving context
+    #          (vllm --max-model-len 32768) - roughly 22K of headroom, enough for
+    #          a transcript several times longer than this one.
+    # 2048 demonstrably could not hold a 5-minute storyboard; 8192 is 4x that
+    # with the context to spare.
+    storyboard_max_tokens: int = _env(
+        "IVGS_VLLM_STORYBOARD_MAX_TOKENS", 8192, int
+    )
     temperature: float = _env("IVGS_VLLM_TEMPERATURE", 0.3, float)
     top_p: float = _env("IVGS_VLLM_TOP_P", 0.9, float)
 
@@ -309,7 +330,23 @@ class WorkerConfig:
 
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
-        if stage in ("transcript_refinement", "storyboard_generation"):
+        if stage == "storyboard_generation":
+            # WP-37: split out of the shared branch below so the storyboard's
+            # output budget is not capped by the generic IVGS_VLLM_MAX_TOKENS.
+            # Same endpoint and model as transcript_refinement; only the output
+            # budget differs. Stage 1 is left on the shared knob deliberately -
+            # it completed inside 2048 on this material.
+            return _AttrDict({
+                "base_url": self.vllm.primary_base_url,
+                "model": self.vllm.primary_model,
+                "timeout": self.timeouts.vllm_timeout,
+                "max_tokens": self.vllm.storyboard_max_tokens,
+                "temperature": self.vllm.temperature,
+                "top_p": self.vllm.top_p,
+                "fallback_base_url": self.vllm.secondary_base_url,
+                "fallback_model": self.vllm.secondary_model,
+            })
+        if stage in ("transcript_refinement",):
             return _AttrDict({
                 "base_url": self.vllm.primary_base_url,
                 "model": self.vllm.primary_model,

@@ -1031,6 +1031,44 @@ rollback source for both. Three copies now exist where there were two.
 > precheck and the MANIFEST dedupe guard). Left in place - syncing node scripts is outside
 > this package - but it is a live trap for anyone who banks from node-02 again.
 
+## P1.4q — A failed render job strands its project in a non-retriggerable state *(new, 2026-08-23, WP-37 record-only)*
+**Status:** OPEN. **Record only** - no code was written for this.
+
+**Observed twice on 2026-08-23**, both times during the first end-to-end run. A render
+job fails terminally; the project is left in whatever in-progress state it had reached
+(e.g. `TRANSCRIPT_REFINEMENT`). `POST /api/v1/projects/{id}/trigger` then rejects the
+retry with **409 `INVALID_STATE_TRANSITION`**, because the state machine only admits a
+trigger from a resting state.
+
+The operator's only recourse is to reach into the database by hand:
+
+    UPDATE projects SET state='DRAFT' WHERE id='...';
+
+**Why it matters beyond inconvenience.** The pipeline is being debugged right now, so
+failures are the normal case, and every one of them currently requires manual SQL before
+the next attempt. It also means the project's state is not a truthful description of the
+project: it says "refining the transcript" about a project where nothing is running.
+
+**A terminal job failure should return the project to a retriggerable state** - either
+`DRAFT` or a distinct `FAILED` that `trigger` accepts. That is a state-machine decision,
+not a patch, which is why it is recorded rather than fixed here.
+
+## P1.4r — Frontend: unguarded `.split()` on the project detail page *(new, 2026-08-23, WP-37 record-only)*
+**Status:** OPEN. **Record only.** Added to the frontend fix list; not fixed in WP-37.
+
+Console error on `/projects/[id]`, in the `page-*.js` chunk:
+
+    Cannot read properties of undefined (reading 'split')
+
+**The page renders** - this is a caught/console-level error, not the crash WP-35 fixed.
+
+**Same family as WP-35** (`reports/WP-35-DETAIL-CRASH-report_2026-08-23.md`): an
+unguarded field access against a shape the API does not actually send. WP-35 fixed the
+one that took the page down and recorded that `project.target_languages` does not exist
+on the wire at all; a `.split()` on an absent string field is the same defect in a
+non-fatal position. Worth fixing with the next frontend pass, along with the
+`Promise<any>` fetchers WP-35 listed.
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.

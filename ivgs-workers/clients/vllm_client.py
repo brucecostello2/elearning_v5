@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import logging
 import os
 from dataclasses import dataclass, field
@@ -47,6 +48,125 @@ class VLLMInvalidResponseError(VLLMError):
         super().__init__(message)
         self.response_body = response_body
         self.status_code = status_code
+
+
+def _extract_json_document(content: str):
+    """Pull one complete JSON document out of an LLM reply, or return None.
+
+    WP-37. `chat_json` previously stripped markdown fences only when the reply
+    *started* with them, then handed everything else straight to json.loads. A
+    reply with a sentence of preamble ("Here is the storyboard:") or a trailing
+    remark failed, even though a perfectly good document sat in the middle.
+
+    Three attempts, in order of confidence:
+      1. the whole string, parsed directly;
+      2. the contents of any ```json / ``` fence, anywhere in the reply;
+      3. the first balanced { ... } or [ ... ] span.
+
+    Returns the parsed value, or None if nothing here is complete and valid.
+
+    THIS DOES NOT REPAIR ANYTHING. Every candidate must parse on its own. The
+    balanced-bracket scan requires the brackets to actually close, so a truncated
+    document yields no candidate and this returns None - which is the correct
+    outcome, because the caller has already raised
+    VLLMTruncatedResponseError for that case. Nothing here invents content.
+    """
+    text = content.strip()
+    if not text:
+        return None
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    # Fenced blocks, anywhere in the reply - not only at position 0.
+    for match in re.findall(r"```(?:json|JSON)?\s*([\s\S]*?)```", text):
+        candidate = match.strip()
+        if not candidate:
+            continue
+        try:
+            return json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+
+    # First balanced object/array, ignoring brackets inside strings so that a
+    # brace in a scene description cannot end the span early.
+    #
+    # Ordered by WHERE each opener first appears, not by a fixed preference. A
+    # fixed {-then-[ order returns the first inner OBJECT of a top-level array,
+    # which is a silently wrong answer rather than a failure: stage 2's schema
+    # can be a list of scenes, and the caller would have received scene 0 alone.
+    openers = [(text.find(o), o, c) for o, c in (("{", "}"), ("[", "]"))]
+    openers = sorted((i, o, c) for i, o, c in openers if i >= 0)
+    for _first_at, opener, closer in openers:
+        start = text.find(opener)
+        while start >= 0:
+            depth = 0
+            in_string = False
+            escaped = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if escaped:
+                    escaped = False
+                    continue
+                if ch == "\\":
+                    escaped = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == opener:
+                    depth += 1
+                elif ch == closer:
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            return json.loads(text[start : i + 1])
+                        except json.JSONDecodeError:
+                            break
+            start = text.find(opener, start + 1)
+
+    return None
+
+
+class VLLMTruncatedResponseError(VLLMError):
+    """The model stopped because it hit the output token limit.
+
+    WP-37. Distinct from VLLMInvalidResponseError on purpose. When vLLM returns
+    ``finish_reason == "length"`` the answer is incomplete by construction, and
+    the JSON it contains is unparseable *because it was cut off* - not because
+    the model formatted it wrongly. Reporting that as "not valid JSON" sends the
+    reader to the prompt and the model's formatting when the actual lever is
+    max_tokens.
+
+    Measured 2026-08-23, job e408515a: four attempts, ~99 s each, all reported
+    "vLLM response is not valid JSON" at char 8540 / 8382 / 7972 / 8079 - a
+    consistent ~8 KB ceiling that is exactly the 2048-token budget the node-02
+    worker was running with. The response object carried finish_reason all along
+    (VLLMChoice.finish_reason, and the VLLMResponse.finish_reason property at
+    :106); chat_json simply never looked at it.
+
+    This error is NOT recoverable by repair. A truncated answer must still fail -
+    it just has to fail saying the true thing.
+    """
+
+    def __init__(
+        self,
+        message: str = "vLLM response truncated at the output token limit",
+        *,
+        max_tokens: int | None = None,
+        completion_tokens: int | None = None,
+        prompt_tokens: int | None = None,
+        content_chars: int | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.max_tokens = max_tokens
+        self.completion_tokens = completion_tokens
+        self.prompt_tokens = prompt_tokens
+        self.content_chars = content_chars
 
 
 class VLLMModelNotFoundError(VLLMError):
@@ -472,21 +592,35 @@ class VLLMClient(LLMProvider):
 
         content = response.content.strip()
 
-        # Strip markdown code fences if present.
-        if content.startswith("```"):
-            lines = content.split("\n")
-            json_lines: List[str] = []
-            in_block = False
-            for line in lines:
-                if line.startswith("```") and not in_block:
-                    in_block = True
-                    continue
-                if line.startswith("```") and in_block:
-                    break
-                if in_block:
-                    json_lines.append(line)
-            if json_lines:
-                content = "\n".join(json_lines)
+        # WP-37. Check finish_reason BEFORE parsing. If the model hit the output
+        # token limit the answer is incomplete by construction, so json.loads
+        # will fail - and reporting that as "not valid JSON" blames the model's
+        # formatting for what is actually an exhausted budget. The information
+        # was always here; it was simply never read.
+        #
+        # Deliberately NOT repaired: a truncated storyboard is a partial
+        # storyboard, and fabricating the missing scenes to make the JSON parse
+        # would produce a plausible document that nobody asked for. It still
+        # fails - it now fails saying the true thing.
+        if (response.finish_reason or "").lower() == "length":
+            usage = response.usage
+            raise VLLMTruncatedResponseError(
+                "vLLM stopped at the output token limit "
+                f"(finish_reason='length', max_tokens={max_tokens}, "
+                f"completion_tokens={usage.completion_tokens if usage else 'unknown'}, "
+                f"prompt_tokens={usage.prompt_tokens if usage else 'unknown'}, "
+                f"content_chars={len(content)}). The response is incomplete, so "
+                "it cannot be valid JSON. Raise max_tokens for this stage, or "
+                "reduce what the prompt asks for.",
+                max_tokens=max_tokens,
+                completion_tokens=usage.completion_tokens if usage else None,
+                prompt_tokens=usage.prompt_tokens if usage else None,
+                content_chars=len(content),
+            )
+
+        parsed = _extract_json_document(content)
+        if parsed is not None:
+            return parsed, response
 
         try:
             parsed = json.loads(content)

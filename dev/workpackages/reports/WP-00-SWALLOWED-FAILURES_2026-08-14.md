@@ -46,6 +46,7 @@ because of this pattern.
 | 18 | `ivgs-frontend/src/hooks/useMonitoring.ts` — `useStorageQuotas` | Per-user quota fetch errors → an empty quota row (`used_bytes=0`) | Open — **added 2026-08-23 by WP-23.** Self-documented in the hook's own docstring (*"those failures will be silent"*) and never registered. A 500 renders as a user with zero usage. |
 | 19 | `ivgs-api/app/api/v1/manifests.py:380` (pre-fix) | `mapping.get(asset_type, "background")` — a **lookup** miss produced a confident, maximally damaging answer | **FIXED 2026-08-23 by WP-27**, recorded because it is the pattern applied to a lookup rather than an error path: not knowing became *"it is the scene background"*. Worth a detector rule — a `.get(x, <default>)` whose default is a load-bearing domain value. |
 | 20 | `ivgs-workers/utils/error_handler.py:208` `create_error_detail` -> `ErrorDetail` | The **DLQ filing itself** raised `ValidationError` on `job_id=None` / `project_id=None`, and `IVGSBaseTask._route_to_dlq` (`celery_app.py:786`) caught it and logged `dlq_routing_failed` -- so the failure was **never filed** | **FIXED 2026-08-23 by WP-36.** Observed live in the first end-to-end run (job `768c4b59`). Adjacent to instance 8. See below. |
+| 21 | `ivgs-workers/clients/vllm_client.py:491` `chat_json` | `finish_reason == "length"` (output truncated at the token limit) reported as **"vLLM response is not valid JSON"** - the true cause was in the response object and was never read | **FIXED 2026-08-23 by WP-37.** A *misleading-error* instance, not a silent one: the failure was loud and wrong, which cost four retries at ~99 s each. See below. |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -891,6 +892,61 @@ coercion and not a quiet widening of the model.
 surfaces. What is observed so far is that the record can now be *built*; nobody
 has yet watched a real early-failing task land in the DLQ. The next end-to-end
 run supplies that.
+
+---
+
+### 21. A truncated LLM answer reported as malformed JSON - FIXED 2026-08-23
+
+*Added 2026-08-23 by WP-37-STAGE2-OUTPUT. **Verified live** in the first
+end-to-end run.*
+
+Stage 2, job `e408515a`, four attempts, ~99 s each. vLLM returned HTTP 200 every
+time and the worker reported:
+
+```
+vLLM response is not valid JSON: ... char 8540 / 8382 / 7972 / 8079
+```
+
+A consistent ~8 KB ceiling. That is exactly the **2048-token** output budget the
+node-02 worker was running with (`IVGS_VLLM_MAX_TOKENS=2048` in `.env.node02`).
+The model had not produced malformed JSON at all - it had been **cut off
+mid-document**, so the JSON was incomplete by construction.
+
+`chat_json` (`vllm_client.py:451`) called `json.loads` and, on failure, raised
+`VLLMInvalidResponseError("vLLM response is not valid JSON")`. **It never read
+`finish_reason`** - which the response object carried the whole time
+(`VLLMChoice.finish_reason`, and the `VLLMResponse.finish_reason` property).
+
+**Why this belongs in the register.** It is not a swallowed failure - the failure
+was loud, and the job correctly failed. It is the register's other shape: **an
+error path that reports a confident, wrong diagnosis when the right one was
+available.** The consequence is the same in kind - the system asserted something
+untrue about itself - and the cost is concrete. "Not valid JSON" points a reader
+at the prompt and the model's formatting. The actual lever was `max_tokens`, and
+nothing in the message mentioned tokens, limits, or truncation. Four retries ran
+before anyone could know that, because retrying a truncated answer produces
+another truncated answer.
+
+**Fixed** by checking `finish_reason` **before** parsing and raising a distinct
+`VLLMTruncatedResponseError` that names `max_tokens`, `completion_tokens`,
+`prompt_tokens` and `content_chars`. **Deliberately not repaired**: a truncated
+storyboard is a partial storyboard, and completing it to make the JSON parse
+would fabricate scenes nobody asked for. It still fails - it now fails saying the
+true thing.
+
+27 tests, `ivgs-workers/tests/test_wp37_stage2_output.py`, including one that
+asserts truncated JSON **still fails** and a parametrised set proving the
+extractor returns `None` rather than inventing content.
+
+**Generalisable, and worth a rule.** `finish_reason` is a first-class field on
+every OpenAI-shaped response and nothing else in this codebase reads it. Any
+caller that parses an LLM reply without checking why the model stopped can
+produce this same wrong diagnosis. `scripts/swallow_detector.py` models neither
+this nor the two shapes instances 14 and 19 asked for.
+
+**Not closed.** The truncation error surfaces correctly in unit tests and the
+budget is raised, but nobody has yet watched a real stage-2 run either succeed at
+8192 or fail with the honest message. The next end-to-end run supplies that.
 
 ---
 

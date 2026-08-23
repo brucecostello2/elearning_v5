@@ -28,7 +28,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
 from app.core.auth import get_current_user
-from app.core.rbac import require_admin, require_operator_or_admin
+from app.core.rbac import (
+    require_admin,
+    require_operator_or_admin,
+    require_service_or_privileged_user,
+)
 from app.models.user import User
 from app.schemas.prompt import (
     PromptCreate,
@@ -460,7 +464,23 @@ async def list_project_prompts(
             "pass it: the unfiltered response is all ten types in enum order."
         ),
     ),
-    current_user: User = Depends(get_current_user),
+    # WP-37, and the same defect class WP-36 fixed on the checkpoint route.
+    # This is the route the WORKER reads its prompts from - stage 1
+    # (stage1_transcript.py:275) and stage 2 (stage2_storyboard.py:161) both GET
+    # it with the internal service token. get_current_user rejects that token
+    # outright with 401, so every attempt fell back to the baked-in .j2
+    # templates and the DB-managed prompts were never used by anything. The
+    # pipeline ran, so nothing looked broken - it just silently ignored the
+    # prompt-management feature entirely.
+    #
+    # require_service_or_privileged_user (rbac.py:88) accepts the service token
+    # (resolving to the seeded svc-pipeline admin) or an operator/admin human,
+    # and still denies viewers 403.
+    #
+    # Read-only, and the ONLY prompt route widened. Every write and admin route
+    # in this file keeps require_operator_or_admin / require_admin - no worker
+    # writes prompts, and tests pin that they still refuse the service token.
+    current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List project-level prompts with effective source (SCENE/PROJECT/GLOBAL).
