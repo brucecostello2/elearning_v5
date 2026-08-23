@@ -669,3 +669,311 @@ bb65746  fix(assets):     WP-40 the media cards read three fields the API never 
 36cf538  fix(media-join,watchdog): WP-39 the animation stage could not report; …
 7cdfbf4  docs(wp-39):     handoff — WP-39 was never started; nothing built, nothing deployed
 ```
+
+---
+---
+
+# ADDENDUM — Decision 1 approved: the sibling tabs
+
+| | |
+|---|---|
+| **Authorised** | operator ruling, 2026-08-23: §11 decision 1 APPROVED, scope addition |
+| **HEAD at addendum start** | `3529ddd` — the operator **pushed** the nine held commits between turns, so `origin/main` now carries all of §12 |
+| **Ships** | `ivgs-frontend` only, as `v5.6.8-uibatch2` |
+| **`ivgs-api`** | still not touched |
+
+## A1. What this closes, and the one thing that changed my mind about how
+
+The main report scoped four sibling tabs plus three `thumbnail_url` sites as
+"the same defect, ~3 lines each". **Two of them were worse than that**, and the
+final state is stronger than "fix the reads": every phantom field is now
+**deleted from the types**, so reading one is a compile error rather than a
+comment asking people not to.
+
+## A2. The four sibling tabs
+
+### A2.1 Draft Preview and Final Renders never could have worked
+
+These did not read a phantom field off an asset — they read one off the
+**project**:
+
+```
+draft/page.tsx:39    const draftUrl = project.draft_video_url;   <- no such field
+renders/page.tsx:32  project?.render_variants || []              <- no such field
+```
+
+`ProjectResponse`'s live keys are id, name, description, max_runtime_seconds,
+state, hero_image_url, scene_count, total_duration_estimate_seconds,
+created_at, updated_at, language_variants, active_job, created_by. So
+`draftUrl` was `undefined` and `variants` was `[]` **on every project, always**.
+Both tabs rendered their empty state unconditionally and could never have shown
+anything, finished pipeline or not.
+
+**Project `c12fa967` has had `draft_720p_en-US.mp4`, 5.7 MB, in its asset list
+since 19:24, while the Draft Preview tab said "No draft preview available yet".**
+
+The renders tab was doubly wrong: even given variants it keyed on `url_1080p`,
+`url_4k`, `subtitle_srt_url`, `subtitle_vtt_url` and `language`, while the
+`language_variants` the API *does* send carry exactly two keys:
+
+```json
+"language_variants": [{"language_code": "en-US", "state": "pending"},
+                      {"language_code": "es-ES", "state": "pending"}]
+```
+
+### A2.2 The load-bearing new fact: drafts and finals share one `asset_type`
+
+Both tabs now read the **asset** list. That required settling a question the
+UI had never had to answer, and the workers are the only ground truth:
+
+| stage | file | writes | `asset_type` |
+|---|---|---|---|
+| 7 prototype draft | `stage7_prototype_draft.py:191` | `draft_720p_{lang}.mp4` | `final_render` |
+| 8 final render | `stage8_final_render.py:205` | `final_{profile}_{lang}.mp4` | `final_render` |
+| | `stage8_final_render.py:103` | `render_profiles = ["1080p", "4k"]` | |
+
+**The filename prefix is the only discriminator.** `assetRenderKind` encodes
+exactly that, and is pinned by a test asserting a draft can never appear on the
+Final Renders tab — putting a 720p review draft there is worse than showing
+nothing, because an operator would ship it.
+
+An unrecognised `final_render` is classified as **final and shown**, not
+hidden: an operator can see from a filename that something is not a draft, but
+cannot see an asset the UI silently dropped.
+
+### A2.3 Captions: two controls with no possible data source, removed
+
+The renders tab offered "SRT Captions" and "VTT Captions" downloads.
+`stage8_final_render.py:304` composes captions **into** the video as a
+`layer_type="caption"`; nothing anywhere uploads an SRT or VTT file. Those two
+links could never have resolved. They are gone, replaced by a line saying
+captions are burned in — a dead control that looks live is worse than an
+absence that explains itself.
+
+### A2.4 Audio and Talking Head
+
+Both were the grid's defect exactly: `<audio src={asset.url}>`,
+`fetch(asset.url)` for the waveform, `<video src={asset.url}>`. All now load
+through the authenticated proxy as object URLs.
+
+Both also displayed scores they never had. `asset.quality_score` is not on this
+payload, so the audio tab's **"SNR: … dB" badge and the talking-head tab's
+"Lip-sync: …%" badge had never rendered once** — the `!== undefined` guards
+were always false. Rather than resurrect them from a payload that cannot supply
+them, both are replaced by facts the API does send (size, duration, language).
+Quality lives in `asset_quality_scores` behind `/api/v1/quality`; nothing here
+claims to know it.
+
+The audio tab loads tracks **lazily on scroll**, like the grid: one WAV per
+scene, and the waveform needs the whole buffer, so eager loading would pull all
+18 before the operator scrolled to any.
+
+## A3. Scene thumbnails — made real, not placeheld
+
+The brief allowed placeholders. Placeholders were not necessary.
+
+`thumbnail_url` exists **nowhere in `ivgs-api`** (grep of the whole tree returns
+nothing) and the live scene payload has exactly nine keys. But `assets.scene_id`
+is populated on **36 of 40** assets:
+
+```
+Counter({('audio', True): 18, ('image', True): 16, ('video', True): 2,
+         ('final_render', False): 1, ('talking_head', False): 1,
+         ('document', False): 1, ('reference_clip', False): 1})
+```
+
+So a scene's picture is its **image asset**, joined on `scene_id`. One
+`SceneThumbnail` component serves `SceneCard` and `SceneEditModal`; it shares
+one SWR key per project, so eighteen cards cost **one** asset request, and each
+image's bytes load only when the card scrolls into view. Scenes with no image
+fall back to the media-type emoji, as before.
+
+`SceneEditModal`'s block was `{scene.thumbnail_url && (…)}` — a section that
+had never rendered on any project. It is now unconditional and says "No image
+has been generated for this scene yet" when there is none.
+
+## A4. QualityReviewCard — three phantom fields and a broken authorisation rule
+
+`FlaggedAssetResponse` (`schemas/quality.py:32`) sends id, asset_id, job_id,
+quality_score, safety_score, scoring_details, decision, created_at, asset_type,
+project_id, project_name. The frontend type declared `thumbnail_url`,
+`scene_index` and `metrics`, **two of them required**.
+
+| was | is |
+|---|---|
+| `<img src={asset.thumbnail_url}>` — no src, no request | preview fetched from `asset_id` through the proxy, lazily |
+| `Scene {asset.scene_index}` → literally "Scene undefined" | asset id + decision |
+| `asset.metrics` → no breakdown ever rendered | `scoring_details`, numeric entries only |
+| `handleApprove(asset.score_id!)` | `handleApprove(asset.id)` |
+
+**Two of those are behavioural, not cosmetic.** `score_id` is not a field, so
+the approve and reject buttons POSTed to
+`/api/v1/quality/undefined/{approve,reject}` — the review queue's two actions
+could not work at all.
+
+And `canActOnAsset` compared `asset.project_owner_id === user.id`, on a field
+that does not exist, so the operator branch was always false. **It is corrected
+to admin-only rather than to some ownership rule, because that is what the
+server enforces**: `quality.py:97` and `:137` are both `Depends(require_admin)`.
+An operator pressing these would be refused 403 whatever the client said. This
+is the UI ceasing to offer a control that cannot work — not a loosening of
+authorisation.
+
+The metric filter keeps only **numeric** `scoring_details` entries: the wire
+type is `Dict[str, Any]`, and feeding a string to a numeric threshold
+comparison would silently render as "fail".
+
+## A5. Two more phantoms found while sweeping
+
+- **`transcript.filename`** was the *title of every transcript row*. Also not
+  on the wire, so every row header was blank. Now `Transcript {sequence_order} ·
+  {language_code}`.
+- **My own weakness from `v5.6.7`.** `assetFilename` is a real field but not a
+  *distinguishing* one: all 16 image assets of `c12fa967` share the path
+  `/ivgs/images/{pid}/image.png` and all 18 audio share
+  `/ivgs/audio/{pid}/en-US.wav`. The grid I shipped this morning showed sixteen
+  cards reading "image.png". Cards now read **"Scene 4 · image.png"** via
+  `scene_id`, and the grid sorts by scene. Reported rather than left for the
+  operator to notice.
+
+## A6. The types are deleted, which is the actual fix
+
+The first pass kept the phantom fields as deprecated optionals so the
+out-of-scope tabs would still compile. With those fixed, **every one is
+removed outright**:
+
+```
+AssetResponse    url, filename, scene_label, generation_prompt, thumbnail_url,
+                 quality_score, quality_decision, metadata, storage_path
+TranscriptResp.  original_text, original_filename, status
+Transcript       filename
+Project          draft_video_url, render_variants
+RenderJob        stage_statuses
+Scene            thumbnail_url
+FlaggedAsset     thumbnail_url, scene_index, metrics, score_id, project_owner_id
+AssetSummary     (whole type marked dead; nothing reads it)
+```
+
+**`tsc --noEmit` passing with them gone IS the proof that nothing reads them.**
+`asset.url` is a compile error again, which is the only thing that has ever
+reliably stopped this family of bug — seven occurrences across four work
+packages, every one of them a type asserting a field the wire does not have.
+
+## A7. Tests and gates
+
+| Gate | Result |
+|---|---|
+| `npm run test:logic` | **57 passed / 0 failed** — 44 + **13 new** |
+| `tsc --noEmit` | rc 0 |
+| `npm run build` | rc 0 |
+| **Full Python suite** | 252 failed / 547 passed / 15 skipped / 1093 errors — **identical to the baseline in §6**, and zero Python files in the diff |
+
+`render-assets.test.mjs` (13 tests, live wire shapes captured 2026-08-23) pins:
+the two project-level phantoms; that draft and final share one `asset_type` and
+separate only by filename; that **a draft can never appear on the Final Renders
+tab**; that an unrecognised `final_render` is shown rather than hidden; profile
+parsing (720p / 1080p / 4K); language grouping offering only profiles that were
+actually rendered; that two audio assets with an **identical path** are
+distinguishable once `scene_id` is applied; the scene→image join, including a
+scene with audio but no image; and that a flagged asset's numeric-only metric
+extraction drops a string value instead of scoring it "fail".
+
+### Negative gate — across **ALL** chunks, as required
+
+Run inside the built image and again inside the **running container**:
+
+```
+thumbnail_url 0   scene_label 0   generation_prompt 0 (bare)   draft_video_url 0
+render_variants 0   stage_statuses 0   expand=jobs 0   score_id 0
+project_owner_id 0   original_text 0   original_filename 0
+```
+
+> `generation_prompt` first read **2 chunks**. Investigated rather than
+> rounded off: both hits are `generation_prompt_id`, which **is** a real
+> `AssetResponse` field, matching as a substring. The gate above is the
+> bare-identifier form (`generation_prompt[^_]`), and it is 0.
+
+Positive: `/download` in 6 chunks; the shared media chunk `7706-*.js` is loaded
+by exactly the six pages that need it — assets, audio, renders, storyboard,
+talking-head, draft — confirmed from `app-build-manifest.json`, with the
+quality page carrying its own copy.
+
+## A8. Build and deploy — `v5.6.8-uibatch2`, node-01, frontend only
+
+| | `ivgs-frontend` |
+|---|---|
+| Local image id | `sha256:7511ba25f2903fc201fca0ef017316605c5d11b7f8295ed5b86f619e37f62525` |
+| Banked **before** push | `brucecostello2_ivgs-frontend_v5.6.8-uibatch2.tar.zst`, 58,405,310 B |
+| `sha256sum -c` / `zstd -t` | rc 0 / rc 0 |
+| MANIFEST lines / own config blob inside | 1 / **1** |
+| Push | rc 0 (under `sudo -n`; GHCR credentials live in `/root/.docker/config.json`) |
+| GHCR index digest | `sha256:7511ba25…37f62525` — **MATCH** |
+
+Rollback recorded from `.Config.Image` before any write —
+`v5.6.7-uibatch`, image `47177bae581c` confirmed still present locally. `.env`
+backed up to `.env.bak.pre-wp40b-20260823-214644` (**not committed**), the write
+gated on the new image being present, one narrow line changed
+(`IVGS_FRONTEND_TAG`), the other four tags untouched. Same label-derived
+three-file compose invocation, `--force-recreate --no-deps --pull never
+nextjs-frontend`.
+
+```
+ivgs-nextjs   ghcr.io/…/ivgs-frontend:v5.6.8-uibatch2   Up (healthy)
+
+UNTOUCHED, uptimes intact:
+ivgs-fastapi            ivgs-api:v5.6.5-reviewgate       Up 5 hours (healthy)
+ivgs-celery-* (×3)      ivgs-workers:v5.6.6-mediajoin    Up 4 hours (healthy)
+postgres / redis / seaweedfs ×3 / scheduler              Up 9 days (healthy)
+```
+
+End to end through nginx: `/login` → 200, and the draft, renders and audio page
+chunks all → 200. **Nobody has loaded these pages in a browser — none is
+installed on node-01.**
+
+## A9. What the operator should see differently
+
+| Page | Expect |
+|---|---|
+| `…/draft` | **The 720p draft actually plays** — `draft_720p_en-US.mp4`, 5.7 MB — instead of "No draft preview available yet". Download saves under the real filename. |
+| `…/renders` | Still empty for `c12fa967` (stage 8 has not run) — but now with an honest reason pointing at the Draft tab, and it will populate the moment a `final_*` asset exists. |
+| `…/audio` | 18 waveforms and players that work, in **scene order**, labelled "Scene 4 · en-US.wav". No SNR badge — it never rendered anyway. |
+| `…/talking-head` | The talking-head clip plays. No lip-sync badge, for the same reason. |
+| `…/storyboard` | Scene cards show **the generated image** instead of an emoji; the edit modal has a "Generated image" section that previously never appeared. |
+| `…/assets` | Cards read "Scene 4 · image.png" instead of sixteen identical "image.png", sorted by scene. |
+| `…/transcript` | Row headers read "Transcript 1 · en-US" instead of blank. |
+| `/monitoring/quality` | Real thumbnails, a real metric breakdown, and approve/reject that post to a real URL (admin only — which is what the server enforces). |
+
+## A10. Held state and combined gated push block
+
+`origin/main` moved between turns: **the operator pushed the nine commits from
+§12**, so `origin/main` is now `3529ddd` and only this addendum is held.
+
+```
+# RUN ON: IVGS node-01 (192.168.1.90)
+( cd /opt/ivgs || exit 1
+  if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then echo "ABORT: not on main"; exit 1; fi
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then echo "ABORT: tracked files dirty"; exit 1; fi
+  git fetch origin --quiet || { echo "ABORT: fetch failed"; exit 1; }
+  if [ "$(git rev-list --count HEAD..origin/main)" != "0" ]; then echo "ABORT: origin/main moved - rebase first"; exit 1; fi
+  if [ "$(git rev-list --count origin/main..HEAD)" != "2" ]; then echo "ABORT: expected exactly 2 held commits"; exit 1; fi
+  if git diff --name-only origin/main..HEAD | grep -qE '(^|/)\.env'; then echo "ABORT: an .env file is in the range"; exit 1; fi
+  echo "pushing 2 commits: $(git rev-parse --short origin/main) -> $(git rev-parse --short HEAD)"
+  git push origin main
+) | tr -cd '\11\12\15\40-\176'
+```
+
+**Held state:** branch `main`, tree clean, **2 commits ahead of `origin/main`
+(`3529ddd`), 0 behind**, no `.env*` in the range:
+
+```
+<this addendum>   docs(wp-40): record the sibling-tab addendum, …
+5b7fa63           fix(assets): WP-40 addendum - the same defect on six more surfaces, …
+```
+
+## A11. Still scoped, still not done
+
+Unchanged from §9: a thumbnail route (§9.3), `render_jobs.started_at`/
+`.completed_at` never being written (§9.4), a cross-project `GET /api/v1/jobs`
+(§9.5), the GPU registry split (§9.6), `storage_quotas` provisioning (§9.7),
+and P1.4q (§9.8). §9.1 and §9.2 are **closed by this addendum**. Decisions 2–5
+in §11 still stand.
