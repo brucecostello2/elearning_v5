@@ -28,13 +28,19 @@ from services.manifest_builder import (
     ManifestBuilder,
 )
 from services.segment_planner import RenderSegment, SegmentPlanner
-from tasks.prototype_draft_task import (
+# WP-32.3: the MODULE is tasks/stage7_prototype_draft.py; the registered task
+# name is `tasks.prototype_draft_task.assemble_prototype_draft`
+# (stage7_prototype_draft.py:328). Import by module path, dispatch by
+# registered name. The registered name is NOT changed.
+from tasks.stage7_prototype_draft import (
     ManifestScene,
     ManifestSceneAsset,
     Stage7Input,
     Stage7Output,
 )
-from tasks.final_render_task import (
+# WP-32.3: same trap again -- the MODULE is tasks/stage8_final_render.py; the
+# registered task name is `tasks.final_render_task.*` (celery_app.py TASK_ROUTES).
+from tasks.stage8_final_render import (
     FinalRenderScene,
     ProfileRenderResult,
     Stage8Input,
@@ -420,7 +426,7 @@ class TestStage8Models:
         assert len(output.profile_results) == 2
 
     def test_segment_render_defaults(self):
-        from tasks.final_render_task import SegmentRenderResult
+        from tasks.stage8_final_render import SegmentRenderResult  # WP-32.3
         seg = SegmentRenderResult(
             segment_id="seg-001",
             segment_index=0,

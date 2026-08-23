@@ -34,7 +34,7 @@ fi
 # Check for prohibited env vars (excluding comments, test files, scanner, and documentation)
 if grep -rE "OPENAI_API_KEY|ANTHROPIC_API_KEY|ELEVENLABS_API_KEY|DID_API_KEY|REPLICATE_API_TOKEN" \
     --include="*.env*" --include="*.yml" --include="*.yaml" --include="*.py" \
-    --exclude-dir=".git" --exclude-dir="tests" \
+    --exclude-dir=".git" --exclude-dir="tests" --exclude-dir="tests_system" \
     --exclude="compliance_scanner.py" --exclude="compliance-check.yml" \
     --exclude="test_*.py" --exclude="verify_spec_compliance.sh" \
     . 2>/dev/null | grep -v "# .*NEVER" | grep -qv "^$"; then

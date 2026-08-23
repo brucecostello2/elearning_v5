@@ -19,9 +19,32 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-# Override settings before importing application modules
+# Override settings before importing application modules.
+#
+# WP-32.2 (F2). This block used to hardcode DATABASE_URL to
+# "sqlite+aiosqlite:///./test.db". `aiosqlite` is not installed, so importing
+# `shared.database` below raised ModuleNotFoundError and this ENTIRE tree --
+# e2e, integration, smoke, providers, spec_compliance -- had never run.
+#
+# Option (b) from the brief was taken: point this suite at the same disposable
+# Postgres the API suite uses, rather than installing aiosqlite. Reason: SQLite
+# cannot reproduce this schema's enums (asset_type, storage_tier),
+# TRUNCATE ... CASCADE, or partitioning, so a pass under SQLite would prove less
+# than it appears to.
+#
+# A second, worse problem this fixes: in a unified `pytest` run another suite's
+# conftest imports `shared.database` FIRST, so this os.environ.update landed too
+# late to take effect and the suite silently inherited whatever database that
+# other conftest had configured. Which database these tests ran against depended
+# on collection order. setdefault makes an explicitly-provided TEST_DATABASE_URL
+# or DATABASE_URL win, and the fallback is Postgres either way -- never SQLite.
+_TEST_DB = (
+    os.environ.get("TEST_DATABASE_URL")
+    or os.environ.get("DATABASE_URL")
+    or "postgresql+asyncpg://ivgs:ivgs@192.168.1.90:5432/ivgs_reconciliation_test"
+)
 os.environ.update({
-    "DATABASE_URL": "sqlite+aiosqlite:///./test.db",
+    "DATABASE_URL": _TEST_DB,
     "REDIS_URL": "redis://localhost:6379/15",
     "SEAWEEDFS_MASTER_URL": "http://localhost:9333",
     "SEAWEEDFS_FILER_URL": "http://localhost:8888",

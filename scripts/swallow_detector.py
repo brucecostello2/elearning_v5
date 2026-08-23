@@ -69,7 +69,7 @@ SKIP_DIRS = {
 # Test files are excluded: a test may legitimately assert on a sentinel return.
 SKIP_FILE_PREFIXES = ("test_",)
 SKIP_FILE_SUFFIXES = ("_test.py",)
-SKIP_PATH_PARTS = {"tests"}
+SKIP_PATH_PARTS = {"tests", "tests_system"}  # tests_system: root suite, renamed by WP-32.1
 
 # Logging call names that mark "we noticed a problem".
 PROBLEM_LOG_METHODS = {"warning", "warn", "error", "exception", "critical"}

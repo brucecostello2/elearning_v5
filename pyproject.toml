@@ -50,20 +50,52 @@ module = ["tests.*", "ivgs_workers.tests.*"]
 disallow_untyped_defs = false
 
 [tool.pytest.ini_options]
-testpaths = ["ivgs-api/tests", "ivgs-workers/tests", "ivgs-scheduler/tests", "tests"]
+# WP-32.1: the root suite is `tests_system`, not `tests`. Both it and
+# ivgs-api/tests used to resolve to the module name `tests` -- the root suite by
+# its path relative to rootdir, ivgs-api's because `ivgs-api` is on pythonpath
+# and ivgs-api/tests/__init__.py makes it a package. pytest registered the first
+# conftest under that name and then refused the second, so bare `pytest` exited 4
+# having run nothing. Config alone cannot fix it: --import-mode=importlib, with
+# and without consider_namespace_packages, still derives the same name for both.
+testpaths = ["ivgs-api/tests", "ivgs-workers/tests", "ivgs-scheduler/tests", "tests_system"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short --strict-markers"
+addopts = "-v --tb=short --strict-markers --import-mode=importlib"
+# WP-32.1 (F1). `ivgs-api/tests/__init__.py` and `tests/__init__.py` both exist,
+# so both directories claim the module name `tests` and the second import
+# collided with the first:
+#   ImportPathMismatchError: ('tests.conftest',
+#     '/opt/ivgs/ivgs-api/tests/conftest.py', PosixPath('/opt/ivgs/tests/conftest.py'))
+# which killed collection for the whole repo -- bare `pytest` exited 4 having run
+# nothing. importlib import mode gives each suite its own import identity without
+# renaming either package, which matters because intra-suite imports are
+# load-bearing (e.g. ivgs-api/tests/test_wp_ivgs_0_tier_dispatch.py imports a
+# fixture from a sibling via `from tests.test_wp_ivgs_0_dispatch_context import
+# recorder`).
+consider_namespace_packages = false
 markers = [
     "integration: Integration tests (require running services)",
     "slow: Tests that take >10 seconds",
     "gpu: Tests that require GPU access",
+    # WP-32.2/32.1: tests_system/e2e uses @pytest.mark.timeout(...). With
+    # --strict-markers an undeclared marker is a COLLECTION ERROR, which is part
+    # of why the root suite never ran. Declared here so it collects.
+    #
+    # HONEST CAVEAT: `pytest-timeout` is NOT installed, so this marker is inert -
+    # the e2e tests collect and run, but without the timeout they ask for. Adding
+    # pytest-timeout to the test requirements is proposed in the WP-32 report;
+    # installing a package was left to the operator rather than done unattended.
+    "timeout: Per-test timeout in seconds (INERT - pytest-timeout is not installed)",
 ]
-pythonpath = ["ivgs-api", "."]
+# WP-32.1: --import-mode=importlib does NOT insert a test file's rootdir into
+# sys.path the way the default prepend mode did, so each suite's own root has to
+# be declared here. Without ivgs-workers and ivgs-scheduler the scheduler suite
+# stopped importing entirely (it had collected before the mode change).
+pythonpath = ["ivgs-api", "ivgs-workers", "ivgs-scheduler", "."]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 
 [tool.bandit]
-exclude_dirs = ["tests", ".venv", "node_modules"]
+exclude_dirs = ["tests", "tests_system", ".venv", "node_modules"]
 skips = ["B101"]  # Allow assert in tests

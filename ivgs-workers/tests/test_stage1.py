@@ -30,6 +30,16 @@ from models.task_result import (
     TranscriptRecord,
     TranscriptRefinementInput,
     TranscriptRefinementOutput,
+)
+
+# WP-32.4 (F5). These four names exist TWICE: as pydantic models in
+# models.task_result, and as dataclasses in clients.vllm_client. The code under
+# test returns the clients.vllm_client dataclass, whose `.content` and
+# `.finish_reason` are properties (vllm_client.py:98-108). The pydantic model has
+# neither, so importing from models.task_result produced failures that read as
+# Stage-1 bugs but were import bugs:
+#     assert 'Empty' in "'VLLMResponse' object has no attribute 'content'"
+from clients.vllm_client import (  # noqa: E402
     VLLMChoice,
     VLLMMessage,
     VLLMResponse,

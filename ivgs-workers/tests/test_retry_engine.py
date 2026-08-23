@@ -20,7 +20,13 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from ivgs_workers.services.retry_engine import (
+# WP-32.3: was `ivgs_workers.services.retry_engine`. There is no `ivgs_workers`
+# package anywhere in the tree or on the path -- the name appears in
+# pyproject's known-first-party and in mypy overrides, and in
+# tasks/periodic_tasks.py, but the directory is `ivgs-workers` (hyphen),
+# which is not an importable module name. The modules themselves are real
+# and live at `services/retry_engine.py`.
+from services.retry_engine import (
     ExhaustionAction,
     RetryAttemptRecord,
     RetryEngine,

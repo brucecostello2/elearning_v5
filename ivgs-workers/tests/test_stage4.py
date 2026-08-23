@@ -22,7 +22,13 @@ from clients.coqui_client import (
     CoquiSynthesisResult,
     CoquiTimeoutError,
 )
-from tasks.stage4_voiceover import (
+# WP-32.3: the MODULE is tasks/stage5_voiceover.py; the Celery task it
+# registers is named `tasks.stage4_voiceover.generate_voiceover_task`
+# (stage5_voiceover.py:493). The test imported by the registered name, which
+# is not an importable path. CLAUDE.md s7: filenames are not task identities.
+# The registered name is deliberately NOT changed -- it is what the
+# orchestrator dispatches and what any in-flight message carries.
+from tasks.stage5_voiceover import (
     SceneVoiceoverInput,
     Stage4Input,
     _process_single_voiceover,
