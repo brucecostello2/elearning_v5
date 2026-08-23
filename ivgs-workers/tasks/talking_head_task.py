@@ -82,6 +82,14 @@ logger = structlog.get_logger("ivgs.stage6.talking_head")
 MAX_SEGMENT_RETRIES = 2
 MAX_SEGMENT_SECONDS = 30.0
 
+# AD-03 s4.4 / s7 Q5 - authoritative target fps. Operator ruling 2026-08-23: 30.
+# Measured against the stored head artifact the same day: r_frame_rate 30/1,
+# avg_frame_rate 30/1, 6465 frames over 215.500 s. The engine and the ruling agree.
+# Used ONLY to place piece boundaries on whole frames; it does not set the engine's
+# output rate (servers/latentsync/server.py:145 accepts output_fps and discards it -
+# WP-04 Finding 5).
+TARGET_FPS_DEFAULT = 30
+
 # Render modes the talking-head engines accept. Mirrors the engine-side enum;
 # kept as plain strings here so this task carries no engine import (ARCH-1).
 # An unrecognised mode falls back to full_frame, preserving the pre-ARCH-1
@@ -241,6 +249,62 @@ async def _concatenate_scene_audio(
 # (deferred with IVGS-3/4). Deliberately narrow - a broad match would
 # suppress retries for genuinely transient errors.
 _FACE_FAILURE_MARKERS = ("face not detected", "no face detected", "face detection failed")
+
+
+
+def plan_frame_aligned_pieces(
+    scene_duration_s: float,
+    max_segment_seconds: float = MAX_SEGMENT_SECONDS,
+    fps: int = TARGET_FPS_DEFAULT,
+) -> List[Dict[str, Any]]:
+    """Place sub-render boundaries on whole frames at ``fps`` (AD-03 s4.4).
+
+    The previous arithmetic was ``piece_dur = scene_dur / n_parts`` - an
+    unconstrained float. The engine emits whole frames, so every piece cost up to
+    ``1/fps`` of round-up and the round-ups accumulated across the concat. Measured
+    on the stored head artifact: 215.500 s of video against 214.881 s of narration,
+    0.618666 s of drift (WP-04 Finding 1).
+
+    Here each piece except the last is an exact multiple of ``1/fps``, so
+    ``ceil(d * fps) == d * fps`` and its round-up is exactly zero. The last piece
+    absorbs the remainder and runs to EOF, so the pieces still tile the source with
+    no gap - one rounding per scene instead of one per piece.
+
+    Returns one dict per piece: ``start_s``, ``duration_s`` (``None`` on the last
+    piece, meaning "run to EOF"), and ``frames`` (``None`` on the last piece).
+    """
+    if scene_duration_s <= 0.0 or fps <= 0:
+        return [{"start_s": 0.0, "duration_s": None, "frames": None}]
+
+    n_parts = max(1, math.ceil(scene_duration_s / max_segment_seconds))
+    if n_parts == 1:
+        return [{"start_s": 0.0, "duration_s": None, "frames": None}]
+
+    total_frames = int(round(scene_duration_s * fps))
+    base_frames = total_frames // n_parts
+    if base_frames < 1:
+        # Degenerate: fewer frames than pieces. Fall back to a single piece rather
+        # than emitting zero-length slices.
+        return [{"start_s": 0.0, "duration_s": None, "frames": None}]
+
+    pieces: List[Dict[str, Any]] = []
+    for p in range(n_parts):
+        start_frame = p * base_frames
+        if p < n_parts - 1:
+            pieces.append({
+                "start_s": start_frame / fps,
+                "duration_s": base_frames / fps,
+                "frames": base_frames,
+            })
+        else:
+            # Last piece: to EOF. Carries the remainder, so it is the only piece
+            # whose duration is not a whole number of frames.
+            pieces.append({
+                "start_s": start_frame / fps,
+                "duration_s": None,
+                "frames": None,
+            })
+    return pieces
 
 
 def _is_face_detection_failure(err: BaseException) -> bool:
@@ -473,9 +537,17 @@ def render_talking_head(
                 raise RuntimeError("No scene audio refs to render")
 
             # Build the ordered render-piece list. A scene whose audio exceeds
-            # MAX_SEGMENT_SECONDS is sliced into ceil(dur/MAX) equal pieces at offsets we
+            # MAX_SEGMENT_SECONDS is sliced into ceil(dur/MAX) pieces at offsets we
             # control (no SceneRef ambiguity); the last piece runs to EOF so they tile.
+            # The pieces are frame-aligned, not equal: every piece but the last is a
+            # whole number of frames at the target fps (AD-03 s4.4, WP-04).
             ffmpeg_seg = FFmpegClient(temp_dir=temp_dir)
+            # AD-03 Q5 target fps. task_input.output_fps defaults to 30 and is what
+            # the request asks the engine for; TARGET_FPS_DEFAULT is the fallback if
+            # it is ever cleared. See WP-04 Finding 5 - the engine does not currently
+            # honour output_fps, so this is the fps the head IS, verified by probe,
+            # rather than an fps this task can impose.
+            target_fps = int(task_input.output_fps) or TARGET_FPS_DEFAULT
             render_pieces: List[Dict[str, Any]] = []
             for ref in sorted_refs:
                 scene_audio = os.path.join(
@@ -492,18 +564,25 @@ def render_talking_head(
                         {"audio": scene_audio, "scene_index": ref.scene_index, "part": 0}
                     )
                 else:
-                    n_parts = math.ceil(scene_dur / MAX_SEGMENT_SECONDS)
-                    piece_dur = scene_dur / n_parts
-                    for p in range(n_parts):
+                    # AD-03 s4.4: boundaries on whole frames at the target fps, so a
+                    # piece's audio length cannot force the engine to round its frame
+                    # count up. Six decimals on -ss/-t, not three: 754 frames at 30 fps
+                    # is 25.133333 s, and ".3f" would emit 25.133 - back off a frame
+                    # boundary, which is the whole point of this fix.
+                    pieces = plan_frame_aligned_pieces(
+                        scene_dur, MAX_SEGMENT_SECONDS, target_fps
+                    )
+                    n_parts = len(pieces)
+                    for p, plan in enumerate(pieces):
                         part_audio = os.path.join(
                             temp_dir, f"scene_{ref.scene_index:04d}_part{p:02d}.wav"
                         )
                         slice_cmd = [
                             ffmpeg_seg._ffmpeg, "-y",
-                            "-ss", f"{p * piece_dur:.3f}", "-i", scene_audio,
+                            "-ss", f"{plan['start_s']:.6f}", "-i", scene_audio,
                         ]
-                        if p < n_parts - 1:
-                            slice_cmd += ["-t", f"{piece_dur:.3f}"]
+                        if plan["duration_s"] is not None:
+                            slice_cmd += ["-t", f"{plan['duration_s']:.6f}"]
                         slice_cmd += ["-c:a", "pcm_s16le", part_audio]
                         ffmpeg_seg._run_ffmpeg(slice_cmd, timeout=120.0)
                         render_pieces.append(
@@ -514,6 +593,9 @@ def render_talking_head(
                         scene_index=ref.scene_index,
                         duration_s=round(scene_dur, 1),
                         parts=n_parts,
+                        target_fps=target_fps,
+                        frame_aligned=True,
+                        piece_frames=[pl["frames"] for pl in pieces],
                     )
 
             log.info(
