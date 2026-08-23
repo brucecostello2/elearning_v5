@@ -82,11 +82,12 @@ markers = [
     # --strict-markers an undeclared marker is a COLLECTION ERROR, which is part
     # of why the root suite never ran. Declared here so it collects.
     #
-    # HONEST CAVEAT: `pytest-timeout` is NOT installed, so this marker is inert -
-    # the e2e tests collect and run, but without the timeout they ask for. Adding
-    # pytest-timeout to the test requirements is proposed in the WP-32 report;
-    # installing a package was left to the operator rather than done unattended.
-    "timeout: Per-test timeout in seconds (INERT - pytest-timeout is not installed)",
+    # HONEST CAVEAT: `pytest-timeout` is DECLARED (ivgs-workers/requirements.txt:37,
+    # and requirements-dev.txt) but is NOT INSTALLED in .venv, so this marker is
+    # inert - the e2e tests collect and run, but without the timeout they ask for.
+    # It is not a missing declaration: six declared test dependencies are all
+    # absent from .venv. Install with `pip install -r requirements-dev.txt`.
+    "timeout: Per-test timeout in seconds (INERT until pytest-timeout is installed)",
 ]
 # WP-32.1: --import-mode=importlib does NOT insert a test file's rootdir into
 # sys.path the way the default prepend mode did, so each suite's own root has to

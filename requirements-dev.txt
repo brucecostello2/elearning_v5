@@ -1,0 +1,47 @@
+# IVGS v5 — development / test toolchain
+#
+# Install target for the repo-wide test suites. `pytest` at the repo root runs
+# four paths (pyproject.toml `testpaths`), but until now the test toolchain was
+# declared ONLY in ivgs-workers/requirements.txt -- a service requirements file,
+# which meant the repo's test dependencies were both baked into the workers
+# production image and unfindable from the root. This file gives them a home.
+#
+# Created 2026-08-23 under operator ruling 8 on the overnight batch.
+#
+#     .venv/bin/python -m pip install -r requirements-dev.txt
+#
+# NOT installed by that ruling -- the operator installs deliberately.
+#
+# ---------------------------------------------------------------------------
+# MEASURED 2026-08-23: every one of these is DECLARED in
+# ivgs-workers/requirements.txt and MISSING from .venv. pytest-timeout was the
+# one WP-32 tripped over (its @pytest.mark.timeout in tests_system/e2e is inert
+# without it), but it is not a missing declaration -- it is one symptom of the
+# venv being out of step with what the repo says it needs:
+#
+#     pytest-timeout   declared 2.3.1   MISSING from .venv
+#     pytest-celery    declared 1.1.3   MISSING from .venv
+#     pytest-mock      declared 3.14.0  MISSING from .venv
+#     pytest-cov       declared 6.0.0   MISSING from .venv
+#     factory-boy      declared 3.3.1   MISSING from .venv
+#     freezegun        declared 1.4.0   MISSING from .venv
+#
+# Also drifted: pytest-asyncio is declared 0.25.2 and .venv runs 0.24.0.
+#
+# Versions below are pinned to match ivgs-workers/requirements.txt exactly, so
+# installing this file cannot silently change what the worker image resolves.
+# ---------------------------------------------------------------------------
+
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-celery==1.1.3
+pytest-mock==3.14.0
+pytest-cov==6.0.0
+pytest-timeout==2.3.1
+factory-boy==3.3.1
+freezegun==1.4.0
+
+# Deliberately NOT here: aiosqlite. WP-32.2 took option (b) and pointed the root
+# suite at the disposable Postgres instead, because SQLite cannot reproduce this
+# schema's enums, TRUNCATE ... CASCADE, or partitioning -- a pass under SQLite
+# would prove less than it appears to.

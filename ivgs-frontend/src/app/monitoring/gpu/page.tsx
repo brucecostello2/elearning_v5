@@ -251,7 +251,13 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* WP-23 / operator ruling 2026-08-23 item 7. Was `min-h-screen` (100vh).
+          The monitoring layout already reserves the 3.5rem sticky global header
+          via `flex min-h-[calc(100vh-3.5rem)]`, so a 100vh child overflowed its
+          scroll container by exactly the header height and pushed this page's
+          own <h1> under it. min-h-full fills the container instead of re-adding
+          the header's height. */}
+      <div className="min-h-full bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
