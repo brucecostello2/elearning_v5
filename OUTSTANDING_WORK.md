@@ -985,12 +985,19 @@ rolled the worker **back** two releases. Rollback tags were therefore recorded f
    (`stage1_transcript.py:349`), not the old `VLLM_PRIMARY_URL` profile - so WP-IVGS-0 would
    have regressed those two stages on this node. WP-34 set
    `IVGS_VLLM_URL: http://vllm:8000` on node-02's `celery-worker` (tracked compose), the
-   identical server over the compose network, verified 200. **Operator decision recorded, not
-   taken:** open `ufw` to the bridge and drop the override instead, for a uniform fleet-wide
-   endpoint. Either is defensible.
+   identical server over the compose network, verified 200.
+
+   > **OPERATOR RULING 2026-08-23: the override STANDS. `ufw` is NOT to be opened.**
+   > Grounds given: it is the documented mechanism (`binding.py:6-9` - per-engine env
+   > override first), its blast radius is one service, and it is reversible by deleting one
+   > line. The alternative - opening node-02's host firewall to the docker bridge for a
+   > uniform fleet-wide endpoint - is **rejected**, not deferred. This item is **CLOSED**;
+   > it is no longer an open decision.
 2. **P1.4o's deploy-time A/V-drift investigation was NOT run.** It needs a real pipeline job
    with a scene over 30 s. WP-34's exit gate explicitly excludes running the pipeline, and the
-   Model Store is not populated yet, so Stage 1 cannot bind. Unchanged and still owed.
+   Model Store is not populated yet, so Stage 1 cannot bind.
+   **OPERATOR RULING 2026-08-23: accepted as owed to the first pipeline run. No action.**
+   P1.4o stays open and carries it; nothing further is expected of this package.
 3. **The node compose files had drifted from `main` and were reconciled.** node-02 and
    node-03 carried `DATABASE_URL: postgresql+psycopg` - the v3 driver **that is not in the
    workers image**. `main` had already fixed this to `+asyncpg` (ledger P1.0b) and the node
@@ -1003,9 +1010,26 @@ rolled the worker **back** two releases. Rollback tags were therefore recorded f
 **Rollback path verified present, not assumed.** `v5.5.4-metrics` (node-01, node-04),
 `v5.4.7-h0` (node-02, node-03) and the node-01 `ivgs-api` / `ivgs-frontend` predecessors are
 all still in their nodes' local image stores, checked with `docker images -q` on each box.
-Every `.env` was copied to `.env.bak.pre-wp34-<ts>` before it was written. **Gap:**
-`v5.4.7-h0` is **not** in the artifact store - only in node-02's and node-03's local stores.
-Two copies, one per node, no banked third.
+Every `.env` was copied to `.env.bak.pre-wp34-<ts>` before it was written.
+
+**The `v5.4.7-h0` banking gap is CLOSED. OPERATOR RULING 2026-08-23**, acted on the same day.
+The node-02/03 rollback image was banked from node-02's local copy - the rollback target
+itself, not a registry re-pull:
+
+    /mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_v5.4.7-h0.tar.zst
+    257M   sha256:f6a3064a75c13cb50102d5b3e8edcef3680d84593f12fc08c98f62d8fbcc39e9
+
+`sha256sum -c` rc 0, `zstd -t` rc 0, exactly one MANIFEST line, and the archive contains
+`blobs/sha256/7f53228e9616...` - the image-config blob of the image node-02 and node-03
+actually ran. **node-02 and node-03 carry byte-identical copies** (same image id
+`sha256:7f53228e9616...`, same `Created` timestamp), so the single artifact is a valid
+rollback source for both. Three copies now exist where there were two.
+
+> Banked using **node-01's** `scripts/save-image-artifact.sh`, shipped to node-02 under a
+> SHA gate and run from `/tmp`. node-02's own `/opt/ivgs/scripts/save-image-artifact.sh` is
+> the **stale pre-P1.4j version** (1187 bytes vs 2401; missing both the root-writability
+> precheck and the MANIFEST dedupe guard). Left in place - syncing node scripts is outside
+> this package - but it is a live trap for anyone who banks from node-02 again.
 
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.

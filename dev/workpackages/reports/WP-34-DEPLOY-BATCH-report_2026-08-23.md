@@ -27,14 +27,11 @@ instruction. Recorded here so the exception is visible rather than assumed.
 | **node-03** | **PASS** | `v5.4.7-h0` → `v5.6.0-m2`; `get_binding` imports cleanly; `resolve_endpoint('vllm')` → HTTP 200 on the shipped default; cogvideox-server untouched. |
 | **node-04** | **PASS** | `v5.5.4-metrics` → `v5.6.0-m2`; `IVGS_LATENTSYNC_TAG` identical before and after; all five engine containers provably not recreated. |
 
-**Three things the operator needs to decide or do.** Full detail in S9.
-
-1. **node-02 `ufw` vs the `IVGS_VLLM_URL` override** — a real decision, taken provisionally
-   in the safe direction and fully reversible.
-2. **P1.4o's A/V-drift measurement was not taken** — it needs a pipeline run, which this
-   package's exit gate excludes.
-3. **`v5.4.7-h0` is not banked** — the node-02/03 rollback image exists only in those two
-   nodes' local stores.
+**Three items were raised for the operator; all three were ruled on 2026-08-23 and are
+now settled.** See **S13** for the rulings and what was done. In short: the node-02
+`IVGS_VLLM_URL` override **stands** and `ufw` is not to be opened; `v5.4.7-h0` has been
+**banked** and that gap is closed; P1.4o's measurement is **accepted as owed** to the first
+pipeline run.
 
 ---
 
@@ -375,12 +372,11 @@ the identical server over the compose network, and it matches the `VLLM_PRIMARY_
 rows above it. Verified after the recreate: `resolve_endpoint('vllm')` → `http://vllm:8000`,
 HTTP 200, `models=[llama-3.3-70b]`.
 
-**Operator decision, recorded not taken.** The alternative is to open `ufw` on node-02 to the
-docker bridge and drop the override, giving one uniform endpoint fleet-wide. That is a host
-firewall change on a node and was outside what this package could justify unattended; the
-override's blast radius is one service and reversing it is deleting one line. Either is
-defensible — this one was chosen because it is the documented mechanism and the smaller
-change.
+**Operator decision — RULED 2026-08-23: the override STANDS; `ufw` is NOT to be opened.**
+The alternative was to open `ufw` on node-02 to the docker bridge and drop the override,
+giving one uniform endpoint fleet-wide. That is **rejected**, not deferred. Grounds given:
+the override is the documented mechanism, its blast radius is one service, and it reverses
+by deleting one line. No longer an open question.
 
 ---
 
@@ -589,9 +585,9 @@ node-04 from a real pipeline run, which this package's exit gate excludes.
 
 | # | Item | Status |
 |---|---|---|
-| 1 | **node-02 `ufw` vs `IVGS_VLLM_URL` override** | Override applied and verified; the `ufw` alternative is the operator's call. S6. Fully reversible — one line in tracked compose. |
-| 2 | **P1.4o A/V-drift measurement on node-04** | **Not done.** Needs a pipeline job with a scene over 30 s. The exit gate says the pipeline is not run in this package, and the Model Store is not populated, so Stage 1 cannot bind yet. Still owed. |
-| 3 | **`v5.4.7-h0` is not in the artifact store** | Rollback for node-02/03 rests on those two nodes' local image stores — verified present on both with `docker images -q`, not assumed. There is no banked third copy. Banking it would cost ~270 MB. Not done: it is outside the brief, and the brief's rollback clause asks for verification, which was given. |
+| 1 | **node-02 `ufw` vs `IVGS_VLLM_URL` override** | **RULED 2026-08-23 — CLOSED.** Override stands; `ufw` not to be opened. S6, S13. |
+| 2 | **P1.4o A/V-drift measurement on node-04** | **RULED 2026-08-23 — accepted as owed to the first pipeline run. No action.** Carried by P1.4o, not by this package. S13. |
+| 3 | **`v5.4.7-h0` is not in the artifact store** | **RULED 2026-08-23 — CLOSED, banked the same day** from node-02's local copy. S13. |
 | 4 | **Node compose drift beyond these three files** | The nodes are not git checkouts; only the compose files this package needed were compared. Others may have drifted. Not surveyed. |
 | 5 | **`ivgs-backup-worker` not rebuilt** | Out of scope. `IVGS_BACKUP_WORKER_TAG` unchanged. Swallow entry 1 stays open. |
 | 6 | **Python tests did not run in CI** on `4d61cab` | `lint-python` and `test-python` are `if: false` by design. S1. Not changed. |
@@ -622,8 +618,10 @@ Verified with `docker images -q` on each box during the deploy, **not assumed**.
 was copied to `.env.bak.pre-wp34-<ts>` before it was written, and every node compose file to
 `docker-compose.node0X.yml.bak-pre-wp34-<ts>` before it was replaced.
 
-**Caveat, stated rather than glossed:** `v5.4.7-h0` exists only as those two local copies.
-The artifact store has `v5.4.0-h0`, `v5.5.4-metrics` and `v5.6.0-m2`, but not `v5.4.7-h0`.
+**Caveat resolved 2026-08-23 (operator ruling).** `v5.4.7-h0` is now banked as well —
+`brucecostello2_ivgs-workers_v5.4.7-h0.tar.zst`, 257M,
+sha256 `f6a3064a75c13cb5…fbcc39e9`. Three copies: node-02's local store, node-03's local
+store, and the artifact store. See S13.
 
 ---
 
@@ -658,3 +656,79 @@ secret was printed at any point: only `^IVGS_[A-Z_]*TAG=`-style narrow greps wer
 the vLLM API key was referenced by length only.
 
 **Committed on `main`, HOLD — not pushed.**
+
+---
+
+## S13. Operator rulings — 2026-08-23, and what was done
+
+Three items were raised at the end of the deploy. All three were ruled on the same day. This
+section is the record of the rulings and of the work that followed them.
+
+### Ruling 1 — the node-02 `IVGS_VLLM_URL` override STANDS; `ufw` is NOT to be opened
+
+**Ruled.** The override is the documented mechanism (`shared/providers/binding.py:6-9` —
+per-engine env override first, then the shipped default), its blast radius is one service,
+and it reverses by deleting one line. Opening node-02's host firewall to the docker bridge
+for a uniform fleet-wide endpoint is **rejected, not deferred**.
+
+**Action:** none required — the override was already applied, committed in
+`ivgs-infra/docker-compose.node02.yml`, and verified live (`resolve_endpoint('vllm')` →
+`http://vllm:8000` → HTTP 200, `models=[llama-3.3-70b]`). The item is **CLOSED** and is no
+longer carried as an open decision, in this report or in P1.4p.
+
+**Consequence worth keeping visible:** node-02 is now the one node whose vLLM endpoint
+differs from the fleet default. Anyone reading `resolve_endpoint`'s default and expecting
+`http://node-02:8000` everywhere will be wrong about exactly one worker. That is why the
+measurement sits in a comment beside the variable rather than only in this report.
+
+### Ruling 2 — bank `v5.4.7-h0` now, from node-02's local copy. DONE
+
+**Ruled.** ~270 MB is cheap insurance for a rollback image that existed only as two local
+copies.
+
+**Action taken.** Banked from **node-02's local image store** — the rollback target itself,
+not a registry re-pull, so the banked bytes are the bytes that would actually be restored.
+
+| | |
+|---|---|
+| Artifact | `/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_v5.4.7-h0.tar.zst` |
+| Size | 257M (268,796,521 bytes) |
+| sha256 | `f6a3064a75c13cb50102d5b3e8edcef3680d84593f12fc08c98f62d8fbcc39e9` |
+| `sha256sum -c` | **rc 0** |
+| `zstd -t` | **rc 0** |
+| MANIFEST | **exactly 1 line** — `2026-08-23T03:33:27Z … 257M sha256:f6a3064a…` |
+| Structural check | archive contains `blobs/sha256/7f53228e9616…`, the image-config blob of the image node-02 and node-03 actually ran |
+
+**One copy serves both nodes, and that was checked rather than assumed.** node-02 and node-03
+both hold image id `sha256:7f53228e96160a2e54f759386656a0ce78ebb5e22a431b928823c74f09013129`
+with the same `Created` timestamp `2026-06-06T02:23:33.957Z`. Identical image, so the single
+artifact is a valid rollback source for either. **Three copies now exist where there were
+two.**
+
+> **A trap found while doing this, left in place deliberately.** node-02's own
+> `/opt/ivgs/scripts/save-image-artifact.sh` is the **stale pre-P1.4j version** — 1187 bytes
+> against node-01's 2401, and it contains neither the root-writability precheck nor the
+> MANIFEST dedupe guard that P1.4j added on 2026-08-22. Running *that* copy would have
+> re-registered a duplicate MANIFEST line on any re-run, which is the exact defect P1.4j
+> fixed. The bank was therefore done with **node-01's tracked script**, shipped to node-02
+> under a SHA gate (`694af43d72f14e63`, verified on arrival) and run from `/tmp`, then
+> deleted. node-02's stale copy was **not** overwritten — syncing node scripts is outside
+> this package — but it is a live trap for the next person who banks from that node, and it
+> is likely that nodes 03 and 04 carry the same stale copy. Not surveyed.
+
+The store was writable from node-02 because `/mnt/ivgs-shared` is exported
+`rw,no_root_squash` to `192.168.1.0/24`, so root on node-02 writes as root on node-01. All
+verification above was re-run **from node-01**, the store's owner, with real exit codes.
+
+### Ruling 3 — P1.4o's measurement is accepted as owed to the first pipeline run
+
+**Ruled.** No action. The residual A/V-drift measurement on node-04 needs a real pipeline job
+with a scene over `MAX_SEGMENT_SECONDS` (30 s); this package's exit gate excludes running the
+pipeline, and the Model Store is not populated, so Stage 1 cannot bind. **P1.4o stays open and
+carries it.** Nothing further is expected of WP-34.
+
+### Net effect on this report
+
+S0, S6, S9 and S10 were amended in place so the report does not read as though these
+questions were still open. The deploy itself is unchanged — nothing in rulings 1–3 altered a
+running container, a tag, or a verification result.
