@@ -37,8 +37,14 @@ because of this pattern.
 | 9 | `shared/redis_client.py` — 8 methods | Every Redis error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR**; WP-08 2026-08-23 adds a worse variant: **404 is treated as success**. See below. |
+| 12 | `ivgs-api/app/services/asset_service.py:136-160` (Stage 6's caller) | A content-hash **dedup hit** returns the same success shape as a fresh render | Open — **added 2026-08-15 by WP-02-ORCH6 check-5, verified live.** Stage 6 reported `status: success` for a 50 MB render whose asset row was created 2026-06-07: `reference_count` 1→2 and **no bytes written**. See below. |
+| 13 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:206` | `_update_job_celery_task_id` write failure → nothing | Open — **added 2026-08-15 by WP-02 check-6b, verified live.** With a valid `job_id`, `status` landed but `celery_task_id` and `started_at` stayed NULL. Nobody checks. See below. |
+| 14 | `ivgs-workers/tasks/stage7_prototype_draft.py:573-591` | ffmpeg `rc != 0` → task returns normally, Celery records SUCCESS over **no draft** | **FIXED 2026-08-23 by WP-27** (raises `Stage7RenderError` after dispatching `handle_stage_completion`). **NOT closed** — the register closes on observed failure-surfacing, not on unit tests. See below. |
+| 15 | `ivgs-api/app/api/v1/manifests.py:189-199, :369-380` | Every scene asset bound as a `background` layer — no filter, no dedup, and an unmapped `asset_type` **defaulted to `background`** | **FIXED 2026-08-23 by WP-27** (mapping rebuilt on the real enum, returns `None` for unmapped, dedupe to latest per scene). **NOT closed** — same reason as 14. Not itself a swallow: recorded here because instance 14 concealed it. See below. |
 | 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **CLOSED 2026-08-22** — the gate observably executed and failed loudly. Evidence below. **Variant instance, see note** |
 | 17 | `ivgs-api/app/services/checkpoint_service.py:169-175` | `POST /jobs/{id}/resume` returns "Pipeline resumed" having dispatched nothing | Open — **added 2026-08-23 by WP-07-CHECKPOINTS, operator ruling D-1.** Deliberately NOT fixed: M3 replaces resume with workflow history |
+| 18 | `ivgs-frontend/src/hooks/useMonitoring.ts` — `useStorageQuotas` | Per-user quota fetch errors → an empty quota row (`used_bytes=0`) | Open — **added 2026-08-23 by WP-23.** Self-documented in the hook's own docstring (*"those failures will be silent"*) and never registered. A 500 renders as a user with zero usage. |
+| 19 | `ivgs-api/app/api/v1/manifests.py:380` (pre-fix) | `mapping.get(asset_type, "background")` — a **lookup** miss produced a confident, maximally damaging answer | **FIXED 2026-08-23 by WP-27**, recorded because it is the pattern applied to a lookup rather than an error path: not knowing became *"it is the scene background"*. Worth a detector rule — a `.get(x, <default>)` whose default is a load-bearing domain value. |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -743,6 +749,59 @@ here. This instance was about a gate that could not report; it now reports. Whet
 **Open sibling, not fixed here.** Nothing checks that a workflow's `runs-on` labels match a
 live runner. If a future workflow targets `self-hosted` again, it will queue silently exactly
 as this one did, and nothing will say so.
+
+---
+
+### 18. `useStorageQuotas` renders a failed quota fetch as a user with zero usage - OPEN
+
+*Added 2026-08-23 by WP-23-STORAGE-ANALYTICS. Found by reading, not reproduced.*
+
+`ivgs-frontend/src/hooks/useMonitoring.ts`, `useStorageQuotas`. The hook fetches the
+user list, then issues one quota lookup per user, and its own docstring says what
+happens next:
+
+> *"Trade-off: per-user fetch errors are swallowed and reported as empty quota rows.
+> If individual quota endpoints start returning 500s, those failures will be silent."*
+
+So a 500 for one user renders as that user having `used_bytes=0` / `quota_bytes=0` -
+indistinguishable from a real user who has stored nothing. On an admin "top 10
+consumers" table, the failure mode is that a heavy consumer silently drops to the
+bottom of the list.
+
+**Notable because it was already known and documented at the call site and had never
+been registered.** A comment admitting a swallow is not a mitigation; it is an entry
+waiting to be filed.
+
+**Scope/action:** surface per-row fetch errors in the admin table. Not fixed by WP-23,
+which was scoped to the storage page's own numbers.
+
+---
+
+### 19. A lookup default that is a load-bearing domain value - FIXED 2026-08-23
+
+*Added 2026-08-23 by WP-27-MANIFEST-BUILDER.*
+
+`ivgs-api/app/api/v1/manifests.py:380`, pre-fix:
+
+```python
+return mapping.get(asset_type, "background")
+```
+
+This is the register's pattern applied to a **lookup** rather than an error path. A miss
+did not surface as "unknown"; it produced a confident answer - and the answer chosen as
+the default was the most destructive one available, since `background` is the scene's
+picture. Seven of the eight mapping keys were names this schema has never used, so 44 of
+45 assets took the default, and audio files, source documents and the user's reference
+clip were all eligible to be composited as video.
+
+Fixed with the rest of instance 15: the function returns `Optional[str]` and unmapped
+types are excluded and logged.
+
+**Worth a detector rule**, which is why it is registered separately from 15:
+`X.get(key, <default>)` where the default is a domain value rather than a neutral empty
+is the same failure as `except: return 0`, and `scripts/swallow_detector.py` models
+neither. Instance 14 already asked for one new rule ("logged an error, then returned
+normally"); this is a second.
 
 ---
 
