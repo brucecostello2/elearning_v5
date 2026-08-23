@@ -288,6 +288,35 @@ typed error.** Recorded so the compromise is not forgotten once the constraint l
    `EngineNotRegisteredError` for an unregistered engine. **Scope this now** so it is not
    discovered after MBCP R-11 delivers adapters.
 
+> **Extended 2026-08-23 by WP-33-MODELSTORE-PREP** (read-only measurement; report at
+> `dev/workpackages/reports/WP-33-MODELSTORE-PREP-report_2026-08-23.md`). Item 4's
+> `registered_engines()` list is unchanged eight days on, verified by executing it inside
+> the deployed `ivgs-celery-node04`.
+
+5. **Kokoro is unbindable, though its container is healthy.** `IVGS_KOKORO_URL` is unset on
+   every worker on the fleet, so `resolve_endpoint('kokoro')`
+   (`shared/providers/binding.py:29`) falls back to `http://node-05:8021` — and node-05 is
+   offline. The live Kokoro is `ivgs-kokoro` on node-04, alias `kokoro-tts:5003`. Any
+   `voiceover_tts` binding on engine `kokoro` resolves to a dead host. Measured 2026-08-23.
+6. **`sadtalker` resolves to a container that does not exist.** node-04's worker carries
+   `IVGS_SADTALKER_URL=http://sadtalker:7861`; nothing listens on 7861 and no such container
+   is present on any node. `talking_head_task.py`'s SadTalker fallback path is dead.
+   Measured 2026-08-23.
+7. **`weights_checksum` on all eleven MBCP-backfilled rows is an engine image digest, not a
+   weights hash.** Six of them carry the `sha256:`-prefixed *container image* digest. The
+   backfill's own attestation payloads record `"weights_checksum": null` — so the field
+   named for weight provenance is holding container provenance, and the honest value is
+   absent. Measured 2026-08-23.
+8. **The `models` audit trail is lossy.** Of the five `audit_log` rows with
+   `resource_type='models', action_type='UPDATE'`, three have `after_payload = NULL`; model
+   CREATE rows carry `resource_id = NULL`; and approvals *and* lifecycle transitions are all
+   recorded as `action_type='CREATE'`. WP-33 could answer its Task 2 only because
+   `before_payload` happened to carry the changed field. Do not rely on this trail for a
+   harder question until it is fixed.
+9. **`SelectionError` is retried.** WP-03 S1.9 observed Stage 5 retrying a `SelectionError`
+   to `retry_number 2`. The store cannot change between attempts; the retries are pure waste
+   and they delay the failure signal by minutes. Make it non-retryable.
+
 ## P1.4d — Lip-sync quality is poor. Diagnostic only: NO model swap is scoped *(new, operator visual QA 2026-08-15; scope clarified by operator 2026-08-15)*
 
 > **SCOPE CLARIFICATION, operator, 2026-08-15.** The talking-head model is **NOT being
@@ -658,6 +687,103 @@ Stage 1 cannot run, and the loud failure is the intended behaviour, but it is a 
 operator decision on which models are certified enough to mark `approved`; P1.4f already
 records Model Store hygiene items. **Do not deploy WP-IVGS-0 expecting a working pipeline
 until this is closed** — the package fixes real defects but this gate sits in front of them.
+
+> ### AMENDED 2026-08-23 — WP-33-MODELSTORE-PREP
+>
+> Report: `dev/workpackages/reports/WP-33-MODELSTORE-PREP-report_2026-08-23.md`.
+> Operator checklist: `dev/workpackages/WP-33-POPULATION-CHECKLIST.md`.
+> Re-validation query: `dev/workpackages/reference/wp33-validate-binding.sql`.
+> All findings read-only; zero writes performed against any live system.
+>
+> **VERDICT: NEWLY-EXPOSED TRUTH, not a regression. Nothing needs un-breaking.**
+> No operator action broke this. The store never could bind stages 1–5, and the pipeline
+> never relied on it to. Disproved three ways: (a) `audit_log` holds **zero** `models`
+> DELETE rows and the only lifecycle transition out of `approved` in the store's entire
+> history is `test-model-1` on 2026-07-10, five weeks *before* the run in question;
+> (b) WP-03 S1.8 measured the identical store on 2026-08-15 and S1.9 captured the identical
+> `voiceover_tts` `SelectionError` that day; (c) the MBCP backfill's 24 revocations were
+> *skipped, never transmitted* (AD-01/AD-04), so they never created an IVGS row and cannot
+> have removed one.
+>
+> **The 08-15 "end-to-end run" did not happen.** WP-03's own headline is *"a full Stages
+> 1–8 run is not possible today"*. Stages 1, 2 and 3 did not run; the run reused Stage 1/2
+> artefacts measured this session as created **2026-06-01 22:29** — five and a half weeks
+> before migration `0026_ad01_model_store` and `shared/providers/factory.py` existed at all
+> (both landed in `303681e`, 2026-07-09). The 4K render came from stages 7 and 8 against the
+> June manifest.
+>
+> **What actually changed was the code, in the direction opposite to a regression.** ARCH-1
+> installed a binding gate in front of an empty store, node by node. `303681e` *added* the
+> unguarded `get_binding` calls to stages 1/2/3/5 on 2026-07-09; `09e4212` added Stage 6's on
+> 2026-08-15 — which is exactly why the operator approved `latentsync` at 00:35 and set it
+> default at 05:37 that day. One stage needed a binding; one stage was populated.
+>
+> **CORRECTION to this entry's own text.** "Stage 1 raises `SelectionError` on every run
+> today" is true of HEAD but **not of the deployed fleet**. Stage 1 is routed to `gpu_llm`
+> (`celery_app.py:127`), consumed only by node-02, which runs **pre-ARCH-1 `v5.4.7-h0`**.
+> Verified by execution inside the container: `from shared.providers.factory import
+> get_binding` → `ModuleNotFoundError`. On the fleet as deployed, Stage 1 does not raise —
+> it ignores the store entirely. Same for Stage 2 and Stage 3-video (node-03, same image).
+> The stages that genuinely raise today are the three on node-04. Stage 1 is still
+> unrunnable, for a more basic reason: node-02's NVIDIA driver is not loaded and its vLLM
+> exits 128.
+>
+> **Closing this needs three things that are NOT store state**, none fixable from the GUI:
+> 1. node-02 has no GPU driver (`nvml error: driver not loaded`, 2026-08-22 23:47), so no
+>    chat LLM is served there. The fleet's only live chat LLM is node-04's `mistral-24b`.
+> 2. `IVGS_VLLM_URL` is unset on **every** worker, so the `vllm` engine resolves to
+>    `http://node-02:8000` regardless of what is bound. Endpoints are env, not a `models`
+>    column — `resolve_endpoint` (`shared/providers/binding.py:36-53`) ignores `node_id`.
+> 3. node-02 and node-03 must reach an ARCH-1 image before they consult the store at all.
+>
+> **Two of the plan's stages cannot be closed by promotion, contrary to the assumption in
+> this entry's Action line.** `RETIRED` is terminal (no reverse route in
+> `ivgs-api/app/api/v1/model_store.py`), so `storyboard_generation` needs a fresh
+> registration, not a promotion; and `FLUX.1-dev`'s weights are not on this fleet —
+> node-04's ComfyUI holds exactly one checkpoint, `flux1-schnell-fp8.safetensors`. Promoting
+> `FLUX.1-dev` or `Wan2.2-T2V` would produce a binding that resolves and then raises
+> `ValueError` inside the stage, because `engine_model_id(binding)` returns the store name
+> verbatim and both Stage 3 call sites coerce it into a closed enum. Verified by execution.
+>
+> **The checklist is proven.** Applying it in a read-only projection against the real
+> predicate resolves all six bound stages on both tiers with `candidates_matching = 1`;
+> the endpoint, builder and engine-enum chain behind each was executed inside the deployed
+> `ivgs-celery-node04`. Four of six are complete end to end; the two vLLM stages are gated
+> only by the three items above.
+>
+> **Status: still OPEN.** WP-33 was read-only by binding constraint — store mutations are
+> admin/GUI-only under AD-01.11 and require operator attestation. The work is now fully
+> specified and waiting on the operator.
+
+## P1.4n — The `ffmpeg` engine can never resolve a binding *(new, WP-33-MODELSTORE-PREP 2026-08-23)*
+**Status:** OPEN. Latent — no task binds `composition` today, so nothing fails yet.
+
+`e613e84` (migration 0027) added `ffmpeg` to the `ModelEngine` enum "to unblock MBCP
+composition exports", and added it to `shared/models/model_store.py` and the frontend
+types. **It was never added to `_ENGINE_ENDPOINTS` in `shared/providers/binding.py`, and no
+builder was ever registered for it.** Verified by execution inside the deployed
+`ivgs-celery-node04`, 2026-08-23:
+
+```
+resolve_endpoint('ffmpeg')   -> EndpointResolutionError: no endpoint mapping for engine 'ffmpeg'
+registered_engines()         -> ['cogvideox','comfyui','coqui','kokoro','latentsync','sadtalker','vllm']
+```
+
+`_binding_from_model` (`shared/providers/factory.py:96`) calls `resolve_endpoint` on every
+successful resolution, so approving `FFmpeg-composition` and setting it default would turn
+`composition`'s `SelectionError` into an `EndpointResolutionError` — a *worse* failure,
+because it arrives after the model looks correctly configured. This is precisely the
+untested cross-schema coupling CLAUDE.md S11 records ("the two schemas are coupled with no
+test on either side").
+
+**Scope/action — operator decision D-5.** A one-line `_ENGINE_ENDPOINTS` entry is not the
+fix: there is no builder either, and ffmpeg is an in-process compositor, not a served HTTP
+endpoint, so it does not fit the engine/endpoint model AD-01.9 assumes. The honest options
+are (a) give `ffmpeg` a null-endpoint special case plus an in-process builder, or (b)
+formally exclude `composition` from AD-01 selection and document why the enum value exists
+only for MBCP export compatibility. **Decide before anything binds `composition`.**
+`animatediff`, `wan21`, `ollama` and `remotion` share the missing-builder half of this
+problem (P1.4f.4); `ffmpeg` is the only one missing both halves.
 
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
