@@ -622,9 +622,16 @@ def build_composition_manifest(
 
         manifest_id = save_result.get("id", manifest.manifest_id)
 
+        # WP-07 F5: this passed `stage=` and omitted stage_name/stage_index/status,
+        # so it would raise TypeError if it ever ran. It never has - STAGE_TASK_MAP
+        # (:106) dispatches tasks.stage4_manifest.build_composition_manifest, and
+        # this task is registered but unrouted. Commit 0ca2e78 fixed the same shape
+        # in Stage 6 on 2026-06-07 and missed this one.
         save_checkpoint(
             job_id=job_id,
-            stage=PipelineStage.COMPOSITION_MANIFEST.value,
+            stage_name=PipelineStage.COMPOSITION_MANIFEST.value,
+            stage_index=4,
+            status=StageStatus.SUCCESS.value,
             checkpoint_data={
                 "manifest_id": manifest_id,
                 "scene_count": manifest.scene_count,

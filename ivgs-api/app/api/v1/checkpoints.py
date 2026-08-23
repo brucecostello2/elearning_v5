@@ -2,12 +2,13 @@
 Pipeline checkpoint API endpoints per §5.2.4.
 
 Endpoints:
+- POST   /api/v1/jobs/{id}/checkpoints              — Write a stage checkpoint
 - GET    /api/v1/jobs/{id}/checkpoints              — List all stage checkpoints
 - GET    /api/v1/jobs/{id}/checkpoints/{stage}      — Get specific stage checkpoint
 - POST   /api/v1/jobs/{id}/resume                   — Resume from last checkpoint
 - DELETE /api/v1/jobs/{id}/checkpoints               — Clear all checkpoints
 
-RBAC: Owner + admin for resume/clear. All authenticated for read.
+RBAC: Owner + admin for write/resume/clear. All authenticated for read.
 """
 import logging
 from uuid import UUID
@@ -23,6 +24,7 @@ from app.models.user import User
 from app.models.render_job import RenderJob
 from app.models.project import Project
 from app.schemas.checkpoint import (
+    CheckpointCreateRequest,
     CheckpointListResponse,
     CheckpointDetailResponse,
     ResumeResponse,
@@ -90,6 +92,46 @@ async def list_checkpoints(
     await _verify_job_access(job_id, current_user, db)
     service = CheckpointService(db)
     result = await service.list_checkpoints(job_id)
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Job {job_id} not found",
+                }
+            },
+        )
+    return result
+
+
+@router.post(
+    "/{job_id}/checkpoints",
+    response_model=CheckpointDetailResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Write a stage checkpoint",
+)
+async def create_checkpoint(
+    job_id: UUID,
+    payload: CheckpointCreateRequest,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Write (or update) a stage checkpoint for a job.
+
+    Ledger P1.2 / WP-07. This route did not exist: the workers'
+    ``save_checkpoint`` (ivgs-workers/utils/error_handler.py:427) has been POSTing
+    here since the pipeline was built and receiving 405 Method Not Allowed every
+    time - measured 2026-08-23, with ``pipeline_checkpoints`` holding 0 rows. The
+    helper logged a warning and returned False, and none of its 15 call sites
+    checked, so resume-from-failure has never had anything to resume from.
+
+    Upsert, keyed on (job_id, stage_name): each stage writes twice, once at entry
+    and once at its outcome.
+    """
+    await _verify_job_access(job_id, current_user, db)
+    service = CheckpointService(db)
+    result = await service.upsert_checkpoint(job_id, payload)
     if result is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

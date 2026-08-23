@@ -392,17 +392,37 @@ def update_job_status(
 # Checkpoint save helper
 # ---------------------------------------------------------------------------
 
+class CheckpointWriteError(RuntimeError):
+    """A pipeline checkpoint could not be written.
+
+    Ledger P1.2 / WP-07, and swallow-register entry 3. This used to be a logged
+    warning and a `False` return that none of the fifteen call sites checked, so
+    every checkpoint write in the system's history failed silently against a route
+    that did not exist (405 Method Not Allowed, measured 2026-08-23 with
+    `pipeline_checkpoints` holding 0 rows).
+
+    It raises now because an unrecorded stage is an unresumable stage: continuing
+    past a failed checkpoint write produces exactly the job this package exists to
+    abolish - one that must be re-run from the top. Callers that genuinely do not
+    need the checkpoint pass `required=False` and get the old behaviour, explicitly.
+    """
+
+
 def save_checkpoint(
     job_id: str,
     stage_name: str,
     stage_index: int,
     status: str,
     checkpoint_data: Optional[Dict[str, Any]] = None,
+    required: bool = True,
 ) -> bool:
     """
     Save a pipeline checkpoint via the Pipeline API (§5.2.4).
 
     POST /api/v1/jobs/{job_id}/checkpoints
+
+    Raises CheckpointWriteError on failure unless `required=False`, in which case
+    it returns False as it always did. No current call site passes `required`.
     """
     config = _get_config()
     api_url = (
@@ -433,18 +453,33 @@ def save_checkpoint(
                     status=status,
                 )
                 return True
-            logger.warning(
+            logger.error(
                 "checkpoint_save_failed",
                 job_id=job_id,
                 stage_name=stage_name,
                 status_code=resp.status_code,
+                required=required,
             )
+            if required:
+                raise CheckpointWriteError(
+                    f"checkpoint write for job {job_id} stage {stage_name} "
+                    f"returned HTTP {resp.status_code} from {api_url}. "
+                    "The stage is not resumable without it."
+                )
             return False
+    except CheckpointWriteError:
+        raise
     except Exception as e:
         logger.error(
             "checkpoint_save_error",
             job_id=job_id,
             stage_name=stage_name,
             error=str(e),
+            required=required,
         )
+        if required:
+            raise CheckpointWriteError(
+                f"checkpoint write for job {job_id} stage {stage_name} failed: "
+                f"{e}. The stage is not resumable without it."
+            ) from e
         return False

@@ -5,6 +5,7 @@ Per §5.2.4 — provides access to pipeline checkpoint data for
 monitoring and resume-from-failure capability.
 """
 import logging
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.checkpoint import PipelineCheckpoint
 from app.models.render_job import RenderJob
 from app.schemas.checkpoint import (
+    CheckpointCreateRequest,
     CheckpointResponse,
     CheckpointDetailResponse,
     CheckpointListResponse,
@@ -67,6 +69,78 @@ class CheckpointService:
                 CheckpointResponse.model_validate(c) for c in checkpoints
             ],
         )
+
+    async def upsert_checkpoint(
+        self,
+        job_id: UUID,
+        payload: CheckpointCreateRequest,
+    ) -> Optional[CheckpointDetailResponse]:
+        """Write (or update) one stage checkpoint. Returns None if job not found.
+
+        UPSERT rather than INSERT, deliberately. ``ix_pipeline_checkpoints_job_stage``
+        is on ``(job_id, stage_name)`` and every stage calls ``save_checkpoint``
+        twice - once with "running" at entry, once with its terminal status - so a
+        plain insert would leave two rows per stage and ``list_checkpoints``'s
+        "last successful stage" walk would depend on insertion order rather than on
+        outcome.
+
+        ``started_at`` is stamped on the first write for a stage, ``completed_at``
+        only when the status becomes terminal, so the pair gives a real per-stage
+        duration - which is the evidence WP-07's exit gate asks for when proving a
+        completed stage did not re-execute.
+        """
+        job_result = await self.db.execute(
+            select(RenderJob).where(RenderJob.id == job_id)
+        )
+        if job_result.scalar_one_or_none() is None:
+            return None
+
+        result = await self.db.execute(
+            select(PipelineCheckpoint).where(
+                PipelineCheckpoint.job_id == job_id,
+                PipelineCheckpoint.stage_name == payload.stage_name,
+            )
+        )
+        checkpoint = result.scalar_one_or_none()
+        now = datetime.now(timezone.utc)
+        terminal = payload.status in ("complete", "failed", "skipped")
+
+        if checkpoint is None:
+            checkpoint = PipelineCheckpoint(
+                job_id=job_id,
+                stage_name=payload.stage_name,
+                stage_index=payload.stage_index,
+                checkpoint_data=payload.checkpoint_data or {},
+                output_refs=payload.output_refs,
+                version_fingerprint=payload.version_fingerprint,
+                status=payload.status,
+                started_at=now,
+                completed_at=now if terminal else None,
+            )
+            self.db.add(checkpoint)
+        else:
+            checkpoint.status = payload.status
+            if payload.stage_index is not None:
+                checkpoint.stage_index = payload.stage_index
+            if payload.checkpoint_data is not None:
+                checkpoint.checkpoint_data = payload.checkpoint_data
+            if payload.output_refs is not None:
+                checkpoint.output_refs = payload.output_refs
+            if payload.version_fingerprint is not None:
+                checkpoint.version_fingerprint = payload.version_fingerprint
+            if checkpoint.started_at is None:
+                checkpoint.started_at = now
+            if terminal:
+                checkpoint.completed_at = now
+
+        await self.db.commit()
+        await self.db.refresh(checkpoint)
+
+        logger.info(
+            f"Checkpoint written: job={job_id} stage={payload.stage_name} "
+            f"status={payload.status}"
+        )
+        return CheckpointDetailResponse.model_validate(checkpoint)
 
     async def get_stage_checkpoint(
         self,

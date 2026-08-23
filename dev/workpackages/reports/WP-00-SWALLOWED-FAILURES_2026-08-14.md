@@ -27,8 +27,8 @@ because of this pattern.
 | # | Site | Swallows | Disposition |
 |---|---|---|---|
 | 1 | `ivgs-backup-worker/tasks/backup_tasks.py` — 4 tasks, 10 return sites | Script exit codes | **Fixed**, pending deploy — WP-BACKUP-REPORTING |
-| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **CLOSED 2026-08-23** by WP-06-MEDIA-JOIN, with evidence. See below. |
-| 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | Open |
+| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **FIXED 2026-08-23, pending deploy** — WP-06-MEDIA-JOIN, with evidence. See below. |
+| 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | **FIXED 2026-08-23, pending deploy** — WP-07-CHECKPOINTS, with evidence. See below. |
 | 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | Open — **scope-blocked** |
 | 5 | `ivgs-workers/tasks/pipeline_orchestrator.py:620` | Manufactures a success | Open |
 | 6 | `ivgs-workers/tasks/pipeline_orchestrator.py` — 5 sites in 3 scheduled tasks + `dispatch_pipeline` | Celery task returns `{'status':'error'}` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
@@ -74,9 +74,9 @@ returns 0. The fix has never executed.
 
 ---
 
-### 2. `_decrement_media_task_count` returns 0 on Redis error — **CLOSED 2026-08-23**
+### 2. `_decrement_media_task_count` returns 0 on Redis error — **FIXED 2026-08-23, pending deploy**
 
-> **Closed by WP-06-MEDIA-JOIN**, report
+> **Fixed by WP-06-MEDIA-JOIN**, report
 > `dev/workpackages/reports/WP-06-MEDIA-JOIN-report_2026-08-23.md`, commit on `main`
 > the same day. Sites were `pipeline_orchestrator_v2.py:974-984` at `9af5a48` (the
 > `:869` below is the `e1f4c58` line number).
@@ -102,6 +102,10 @@ returns 0. The fix has never executed.
 >   expression `max(0, r.decr(key))` on a missing key, asserts it yields `0`, then
 >   runs the new function on the same state and asserts `unknown`. The defect and
 >   its fix are both executable in one test.
+>
+> **Not yet deployed.** `ivgs-celery-default` runs `v5.5.4-metrics`; the fix has
+> never executed in production. Same disposition as entry 1, and for the same
+> reason - the code is in the image, or it is not.
 >
 > 19 tests, all passing. Two sibling helpers in the same file
 > (`_record_media_failure`, `_get_media_failure_count`) still return `0` on error by
@@ -131,7 +135,57 @@ picked up.
 
 ---
 
-### 3. `save_checkpoint` returns `False`, unchecked at every call site — OPEN
+### 3. `save_checkpoint` returns `False`, unchecked at every call site — **FIXED 2026-08-23, pending deploy**
+
+> **Fixed by WP-07-CHECKPOINTS**, report
+> `dev/workpackages/reports/WP-07-CHECKPOINTS-report_2026-08-23.md`, commit on `main`
+> the same day. The site is `utils/error_handler.py:395-448` at `9af5a48`.
+>
+> **This is the register's most consequential entry, and this is why.** The failure
+> being swallowed was not intermittent. `save_checkpoint` POSTs to
+> `/api/v1/jobs/{id}/checkpoints`, and **that route did not exist**. Measured live
+> 2026-08-23 against the running `ivgs-fastapi` (`v5.5.3-arch1`):
+>
+>     POST /api/v1/jobs/.../checkpoints  ->  405 Method Not Allowed   allow: GET
+>     select count(*) from pipeline_checkpoints  ->  0
+>
+> So **every checkpoint write this system has ever attempted failed**, each one
+> logged at warning and returned `False` to a caller that did not look. Not one row
+> was ever written. Checkpoint resume has never had anything to resume from, and
+> `dev/CLAUDE.md` s7's "Checkpoint resume — does not exist" is the consequence.
+>
+> **Also corrected:** the register, the WP-07 brief and `dev/CLAUDE.md` s7 all say
+> **five** call sites. There are **fifteen** - `stage1_transcript.py:493,:625,:678`,
+> `stage2_storyboard.py:511,:688`, `stage3_images.py:683,:734`,
+> `stage5_voiceover.py:606,:655`, `stage7_prototype_draft.py:447,:561`,
+> `stage8_final_render.py:706`, `video_generation_task.py:512`,
+> `talking_head_task.py:926`, `pipeline_orchestrator_v2.py:625`. None checked.
+>
+> **What changed.** `save_checkpoint` raises `CheckpointWriteError` instead of
+> returning `False`. All fifteen sites surface the failure without one being edited
+> - the stage task bodies are out of WP-07's scope. A `required: bool = True`
+> parameter restores the old behaviour for a caller that explicitly asks; a test
+> asserts no call site does.
+>
+> **Evidence the failure now surfaces.** 20 tests in
+> `ivgs-workers/tests/test_wp07_save_checkpoint_surfaces.py`, including
+> `test_405_is_named_because_that_is_what_production_returned`, which drives the
+> exact live condition and asserts the raised message names the status, the job and
+> the stage. Eight HTTP status codes and a transport error are parameterised. The
+> success path is pinned unchanged, and the payload shape is asserted against the
+> route that now accepts it.
+>
+> **The route itself now exists**, and was proven end to end against a real Postgres
+> carrying the full migration chain (19 tests,
+> `ivgs-api/tests/test_wp07_checkpoint_write.py`) - see the WP-07 report.
+>
+> **Not yet deployed.** Both halves need a build: `ivgs-fastapi` runs
+> `v5.5.3-arch1` and `ivgs-celery-default` runs `v5.5.4-metrics`. Until then the
+> POST still 405s and this entry is fixed in the tree, not in the system.
+>
+> **Related, still open:** `error_handler.py:313, :383` (entry 8) - DLQ routing and
+> job-status writes - are the same shape in the same file and were NOT touched here;
+> WP-07's scope is the checkpoint path.
 
 ```
 ivgs-workers/utils/error_handler.py:395   def save_checkpoint(
