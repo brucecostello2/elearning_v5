@@ -1,6 +1,7 @@
 import useSWR, { type KeyedMutator } from "swr";
 import { apiClient } from "@/lib/api-client";
 import type { Asset } from "@/types/api";
+import { unwrapList } from "@/lib/unwrap";
 
 /**
  * Assets data fetching, upload, and regeneration hook.
@@ -16,9 +17,17 @@ interface UseAssetsReturn {
   regenerateAsset: (assetId: string) => Promise<void>;
 }
 
-const assetsFetcher = async (url: string): Promise<any> => {
-  const response = await apiClient.get<{ data: Asset[] }>(url);
-  return response.data;
+/**
+ * WP-35. Same defect as useJobs: GET /api/v1/projects/{id}/assets is
+ * `response_model=PaginatedResponse[AssetResponse]` (assets.py:38), so
+ * `response.data` is the envelope. Consumers of `assets` call `.map`/`.filter`
+ * on it -- the assets, talking-head and audio tabs all would have thrown
+ * `assets.map is not a function`. Fixed here rather than left as a known
+ * duplicate of a crash being fixed one file away.
+ */
+const assetsFetcher = async (url: string): Promise<Asset[]> => {
+  const response = await apiClient.get<unknown>(url);
+  return unwrapList<Asset>(response.data);
 };
 
 export function useAssets(projectId: string): UseAssetsReturn {

@@ -71,7 +71,11 @@ export default function PipelineTracker({
       });
     }
 
-    if (!jobs || jobs.length === 0) return statusMap;
+    // WP-35: `!jobs || jobs.length === 0` passed a non-array straight through --
+    // an envelope object is truthy and its `.length` is undefined, so the guard
+    // returned false and execution continued on a value that was never a list.
+    // Array.isArray is the check that actually holds.
+    if (!Array.isArray(jobs) || jobs.length === 0) return statusMap;
 
     // Use the most recent job's stage data
     const latestJob = jobs[0];

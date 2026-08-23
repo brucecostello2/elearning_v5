@@ -1,6 +1,7 @@
 import useSWR, { type KeyedMutator } from "swr";
 import { apiClient } from "@/lib/api-client";
 import type { RenderJob } from "@/types/api";
+import { unwrapList } from "@/lib/unwrap";
 
 /**
  * §8.1.3 Table 8-2 — Jobs Tab Data Hook
@@ -18,9 +19,18 @@ interface UseJobsReturn {
   resumeJob: (jobId: string) => Promise<void>;
 }
 
-const jobsFetcher = async (url: string): Promise<any> => {
-  const response = await apiClient.get<{ data: RenderJob[] }>(url);
-  return response.data;
+/**
+ * WP-35. GET /api/v1/projects/{id}/jobs has
+ * `response_model=PaginatedResponse[JobResponse]` (ivgs-api/app/api/v1/jobs.py:31),
+ * so `response.data` is the ENVELOPE `{data, total, page, ...}`, not the array.
+ * This returned that envelope while `useSWR<RenderJob[]>` below asserted an
+ * array -- a lie TypeScript accepted only because the fetcher was typed
+ * `Promise<any>`. It crashed the project detail page with
+ * `latestData?.some is not a function`.
+ */
+const jobsFetcher = async (url: string): Promise<RenderJob[]> => {
+  const response = await apiClient.get<unknown>(url);
+  return unwrapList<RenderJob>(response.data);
 };
 
 export function useJobs(projectId: string): UseJobsReturn {
@@ -31,8 +41,11 @@ export function useJobs(projectId: string): UseJobsReturn {
     jobsFetcher,
     {
       refreshInterval: (latestData) => {
-        // Poll frequently when jobs are active
-        const hasActive = latestData?.some(
+        // Poll frequently when jobs are active.
+        // WP-35: Array.isArray, not `?.`. Optional chaining guards null/undefined
+        // and does nothing about a value that is present but is an object -- which
+        // is exactly what this used to receive.
+        const hasActive = (Array.isArray(latestData) ? latestData : []).some(
           (job) =>
             job.status === "RUNNING" ||
             job.status === "IN_PROGRESS" ||

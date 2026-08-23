@@ -14,7 +14,8 @@ import React from "react";
  */
 
 interface StateBadgeProps {
-  state: string;
+  /** May arrive undefined from a partially-populated record - see below. */
+  state: string | null | undefined;
   size?: "sm" | "md";
 }
 
@@ -36,8 +37,15 @@ export default function StateBadge({
   state,
   size = "sm",
 }: StateBadgeProps): React.ReactElement {
+  // WP-35. This called `state.toUpperCase()` on a prop typed `string`, three
+  // times, with no runtime guard. Every caller passes a field off an API record,
+  // and TypeScript cannot vouch for what arrives over the wire -- one absent
+  // `state` on one row takes down the whole page with
+  // "Cannot read properties of undefined (reading 'toUpperCase')".
+  // A badge with nothing to show should render "unknown", not crash its parent.
+  const raw = typeof state === "string" && state.length > 0 ? state : "UNKNOWN";
   const style =
-    STATE_STYLES[state.toUpperCase()] || "bg-gray-700 text-gray-400";
+    STATE_STYLES[raw.toUpperCase()] || "bg-gray-700 text-gray-400";
 
   const sizeClass =
     size === "sm"
@@ -45,8 +53,7 @@ export default function StateBadge({
       : "px-2.5 py-1 text-xs";
 
   const isAnimated =
-    state.toUpperCase() === "IN_PROGRESS" ||
-    state.toUpperCase() === "RUNNING";
+    raw.toUpperCase() === "IN_PROGRESS" || raw.toUpperCase() === "RUNNING";
 
   return (
     <span
@@ -55,7 +62,7 @@ export default function StateBadge({
       {isAnimated && (
         <span className="w-1.5 h-1.5 bg-current rounded-full animate-pulse" />
       )}
-      {state.replace(/_/g, " ")}
+      {raw.replace(/_/g, " ")}
     </span>
   );
 }

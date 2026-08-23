@@ -127,3 +127,6 @@ ivgs-infra/.env.node01
 # tracked -- 38 MB of binary that a stray `git add .` would put in history for good.
 # Root-anchored so fixtures and test media elsewhere in the tree are unaffected.
 /*.mp4
+
+# WP-35: tsc output for `npm run test:logic` (node --test against the compiled helper)
+ivgs-frontend/.test-build/
