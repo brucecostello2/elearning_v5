@@ -53,7 +53,7 @@ from clients.vllm_client import VLLMClient
 from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
-from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
+from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
 from utils.media_converter import check_duplicate_asset, compute_asset_sha256
 from utils.video_validator import VideoValidator
 
@@ -472,7 +472,18 @@ def generate_video_clips(
 
     update_job_status(job_id, "running", stage=PipelineStage.VIDEO_GENERATION.value)
 
-    # Acquire GPU reservation
+    # Acquire GPU reservation.
+    #
+    # WP-08: this acquire is one of the three that leaked. It never stored the id
+    # on the task, so IVGSBaseTask.on_success / on_failure had nothing to release,
+    # and the only release below raised TypeError. It now stores the id, which
+    # brackets it the same way stages 1/2/3/5 are already bracketed.
+    #
+    # FAIL-OPEN, deliberately and for now. acquire raises (gpu_utils.py:202) and
+    # this catches it, logs, and renders anyway. That is correct while the registry
+    # is empty - measured 2026-08-23: /fleet reports total_nodes 0, so making this
+    # fatal would fail every render. Flipping it is AD-05 O-3, after P2.6 makes the
+    # registry real. Do not "fix" this by raising.
     reservation = None
     try:
         reservation = acquire_gpu_reservation(
@@ -481,8 +492,17 @@ def generate_video_clips(
             vram_requirement_mb=24576,
             estimated_duration_s=len(task_input.scenes) * 300,
         )
+        self._gpu_reservation_id = reservation.get("reservation_id")
     except Exception as e:
-        log.warning("gpu_reservation_failed", error=str(e))
+        log.warning(
+            "gpu_reservation_unavailable",
+            stage=PipelineStage.VIDEO_GENERATION.value,
+            model="cogvideox_5b",
+            vram_mb=24576,
+            error_type=type(e).__name__,
+            error=str(e),
+            fail_open=True,
+        )
 
     vllm_client = VLLMClient(
         base_url=config.get_vllm_config_for_stage("image_generation").base_url,
@@ -536,8 +556,16 @@ def generate_video_clips(
         loop.close()
 
     finally:
+        # WP-08: was release_gpu_reservation(reservation, config) - broken twice.
+        # release_gpu_reservation takes ONE parameter (gpu_utils.py:211), and
+        # `reservation` is the dict acquire returns, not the id. Measured on the
+        # deployed image 2026-08-23: "TypeError: release_gpu_reservation() takes 1
+        # positional argument but 2 were given".
+        # Clearing _gpu_reservation_id afterwards stops IVGSBaseTask.on_success
+        # releasing the same id a second time.
         if reservation:
-            release_gpu_reservation(reservation, config)
+            release_acquired_reservation(reservation, log)
+            self._gpu_reservation_id = None
 
     # Build output
     successful = [r for r in results if r.status == "success"]

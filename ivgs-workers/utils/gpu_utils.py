@@ -237,6 +237,57 @@ def release_gpu_reservation(reservation_id: str) -> bool:
         return False
 
 
+def release_acquired_reservation(reservation: Any, log: Any = None) -> bool:
+    """Release whatever ``acquire_gpu_reservation`` handed back.
+
+    WP-08 / ledger P1.3. Three call sites did this instead::
+
+        release_gpu_reservation(reservation, config)
+
+    which is wrong twice over. ``release_gpu_reservation`` takes ONE parameter
+    (see above), and ``reservation`` is the ``Dict[str, Any]`` that
+    ``acquire_gpu_reservation`` returns, not the id inside it. Measured on the
+    deployed image ``ivgs-workers:v5.5.4-metrics`` on 2026-08-23::
+
+        TypeError: release_gpu_reservation() takes 1 positional argument but 2 were given
+
+    The TypeError fired first, so the second bug - passing a dict where a string
+    belongs - had never had the chance to show itself.
+
+    This unwraps the id, tolerates a bare string, and never raises: a release
+    failing must not turn a completed render into a failed one. It returns False
+    so a caller that cares can tell.
+    """
+    if not reservation:
+        return False
+
+    if isinstance(reservation, dict):
+        reservation_id = reservation.get("reservation_id")
+    else:
+        reservation_id = reservation
+
+    if not reservation_id:
+        if log is not None:
+            log.warning(
+                "gpu_reservation_release_skipped",
+                reason="no reservation_id in the acquire result",
+                reservation=str(reservation)[:200],
+            )
+        return False
+
+    try:
+        return release_gpu_reservation(str(reservation_id))
+    except Exception as e:  # pragma: no cover - release_gpu_reservation catches
+        if log is not None:
+            log.error(
+                "gpu_reservation_release_failed",
+                reservation_id=str(reservation_id),
+                error_type=type(e).__name__,
+                error=str(e),
+            )
+        return False
+
+
 # ---------------------------------------------------------------------------
 # Heartbeat
 # ---------------------------------------------------------------------------

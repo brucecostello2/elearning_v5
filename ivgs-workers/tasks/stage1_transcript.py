@@ -511,6 +511,10 @@ async def _run_refinement(
     # GPU reservation (if enabled)
     reservation_id = None
     if config.enable_gpu_reservation:
+        # Bound before the try so the except block cannot reference an
+        # unassigned name and turn a fail-open into a NameError.
+        model_name = ""
+        vram_req = 0
         try:
             model_name = binding.name
             vram_req = binding.vram_requirement_mb or get_vram_requirement(model_name)
@@ -530,8 +534,18 @@ async def _run_refinement(
                 node_id=reservation.get("node_id"),
             )
         except Exception as gpu_err:
+            # FAIL-OPEN, deliberately and for now. acquire RAISES
+            # (gpu_utils.py:202); this catches it and the stage proceeds
+            # unreserved. Correct while the registry is empty - measured
+            # 2026-08-23: /fleet reports total_nodes 0, so making this fatal
+            # would fail every render. Flipping it is AD-05 O-3, after P2.6.
             log.warning(
-                "gpu_reservation_skipped",
+                "gpu_reservation_unavailable",
+                stage=PipelineStage.TRANSCRIPT_REFINEMENT.value,
+                model=model_name,
+                vram_mb=vram_req,
+                error_type=type(gpu_err).__name__,
+                fail_open=True,
                 error=str(gpu_err),
             )
 

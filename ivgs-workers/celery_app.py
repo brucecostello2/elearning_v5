@@ -743,6 +743,11 @@ class IVGSBaseTask(celery_app.Task):  # type: ignore[misc]
             max_retries=self.max_retries,
             exception_type=type(exc).__name__,
         )
+        # WP-08 F5: on_success and on_failure both release; on_retry did not. The
+        # retry acquires again and overwrites _gpu_reservation_id, orphaning the
+        # previous reservation until its TTL. Release it here so a task that
+        # retries four times holds one reservation, not four.
+        self._release_gpu_reservation()
 
     def _release_gpu_reservation(self) -> None:
         """Release any held GPU reservation."""

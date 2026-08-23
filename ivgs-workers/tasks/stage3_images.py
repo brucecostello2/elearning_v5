@@ -619,6 +619,10 @@ def generate_scene_images_task(
         # GPU reservation — representative (project-level) image selection,
         # resolved on this loop (mixing loops would break the async engine).
         if config.enable_gpu_reservation:
+            # Bound before the try: get_binding is inside it, so the except block
+            # could otherwise reference an unassigned name and turn a fail-open
+            # into a NameError.
+            rep_binding = None
             try:
                 rep_binding = loop.run_until_complete(
                     get_binding(
@@ -636,7 +640,17 @@ def generate_scene_images_task(
                 reservation_id = reservation.get("reservation_id")
                 self._gpu_reservation_id = reservation_id
             except Exception as gpu_err:
-                log.warning("gpu_reservation_failed", error=str(gpu_err))
+                # FAIL-OPEN, deliberately and for now - see AD-05 O-3 / P2.6.
+                # acquire RAISES (gpu_utils.py:202); the stage proceeds unreserved.
+                log.warning(
+                    "gpu_reservation_unavailable",
+                    stage=PipelineStage.IMAGE_GENERATION.value,
+                    model=getattr(rep_binding, "name", "unknown"),
+                    vram_mb=getattr(rep_binding, "vram_requirement_mb", None) or 16384,
+                    error_type=type(gpu_err).__name__,
+                    error=str(gpu_err),
+                    fail_open=True,
+                )
 
         # Prompt-generation LLM is constructed once; image/video providers are
         # resolved per scene inside _process_single_scene (ARCH-1 scene scope).

@@ -557,7 +557,17 @@ def generate_voiceover_task(
                 reservation_id = reservation.get("reservation_id")
                 self._gpu_reservation_id = reservation_id
             except Exception as gpu_err:
-                log.warning("gpu_reservation_failed", error=str(gpu_err))
+                # FAIL-OPEN, deliberately and for now - see AD-05 O-3 / P2.6.
+                # acquire RAISES (gpu_utils.py:202); the stage proceeds unreserved.
+                log.warning(
+                    "gpu_reservation_unavailable",
+                    stage=PipelineStage.TTS_AUDIO.value,
+                    model=tts_binding.name,
+                    vram_mb=tts_binding.vram_requirement_mb or 8192,
+                    error_type=type(gpu_err).__name__,
+                    error=str(gpu_err),
+                    fail_open=True,
+                )
         tts_provider = build_provider(tts_binding)
         audio_validator = AudioValidator()
         audio_converter = AudioConverter()

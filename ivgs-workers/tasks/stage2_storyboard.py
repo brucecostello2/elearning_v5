@@ -531,6 +531,9 @@ async def _run_storyboard_generation(
     # GPU reservation
     reservation_id = None
     if config.enable_gpu_reservation:
+        # Bound before the try - see stage1_transcript.py for why.
+        model_name = ""
+        vram_req = 0
         try:
             model_name = binding.name
             vram_req = binding.vram_requirement_mb or get_vram_requirement(model_name)
@@ -544,7 +547,17 @@ async def _run_storyboard_generation(
             reservation_id = reservation.get("reservation_id")
             task._gpu_reservation_id = reservation_id
         except Exception as gpu_err:
-            log.warning("gpu_reservation_skipped", error=str(gpu_err))
+            # FAIL-OPEN, deliberately and for now - see AD-05 O-3 / P2.6.
+            # acquire RAISES (gpu_utils.py:202); the stage proceeds unreserved.
+            log.warning(
+                "gpu_reservation_unavailable",
+                stage=PipelineStage.STORYBOARD_GENERATION.value,
+                model=model_name,
+                vram_mb=vram_req,
+                error_type=type(gpu_err).__name__,
+                error=str(gpu_err),
+                fail_open=True,
+            )
 
     # Resolve prompts
     system_prompt, user_template = _resolve_prompts(task_input)

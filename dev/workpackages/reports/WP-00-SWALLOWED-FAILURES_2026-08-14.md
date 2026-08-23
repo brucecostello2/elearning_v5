@@ -29,14 +29,14 @@ because of this pattern.
 | 1 | `ivgs-backup-worker/tasks/backup_tasks.py` — 4 tasks, 10 return sites | Script exit codes | **Fixed**, pending deploy — WP-BACKUP-REPORTING |
 | 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **FIXED 2026-08-23, pending deploy** — WP-06-MEDIA-JOIN, with evidence. See below. |
 | 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | **FIXED 2026-08-23, pending deploy** — WP-07-CHECKPOINTS, with evidence. See below. |
-| 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | Open — **scope-blocked** |
+| 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | **Open, but no longer SILENT** — WP-08 2026-08-23. Still deliberately non-fatal. See below. |
 | 5 | `ivgs-workers/tasks/pipeline_orchestrator.py:620` | Manufactures a success | Open |
 | 6 | `ivgs-workers/tasks/pipeline_orchestrator.py` — 5 sites in 3 scheduled tasks + `dispatch_pipeline` | Celery task returns `{'status':'error'}` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 7 | `ivgs-workers/tasks/pipeline_orchestrator.py:601, :612` | Two more scheduled stubs manufacturing success | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 8 | `ivgs-workers/utils/error_handler.py:313, :383` | DLQ routing and job-status write failures → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 9 | `shared/redis_client.py` — 8 methods | Every Redis error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
-| 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
+| 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR**; WP-08 2026-08-23 adds a worse variant: **404 is treated as success**. See below. |
 | 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **CLOSED 2026-08-22** — the gate observably executed and failed loudly. Evidence below. **Variant instance, see note** |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
@@ -211,7 +211,35 @@ Failure and success are observationally identical today.
 
 ---
 
-### 4. GPU reservation failure swallowed at the call sites — OPEN, SCOPE-BLOCKED
+### 4. GPU reservation failure swallowed at the call sites — **OPEN, but no longer silent** (WP-08, 2026-08-23)
+
+> **WP-08-GPU-RESERVATIONS, 2026-08-23.** This entry stays OPEN **on purpose**. The
+> swallow is correct policy until the registry is real: `/fleet` reports
+> `total_nodes: 0`, so making reservation failure fatal would fail every render. The
+> decision to flip it is AD-05 O-3, after P2.6.
+>
+> What changed is that it is no longer *invisible*, which is what let `total_nodes:0`
+> go unnoticed for months. All **seven** acquire sites (not eight - see the WP-08
+> report) now emit one greppable event instead of two:
+>
+>     gpu_reservation_unavailable  stage=... model=... vram_mb=...
+>                                  error_type=... error=... fail_open=True
+>
+> replacing `gpu_reservation_skipped` (stages 1, 2) and `gpu_reservation_failed`
+> (stages 3, 5, video, talking head x2) - and, at the SadTalker fallback acquire in
+> `talking_head_task.py`, a bare `except Exception: pass`, the most invisible form of
+> this pattern in the codebase. Every site now carries a comment stating that the
+> pipeline proceeds unreserved and why.
+>
+> A **counter** would be better than a log line and the brief asked for "structured
+> log + metric at minimum". The workers have no `prometheus_client` dependency -
+> nothing under `ivgs-workers/` imports it - so a real counter needs a new dependency
+> in the worker image, outside WP-08's file set. Recorded as the remaining half of
+> this entry.
+>
+> Tests pin the policy in both directions: `test_no_acquire_site_raises` fails if
+> anyone makes it fatal, and `test_each_swallow_declares_that_it_fails_open` fails if
+> a new acquire is added without the event and the flag.
 
 **Correction to the task brief.** The brief states that
 `acquire_gpu_reservation` "logs a warning and continues". It does not. At
@@ -376,7 +404,29 @@ asset store for every generated image, audio file and render.
 
 `check_health` (`:215`) is **excluded** and allowlisted, same reasoning as `ping`.
 
-### 11. `release_gpu_reservation` and `send_heartbeat` return `False` — OPEN
+### 11. `release_gpu_reservation` and `send_heartbeat` return `False` — OPEN, and worse than recorded
+
+> **WP-08, 2026-08-23 - a variant this entry did not capture.** `release_gpu_reservation`
+> does not merely return `False` on error. `gpu_utils.py:217-223` treats HTTP **404 as
+> success**:
+>
+>     if resp.status_code in (200, 204, 404):
+>         logger.info("gpu_reservation_released", ...)
+>         return True
+>
+> Measured inside the deployed container the same day:
+> `release_gpu_reservation("wp08-probe-nonexistent-id")` logged
+> `gpu_reservation_released` and returned `True` for an id that never existed.
+>
+> With the registry empty every DELETE 404s, so **every correctly-shaped release
+> reports success regardless of what happened.** That is not a swallowed failure so
+> much as a manufactured one - closer to entry 5's shape than to this entry's. It also
+> makes the WP-08 exit gate's "reservation count returns to baseline" check vacuous:
+> the count is zero before and after, and the release says True either way.
+>
+> Left as-is by WP-08: a release failing must not turn a completed render into a failed
+> one, and distinguishing "already gone" from "never existed" needs the registry to be
+> real (P2.6). Recorded so the next package does not read `return True` as evidence.
 
 *Added 2026-08-14 by WP-00-DETECTOR, verified at `16ea217`.*
 

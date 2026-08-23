@@ -68,7 +68,7 @@ from shared.providers import (
     get_binding,
 )
 from utils.error_handler import save_checkpoint, update_job_status
-from utils.gpu_utils import acquire_gpu_reservation, release_gpu_reservation
+from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
 from utils.media_converter import compute_asset_sha256
 from validators.lipsync_validator import LipsyncValidator
 from validators.corruption_detector import CorruptionDetector
@@ -509,14 +509,32 @@ def render_talking_head(
         # vram_requirement_mb comes from the binding, falling back to the
         # engine default in providers/talking_head.py — 16384 for latentsync,
         # i.e. unchanged from the previous hardcoded value.
+        #
+        # WP-08: this acquire leaked. It never stored the id on the task, so
+        # IVGSBaseTask.on_success / on_failure had nothing to release, and both
+        # releases below raised TypeError. It now stores the id.
+        #
+        # FAIL-OPEN, deliberately and for now. acquire raises (gpu_utils.py:202)
+        # and this catches it and renders anyway. Correct while the registry is
+        # empty - measured 2026-08-23: /fleet reports total_nodes 0, so making it
+        # fatal would fail every render. Flipping it is AD-05 O-3, after P2.6.
         try:
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
                 model_name=binding.name,
                 vram_requirement_mb=provider.vram_requirement_mb(),
             )
+            self._gpu_reservation_id = reservation.get("reservation_id")
         except Exception as e:
-            log.warning("gpu_reservation_failed", error=str(e))
+            log.warning(
+                "gpu_reservation_unavailable",
+                stage=PipelineStage.TALKING_HEAD_RENDER.value,
+                model=binding.name,
+                vram_mb=provider.vram_requirement_mb(),
+                error_type=type(e).__name__,
+                error=str(e),
+                fail_open=True,
+            )
 
         start_time = time.monotonic()
         video_data: Optional[bytes] = None
@@ -776,17 +794,32 @@ def render_talking_head(
             log.info("falling_back_to_sadtalker")
             fallback_used = True
 
-            # Release the selected model's reservation, acquire SadTalker's
+            # Release the selected model's reservation, acquire SadTalker's.
+            # WP-08: was release_gpu_reservation(reservation, config) - one
+            # parameter too many AND a dict where the id belongs.
             if reservation:
-                release_gpu_reservation(reservation, config)
+                release_acquired_reservation(reservation, log)
+                self._gpu_reservation_id = None
+                reservation = None
             try:
                 reservation = acquire_gpu_reservation(
                     job_id=job_id,
                     model_name="sadtalker",
                     vram_requirement_mb=8192,
                 )
-            except Exception:
-                pass
+                self._gpu_reservation_id = reservation.get("reservation_id")
+            except Exception as e:
+                # Was a bare `except Exception: pass` - the most invisible form of
+                # the fail-open this package exists to expose. Still non-fatal.
+                log.warning(
+                    "gpu_reservation_unavailable",
+                    stage=PipelineStage.TALKING_HEAD_RENDER.value,
+                    model="sadtalker",
+                    vram_mb=8192,
+                    error_type=type(e).__name__,
+                    error=str(e),
+                    fail_open=True,
+                )
 
             try:
                 video_data = loop.run_until_complete(
@@ -962,8 +995,12 @@ def render_talking_head(
                 log.warning("provider_close_failed", error=str(close_err))
             finally:
                 close_loop.close()
+        # WP-08: was release_gpu_reservation(reservation, config). Clearing
+        # _gpu_reservation_id afterwards stops IVGSBaseTask.on_success releasing
+        # the same id a second time.
         if reservation:
-            release_gpu_reservation(reservation, config)
+            release_acquired_reservation(reservation, log)
+            self._gpu_reservation_id = None
         # Cleanup temp files
         import shutil
         shutil.rmtree(temp_dir, ignore_errors=True)

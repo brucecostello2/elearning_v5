@@ -195,10 +195,36 @@ No idempotency: every media task fires the callback at the end of its body then 
 The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated mechanism for not re-running a 30-minute render after a transient failure — i.e. the single biggest lever on long-video test-cycle cost.
 **Scope/action:** add the POST route (~40 lines) + assert on the return value at call sites. Worth doing now regardless of WS-T, because it collapses the M3 iteration loop for *every* bug class, not just orchestration ones.
 
-## P1.3 — GPU reservations: 8 acquires, 3 releases, and those 3 raise `TypeError` *(new, code audit; was "D4"; absorbs old P3 "extra-kwarg debt")*
-**Status:** OPEN.
-`utils/gpu_utils.py:211` — `def release_gpu_reservation(reservation_id: str) -> bool:` takes **one** parameter. All three call sites pass two: `talking_head_task.py:543,699`, `video_generation_task.py:540` — `release_gpu_reservation(reservation, config)`. Every one raises `TypeError`. There are **8** `acquire_gpu_reservation(` call sites against 3 release attempts; stages 1/2/3/5/6 never release, relying on the 5-minute TTL. Every acquire is wrapped in `except Exception: log.warning("gpu_reservation_skipped")` (e.g. `stage1_transcript.py:526-530`) — the subsystem fails open and silently, which is why `total_nodes:0` (P2.29) has been invisible.
-**Scope/action:** fix the signature at 3 sites; add `finally`-block releases at the other 5; decide explicitly whether reservation failure should be fatal. Pairs with P2.29.
+## P1.3 — GPU reservations: 7 acquires, 4 releases, and 3 of those raise `TypeError` *(new, code audit; was "D4"; absorbs old P3 "extra-kwarg debt")*
+**Status:** **FIXED 2026-08-23 by WP-08-GPU-RESERVATIONS, pending deploy.** Report: `dev/workpackages/reports/WP-08-GPU-RESERVATIONS-report_2026-08-23.md`.
+> **CORRECTED 2026-08-23 by WP-08.** The `TypeError` claim below was **right and is now
+> proven on the deployed image** — inside `ivgs-celery-default` running
+> `ivgs-workers:v5.5.4-metrics`, whose `gpu_utils.py` is byte-identical to the tree:
+> `TypeError: release_gpu_reservation() takes 1 positional argument but 2 were given`.
+> `dev/CLAUDE.md` §7 claimed *this file* recorded that it does not reproduce, citing
+> `OUTSTANDING_WORK.md:293` — a line about AD-01 engine registration. **There was never a
+> contradiction**, only a stale cross-reference. Corrected in `dev/CLAUDE.md` the same day.
+>
+> **Four figures below were wrong**, and are corrected in place:
+> **7** acquires, not 8 (`stage1:517`, `stage2:537`, `stage3:630`, `stage5:551`,
+> `video_generation:478`, `talking_head:449` and `:701`, all at `9af5a48`).
+> **`talking_head_task.py:543` is not a release site** — it is `last_seg_err = None`
+> inside the segment retry loop. The releases are `video_generation_task.py:540`,
+> `talking_head_task.py:699`, `:884` (all broken) **and `celery_app.py:601`, which is
+> correct** and which this item missed entirely.
+> The three broken calls are broken **twice**: they also pass the `Dict` that `acquire`
+> returns where the id belongs. The `TypeError` fired first, hiding it.
+> **"stages 1/2/3/5/6 never release" is backwards.** Stages 1, 2, 3 and 5 all store the id
+> (`stage1:526`, `stage2:545`, `stage3:637`, `stage5:558`) and `IVGSBaseTask` releases it
+> correctly on `on_success` and `on_failure`. `video_generation` and `talking_head` never
+> stored it — **they** are the two that leaked to TTL.
+
+`utils/gpu_utils.py:211` — `def release_gpu_reservation(reservation_id: str) -> bool:` takes **one** parameter. Three call sites passed two — `talking_head_task.py:699,884`, `video_generation_task.py:540` — `release_gpu_reservation(reservation, config)`; every one raised `TypeError`, **measured**. A fourth, `celery_app.py:601`, was always correct. There are **7** `acquire_gpu_reservation(` call sites. Every acquire is wrapped in `except Exception` (two different event names, `gpu_reservation_skipped` and `gpu_reservation_failed`) — the subsystem fails open and silently, which is why `total_nodes:0` (P2.29) has been invisible. Live 2026-08-23, `/fleet` also reports **`queue_depth.urgent: 23`** — twenty-three scheduling requests stranded against a zero-node fleet, which nothing owns.
+
+**Done by WP-08:** the three releases fixed (arity *and* argument); all seven acquires bracketed so `IVGSBaseTask` releases them; `on_retry` now releases too (it did not, so a retried task orphaned its previous reservation); one greppable event `gpu_reservation_unavailable` with `stage`/`model`/`vram_mb`/`error_type`/`fail_open=True` at every site; 53 tests. **Fail-open deliberately NOT changed to fatal** — the registry is empty, so it would fail every render; that is AD-05 O-3, after P2.6.
+
+**Still open:** `release_gpu_reservation` treats HTTP **404 as success** (`gpu_utils.py:217-223`), so with an empty registry every correctly-shaped release reports success — a reservation-count baseline check is vacuous until P2.6. There is no `GET /reservations` on the scheduler (only `DELETE /reservations/{id}`), so there is no reservation-count query to run.
+**Scope/action:** ~~fix the signature at 3 sites; add `finally`-block releases at the other 5~~ — both done 2026-08-23 (the "other 5" were in fact 4, and already released via `IVGSBaseTask`; the real gap was the two GPU render stages). **Remaining:** decide explicitly whether reservation failure should be fatal (AD-05 O-3, after P2.6), and the 404-as-success behaviour above. Pairs with P2.29.
 
 ## P1.4 — M1-QA: formal Stage-8 validation + visual acceptance *(new)*
 **Status:** **(a), (b), (c) all DONE 2026-08-15 by WP-03-STAGE8-VALIDATION.** Report:
