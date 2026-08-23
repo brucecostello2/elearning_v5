@@ -88,17 +88,30 @@ export default function NodesPage(): React.ReactElement {
               {nodes?.length || 0} nodes — polling every 10s
             </p>
           </div>
+          {/* WP-24: counts derive from real per-node checks. The old version
+              counted `status !== "online"` as offline, which folded "unknown"
+              into "offline" -- the same collapse the API fix removed. Unknown
+              is counted, and shown, separately. */}
           <div className="flex items-center gap-2 text-sm">
             <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
               <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              {nodes?.filter((n: NodeStatus) => n.status === "online").length || 0}{" "}
+              {nodes?.filter((n: NodeStatus) => n.status?.toLowerCase() === "online").length ?? 0}{" "}
               online
             </span>
             <span className="text-gray-600 dark:text-gray-400">|</span>
             <span className="text-red-600 dark:text-red-400">
-              {nodes?.filter((n: NodeStatus) => n.status !== "online").length || 0}{" "}
+              {nodes?.filter((n: NodeStatus) => n.status?.toLowerCase() === "offline").length ?? 0}{" "}
               offline
             </span>
+            {(nodes?.filter((n: NodeStatus) => n.status?.toLowerCase() === "unknown").length ?? 0) > 0 && (
+              <>
+                <span className="text-gray-600 dark:text-gray-400">|</span>
+                <span className="text-gray-500 dark:text-gray-400">
+                  {nodes?.filter((n: NodeStatus) => n.status?.toLowerCase() === "unknown").length ?? 0}{" "}
+                  unknown
+                </span>
+              </>
+            )}
           </div>
         </div>
 

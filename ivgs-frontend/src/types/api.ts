@@ -58,39 +58,69 @@ export type FallbackStrategy =
   | "zoom_pan"
   | "static_image";
 
-export type GpuNodeStatus = "online" | "offline" | "draining" | "ONLINE" | "OFFLINE" | "DRAINING";
+export type GpuNodeStatus = "online" | "offline" | "draining" | "unknown" | "ONLINE" | "OFFLINE" | "DRAINING" | "UNKNOWN";
+
+/** How a node's status was established. WP-24. */
+export type NodeStatusBasis = "self" | "node-exporter-scrape" | "probe-unavailable";
+
+/** Why a node's GPU numbers are, or are not, there. WP-24. */
+export interface NodeTelemetry {
+  available: boolean;
+  source: string;
+  reason: string;
+  as_of: string;
+}
 
 /** Legacy alias used by some components */
 /**
  * NodeStatus - response from GET /api/v1/nodes (Phase 3 stub per spec section 5.1.7).
  *
  * NOT the same shape as GpuNodeResponse. The /api/v1/nodes endpoint serves
- * static topology from a hardcoded NODE_TOPOLOGY dict in ivgs-api/app/api/v1/nodes.py.
- * Phase 8 GPU scheduler will replace the stub with real metrics; until then this
- * shape is what the wire actually emits.
+ * declared topology from NODE_TOPOLOGY in ivgs-api/app/api/v1/nodes.py, joined
+ * with live reachability and GPU telemetry from app/core/node_health.py.
+ *
+ * WP-24 (2026-08-23) ended the Phase-3 stub. Two contract changes matter:
+ *
+ *   1. `status` can be "unknown" - the probe could not run. It is NOT a synonym
+ *      for offline and must not be rendered as one.
+ *   2. The GPU metric fields are NULLABLE. null means NOT MEASURED. Rendering
+ *      null as 0 recreates the exact defect WP-24 removed: six cards reporting
+ *      "VRAM 0.0 / Util 0% / Temp 0 C" for hardware nothing had ever read.
+ *      Use `telemetry.available` to decide whether to draw a value at all.
  *
  * Key differences from GpuNodeResponse:
  *   - node_id is a string ("node-01"), not a UUID
  *   - hostname is the field name (not node_hostname)
- *   - status is currently always "online" (stub)
  *   - power_draw_w / last_heartbeat_at only present on the single-node detail endpoint
  *   - services array is present (not on GpuNodeResponse)
- *   - active_jobs is present but always empty in current stub
+ *   - active_jobs is present but always empty (job wiring is M4)
  */
 export interface NodeStatus {
   node_id: string;
   hostname: string;
   status: GpuNodeStatus;
+  /** How `status` was established. WP-24. */
+  status_basis?: NodeStatusBasis;
+  /** Plain-English justification for `status`. WP-24. */
+  status_reason?: string;
   role: string;
   gpu_model: string | null;
+  /** DECLARED capacity from the topology table - not a reading. */
   total_vram_mb: number;
-  used_vram_mb: number;
-  gpu_utilization_pct: number;
-  temperature_c: number;
+  /** Whether the declared hardware above has been verified on the box. */
+  topology_verified?: boolean;
+  /** OBSERVED. null = not measured. Never render null as 0. */
+  used_vram_mb: number | null;
+  /** OBSERVED. null = not measured. */
+  gpu_utilization_pct: number | null;
+  /** OBSERVED. null = not measured. */
+  temperature_c: number | null;
+  /** Why the observations above are present or absent. */
+  telemetry?: NodeTelemetry;
   services: string[];
   active_jobs: unknown[];
   // Optional fields - only present on /api/v1/nodes/{node_id} detail endpoint
-  power_draw_w?: number;
+  power_draw_w?: number | null;
   last_heartbeat_at?: string | null;
 }
 

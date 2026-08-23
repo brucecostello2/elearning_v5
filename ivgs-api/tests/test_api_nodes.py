@@ -1,9 +1,17 @@
 """
-Phase 3: Node API endpoint tests.
+Node API endpoint tests — shape, auth and routing.
 
-Tests stub endpoints:
-  GET /api/v1/nodes — list all 6 nodes
+  GET /api/v1/nodes           — list the six pipeline nodes
   GET /api/v1/nodes/{node_id} — single node detail
+
+These assert structure only: node ids, required field presence, auth, and 404.
+They deliberately do NOT assert values for `status` or the GPU metrics.
+
+That is not an oversight. Ledger P2.22 warned against tests that freeze the
+Phase-3 stub's answers ("online" for everything, GPU fields at 0), because such
+a test makes the lie load-bearing and blocks the fix. WP-24 replaced the stub;
+the honest behaviour is tested in test_wp24_node_honesty.py, which pins the
+properties rather than the readings.
 """
 import pytest
 from httpx import AsyncClient

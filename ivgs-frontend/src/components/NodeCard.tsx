@@ -6,21 +6,23 @@ import type { NodeStatus } from "@/types/api";
 /**
  * Node Monitor - Node Card (spec section 8.1.5)
  *
- * Consumed by /nodes page. Backed by the Phase 3 stub endpoint
- * GET /api/v1/nodes which serves a hardcoded NODE_TOPOLOGY (ivgs-api/
- * app/api/v1/nodes.py). The shape is NOT GpuNodeResponse - see
- * NodeStatus interface in types/api.ts for details.
+ * Consumed by /nodes page. Backed by GET /api/v1/nodes, which joins declared
+ * topology with live reachability and GPU telemetry (ivgs-api/app/core/
+ * node_health.py). The shape is NOT GpuNodeResponse - see NodeStatus in
+ * types/api.ts.
  *
- * Phase 8 (GPU scheduler) will replace the stub with live metrics.
- * Until then:
- *   - status is always "online" (stub default)
- *   - gpu_utilization_pct, temperature_c, used_vram_mb are always 0
- *   - power_draw_w is undefined on the list endpoint
- *   - active_jobs is always []
+ * WP-24 (2026-08-23). This card used to draw a VRAM bar and a "0 C" temperature
+ * for every node, because the endpoint hardcoded those fields to 0 and the card
+ * rendered them unconditionally. Two rules now hold, and both matter:
  *
- * Field naming follows the stub's contract (hostname, node_id-as-string),
- * not GpuNodeResponse. Diverging type-design accepted because the stub
- * endpoint is owned separately and will be replaced wholesale in Phase 8.
+ *   1. A metric is drawn ONLY when a real reading exists. null means not
+ *      measured, and shows as "no data" with the reason - never as 0.
+ *   2. The VRAM bar is gated on an actual reading, not on total_vram_mb > 0.
+ *      total_vram_mb is DECLARED capacity; gating on it drew a 0%-full bar for
+ *      hardware nothing had read.
+ *
+ * Field naming follows the endpoint's contract (hostname, node_id-as-string),
+ * not GpuNodeResponse.
  */
 
 interface NodeCardProps {
@@ -40,10 +42,18 @@ export default function NodeCard({
     return "text-red-400";
   };
 
-  /** VRAM usage percentage. Phase 3 stub always sets used_vram_mb=0. */
+  const hasGpu = node.gpu_model !== null;
+  /** A reading exists only if the endpoint sent a number. null = not measured. */
+  const vramRead = typeof node.used_vram_mb === "number";
+  const utilRead = typeof node.gpu_utilization_pct === "number";
+  const tempRead = typeof node.temperature_c === "number";
+  const powerRead = typeof node.power_draw_w === "number";
+  const anyRead = vramRead || utilRead || tempRead || powerRead;
+
+  /** VRAM usage percentage - computed only against a real reading. */
   const vramPercent =
-    node.total_vram_mb > 0
-      ? (node.used_vram_mb / node.total_vram_mb) * 100
+    vramRead && node.total_vram_mb > 0
+      ? ((node.used_vram_mb as number) / node.total_vram_mb) * 100
       : 0;
 
   /** VRAM bar color */
@@ -53,6 +63,13 @@ export default function NodeCard({
       : vramPercent > 70
       ? "bg-yellow-500"
       : "bg-blue-500";
+
+  /** Shown in place of a number when nothing measured it. */
+  const noData = (
+    <span className="text-sm font-medium text-gray-400 dark:text-gray-500">
+      no data
+    </span>
+  );
 
   /** Status badge color triple. Phase 3 stub returns lowercase. */
   const statusKey = node.status.toLowerCase();
@@ -66,6 +83,14 @@ export default function NodeCard({
       ? {
           dot: "bg-yellow-400",
           badge: "bg-yellow-900/30 text-yellow-400",
+        }
+      : statusKey === "unknown"
+      ? {
+          // Grey, not red. "We could not tell" must not look like "it is down" -
+          // colouring unknown as offline is the same class of lie WP-24 removed,
+          // just rendered in CSS instead of JSON.
+          dot: "bg-gray-400",
+          badge: "bg-gray-500/20 text-gray-500 dark:text-gray-400",
         }
       : {
           dot: "bg-red-500",
@@ -108,53 +133,96 @@ export default function NodeCard({
         )}
       </p>
 
-      {/* VRAM Bar - rendered only for nodes with a GPU */}
-      {node.total_vram_mb > 0 && (
+      {/* VRAM: capacity is always declarable; the BAR needs a real reading. */}
+      {hasGpu && (
         <div className="mb-3">
           <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
             <span>VRAM</span>
-            <span>
-              {(node.used_vram_mb / 1024).toFixed(1)} /{" "}
-              {(node.total_vram_mb / 1024).toFixed(1)} GB
-            </span>
+            {vramRead ? (
+              <span>
+                {((node.used_vram_mb as number) / 1024).toFixed(1)} /{" "}
+                {(node.total_vram_mb / 1024).toFixed(1)} GB
+              </span>
+            ) : (
+              <span className="text-gray-400 dark:text-gray-500">
+                no data / {(node.total_vram_mb / 1024).toFixed(1)} GB installed
+              </span>
+            )}
           </div>
-          <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-            <div
-              className={`h-full rounded-full transition-all ${vramColor}`}
-              style={{ width: `${Math.min(vramPercent, 100)}%` }}
-            />
-          </div>
+          {vramRead ? (
+            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${vramColor}`}
+                style={{ width: `${Math.min(vramPercent, 100)}%` }}
+              />
+            </div>
+          ) : (
+            /* Deliberately NOT a 0%-full bar: an empty bar reads as "measured
+               and idle". A dashed rail reads as "nothing measured". */
+            <div className="w-full h-2 rounded-full border border-dashed border-gray-300 dark:border-gray-600" />
+          )}
         </div>
       )}
 
-      {/* GPU Stats Grid - rendered only for nodes with a GPU */}
-      {node.total_vram_mb > 0 && (
+      {/* GPU stats - each cell independently shows its reading or "no data" */}
+      {hasGpu && (
         <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="text-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 block">Util</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {node.gpu_utilization_pct.toFixed(0)}%
-            </span>
+            {utilRead ? (
+              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                {(node.gpu_utilization_pct as number).toFixed(0)}%
+              </span>
+            ) : (
+              noData
+            )}
           </div>
 
           <div className="text-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 block">Temp</span>
-            <span
-              className={`text-sm font-bold ${getTempColor(node.temperature_c)}`}
-            >
-              {node.temperature_c.toFixed(0)} C
-            </span>
+            {tempRead ? (
+              <span
+                className={`text-sm font-bold ${getTempColor(node.temperature_c as number)}`}
+              >
+                {(node.temperature_c as number).toFixed(0)} C
+              </span>
+            ) : (
+              noData
+            )}
           </div>
 
           <div className="text-center">
             <span className="text-xs text-gray-500 dark:text-gray-400 block">Power</span>
-            <span className="text-sm font-bold text-gray-900 dark:text-white">
-              {node.power_draw_w !== undefined
-                ? `${node.power_draw_w.toFixed(0)}W`
-                : "—"}
-            </span>
+            {powerRead ? (
+              <span className="text-sm font-bold text-gray-900 dark:text-white">
+                {(node.power_draw_w as number).toFixed(0)}W
+              </span>
+            ) : (
+              noData
+            )}
           </div>
         </div>
+      )}
+
+      {/* Why there is no telemetry. Without this the card just looks broken. */}
+      {hasGpu && !anyRead && node.telemetry?.reason && (
+        <p className="text-[10px] leading-snug text-gray-500 dark:text-gray-400 mb-2">
+          {node.telemetry.reason}
+        </p>
+      )}
+
+      {/* How the status was decided - "unknown" especially must explain itself. */}
+      {node.status_reason && (
+        <p className="text-[10px] leading-snug text-gray-500 dark:text-gray-400 mb-1">
+          Status: {node.status_reason}
+        </p>
+      )}
+
+      {/* Declared-but-unverified hardware must not read as measured fact. */}
+      {node.topology_verified === false && (
+        <p className="text-[10px] leading-snug text-amber-600 dark:text-amber-400 mb-1">
+          Hardware below is declared in the topology table, not verified on the box.
+        </p>
       )}
 
       {/* Detail Hint for Admin */}
