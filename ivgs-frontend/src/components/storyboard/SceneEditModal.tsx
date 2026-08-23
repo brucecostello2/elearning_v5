@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import SceneThumbnail from "@/components/SceneThumbnail";
 import type {
   Scene,
   SceneStatus,
@@ -594,21 +595,28 @@ export default function SceneEditModal({
                 </div>
               </div>
 
-              {/* Thumbnail Preview */}
-              {scene.thumbnail_url && (
-                <div>
-                  <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Current Thumbnail
-                  </span>
-                  <div className="w-full max-w-sm aspect-video bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
-                    <img
-                      src={scene.thumbnail_url}
-                      alt={`Scene ${scene.scene_index + 1} thumbnail`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+              {/* Generated image.
+                  WP-40 addendum: this read `scene.thumbnail_url`, a field the
+                  API has never sent, so the block never rendered on any
+                  project. The scene's image asset is linked by `scene_id`. */}
+              <div>
+                <span className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Generated image
+                </span>
+                <div className="w-full max-w-sm aspect-video bg-white dark:bg-gray-900 rounded-lg overflow-hidden">
+                  <SceneThumbnail
+                    projectId={scene.project_id}
+                    sceneId={scene.id}
+                    sceneIndex={scene.scene_index}
+                    className="w-full h-full object-contain"
+                    fallback={
+                      <span className="text-xs text-gray-500 dark:text-gray-400 px-3 text-center">
+                        No image has been generated for this scene yet.
+                      </span>
+                    }
+                  />
                 </div>
-              )}
+              </div>
             </>
           )}
 

@@ -215,13 +215,18 @@ export interface SceneResponse {
   assets: AssetSummary[];
 }
 
+/**
+ * @deprecated Every field below except `id` and `asset_type` is absent from
+ * the API. Nothing reads this type any more; use `AssetResponse` plus
+ * `@/lib/media`. WP-40 addendum.
+ */
 export interface AssetSummary {
   id: string;
   asset_type: AssetType;
-  storage_path: string;
-  quality_score: number | null;
-  quality_decision: QualityDecision | null;
-  thumbnail_url: string | null;
+  storage_path?: string;
+  quality_score?: number | null;
+  quality_decision?: QualityDecision | null;
+  thumbnail_url?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,28 +271,18 @@ export interface AssetResponse {
   reference_count: number;
   created_at: string;
 
-  /**
-   * @deprecated Not sent by the API. Still read by the audio, talking-head,
-   * draft and renders tabs, which have the same defect this package fixed on
-   * the Media Assets grid (WP-40 report §1, scoped follow-on). Kept optional
-   * so those pages compile and degrade rather than being silently rewritten
-   * outside this package's scope.
+  /*
+   * WP-40 addendum: `url`, `filename`, `scene_label`, `generation_prompt`,
+   * `thumbnail_url`, `quality_score`, `quality_decision`, `metadata` and
+   * `storage_path` USED TO BE DECLARED HERE and are DELIBERATELY GONE.
+   *
+   * The first pass kept them as deprecated optionals so the audio,
+   * talking-head, draft and renders tabs -- which had the same defect and
+   * were out of that scope -- would still compile. All four are fixed now,
+   * so the declarations are removed outright: reading `asset.url` is a
+   * COMPILE ERROR again, which is the only thing that reliably stops this
+   * family of bug coming back. Use @/lib/media to derive what a card needs.
    */
-  url?: string;
-  /** @deprecated Not sent by the API. Use `assetFilename()` from @/lib/media. */
-  filename?: string;
-  /** @deprecated Not sent by the API. */
-  scene_label?: string;
-  /** @deprecated Not sent by the API. */
-  generation_prompt?: string;
-  /** @deprecated Not sent by the API. There is no thumbnail route. */
-  thumbnail_url?: string;
-  /** @deprecated Not sent by the API. See `/api/v1/quality/...`. */
-  quality_score?: number | null;
-  /** @deprecated Not sent by the API. */
-  quality_decision?: QualityDecision | null;
-  /** @deprecated Not sent by the API. */
-  metadata?: Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -337,12 +332,13 @@ export interface TranscriptResponse {
   created_at: string;
   updated_at: string;
 
-  /** @deprecated Not sent by the API and not stored. See the note above. */
-  original_text?: string;
-  /** @deprecated Not sent by the API. */
-  original_filename?: string;
-  /** @deprecated Not sent by the API. */
-  status?: string;
+  /*
+   * WP-40 addendum: `original_text`, `original_filename` and `status` used to
+   * be declared here and are DELIBERATELY GONE. `original_text` in particular
+   * was declared REQUIRED, which is what let the page hand `undefined` to
+   * `TranscriptEditor` and produce the P1.4r `.split` crash. Reading any of
+   * them is a compile error again.
+   */
 }
 
 // ---------------------------------------------------------------------------
@@ -536,12 +532,17 @@ export interface PaginatedResponse<T> {
 // ---------------------------------------------------------------------------
 // Components import these short names; they map to the *Response interfaces.
 
+/**
+ * WP-40 addendum: `render_variants` and `draft_video_url` were removed. The
+ * API sends neither, so the Final Renders tab could never show a render and
+ * the Draft Preview tab could never show a draft -- both rendered their empty
+ * state unconditionally on every project. Both tabs now read the ASSET list,
+ * where the renders actually live.
+ */
 export type Project = ProjectResponse & {
   /** Populated by joined query — display name of creator */
   created_by_name?: string;
   language_variants?: LanguageVariantResponse[];
-  render_variants?: LanguageVariantResponse[];
-  draft_video_url?: string;
 };
 
 export type Asset = AssetResponse;
@@ -554,13 +555,19 @@ export type RenderJob = JobResponse & {
   assigned_node?: string;
   assigned_gpu?: string;
   duration_seconds?: number;
-  stage_statuses?: Record<string, unknown>;
+  /*
+   * WP-40: `stage_statuses` was removed. `JobResponse` does not send it, so
+   * the project Overview's stage strip rendered eight grey circles after a
+   * complete run. Stage state comes from GET /jobs/{id}/checkpoints.
+   */
 };
 
-export type Transcript = TranscriptResponse & {
-  /** Alias used in hooks */
-  filename?: string;
-};
+/**
+ * WP-40 addendum: the `filename` alias was removed. It was not sent by the
+ * API and the transcript list rendered it as its row title, so every row
+ * header was blank. Use `sequence_order` / `language_code`.
+ */
+export type Transcript = TranscriptResponse;
 
 export type LanguageVariant = LanguageVariantResponse;
 

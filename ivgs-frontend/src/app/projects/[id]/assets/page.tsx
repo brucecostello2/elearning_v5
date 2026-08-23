@@ -10,6 +10,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import Toast from "@/components/Toast";
 import type { Asset } from "@/types/api";
 import { assetMediaKind, assetSearchText, type MediaKind } from "@/lib/media";
+import { useSceneIndexMap } from "@/hooks/useAssetMedia";
 
 /**
  * §8.1.3 Table 8-2 — Media Assets Tab
@@ -71,6 +72,10 @@ export default function AssetsPage(): React.ReactElement {
 
   const canEdit = user?.role === "admin" || user?.role === "operator";
 
+  /* Scene indices, so cards whose SeaweedFS paths collide are still
+     tellable apart. Shares its SWR key with the storyboard page. */
+  const sceneIndexById = useSceneIndexMap(projectId);
+
   /**
    * Filter assets by type and search query.
    */
@@ -90,8 +95,13 @@ export default function AssetsPage(): React.ReactElement {
       result = result.filter((a: Asset) => assetSearchText(a).includes(q));
     }
 
-    return result;
-  }, [assets, filter, searchQuery]);
+    return result.sort((a, b) => {
+      const ai = a.scene_id ? sceneIndexById.get(a.scene_id) ?? 1e9 : 1e9;
+      const bi = b.scene_id ? sceneIndexById.get(b.scene_id) ?? 1e9 : 1e9;
+      if (ai !== bi) return ai - bi;
+      return a.created_at < b.created_at ? -1 : 1;
+    });
+  }, [assets, filter, searchQuery, sceneIndexById]);
 
   /**
    * Handle manual file upload via drag-drop or file picker.
@@ -309,6 +319,7 @@ export default function AssetsPage(): React.ReactElement {
           viewMode={viewMode}
           canEdit={canEdit}
           onRegenerate={handleRegenerate}
+          sceneIndexById={sceneIndexById}
         />
       )}
 

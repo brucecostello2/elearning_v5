@@ -135,7 +135,12 @@ export interface Scene {
   generation_params: Record<string, unknown> | null;
 
   /** URL to the scene thumbnail image */
-  thumbnail_url: string | null;
+  /*
+   * WP-40 addendum: `thumbnail_url` used to be declared here and is gone.
+   * The identifier exists nowhere in ivgs-api and the live scenes payload has
+   * exactly nine keys. A scene's picture is its image ASSET, linked by
+   * `assets.scene_id` -- see `SceneThumbnail`.
+   */
 
   /** Reference to the prompt version used for generation (§9.3) */
   generation_prompt_id: string | null;

@@ -207,17 +207,38 @@ export type QualityMetricType =
   | "DURATION_CHECK"
   | "SAFETY_SCORE";
 
+/**
+ * WP-40 addendum — this now matches the wire.
+ *
+ * `FlaggedAssetResponse` (ivgs-api/app/schemas/quality.py:32) sends id,
+ * asset_id, job_id, quality_score, safety_score, scoring_details, decision,
+ * created_at, asset_type, project_id, project_name.
+ *
+ * It does NOT send `thumbnail_url` (which exists nowhere in ivgs-api),
+ * `scene_index`, or `metrics` — the per-metric breakdown is
+ * `scoring_details`. All three were declared here, two of them as required,
+ * so the review card rendered an `<img>` with no `src`, a literal
+ * "Scene undefined", and no metric breakdown at all.
+ */
 export interface FlaggedAsset {
+  id: string;
   asset_id: string;
-  project_name: string;
-  scene_index: number;
-  asset_type: string;
-  thumbnail_url: string;
-  quality_score: number;
-  safety_score: number;
-  metrics: any;
-  project_owner_id?: string;
-  score_id?: string;
+  job_id: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  asset_type: string | null;
+  quality_score: number | null;
+  safety_score: number | null;
+  scoring_details: Record<string, unknown> | null;
+  decision: string;
+  created_at: string;
+
+  /*
+   * WP-40 addendum: `score_id`, `project_owner_id`, `thumbnail_url`,
+   * `scene_index` and `metrics` used to be declared here and are gone.
+   * `score_id` was the key the approve/reject buttons posted with, so they
+   * hit /api/v1/quality/undefined/{approve,reject}.
+   */
 }
 
 // ────────────────────────────────────────────────────────────────────────────

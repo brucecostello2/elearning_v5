@@ -7,6 +7,18 @@ import { useAuth } from "@/hooks/useAuth";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Toast from "@/components/Toast";
 import type { Asset } from "@/types/api";
+import {
+  assetLabel,
+  assetMediaKind,
+  formatBytes,
+  formatDuration,
+} from "@/lib/media";
+import {
+  useAssetDownload,
+  useAssetObjectUrl,
+  useInView,
+  useSceneIndexMap,
+} from "@/hooks/useAssetMedia";
 
 /**
  * §8.1.3 Table 8-2 — Audio Tab
@@ -18,19 +30,41 @@ import type { Asset } from "@/types/api";
  *   - Play/pause, seek, volume controls
  *
  * Uses Web Audio API for waveform rendering.
+ *
+ * WP-40 addendum. This tab was blank for the same reason the Media Assets
+ * grid was: `<audio src={asset.url}>` and `fetch(asset.url)` against a field
+ * the API does not send, so the element got no `src` and the waveform fetch
+ * never fired. `asset.scene_label`, `asset.filename` and `asset.quality_score`
+ * are phantom too -- so the header read empty and the "SNR" badge was never
+ * shown, because `quality_score` was always `undefined`.
+ *
+ * Audio now loads through the authenticated download proxy, and the header
+ * carries facts the API actually sends.
  */
 
 interface AudioSceneProps {
   asset: Asset;
+  sceneIndex: number | null;
   canEdit: boolean;
   onRegenerate: (assetId: string) => Promise<void>;
 }
 
 function AudioScenePlayer({
   asset,
+  sceneIndex,
   canEdit,
   onRegenerate,
 }: AudioSceneProps): React.ReactElement {
+  const cardRef = useRef<HTMLDivElement>(null);
+  /* The bytes come from GET /api/v1/assets/{id}/download, which needs a
+     Bearer header -- so they are fetched and handed over as an object URL.
+     Gated on visibility: a project has one track per scene (18 here) and the
+     waveform needs the whole buffer, so fetching them all on mount would
+     pull every one before the operator has scrolled to any. */
+  const inView = useInView(cardRef);
+  const { url: audioUrl, isLoading: mediaLoading, error: mediaError } =
+    useAssetObjectUrl(asset.id, inView);
+  const { download, downloadingId } = useAssetDownload();
   const audioRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -83,10 +117,11 @@ function AudioScenePlayer({
    * Load audio and generate waveform on mount.
    */
   useEffect(() => {
-    if (!asset.url) return;
+    if (!audioUrl) return;
 
     const audioContext = new AudioContext();
-    fetch(asset.url)
+    /* Fetching a blob: URL is same-origin and needs no header. */
+    fetch(audioUrl)
       .then((res) => res.arrayBuffer())
       .then((buf) => audioContext.decodeAudioData(buf))
       .then((decoded) => drawWaveform(decoded))
@@ -97,7 +132,7 @@ function AudioScenePlayer({
     return () => {
       audioContext.close().catch(() => {});
     };
-  }, [asset.url, drawWaveform]);
+  }, [audioUrl, drawWaveform]);
 
   const togglePlay = useCallback((): void => {
     const audio = audioRef.current;
@@ -148,38 +183,44 @@ function AudioScenePlayer({
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
-  /** SNR quality badge color */
-  const snrColor =
-    (asset.quality_score ?? 0) >= 35
-      ? "text-green-400 bg-green-900/30"
-      : (asset.quality_score ?? 0) >= 25
-      ? "text-yellow-400 bg-yellow-900/30"
-      : "text-red-400 bg-red-900/30";
-
   return (
-    <div className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5">
+    <div
+      ref={cardRef}
+      className="bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl p-5"
+    >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <span className="text-sm font-medium text-gray-900 dark:text-white">
-            {asset.scene_label || asset.filename}
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            {assetLabel(asset, sceneIndex)}
           </span>
-          {asset.quality_score !== undefined && asset.quality_score !== null && (
-            <span
-              className={`px-2 py-0.5 text-xs font-medium rounded-full ${snrColor}`}
-            >
-              SNR: {asset.quality_score.toFixed(1)} dB
-            </span>
-          )}
+          {/* Quality lives in `asset_quality_scores` behind /api/v1/quality
+              and is not on this payload, so no SNR badge is claimed here. */}
+          <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+            {formatBytes(asset.file_size_bytes)}
+            {asset.duration_seconds != null
+              ? ` · ${formatDuration(asset.duration_seconds)}`
+              : ""}
+            {asset.language_code ? ` · ${asset.language_code}` : ""}
+          </span>
         </div>
-        {canEdit && (
+        <div className="flex items-center gap-3 shrink-0">
           <button
-            onClick={handleRegenerate}
-            disabled={isRegenerating}
+            onClick={() => download(asset)}
+            disabled={downloadingId === asset.id}
             className="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
           >
-            {isRegenerating ? "Regenerating…" : "Regenerate"}
+            {downloadingId === asset.id ? "Downloading…" : "↓ Download"}
           </button>
-        )}
+          {canEdit && (
+            <button
+              onClick={handleRegenerate}
+              disabled={isRegenerating}
+              className="px-3 py-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 disabled:opacity-50 transition-colors"
+            >
+              {isRegenerating ? "Regenerating…" : "Regenerate"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Waveform Canvas */}
@@ -190,11 +231,19 @@ function AudioScenePlayer({
         className="w-full h-[60px] rounded-lg mb-3"
       />
 
+      {mediaError && (
+        <p className="text-xs text-red-500 dark:text-red-400 mb-2">
+          Could not load this track: {mediaError}
+        </p>
+      )}
+
       {/* Audio Controls */}
       <div className="flex items-center gap-3">
         <button
           onClick={togglePlay}
-          className="w-8 h-8 flex items-center justify-center bg-blue-600 rounded-full text-white hover:bg-blue-700 transition-colors"
+          disabled={!audioUrl}
+          title={mediaLoading ? "Loading audio…" : undefined}
+          className="w-8 h-8 flex items-center justify-center bg-blue-600 rounded-full text-white hover:bg-blue-700 disabled:opacity-40 transition-colors"
         >
           {isPlaying ? (
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -228,7 +277,7 @@ function AudioScenePlayer({
 
       <audio
         ref={audioRef}
-        src={asset.url}
+        src={audioUrl ?? undefined}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={() => setIsPlaying(false)}
@@ -251,10 +300,23 @@ export default function AudioPage(): React.ReactElement {
 
   const canEdit = user?.role === "admin" || user?.role === "operator";
 
-  /** Filter to audio assets only */
+  const sceneIndexById = useSceneIndexMap(projectId);
+
+  /**
+   * Filter to audio by DERIVED media kind rather than `asset_type`, so a
+   * track stored under any pipeline role still appears if its mime type
+   * says it is audio.
+   */
   const audioAssets = React.useMemo<Asset[]>(
-    () => (assets || []).filter((a: Asset) => a.asset_type === "audio"),
-    [assets]
+    () =>
+      (assets || [])
+        .filter((a: Asset) => assetMediaKind(a) === "audio")
+        .sort((a, b) => {
+          const ai = a.scene_id ? sceneIndexById.get(a.scene_id) ?? 1e9 : 1e9;
+          const bi = b.scene_id ? sceneIndexById.get(b.scene_id) ?? 1e9 : 1e9;
+          return ai - bi;
+        }),
+    [assets, sceneIndexById]
   );
 
   const handleRegenerate = useCallback(
@@ -322,6 +384,9 @@ export default function AudioPage(): React.ReactElement {
             <AudioScenePlayer
               key={asset.id}
               asset={asset}
+              sceneIndex={
+                asset.scene_id ? sceneIndexById.get(asset.scene_id) ?? null : null
+              }
               canEdit={canEdit}
               onRegenerate={handleRegenerate}
             />

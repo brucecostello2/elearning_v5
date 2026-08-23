@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useCallback } from "react";
+import SceneThumbnail from "@/components/SceneThumbnail";
 import type {
   Scene,
   SceneStatus,
@@ -132,7 +133,6 @@ export default function SceneCard({
   // ── Local Loading States ──────────────────────────────────────────
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [thumbnailError, setThumbnailError] = useState<boolean>(false);
 
   /** Handle regenerate with loading state */
   const handleRegenerate = useCallback(
@@ -171,10 +171,6 @@ export default function SceneCard({
     }
   }, [canEdit, onEdit]);
 
-  /** Handle thumbnail load error */
-  const handleThumbnailError = useCallback((): void => {
-    setThumbnailError(true);
-  }, []);
 
   return (
     <div
@@ -239,21 +235,18 @@ export default function SceneCard({
 
       {/* ── Thumbnail ───────────────────────────────────────────── */}
       <div className="aspect-video bg-white dark:bg-gray-900 relative">
-        {scene.thumbnail_url && !thumbnailError ? (
-          <img
-            src={scene.thumbnail_url}
-            alt={`Scene ${scene.scene_index + 1} thumbnail`}
-            className="w-full h-full object-cover"
-            onError={handleThumbnailError}
-            loading="lazy"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
+        {/* WP-40 addendum: `scene.thumbnail_url` does not exist on this API.
+            The scene's generated image asset does, linked by `scene_id`. */}
+        <SceneThumbnail
+          projectId={scene.project_id}
+          sceneId={scene.id}
+          sceneIndex={scene.scene_index}
+          fallback={
             <span className="text-4xl">
               {MEDIA_TYPE_ICONS[scene.media_type] ?? "🎞️"}
             </span>
-          </div>
-        )}
+          }
+        />
 
         {/* Duration overlay */}
         {scene.duration_seconds != null && scene.duration_seconds > 0 && (

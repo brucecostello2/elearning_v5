@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo, useRef } from "react";
+import { useAssetObjectUrl, useInView } from "@/hooks/useAssetMedia";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import type { FlaggedAsset, QualityMetricType } from "@/types/monitoring";
 
@@ -123,6 +124,21 @@ export default function QualityReviewCard({
   const [rejectReason, setRejectReason] = useState<string>("");
 
   /**
+   * Numeric metrics out of `scoring_details`.
+   *
+   * The wire type is `Optional[Dict[str, Any]]`, so the values are not
+   * guaranteed to be numbers; non-numeric entries are dropped rather than
+   * fed to a threshold comparison that would silently read as "fail".
+   */
+  const scoringMetrics = useMemo<{ type: string; value: number }[]>(() => {
+    const details = asset.scoring_details;
+    if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+    return Object.entries(details)
+      .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+      .map(([type, value]) => ({ type, value: value as number }));
+  }, [asset.scoring_details]);
+
+  /**
    * Handle rejection with reason.
    */
   const handleReject = useCallback(() => {
@@ -135,29 +151,29 @@ export default function QualityReviewCard({
     <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden hover:shadow-md transition-shadow">
       {/* ── Asset Preview ──────────────────────────────────────────── */}
       <div className="relative h-40 bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-        {asset.thumbnail_url ? (
-          <img
-            src={asset.thumbnail_url}
-            alt={`Asset ${asset.asset_id.slice(0, 8)}`}
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <span className="text-4xl">
-            {ASSET_TYPE_ICONS[asset.asset_type] || "📄"}
-          </span>
-        )}
+        {/* WP-40 addendum: `thumbnail_url` exists nowhere in ivgs-api, so this
+            <img> never had a src. `asset_id` does exist, and the download
+            proxy serves the real bytes. */}
+        <FlaggedAssetPreview
+          assetId={asset.asset_id}
+          fallback={
+            <span className="text-4xl">
+              {(asset.asset_type && ASSET_TYPE_ICONS[asset.asset_type]) || "📄"}
+            </span>
+          }
+        />
         {/* Type badge overlay */}
         <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-gray-900 dark:text-white text-xs rounded">
-          {asset.asset_type}
+          {asset.asset_type ?? "asset"}
         </span>
         {/* Score badge overlay */}
         <div
           className={`absolute top-2 right-2 px-2 py-0.5 rounded text-sm
-            font-bold ${getScoreBgColor(asset.quality_score)} ${getScoreColor(
-            asset.quality_score
+            font-bold ${getScoreBgColor(asset.quality_score ?? 0)} ${getScoreColor(
+            asset.quality_score ?? 0
           )}`}
         >
-          {asset.quality_score}
+          {asset.quality_score ?? "—"}
         </div>
       </div>
 
@@ -166,10 +182,11 @@ export default function QualityReviewCard({
         {/* Context */}
         <div>
           <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-            {asset.project_name}
+            {asset.project_name ?? "Unknown project"}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Scene {asset.scene_index} • Asset {asset.asset_id.slice(0, 8)}…
+            {/* `scene_index` is not on this payload; the asset id is. */}
+            Asset {asset.asset_id.slice(0, 8)}… • {asset.decision}
           </p>
         </div>
 
@@ -177,8 +194,8 @@ export default function QualityReviewCard({
         <div className="grid grid-cols-2 gap-2">
           <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
             <p className="text-xs text-gray-500 dark:text-gray-400">Quality</p>
-            <p className={`text-lg font-bold ${getScoreColor(asset.quality_score)}`}>
-              {asset.quality_score}
+            <p className={`text-lg font-bold ${getScoreColor(asset.quality_score ?? 0)}`}>
+              {asset.quality_score ?? "—"}
             </p>
           </div>
           <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
@@ -194,11 +211,17 @@ export default function QualityReviewCard({
         </div>
 
         {/* Per-metric breakdown */}
-        {asset.metrics && (Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics)).length > 0 && (
+        {/* The per-metric breakdown is `scoring_details` on the wire
+            (schemas/quality.py:40); this read `metrics`, which is not a field
+            the API sends, so no breakdown ever rendered. */}
+        {scoringMetrics.length > 0 && (
           <div className="space-y-1">
             <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Metric Breakdown</p>
-            {(Array.isArray(asset.metrics) ? asset.metrics : Object.entries(asset.metrics).map(([k, v]: [string, any]) => ({ type: k, value: v }))).map((metric: any) => {
-              const status = getMetricStatus(metric.type, metric.value);
+            {scoringMetrics.map((metric: { type: string; value: any }) => {
+              const status = getMetricStatus(
+                metric.type as QualityMetricType,
+                metric.value
+              );
               return (
                 <div
                   key={metric.type}
@@ -293,6 +316,40 @@ export default function QualityReviewCard({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Thumbnail for a flagged asset, fetched through the authenticated proxy.
+ *
+ * There is no `thumbnail_url` on this API, but there is an `asset_id` and
+ * `GET /api/v1/assets/{id}/download`. Only images are shown inline: a flagged
+ * video would download in full to render one frame, and the queue is meant to
+ * be skimmed.
+ */
+function FlaggedAssetPreview({
+  assetId,
+  fallback,
+}: {
+  assetId: string;
+  fallback: React.ReactNode;
+}): React.ReactElement {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(containerRef);
+  const { url, error } = useAssetObjectUrl(assetId, inView);
+
+  return (
+    <div ref={containerRef} className="w-full h-full flex items-center justify-center">
+      {url && !error ? (
+        <img
+          src={url}
+          alt={`Asset ${assetId.slice(0, 8)}`}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        fallback
+      )}
     </div>
   );
 }

@@ -225,8 +225,12 @@ export default function TranscriptPage(): React.ReactElement {
                   <span className="text-sm font-mono text-gray-500 dark:text-gray-400">
                     #{index + 1}
                   </span>
+                  {/* WP-40 addendum: `filename` is not on TranscriptResponse
+                      either -- this row header was blank. `sequence_order`
+                      and `language_code` are real. */}
                   <span className="text-gray-900 dark:text-white font-medium">
-                    {transcript.filename}
+                    Transcript {transcript.sequence_order}
+                    {transcript.language_code ? ` · ${transcript.language_code}` : ""}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -250,7 +254,10 @@ export default function TranscriptPage(): React.ReactElement {
               {editingId === transcript.id ? (
                 <div className="p-6">
                   <TranscriptEditor
-                    originalText={transcript.original_text ?? null}
+                    /* There is no original text to show: the API sends none
+                       and the transcripts table has no such column. The
+                       uploaded source is an asset (original_asset_id). */
+                    originalText={null}
                     refinedText={editText}
                     onChange={setEditText}
                     readOnly={false}
@@ -274,10 +281,8 @@ export default function TranscriptPage(): React.ReactElement {
               ) : (
                 <div className="p-6">
                   <TranscriptEditor
-                    originalText={transcript.original_text ?? null}
-                    refinedText={
-                      transcript.refined_text ?? transcript.original_text ?? null
-                    }
+                    originalText={null}
+                    refinedText={transcript.refined_text ?? null}
                     readOnly={true}
                   />
                 </div>

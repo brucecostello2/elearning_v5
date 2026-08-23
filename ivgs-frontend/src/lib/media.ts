@@ -162,3 +162,85 @@ export function assetSearchText(asset: MediaAssetLike | null | undefined): strin
     .join(" ")
     .toLowerCase();
 }
+
+// ---------------------------------------------------------------------------
+// Render classification (WP-40 addendum)
+// ---------------------------------------------------------------------------
+
+/**
+ * Draft and final renders are BOTH `asset_type: "final_render"`.
+ *
+ * Verified against the workers, which is the only ground truth here:
+ *   stage7_prototype_draft.py:191  uploads `draft_720p_{lang}.mp4`  as final_render
+ *   stage8_final_render.py:205     uploads `final_{profile}_{lang}.mp4` as final_render
+ *   stage8_final_render.py:103     render_profiles = ["1080p", "4k"]
+ *
+ * So the filename prefix is the ONLY thing that separates a 720p review draft
+ * from a finished 1080p/4K render, and the Draft Preview and Final Renders
+ * tabs need exactly that distinction. Getting it wrong would put a draft on
+ * the Final Renders tab, which is worse than showing nothing.
+ */
+export type RenderKind = "draft" | "final";
+
+export function assetRenderKind(
+  asset: MediaAssetLike | null | undefined,
+): RenderKind | null {
+  if (!asset) return null;
+
+  const type = typeof asset.asset_type === "string" ? asset.asset_type.toLowerCase() : "";
+  const name = assetFilename(asset).toLowerCase();
+
+  /* Explicit types first, if the pipeline ever starts sending them. */
+  if (type === "draft" || type === "prototype_draft") return "draft";
+  if (type === "render") return "final";
+
+  if (type !== "final_render") return null;
+  if (name.startsWith("draft_")) return "draft";
+  if (name.startsWith("final_")) return "final";
+
+  /* An unrecognised final_render is reported as a final render rather than
+     hidden: an operator can see that it is not a draft from its name, but
+     cannot see an asset the UI silently dropped. */
+  return "final";
+}
+
+/** "720p" / "1080p" / "4K" parsed from the render filename, else null. */
+export function assetRenderProfile(
+  asset: MediaAssetLike | null | undefined,
+): string | null {
+  const name = assetFilename(asset).toLowerCase();
+  if (name.includes("_4k")) return "4K";
+  if (name.includes("1080p")) return "1080p";
+  if (name.includes("720p")) return "720p";
+  return null;
+}
+
+/**
+ * A label that distinguishes cards from one another.
+ *
+ * `assetFilename` alone is not enough on real data: all 16 image assets of
+ * project c12fa967 share the path `/ivgs/images/{pid}/image.png` and all 18
+ * audio assets share `/ivgs/audio/{pid}/en-US.wav`. Sixteen cards reading
+ * "image.png" is technically a real field and practically useless.
+ *
+ * `scene_id` IS populated on all 36 scene-scoped assets, so when the caller
+ * can supply a scene index the card says "Scene 4 · image.png".
+ */
+export function assetLabel(
+  asset: MediaAssetLike | null | undefined,
+  sceneIndex?: number | null,
+): string {
+  const name = assetFilename(asset);
+  if (typeof sceneIndex === "number" && Number.isFinite(sceneIndex)) {
+    return `Scene ${sceneIndex + 1} · ${name}`;
+  }
+  return name;
+}
+
+/** Seconds as m:ss. "—" when the API did not record a duration. */
+export function formatDuration(seconds: number | null | undefined): string {
+  if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) return "—";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}

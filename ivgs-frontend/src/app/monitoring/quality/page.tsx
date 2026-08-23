@@ -202,18 +202,21 @@ export default function QualityReviewPage(): React.ReactElement | null {
   );
 
   /**
-   * canActOnAsset — Check if the current user can approve/reject this asset.
-   * Admin can act on all; operator can act on own projects only.
+   * canActOnAsset — who may approve/reject.
+   *
+   * WP-40 addendum. This read `asset.project_owner_id`, which the API does
+   * not send (`FlaggedAssetResponse`, schemas/quality.py:32), so the operator
+   * branch compared `undefined === user.id` and was always false.
+   *
+   * It is corrected to admin-only rather than to some ownership rule, because
+   * that is what the SERVER enforces: both `POST /quality/{id}/approve` and
+   * `POST /quality/{id}/reject` are `Depends(require_admin)`
+   * (quality.py:97, :137). An operator pressing these would be refused 403
+   * whatever this function said. Mirroring the real guard is not a
+   * loosening -- it is the UI stopping offering a control that cannot work.
    */
   const canActOnAsset = useCallback(
-    (asset: FlaggedAsset): boolean => {
-      if (!user) return false;
-      if (user.role === "admin") return true;
-      if (user.role === "operator") {
-        return asset.project_owner_id === user.id;
-      }
-      return false;
-    },
+    (_asset: FlaggedAsset): boolean => user?.role === "admin",
     [user]
   );
 
@@ -398,14 +401,18 @@ export default function QualityReviewPage(): React.ReactElement | null {
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                   {assets.map((asset: FlaggedAsset) => (
                     <QualityReviewCard
-                      key={asset.score_id}
+                      /* WP-40 addendum: the score's primary key is `id` on
+                         the wire (schemas/quality.py:35), not `score_id` --
+                         which was undefined, so approve/reject POSTed to
+                         /api/v1/quality/undefined/{approve,reject}. */
+                      key={asset.id}
                       asset={asset}
                       metricLabels={METRIC_LABELS}
                       canAct={canActOnAsset(asset)}
-                      isProcessing={actionInProgress === asset.score_id}
-                      onApprove={() => handleApprove(asset.score_id!)}
+                      isProcessing={actionInProgress === asset.id}
+                      onApprove={() => handleApprove(asset.id)}
                       onReject={(reason) =>
-                        handleReject(asset.score_id!, reason)
+                        handleReject(asset.id, reason)
                       }
                     />
                   ))}

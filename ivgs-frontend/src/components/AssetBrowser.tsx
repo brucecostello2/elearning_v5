@@ -4,6 +4,7 @@ import React, { useCallback, useRef, useState } from "react";
 import type { Asset } from "@/types/api";
 import {
   assetFilename,
+  assetLabel,
   assetMediaKind,
   assetTypeLabel,
   formatBytes,
@@ -45,6 +46,17 @@ interface AssetBrowserProps {
   viewMode: "grid" | "list";
   canEdit: boolean;
   onRegenerate: (assetId: string) => Promise<void>;
+  /**
+   * `scene_id` -> `scene_index`, so a card can say which scene it belongs to.
+   *
+   * WP-40 addendum, correcting a weakness in the first pass: `assetFilename`
+   * is a real field but not a distinguishing one. All 16 image assets of
+   * project c12fa967 share the SeaweedFS path `/ivgs/images/{pid}/image.png`
+   * and all 18 audio assets share `/ivgs/audio/{pid}/en-US.wav`, so the grid
+   * showed sixteen cards reading "image.png". `scene_id` is populated on all
+   * 36 scene-scoped assets and is what makes them tellable apart.
+   */
+  sceneIndexById?: Map<string, number>;
 }
 
 /* ── Placeholders ──────────────────────────────────────────────────────── */
@@ -271,7 +283,17 @@ export default function AssetBrowser({
   viewMode,
   canEdit,
   onRegenerate,
+  sceneIndexById,
 }: AssetBrowserProps): React.ReactElement {
+  const labelOf = useCallback(
+    (asset: Asset): string =>
+      assetLabel(
+        asset,
+        asset.scene_id ? sceneIndexById?.get(asset.scene_id) ?? null : null,
+      ),
+    [sceneIndexById],
+  );
+
   const [previewAsset, setPreviewAsset] = useState<Asset | null>(null);
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const { download, downloadingId, error: downloadError } = useAssetDownload();
@@ -339,9 +361,9 @@ export default function AssetBrowser({
                 <div className="px-3 py-2">
                   <p
                     className="text-xs text-gray-900 dark:text-white truncate font-medium"
-                    title={assetFilename(asset)}
+                    title={labelOf(asset)}
                   >
-                    {assetFilename(asset)}
+                    {labelOf(asset)}
                   </p>
                   <p className="text-[10px] text-gray-500 dark:text-gray-400 truncate mt-0.5">
                     {assetTypeLabel(asset)}
@@ -416,8 +438,8 @@ export default function AssetBrowser({
                     </div>
                   </td>
                   <td className="px-4 py-2 text-gray-900 dark:text-white font-medium">
-                    <span className="block max-w-[280px] truncate" title={assetFilename(asset)}>
-                      {assetFilename(asset)}
+                    <span className="block max-w-[280px] truncate" title={labelOf(asset)}>
+                      {labelOf(asset)}
                     </span>
                     <span className="block text-xs text-gray-500 dark:text-gray-400">
                       {asset.mime_type || "unknown type"}

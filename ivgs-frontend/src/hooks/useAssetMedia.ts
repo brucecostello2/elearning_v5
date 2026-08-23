@@ -1,7 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
+import { unwrapList } from "@/lib/unwrap";
 import { assetDownloadPath, assetFilename, type MediaAssetLike } from "@/lib/media";
 
 /**
@@ -161,4 +163,40 @@ export function useInView<T extends Element>(
   }, [ref, rootMargin]);
 
   return inView;
+}
+
+/**
+ * Map of `scene_id` -> `scene_index` for a project.
+ *
+ * WP-40 addendum. Asset cards need this to be distinguishable from one
+ * another: every image asset of project c12fa967 has the SeaweedFS path
+ * `/ivgs/images/{pid}/image.png`, so sixteen cards would all read
+ * "image.png". `scene_id` is populated on all 36 scene-scoped assets, and
+ * `scene_index` is what an operator actually recognises.
+ *
+ * Shares the SWR key `/api/v1/projects/{id}/scenes` with `useStoryboard`, so
+ * on the storyboard page this costs no extra request. The route is a BARE
+ * ARRAY (WP-38), hence `unwrapList`.
+ */
+export function useSceneIndexMap(
+  projectId: string | null | undefined,
+): Map<string, number> {
+  const { data } = useSWR<{ id: string; scene_index: number }[]>(
+    projectId ? `/api/v1/projects/${projectId}/scenes` : null,
+    async (url: string) => {
+      const response = await apiClient.get<unknown>(url);
+      return unwrapList<{ id: string; scene_index: number }>(response.data);
+    },
+    { revalidateOnFocus: false, dedupingInterval: 30_000 },
+  );
+
+  return useMemo(() => {
+    const map = new Map<string, number>();
+    for (const scene of data ?? []) {
+      if (scene && typeof scene.id === "string" && typeof scene.scene_index === "number") {
+        map.set(scene.id, scene.scene_index);
+      }
+    }
+    return map;
+  }, [data]);
 }
