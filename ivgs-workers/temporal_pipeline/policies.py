@@ -330,11 +330,29 @@ POLICY_BY_ACTIVITY: Dict[str, ActivityPolicy] = {p.activity: p for p in ALL_POLI
 # this decision reopens rather than shipping fatal against an empty registry
 # (total_nodes:0), which would fail every GPU stage."
 #
-# P2.6 has NOT landed: the registry still reports total_nodes:0 and /fleet
-# still shows 23 stranded urgent requests (CLAUDE.md §7, measured under WP-08
-# on 2026-08-23). The ruling's own contingency therefore applies, and this
-# shadow keeps today's deliberate fail-open. The flag exists so that flipping
-# it, once P2.6 lands, is one boolean and a test -- not a rewrite.
+# OPERATOR RULING 2026-08-23: fail-open STANDS -- and the premise WP-41 first
+# argued it from was wrong, so it is corrected here rather than left to rot.
+#
+# The registry is NOT empty. An earlier draft of this comment cited CLAUDE.md
+# §7's "total_nodes:0" (WP-08, 2026-08-23), which WP-38 superseded the same day
+# by fixing the registration that _detect_gpu_identity was skipping. Reading a
+# register instead of re-checking the code it describes is exactly what
+# CLAUDE.md §4 warns against.
+#
+# What is actually true, measured at 192.168.1.90:8002/fleet, 2026-08-23
+# 23:14:24Z:
+#
+#     total_nodes  : 6          <- for THREE physical GPU nodes; entries are
+#                                  keyed by container id, so a recreation
+#                                  registers a ghost rather than re-registering
+#     alive_nodes  : 0          <- every heartbeat 31 min to 5.5 h stale
+#     queue_depth  : urgent 24  <- still accumulating, still unexplained
+#
+# So neither "the registry is empty" nor "the nodes registered today" is the
+# right test, and a fatal policy evaluated at that moment would have failed
+# every GPU stage. The flip is re-evaluated at M3.3 step 4 against a FRESH
+# REGISTRY HEALTH CHECK -- not against this comment, and not against any
+# document. Flipping it is one boolean and one test edit; deciding to is not.
 GPU_RESERVATION_FAILURE_IS_FATAL = False
 
 

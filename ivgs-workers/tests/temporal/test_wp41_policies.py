@@ -196,16 +196,22 @@ class TestCoverage:
         assert len(policies.POLICY_BY_ACTIVITY) == len(ALL_POLICIES)
 
 
-def test_gpu_reservation_failure_is_not_fatal_while_the_registry_is_empty():
+def test_gpu_reservation_failure_is_not_fatal_pending_a_registry_health_check():
     """
-    AD-05 O-3 was ruled (a) fatal-with-retry, explicitly contingent on ledger
-    P2.6 having made the heartbeat registry real. It has not: the registry
-    reports total_nodes:0 and /fleet shows 23 stranded urgent requests
-    (CLAUDE.md §7, measured under WP-08 on 2026-08-23). Shipping fatal against
-    an empty registry would fail every GPU stage, which is precisely what the
-    ruling's contingency exists to prevent.
+    AD-05 O-3 was ruled (a) fatal-with-retry, contingent on the heartbeat
+    registry being real. **Operator ruling 2026-08-23: fail-open STANDS.**
 
-    When P2.6 lands, flipping this constant is the whole change -- and this
-    test is where the reason it was False gets read and retired.
+    Note what the reason is NOT. An earlier version of this docstring said "the
+    registry reports total_nodes:0", citing CLAUDE.md §7. That was stale --
+    WP-38 fixed GPU node registration the same day. Measured at
+    192.168.1.90:8002/fleet, 23:14:24Z: total_nodes 6 (for three physical GPU
+    nodes; entries key on container id, so recreations leave ghosts),
+    alive_nodes **0**, queue_depth.urgent 24 and still unexplained.
+
+    So the registry is populated and currently answering "yes" to nothing, and
+    a fatal policy evaluated then would have failed every GPU stage. The flip
+    is re-evaluated at M3.3 step 4 against a FRESH REGISTRY HEALTH CHECK, not
+    against any document -- this docstring included. Flipping the constant is
+    one line; deciding to is the work.
     """
     assert policies.GPU_RESERVATION_FAILURE_IS_FATAL is False

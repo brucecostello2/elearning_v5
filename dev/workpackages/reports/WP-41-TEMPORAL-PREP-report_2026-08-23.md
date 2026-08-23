@@ -9,6 +9,7 @@
 | **Nodes touched** | node-01 (repo work, dev worker process) · node-07 = 192.168.1.96 (Temporal **dev** cluster, gRPC 7233 / UI 8080) |
 | **Production paths touched** | **None.** No Celery code, no fleet deploy, no `.env` edit, no API, no frontend, no database. |
 | **Outcome** | **All five tasks complete.** Nothing blocked. |
+| **Rulings** | **All seven decisions ruled by the operator, 2026-08-23, and applied. Nothing outstanding.** §12.1 — including a correction to a premise this report asserted wrongly. |
 | **Commits** | Authored and **HELD**. Operator pushes — §11. |
 
 ---
@@ -632,14 +633,55 @@ implementation time. If P2.6 has not landed when Step 4 of §11.2 is reached,
 this decision reopens rather than shipping fatal against an empty registry
 (`total_nodes:0`), which would fail every GPU stage."
 
-**P2.6 has not landed.** `CLAUDE.md` §7 records, measured under WP-08 on
-2026-08-23: the registry still reports `total_nodes:0` and `/fleet` still shows
-`queue_depth.urgent:23` stranded requests. The ruling's own contingency
-therefore applies, and `GPU_RESERVATION_FAILURE_IS_FATAL = False` keeps today's
-deliberate fail-open — but says so out loud, in a place a query and the Web UI
-can both see, which D4's version was not for months. A test asserts the flag is
-`False` and carries the reason, so flipping it once P2.6 lands is one boolean
-and one test edit. This is **decision D-1**, §12.
+> **CORRECTED after operator ruling — read §12.1 before this paragraph.** As
+> first written, this section argued the fail-open from "P2.6 has not landed:
+> the registry reports `total_nodes:0`", citing `CLAUDE.md` §7 (WP-08,
+> 2026-08-23). **That citation was stale by a few hours and the claim was
+> wrong.** GPU node registration was fixed under WP-38 the same day and the
+> registry is populated. The conclusion — fail-open — is unchanged and was
+> ruled to stand, but for different and better reasons. The corrected argument
+> is below; the original wording is not preserved, because leaving a false
+> factual claim in a report to show one's working is how stale citations
+> propagate in the first place.
+
+**The flag is `False`, and it stays `False` — but not because the registry is
+empty.** It is not. Measured live from `192.168.1.90:8002/fleet` at
+**23:14:24Z**, after the operator's correction:
+
+```
+total_nodes  : 6
+alive_nodes  : 0
+queue_depth  : {'urgent': 24, 'normal': 0, 'batch': 0}
+  61c7c02b3a8a:gpu0  alive=False  last_heartbeat 22:43:40Z
+  6413a3b90cac:gpu0  alive=False  last_heartbeat 22:40:09Z
+  7f479b3018af:gpu0  alive=False  last_heartbeat 22:41:02Z
+  3772bab239e5:gpu0  alive=False  last_heartbeat 17:41:32Z
+  84859983cb87:gpu0  alive=False  last_heartbeat 17:41:46Z
+  ed5fcfdd784e:gpu0  alive=False  last_heartbeat 17:42:02Z
+```
+
+Three things in that snapshot, and each of them is a reason not to make
+reservation failure fatal yet:
+
+1. **`total_nodes` is 6, and there are three GPU nodes.** Entries are keyed by
+   *container id*, so a container recreation registers a new node rather than
+   re-registering the old one. Three entries stopped heartbeating at ~17:41 and
+   three at ~22:40. `total_nodes` therefore counts ghosts as well as nodes, and
+   is not by itself an answer to "is there a GPU to reserve".
+2. **`alive_nodes` is 0.** The registry is populated and every entry is stale —
+   the most recent heartbeat is ~31 minutes old at the time of reading. A fatal
+   policy evaluated at this moment would fail every GPU stage, which is exactly
+   the outcome O-3's contingency exists to prevent.
+3. **`queue_depth.urgent` is 24**, up from the 23 the register recorded
+   earlier. Whatever is accumulating those entries is still accumulating them
+   and is still unexplained.
+
+So `GPU_RESERVATION_FAILURE_IS_FATAL = False` stands — and it says so out loud,
+in a place a query and the Web UI can both see, which D4's version was not for
+months. The flip is re-evaluated at M3.3 step 4 **against a fresh registry
+health check, not against any document — including this one.** A test asserts
+the flag is `False` and carries that reason. This is **decision D-1**, ruled in
+§12.1.
 
 ---
 
@@ -1019,14 +1061,25 @@ package accounts for is `+162 passed, +2 skipped` — exactly the two rows in
 
 ## 11. Push block — count-gated, for ALL held commits
 
-**Nothing has been pushed.** `main` was in sync with `origin/main` at
-`898489c` when this session began, so the two commits below are the only held
-ones on this branch.
+`main` was in sync with `origin/main` at `898489c` when this session began.
 
-| # | commit | what |
-|---:|---|---|
-| 1 | `351ca3f` | `feat(wp-41): the Temporal shadow of the pipeline - workflow, activities, tests` |
-| 2 | *this file* | `docs(wp-41): the shadow run, the resume and idempotency proofs, the conformance baseline and the cutover sketch` — its sha is deliberately not quoted here, because a commit cannot contain its own hash |
+**Two of this package's three commits have since been pushed — by the operator,
+not by this session.** `origin/main` advanced to `b490746` at **23:11:16Z**
+(`git reflog show origin/main`: `update by push`), which is the first two
+commits, i.e. the package as it stood when the §11 block above was first
+written and gated on 2. **One commit is held.**
+
+| # | commit | state | what |
+|---:|---|---|---|
+| 1 | `351ca3f` | **pushed** 23:11:16Z | `feat(wp-41): the Temporal shadow of the pipeline - workflow, activities, tests` |
+| 2 | `b490746` | **pushed** 23:11:16Z | `docs(wp-41): the shadow run, the resume and idempotency proofs, the conformance baseline and the cutover sketch` |
+| 3 | *this file* | **HELD** | `docs(wp-41): operator rulings D-1..D-7, and the stale registry premise D-1 corrects` — its sha is deliberately not quoted here, because a commit cannot contain its own hash |
+
+> **Why the count in this block changed, and why that is the block working.**
+> An earlier version gated on 2, then on 3. Neither is right now: the gate is
+> **1**, because two of the three are already on `origin/main`. A block that
+> hardcodes "push my commits" without counting would, at this point, have been
+> a no-op or a surprise. Counting is what makes it say something true.
 
 The block gates on the **count**, so it refuses if another session has committed
 to `main` in the meantime rather than pushing that session's work as part of
@@ -1044,8 +1097,8 @@ echo "branch=$BRANCH held=$HELD dirty=$DIRTY"
 git log --oneline origin/main..HEAD
 if [ "$BRANCH" != "main" ]; then
   echo "REFUSING: on $BRANCH, expected main"
-elif [ "$HELD" -ne 2 ]; then
-  echo "REFUSING: expected 2 held commits, found $HELD - read the list above before pushing"
+elif [ "$HELD" -ne 1 ]; then
+  echo "REFUSING: expected 1 held commit, found $HELD - read the list above before pushing"
 elif [ "$DIRTY" -ne 0 ]; then
   echo "REFUSING: working tree is not clean"
   git status --short
@@ -1054,27 +1107,124 @@ else
 fi
 ```
 
-**What this pushes, and what it does not.** Two commits, all of whose files are
-new, under `ivgs-workers/temporal_pipeline/`, `ivgs-workers/tests/temporal/` and
-`dev/workpackages/reports/`. No existing file is modified, so there is nothing
-to deploy and nothing that changes the behaviour of any running container.
-`ivgs-workers` is **not** rebuilt or re-tagged by this package — the new module
-would be copied into the image on the next ordinary build and imported by
-nothing.
+**What this pushes, and what it does not.** One commit, touching three files:
+§12.1 added to this report, plus a corrected stale citation in **two files this
+package itself created** — the comment above `GPU_RESERVATION_FAILURE_IS_FATAL`
+in `policies.py` and the docstring of the test that pins it in
+`test_wp41_policies.py`. **The flag's value and the test's assertion are
+unchanged**; the test's name now matches what it asserts.
+
+**No file outside this package is modified**, so there is nothing to deploy and
+nothing that changes the behaviour of any running container. `ivgs-workers` is
+**not** rebuilt or re-tagged — the new module would be copied into the image on
+the next ordinary build and imported by nothing. D-7's deletion of
+`dev/spikes/temporal/` is **not** in this push, per the ruling.
 
 ---
 
-## 12. Decisions needed
+## 12. Decisions — all ruled
+
+The table records what this package decided and why. **Every row was
+subsequently ruled by the operator on 2026-08-23; the rulings, and the premise
+correction that came with D-1, are §12.1.** Read them together.
 
 | # | Decision | What was done, and why | What the operator may want to change |
 |---|---|---|---|
-| **D-1** | **GPU reservation failure: fatal, or fail-open?** | Kept **fail-open** (`GPU_RESERVATION_FAILURE_IS_FATAL = False`). O-3 was ruled fatal-with-retry *contingent on ledger P2.6*; P2.6 has not landed (`total_nodes:0`, 23 stranded urgent requests, CLAUDE.md §7 as of 2026-08-23). The ruling's own contingency applies. | Nothing, unless P2.6 lands — at which point the flip is one boolean and one test. Flagged so it is not discovered at §11.2 step 4. |
+| **D-1** | **GPU reservation failure: fatal, or fail-open?** | Kept **fail-open** (`GPU_RESERVATION_FAILURE_IS_FATAL = False`). **RULED: stands** — with a correction to the premise this report argued it from, see §12.1. The registry is *not* empty; measured at 23:14:24Z it holds 6 entries for 3 GPU nodes with `alive_nodes: 0` and 24 stale urgent requests. | **Ruled.** Re-evaluated at M3.3 step 4 against a **fresh registry health check, not against any document.** |
 | **D-2** | **Retention on the new `dev` namespace.** | The `dev` namespace did not exist and had to be registered; registration **requires** a retention period. Set to **7 days**. O-4 ruled **90 days**, applied **at M3.3, not now**, with the node-07 cluster "deliberately left at its default" — the `default` namespace **was** left untouched, but a namespace that did not exist has no default to leave. | Ratify 7 days for `dev`, or name a different figure. It is one CLI call to change and holds only shadow-run histories. |
 | **D-3** | **Does the Temporal Stage 4 wrapper write a `pipeline_checkpoints` row?** | Not decided here; the shadow writes nothing. Today's Stage 4 writes no checkpoint (§8.3), so preserving behaviour means the cutover diff cannot see Stage 4, and writing one is **new** behaviour. | Decide before §11.2 step 6, because it changes what the verification diff can assert. |
 | **D-4** | **Animation's idempotency token.** | Appendix C gives stage 3 one token, `s3`, covering `render_scene_image` / `render_scene_animation` together. Animation was given **`s3a`**. Uniqueness did not require it — a scene has one media type — but a key that cannot say *which* stage produced an artifact is precisely the fact WP-39 destroyed. | Ratify, or fold animation back under `s3`. Ratifying is recommended and costs nothing. |
 | **D-5** | **Stage 8's `start_to_close`.** | Appendix C says "60 m **per segment**", which is a budget for the M5 child workflows. Stage 8 is one activity in this shadow, so the **whole-stage** ceiling (60 m) is used and the per-segment figure is not invented early. | Confirm at M5 when the child workflows land. |
 | **D-6** | **Where does `temporalio` live when the real wrappers land?** | For this package: a venv **outside the repo** (`/home/dev/.venv-ivgs-temporal`), so the repo suite gains no dependency and nothing can be committed by accident. That does not scale — §11.2 step 2's activity wrappers run inside the `ivgs-workers` image, which means `temporalio` in `ivgs-workers/requirements.txt` and a rebuilt image on nodes 01–04. | Decide when the wrappers are written, not now. Recorded because it is the first item in the next package that is a **deploy**, and this package deliberately contains none. |
 | **D-7** | **Delete `dev/spikes/temporal/`?** | Untouched by this package. `dev/CLAUDE.md` §12 (operator ruling 2026-08-22): a spike is "throwaway evidence that proves a property before a design is approved… **Delete it once the design it evidences is built.**" The design it evidenced is what this package builds — DAG compilation, signal gates, resume, at-least-once — all of it now under `temporal_pipeline/` with tests. | The spike is 1,135 lines that now duplicates working code and will drift. Deleting it is the operator's call and outside this package's boundary, so it was not touched. |
+
+### 12.1 Operator rulings, 2026-08-23
+
+All seven decisions were ruled the same day. **Nothing is outstanding.**
+
+| # | Ruling | Applied where |
+|---|---|---|
+| **D-1** | **Fail-open STANDS.** | §7.4 rewritten on the corrected premise; flag and test unchanged; `policies.py` comment corrected |
+| **D-2** | **RATIFIED — 7-day retention on the `dev` namespace.** O-4's 90 days applies to **production** at M3.3. | No change needed; the `dev` namespace is already at 7 days and the `default` namespace was never touched |
+| **D-3** | **RULED — the Temporal Stage 4 wrapper WILL write a `pipeline_checkpoints` row.** Deliberate new behaviour: *a stage that leaves no trace is a defect this migration ends, not a behaviour to preserve.* | §8.3 and §9.6 carry the riders below; implementation belongs to the wrappers package |
+| **D-4** | **RATIFIED — `s3a` stays.** A key that cannot name its stage is the WP-39 lesson. | No change; `idempotency.py` and its tests already carry it |
+| **D-5** | **DEFERRED to M5**, as proposed. | Stage 8 keeps the whole-stage 60 m ceiling until the child workflows land |
+| **D-6** | **DEFERRED to the wrappers package**, noted as **the first deploy of the Temporal arc**. | The shadow venv stays outside the repo until then |
+| **D-7** | **RULED — delete `dev/spikes/temporal/`** per the standing spike rule. **Deletion is assigned to the next package's housekeeping, not performed here.** | Not performed in this package; `dev/spikes/temporal/` is untouched |
+
+#### D-1 — the premise this report got wrong
+
+The ruling carries a correction to a fact **this report asserted and should
+not have**, and it is recorded here in full rather than quietly fixed.
+
+> **Operator, 2026-08-23.** Fail-open STANDS. Premise correction for the
+> record: the report's "P2.6 has not landed / `total_nodes:0`" citation is
+> stale — GPU node registration was fixed under WP-38 and all three GPU nodes
+> registered at ~16:39Z today; real reservations were acquired and released
+> during job `bd99fe37`'s back half. However, **a registry alive for hours is
+> not the maturity bar** for making reservation failure fatal, and the stale
+> urgent-queue entries remain unexplained. The fatal flip is re-evaluated at
+> **M3.3 step 4 against a fresh registry health check, not against any
+> document.**
+
+**How this report came to assert it.** §7.4 and D-1 cited `CLAUDE.md` §7, which
+records `total_nodes:0` as measured under WP-08 earlier on 2026-08-23. That was
+true when written and was superseded the same day by WP-38 §6 ("TASK 4 — GPU
+node registration"), which found `_detect_gpu_identity` (`gpu_utils.py:368`)
+falling through so that registration was skipped — "which is why the scheduler
+registry was empty" — and fixed it. **The register was read and the code it
+described was not re-checked.** That is precisely the failure mode `CLAUDE.md`
+§4 exists to prevent: *"Do not trust summaries, handoff documents, or
+recollection — including this file."* A document was cited as current for a
+fact that had changed hours earlier, in a package whose own §8 is about a
+record that lost a stage.
+
+**What was then measured, after the ruling.** `192.168.1.90:8002/fleet` at
+**23:14:24Z**: `total_nodes: 6`, `alive_nodes: 0`, `queue_depth.urgent: 24`,
+every heartbeat between 31 minutes and 5½ hours old, and six entries for three
+physical GPU nodes because the registry keys on container id. Full snapshot and
+its three implications: §7.4.
+
+That measurement **supports the ruling and sharpens it**: the registry is not
+empty, and it is also not currently answering "yes" to anything. Neither
+"`total_nodes:0`" nor "the nodes registered today" is the right test. The right
+test is a fresh health check at the moment of the flip, which is what the
+ruling requires.
+
+*Not verified in this session:* that reservations were acquired and released
+during `bd99fe37`'s back half. That is the operator's statement, recorded as
+such; no scheduler log was read for that window.
+
+#### D-3 — riders
+
+Two, both binding on the wrappers package:
+
+1. **The cutover diff EXCLUDES stage 4 when comparing against Celery-era
+   records.** A Temporal run will have a `composition_manifest` row and every
+   banked Celery run will not, so the comparison must not read that asymmetry
+   as a divergence. `conformance.py`'s `UNCHECKPOINTED_STAGES` already
+   implements exactly this exclusion — it now has a ruling behind it rather
+   than only a rationale, and §9.6's "either the diff excludes Stage 4, or the
+   wrapper writes the row" is settled as **both**.
+2. **The `stage_index` collision must be resolved when the wrappers land.**
+   `composition_manifest` has no live index and the only write for it uses
+   `stage_index=4`, which `tts_audio` already occupies (`stage5_voiceover.py:619,668`).
+   A Stage 4 wrapper that starts writing rows cannot use 4. This is now an open
+   implementation item for the wrappers package, not a note.
+
+#### What these rulings changed in this package
+
+Minimal, and listed so the diff is not a surprise:
+
+| File | Change |
+|---|---|
+| this report, §7.4 | Rewritten on the corrected premise, with the live `/fleet` snapshot |
+| this report, §12.1 | This subsection |
+| `temporal_pipeline/policies.py` | The comment above `GPU_RESERVATION_FAILURE_IS_FATAL` cited `total_nodes:0`. Corrected. **The flag's value is unchanged.** |
+| `tests/temporal/test_wp41_policies.py` | The same stale citation in the docstring of `test_gpu_reservation_failure_is_not_fatal_while_the_registry_is_empty`. Corrected, and the test renamed to say what it now asserts. **The assertion is unchanged.** |
+
+No other file is touched. D-7's deletion is **not** performed here, per the
+ruling.
 
 ---
 
@@ -1102,8 +1252,17 @@ nothing.
   after.
 - The replay gate, both directions: current code replays; a divergent workflow
   raises `NondeterminismError`.
+- **The scheduler registry**, `192.168.1.90:8002/fleet` at 23:14:24Z, read
+  after the operator's D-1 correction: `total_nodes: 6`, `alive_nodes: 0`,
+  `queue_depth.urgent: 24`, six entries for three physical GPU nodes. §7.4.
 
 **Inferred, or not verified** — stated as such:
+
+- **That real reservations were acquired and released during `bd99fe37`'s back
+  half** (operator, D-1). Recorded as the operator's statement; no scheduler log
+  was read for that window in this session.
+- **Why `queue_depth.urgent` is accumulating.** 23 earlier today, 24 at
+  23:14:24Z. Unexplained, and named as unexplained by the D-1 ruling.
 
 - **That Stage 4 ran on `bd99fe37` in the 18:44:54 → 18:45:02 window.** TTS
   needs a locked manifest, so it must have. No log was read for that window in
@@ -1144,5 +1303,6 @@ nothing.
 | Python suite does not regress | **Met** — §10.4: failures 74 → 74, and `+162 passed / +2 skipped` against a baseline taken before any file of this package existed |
 | Nothing outside the new module modified | **Met** — §1 |
 | Commit and HOLD | **Met** — §11 |
+| Operator rulings recorded and applied | **Met** — §12.1, all seven, including the D-1 premise correction and the two code sites it invalidated |
 
 *End of report.*
