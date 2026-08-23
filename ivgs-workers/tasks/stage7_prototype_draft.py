@@ -101,6 +101,23 @@ class Stage7Input(BaseModel):
     enable_talking_head: bool = True
 
 
+class Stage7RenderError(RuntimeError):
+    """Stage 7 finished without producing a draft.
+
+    Raised deliberately, and deliberately AFTER `handle_stage_completion` has
+    been dispatched, so the orchestrator still receives the failed stage output
+    while Celery records the task as FAILED.
+
+    WP-27 / swallow-register instance 14. Before this existed the task caught
+    the ffmpeg failure, wrote `status: failed` into its own output object, and
+    then returned that object normally - so Celery recorded SUCCESS for a run
+    that produced no draft. Observed live on job 7980c0b9 (2026-08-15 11:25:18,
+    ivgs-celery-composition): `FFmpeg failed (rc=1)` and `task_succeeded` for
+    the same task. Anything reading task state - the orchestrator, the job row,
+    an operator - saw a successful Stage 7.
+    """
+
+
 class Stage7Output(BaseModel):
     """Output from Stage 7: Prototype Draft Assembly."""
     job_id: str
@@ -580,12 +597,31 @@ def assemble_prototype_draft(
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
 
-    # Dispatch stage completion
+    # Dispatch stage completion FIRST. The orchestrator's contract is that it
+    # receives every stage's output, success or failure, so the dispatch must
+    # happen even on the failure path below.
     output_dict = output.model_dump(mode="json")
     celery_app.send_task(
         "tasks.pipeline_orchestrator_v2.handle_stage_completion",
         kwargs={"stage_output_dict": output_dict},
         queue="default",
     )
+
+    # WP-27, swallow-register instance 14. Three paths set FAILED above -- the
+    # broad `except` around the render (ffmpeg rc != 0 arrives here), the
+    # "No scenes could be composed" branch, and scenes_composed == 0 -- and all
+    # three used to fall through to the return below, so Celery recorded SUCCESS
+    # for a run that produced no draft. Raise instead, so task state matches
+    # reality.
+    #
+    # PARTIAL_SUCCESS is deliberately NOT raised on: some scenes composed and
+    # some failed is a real partial result, not a failed task.
+    if output.status is StageStatus.FAILED:
+        raise Stage7RenderError(
+            f"Stage 7 produced no draft for job {job_id}: "
+            f"{'; '.join(output.errors) or 'no error detail recorded'} "
+            f"(scenes_composed={output.scenes_composed}, "
+            f"scenes_failed={output.scenes_failed})"
+        )
 
     return output_dict
