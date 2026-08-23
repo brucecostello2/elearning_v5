@@ -116,6 +116,9 @@ services:
       IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
       IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
       IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       C_FORCE_ROOT: "1"
     volumes:
       - /mnt/ivgs-shared:/mnt/ivgs-shared
@@ -179,6 +182,9 @@ services:
       IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
       IVGS_CELERY_RESULT_BACKEND: "db+postgresql+psycopg2://ivgs:${POSTGRES_PASSWORD}@${NODE_01_IP}:5432/ivgs"
       IVGS_CELERY_BROKER_URL: "redis://${NODE_01_IP}:6379/0"
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       API_BASE_URL: "http://${NODE_01_IP}:8001"
       IVGS_GPU_SCHEDULER_URL: http://${NODE_01_IP}:8002
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888

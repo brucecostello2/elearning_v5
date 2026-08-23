@@ -248,6 +248,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_MASTER_URL: http://seaweedfs-master:9333
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
@@ -370,6 +373,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
@@ -410,6 +416,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       SEAWEEDFS_FILER_URL: http://seaweedfs-filer:8888
       C_FORCE_ROOT: "1"
@@ -451,6 +460,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       REDIS_URL: redis://redis:6379/0
       IVGS_CELERY_BROKER_URL: redis://redis:6379/0
+      # WP-05 / ledger P0.1: must exceed the longest hard task time_limit
+      # (3900s, talking_head + video_generation). Asserted at worker startup.
+      IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"
       IVGS_CELERY_RESULT_BACKEND: db+postgresql+psycopg2://${POSTGRES_USER:-ivgs}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ivgs}
       <<: *gpu-service-urls
     networks:

@@ -28,6 +28,7 @@ from __future__ import annotations
 import logging
 import os
 import ssl
+import sys
 from datetime import timedelta
 from typing import Any, Dict, Optional
 
@@ -344,6 +345,121 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
     return app
 
 
+
+# ---------------------------------------------------------------------------
+# Broker visibility-timeout invariant (ledger P0.1, WP-05)
+# ---------------------------------------------------------------------------
+
+class VisibilityTimeoutError(RuntimeError):
+    """The broker would redeliver a message while its task is still running.
+
+    Raised at worker startup, deliberately fatal. A worker that consumes with
+    ``task_acks_late`` under a visibility timeout shorter than its own hard
+    ``time_limit`` will re-run long tasks - and on a queue with two consumers
+    (``gpu_video`` is bound to node-02 and node-03 in tracked compose) it will run
+    two copies at once. That is not a condition to log and continue past.
+    """
+
+
+def check_visibility_timeout(
+    visibility_timeout: int,
+    task_time_limits: Dict[str, int],
+) -> None:
+    """Raise if any task's hard time limit meets or exceeds the visibility timeout.
+
+    Pure: takes the two numbers, knows nothing about Celery. ``task_time_limits``
+    maps task name -> hard ``time_limit`` in seconds. Tasks with no hard limit are
+    the caller's job to resolve (see the app-level wrapper) and must not appear here
+    as ``None``.
+
+    The comparison is ``>=``, not ``>``: equal values are a coin-flip race, not a
+    pass.
+    """
+    if not visibility_timeout or visibility_timeout <= 0:
+        raise VisibilityTimeoutError(
+            "broker visibility_timeout is unset or non-positive "
+            f"({visibility_timeout!r}); refusing to start. Set "
+            "IVGS_BROKER_VISIBILITY_TIMEOUT above the longest task time_limit."
+        )
+
+    offenders = {
+        name: limit
+        for name, limit in task_time_limits.items()
+        if limit is not None and limit >= visibility_timeout
+    }
+    if not offenders:
+        return
+
+    worst_name, worst_limit = max(offenders.items(), key=lambda kv: kv[1])
+    listed = ", ".join(
+        f"{name}={limit}s" for name, limit in sorted(
+            offenders.items(), key=lambda kv: -kv[1]
+        )
+    )
+    raise VisibilityTimeoutError(
+        "broker visibility_timeout ("
+        f"{visibility_timeout}s) does not cover the hard time_limit of "
+        f"{len(offenders)} task(s): {listed}. "
+        f"The longest is {worst_name} at {worst_limit}s. With task_acks_late the "
+        f"broker will redeliver a {worst_name} message at t={visibility_timeout}s "
+        f"while the original is still running, up to t={worst_limit}s. "
+        "Raise IVGS_BROKER_VISIBILITY_TIMEOUT above "
+        f"{worst_limit}s with margin (7200 is the ledger P0.1 recommendation), "
+        "or lower the task's time_limit. Refusing to start."
+    )
+
+
+def collect_task_time_limits(app: Celery) -> Dict[str, int]:
+    """Hard time limit per registered task, resolving the app default.
+
+    A task that declares no ``time_limit`` inherits ``app.conf.task_time_limit``,
+    so the effective limit - not the declared one - is what gets checked. Celery's
+    own internal ``celery.*`` tasks are skipped; they are not ours and carry no
+    render-length limits.
+
+    Forces ``app.conf.include`` to be imported first. Without this the registry is
+    empty until the worker's own loader runs, and an empty registry means no
+    offenders means the gate silently passes - a check that cannot fail is worse
+    than no check, because it reads as protection. Re-importing an already-imported
+    module is a ``sys.modules`` hit, so this is cheap and idempotent.
+    """
+    try:
+        app.loader.import_default_modules()
+    except Exception:  # pragma: no cover - a broken task module surfaces elsewhere
+        # Deliberately swallowed HERE and only here: if a task module cannot be
+        # imported, the worker fails on that with a far better message than this
+        # gate could produce. The emptiness check below still fires.
+        logger.exception("visibility_timeout gate could not import task modules")
+
+    default_limit = app.conf.task_time_limit
+    limits: Dict[str, int] = {}
+    for name, task in (app.tasks or {}).items():
+        if name.startswith("celery."):
+            continue
+        limit = getattr(task, "time_limit", None)
+        if limit is None:
+            limit = default_limit
+        if limit is not None:
+            limits[name] = int(limit)
+    return limits
+
+
+def assert_visibility_timeout_covers_time_limits(app: Celery) -> None:
+    """Startup gate. Reads the live app's transport options and task registry."""
+    transport_options = app.conf.broker_transport_options or {}
+    limits = collect_task_time_limits(app)
+    if not limits:
+        raise VisibilityTimeoutError(
+            "the visibility-timeout gate found no registered tasks, so it cannot "
+            "establish the invariant. Refusing to start rather than passing "
+            "vacuously. Check app.conf.include."
+        )
+    check_visibility_timeout(
+        transport_options.get("visibility_timeout"),
+        limits,
+    )
+
+
 def _mask_url(url: str) -> str:
     """Mask passwords in URLs for safe logging."""
     if "@" in url:
@@ -356,6 +472,41 @@ def _mask_url(url: str) -> str:
 # ---------------------------------------------------------------------------
 # Signal handlers
 # ---------------------------------------------------------------------------
+
+@signals.celeryd_after_setup.connect
+def on_celeryd_after_setup(sender: Any = None, instance: Any = None, **kwargs: Any) -> None:
+    """Fail fast if the broker would redeliver a task while it is still running.
+
+    Ledger P0.1 / WP-05. This signal fires after the worker has imported its task
+    modules - so ``app.tasks`` is populated and the check sees real, effective hard
+    limits - and before the consumer starts, so a violation aborts startup instead
+    of being discovered by a duplicate render three thousand seconds in.
+
+    Raising here is deliberate, and it raises SystemExit rather than the error
+    itself. MEASURED 2026-08-23 (WP-05): celery/utils/dispatch/signal.py:276 wraps
+    every receiver in `except Exception`, logs it, and carries on - a probe worker
+    raised VisibilityTimeoutError from this handler, printed the full message, and
+    then went right on to start its consumer. A gate that only logs is not a gate.
+    SystemExit derives from BaseException, so that `except Exception` does not
+    catch it and the worker actually stops.
+    """
+    app = getattr(instance, "app", None) or celery_app
+    try:
+        assert_visibility_timeout_covers_time_limits(app)
+    except VisibilityTimeoutError as exc:
+        import structlog
+
+        structlog.get_logger("ivgs.worker.init").critical(
+            "visibility_timeout_invariant_violated",
+            error=str(exc),
+            remedy="raise IVGS_BROKER_VISIBILITY_TIMEOUT; see ledger P0.1",
+        )
+        # Also to stderr: structlog may not be configured this early on every path,
+        # and a worker that dies silently is the failure mode this package exists
+        # to remove.
+        print(f"FATAL: {exc}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from exc
+
 
 @signals.worker_init.connect
 def on_worker_init(sender: Any = None, **kwargs: Any) -> None:

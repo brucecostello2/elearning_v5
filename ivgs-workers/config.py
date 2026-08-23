@@ -211,8 +211,21 @@ class WorkerConfig:
         "IVGS_CELERY_RESULT_BACKEND",
         "db+postgresql+psycopg2://ivgs:ivgs@node-01:5432/ivgs_results",
     )
+    # INVARIANT (ledger P0.1, WP-05): this MUST exceed the longest hard `time_limit`
+    # of any registered task, with margin. With task_acks_late = True
+    # (celery_app.py:288) the ack lands only after the task body returns, and kombu's
+    # Redis transport restores an unacked message to the queue once this many seconds
+    # elapse. At the old 3600 against the 3900 s hard limit on talking_head
+    # (talking_head_task.py:399) and video_generation (video_generation_task.py:445),
+    # a still-running render had its message put back at t=3600 and re-claimed - on
+    # gpu_video, which tracked config binds to BOTH node-02 and node-03, by a second
+    # node concurrently.
+    #
+    # 7200 is the ledger's recommendation: 3900 + 3300 s of margin. The invariant is
+    # not left to a comment - assert_visibility_timeout_covers_time_limits() in
+    # celery_app.py aborts worker startup if it is ever violated again.
     broker_visibility_timeout: int = _env(
-        "IVGS_BROKER_VISIBILITY_TIMEOUT", 3600, int
+        "IVGS_BROKER_VISIBILITY_TIMEOUT", 7200, int
     )
     broker_use_ssl: bool = _env("IVGS_BROKER_USE_SSL", False, bool)
     broker_ssl_ca_certs: Optional[str] = _env("IVGS_BROKER_SSL_CA_CERTS", None)
