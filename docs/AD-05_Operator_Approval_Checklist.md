@@ -101,11 +101,25 @@ Verified live on node-07, 2026-08-22. Details in
 
 | | |
 |---|---|
-| Approve A-1 … A-8 (list any withheld; A-4 and A-8 are pre-ruled) | ______________________ |
+| Approve A-1 … A-8 (list any withheld; A-4 and A-8 are pre-ruled) | **A-1 … A-8 ALL APPROVED. None withheld.** A-4 and A-8 approved as pre-ruled. |
 | D-1 … D-6 — **all ruled 2026-08-22**, no action required | ✅ |
-| Approved by | ______________________ |
-| Date | ______________________ |
+| Approved by | **Bruce Costello**, operator |
+| Date | **2026-08-22** |
 
-**Until this is signed, no migration code may be written.** WP-31 wrote none:
-its spike lives in `dev/spikes/temporal/`, imports nothing from IVGS, and is
-marked throwaway in its own README.
+**SIGNED. The §18 review-board gate is PASSED and migration code is authorised.**
+
+Two things this sign-off does **not** do, carried forward verbatim from §A and §B:
+
+1. **It does not authorise cutover.** §12 gates that separately, and the §11.1
+   preconditions in §B above are **not waived** by this approval: M1 closed,
+   M2 closed, node-07 reachable **from every fleet node** (nodes 02, 03 and 04
+   → node-07 is still **UNTESTED** — test before §11.2 step 1), and a quiet
+   window with no in-flight jobs.
+2. **A-8 remains contingent.** Fatal-with-retry GPU reservation ships only if
+   ledger **P2.6** has made the heartbeat registry real by §11.2 step 4. If
+   P2.6 has not landed, A-8 **reopens** — it does not ship against an empty
+   registry (`total_nodes:0`).
+
+WP-31 wrote no migration code before this signature: its spike lives in
+`dev/spikes/temporal/`, imports nothing from IVGS, and is marked throwaway in
+its own README.

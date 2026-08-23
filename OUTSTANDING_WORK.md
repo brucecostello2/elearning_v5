@@ -709,6 +709,8 @@ It reads the **staging** directory (`/tmp/ivgs-backup/<date>`), not the NAS. Com
 | **WS-T.6** | Verify against WS-T.3's reference output; keep the Celery path behind a flag until verified | OPEN |
 | **WS-T.7** | Roll out nodes 02/03/05/06 on the new architecture — each node configured **once** (absorbs P3.3 / handoff register #4) | OPEN |
 
+**M3.1 review-board gate PASSED 2026-08-22** (operator Bruce Costello; AD-05 Draft 2 items A-1…A-8 all approved, none withheld) — **migration code authorized**; preconditions (M1 close, M2 close, fleet-to-node-07 reachability, quiet window) still gate cutover per §11.2.
+
 **Then:** long-video testing (M3) with resume-from-failure.
 
 **Scope discipline (hard).** Replace the coordination layer only — stage transitions, completion callbacks, join counters, watchdog, checkpointing, retry/DLQ plumbing. **Preserve** the eight stage bodies (~25,000 lines of June's hard-won domain knowledge: Jinja fixes, extensible-WAV handling, scene linkage, AD-03 duration anchoring, ffmpeg logic) as activities with thin wrappers. **Keep** `ivgs-scheduler`, the API, frontend, DB schema, MBCP seam, Model Store. *If a migration session finds itself editing stage internals, stop — scope control has been lost.*

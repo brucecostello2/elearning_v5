@@ -5,7 +5,7 @@
 | **Amends** | `IVGS_v5_Addendum_AD-05_Orchestration_Migration.md` (AD-05, Draft 1 — 2026-08-14) |
 | **Addendum version** | **AD-05, Draft 2 — 2026-08-22** |
 | **Classification** | Internal Working Document |
-| **Change-control status** | **Draft for review (per §18).** Review-board approval is still required before any migration code is written. This amendment exists to make that approval possible, not to grant it. |
+| **Change-control status** | **APPROVED 2026-08-22** — review-board gate per §18 PASSED, approved by Bruce Costello, operator. A-1 … A-8 all approved, none withheld. Migration code is authorised; **cutover is not** (§12 and the §11.1 preconditions still gate it). Sign-off: `docs/AD-05_Operator_Approval_Checklist.md` §E. |
 | **Authoritative code basis** | `brucecostello2/elearning_v5` @ **`8092cd8`** (node-01 working tree, 36 commits after Draft 1's `e613e844`). Every file:line below re-audited 2026-08-22. |
 | **Produced by** | WP-31-TEMPORAL-GROUNDWORK, Lane A. Evidence: `dev/workpackages/reports/WP-31-TEMPORAL-GROUNDWORK-report_2026-08-22.md` |
 | **Status of Draft 1** | Retained unchanged alongside this file. Draft 1 is not edited; this amendment carries the corrections. |
@@ -490,7 +490,19 @@ structurally rather than by renaming files.
 
 *AD-05 Draft 2 — 2026-08-22 (revised same day with operator rulings D-1…D-6;
 §4.5 rewritten from measurement, O-3 and O-4 ruled, §8 amendment accepted).
-Status: **awaiting review-board approval per §18.**
-No migration code may be written before approval. WP-31 wrote none: its spike
-code lives in `dev/spikes/temporal/`, imports nothing from IVGS, and is
-evidence rather than foundation.*
+Status: **APPROVED** — review-board gate per §18 **PASSED 2026-08-22**,
+approved by Bruce Costello, operator. Items A-1 … A-8 all approved, none
+withheld; A-4 and A-8 approved as pre-ruled. Sign-off recorded in
+`docs/AD-05_Operator_Approval_Checklist.md` §E.*
+
+***Migration code is authorised. Cutover is not.*** *The §11.1 preconditions are
+not waived by this approval and §12 gates cutover separately: M1 closed, M2
+closed, node-07 reachable from every fleet node (nodes 02, 03, 04 → node-07
+remains UNTESTED — test before §11.2 step 1), and a quiet window with no
+in-flight jobs. **A-8 stays contingent on ledger P2.6** having made the
+heartbeat registry real by §11.2 step 4; if it has not, A-8 reopens rather than
+shipping against `total_nodes:0`.*
+
+*WP-31 wrote no migration code before this approval: its spike code lives in
+`dev/spikes/temporal/`, imports nothing from IVGS, and is evidence rather than
+foundation.*
