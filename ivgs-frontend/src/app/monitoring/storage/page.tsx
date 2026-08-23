@@ -94,8 +94,13 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
   const {
     tierData,
     dedupSavings,
+    dedupAvailable,
+    dedupReason,
     totalUsed,
     totalAllocated,
+    allocationAvailable,
+    allocationReason,
+    totalAssets,
     isLoading: storageLoading,
     error: storageError,
   } = useStorageAnalytics();
@@ -132,12 +137,18 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
   }, []);
 
   /**
-   * Usage percentage for total storage.
+   * Usage percentage for total storage, or null when there is no denominator.
+   *
+   * WP-23: this returned 0 when totalAllocated was missing, and the header
+   * rendered "0%" in a green "healthy" pill. There is no allocation figure
+   * anywhere in the system, so 0% was not a low number - it was no number at
+   * all, dressed as a reassuring one.
    */
-  const totalUsagePercent = useMemo(() => {
-    if (!totalAllocated || totalAllocated === 0) return 0;
+  const totalUsagePercent = useMemo((): number | null => {
+    if (!allocationAvailable) return null;
+    if (!totalAllocated || totalAllocated === 0) return null;
     return Math.round(((totalUsed || 0) / totalAllocated) * 100);
-  }, [totalUsed, totalAllocated]);
+  }, [totalUsed, totalAllocated, allocationAvailable]);
 
   // ── Render ──────────────────────────────────────────────────────────
 
@@ -156,7 +167,13 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
         </div>
       }
     >
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      {/* WP-23: was `min-h-screen` (100vh). The monitoring layout already
+          reserves the 3.5rem sticky global header via
+          `flex min-h-[calc(100vh-3.5rem)]`, so a 100vh child overflowed its
+          scroll container by exactly the header height and pushed this page's
+          own <h1> under it. min-h-full fills the container instead of
+          re-adding the header's height. */}
+      <div className="min-h-full bg-gray-50 dark:bg-gray-950">
         {/* ── Page Header ─────────────────────────────────────────── */}
         <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -173,22 +190,37 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
               <span className="text-sm text-gray-600 dark:text-gray-400">
                 Total:{" "}
                 <strong className="text-gray-900 dark:text-gray-100">
-                  {formatBytes(totalUsed || 0)}
-                </strong>{" "}
-                / {formatBytes(totalAllocated || 0)}
+                  {typeof totalUsed === "number" ? formatBytes(totalUsed) : "—"}
+                </strong>
+                {typeof totalAssets === "number" && (
+                  <> across {totalAssets.toLocaleString()} assets</>
+                )}
               </span>
-              <span
-                className={`inline-flex items-center px-2 py-0.5 rounded-full
-                  text-xs font-medium ${
-                    totalUsagePercent > 90
-                      ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
-                      : totalUsagePercent > 75
-                      ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
-                      : "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
-                  }`}
-              >
-                {totalUsagePercent}%
-              </span>
+              {/* The Used/Allocated pill is rendered only when an allocation
+                  figure exists. It never has: see allocationReason. Showing
+                  "0%" in a green pill asserted headroom nobody had measured. */}
+              {totalUsagePercent !== null ? (
+                <span
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full
+                    text-xs font-medium ${
+                      totalUsagePercent > 90
+                        ? "bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300"
+                        : totalUsagePercent > 75
+                        ? "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300"
+                        : "bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300"
+                    }`}
+                >
+                  {totalUsagePercent}%
+                </span>
+              ) : (
+                <span
+                  title={allocationReason}
+                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs
+                    font-medium bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                >
+                  no capacity target
+                </span>
+              )}
             </div>
           </div>
         </header>
@@ -252,32 +284,51 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                     <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
                       Deduplication Savings
                     </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Estimated Savings
+                    {/* WP-23: these three tiles read `?? 0` and so displayed
+                        "0% saved / 0 B / 0 duplicates" for a subsystem that has
+                        never run. The database says otherwise -- 45 assets carry
+                        43 distinct content_hash values -- so "0 duplicates" was
+                        not merely unmeasured, it was wrong. Until something
+                        computes it (P2.4), the honest answer is that there is no
+                        figure. */}
+                    {dedupAvailable && dedupSavings ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Estimated Savings
+                          </p>
+                          <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
+                            {dedupSavings.percent}%
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Space Saved
+                          </p>
+                          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
+                            {formatBytes(dedupSavings.bytes_saved)}
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                            Duplicate Assets
+                          </p>
+                          <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
+                            {dedupSavings.duplicate_count}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-gray-300
+                        dark:border-gray-700 px-4 py-6 text-center">
+                        <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                          Not available
                         </p>
-                        <p className="mt-1 text-3xl font-bold text-green-600 dark:text-green-400">
-                          {dedupSavings?.percent ?? 0}%
+                        <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 max-w-2xl mx-auto">
+                          {dedupReason}
                         </p>
                       </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Space Saved
-                        </p>
-                        <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
-                          {formatBytes(dedupSavings?.bytes_saved ?? 0)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                          Duplicate Assets
-                        </p>
-                        <p className="mt-1 text-3xl font-bold text-gray-900 dark:text-gray-100">
-                          {dedupSavings?.duplicate_count ?? 0}
-                        </p>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Per-Tier Detail Table */}
@@ -313,12 +364,19 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                             const data = tierData?.find(
                               (t: StorageTierData) => t.tier === tier.id
                             );
-                            const usagePercent =
+                            // WP-23: a tier with no allocation figure has no
+                            // usage percentage. This used to fall through to 0,
+                            // so an unmeasured tier and a genuinely empty one
+                            // were indistinguishable. null keeps them apart.
+                            const usagePercent: number | null =
                               data && (data.allocated ?? 0) > 0
                                 ? Math.round(
                                     (data.used! / data.allocated!) * 100
                                   )
-                                : 0;
+                                : null;
+                            // A tier absent from the API response was never
+                            // reported on, which is not the same as "0 bytes".
+                            const tierObserved = data !== undefined;
 
                             return (
                               <tr key={tier.id}>
@@ -341,34 +399,60 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                   </div>
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono">
-                                  {formatBytes(data?.used ?? 0)}
+                                  {tierObserved ? (
+                                    formatBytes(data!.used ?? 0)
+                                  ) : (
+                                    <span className="text-gray-400 dark:text-gray-500">
+                                      no assets
+                                    </span>
+                                  )}
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
-                                  {formatBytes(data?.allocated ?? 0)}
+                                <td
+                                  className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono"
+                                  title={allocationReason}
+                                >
+                                  {/* Never 0 B: no capacity is modelled at all. */}
+                                  <span className="text-gray-400 dark:text-gray-500 font-sans">
+                                    not modelled
+                                  </span>
                                 </td>
                                 <td className="px-4 py-2">
-                                  <div className="flex items-center gap-2">
-                                    <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                                      <div
-                                        className={`h-2 rounded-full ${
-                                          usagePercent > 90
-                                            ? "bg-red-500"
-                                            : usagePercent > 75
-                                            ? "bg-amber-500"
-                                            : "bg-green-500"
-                                        }`}
-                                        style={{
-                                          width: `${Math.min(usagePercent, 100)}%`,
-                                        }}
-                                      />
+                                  {usagePercent !== null ? (
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-24 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div
+                                          className={`h-2 rounded-full ${
+                                            usagePercent > 90
+                                              ? "bg-red-500"
+                                              : usagePercent > 75
+                                              ? "bg-amber-500"
+                                              : "bg-green-500"
+                                          }`}
+                                          style={{
+                                            width: `${Math.min(usagePercent, 100)}%`,
+                                          }}
+                                        />
+                                      </div>
+                                      <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
+                                        {usagePercent}%
+                                      </span>
                                     </div>
-                                    <span className="text-xs text-gray-600 dark:text-gray-400 font-mono">
-                                      {usagePercent}%
+                                  ) : (
+                                    /* A 0%-full green bar reads as "plenty of
+                                       room". There is no denominator, so there
+                                       is no bar. */
+                                    <span
+                                      className="text-xs text-gray-400 dark:text-gray-500"
+                                      title={allocationReason}
+                                    >
+                                      —
                                     </span>
-                                  </div>
+                                  )}
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                                  {(data?.asset_count ?? 0).toLocaleString()}
+                                  {tierObserved
+                                    ? (data!.asset_count ?? 0).toLocaleString()
+                                    : "0"}
                                 </td>
                               </tr>
                             );

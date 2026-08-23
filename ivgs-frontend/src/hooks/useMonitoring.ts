@@ -426,8 +426,16 @@ export function useCompositionTimeline(jobId: string | null): {
 export function useStorageAnalytics(): {
   tierData: StorageTierData[] | undefined;
   dedupSavings: { percent: number; bytes_saved: number; duplicate_count: number } | undefined;
+  /** False when the API exposes no dedup figures at all. Do NOT render 0 instead. */
+  dedupAvailable: boolean;
+  dedupReason: string;
   totalUsed: number | undefined;
   totalAllocated: number | undefined;
+  /** False when no allocation/capacity figure exists anywhere. */
+  allocationAvailable: boolean;
+  allocationReason: string;
+  totalAssets: number | undefined;
+  policyName: string | undefined;
   isLoading: boolean;
   error: Error | undefined;
 } {
@@ -442,11 +450,53 @@ export function useStorageAnalytics(): {
     config
   );
 
+  // WP-23. This hook used to read `data.tiers ?? data.tier_breakdown`,
+  // `data.dedup_savings`, `data.total_used` and `data.total_allocated`. NONE of
+  // those four names has ever existed on the API side -- `git log -S` over the
+  // whole of ivgs-api/ returns no commit for `total_allocated` or
+  // `tier_breakdown`, while the frontend has read them since 0962319, the
+  // initial release. Every field resolved to undefined and the page floored each
+  // one to 0 with `?? 0`, which is how a database holding 45 assets and 208 MB
+  // rendered as "0 B used, 0 assets".
+  //
+  // The endpoint actually returns RetentionReportResponse
+  // (ivgs-api/app/schemas/retention.py:103): total_assets, total_size_bytes,
+  // tier_distribution[{tier, asset_count, total_size_bytes}], upcoming_migrations,
+  // policy_name.
+  const tierData: StorageTierData[] | undefined = data?.tier_distribution?.map(
+    (t: { tier: string; asset_count: number; total_size_bytes: number }) => ({
+      tier: t.tier as StorageTierData["tier"],
+      used_bytes: t.total_size_bytes,
+      // No per-tier capacity exists in the data model, so there is nothing
+      // truthful to put here. The page must read `allocationAvailable`, not
+      // treat 0 as "no space allocated".
+      total_bytes: 0,
+      asset_count: t.asset_count,
+      used: t.total_size_bytes,
+      allocated: undefined,
+    })
+  );
+
   return {
-    tierData: data?.tiers ?? data?.tier_breakdown,
-    dedupSavings: data?.dedup_savings,
-    totalUsed: data?.total_used,
-    totalAllocated: data?.total_allocated,
+    tierData,
+    // Deduplication is not computed by any endpoint (ledger P2.4). The columns
+    // exist -- assets.content_hash and assets.reference_count are populated on
+    // every row -- but nothing aggregates them, so there is no figure to show.
+    // Reporting 0% saved would assert that dedup ran and found nothing.
+    dedupSavings: undefined,
+    dedupAvailable: false,
+    dedupReason:
+      "Deduplication savings are not computed by any endpoint (ledger P2.4). " +
+      "assets.content_hash and assets.reference_count are populated, so the " +
+      "figure is derivable, but nothing derives it yet.",
+    totalUsed: data?.total_size_bytes,
+    totalAllocated: undefined,
+    allocationAvailable: false,
+    allocationReason:
+      "No storage allocation or per-tier capacity is modelled anywhere in the " +
+      "system, so there is no denominator to report against.",
+    totalAssets: data?.total_assets,
+    policyName: data?.policy_name,
     isLoading,
     error,
   };
