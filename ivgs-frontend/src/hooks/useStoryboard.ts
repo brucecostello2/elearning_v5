@@ -21,6 +21,7 @@ import type {
  * - Reorder scenes (PUT /api/v1/projects/{id}/scenes/reorder)
  * - Regenerate scene (POST /api/v1/projects/{id}/scenes/{sid}/regenerate)
  * - Batch regenerate (POST /api/v1/projects/{id}/scenes/batch-regenerate)
+ * - Approve storyboard (POST /api/v1/projects/{id}/scenes/approve?tier=)
  *
  * SWR configuration:
  * - Revalidation on focus: enabled
@@ -62,6 +63,8 @@ function getScenesKey(projectId: string | undefined): string | null {
 }
 
 interface UseStoryboardReturn {
+  /** Approve the storyboard -> POST /projects/{id}/scenes/approve?tier= */
+  approveStoryboard: (tier?: "prototype" | "production") => Promise<unknown>;
   /** Array of scenes sorted by scene_index */
   scenes: Scene[] | undefined;
   /** Whether data is currently loading */
@@ -368,11 +371,40 @@ export function useStoryboard(
     [projectId, cacheKey, scenes, mutate]
   );
 
+  /**
+   * Approve the storyboard and continue the pipeline into media generation.
+   *
+   * WP-40 Task 3a. `POST /api/v1/projects/{id}/scenes/approve?tier=...`
+   * (storyboard.py:194) has existed and worked all along -- WP-38 §4 traced
+   * it end to end and used it to advance this very project. What was missing
+   * was any way to CALL it from the GUI, so the operator was pasting a curl
+   * block to get past the review gate.
+   *
+   * Returns the updated project so the caller can show the new state. A 409
+   * (INVALID_STATE_TRANSITION -- already past media generation, or no scenes,
+   * or no render job) arrives as an ApiRequestError whose message is the
+   * server's own reason; callers surface it verbatim rather than inventing
+   * one.
+   */
+  const approveStoryboard = useCallback(
+    async (tier: "prototype" | "production" = "prototype"): Promise<unknown> => {
+      const response = await api.post<unknown>(
+        `/api/v1/projects/${projectId}/scenes/approve?tier=${encodeURIComponent(tier)}`
+      );
+      /* The gate changes project state; refresh both views of it. */
+      await globalMutate(`/api/v1/projects/${projectId}`);
+      await mutate();
+      return response.data;
+    },
+    [projectId, mutate]
+  );
+
   return {
     scenes: sortedScenes,
     isLoading,
     error,
     mutate: () => mutate(),
+    approveStoryboard,
     updateScene,
     deleteScene,
     deleteScenes,

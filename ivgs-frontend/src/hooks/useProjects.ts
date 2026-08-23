@@ -31,6 +31,27 @@ interface UseProjectsReturn {
   uploadTranscripts: (projectId: string, files: File[]) => Promise<unknown>;
   addLanguage: (languageCode: string) => Promise<any>;
   retryLanguage: (languageCode: string) => Promise<void>;
+  triggerPipeline: (tier?: RenderTier) => Promise<Project>;
+}
+
+/** AD-01 model-selection tier for a run (IVGS-0.3). */
+export type RenderTier = "prototype" | "production";
+
+/**
+ * States from which `POST /projects/{id}/trigger` is legal.
+ *
+ * `ProjectService.trigger_pipeline` (project_service.py:266) accepts exactly
+ * DRAFT (-> TRANSCRIPT_REFINEMENT) and USER_REVIEW (-> FINAL_RENDER) and
+ * raises ValueError otherwise, which the route turns into a 409. Mirrored
+ * here so the button is simply absent rather than offered and then refused.
+ */
+export const TRIGGERABLE_STATES = ["DRAFT", "USER_REVIEW"] as const;
+
+export function canTriggerPipeline(state: string | null | undefined): boolean {
+  return (
+    typeof state === "string" &&
+    (TRIGGERABLE_STATES as readonly string[]).includes(state)
+  );
 }
 
 const projectsFetcher = async (url: string): Promise<Project[]> => {
@@ -173,6 +194,29 @@ export function useProjects(projectId?: string): UseProjectsReturn {
     detailMutate();
   };
 
+  /**
+   * Trigger pipeline execution from the project's current state.
+   *
+   * WP-40 Task 3b (ledger M6). `POST /api/v1/projects/{id}/trigger?tier=...`
+   * (projects.py:146) exists and works; nothing in the GUI called it, so
+   * starting a run meant a curl block.
+   *
+   * A 409 arrives as an ApiRequestError carrying the server's own reason --
+   * "Cannot trigger pipeline from state 'X'. Triggerable states: [...]" or
+   * "Cannot trigger pipeline: no transcripts uploaded". Callers show that
+   * text; there is nothing this side can add to it that would be truer.
+   */
+  const triggerPipeline = async (
+    tier: RenderTier = "prototype"
+  ): Promise<Project> => {
+    if (!projectId) throw new Error("Project ID required");
+    const response = await apiClient.post<Project>(
+      `/api/v1/projects/${projectId}/trigger?tier=${encodeURIComponent(tier)}`
+    );
+    detailMutate();
+    return response.data;
+  };
+
   return {
     projects: listData,
     project: detailData,
@@ -186,5 +230,6 @@ export function useProjects(projectId?: string): UseProjectsReturn {
     uploadTranscripts,
     addLanguage,
     retryLanguage,
+    triggerPipeline,
   };
 }

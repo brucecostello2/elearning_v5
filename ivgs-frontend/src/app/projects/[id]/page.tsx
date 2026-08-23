@@ -2,10 +2,11 @@
 
 import React, { useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useProjects } from "@/hooks/useProjects";
+import { canTriggerPipeline, useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import StateBadge from "@/components/StateBadge";
 import PipelineTracker from "@/components/PipelineTracker";
+import PipelineGateButton from "@/components/PipelineGateButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import type { Project, ProjectState } from "@/types/api";
@@ -44,9 +45,18 @@ export default function ProjectDetailPage(): React.ReactElement {
   const router = useRouter();
   const { user } = useAuth();
   const projectId = params.id as string;
-  const { project, isLoading, error } = useProjects(projectId);
+  const { project, isLoading, error, triggerPipeline } = useProjects(projectId);
 
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  /**
+   * WP-40 Task 3b. Operator or admin only -- `POST /projects/{id}/trigger`
+   * is behind `require_operator_or_admin`, so a viewer must not see the
+   * button at all rather than press it into a 403.
+   */
+  const canTrigger =
+    (user?.role === "admin" || user?.role === "operator") &&
+    canTriggerPipeline(project?.state);
 
   /**
    * Tab definitions per Table 8-2.
@@ -218,6 +228,36 @@ export default function ProjectDetailPage(): React.ReactElement {
             </div>
           </div>
           <div className="flex items-center gap-2 mt-4 sm:mt-0">
+            {/* WP-40 Task 3b (ledger M6). POST /projects/{id}/trigger accepts
+                only DRAFT and USER_REVIEW (project_service.py:266), and is
+                guarded by require_operator_or_admin -- so the button is shown
+                for exactly those states and never to a viewer. A 409 (wrong
+                state, or "no transcripts uploaded") is surfaced with the
+                server's own wording. */}
+            {canTrigger && (
+              <PipelineGateButton
+                label={
+                  project.state === "USER_REVIEW"
+                    ? "Start final render"
+                    : "Trigger pipeline"
+                }
+                confirmTitle={
+                  project.state === "USER_REVIEW"
+                    ? "Start the final render?"
+                    : "Trigger the pipeline?"
+                }
+                confirmBody={
+                  project.state === "USER_REVIEW"
+                    ? "This accepts the draft and starts the full-resolution render. It consumes GPU time."
+                    : "This starts transcript refinement and runs the pipeline forward. It requires at least one uploaded transcript and consumes GPU time."
+                }
+                confirmLabel={
+                  project.state === "USER_REVIEW" ? "Start render" : "Trigger"
+                }
+                successMessage="Pipeline triggered."
+                onConfirm={(tier) => triggerPipeline(tier)}
+              />
+            )}
             {project.state === "COMPLETE" && (
               <a
                 href={`/player/${project.id}`}
