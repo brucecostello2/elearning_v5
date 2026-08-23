@@ -47,6 +47,9 @@ because of this pattern.
 | 19 | `ivgs-api/app/api/v1/manifests.py:380` (pre-fix) | `mapping.get(asset_type, "background")` — a **lookup** miss produced a confident, maximally damaging answer | **FIXED 2026-08-23 by WP-27**, recorded because it is the pattern applied to a lookup rather than an error path: not knowing became *"it is the scene background"*. Worth a detector rule — a `.get(x, <default>)` whose default is a load-bearing domain value. |
 | 20 | `ivgs-workers/utils/error_handler.py:208` `create_error_detail` -> `ErrorDetail` | The **DLQ filing itself** raised `ValidationError` on `job_id=None` / `project_id=None`, and `IVGSBaseTask._route_to_dlq` (`celery_app.py:786`) caught it and logged `dlq_routing_failed` -- so the failure was **never filed** | **FIXED 2026-08-23 by WP-36.** Observed live in the first end-to-end run (job `768c4b59`). Adjacent to instance 8. See below. |
 | 21 | `ivgs-workers/clients/vllm_client.py:491` `chat_json` | `finish_reason == "length"` (output truncated at the token limit) reported as **"vLLM response is not valid JSON"** - the true cause was in the response object and was never read | **FIXED 2026-08-23 by WP-37.** A *misleading-error* instance, not a silent one: the failure was loud and wrong, which cost four retries at ~99 s each. See below. |
+| 22 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py` `media_join_watchdog` | A sweep that found nothing emitted **no structlog line at all** — the pipeline's only recovery path for a lost media join was indistinguishable from a task that never ran | **CLOSED 2026-08-23** — fixed by WP-39-MEDIA-JOIN, deployed as `v5.6.6-mediajoin`, **observed live on the deployed image** naming the real stranded job. See below. |
+| 23 | `ivgs-workers/tasks/pipeline_orchestrator.py` `supervise_worker_heartbeats` | Two at one site: an unchecked `client.patch()` whose 404 was never read, and — the worse one — reading fields the `/fleet` contract does not publish, so **every healthy node was reported `worker_confirmed_dead` every 30 s** | **CLOSED 2026-08-23** — fixed by WP-39, deployed as `v5.6.6-mediajoin`, **observed live by deliberate probe on the deployed image**. An *inverse* swallow: loud, constant and wrong, which hides a real death exactly as effectively as silence. See below. |
+| 24 | `ivgs-workers/utils/image_validator.py:295-401` | "The CLIP scorer is missing" → **`score += 0.15  # Default pass if CLIP unavailable`**; "numpy is missing" → `blank_check_ok = noise_check_ok = True` | Open — **added 2026-08-23 by WP-39.** Entry 5's shape (*manufactures a success*) applied to a **quality gate**. All 16 images of job `bd99fe37` carry `quality_score 1.0` with `clip_score None` and no blank/noise detection. See below. |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -965,6 +968,13 @@ Per CLAUDE.md §12:
   CLOSED. Instance 1's *deployment* status was also re-measured and corrected
   (see entry 1), but its failure-surfacing has still never been observed, so it
   stays open.
+- **Verified live 2026-08-23 (WP-39-MEDIA-JOIN):** instances **22** and **23**, both on
+  the deployed `v5.6.6-mediajoin` image on node-01 — 22 by the watchdog naming a real
+  stranded job and the exact stage responsible on its first sweep after deploy, 23 by a
+  deliberate probe feeding the supervisor one dead, one marginal, one healthy and one
+  timestamp-less node. Both CLOSED. Instance **24** was verified live by decoding the
+  three stage-3/video task returns out of `celery_taskmeta`, and by `import numpy`
+  failing inside the built image; it is fixed by nothing and stays OPEN.
 - **Not tested:** the downstream consequence of any swallowed value. No instance
   in this register has had its blast radius measured. Doing so is part of taking
   each one on, not a precondition for recording it.
@@ -973,6 +983,220 @@ Per CLAUDE.md §12:
 
 *Ledger open. Add instances as found; do not close one without observed evidence
 that the failure now surfaces.*
+
+
+---
+
+### 22. The media-join watchdog reported nothing on a sweep that found nothing - CLOSED 2026-08-23
+
+**Added and closed 2026-08-23 by WP-39-MEDIA-JOIN.**
+
+`media_join_watchdog` (`ivgs-workers/tasks/pipeline_orchestrator_v2.py`) is the only
+recovery path the pipeline has for a media join stranded by a task that never reported.
+It runs every five minutes from beat. On a sweep that found nothing to recover it
+emitted **zero** structlog events - not at info, not at debug. Its whole output was
+Celery's own generic line:
+
+```
+16:47:20  Task ...media_join_watchdog[4ebd0567] succeeded in 0.0515s:
+          {'status': 'ok', 'swept': 1, 'advanced': 0, 'failed': 0, 'skipped_recent': 1}
+```
+
+**Why this belongs in this register.** Nothing here returns a wrong value. The swallow
+is one level up: **the mechanism's correctness was unobservable**. "The watchdog never
+executes" and "the watchdog executes every five minutes and finds nothing to do"
+produced byte-identical evidence, so a genuinely stranded job could sit half-joined for
+the full two-hour deadline with no line in any log naming it. The WP-39 brief itself
+opened on the false premise that the task never ran - the register's own predicted
+failure mode, costing an investigation its first hour.
+
+Note `swept: 1, skipped_recent: 1` in the line above: that is the watchdog looking
+directly at job `bd99fe37`, correctly deciding it was inside the deadline, and saying
+nothing about it.
+
+**The fix.** `media_join_watchdog_sweep` at info on **every** run
+(`swept` / `advanced` / `failed` / `skipped_recent` / `deadline_seconds`), plus
+`media_join_watchdog_join_outstanding` per outstanding join per sweep, carrying
+`job_id`, `remaining_tasks`, `age_seconds` and - via the new `expected_stages` in the
+join context - **which stage has not reported**. `media_join_watchdog_redis_unavailable`
+raised from warning to error: this is the recovery path, and an unreachable Redis means
+no recovery happened.
+
+`_outstanding_media_stages()` returns **`None` for "could not tell"** and an **empty
+list for "everything reported"**. Deliberately not the same value; collapsing those two
+is the mistake the rest of this register is about.
+
+**The closing evidence.** On the deployed `v5.6.6-mediajoin` image, node-01, the first
+sweep after deploy named a job that had been invisible for an hour:
+
+```json
+17:44:54  {"event": "media_join_watchdog_join_outstanding",
+           "job_id": "bd99fe37-0621-40da-aa30-e058cc776c23", "remaining_tasks": 1,
+           "age_seconds": 3635, "deadline_seconds": 7200, "outstanding_stages": null}
+17:44:54  {"event": "media_join_watchdog_sweep", "swept": 1, "advanced": 0,
+           "failed": 0, "skipped_recent": 1, "deadline_seconds": 7200}
+```
+
+and once that job's pre-fix join context was annotated with what the dispatch log records
+it sent, the next sweep named the defect itself:
+
+```json
+17:49:54  {..., "outstanding_stages": ["animation_generation"]}
+```
+
+That is a live sweep, on the deployed image, reporting a real stranded join and the exact
+stage responsible - which is the observation this register requires. The recovery branch
+(claim, advance to Stage 4, clean up) was additionally exercised end-to-end **inside the
+built image** against a scratch Redis DB before deploy; see the WP-39 report S2.4.
+
+
+---
+
+### 23. Heartbeat supervision buried three live nodes every 30 seconds - CLOSED 2026-08-23
+
+**Added and closed 2026-08-23 by WP-39-MEDIA-JOIN.**
+
+An **inverse** swallow, and worth the register precisely because it does not look like
+one. Nothing was quiet. `supervise_worker_heartbeats` shouted, constantly, and every word
+was wrong:
+
+```json
+{"task":"heartbeat_supervision","node_hostname":null,"seconds_since_heartbeat":1787504720,
+ "event":"worker_confirmed_dead","level":"error"}                      x3, every 30s
+HTTP Request: PATCH http://ivgs-scheduler:8001/nodes/None "404 Not Found"  x3, every 30s
+```
+
+**Two swallows at one site.**
+
+*The classic one.* `client.patch(f"/nodes/{node.get('id')}", ...)` was fire-and-forget:
+the response object was never bound, let alone checked. ivgs-scheduler registers **no
+`PATCH /nodes` route at all** (`main.py`: `/schedule`, `/register`, `/heartbeat`,
+`DELETE`, `/fleet`, `/drain/{node_id}`, `/health`, `/metrics`), and `id` is not a field
+in the payload either, so every call was a literal `PATCH /nodes/None -> 404`. The
+remediation half of section 6.2 has never once executed. Nobody knew, because nobody read
+the answer.
+
+*The worse one.* The supervisor read `last_heartbeat_epoch`, `status`, `node_hostname`
+and `id` off each `/fleet` node. `FleetNodeStatus` publishes **none of the four** - it
+publishes `node_id`, `last_heartbeat` (ISO-8601), `is_alive`, `is_draining`. So
+`node.get("last_heartbeat_epoch", 0)` was `0`, `elapsed` was the entire Unix epoch, and
+every node was past every threshold on every tick. `seconds_since_heartbeat: 1787504720`
+is the tell: that is not an age, that is `time.time()`.
+
+**The cost is not the noise, it is the masking.** A node that had genuinely died would
+have produced *exactly the same three lines*. The supervisor could not have reported a
+real death in a way anybody could distinguish - and this is a defaulted `.get()` on a key
+the contract does not contain, which is instance 19's shape applied to a contract
+mismatch rather than a lookup.
+
+**The fix.** Parse the field that exists (`last_heartbeat`), preferring
+`last_heartbeat_epoch` if a future scheduler ever publishes it; treat "no usable
+timestamp" as its **own** outcome (`worker_heartbeat_age_unknown`, with
+`fleet_heartbeat_timestamp_unparseable` for a malformed one) rather than as a death; let
+`is_alive` - the registry's own verdict - veto a burial; log `node_id`. The two `patch`
+calls are **removed**, not fixed: there is no route to send them to, and a call that
+cannot succeed should not be in the code pretending to remediate. Recorded as a
+follow-up in the WP-39 report S5(a) - do not re-add without a route.
+
+Same schema mismatch, one line away, fixed with it: `collect_gpu_fleet_metrics` read
+`fleet.get("online_nodes")`; the field is `alive_nodes`. It reported `online_nodes: 0`
+against three live nodes on every 60-second tick.
+
+**The closing evidence.** Steady state on the deployed `v5.6.6-mediajoin` image:
+
+```
+17:40:24  supervise_worker_heartbeats succeeded in 0.105s:
+          {'status':'ok','total_nodes':3,'suspected_dead':0,'confirmed_dead':0,'unknown_heartbeat':0}
+```
+
+Zero `worker_confirmed_dead`, zero `PATCH /nodes/None`. But silence is weak evidence -
+green is also what a broken supervisor looks like from a distance (see instance 16's
+note). So a **deliberate probe inside the running `ivgs-celery-default` on the deployed
+image**, feeding it one live node, one genuinely dead one, one marginal one and one with
+no timestamp:
+
+```
+RESULT -> {"status":"ok","total_nodes":4,"suspected_dead":1,"confirmed_dead":1,"unknown_heartbeat":1}
+   worker_confirmed_dead      -> DEAD:gpu0     900
+   worker_suspected_dead      -> slow:gpu0     90
+   worker_heartbeat_age_unknown -> nostamp:gpu0
+PATCH calls issued: 0
+```
+
+A real death surfaces, by name, with a real age; the healthy node is silent; the
+unknowable one is neither. That is the observation this register requires.
+
+
+---
+
+### 24. A quality gate that scores a missing checker as a pass - OPEN
+
+**Added 2026-08-23 by WP-39-MEDIA-JOIN**, verified live from the Celery result backend.
+
+Entry 5's shape - *manufactures a success* - applied to the one place in the pipeline
+whose entire job is to withhold approval. Two independent absences, both converted into
+passes, in `ivgs-workers/utils/image_validator.py`:
+
+**a. The CLIP scorer does not exist, and its absence is worth 0.15.**
+`stage3_images.py:434` builds `clip_api_url = f"{config.pipeline_api.base_url}/api/v1/clip"`
+and `_compute_clip_score` POSTs to `{that}/score`. `ivgs-api` registers 32 routers and not
+one of them is a clip router; there is no `/api/v1/clip` path in the application. Every
+call 404s, logs `clip_score_api_error` at **warning**, and returns `None`. Then
+`_compute_quality_score`:
+
+```
+        if clip_score is not None:
+            clip_component = min(clip_score / 0.3, 1.0) * 0.15
+            score += clip_component
+        else:
+            score += 0.15  # Default pass if CLIP unavailable
+```
+
+An image whose prompt-alignment was never measured scores **exactly as well as one that
+scored perfectly**. The comment is honest about it, which is how it survived review.
+
+**b. numpy is not installed, and its absence passes two checks.**
+Confirmed inside `ivgs-workers:v5.6.6-mediajoin`: `import numpy` -> `No module named
+'numpy'` (Pillow 12.2.0 is present; numpy is absent from `requirements.txt`). Blank-image
+and pixel-variance detection live behind that import, and the handler is:
+
+```
+        except ImportError:
+            checks["blank_check_ok"] = True
+            checks["noise_check_ok"] = True
+            warnings.append("numpy not available for blank/noise detection")
+```
+
+Both checks are marked **passed** having never run - 0.20 of the weighted score - and the
+one warning flips `decision` to `flagged`, because `decision = FLAGGED` fires on any
+warning at all.
+
+**The compound result, decoded from `celery_taskmeta` for job `bd99fe37`** (all 16 images,
+both stage-3 tasks):
+
+```
+quality_decision : {'flagged': 16}
+clip_score       : {None: 16}
+quality_score    : [1.0]
+errors           : []
+```
+
+Sixteen assets carrying a **perfect 1.0** while two of the three real checks never
+executed, every one of them flagged for human review, and the flag telling the reviewer
+nothing about which check was missing. The score says flawless, the decision says look at
+this, and neither statement is about the image. That is worse than either defect alone:
+a reviewer who trusts the number clears the queue, and a reviewer who trusts the flag
+learns to ignore it.
+
+Also noted: the 2 video assets carry `quality_decision: ""` and `quality_score: 0.0` -
+the video path runs no validator at all.
+
+**Disposition: OPEN, recorded not fixed** (WP-39 scope). (b) is a `requirements.txt` and
+image change that re-opens blank/noise detection on real footage and needs its own
+verification pass. (a) needs either a CLIP scoring service, which does not exist, or the
+honest alternative: stop constructing a URL for a route that was never built, delete the
+free 0.15, and record `clip_score: unavailable` as a distinct value from a measured
+`None`. Both belong in one package about what a quality score is permitted to claim.
 
 ---
 
