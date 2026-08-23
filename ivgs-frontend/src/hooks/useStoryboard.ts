@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import useSWR, { mutate as globalMutate } from "swr";
 import { api } from "@/lib/api";
+import { unwrapList } from "@/lib/unwrap";
 import type {
   Scene,
   SceneUpdatePayload,
@@ -39,8 +40,19 @@ import type {
 
 /** SWR fetcher using the API client */
 async function fetchScenes(url: string): Promise<Scene[]> {
-  const response = await api.get<StoryboardResponse>(url);
-  return response.data.scenes;
+  // WP-38. This read `response.data.scenes`, but GET /projects/{id}/scenes is
+  // `response_model=List[SceneResponse]` (ivgs-api/app/api/v1/storyboard.py:33)
+  // - a BARE ARRAY. `.scenes` on an array is undefined, so the storyboard page
+  // rendered "No scenes yet" over 18 scenes that were sitting in the database.
+  // Verified live 2026-08-23 for project c12fa967: HTTP 200, top-level type
+  // list, length 18, no `scenes` key.
+  //
+  // Same family as WP-35 and WP-IVGS-0 F9, in the third possible direction:
+  // F9 over-unwrapped a bare OBJECT, WP-35's jobs/assets under-unwrapped an
+  // ENVELOPE, and this over-unwrapped a bare ARRAY. unwrapList accepts either
+  // shape, so this cannot break again if the route ever gains an envelope.
+  const response = await api.get<unknown>(url);
+  return unwrapList<Scene>(response.data);
 }
 
 /** SWR cache key generator */

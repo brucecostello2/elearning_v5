@@ -8,10 +8,12 @@ Endpoints:
 - POST   /api/v1/projects/{id}/scenes/{sid}/regenerate — Queue scene regeneration
 """
 import logging
+from datetime import datetime, timezone
 from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
@@ -67,7 +69,58 @@ async def create_scene(
         media_type=data.media_type,
         duration_seconds=data.duration_seconds,
     )
+    # WP-38 / ORCH-5. Nothing advanced projects.state when a stage completed:
+    # the only writers were trigger_pipeline (DRAFT -> TRANSCRIPT_REFINEMENT) and
+    # approve_storyboard (-> MEDIA_GENERATION), and transition_state had no
+    # callers at all. So after stages 1 and 2 both succeeded, project c12fa967
+    # still read TRANSCRIPT_REFINEMENT - the review gate had no state to show.
+    #
+    # A persisted scene IS the storyboard existing, so this is the honest moment
+    # to advance. Idempotent by construction: it only fires on the single
+    # TRANSCRIPT_REFINEMENT -> STORYBOARD_GENERATION edge, so the other 17 scenes
+    # of a run are no-ops, and a re-run from a later state is untouched.
+    #
+    # Deliberately narrow. It does not touch any other transition, and it is not
+    # a general stage->state mechanism - that is ORCH-5's job and needs the
+    # orchestrator, not this route.
+    await _advance_to_storyboard_state(project_id, db)
     return SceneResponse.model_validate(scene)
+
+
+async def _advance_to_storyboard_state(project_id: UUID, db: AsyncSession) -> None:
+    """TRANSCRIPT_REFINEMENT -> STORYBOARD_GENERATION, once, when scenes land.
+
+    Spec Table 4-3 sanctions STORYBOARD_GENERATION -> MEDIA_GENERATION, which is
+    the edge `approve_storyboard` takes; this puts the project on the near side
+    of it so the GUI can show the review gate and the continuation call is legal
+    without hand-written SQL.
+
+    Failure here must not fail the scene write: the scene is the durable fact and
+    is already committed. A state that did not advance is recoverable; a scene
+    that was rejected because a bookkeeping update failed is not.
+    """
+    from app.models.project import Project
+    from shared.models.enums import ProjectState
+
+    try:
+        project = await db.scalar(select(Project).where(Project.id == project_id))
+        if project is None:
+            return
+        if project.state != ProjectState.TRANSCRIPT_REFINEMENT.value:
+            return
+        project.state = ProjectState.STORYBOARD_GENERATION.value
+        project.updated_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.info(
+            "project_state_advanced project_id=%s %s -> %s reason=storyboard_scene_persisted",
+            project_id,
+            ProjectState.TRANSCRIPT_REFINEMENT.value,
+            ProjectState.STORYBOARD_GENERATION.value,
+        )
+    except Exception as exc:
+        logger.warning(
+            "project_state_advance_failed project_id=%s error=%s", project_id, exc,
+        )
 
 
 @router.patch("/{scene_id}", response_model=SceneResponse, summary="Update scene")
