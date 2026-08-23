@@ -66,10 +66,20 @@ WITH projected AS (
            m.enabled
     FROM models m
     UNION ALL
+    -- AMENDED 2026-08-23 by WP-34-DEPLOY-BATCH R7.3.
+    -- Was mistral-24b-transcript / mistral-24b-storyboard. node-02 came back at
+    -- 01:23:23Z on 2026-08-23 and its vLLM serves llama-3.3-70b -- verified live
+    -- from inside the node-02 and node-04 workers (HTTP 200,
+    -- models=[llama-3.3-70b]). The mistral-24b rows were the interim answer to
+    -- node-02 being dead; they are no longer the plan. Per finding F-6 each row
+    -- still needs default_params.engine_model = the SERVED name, 'llama-3.3-70b'
+    -- (the store's existing 'Llama-3.3-70B-Instruct' row is on stage
+    -- 'translation' and cannot serve stage 1 or 2 -- AD-01.5.2 is one row per
+    -- stage -- so these are new rows, not a promotion).
     SELECT * FROM (VALUES
-        ('mistral-24b-transcript','transcript_refinement','both','approved',TRUE,TRUE),
-        ('mistral-24b-storyboard','storyboard_generation','both','approved',TRUE,TRUE),
-        ('flux1-schnell',         'image_generation',     'both','approved',TRUE,TRUE)
+        ('llama-3.3-70b-transcript','transcript_refinement','both','approved',TRUE,TRUE),
+        ('llama-3.3-70b-storyboard','storyboard_generation','both','approved',TRUE,TRUE),
+        ('flux1-schnell',           'image_generation',     'both','approved',TRUE,TRUE)
     ) AS v(name,stage,tier,state,is_default,enabled)
 ),
 stages(s) AS (VALUES ('transcript_refinement'),('storyboard_generation'),

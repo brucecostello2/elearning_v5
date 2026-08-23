@@ -26,9 +26,9 @@ because of this pattern.
 
 | # | Site | Swallows | Disposition |
 |---|---|---|---|
-| 1 | `ivgs-backup-worker/tasks/backup_tasks.py` — 4 tasks, 10 return sites | Script exit codes | **Fixed**, pending deploy — WP-BACKUP-REPORTING |
-| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **FIXED 2026-08-23, pending deploy** — WP-06-MEDIA-JOIN, with evidence. See below. |
-| 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | **FIXED 2026-08-23, pending deploy** — WP-07-CHECKPOINTS, with evidence. See below. |
+| 1 | `ivgs-backup-worker/tasks/backup_tasks.py` — 4 tasks, 10 return sites | Script exit codes | **Open** — fixed and, contrary to the note below, **already deployed** (corrected 2026-08-23 by WP-34). Stays open: the register closes on *observed* failure-surfacing, and none has been observed. |
+| 2 | `ivgs-workers/tasks/pipeline_orchestrator_v2.py:869` | Redis errors → `0` | **CLOSED 2026-08-23** — fixed by WP-06-MEDIA-JOIN, deployed by WP-34 (`v5.6.0-m2`), failure-surfacing **observed live on the deployed image**. See below. |
+| 3 | `ivgs-workers/utils/error_handler.py:395` | Checkpoint write failure → `False` | **CLOSED 2026-08-23** — fixed by WP-07-CHECKPOINTS, deployed by WP-34 (`v5.6.0-m2`), failure-surfacing **observed live on the deployed image**. See below. |
 | 4 | `ivgs-workers/tasks/*.py` call sites of `acquire_gpu_reservation` | GPU reservation failure → warning | **Open, but no longer SILENT** — WP-08 2026-08-23. Still deliberately non-fatal. See below. |
 | 5 | `ivgs-workers/tasks/pipeline_orchestrator.py:620` | Manufactures a success | Open |
 | 6 | `ivgs-workers/tasks/pipeline_orchestrator.py` — 5 sites in 3 scheduled tasks + `dispatch_pipeline` | Celery task returns `{'status':'error'}` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
@@ -46,7 +46,7 @@ rather than by review. It is **not** wired into CI — see that package's report
 
 ---
 
-### 1. Backup tasks return failure as a value — FIXED (pending deploy)
+### 1. Backup tasks return failure as a value — FIXED and DEPLOYED; entry still OPEN
 
 | Task | Return site at `e1f4c58` |
 |---|---|
@@ -68,14 +68,32 @@ Celery state SUCCESS for a failed verification.
 **Consequence, measured:** contributed to a 75-day database backup gap going
 unnoticed. See `WP-BACKUP-REPORTING_2026-08-14.md` §3.1.
 
-**Disposition:** fixed by `BackupTaskError` + raise on every failure path. **Not
-yet deployed** — `ivgs-backup-worker/tasks/` is baked into the image, and
-`grep -c BackupTaskError /app/tasks/backup_tasks.py` in the running container
-returns 0. The fix has never executed.
+**Disposition:** fixed by `BackupTaskError` + raise on every failure path.
+
+> **CORRECTION 2026-08-23 (WP-34-DEPLOY-BATCH).** This paragraph used to read
+> "**Not yet deployed** — `grep -c BackupTaskError /app/tasks/backup_tasks.py` in
+> the running container returns 0. The fix has never executed." **That is no longer
+> true, and the grep is the disproof.** Re-measured on node-01 against the running
+> `ivgs-backup-worker` (`ghcr.io/brucecostello2/ivgs-backup-worker:v5.1.0-stream-b`,
+> unchanged by WP-34 — this package did not rebuild the backup worker):
+>
+> ```
+> docker exec ivgs-backup-worker grep -c BackupTaskError /app/tasks/backup_tasks.py
+> 17
+> ```
+>
+> which matches the tree exactly (17). The fix is deployed and has been for some
+> time; the register simply never re-measured.
+>
+> **The entry stays OPEN regardless.** Deployment is not the register's bar —
+> observed failure-surfacing is, and no `BackupTaskError` has been observed being
+> raised by a real failing backup. Closing this one needs a probe of the kind run
+> for entries 2 and 3, which WP-34 did not run because the backup worker was
+> outside its scope.
 
 ---
 
-### 2. `_decrement_media_task_count` returns 0 on Redis error — **FIXED 2026-08-23, pending deploy**
+### 2. `_decrement_media_task_count` returns 0 on Redis error — **CLOSED 2026-08-23**
 
 > **Fixed by WP-06-MEDIA-JOIN**, report
 > `dev/workpackages/reports/WP-06-MEDIA-JOIN-report_2026-08-23.md`, commit on `main`
@@ -104,9 +122,32 @@ returns 0. The fix has never executed.
 >   runs the new function on the same state and asserts `unknown`. The defect and
 >   its fix are both executable in one test.
 >
-> **Not yet deployed.** `ivgs-celery-default` runs `v5.5.4-metrics`; the fix has
-> never executed in production. Same disposition as entry 1, and for the same
-> reason - the code is in the image, or it is not.
+> **DEPLOYED AND CLOSED 2026-08-23 by WP-34-DEPLOY-BATCH.** `ivgs-celery-default`,
+> `ivgs-celery-composition` and the node-02/03/04 workers all run
+> `ivgs-workers:v5.6.0-m2`.
+>
+> **Closing evidence - observed, not read.** A deliberate probe run as a separate
+> process *inside the running* `ivgs-celery-default`, with `redis_url` pointed at
+> `redis://127.0.0.1:6399/0` where nothing listens, so the connection genuinely
+> fails:
+>
+> ```
+> [error] redis_decrement_media_count_failed
+>         error=Error 111 connecting to 127.0.0.1:6399. Connection refused.
+>         job_id=wp34-probe-job outcome=unknown stage=stage3
+> outcome='unknown' remaining=0
+> JOIN_UNKNOWN='unknown' JOIN_DECREMENTED='decremented'
+> ```
+>
+> The Redis outage reports `unknown`. It does **not** report `0`, which is also the
+> legitimate "all media reported" value and is what the pre-fix
+> `max(0, r.decr(key))` handler returned - the probe confirmed that same expression
+> raises `ConnectionError` on this state, which the old code caught and turned into
+> `0`. `MediaJoinUnknownError` is present in the deployed module
+> (`tasks.pipeline_orchestrator_v2.MediaJoinUnknownError`), so the caller raises and
+> `handle_stage_completion` retries rather than dispatching Stage 4.
+>
+> Evidence: `reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md` S8.
 >
 > 19 tests, all passing. Two sibling helpers in the same file
 > (`_record_media_failure`, `_get_media_failure_count`) still return `0` on error by
@@ -136,7 +177,7 @@ picked up.
 
 ---
 
-### 3. `save_checkpoint` returns `False`, unchecked at every call site — **FIXED 2026-08-23, pending deploy**
+### 3. `save_checkpoint` returns `False`, unchecked at every call site — **CLOSED 2026-08-23**
 
 > **Fixed by WP-07-CHECKPOINTS**, report
 > `dev/workpackages/reports/WP-07-CHECKPOINTS-report_2026-08-23.md`, commit on `main`
@@ -180,9 +221,36 @@ picked up.
 > carrying the full migration chain (19 tests,
 > `ivgs-api/tests/test_wp07_checkpoint_write.py`) - see the WP-07 report.
 >
-> **Not yet deployed.** Both halves need a build: `ivgs-fastapi` runs
-> `v5.5.3-arch1` and `ivgs-celery-default` runs `v5.5.4-metrics`. Until then the
-> POST still 405s and this entry is fixed in the tree, not in the system.
+> **DEPLOYED AND CLOSED 2026-08-23 by WP-34-DEPLOY-BATCH.** Both halves shipped:
+> `ivgs-fastapi` runs `ivgs-api:v5.6.0-m2` and every worker on the fleet runs
+> `ivgs-workers:v5.6.0-m2`.
+>
+> **Closing evidence - observed, not read.**
+>
+> *The route is routed.* The live OpenAPI at `/api/v1/openapi.json` lists
+> `/api/v1/jobs/{job_id}/checkpoints` with `['delete', 'get', 'post']`. An
+> unauthenticated `POST` to that path now returns **403** (auth), exactly as `GET`
+> does - not the **405 Method Not Allowed / allow: GET** measured on
+> `v5.5.3-arch1`. The method exists.
+>
+> *The write failure surfaces.* A deliberate probe run as a separate process inside
+> the running `ivgs-celery-default`, with `pipeline_api.base_url` pointed at
+> `http://127.0.0.1:9/` so the POST cannot succeed:
+>
+> ```
+> [error] checkpoint_save_error error=[Errno 111] Connection refused
+>         job_id=wp34-probe-job required=True stage_name=stage1_transcript
+> CheckpointWriteError: checkpoint write for job wp34-probe-job stage
+>   stage1_transcript failed: [Errno 111] Connection refused.
+>   The stage is not resumable without it.
+> ```
+>
+> It **raises**. Under the code this entry records, the identical call returned
+> `False` to fifteen call sites that never looked. The `required=False` control
+> returned `False` on the same input, so the old contract is preserved where a
+> caller explicitly asks for it.
+>
+> Evidence: `reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md` S8.
 >
 > **Related, still open:** `error_handler.py:313, :383` (entry 8) - DLQ routing and
 > job-status writes - are the same shape in the same file and were NOT touched here;
@@ -685,8 +753,14 @@ Per CLAUDE.md §12:
 - **Verified live:** instance 1's Celery SUCCESS-on-failure (worker log);
   instance 1's non-deployment (`grep` in the running container); instance 5's
   daily schedule (running beat configuration).
-- **Verified by reading only:** instances 2, 3, 4, and instance 5's stub body.
-  No swallow other than instance 1's was reproduced at runtime.
+- **Verified by reading only:** instance 4, and instance 5's stub body.
+- **Verified live 2026-08-23 (WP-34-DEPLOY-BATCH):** instances **2** and **3**,
+  both by deliberate probe inside the running `ivgs-celery-default` on the
+  deployed `v5.6.0-m2` image — Redis pointed at a dead port for instance 2, the
+  Pipeline API pointed at a dead port for instance 3. Both now surface; both are
+  CLOSED. Instance 1's *deployment* status was also re-measured and corrected
+  (see entry 1), but its failure-surfacing has still never been observed, so it
+  stays open.
 - **Not tested:** the downstream consequence of any swallowed value. No instance
   in this register has had its blast radius measured. Doing so is part of taking
   each one on, not a precondition for recording it.

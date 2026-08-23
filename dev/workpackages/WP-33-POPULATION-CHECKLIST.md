@@ -8,7 +8,8 @@
 | **Evidence** | `reports/WP-33-MODELSTORE-PREP-report_2026-08-23.md` |
 | **Where** | The Model Store admin page: `/admin/models`. Sign in as an admin user - every action below is admin-only. |
 | **What this achieves** | `get_binding` will resolve for all six pipeline stages that ask for a model. Six of nine; the other three are deliberately left alone (see "Stages we are NOT touching"). |
-| **What this does NOT achieve** | A running pipeline. Three separate blockers sit behind this - see "Before any of it actually runs" at the end. Read that section first if you want to know why the pipeline may still not start. |
+| **What this does NOT achieve** | A running pipeline. See "Before any of it actually runs" at the end - two of the three blockers recorded there are now cleared. |
+| **AMENDED** | **2026-08-23 by WP-34-DEPLOY-BATCH R7.3.** Steps 1 and 2 now register **`llama-3.3-70b`** rows, not the `mistral-24b` interim rows. Reason: node-02 was dead when this checklist was written (its vLLM exited `nvml error: driver not loaded`, last attempt 2026-08-22 23:47) and stages 1 and 2 were pointed at node-04's mid-size model as a stopgap. node-02 came back at **2026-08-23 01:23:23Z** and now serves `llama-3.3-70b` - verified live, HTTP 200 on `/v1/models`, from inside both the node-02 and node-04 workers. WP-34 also deployed `v5.6.0-m2` to node-02 and node-03, which clears blocker 3. See `reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md`. |
 
 Nothing in this checklist deletes or retires anything. Every step either adds a
 new model or promotes one that is already there. If a step goes wrong, the
@@ -40,35 +41,43 @@ brought back. Type the names carefully.
 
 There is no model for this stage at all. We are creating one.
 
+> **AMENDED 2026-08-23 (WP-34 R7.3).** This step used to register
+> `mistral-24b-transcript` against node-04's mid-size vLLM, because node-02 -
+> the node stage 1 actually runs on - had no working GPU driver. node-02 is
+> back and serving `llama-3.3-70b`. Register that instead. Every value below
+> was measured on node-02 on 2026-08-23, not inferred.
+
 - [ ] 1.1 Click **Register Model**.
-- [ ] 1.2 **Name (unique id)**: `mistral-24b-transcript`
-- [ ] 1.3 **Display name**: `Mistral Small 24B (transcript refinement)`
+- [ ] 1.2 **Name (unique id)**: `llama-3.3-70b-transcript`
+- [ ] 1.3 **Display name**: `Llama 3.3 70B Instruct FP8 (transcript refinement)`
 - [ ] 1.4 **Stage**: select `transcript_refinement`
 - [ ] 1.5 **Engine**: select `vllm`
 - [ ] 1.6 **Tier**: select `both`
-- [ ] 1.7 **VRAM (GB)**: `30.6` - this is the allocation vLLM is configured to take on node-04 (`--gpu-memory-utilization 0.32` of a 97887 MiB card), not a measured usage figure. It is the right number for reserving space; it is recorded as configured, not measured, in the attestation below.
-- [ ] 1.8 **Description**: `Mistral-Small-24B-Instruct-2501 w4a16, served on node-04 as mistral-24b. Registered by WP-33 to give Stage 1 a binding; the store had no transcript_refinement model of any kind.`
-- [ ] 1.9 **Source URL**: `https://huggingface.co/RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16`
-- [ ] 1.10 **License**: `Apache-2.0`
-- [ ] 1.11 **Weights ref**: `RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16@2722d19f241850fa3bdb479e0fd9e6fcd0a584d8`
+- [ ] 1.7 **VRAM (GB)**: `86.0` - the allocation vLLM is configured to take on node-02: `--gpu-memory-utilization 0.90` of a 97887 MiB RTX PRO 6000 Blackwell = 88098 MiB = 86.0 GiB. Configured, not measured. (The old `30.6` was node-04's mid-size allocation and does not apply.)
+- [ ] 1.8 **Description**: `Llama-3.3-70B-Instruct-FP8-dynamic, served on node-02 as llama-3.3-70b. Registered by WP-33 to give Stage 1 a binding; the store had no transcript_refinement model of any kind. Amended by WP-34 from the mistral-24b interim row after node-02 was restored.`
+- [ ] 1.9 **Source URL**: `https://huggingface.co/RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic`
+- [ ] 1.10 **License**: `llama3.3` - the upstream Llama 3.3 Community License tag. Not verified from this box (no model-card fetch was made); confirm before attesting if the form validates it.
+- [ ] 1.11 **Weights ref**: `RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic@565debb06c0e301ddc1d54dae00c16b376253fde` - the revision is the snapshot directory actually on node-02 at `/data/models/hub/`.
 - [ ] 1.12 **Weights checksum**: **leave blank.** (See "Fields we deliberately left blank" below - the value we could get is a repository revision, not a checksum, and it is already in the Weights ref field above.)
 - [ ] 1.13 **Default params (JSON object)** - type exactly this:
       ```
-      {"engine_model": "mistral-24b"}
+      {"engine_model": "llama-3.3-70b"}
       ```
       **This line is not optional.** Without it the pipeline sends the text
-      `mistral-24b-transcript` to vLLM as the model name and vLLM answers 404.
+      `llama-3.3-70b-transcript` to vLLM as the model name and vLLM answers 404.
+      This is finding **F-6**: the store's row name and the served name are not
+      the same string, and `engine_model` is what bridges them.
 - [ ] 1.14 **Dynamically loadable**: **UNTICK** it. (vLLM serves one fixed model; it cannot load another on request.)
 - [ ] 1.15 Click **Register**. The model appears in the list as `candidate`.
-- [ ] 1.16 Find `mistral-24b-transcript` in the list and click **Approve**.
+- [ ] 1.16 Find `llama-3.3-70b-transcript` in the list and click **Approve**.
 - [ ] 1.17 **Attested by**: your username (`bruce`)
 - [ ] 1.18 **Vetting reference** - paste exactly:
       ```
-      WP-33-MODELSTORE-PREP 2026-08-23: served-model identity verified live on node-04 (ivgs-vllm-midsize, --served-model-name mistral-24b, HF revision 2722d19f241850fa3bdb479e0fd9e6fcd0a584d8). No IVGS quality benchmark exists for this model on this stage.
+      WP-34-DEPLOY-BATCH 2026-08-23: served-model identity verified live on node-02 (ivgs-vllm-primary, --served-model-name llama-3.3-70b, root RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic, HF snapshot 565debb06c0e301ddc1d54dae00c16b376253fde, max_model_len 32768). Authed HTTP 200 on /v1/models observed from inside the node-02 and node-04 workers. No IVGS quality benchmark exists for this model on this stage.
       ```
 - [ ] 1.19 **Checklist (JSON object)** - paste exactly:
       ```
-      {"reviewed": true, "served_identity_verified": true, "quality": {"status": "not_benchmarked", "note": "No human-eval or MBCP certification for mistral-24b on transcript_refinement. Approved on served-identity evidence only (INV-9: not fabricated)."}, "vram_gb_measured": null, "vram_gb_configured": 30.6, "source": "WP-33-MODELSTORE-PREP 2026-08-23"}
+      {"reviewed": true, "served_identity_verified": true, "quality": {"status": "not_benchmarked", "note": "No human-eval or MBCP certification for llama-3.3-70b on transcript_refinement. Approved on served-identity evidence only (INV-9: not fabricated)."}, "vram_gb_measured": null, "vram_gb_configured": 86.0, "source": "WP-34-DEPLOY-BATCH 2026-08-23"}
       ```
 - [ ] 1.20 Click the green **Approve**. State becomes `approved`.
 - [ ] 1.21 Click **Set default** on the same row. A "default" marker appears.
@@ -81,33 +90,38 @@ This stage has one model, `test-model-1`, and it is **retired**. Retired is
 permanent - there is no way to bring it back, and there is no reason to want
 it. We are creating a real one.
 
+> **AMENDED 2026-08-23 (WP-34 R7.3)** - same reason as step 1. The store's
+> existing `Llama-3.3-70B-Instruct` row cannot be reused here: it sits on stage
+> `translation`, and AD-01.5.2 records one model row per stage. This is a new
+> row.
+
 - [ ] 2.1 Click **Register Model**.
-- [ ] 2.2 **Name (unique id)**: `mistral-24b-storyboard`
-- [ ] 2.3 **Display name**: `Mistral Small 24B (storyboard generation)`
+- [ ] 2.2 **Name (unique id)**: `llama-3.3-70b-storyboard`
+- [ ] 2.3 **Display name**: `Llama 3.3 70B Instruct FP8 (storyboard generation)`
 - [ ] 2.4 **Stage**: select `storyboard_generation`
-- [ ] 2.5 **Engine**: select `vllm` - **it must be `vllm`.** Stage 3 borrows this same model to write its image prompts, and the code refuses any engine that cannot hold a chat conversation.
+- [ ] 2.5 **Engine**: select `vllm` - **it must be `vllm`.** Stage 3 borrows this same model to write its image prompts, and the code refuses any engine that cannot hold a chat conversation (`utils/llm_binding.py`, `CHAT_ENGINES`).
 - [ ] 2.6 **Tier**: select `both`
-- [ ] 2.7 **VRAM (GB)**: `30.6` - same figure and same caveat as step 1.7.
-- [ ] 2.8 **Description**: `Same served model as mistral-24b-transcript. A separate row is required because the Model Store records one model per stage. Also borrowed by Stage 3's image-prompt writer.`
-- [ ] 2.9 **Source URL**: `https://huggingface.co/RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16`
-- [ ] 2.10 **License**: `Apache-2.0`
-- [ ] 2.11 **Weights ref**: `RedHatAI/Mistral-Small-24B-Instruct-2501-quantized.w4a16@2722d19f241850fa3bdb479e0fd9e6fcd0a584d8`
+- [ ] 2.7 **VRAM (GB)**: `86.0` - same figure and same caveat as step 1.7.
+- [ ] 2.8 **Description**: `Same served model as llama-3.3-70b-transcript. A separate row is required because the Model Store records one model per stage. Also borrowed by Stage 3's image-prompt writer.`
+- [ ] 2.9 **Source URL**: `https://huggingface.co/RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic`
+- [ ] 2.10 **License**: `llama3.3` - same caveat as step 1.10.
+- [ ] 2.11 **Weights ref**: `RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic@565debb06c0e301ddc1d54dae00c16b376253fde`
 - [ ] 2.12 **Weights checksum**: leave blank.
 - [ ] 2.13 **Default params (JSON object)** - type exactly this:
       ```
-      {"engine_model": "mistral-24b"}
+      {"engine_model": "llama-3.3-70b"}
       ```
 - [ ] 2.14 **Dynamically loadable**: **UNTICK** it.
 - [ ] 2.15 Click **Register**.
-- [ ] 2.16 Find `mistral-24b-storyboard` and click **Approve**.
+- [ ] 2.16 Find `llama-3.3-70b-storyboard` and click **Approve**.
 - [ ] 2.17 **Attested by**: `bruce`
 - [ ] 2.18 **Vetting reference** - paste exactly:
       ```
-      WP-33-MODELSTORE-PREP 2026-08-23: same served model as mistral-24b-transcript, verified live on node-04. Registered separately because AD-01.5.2 records one model row per stage. No IVGS quality benchmark exists for this model on this stage.
+      WP-34-DEPLOY-BATCH 2026-08-23: same served model as llama-3.3-70b-transcript, verified live on node-02. Registered separately because AD-01.5.2 records one model row per stage. No IVGS quality benchmark exists for this model on this stage.
       ```
 - [ ] 2.19 **Checklist (JSON object)** - paste exactly:
       ```
-      {"reviewed": true, "served_identity_verified": true, "quality": {"status": "not_benchmarked", "note": "No human-eval or MBCP certification for mistral-24b on storyboard_generation. Approved on served-identity evidence only (INV-9: not fabricated)."}, "vram_gb_measured": null, "vram_gb_configured": 30.6, "source": "WP-33-MODELSTORE-PREP 2026-08-23"}
+      {"reviewed": true, "served_identity_verified": true, "quality": {"status": "not_benchmarked", "note": "No human-eval or MBCP certification for llama-3.3-70b on storyboard_generation. Approved on served-identity evidence only (INV-9: not fabricated)."}, "vram_gb_measured": null, "vram_gb_configured": 86.0, "source": "WP-34-DEPLOY-BATCH 2026-08-23"}
       ```
 - [ ] 2.20 Click the green **Approve**.
 - [ ] 2.21 Click **Set default** on the same row.
@@ -251,8 +265,8 @@ After finishing all five steps, the page should show, per stage:
 
 | Stage | Model | State | Default |
 |---|---|---|---|
-| `transcript_refinement` | `mistral-24b-transcript` | approved | yes |
-| `storyboard_generation` | `mistral-24b-storyboard` | approved | yes |
+| `transcript_refinement` | `llama-3.3-70b-transcript` | approved | yes |
+| `storyboard_generation` | `llama-3.3-70b-storyboard` | approved | yes |
 | `image_generation` | `flux1-schnell` | approved | yes |
 | `video_generation` | `CogVideoX-5b` | approved | yes |
 | `voiceover_tts` | `XTTS-v2` | approved | yes |
@@ -263,31 +277,71 @@ read-only query saved at `dev/workpackages/reference/wp33-validate-binding.sql`
 (the header comment says how). It prints one line per stage and per tier and
 should show a model name, not `SelectionError`, for all six of the above.
 
+That file's **Query B was amended on 2026-08-23** to project the
+`llama-3.3-70b` rows instead of the `mistral-24b` ones, and re-run. It passes -
+all six bindable stages resolve with `candidates_matching = 1`, so none of them
+is ambiguous. The projection is reproduced in
+`reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md` S7.
+
 ---
 
 ## Before any of it actually runs
 
 Finishing this checklist stops the pipeline failing with "no approved default
-model". It does **not** make the pipeline run. Three separate things sit behind
-it, none of which can be fixed from this page:
+model". It does **not** by itself make the pipeline run.
 
-1. **node-02 has no working graphics driver.** Its vLLM engine will not start -
-   it exits with `nvml error: driver not loaded` (last attempt 2026-08-22
-   23:47). Stages 1 and 2 are sent to node-02. Until this is fixed, or those
-   stages are pointed at node-04's language model instead, they cannot run.
-2. **The pipeline has no address configured for any vLLM engine.** It falls
-   back to a built-in default of `http://node-02:8000` - which is the engine in
-   point 1. If you decide to use node-04's language model instead, someone has
-   to set `IVGS_VLLM_URL=http://192.168.1.93:8000` on the workers. That is a
-   deployment change, not a Model Store change.
-3. **node-02 and node-03 are running old software** (`v5.4.7-h0`, from before
-   the Model Store existed). Those two machines cannot read the Model Store at
-   all. Until they are updated, Stages 1, 2 and video generation will ignore
-   everything you just configured.
+**AMENDED 2026-08-23 by WP-34-DEPLOY-BATCH.** Two of the three blockers below
+are now cleared and the third turned out to be more specific than it looked.
+
+1. ~~**node-02 has no working graphics driver.**~~ **CLEARED.** node-02's vLLM
+   is up - container `ivgs-vllm-primary`, started `2026-08-23T01:23:23Z`,
+   healthy - and serving `llama-3.3-70b` on a 97887 MiB RTX PRO 6000 Blackwell.
+   Verified live: authed `GET /v1/models` returns HTTP 200 with
+   `models=[llama-3.3-70b]`.
+
+2. **The pipeline has no address configured for any vLLM engine** - still true
+   as written, but the conclusion has changed. `resolve_endpoint('vllm')`
+   (`shared/providers/binding.py:26`) falls back to `http://node-02:8000`, and
+   node-02 is now alive at that address, so **no override is needed for the
+   cross-node consumers.** Measured on 2026-08-23 from inside the running
+   workers: node-04 -> `http://node-02:8000` = HTTP 200, node-03 -> the same =
+   HTTP 200.
+
+   **One exception, and it is node-02 itself.** From inside
+   `ivgs-celery-node02`, both `http://node-02:8000` and `http://192.168.1.91:8000`
+   time out (`curl rc=28`). `ufw` on node-02 admits `192.168.1.0/24` to the
+   host, and the compose bridge is `172.x`, so a container on node-02 cannot
+   reach node-02's own published port. This matters because stages 1 and 2 -
+   which run on node-02's `gpu_llm` queue - now dial `binding.endpoint`
+   (`tasks/stage1_transcript.py:349`) rather than the old `VLLM_PRIMARY_URL`
+   env profile. WP-34 therefore set `IVGS_VLLM_URL: http://vllm:8000` on
+   node-02's `celery-worker` only - the identical server over the compose
+   network, verified HTTP 200 - using the env override `resolve_endpoint` is
+   documented to take first.
+
+   > **Operator decision, recorded not taken:** the alternative is to open
+   > `ufw` on node-02 to the docker bridge and drop the override, which would
+   > make `http://node-02:8000` uniform fleet-wide. WP-34 chose the override
+   > because it is the mechanism the code documents and its blast radius is one
+   > service. Either is defensible; the override is in tracked compose
+   > (`ivgs-infra/docker-compose.node02.yml`) and is trivial to reverse.
+
+   The old suggestion to set `IVGS_VLLM_URL=http://192.168.1.93:8000` (node-04's
+   mid-size model) is **superseded** - that was the workaround for node-02 being
+   dead.
+
+3. ~~**node-02 and node-03 are running old software** (`v5.4.7-h0`).~~
+   **CLEARED.** WP-34 deployed `v5.6.0-m2` to node-02, node-03 and node-04 on
+   2026-08-23. `from shared.providers.factory import get_binding` was verified
+   to import cleanly inside all three running workers, so all three can now
+   read the Model Store.
 
 Stages 3 (images), 5 (voiceover) and 6 (talking head) run on node-04, which is
-up to date and correctly configured. **Those three become bindable the moment
-you finish this checklist.**
+up to date and correctly configured. Stages 1, 2 and video generation are now
+on the same footing. **All six become bindable the moment you finish this
+checklist.**
 
-Full detail and evidence for all three:
-`reports/WP-33-MODELSTORE-PREP-report_2026-08-23.md`, sections 4 and 6.1.
+Full detail and evidence: `reports/WP-33-MODELSTORE-PREP-report_2026-08-23.md`
+sections 4 and 6.1 for the original findings, and
+`reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md` for the 2026-08-23
+measurements that cleared blockers 1 and 3 and narrowed blocker 2.

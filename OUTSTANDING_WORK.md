@@ -4,7 +4,7 @@
 |---|---|
 | **Version** | **v4.1 — 2026-08-14 (evening).** Updates v4.0 with the storage migration, the backup remediation, and the Step-10 cross-system register. v4.0 superseded v3.1 + Addenda A/B, all folded in. |
 | **Repo state** | `brucecostello2/elearning_v5` @ `main` = **`e1f4c58`**. node-01 and `origin/main` in exact sync. `.env.node01` now untracked and gitignored (P1.5 CLOSED). |
-| **Live stack** | ivgs-api `v5.5.3-arch1`, ivgs-workers `v5.5.1-arch1`, ivgs-frontend `v5.4.2-themes`, ivgs-scheduler `latest` (unpinned — P2.11), ivgs-backup-worker `v5.1.0-stream-b`. Alembic head **0027**. |
+| **Live stack** | **As of 2026-08-23 (P1.4p):** ivgs-api `v5.6.0-m2`, ivgs-workers `v5.6.0-m2` **on all four nodes**, ivgs-frontend `v5.6.0-m2`, ivgs-scheduler `latest` (unpinned — P2.11), ivgs-backup-worker `v5.1.0-stream-b` (not rebuilt). Alembic head **0027**. |
 | **Code currency** | The tree at `e613e844` was byte-identical to the 2026-07-10 capture — no code had been committed for five weeks. Two commits landed 2026-08-14: `1f0fd31` (backup rsync/NFS) and `e1f4c58` (untrack `.env.node01`, record host config). |
 | **Infrastructure** | node-01 memory is **31 GB reduced to 16 GB** — every prior document said 16 GB and was wrong; the VM was over-provisioned. Proxmox host `n5Pro` was **OOM-killing VMs**; 32 GB swap added. Backup NAS migrated `.9` CIFS (100% full) → **`.7` NFS4.2** (22 TB). |
 | **Sources merged** | v3.1 ledger; Addendum A; Addendum B; `SESSION_HANDOFF_2026-07-09.md` register; `AD-04-v3` + its Phase-0 analysis; Master Plan v0.3; AD-01/02/03; direct code audit of `e613e844` (2026-08-14). |
@@ -184,7 +184,7 @@ from the repo until synced; a backup `docker-compose.node04.yml.bak.pre-asyncpg`
 beside it.)*
 
 ## P1.1 — Media join advances prematurely on Redis error; not idempotent *(new, code audit; was "D2")*
-**Status:** **FIXED 2026-08-23 by WP-06-MEDIA-JOIN, pending deploy.** Report:
+**Status:** **FIXED 2026-08-23 by WP-06-MEDIA-JOIN; DEPLOYED 2026-08-23 in `v5.6.0-m2` (P1.4p).** The `unknown` outcome was observed live on the deployed image - swallow-register entry 2 is CLOSED. Report:
 `dev/workpackages/reports/WP-06-MEDIA-JOIN-report_2026-08-23.md`. All four exit-gate
 clauses met against a real Redis. Swallow-register entry 2 marked fixed-pending-deploy.
 
@@ -210,7 +210,7 @@ No idempotency: every media task fires the callback at the end of its body then 
 **Status:** OPEN — **upgraded from P2.** Prior framing ("non-blocking 405 noise") understated it.
 `utils/error_handler.py:409` POSTs to `/jobs/{job_id}/checkpoints`. `ivgs-api/app/api/v1/checkpoints.py` declares only `GET /checkpoints` (`:79`), `GET /checkpoints/{stage}` (`:106`), `POST /resume` (`:137`), `DELETE /checkpoints` (`:175`). **There is no `POST /jobs/{id}/checkpoints`** — hence the 405. `save_checkpoint` logs a warning and returns `False` (`:435-441`); **no call site checks the return value**. Every stage calls it; nothing is ever written. `POST /jobs/{id}/resume` therefore resumes from an empty table.
 The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated mechanism for not re-running a 30-minute render after a transient failure — i.e. the single biggest lever on long-video test-cycle cost.
-**Scope/action:** ~~add the POST route (~40 lines) + assert on the return value at call sites~~ — **both DONE 2026-08-23 by WP-07-CHECKPOINTS, pending deploy.** Report: `dev/workpackages/reports/WP-07-CHECKPOINTS-report_2026-08-23.md`.
+**Scope/action:** ~~add the POST route (~40 lines) + assert on the return value at call sites~~ — **both DONE 2026-08-23 by WP-07-CHECKPOINTS; DEPLOYED 2026-08-23 in `v5.6.0-m2` / `ivgs-api:v5.6.0-m2` (P1.4p).** The route is live (OpenAPI shows `post`; the 405 is gone) and `CheckpointWriteError` was observed raising on the deployed image - swallow-register entry 3 is CLOSED. Report: `dev/workpackages/reports/WP-07-CHECKPOINTS-report_2026-08-23.md`.
 
 > **What WP-07 found that this item did not have.**
 > - **15 `save_checkpoint` call sites, not 5.** This item, `dev/CLAUDE.md` §7 and
@@ -249,7 +249,7 @@ The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated 
 
 
 ## P1.3 — GPU reservations: 7 acquires, 4 releases, and 3 of those raise `TypeError` *(new, code audit; was "D4"; absorbs old P3 "extra-kwarg debt")*
-**Status:** **FIXED 2026-08-23 by WP-08-GPU-RESERVATIONS, pending deploy.** Report: `dev/workpackages/reports/WP-08-GPU-RESERVATIONS-report_2026-08-23.md`.
+**Status:** **FIXED 2026-08-23 by WP-08-GPU-RESERVATIONS; DEPLOYED 2026-08-23 in `v5.6.0-m2` (P1.4p)** - `release_acquired_reservation` verified present in every running worker on all four nodes. Report: `dev/workpackages/reports/WP-08-GPU-RESERVATIONS-report_2026-08-23.md`.
 > **CORRECTED 2026-08-23 by WP-08.** The `TypeError` claim below was **right and is now
 > proven on the deployed image** — inside `ivgs-celery-default` running
 > `ivgs-workers:v5.5.4-metrics`, whose `gpu_utils.py` is byte-identical to the tree:
@@ -873,7 +873,7 @@ only for MBCP export compatibility. **Decide before anything binds `composition`
 problem (P1.4f.4); `ffmpeg` is the only one missing both halves.
 
 ## P1.4o — AD-03 §10 criterion 3: the head A/V drift is measured, and the splitter is only a fifth of it *(new, WP-04-FRAME-ALIGN, operator rulings 2026-08-23)*
-**Status:** OPEN. Frame-aligned splitting is **DONE 2026-08-23 (WP-04), pending deploy**;
+**Status:** OPEN. Frame-aligned splitting is **DONE 2026-08-23 (WP-04) and DEPLOYED 2026-08-23 in `v5.6.0-m2` (P1.4p)** - `plan_frame_aligned_pieces` verified inside the running node-04 worker, which is where the residual must be measured; **the measurement itself was not taken, because WP-34's exit gate excludes running the pipeline**;
 criterion 3 does **not** close on it. Report:
 `dev/workpackages/reports/WP-04-FRAME-ALIGN-report_2026-08-23.md`.
 
@@ -920,6 +920,92 @@ splitter.
 
 **Related, ruled record-only 2026-08-23:** **P2.37** (`segment_planner`, WP-04 D-2) and
 **P2.38** (`output_fps`, WP-04 D-3).
+
+## P1.4p — `v5.6.0-m2` deployed to all four nodes; the M2 + WP-IVGS-0 + WP-04 batch is live *(2026-08-23, WP-34-DEPLOY-BATCH)*
+**Status:** DEPLOY **CLOSED**. Swallow-register entries **2 and 3 CLOSED** on observed
+evidence. WP-33 population checklist **AMENDED** to `llama-3.3-70b`. Three items OPEN and
+recorded below. Report: `dev/workpackages/reports/WP-34-DEPLOY-BATCH-report_2026-08-23.md`.
+
+**What shipped.** Three images, all built from `4d61cab` on a clean tree with
+`HEAD == origin/main`:
+
+| Image | Digest (registry index == local image id) | Artifact sha256 |
+|---|---|---|
+| `ivgs-workers:v5.6.0-m2` | `sha256:13c020a50463fa57...73a893a` | `a1cd26c30a86d9d9...364f1248` |
+| `ivgs-api:v5.6.0-m2` | `sha256:33641464ffe54bcc...2ade02` | `0280f6cdd9dfa5db...4af306e1` |
+| `ivgs-frontend:v5.6.0-m2` | `sha256:ce8a60a9875837f9...4002078` | `a85aa3cb01c63a0b...318a96a0` |
+
+Banked to `/mnt/ivgs-shared/image-artifacts` **before** any push (runbook 3.5a), each
+verified by `sha256sum -c` (rc 0), `zstd -t` (rc 0), one MANIFEST line, and the image-config
+blob present inside the archive. The GHCR push was separate and succeeded; **the artifact,
+not the registry, was the distribution path to nodes 02/03/04** (`zstd -d | docker load`).
+
+**Carries:** WP-04 frame alignment, WP-05 visibility timeout, WP-06 media join, WP-07
+checkpoints (both halves), WP-08 GPU reservation releases, WP-IVGS-0 (5 defects + F6/F9).
+Every marker was verified by grep **inside a running container** on the node that runs it,
+never by tag.
+
+**Per node.**
+
+| Node | Services recreated | From -> to | Untouched, verified |
+|---|---|---|---|
+| node-01 | `fastapi-backend`, `nextjs-frontend`, `celery-worker-default`, `celery-worker-composition`, `celery-beat` | api `v5.5.3-arch1`, frontend `v5.4.2-themes`, workers `v5.5.4-metrics` -> `v5.6.0-m2` | Postgres / Redis / SeaweedFS up 8 days (`--no-deps` held) |
+| node-02 | `celery-worker` | `v5.4.7-h0` -> `v5.6.0-m2` | `ivgs-vllm-primary` - same container id and `StartedAt`, still serving `llama-3.3-70b` |
+| node-03 | `cogvideox-worker` | `v5.4.7-h0` -> `v5.6.0-m2` | `ivgs-cogvideox-server-node03` - same container id and `StartedAt` |
+| node-04 | `celery-worker` | `v5.5.4-metrics` -> `v5.6.0-m2` | `IVGS_LATENTSYNC_TAG=v5.2.7-h0` before **and** after; latentsync / comfyui / coqui / kokoro / whisperx all identical container ids and `StartedAt` |
+
+`celery inspect active_queues` reports **5 workers online with a queue map identical to the
+pre-deploy baseline**, diffed line for line.
+
+**`POST /jobs/{id}/checkpoints` now exists in production.** Live OpenAPI lists
+`['delete','get','post']` on `/api/v1/jobs/{job_id}/checkpoints`; an unauthenticated POST
+returns 403 (auth) where `v5.5.3-arch1` returned **405 Method Not Allowed / allow: GET**.
+This retires the CLAUDE.md 7 trap "Checkpoint resume - does not exist ... no POST route was
+ever built" as a statement about the *route*; resume itself is still M3.
+
+**The WP-05 gate was probed, not assumed.** Inside the running `ivgs-celery-default`,
+`check_visibility_timeout(3600, {talking_head: 3900, video_generation: 3900})` raises
+`VisibilityTimeoutError`; `7200` passes. `IVGS_BROKER_VISIBILITY_TIMEOUT=7200` is in the
+environment of every node-01 worker and of node-04's; on node-02/03 the effective value is
+7200 from the code default (`config.py:227`), read back out of the running worker.
+
+**Two node `.env` files were lying, and it would have been a silent downgrade.** node-02 and
+node-03 were *running* `v5.4.7-h0` while their `ivgs-infra/.env` said
+`IVGS_WORKERS_TAG=v5.3.0-h0`. A plain `docker compose up -d` on either node would have
+rolled the worker **back** two releases. Rollback tags were therefore recorded from
+`.Config.Image`, not from `.env` - CLAUDE.md 6, applied in the direction it was written for.
+
+### Open items from this package
+
+1. **node-02 cannot reach its own published vLLM port from a container.** From inside
+   `ivgs-celery-node02`, `http://node-02:8000` and `http://192.168.1.91:8000` both time out
+   (`curl rc=28`): `ufw` admits `192.168.1.0/24` to the host and the compose bridge is
+   `172.x`. The same URL returns **200** from node-03 and node-04. This matters because
+   stages 1 and 2 run on node-02's `gpu_llm` queue and now dial `binding.endpoint`
+   (`stage1_transcript.py:349`), not the old `VLLM_PRIMARY_URL` profile - so WP-IVGS-0 would
+   have regressed those two stages on this node. WP-34 set
+   `IVGS_VLLM_URL: http://vllm:8000` on node-02's `celery-worker` (tracked compose), the
+   identical server over the compose network, verified 200. **Operator decision recorded, not
+   taken:** open `ufw` to the bridge and drop the override instead, for a uniform fleet-wide
+   endpoint. Either is defensible.
+2. **P1.4o's deploy-time A/V-drift investigation was NOT run.** It needs a real pipeline job
+   with a scene over 30 s. WP-34's exit gate explicitly excludes running the pipeline, and the
+   Model Store is not populated yet, so Stage 1 cannot bind. Unchanged and still owed.
+3. **The node compose files had drifted from `main` and were reconciled.** node-02 and
+   node-03 carried `DATABASE_URL: postgresql+psycopg` - the v3 driver **that is not in the
+   workers image**. `main` had already fixed this to `+asyncpg` (ledger P1.0b) and the node
+   copies had never been updated. Left alone, the ARCH-1 catch-up would have deployed cleanly
+   and then failed on the first DB session. Each node's file was backed up
+   (`docker-compose.node0X.yml.bak-pre-wp34-<ts>`) before replacement, and `+asyncpg` was
+   read back out of the running workers. node-04's file gained only the explicit
+   `IVGS_BROKER_VISIBILITY_TIMEOUT: "7200"`.
+
+**Rollback path verified present, not assumed.** `v5.5.4-metrics` (node-01, node-04),
+`v5.4.7-h0` (node-02, node-03) and the node-01 `ivgs-api` / `ivgs-frontend` predecessors are
+all still in their nodes' local image stores, checked with `docker images -q` on each box.
+Every `.env` was copied to `.env.bak.pre-wp34-<ts>` before it was written. **Gap:**
+`v5.4.7-h0` is **not** in the artifact store - only in node-02's and node-03's local stores.
+Two copies, one per node, no banked third.
 
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
