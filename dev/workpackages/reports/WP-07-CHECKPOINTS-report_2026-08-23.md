@@ -402,3 +402,48 @@ is now half-built and the half that is built is proven. The other half is D-1 an
 is a real package, not a leftover.
 
 Commit-and-HOLD. Nothing pushed, nothing deployed.
+
+---
+
+## Operator rulings, 2026-08-23 — applied
+
+| # | Ruling | Applied as |
+|---|---|---|
+| **D-1** | **RULED: do NOT build the real Celery resume.** The approved Temporal migration (AD-05, M3) replaces resume with event history; building it now is throwaway. The checkpoint rows have diagnostic value on their own. Add `POST /resume`'s false success to the swallow register as its own instance, and record in the ledger that resume-for-real arrives with M3. | `checkpoint_service.py`'s commented dispatch and its stage map are **left exactly as they are** — no code change. Swallow-register **instance 17** added. Ledger **P1.2** amended with a ruled block: do not build it, and why. |
+| **D-2** | **CONFIRMED — status mapping in the API layer.** | No code change; `WORKER_STATUS_MAP` in `app/schemas/checkpoint.py` is where it shipped. Ledger P1.2 records the ruling and the reason: the 14 stage call sites are out of scope. |
+| **D-3** | **CONFIRMED — `save_checkpoint` raising is correct.** | No code change. Ledger P1.2 records it, including the `required=False` opt-out and the test that fails if any call site starts using it. |
+| **D-4** | Acknowledged — the exit gate needs an API **and** worker deploy plus a killed worker. | Exit-gate verdict above stands. |
+
+### What D-1 changes about this package's verdict
+
+The exit gate — *kill a worker mid-stage; the job resumes without re-running completed
+stages* — is now **formally out of reach until M3**, by ruling rather than by
+circumstance. That is a better outcome than leaving it open: the gate was written
+against a resume mechanism that was never built and is now not going to be.
+
+**What this package delivered is unaffected and stands on its own**, which is the
+operator's stated reason for keeping it: `pipeline_checkpoints` will hold one row per
+stage per job, with real outcomes and `started_at`/`completed_at` pairs — per-stage
+durations, which is the first time this system has had them. That is diagnostic value
+independent of resume, and it is available the moment the API and workers are rebuilt.
+
+### Register instance 17, in brief
+
+`checkpoint_service.py:169-175` returns HTTP 200 saying `"Pipeline resumed from stage
+'...'"` having dispatched nothing — entry 5's *manufactures a success* shape, recorded
+separately because the deceived caller is a **human operator through the API**, where no
+downstream return-value check could help. It carries the second, latent defect too: the
+stage map disagrees with `PipelineStage` in three of eight names, so even with rows it
+would resume by re-running the completed stage.
+
+**Entry 17 is OPEN and deliberately not fixed**, so the endpoint's lie stays on the
+record until M3 removes it. The entry notes the minimum honest interim if anyone touches
+the endpoint before then — a 501, or a message saying a resume job was *recorded* rather
+than *resumed*.
+
+### Observation, not acted on
+
+The register's index table carries rows for instances 1–11, 16 and now 17. **Instances
+12–15 have detail sections but no table row.** Pre-existing; not fixed here because
+nothing in this batch's scope covers it, and adding four rows to someone else's register
+index is the operator's call. Flagged so it is not mistaken for damage from this session.

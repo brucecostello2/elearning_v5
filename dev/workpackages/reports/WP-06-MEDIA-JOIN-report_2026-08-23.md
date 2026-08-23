@@ -354,3 +354,18 @@ No new instance was found in this package's file set.
 **MET.** All four clauses demonstrated against a real Redis.
 
 Commit-and-HOLD. Nothing pushed, nothing deployed.
+
+---
+
+## Operator rulings, 2026-08-23 — applied
+
+| # | Ruling | Applied as |
+|---|---|---|
+| **D-1** | **CONFIRMED — `(job_id, completed_stage)` is correct; the brief was wrong.** | No code change; the shipped guard already keys on `(job_id, completed_stage)`. Ledger **P1.1** amended to correct its own scope line, which specified `(job_id, scene_id)`, with the evidence: `dispatch_media_generation` increments once per media **stage** at `:471`/`:491`/`:512`, max 3, and no callback carries a `scene_id`. |
+| **D-2** | **CONFIRMED — the louder watchdog behaviour is wanted.** | No code change. Ledger **P1.1** now records the before/after explicitly: a post-claim callback used to decrement a missing key to `-1`, clamp to `0`, and **dispatch Stage 4 a second time**; it now reports `unknown`, retries, and lands in the DLQ. |
+
+Ledger **P1.1** status moved from OPEN to **FIXED 2026-08-23, pending deploy**.
+Swallow-register entry 2 already carries the same disposition.
+
+**No code changed under these rulings** — both confirmed what shipped. `git diff` against
+`148125d` for this package's files is empty.

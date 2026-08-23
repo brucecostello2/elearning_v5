@@ -369,3 +369,28 @@ the arithmetic accounts for about 0.12 s of it. Criterion 3 does not close on th
 package alone, and this report says so rather than claiming a gate it did not observe.
 
 Commit-and-HOLD. Nothing pushed, nothing deployed.
+
+---
+
+## Operator rulings, 2026-08-23 — applied
+
+| # | Ruling | Applied as |
+|---|---|---|
+| **D-1** | **APPROVED as a deploy-time investigation.** The ~0.5 s residual gets measured on node-04 during deploy verification. | Ledger **P1.4o** (new), carrying the measurement, the two competing hypotheses, and the instruction to use a job with at least one scene over 30 s — a shorter scene is never split and exercises nothing. |
+| **D-2** | **Record `segment_planner` as a ledger item; do not touch.** | Ledger **P2.37** (new), marked RECORD ONLY. `services/segment_planner.py` is unmodified — confirmed by `git diff`. |
+| **D-3** | **Record `output_fps` plumbing as a ledger item; do not build.** | Ledger **P2.38** (new), marked RECORD ONLY. `servers/latentsync/server.py` and `clients/latentsync_client.py` are unmodified. |
+| **D-4** | Acknowledged — the exit gate needs a build and deploy to node-04. | Exit-gate verdict above stands at **NOT MET**, deferred to the operator, not failed on the merits. |
+
+**Q5 is now recorded in the ledger, not only in a batch instruction.** P1.4o states
+AD-03 §7 Q5 = 30 as an operator ruling of 2026-08-23, with the measurement that
+corroborates it (`r_frame_rate 30/1` **and** `avg_frame_rate 30/1` on the stored head).
+
+**Corroboration found after the fact, worth recording.** Ledger **P1.4e** already
+carried `0.618667 / 214.881333` from the LipsyncValidator's own logged arithmetic. This
+package measured `0.618666 / 214.881334` independently, from `ffprobe` on the stored
+artifact and the six Stage-5 WAVs, without having read that line first. Two routes, same
+numbers. The drift figure is not in doubt; only its **cause** is, which is D-1.
+
+**Nothing was implemented under D-2 or D-3.** The only files this package touched remain
+`tasks/talking_head_task.py`, `tests/test_wp04_frame_align.py`,
+`scripts/measure_head_av_drift.sh` and this report.

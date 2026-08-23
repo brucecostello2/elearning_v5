@@ -436,3 +436,23 @@ WP-08 all carry gates that require an operator deploy, and WP-07 carries one tha
 requires a further package.
 
 Commit-and-HOLD. Nothing pushed, nothing deployed.
+
+---
+
+## Operator rulings, 2026-08-23 — applied
+
+| # | Ruling | Applied as |
+|---|---|---|
+| **D-1** | **CONFIRMED** — the corrected figures (7 acquires; releases at `:699`/`:884`/`video_generation:540` broken, `celery_app:601` correct; stages 1/2/3/5 release correctly) stand as applied to both documents. | No further change — `dev/CLAUDE.md` §7 and `OUTSTANDING_WORK.md` P1.3 were corrected under Step 0 and the ruling is now recorded in P1.3 so the corrections cannot be read as an agent's unilateral edit. |
+| **D-2** | Acknowledged — 404-as-success stays until P2.6 makes the registry real; the register annotation is sufficient. | No code change. `gpu_utils.py:217-223` untouched. Swallow-register **entry 11** already carries the measured evidence; P1.3's "Still open" paragraph retains it. |
+| **D-3** | **YES** — add a ledger item for the 23 stranded urgent requests. | Ledger **P2.39** (new), with the live `/fleet` and `gpu_reservations` output, the open questions (where the queue lives, whether it survives a restart, whether it is bounded, what the 23 are), and the note that there is no `GET /reservations` at all. Paired with P2.6. |
+| **D-4** | **APPROVED retroactively** — the `on_retry` release fix stays. | No change; `IVGSBaseTask.on_retry` keeps its `_release_gpu_reservation()` call, and `test_success_failure_and_retry_all_release` keeps it there. Recorded in P1.3 so it is not later read as scope creep. |
+
+**No code changed under these rulings.** All four confirm or record. `git diff` against
+`6b82726` for this package's source files is empty; the only edits are to
+`OUTSTANDING_WORK.md` and this report.
+
+**Step 0's document corrections are now doubly recorded** — applied in both documents
+under the brief's own instruction, and ratified in P1.3 by D-1. That matters because the
+corrections contradict two standing documents on five points, and a future reader should
+be able to see that the operator ruled on them rather than that an agent overwrote them.

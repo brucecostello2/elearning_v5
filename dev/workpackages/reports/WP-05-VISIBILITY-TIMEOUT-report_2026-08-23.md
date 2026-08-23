@@ -327,3 +327,16 @@ passes when corrected - were demonstrated live, at the exact value the fleet was
 running. The remaining clause is a deploy, which is the operator's by rule.
 
 Commit-and-HOLD. Nothing pushed, nothing deployed.
+
+---
+
+## Operator rulings, 2026-08-23
+
+**No decisions were requested by this package** (Pass 1, "Decisions requested: None") and
+none were issued. The value (7200), the invariant and the placement were all determined
+by the brief, the ledger recommendation and runbook §6.2.
+
+Recorded here only so the batch's ruling set is complete and this report is not read as
+having an outstanding decision. The exit-gate verdict above is unchanged:
+**substantially MET**, with the `docker exec <worker> env` clause outstanding pending the
+operator's recreate. The compose invocation is given above.

@@ -184,7 +184,24 @@ from the repo until synced; a backup `docker-compose.node04.yml.bak.pre-asyncpg`
 beside it.)*
 
 ## P1.1 — Media join advances prematurely on Redis error; not idempotent *(new, code audit; was "D2")*
-**Status:** OPEN — correctness defect.
+**Status:** **FIXED 2026-08-23 by WP-06-MEDIA-JOIN, pending deploy.** Report:
+`dev/workpackages/reports/WP-06-MEDIA-JOIN-report_2026-08-23.md`. All four exit-gate
+clauses met against a real Redis. Swallow-register entry 2 marked fixed-pending-deploy.
+
+> **CORRECTED, operator ruling 2026-08-23 (WP-06 D-1).** The scope line below says a
+> per-`(job_id, scene_id)` SETNX guard. **There is no scene granularity in the join.**
+> `dispatch_media_generation` increments `total_media_tasks` once per media **stage**
+> dispatched — image / video / animation, at `:471`, `:491`, `:512` — so the counter's
+> maximum is 3, each stage sends exactly one whole-stage completion, and no callback
+> carries a `scene_id`. The correct key is **`(job_id, completed_stage)`**, and that is
+> what shipped. The guard and the decrement are one Lua script, so a Redis failure
+> leaves nothing done and the task's retry is clean.
+>
+> **WP-06 D-2, ruled 2026-08-23:** a callback arriving after `media_join_watchdog` has
+> claimed the job now reports `unknown`, retries, and lands in the DLQ. The pre-fix code
+> decremented a missing key to `-1`, clamped to `0`, and **dispatched Stage 4 a second
+> time**. The louder behaviour is wanted.
+
 `pipeline_orchestrator_v2.py:869-880` — `_decrement_media_task_count` returns **`0`** on any exception. The caller at `:672` treats `remaining <= 0` as *"all media reported, dispatch Stage 4."* A single transient Redis error during any one scene's callback **advances the pipeline with incomplete footage**. Same class: `_store_media_task_count` (`:856-866`) swallows its failure — if the counter was never written, `decr` on a missing key returns `-1`, `max(0,-1) == 0`, and the join collapses on the *first* scene to report.
 No idempotency: every media task fires the callback at the end of its body then returns (`stage3_images.py:736-741`, `video_generation_task.py:574-580`); with `acks_late` + `task_reject_on_worker_lost`, a worker death in that window requeues and re-decrements.
 **Scope/action:** distinguish "unknown" from "zero" (return `None` / raise and let the task retry); per-`(job_id, scene_id)` SETNX guard on the decrement.
@@ -193,7 +210,43 @@ No idempotency: every media task fires the callback at the end of its body then 
 **Status:** OPEN — **upgraded from P2.** Prior framing ("non-blocking 405 noise") understated it.
 `utils/error_handler.py:409` POSTs to `/jobs/{job_id}/checkpoints`. `ivgs-api/app/api/v1/checkpoints.py` declares only `GET /checkpoints` (`:79`), `GET /checkpoints/{stage}` (`:106`), `POST /resume` (`:137`), `DELETE /checkpoints` (`:175`). **There is no `POST /jobs/{id}/checkpoints`** — hence the 405. `save_checkpoint` logs a warning and returns `False` (`:435-441`); **no call site checks the return value**. Every stage calls it; nothing is ever written. `POST /jobs/{id}/resume` therefore resumes from an empty table.
 The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated mechanism for not re-running a 30-minute render after a transient failure — i.e. the single biggest lever on long-video test-cycle cost.
-**Scope/action:** add the POST route (~40 lines) + assert on the return value at call sites. Worth doing now regardless of WS-T, because it collapses the M3 iteration loop for *every* bug class, not just orchestration ones.
+**Scope/action:** ~~add the POST route (~40 lines) + assert on the return value at call sites~~ — **both DONE 2026-08-23 by WP-07-CHECKPOINTS, pending deploy.** Report: `dev/workpackages/reports/WP-07-CHECKPOINTS-report_2026-08-23.md`.
+
+> **What WP-07 found that this item did not have.**
+> - **15 `save_checkpoint` call sites, not 5.** This item, `dev/CLAUDE.md` §7 and
+>   swallow-register entry 3 all said five. Corrected in the register.
+> - **The Postgres enum and the workers' vocabulary share exactly one value.**
+>   `checkpoint_status` is `pending|complete|failed|skipped`; the workers send
+>   `running|success|partial_success|failed`. Adding the route alone would have left the
+>   table holding nothing but failures. **Operator ruling 2026-08-23 (WP-07 D-2):** map in
+>   the API schema, not at the 14 stage call sites, which are out of scope. Done.
+> - **Operator ruling 2026-08-23 (WP-07 D-3):** `save_checkpoint` **raising** is correct —
+>   an unrecorded stage is an unresumable stage. A `required=False` opt-out exists; a test
+>   fails if any call site starts using it.
+> - `pipeline_orchestrator_v2.py:625` passed `stage=` and would raise `TypeError` if it
+>   ran. It is registered and unrouted (`STAGE_TASK_MAP:106` sends `composition_manifest`
+>   to `tasks.stage4_manifest.build_composition_manifest`). Fixed anyway.
+
+> ### RULED 2026-08-23 (WP-07 D-1): resume-for-real is NOT being built. It arrives with M3.
+>
+> `POST /jobs/{id}/resume` **executes nothing.** `ivgs-api/app/services/checkpoint_service.py:169-175`
+> — the Celery dispatch is commented out under a "Phase 5" heading, and the task name it
+> names, `pipeline.execute_stage`, is not registered anywhere. The endpoint inserts a
+> `render_jobs` row, logs "Pipeline resume", and returns a 200 whose message says the
+> pipeline resumed. Its stage map (`:127-137`) also disagrees with `PipelineStage` in
+> three of eight names — it expects `media_generation`, `manifest_generation`,
+> `audio_generation` where the workers write `image_generation`, `composition_manifest`,
+> `tts_audio` — and `:138-147` falls back to `resume_stage = last_checkpoint.stage_name`,
+> i.e. **the stage that just completed**.
+>
+> **Do not build it.** The approved Temporal migration (AD-05, WS-T, M3) replaces
+> resume-from-checkpoint with workflow event history; a real resume dispatcher written now
+> is throwaway. **The checkpoint rows have diagnostic value on their own** and that is why
+> WP-07 shipped — per-stage `started_at`/`completed_at`, real outcomes, one row per stage.
+>
+> **`POST /resume`'s false success is swallow-register instance 17**, added 2026-08-23:
+> it manufactures a success, the same shape as entry 5.
+
 
 ## P1.3 — GPU reservations: 7 acquires, 4 releases, and 3 of those raise `TypeError` *(new, code audit; was "D4"; absorbs old P3 "extra-kwarg debt")*
 **Status:** **FIXED 2026-08-23 by WP-08-GPU-RESERVATIONS, pending deploy.** Report: `dev/workpackages/reports/WP-08-GPU-RESERVATIONS-report_2026-08-23.md`.
@@ -222,6 +275,14 @@ The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated 
 `utils/gpu_utils.py:211` — `def release_gpu_reservation(reservation_id: str) -> bool:` takes **one** parameter. Three call sites passed two — `talking_head_task.py:699,884`, `video_generation_task.py:540` — `release_gpu_reservation(reservation, config)`; every one raised `TypeError`, **measured**. A fourth, `celery_app.py:601`, was always correct. There are **7** `acquire_gpu_reservation(` call sites. Every acquire is wrapped in `except Exception` (two different event names, `gpu_reservation_skipped` and `gpu_reservation_failed`) — the subsystem fails open and silently, which is why `total_nodes:0` (P2.29) has been invisible. Live 2026-08-23, `/fleet` also reports **`queue_depth.urgent: 23`** — twenty-three scheduling requests stranded against a zero-node fleet, which nothing owns.
 
 **Done by WP-08:** the three releases fixed (arity *and* argument); all seven acquires bracketed so `IVGSBaseTask` releases them; `on_retry` now releases too (it did not, so a retried task orphaned its previous reservation); one greppable event `gpu_reservation_unavailable` with `stage`/`model`/`vram_mb`/`error_type`/`fail_open=True` at every site; 53 tests. **Fail-open deliberately NOT changed to fatal** — the registry is empty, so it would fail every render; that is AD-05 O-3, after P2.6.
+
+> **Operator rulings 2026-08-23.** **D-1 CONFIRMED** — the corrected figures above (7
+> acquires; `:699`/`:884`/`video_generation:540` broken, `celery_app:601` correct; stages
+> 1/2/3/5 release correctly) stand as applied to both `dev/CLAUDE.md` §7 and this item.
+> **D-2 acknowledged** — 404-as-success stays until P2.6 makes the registry real; the
+> swallow-register annotation (entry 11) is sufficient, no code change.
+> **D-3 YES** — the 23 stranded urgent requests are now **P2.39**.
+> **D-4 APPROVED retroactively** — the `on_retry` release fix stays.
 
 **Still open:** `release_gpu_reservation` treats HTTP **404 as success** (`gpu_utils.py:217-223`), so with an empty registry every correctly-shaped release reports success — a reservation-count baseline check is vacuous until P2.6. There is no `GET /reservations` on the scheduler (only `DELETE /reservations/{id}`), so there is no reservation-count query to run.
 **Scope/action:** ~~fix the signature at 3 sites; add `finally`-block releases at the other 5~~ — both done 2026-08-23 (the "other 5" were in fact 4, and already released via `IVGSBaseTask`; the real gap was the two GPU render stages). **Remaining:** decide explicitly whether reservation failure should be fatal (AD-05 O-3, after P2.6), and the 404-as-success behaviour above. Pairs with P2.29.
@@ -811,6 +872,55 @@ only for MBCP export compatibility. **Decide before anything binds `composition`
 `animatediff`, `wan21`, `ollama` and `remotion` share the missing-builder half of this
 problem (P1.4f.4); `ffmpeg` is the only one missing both halves.
 
+## P1.4o — AD-03 §10 criterion 3: the head A/V drift is measured, and the splitter is only a fifth of it *(new, WP-04-FRAME-ALIGN, operator rulings 2026-08-23)*
+**Status:** OPEN. Frame-aligned splitting is **DONE 2026-08-23 (WP-04), pending deploy**;
+criterion 3 does **not** close on it. Report:
+`dev/workpackages/reports/WP-04-FRAME-ALIGN-report_2026-08-23.md`.
+
+**AD-03 §7 Q5 — SETTLED, operator ruling 2026-08-23: target fps = 30.** Corroborated by
+measurement the same day, not only by ruling: the stored head artifact carries
+`r_frame_rate 30/1` **and** `avg_frame_rate 30/1` — constant, exactly 30.
+
+**The ~0.62 s is now a measurement.** `ffprobe` on the real stored head
+(`assets` fid `5,5b66d602e3`, project `3814f845`) against the six Stage-5 scene WAVs it
+was lip-synced to:
+
+    head video : 6465 frames @ 30/1 CFR      = 215.500000 s
+    narration  : 7.094667 + 5.558667 + 31.397333
+               + 75.349333 + 57.108667 + 38.372667 = 214.881334 s
+    drift      = 0.618666 s = 18.56 frames
+
+This independently reproduces the figure P1.4e already carried
+(`0.618667 / 214.881333`, logged) from a different direction. Reproducible via
+`scripts/measure_head_av_drift.sh` (ffprobe-based; the header carries the docker
+invocation, node-01 has no host ffprobe).
+
+**The brief's attribution was wrong.** Modelling the splitter over those six real
+durations gives 11 pieces and **0.118666 s (3.56 frames)** pre-fix, **0.085333 s (2.56
+frames)** post-fix. The arithmetic is worth about **a fifth** of the measured drift and
+the fix buys exactly one frame on this material. Predicted post-fix drift is ~0.5 s, not
+< 1 frame.
+
+**RULED 2026-08-23 (WP-04 D-1): APPROVED as a deploy-time investigation.** The ~0.5 s
+residual is measured on **node-04 during deploy verification** — the engine is the only
+thing that can explain it, it runs there, and this session was confined to node-01
+(common rule 5). Two hypotheses to separate: LatentSync padding each render to a
+mel-chunk or batch multiple (a per-piece quantum larger than one frame — the measured
+0.618666 s over 11 pieces is **0.0562 s ≈ 1.69 frames per piece**, which a simple
+`ceil(d·fps)` cannot produce), versus a fixed pad per render call, in which case only
+piece **count** matters and WP-04's fix removes none of it. **Which it is decides
+criterion 3.** Run a short job with at least one scene over `MAX_SEGMENT_SECONDS` (30 s)
+— a shorter scene is never split and exercises nothing.
+
+**The residual the fix cannot reach, regardless.** Post-fix, rounding survives once per
+**scene** (the last piece carries the remainder), because the Stage-5 scene durations are
+not themselves whole frames — 7.094667 s is 212.84 frames. Removing that means
+frame-aligning the timeline's scene durations: the Stage 4/5 timeline model, not the
+splitter.
+
+**Related, ruled record-only 2026-08-23:** **P2.37** (`segment_planner`, WP-04 D-2) and
+**P2.38** (`output_fps`, WP-04 D-3).
+
 ## P1.5 — Backup subsystem failure reporting *(new 2026-08-14; replaces the closed secret-hygiene item)*
 **Status:** OPEN — the reason a 75-day backup gap went undetected.
 Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so Celery logs `Task ... succeeded` for a failed backup and every dashboard shows green. Related: direct script runs create no `backup_records` row (the GUI showed 13 records for 75 days of daily attempts, and could not see the only good backup); verification stamps `completed_at` on historical rows, producing 110,502-minute durations; `scripts/backup.sh:374` reads `n_live_tup`, a statistic that resets on restart, which `verify_backup.sh` then compares with a 1% tolerance.
@@ -1148,6 +1258,72 @@ which of the two owns the field, or the same conflict is rebuilt one layer up.
 
 ## P2.36 — Per-run tier selector in the UI — DEFERRED to M6 *(new, WP-IVGS-0.3, operator ruling 2026-08-22)*
 `?tier=` is plumbed end to end on `POST /projects/{id}/trigger` and `POST /projects/{id}/storyboard/approve` and defaults to prototype, but nothing in the frontend sets it; surface a per-run choice at M6.
+
+## P2.37 — `segment_planner` splits Stage-8 render segments on float boundaries *(new, WP-04-FRAME-ALIGN D-2, operator ruling 2026-08-23 — RECORD ONLY, do not touch)*
+**Status:** OPEN — **record only.** Ruled 2026-08-23: do **not** fold this into WP-04.
+`ivgs-workers/services/segment_planner.py:239-241`:
+
+    num_segments = math.ceil(scene_duration / self._max_duration)
+    segment_duration = scene_duration / num_segments
+
+then float `start_time` / `end_time` at `:244-246`. Same defect class as the head
+splitter WP-04 fixed, on a different path: this is Stage 8's render-segment planner
+(`stage8_final_render.py:395-399`), so it does **not** bear on AD-03 criterion 3 (head
+A/V drift). Each segment is rendered independently and concatenated, so per-segment frame
+quantisation accumulates the same way.
+
+**Plausible, unmeasured:** the **0.13 s draft-to-final delta** recorded in AD-03 v0.4 §13
+(draft 214.94 s, final 215.07 s). Nobody has measured it.
+
+**Why record-only.** Stage 8 is the one end-to-end-validated render path (P1.4a/b: both
+the 1080p and the 4K finals passed operator visual QA). Changing its segment boundaries
+for a defect nobody has measured is a bad trade. **Scope it separately, measure first.**
+
+## P2.38 — `output_fps` is accepted and discarded; `output.fps` is a claim, never a measurement *(new, WP-04-FRAME-ALIGN D-3, operator ruling 2026-08-23 — RECORD ONLY, do not build)*
+**Status:** OPEN — **record only.** Ruled 2026-08-23: do **not** plumb it now.
+`ivgs-workers/servers/latentsync/server.py:145` declares `output_fps: int = Form(30)`.
+It is **never passed to `_runner`** (`:164-165` passes width, height, mode, seed only) and
+`_runner`'s final ffmpeg pass (`:105-109`) carries no `-r`. IVGS therefore **cannot set
+the head's frame rate**; it gets whatever LatentSync emits.
+
+Meanwhile `ivgs-workers/clients/latentsync_client.py:380` returns `fps=params.output_fps`
+— the client **reports the fps it asked for, not the fps it received**. That value flows
+to `talking_head_task.py:616` (`output.fps = seg_result.fps`) and into the asset metadata
+at `:827`. **`output.fps` is a claim at every point it is stored.**
+
+It happens to be true today — measured 2026-08-23, the stored head is `30/1` CFR (P1.4o)
+— so nothing is currently wrong on the wire. The hazard is that **a Q5 change to any
+other value would silently not take effect**, and no stored metadata would reveal it.
+
+**Cheap partial mitigation, not scoped here:** have the task probe its own output and
+record the measured fps rather than the requested one.
+
+## P2.39 — 23 urgent scheduling requests are stranded against a zero-node fleet, and nothing owns them *(new, WP-08-GPU-RESERVATIONS D-3, operator ruling 2026-08-23)*
+**Status:** OPEN — new item, ruled in 2026-08-23. Nothing owns this today.
+Measured live on node-01, 2026-08-23:
+
+    $ docker exec ivgs-scheduler sh -lc 'curl -s localhost:8001/fleet'
+    {"total_nodes":0,"alive_nodes":0,"draining_nodes":0,"total_vram_mb":0,
+     "used_vram_mb":0,"available_vram_mb":0,"fleet_utilization_pct":0.0,
+     "queue_depth":{"urgent":23,"normal":0,"batch":0},"nodes":[]}
+
+    $ docker exec ivgs-postgres psql -U ivgs -d ivgs -c \
+        "select status, count(*) from gpu_reservations group by 1;"
+    (0 rows)
+
+**Twenty-three scheduling requests are queued at `urgent` against a fleet of zero
+nodes.** Nothing dequeues them, nothing ages them out, nothing alerts, and no render has
+ever noticed — because every acquire fails open (P1.3, swallow-register entry 4). The
+`gpu_reservations` table is empty, so the queue is the *only* place this state exists.
+
+**Unknown and worth establishing:** where the queue lives (in-process in `ivgs-scheduler`
+or backed by Redis), whether it survives a scheduler restart, whether it is bounded, and
+what these 23 requests are — the scheduler has been up 8 days.
+
+**Related, and why it is not the same item:** there is **no `GET /reservations`** on the
+scheduler at all — only `DELETE /reservations/{reservation_id}` — so there is no
+reservation-count query to run. That is why WP-08's exit-gate clause "reservation count
+returns to baseline" is unmeasurable as written. **Pairs with P2.6.**
 
 # DEFERRED (conscious, with re-open trigger)
 

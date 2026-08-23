@@ -38,6 +38,7 @@ because of this pattern.
 | 10 | `shared/seaweedfs_client.py` — 4 methods, 8 sites | Every asset-store error → `None` / `False` | Open — **added 2026-08-14 by WP-00-DETECTOR** |
 | 11 | `ivgs-workers/utils/gpu_utils.py:230, :274` | `release_gpu_reservation` / `send_heartbeat` → `False` | Open — **added 2026-08-14 by WP-00-DETECTOR**; WP-08 2026-08-23 adds a worse variant: **404 is treated as success**. See below. |
 | 16 | `.github/workflows/compliance-check.yml`, `cd-deploy.yml` — `runs-on: self-hosted` with no runner | A gate that **queues** instead of running or failing | **CLOSED 2026-08-22** — the gate observably executed and failed loudly. Evidence below. **Variant instance, see note** |
+| 17 | `ivgs-api/app/services/checkpoint_service.py:169-175` | `POST /jobs/{id}/resume` returns "Pipeline resumed" having dispatched nothing | Open — **added 2026-08-23 by WP-07-CHECKPOINTS, operator ruling D-1.** Deliberately NOT fixed: M3 replaces resume with workflow history |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -694,3 +695,71 @@ Per CLAUDE.md §12:
 
 *Ledger open. Add instances as found; do not close one without observed evidence
 that the failure now surfaces.*
+
+---
+
+### 17. `POST /jobs/{id}/resume` manufactures a success — OPEN, deliberately
+
+**Added 2026-08-23 by WP-07-CHECKPOINTS**, on operator ruling D-1 of the same day.
+This is entry 5's shape — *manufactures a success* — not entry 3's. It is recorded
+separately because the caller is a **human operator through the API**, not another
+function, and no amount of return-value checking downstream would catch it.
+
+**The site.** `ivgs-api/app/services/checkpoint_service.py:169-175`:
+
+```
+        # Phase 5: dispatch Celery task
+        # celery_app.send_task(
+        #     "pipeline.execute_stage",
+        #     args=[str(new_job.id)],
+        #     kwargs={"resume_from": resume_stage, "original_job_id": str(job_id)},
+        # )
+
+        return ResumeResponse(
+            job_id=job_id,
+            resume_from_stage=resume_stage,
+            new_job_id=new_job.id,
+            message=(
+                f"Pipeline resumed from stage '{resume_stage}'. "
+                f"New job created: {new_job.id}"
+            ),
+        )
+```
+
+**What it does.** Inserts a `render_jobs` row carrying `resume_from_stage`, logs
+`Pipeline resume: original_job=... new_job=... resume_from=...`, and returns **HTTP
+200** whose body says `"Pipeline resumed from stage '...'"`. **Nothing executes.** The
+commented task name `pipeline.execute_stage` is not registered in any module in
+`celery_app.conf.include`.
+
+**Why it never surfaced.** `pipeline_checkpoints` has held **0 rows** for the life of
+this system (entry 3 — the POST route did not exist, so every checkpoint write 405'd
+and was swallowed). `resume_from_checkpoint` therefore always took its
+`last_checkpoint is None` branch at `:124-125` and reported resuming from
+`transcript_refinement`. Two swallows in series: nothing was ever written, so nothing
+was ever read, so the endpoint that reads it was never exercised hard enough to notice
+that it also does not act.
+
+**A second defect, latent behind the first.** Even with rows present it would resume
+from the **wrong stage**. `:127-137` hardcodes a stage order — `media_generation`,
+`manifest_generation`, `audio_generation` — that disagrees with `PipelineStage`
+(`ivgs-workers/models/task_result.py:39-50`), which is what `save_checkpoint` actually
+writes: `image_generation`, `composition_manifest`, `tts_audio`. Three of eight names do
+not match, and `:138-147` falls back to `resume_stage = last_checkpoint.stage_name` when
+the name is not found — **the stage that just completed**. A job that got through image
+generation would "resume" by re-running image generation.
+
+**Disposition: OPEN, and deliberately not fixed.** Operator ruling 2026-08-23 (WP-07
+D-1): the approved Temporal migration (AD-05, WS-T, ledger P1.2) replaces
+resume-from-checkpoint with workflow event history at M3. A real resume dispatcher
+written now is throwaway. **The register entry stays open so the endpoint's lie is on
+the record until M3 removes it.**
+
+**Minimum honest interim, if anyone touches this endpoint before M3:** make it say what
+it does. Returning 501, or a 200 whose message says a resume job was *recorded* rather
+than *resumed*, costs nothing and stops the endpoint reporting work it did not do.
+
+**Evidence basis:** read from source at `9af5a48` and re-verified at `b4b05eb`. Live
+confirmation of the empty table the same day:
+`select count(*) from pipeline_checkpoints;` → `0`. The dispatch itself was **not**
+exercised — there is nothing to exercise.
