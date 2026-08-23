@@ -301,6 +301,13 @@ export interface QuotaEntry {
   username: string;
   used_bytes: number;
   quota_bytes: number;
+  /**
+   * WP-40 Task 4: whether a `storage_quotas` row actually exists for this
+   * entity. Without it, "no record" and "a genuine zero-byte quota" render
+   * identically as 0 / 0, and the operator cannot tell which they are
+   * looking at. The table is currently empty for every user.
+   */
+  has_quota: boolean;
 }
 
 export interface TierMigration {

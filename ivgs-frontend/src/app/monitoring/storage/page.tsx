@@ -112,6 +112,7 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
   const {
     quotas,
     isLoading: quotasLoading,
+    noQuotaData,
   } = useStorageQuotas(user?.role === "admin");
 
   /**
@@ -478,6 +479,20 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                 <div className="flex justify-center py-8">
                   <LoadingSpinner size="md" />
                 </div>
+              ) : noQuotaData ? (
+                /* WP-40 Task 4: `storage_quotas` is empty, so every lookup
+                   404s. Saying so beats a table of 0 B / 0 B rows, which
+                   reads as a real zero-byte quota per user. */
+                <div className="p-6 text-center">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    No quota data.
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    No storage quota is recorded for any user. Quotas are set
+                    per entity via <code>PUT /api/v1/quotas/user/&#123;id&#125;</code>;
+                    nothing in the pipeline creates them automatically.
+                  </p>
+                </div>
               ) : quotas && quotas.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
@@ -508,6 +523,22 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                                 (q.used_bytes / q.quota_bytes) * 100
                               )
                             : 0;
+
+                        if (!q.has_quota) {
+                          return (
+                            <tr key={q.user_id}>
+                              <td className="px-4 py-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+                                {q.username}
+                              </td>
+                              <td
+                                className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400 italic"
+                                colSpan={4}
+                              >
+                                no quota data
+                              </td>
+                            </tr>
+                          );
+                        }
 
                         return (
                           <tr key={q.user_id}>
