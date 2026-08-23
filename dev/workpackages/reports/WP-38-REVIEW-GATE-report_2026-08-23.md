@@ -325,3 +325,79 @@ This is consistent with the "5 workers online" gate: `cogvideox-worker@node03` c
 
 Failed, skipped and error counts are **identical to the WP-32 baseline**; passed went 1088 → 1095,
 exactly the 7 new API tests. Nothing regressed. `tsc --noEmit` rc 0.
+
+---
+
+## 9. Build and deploy — `v5.6.5-reviewgate`, node-01 only
+
+**Only `ivgs-api` and `ivgs-frontend` changed.** The workers image is untouched by WP-38, so
+nodes 02/03/04 correctly stay on `v5.6.4-stage2output` and were not deployed.
+
+| | `ivgs-api` | `ivgs-frontend` |
+|---|---|---|
+| Image id | `sha256:b138a5811b2b…` | `sha256:68438ba66ce1…` |
+| Banked **before** push | sha256 rc 0, `zstd -t` rc 0, 1 MANIFEST line, config blob inside | same |
+| Push (separate) | rc 0, registry digest **matches** local id | rc 0, **matches** |
+
+Rollback recorded from `.Config.Image` first (`v5.6.4-stage2output` / `v5.6.2-detailfix`,
+both confirmed still present), `.env` backed up to `.env.bak.pre-wp38-<ts>` and not committed,
+narrow `^IVGS_[A-Z_]*TAG=` greps only, label-derived three-file compose with
+`--force-recreate --no-deps --pull never` naming `fastapi-backend nextjs-frontend`.
+
+**Untouched and verified:** Postgres, Redis, SeaweedFS, the scheduler (all "Up 8–9 days"), the
+three node-01 workers (still `v5.6.4-stage2output`, "Up 41 minutes"), and node-04's engines.
+
+### Post-deploy verification
+
+```
+ivgs-fastapi  ivgs-api:v5.6.5-reviewgate       Up (healthy)
+ivgs-nextjs   ivgs-frontend:v5.6.5-reviewgate  Up (healthy)
+
+api _advance_to_storyboard_state in running container: 2
+frontend bundle carries the scenes path:             6 chunks
+GET /projects/c12fa967/scenes through the deployed API: http=200, 18 scenes
+celery workers online: 5
+```
+
+**Not verified:** nobody has loaded the storyboard page in a browser — none is installed on
+node-01. The evidence is the live wire shape (18 scenes, bare array), the fixed code present in
+the running bundle, and the logic tests. **The operator should open
+`/projects/c12fa967-f989-4ed4-8e20-3ea62cb92e8f/storyboard` and confirm 18 scenes render.**
+
+The state advance is also **not yet observed on a real run** — it fires when stage 2 next persists
+a scene. Project `c12fa967`'s existing scenes were written before this deploy, so its state is
+still `TRANSCRIPT_REFINEMENT`; that does **not** block the continuation call, which accepts that
+state (S4).
+
+---
+
+## 10. Combined gated push block — ALL held commits
+
+```
+# RUN ON: IVGS node-01 (192.168.1.90)
+( cd /opt/ivgs || exit 1
+  if [ "$(git rev-parse --abbrev-ref HEAD)" != "main" ]; then echo "ABORT: not on main"; exit 1; fi
+  if [ -n "$(git status --porcelain --untracked-files=no)" ]; then echo "ABORT: tracked files dirty"; exit 1; fi
+  if [ "$(git rev-parse HEAD)" != "bf4e42a12a28fe500e8643445d0f729f81969e81" ]; then echo "ABORT: HEAD moved since WP-38"; exit 1; fi
+  git fetch origin --quiet || { echo "ABORT: fetch failed"; exit 1; }
+  if [ "$(git rev-list --count HEAD..origin/main)" != "0" ]; then echo "ABORT: origin/main moved - rebase first"; exit 1; fi
+  if [ "$(git rev-list --count origin/main..HEAD)" != "3" ]; then echo "ABORT: expected exactly 3 held commit(s)"; exit 1; fi
+  if git diff --name-only origin/main..HEAD | grep -qE '(^|/)\.env'; then echo "ABORT: an .env file is in the range"; exit 1; fi
+  echo "pushing 3 commit(s): 7c23cc9 -> bf4e42a"
+  git push origin main
+) | tr -cd '\11\12\15\40-\176'
+```
+
+**Held state at the time of writing:** branch `main`, tree clean, **3 commits ahead, 0 behind**. `origin/main` = `7c23cc9` → HEAD = `bf4e42a12a28fe500e8643445d0f729f81969e81`. No `.env*` in the range.
+
+---
+
+## 11. Decisions needed from the operator
+
+1. **P1.4q failed-path reset** — which state should a terminal job failure return the project to:
+   `DRAFT`, or a new `FAILED` that `trigger` accepts? Scoped in S5, not implemented.
+2. **P1.4r `.split()`** — needs one browser session with the stack trace expanded; the shortlist
+   is in S3. I declined to patch four files blind.
+3. **GPU registration env lines** — S6 has the exact three lines and per-node blocks. Node `.env`
+   files were not edited by this package.
+4. **node-02 / node-03 GPU exporters** still `Exited(2)` (P2.6a); the WP-24 §2.5 block fixes them.
