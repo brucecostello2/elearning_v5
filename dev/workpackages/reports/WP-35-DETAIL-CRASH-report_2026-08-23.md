@@ -221,3 +221,66 @@ the deployed bundle. That is strong, and it is not the same as seeing it.
 - **`Promise<any>` on fetchers defeats the type system.** `useNodes`, `useTranscripts` and the
   `useMonitoring` fetchers are all still `Promise<any>`. Not changed here — out of scope — but
   each is a place this can happen again.
+
+---
+
+## 9. Build and deploy — node-01 only
+
+Built from `c4b9607`, under WP-34's binding rules.
+
+| Step | Result |
+|---|---|
+| Provenance | `HEAD=c4b9607…`, **1 ahead** of `origin/main`, 0 behind (the earlier 8 commits were pushed) |
+| Build | `ghcr.io/brucecostello2/ivgs-frontend:v5.6.2-detailfix`, id `sha256:41162d212a01…`, 258 MB, rc 0 |
+| Content gates | **all pass** — see below |
+| Banked **before** push | `sha256sum -c` rc 0, `zstd -t` rc 0, one MANIFEST line, image-config blob present inside the archive. sha256 `0082e9df7871bc76…6ee9fc0a` |
+| Push (separate) | rc 0; registry digest **matches** the local image id |
+| Rollback recorded first | `.env` `IVGS_FRONTEND_TAG=v5.6.1-ops`; running `ivgs-nextjs` on `v5.6.1-ops`; that image confirmed **still present** in node-01's store |
+| `.env` | backed up to `.env.bak.pre-wp35-<ts>`, then the single tag written. Not committed. |
+| Recreate | `nextjs-frontend` only, `--force-recreate --no-deps --pull never`, label-derived three-file invocation |
+
+**Content gates.** Source that produced the bundle: `unwrapList` present and used by both
+`useJobs` and `useAssets`; `Array.isArray(latestData)` in `refreshInterval`;
+`!Array.isArray(jobs)` in `PipelineTracker`; `raw.toUpperCase()` in `StateBadge`. Negative gates:
+neither fetcher is `Promise<any>` any more; the old defeated guard is gone.
+
+> One negative gate needed scoping, and is recorded rather than waved through. A whole-file grep
+> for `state.toUpperCase()` in `StateBadge.tsx` returns **1** — the single hit is inside the
+> WP-35 comment describing what the code *used to* do, backticked. Excluding comment lines gives
+> **0**, and the executable path demonstrably reads `raw`, the guarded variable
+> (`:46`, `:48`, `:56`). Same shape as the `piece_dur` docstring gate in WP-34.
+
+**Runtime bundle, discriminating check.** The `StateBadge` `UNKNOWN` fallback appears in **12**
+compiled chunks in the new image against **4** in the deployed `v5.6.1-ops` — the bundles differ
+and the new one carries the fix. Confirmed again **inside the running container** after the
+recreate: 12.
+
+**Post-deploy state.** `ivgs-nextjs` healthy on `v5.6.2-detailfix`. Everything else untouched:
+`ivgs-fastapi` and the three workers still `v5.6.1-ops` "Up 4 hours"; Postgres, Redis and the
+scheduler "Up 8 days". `--no-deps` held. Nodes 02/03/04 not touched — this is a frontend-only
+change and they run no frontend.
+
+`GET https://192.168.1.90/projects/c12fa967-f989-4ed4-8e20-3ea62cb92e8f` returns **HTTP 200**
+with the app shell.
+
+**What that last line does and does not prove.** The page is a client component; the crash
+happened *after* SWR resolved the jobs request, so a 200 on the server-rendered shell is not
+proof the client render survives. The proof of the fix is §3 — the crash reproduced from the
+real payload and the full render path completing against the real row — plus the fixed code
+verified present in the running container's bundle. **A human still needs to open the page.**
+
+## 10. Rollback
+
+```
+# RUN ON: IVGS node-01 (192.168.1.90)
+( cd /opt/ivgs/ivgs-infra || exit 1
+  sed -i -E 's#^IVGS_FRONTEND_TAG=.*#IVGS_FRONTEND_TAG=v5.6.1-ops#' .env
+  docker compose -f docker-compose.node01.yml -f docker-compose.override.node01.yml \
+    -f docker-compose.monitoring.yml --env-file .env \
+    up -d --force-recreate --no-deps --pull never nextjs-frontend
+  docker ps --filter name=ivgs-nextjs --format '{{.Names}} {{.Image}} {{.Status}}'
+) | tr -cd '\11\12\15\40-\176'
+```
+
+`v5.6.1-ops` is present in node-01's local store (verified with `docker images -q`, not assumed),
+in the artifact store, and in GHCR.
