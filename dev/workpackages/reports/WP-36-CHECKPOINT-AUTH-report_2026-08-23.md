@@ -113,3 +113,120 @@ of the model.
 by a different mechanism: there the error path returned `False`, here it threw and something else
 ate it). **Not closed** — what is observed is that the record can now be *built*; nobody has yet
 watched a real early-failing task land in the DLQ.
+
+---
+
+## 5. Build and deploy
+
+Built from `c6f0968` under WP-34's binding rules. **Both** images changed, so all four nodes
+were deployed — the worker fix (`error_handler.py`) ships in the workers image that every node
+runs.
+
+| | `ivgs-api` | `ivgs-workers` |
+|---|---|---|
+| Tag | `v5.6.3-checkpointauth` | `v5.6.3-checkpointauth` |
+| Image id | `sha256:3efe34fbeaf0…` | `sha256:165b41c361fe…` |
+| Banked **before** push | sha256 rc 0, `zstd -t` rc 0, 1 MANIFEST line, config blob present | same |
+| Push (separate) | rc 0, registry digest **matches** local id | rc 0, **matches** |
+
+**Content gates — all pass.** `create_checkpoint` uses `require_service_or_privileged_user` and
+no longer `require_operator_or_admin`; `require_service_or_privileged_user` is present in the
+image's `rbac.py`; **the two sibling routes still carry `require_operator_or_admin`** (count
+exactly 2), proving the widening was surgical; the DLQ coercions are present.
+
+> One negative gate was mis-scoped by me and is recorded rather than quietly re-run. A file-wide
+> grep for `job_id=job_id,` in `error_handler.py` returns 1 — that hit is
+> `route_to_dead_letter_queue` **calling** `create_error_detail` and legitimately passing whatever
+> it has, which may be `None`. That is precisely the input the fix exists to tolerate; coercing
+> there too would be redundant. Re-scoped to the `ErrorDetail(...)` construction, the gate returns
+> 0 and the four coerced arguments are visible.
+
+**Deploy.** node-01: `fastapi-backend`, `celery-worker-default`, `celery-worker-composition`,
+`celery-beat` recreated (`--force-recreate --no-deps --pull never`). Nodes 02/03/04: workers
+image distributed **by artifact copy + `docker load`**, never the registry; presence-gated before
+each `.env` write; rollback tag recorded from `.Config.Image` first and `v5.6.0-m2` confirmed
+still present on each; only the single worker service recreated per node. Every `.env` backed up
+to `.env.bak.pre-wp36-<ts>`; none committed.
+
+Postgres, Redis, SeaweedFS, the scheduler and node-04's engine containers were untouched.
+`celery inspect active_queues`: **5 workers online, queue map identical to the baseline.**
+
+## 6. Post-deploy verification — from inside the node-02 worker
+
+The check the operator asked for, run with the worker's own credential inside
+`ivgs-celery-node02`:
+
+```
+PATCH /jobs/<bogus>                  -> 404
+POST  /jobs/<bogus>/checkpoints      -> 404   (was 401 - auth now accepted)
+POST  /jobs/768c4b59.../checkpoints  -> 201   ← the real job from the failure
+```
+
+Then the **real production code path**, not a hand-rolled request — `save_checkpoint`, the exact
+function that raised `CheckpointWriteError` at 14:49:48:
+
+```
+[info] checkpoint_saved job_id=768c4b59-9df5-4c3a-809a-80d3800142f5
+       stage_name=wp36_post_deploy_verification status=running
+  save_checkpoint returned True  -> NO CheckpointWriteError
+```
+
+**And the row landed:**
+
+```
+          stage_name           | status  |          created_at
+-------------------------------+---------+------------------------------
+ wp36_post_deploy_verification | pending | 2026-08-23 15:06:04.29803+00
+```
+
+That is the first checkpoint this pipeline has ever successfully written. `running` → `pending`
+is WP-07's documented status mapping working as designed.
+
+> The verification row is left in place on job `768c4b59` as evidence. It is a probe row on a job
+> that already failed; delete it if it is noise.
+
+## 7. Bonus — WP-24's outstanding exit-gate clause is now MET
+
+The operator ran the WP-24 §2.5 GPU-exporter block on node-04 today (ruling 2).
+`ivgs-nvidia-gpu-exporter` is **Up 7 hours** there and serving 11 `nvidia_smi_*` metrics, so the
+Node Monitor now carries real telemetry for that node:
+
+```
+node-04  online   vram=38316.0   util=0.0   temp=31.0
+```
+
+which matches `nvidia-smi` on the box. **WP-24's node-04 clause — "real, changing VRAM/util/temp"
+— is met.** Note `util=0.0` is a genuine zero reading rather than `null`, which is exactly the
+distinction WP-24's `test_a_real_zero_reading_survives` pinned. node-02 and node-03 still read
+`null`, correctly: their exporters were not fixed, per "extend nothing".
+
+## 8. Retrigger
+
+The failed job `768c4b59-9df5-4c3a-809a-80d3800142f5` is still `running` in `render_jobs` — its
+task died without a terminal status. Clear it first, then retrigger the project:
+
+```
+# RUN ON: IVGS node-01 (192.168.1.90)
+docker exec -i ivgs-postgres psql -U ivgs -d ivgs -c \
+  "UPDATE render_jobs SET status='failed' WHERE id='768c4b59-9df5-4c3a-809a-80d3800142f5';"
+```
+
+Then, signed in to the GUI as operator/admin, open project
+`c12fa967-f989-4ed4-8e20-3ea62cb92e8f` ("double digit multiplication") and trigger the pipeline —
+or by API:
+
+```
+POST /api/v1/projects/c12fa967-f989-4ed4-8e20-3ea62cb92e8f/trigger?tier=prototype
+```
+
+**Before retriggering, note the Model Store is still unpopulated** — the WP-33 checklist has not
+been executed, so Stage 1 will fail to resolve a binding (`SelectionError`) rather than reaching
+the checkpoint path again. The checkpoint fix is verified independently above; the retrigger will
+exercise it end-to-end only once the checklist is done.
+
+## 9. Not verified
+
+- **No pipeline run.** The fix is verified by direct probe and by the real `save_checkpoint`
+  function against the real job, not by a stage completing and checkpointing on its own.
+- **Register instance 20 is not closed.** The DLQ record can now be *built*; nobody has watched a
+  real early-failing task land in the DLQ.
