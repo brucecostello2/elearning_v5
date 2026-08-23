@@ -205,17 +205,34 @@ def create_error_detail(
     """
     config = _get_config()
 
+    # WP-36. This signature accepts `job_id: Optional[str] = None` and
+    # `project_id: Optional[str] = None`, but ErrorDetail declares both as
+    # non-optional `str = ""` (models/task_result.py:314-315). Passing None
+    # therefore raised a pydantic ValidationError *inside the failure handler* -
+    # observed 2026-08-23 as `dlq_routing_failed` with
+    # "job_id: Input should be a valid string [input_value=None]".
+    #
+    # The consequence is worse than a noisy log. IVGSBaseTask._route_to_dlq
+    # (celery_app.py:786) catches it and logs critical, so the DLQ record is
+    # never written: the failure is dropped from the queue whose entire purpose
+    # is to retain it, and only a log line survives. A failure handler must not
+    # be the thing that fails.
+    #
+    # Coerced here rather than by widening the model, because "" is what
+    # ErrorDetail already declares as its absent value and the DLQ schema and
+    # table are built on that contract. This is exactly the case that hits it:
+    # a task failing early enough that it never learned its own ids.
     return ErrorDetail(
-        task_name=task_name,
-        task_id=task_id,
+        task_name=task_name or "",
+        task_id=task_id or "",
         exception_type=type(exception).__name__,
         exception_message=str(exception),
         traceback=traceback.format_exc(),
         failure_category=classify_exception(exception),
-        retry_count=retry_count,
-        max_retries=max_retries,
-        job_id=job_id,
-        project_id=project_id,
+        retry_count=retry_count or 0,
+        max_retries=max_retries or 0,
+        job_id=job_id or "",
+        project_id=project_id or "",
         stage=stage,
         args=list(args) if args else None,
         kwargs=kwargs,

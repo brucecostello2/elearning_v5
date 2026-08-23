@@ -19,7 +19,10 @@ from sqlalchemy import select
 
 from shared.database import get_session
 from app.core.auth import get_current_user
-from app.core.rbac import require_operator_or_admin
+from app.core.rbac import (
+    require_operator_or_admin,
+    require_service_or_privileged_user,
+)
 from app.models.user import User
 from app.models.render_job import RenderJob
 from app.models.project import Project
@@ -114,7 +117,24 @@ async def list_checkpoints(
 async def create_checkpoint(
     job_id: UUID,
     payload: CheckpointCreateRequest,
-    current_user: User = Depends(require_operator_or_admin),
+    # WP-36: this is the route the WORKER FLEET calls, and the worker does not
+    # hold a human JWT. require_operator_or_admin resolves through
+    # get_current_user, which rejects the internal service token outright with
+    # 401 before any role is examined - so every checkpoint the pipeline tried to
+    # write was refused. Measured 2026-08-23 from inside ivgs-celery-node02 with
+    # the worker's own credential: PATCH /jobs/<id> -> 404 (auth accepted, job
+    # absent) while POST /jobs/<id>/checkpoints -> 401 on the same client, same
+    # token, same host.
+    #
+    # require_service_or_privileged_user is the existing gate for exactly this
+    # shape (rbac.py:88): it accepts the internal service token, resolving it to
+    # the seeded svc-pipeline admin, OR an operator/admin human, and still denies
+    # viewers with 403. It is what PATCH /jobs/{job_id} already relies on via
+    # get_service_or_user (jobs.py:110).
+    #
+    # Deliberately NOT widened on the sibling routes: /resume, DELETE and the two
+    # GETs are human-facing and no worker calls them.
+    current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Write (or update) a stage checkpoint for a job.

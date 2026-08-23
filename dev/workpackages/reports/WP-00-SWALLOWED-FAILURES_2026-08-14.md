@@ -45,6 +45,7 @@ because of this pattern.
 | 17 | `ivgs-api/app/services/checkpoint_service.py:169-175` | `POST /jobs/{id}/resume` returns "Pipeline resumed" having dispatched nothing | Open — **added 2026-08-23 by WP-07-CHECKPOINTS, operator ruling D-1.** Deliberately NOT fixed: M3 replaces resume with workflow history |
 | 18 | `ivgs-frontend/src/hooks/useMonitoring.ts` — `useStorageQuotas` | Per-user quota fetch errors → an empty quota row (`used_bytes=0`) | Open — **added 2026-08-23 by WP-23.** Self-documented in the hook's own docstring (*"those failures will be silent"*) and never registered. A 500 renders as a user with zero usage. |
 | 19 | `ivgs-api/app/api/v1/manifests.py:380` (pre-fix) | `mapping.get(asset_type, "background")` — a **lookup** miss produced a confident, maximally damaging answer | **FIXED 2026-08-23 by WP-27**, recorded because it is the pattern applied to a lookup rather than an error path: not knowing became *"it is the scene background"*. Worth a detector rule — a `.get(x, <default>)` whose default is a load-bearing domain value. |
+| 20 | `ivgs-workers/utils/error_handler.py:208` `create_error_detail` -> `ErrorDetail` | The **DLQ filing itself** raised `ValidationError` on `job_id=None` / `project_id=None`, and `IVGSBaseTask._route_to_dlq` (`celery_app.py:786`) caught it and logged `dlq_routing_failed` -- so the failure was **never filed** | **FIXED 2026-08-23 by WP-36.** Observed live in the first end-to-end run (job `768c4b59`). Adjacent to instance 8. See below. |
 
 **A detector now exists.** `scripts/swallow_detector.py` (WP-00-DETECTOR, 2026-08-14)
 makes this class machine-detectable. Instances 6–11 below were found by running it
@@ -839,6 +840,57 @@ types are excluded and logged.
 is the same failure as `except: return 0`, and `scripts/swallow_detector.py` models
 neither. Instance 14 already asked for one new rule ("logged an error, then returned
 normally"); this is a second.
+
+---
+
+### 20. The DLQ filing crashed on its own inputs - FIXED 2026-08-23
+
+*Added 2026-08-23 by WP-36-CHECKPOINT-AUTH. **Verified live** in the first
+end-to-end run.*
+
+Job `768c4b59` failed correctly - its checkpoint write was being 401'd (that is
+WP-36's primary defect). What should have happened next is that the failure was
+filed in the dead-letter queue. Instead:
+
+```
+dlq_routing_failed ... pydantic ValidationError
+  job_id:     Input should be a valid string [type=string_type, input_value=None]
+  project_id: Input should be a valid string [type=string_type, input_value=None]
+```
+
+`create_error_detail` (`utils/error_handler.py:189`) declares
+`job_id: Optional[str] = None` and `project_id: Optional[str] = None` and passes
+both straight into `ErrorDetail`, where they are non-optional `str = ""`
+(`models/task_result.py:314-315`). **Any task that fails early enough not to know
+its own ids cannot be filed** - and those are precisely the failures worth
+keeping.
+
+**Why it belongs in this register.** The exception does not escape:
+`IVGSBaseTask._route_to_dlq` (`celery_app.py:786`) wraps the call in
+`except Exception` and logs `dlq_routing_failed` at critical. So nothing crashes,
+nothing retries, and **the DLQ record is never written** - the failure is dropped
+from the queue whose entire purpose is to retain it, and a single log line is all
+that survives. Same consequence as instance 8, reached by a different mechanism:
+there the error path returned `False`, here it threw and something else ate it.
+
+**A failure handler that fails is the worst place for this pattern**, because by
+definition it only runs when something has already gone wrong, so its own defects
+are invisible until they compound with another fault - which is exactly how this
+surfaced.
+
+**Fixed** by coercing at the boundary (`job_id or ""`, `project_id or ""`, and the
+same for the retry counters, which are `None` outside a task context). The model
+contract is deliberately unchanged: `""` is what `ErrorDetail` already declares as
+its absent value, and the DLQ schema and table are built on that.
+
+10 tests, `ivgs-workers/tests/test_wp36_dlq_missing_ids.py`, including one that
+asserts `ErrorDetail(job_id=None)` **still** raises - proof the fix is the
+coercion and not a quiet widening of the model.
+
+**Not closed.** The register closes on observed evidence that the failure now
+surfaces. What is observed so far is that the record can now be *built*; nobody
+has yet watched a real early-failing task land in the DLQ. The next end-to-end
+run supplies that.
 
 ---
 
