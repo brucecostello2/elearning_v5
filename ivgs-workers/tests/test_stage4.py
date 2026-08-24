@@ -150,6 +150,20 @@ def mock_audio_validation() -> AudioValidationResult:
     )
 
 
+def _coqui_binding() -> MagicMock:
+    """ARCH-1: the task takes a ModelBinding, not a hard-coded client.
+
+    WP-42: these three tests still passed `coqui_client=` and patched
+    `tasks.stage4_voiceover.*` — a module path that does not exist. They had
+    been erroring, not asserting, since ARCH-1, on the one function WP-42
+    changes. Repaired rather than left as cover.
+    """
+    binding = MagicMock()
+    binding.engine = "coqui"
+    binding.name = "XTTS-v2"
+    return binding
+
+
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
@@ -177,18 +191,20 @@ class TestStage4VoiceoverSynthesis:
         )
 
         with patch(
-            "tasks.stage4_voiceover._upload_audio_to_seaweedfs",
+            "tasks.stage5_voiceover._upload_audio_to_seaweedfs",
             new_callable=AsyncMock,
             return_value=("audio-asset-001", "/ivgs/audio/proj-001/scene-001/en-US.wav"),
         ), patch(
-            "tasks.stage4_voiceover._update_scene_audio",
+            "tasks.stage5_voiceover._update_scene_audio",
             new_callable=AsyncMock,
         ):
             result = await _process_single_voiceover(
                 scene=sample_stage4_input.scenes[0],
                 task_input=sample_stage4_input,
-                coqui_client=mock_coqui,
+                tts_provider=mock_coqui,
+                tts_binding=_coqui_binding(),
                 vllm_client=None,
+                text_binding=None,
                 audio_validator=mock_validator,
                 audio_converter=mock_converter,
                 config=MagicMock(),
@@ -214,8 +230,10 @@ class TestStage4VoiceoverSynthesis:
         result = await _process_single_voiceover(
             scene=sample_stage4_input.scenes[0],
             task_input=sample_stage4_input,
-            coqui_client=mock_coqui,
+            tts_provider=mock_coqui,
+            tts_binding=_coqui_binding(),
             vllm_client=None,
+            text_binding=None,
             audio_validator=mock_validator,
             audio_converter=mock_converter,
             config=MagicMock(),
@@ -256,8 +274,10 @@ class TestStage4VoiceoverSynthesis:
         result = await _process_single_voiceover(
             scene=sample_stage4_input.scenes[0],
             task_input=sample_stage4_input,
-            coqui_client=mock_coqui,
+            tts_provider=mock_coqui,
+            tts_binding=_coqui_binding(),
             vllm_client=None,
+            text_binding=None,
             audio_validator=mock_validator,
             audio_converter=mock_converter,
             config=MagicMock(),

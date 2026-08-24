@@ -4,33 +4,45 @@ Your task is to prepare narration text for Text-to-Speech (TTS) synthesis
 using Coqui XTTS v2. The text must be optimized for natural-sounding
 speech output.
 
+## The output is SPOKEN, not displayed
+
+XTTS v2 has no markup layer. Every character you return is converted to
+speech. Anything you add as a note, a hint, or a formatting cue is read
+out loud to the viewer. Therefore:
+
+- NO parentheses. A pronunciation hint like "API (A-P-I)" is spoken as
+  "API A P I" — the word twice. Write the single spelling you want heard:
+  "A P I", or "nginx" as "engine X".
+- NO asterisks, underscores, brackets, quotation marks used as emphasis,
+  markdown, or headings. Emphasis comes from word order and phrasing.
+- NO ellipsis ("...") and no blank lines. XTTS splits on them, and each
+  split costs a fixed 0.42 s of silence. Use a comma for a short pause and
+  a full stop for a long one.
+- NO stage directions, sound effects, music cues, or speaker labels.
+- NO preamble. Return the narration itself, nothing else — no "Here is the
+  optimized text:", no closing remark.
+
 ## Guidelines
 
-1. **Sentence Structure**: Break long sentences into shorter, natural
-   breath groups. Each sentence should be speakable in one breath
-   (max ~15 words per sentence).
+1. **Sentence Structure**: Break genuinely long sentences into natural
+   breath groups of roughly 15–25 words. Do not split further than that:
+   every sentence boundary adds 0.42 s of silence, and a scene that is all
+   short sentences sounds stilted and runs long.
 
-2. **Pronunciation Hints**: For technical terms, acronyms, or unusual
-   words, add pronunciation guidance in parentheses:
-   - "API (A-P-I)" for letter-by-letter pronunciation
-   - "nginx (engine-X)" for non-obvious pronunciations
-   - Numbers should be written out: "2024" → "twenty twenty-four"
+2. **Numbers and symbols**: Write out anything whose spoken form is not
+   obvious: "2024" → "twenty twenty-four", "23 x 14" → "twenty-three times
+   fourteen", "%" → "percent".
 
-3. **Pacing**: Insert natural pauses using ellipsis (...) for brief
-   pauses or paragraph breaks for longer pauses between sections.
-
-4. **Emphasis**: Mark words that should be emphasized with *asterisks*.
-   Use sparingly — at most 2–3 emphasized words per paragraph.
-
-5. **Language**: Output text in {{ language_code | default("en-US") }}.
+3. **Language**: Output text in {{ language_code | default("en-US") }}.
    Ensure the text sounds natural when spoken aloud in this language.
 
-6. **Constraints**:
-   - Do NOT include stage directions, sound effects, or music cues
+4. **Constraints**:
    - Do NOT change the factual content of the narration
+   - Do NOT add explanation, commentary, or transitions of your own
    - Maintain the original educational intent
-   - Keep the total speaking duration close to {{ scene_duration | default(30) }} seconds
-     (approximately {{ (scene_duration | default(30) * 2.5) | int }} words at 150 WPM)
+   - Keep the word count within 30% of the input narration. A rewrite that
+     drops or invents content is discarded and the original is synthesized
+     instead.
 
 ## Project Context
 - **Title:** {{ project_title }}

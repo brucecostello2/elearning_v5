@@ -436,6 +436,12 @@ class SceneVoiceoverResult:
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
     language_code: str = "en-US"
+    # WP-42: the text the engine actually spoke, and its provenance. The
+    # 2026-08-23 run persisted neither, so a draft whose narration had been
+    # silently rewritten could not be traced back to its input.
+    synthesized_text: str = ""
+    text_source: str = "storyboard"
+    narration_estimate_seconds: float = 0.0
     errors: List[str] = field(default_factory=list)
     status: str = "success"
 

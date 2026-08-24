@@ -960,13 +960,60 @@ class FFmpegClient:
         self._run_ffmpeg(cmd, timeout=timeout)
         return output_path
 
+    # WP-42: the fields that must agree across every input before a
+    # stream-copy concat is safe. The concat demuxer with `-c:a copy` adopts
+    # the FIRST input's stream parameters and copies the rest of the packets
+    # underneath them - a 24 kHz file appended to a 48 kHz one is replayed at
+    # double speed with no error and no warning.
+    _AUDIO_CONCAT_KEYS = ("codec_name", "sample_rate", "channels", "sample_fmt")
+
+    def audio_concat_profile(
+        self,
+        audio_path: str,
+        timeout: float = 30.0,
+    ) -> Tuple[Any, ...]:
+        """The stream parameters a copy-concat is sensitive to, for one file."""
+        info = self.probe(audio_path, timeout=timeout)
+        for stream in info.get("streams", []):
+            if stream.get("codec_type") == "audio":
+                return tuple(stream.get(k) for k in self._AUDIO_CONCAT_KEYS)
+        raise FFmpegProbeError(f"no audio stream in {audio_path}")
+
     def concat_audio(
         self,
         audio_paths: List[str],
         output_path: str,
         timeout: float = 120.0,
     ) -> str:
-        """Concatenate multiple audio files."""
+        """Concatenate multiple audio files (stream copy).
+
+        Refuses inputs whose sample rate, channel count, codec or sample
+        format disagree, rather than emitting a file whose header describes
+        only the first of them (WP-42).
+        """
+        if not audio_paths:
+            raise FFmpegConcatError("concat_audio called with no inputs")
+
+        profiles = [
+            (p, self.audio_concat_profile(p)) for p in audio_paths
+        ]
+        reference = profiles[0][1]
+        mismatched = [(p, prof) for p, prof in profiles[1:] if prof != reference]
+        if mismatched:
+            detail = "; ".join(
+                f"{os.path.basename(p)}="
+                + ",".join(f"{k}={v}" for k, v in zip(self._AUDIO_CONCAT_KEYS, prof))
+                for p, prof in mismatched[:5]
+            )
+            raise FFmpegConcatError(
+                "refusing a stream-copy concat of non-uniform audio: "
+                f"{os.path.basename(profiles[0][0])}="
+                + ",".join(
+                    f"{k}={v}" for k, v in zip(self._AUDIO_CONCAT_KEYS, reference)
+                )
+                + f" vs {detail}"
+            )
+
         concat_file = os.path.join(self._temp_dir, "audio_concat.txt")
         with open(concat_file, "w", encoding="utf-8") as f:
             for p in audio_paths:

@@ -104,6 +104,13 @@ services:
       COMFYUI_PRIMARY_URL: "http://comfyui:8188"
       IVGS_COMFYUI_URL: "http://comfyui:8188"
       IVGS_COQUI_URL: "http://ivgs-coqui:5002"
+      # WP-42: the ARCH-1 binding resolves kokoro from IVGS_KOKORO_URL, whose
+      # shipped default is http://node-05:8021 -- a host this fleet does not
+      # have. build_provider passes binding.endpoint to KokoroClient, so the
+      # constructor's KOKORO_TTS_URL fallback below never gets a look in and
+      # activating Kokoro in the GUI would have failed on connect. Mirrors the
+      # IVGS_COQUI_URL line above.
+      IVGS_KOKORO_URL: "http://ivgs-kokoro:5003"
       IVGS_LATENTSYNC_URL: "http://latentsync:7860"
       IVGS_SADTALKER_URL: "http://sadtalker:7861"
       COQUI_TTS_URL: "http://ivgs-coqui:5002"

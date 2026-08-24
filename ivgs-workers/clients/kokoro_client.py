@@ -8,8 +8,10 @@ Inherits from TTSProvider ABC interface per §19.1.
 
 from __future__ import annotations
 
+import io
 import logging
 import os
+import wave
 from typing import Optional
 
 import httpx
@@ -50,7 +52,10 @@ class KokoroClient(TTSProvider):
         self, text: str, language: str, params: TTSParams
     ) -> AudioResult:
         """Synthesize speech audio via Kokoro TTS."""
-        if language not in KOKORO_SUPPORTED_LANGUAGES:
+        # WP-42: stage 5 hands the engine the ALREADY-MAPPED code ("en"), not
+        # the BCP-47 tag, so the old `language not in ["en-US","en-GB"]` test
+        # rejected every real call. Accept either spelling.
+        if language.split("-")[0].lower() != "en":
             raise ValueError(
                 f"Kokoro TTS does not support {language}. "
                 f"Supported: {KOKORO_SUPPORTED_LANGUAGES}"
@@ -58,27 +63,43 @@ class KokoroClient(TTSProvider):
 
         client = await self._get_client()
 
+        # WP-42: Kokoro serves the SAME wire contract as Coqui —
+        # POST /tts_to_audio with a TTSRequest body (verified against the live
+        # OpenAPI on node-04:5003). The old client posted `/synthesize` with a
+        # `speaker_id` field; that route does not exist and returned 404.
         payload = {
             "text": text,
-            "language": language,
+            "language": language.split("-")[0].lower(),
+            "speaker_wav": params.speaker_wav or "",
             "speed": params.speed or 1.0,
-            "speaker_id": "default",
         }
 
         response = await client.post(
-            f"{self.base_url}/synthesize",
+            f"{self.base_url}/tts_to_audio",
             json=payload,
         )
         response.raise_for_status()
 
+        # WP-42: this constructed AudioResult with kwargs the dataclass does
+        # not define (`audio_bytes`, `bit_depth`, `channels`, `language`) and a
+        # None duration, so every Kokoro synthesis raised TypeError before the
+        # audio was ever looked at. The engine has never actually served this
+        # pipeline. Rate and duration now come from the returned WAV header,
+        # as they do on the Coqui path, rather than being asserted.
+        audio_data = response.content
+        sample_rate, duration = 48000, 0.0
+        try:
+            with wave.open(io.BytesIO(audio_data), "rb") as w:
+                sample_rate = w.getframerate()
+                duration = w.getnframes() / sample_rate if sample_rate else 0.0
+        except Exception:
+            logger.warning("could not parse Kokoro WAV header; using defaults")
+
         return AudioResult(
-            audio_bytes=response.content,
-            sample_rate=48000,
-            bit_depth=24,
-            channels=1,
+            audio_data=audio_data,
+            sample_rate=sample_rate,
+            duration_seconds=duration,
             format="wav",
-            duration_seconds=None,
-            language=language,
         )
 
     def supported_languages(self) -> list[str]:

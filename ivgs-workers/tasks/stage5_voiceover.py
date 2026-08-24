@@ -57,6 +57,11 @@ from utils.media_converter import (
     check_duplicate_asset,
     compute_asset_sha256,
 )
+from utils.tts_text import (
+    estimate_narration_seconds,
+    rewrite_within_tolerance,
+    strip_tts_markup,
+)
 
 logger = structlog.get_logger("ivgs.stage4.voiceover")
 
@@ -116,6 +121,13 @@ class SceneVoiceoverResult(BaseModel):
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
     language_code: str = "en-US"
+    # WP-42: the text the engine actually spoke, and where it came from
+    # ("storyboard" | "optimised" | "optimised-rejected"). The 2026-08-23 run
+    # persisted none of this, so a garbled draft could not be traced to its
+    # input.
+    synthesized_text: str = ""
+    text_source: str = "storyboard"
+    narration_estimate_seconds: float = 0.0
     errors: List[str] = Field(default_factory=list)
     status: str = "success"
 
@@ -285,14 +297,16 @@ async def _process_single_voiceover(
     )
 
     try:
-        narration_text = scene.narration_text
+        source_text = strip_tts_markup(scene.narration_text)
+        narration_text = source_text
+        text_source = "storyboard"
 
         # 1. Optionally optimize text for TTS
         if task_input.optimize_text and vllm_client and text_binding:
             try:
                 log.info("optimizing_narration_text")
-                narration_text = await _optimize_narration_text(
-                    narration_text=narration_text,
+                rewritten = await _optimize_narration_text(
+                    narration_text=scene.narration_text,
                     scene=scene,
                     project_context={
                         "project_name": task_input.project_name,
@@ -302,6 +316,23 @@ async def _process_single_voiceover(
                     text_binding=text_binding,
                     config=config,
                 )
+                # WP-42: the optimiser's output is presentation text, and it
+                # went to XTTS-v2 verbatim. Strip the markup the engine would
+                # otherwise SPEAK (parenthetical pronunciation hints) or split
+                # on (ellipsis -> one 0.4167 s pad per extra chunk), then
+                # refuse a rewrite that dropped or invented narration.
+                rewritten = strip_tts_markup(rewritten)
+                if rewritten and rewrite_within_tolerance(source_text, rewritten):
+                    narration_text = rewritten
+                    text_source = "optimised"
+                else:
+                    log.warning(
+                        "text_optimization_rejected",
+                        reason="word count outside tolerance of the storyboard narration",
+                        source_words=len(source_text.split()),
+                        rewritten_words=len(rewritten.split()),
+                    )
+                    text_source = "optimised-rejected"
             except Exception as opt_err:
                 log.warning("text_optimization_failed", error=str(opt_err))
                 # Continue with original text
@@ -352,14 +383,24 @@ async def _process_single_voiceover(
             )
             audio_data = normalized.output_data
         except Exception as norm_err:
-            log.warning("audio_normalization_failed", error=str(norm_err))
-            # Continue with original audio
+            # WP-42: this used to fall through and store the engine's raw
+            # output. XTTS emits 24 kHz; the validator only WARNS on a rate
+            # mismatch, so an un-normalised scene was uploaded looking healthy
+            # and then met `-c:a copy` in the talking-head concat, which adopts
+            # the first input's header. Fail the scene instead.
+            log.error("audio_normalization_failed", error=str(norm_err))
+            raise
 
         # 5. Validate audio quality
-        log.info("validating_audio")
+        # WP-42: measure against what the narration should take to SPEAK, not
+        # against the storyboard's visual budget. On the 2026-08-23 run the
+        # two differed by +28.7% overall and by +12.96 s on one scene, so the
+        # storyboard number told us nothing about the audio.
+        narration_estimate = estimate_narration_seconds(narration_text)
+        log.info("validating_audio", narration_estimate_s=round(narration_estimate, 2))
         validation = audio_validator.validate(
             audio_data=audio_data,
-            expected_duration=scene.duration_seconds,
+            expected_duration=narration_estimate or None,
         )
 
         if not validation.is_valid:
@@ -380,6 +421,9 @@ async def _process_single_voiceover(
                 model_used=synthesis_result.model_used,
                 generation_time_seconds=round(time.monotonic() - start_time, 3),
                 language_code=scene.language_code,
+                synthesized_text=narration_text,
+                text_source=text_source,
+                narration_estimate_seconds=round(narration_estimate, 3),
                 errors=validation.errors,
                 status="failed",
             )
@@ -422,6 +466,9 @@ async def _process_single_voiceover(
                     generation_time_seconds=round(time.monotonic() - start_time, 3),
                     was_deduplicated=True,
                     language_code=scene.language_code,
+                    synthesized_text=narration_text,
+                    text_source=text_source,
+                    narration_estimate_seconds=round(narration_estimate, 3),
                     status="success",
                 )
 
@@ -467,6 +514,9 @@ async def _process_single_voiceover(
             generation_time_seconds=elapsed,
             was_deduplicated=was_deduplicated,
             language_code=scene.language_code,
+            synthesized_text=narration_text,
+            text_source=text_source,
+            narration_estimate_seconds=round(narration_estimate, 3),
             status="success",
         )
 
