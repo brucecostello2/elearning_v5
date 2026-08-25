@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -231,20 +231,79 @@ class TranscriptRefinementOutput(BaseModel):
 # Stage 2 – Storyboard Generation
 # ---------------------------------------------------------------------------
 
+#: Synonyms the storyboard LLM is known to emit for a MediaType member.
+#:
+#: WP-53 (P2.54). This is a CLOSED table, not a guess. It exists because the
+#: prompt asks for a media type in prose and the model answers in prose --
+#: "video", not "video_clip". Anything not in the enum and not in this table is
+#: REJECTED, loudly, at Stage 2. That is the WP-46 rule: a receiver rejects, it
+#: does not infer. An open-ended normaliser (strip, lowercase, startswith,
+#: fuzzy-match) would be inference, and inference is what produced the defect
+#: below in the first place.
+MEDIA_TYPE_SYNONYMS: dict[str, str] = {
+    "video": MediaType.VIDEO_CLIP.value,
+    "video_clip": MediaType.VIDEO_CLIP.value,
+    "animated": MediaType.ANIMATION.value,
+    "animation": MediaType.ANIMATION.value,
+    "image": MediaType.IMAGE.value,
+    "still": MediaType.IMAGE.value,
+}
+
+
 class StoryboardScene(BaseModel):
-    """One scene produced by the storyboard-generation LLM pass."""
+    """One scene produced by the storyboard-generation LLM pass.
+
+    WP-53 (P2.54). ``media_type`` was a bare ``str`` with no coercion and no
+    validation, and ``duration_seconds`` a bare ``float`` with no bound.
+
+    The bare string was not cosmetic. ``stage3_images.py`` branches on
+    ``scene.media_type == MediaType.VIDEO_CLIP.value``, so a Stage 2 output of
+    ``"video"`` -- which is what the LLM actually writes -- fell through to the
+    ELSE branch and the scene was rendered as a still image. No exception, no
+    warning, no failed job: a video scene silently became a picture, and the
+    only way to find out was to watch the finished render.
+
+    ``use_enum_values`` is deliberate. The field VALIDATES against ``MediaType``
+    but STORES the plain string, so every existing consumer -- the
+    ``temporal_pipeline.payloads`` mirror that declares ``media_type: str``,
+    the ``Counter`` in ``client.py:94``, the ``== "image"`` in
+    ``stage8_final_render.py:419``, and anything that interpolates the value
+    into a path or a log line -- sees exactly what it saw before. The gain is
+    the rejection; nothing downstream has to change to collect it.
+    """
 
     scene_index: int = 0
     narration_text: str = ""
     visual_description: str = ""
-    media_type: str = "image"
-    duration_seconds: float = 10.0
+    media_type: MediaType = MediaType.IMAGE
+    # gt=0: a negative or zero-length scene is not a scene. Stage 2's own
+    # clamp already keeps generated values in [3, 120]; this catches every
+    # OTHER construction path, which is where a -1 would actually arrive from.
+    duration_seconds: float = Field(default=10.0, gt=0)
     scene_title: Optional[str] = None
     transition: Optional[str] = None
     notes: Optional[str] = None
 
-    class Config:
-        extra = "allow"
+    # validate_default: without it `use_enum_values` applies only to values that
+    # were VALIDATED, so `StoryboardScene()` stored the enum MEMBER while
+    # `StoryboardScene(media_type="image")` stored the string -- the same field
+    # holding two different types depending on how the object was built.
+    model_config = ConfigDict(
+        extra="allow", use_enum_values=True, validate_default=True
+    )
+
+    @field_validator("media_type", mode="before")
+    @classmethod
+    def _canonicalise_media_type(cls, v: Any) -> Any:
+        """Map a known synonym onto its MediaType value; leave the rest alone.
+
+        Leaving an unknown value alone is the point -- enum validation then
+        rejects it with the offending value in the message, which is a better
+        error than anything this hook could raise itself.
+        """
+        if isinstance(v, str):
+            return MEDIA_TYPE_SYNONYMS.get(v.strip().lower(), v)
+        return v
 
 
 class StoryboardGenerationInput(BaseModel):

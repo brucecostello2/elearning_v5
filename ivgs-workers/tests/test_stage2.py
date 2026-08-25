@@ -289,6 +289,70 @@ class TestStoryboardJsonValidation:
         assert scenes[0].media_type == MediaType.VIDEO_CLIP
         assert scenes[1].media_type == MediaType.ANIMATION
 
+    def test_out_of_taxonomy_media_type_fails_at_stage_2(self) -> None:
+        """A media type Stage 3 cannot dispatch on must stop the job HERE.
+
+        WP-53 (P2.54). This is the acceptance criterion, and it is the whole
+        point of the change: `stage3_images.py` branches on
+        `scene.media_type == MediaType.VIDEO_CLIP.value` and has no else-branch
+        for anything but "render it as a still". Before this, an unrecognised
+        media type reached Stage 3 intact and quietly took the image path, so a
+        video scene came back as a picture with no error anywhere in the job.
+
+        Rejecting at Stage 2 costs one failed job and names the offending value.
+        Accepting it costs a finished render that is wrong and says nothing.
+        """
+        scenes_raw = [
+            {
+                "narration_text": "A",
+                "visual_description": "B",
+                "media_type": "slideshow",
+                "duration_seconds": 10,
+            },
+        ]
+
+        from tasks.stage2_storyboard import _validate_storyboard_json
+
+        with pytest.raises(ValueError, match="not in the pipeline taxonomy"):
+            _validate_storyboard_json(scenes_raw)
+
+    def test_the_rejection_names_the_value_and_the_alternatives(self) -> None:
+        """An operator reading the failure must not have to read the source."""
+        from tasks.stage2_storyboard import _validate_storyboard_json
+
+        with pytest.raises(ValueError) as exc:
+            _validate_storyboard_json(
+                [
+                    {
+                        "narration_text": "A",
+                        "visual_description": "B",
+                        "media_type": "3d_render",
+                        "duration_seconds": 10,
+                    }
+                ]
+            )
+
+        message = str(exc.value)
+        assert "3d_render" in message
+        assert "video_clip" in message and "animation" in message and "image" in message
+
+    def test_the_synonym_table_covers_every_enum_member(self) -> None:
+        """A new MediaType member must not be rejectable by its own name.
+
+        The guard in `_validate_storyboard_json` tests membership of
+        MEDIA_TYPE_SYNONYMS, so a member added to the enum without a matching
+        entry here would be refused despite being valid -- a failure mode the
+        rejection path introduces and which nothing else would catch.
+        """
+        from models.task_result import MEDIA_TYPE_SYNONYMS
+
+        for member in MediaType:
+            assert member.value in MEDIA_TYPE_SYNONYMS, (
+                f"MediaType.{member.name} has no entry in MEDIA_TYPE_SYNONYMS; "
+                f"Stage 2 would reject its own taxonomy"
+            )
+            assert MEDIA_TYPE_SYNONYMS[member.value] == member.value
+
     def test_reindexing(self) -> None:
         from tasks.stage2_storyboard import _validate_storyboard_json
 
@@ -338,6 +402,56 @@ class TestJsonExtraction:
         raw = f"Sure, here's the storyboard:\n{json.dumps(sample_storyboard_json)}"
         result = _extract_json_from_response(raw)
         assert "scenes" in result
+
+    @pytest.mark.parametrize(
+        "wrap",
+        [
+            pytest.param(lambda j: j, id="bare"),
+            pytest.param(lambda j: f"Here is the storyboard:\n```json\n{j}\n```", id="fenced"),
+            pytest.param(lambda j: f"Sure, here's the storyboard:\n{j}", id="preamble"),
+        ],
+    )
+    def test_all_three_paths_return_the_same_object(
+        self, sample_storyboard_json, wrap
+    ) -> None:
+        """Every extraction path must return the WRAPPER, not a piece of it.
+
+        WP-53 (P2.55). The three tests above each assert `"scenes" in result`,
+        which a bare list also satisfies -- `"scenes" in ["scenes", ...]` is a
+        membership test on a list, and `in` on a list of dicts is False, so the
+        preamble case failed while the other two passed and the shared defect
+        looked like one broken test. Compare against the payload itself and the
+        three paths have to agree with each other, which is the actual contract.
+
+        The preamble path is the one the prompt produces in practice, and it was
+        returning the inner `scenes` ARRAY: every sibling field on the object --
+        title, total_duration, anything Stage 2 later adds -- was silently
+        dropped before `_validate_storyboard_json` ever saw it.
+        """
+        from tasks.stage2_storyboard import _extract_json_from_response
+
+        result = _extract_json_from_response(wrap(json.dumps(sample_storyboard_json)))
+
+        assert isinstance(result, dict), (
+            f"extraction returned {type(result).__name__}, not the object wrapper"
+        )
+        assert result == sample_storyboard_json
+        assert set(result) == set(sample_storyboard_json)
+
+    def test_a_bare_top_level_array_still_extracts(self, sample_storyboard_json) -> None:
+        """The fix must not simply invert the old bias.
+
+        Taking `{` before `[` unconditionally would break this case, which is
+        why the repair takes whichever delimiter opens FIRST -- the outermost
+        structure -- rather than preferring one shape over the other.
+        """
+        from tasks.stage2_storyboard import _extract_json_from_response
+
+        scenes = sample_storyboard_json["scenes"]
+        result = _extract_json_from_response(f"Here you go:\n{json.dumps(scenes)}")
+
+        assert isinstance(result, list)
+        assert result == scenes
 
     def test_invalid_json_raises(self) -> None:
         from tasks.stage2_storyboard import _extract_json_from_response

@@ -42,6 +42,7 @@ from clients.vllm_client import (
 )
 from config import WorkerConfig
 from models.task_result import (
+    MEDIA_TYPE_SYNONYMS,
     PipelineStage,
     RefinedTranscript,
     StageStatus,
@@ -288,6 +289,28 @@ def _validate_storyboard_json(
         duration = max(3.0, min(float(duration), 120.0))
         total_duration += duration
 
+        # WP-53 (P2.54). Checked HERE, ahead of the constructor, and raised
+        # rather than logged.
+        #
+        # The try/except below skips a scene it cannot build and carries on --
+        # which for an out-of-taxonomy media_type is the wrong answer twice
+        # over. Silently dropping a scene loses content the operator asked for,
+        # and it would convert the loud rejection the model now performs back
+        # into the quiet one this package exists to remove. A media type the
+        # taxonomy does not contain is a defect in the storyboard, and Stage 2
+        # is where a storyboard defect is cheap: the job stops here instead of
+        # producing a still image where a video belonged, five stages later,
+        # with nothing in any log to say why.
+        if not isinstance(media_type_raw, str) or (
+            str(media_type_raw).strip().lower() not in MEDIA_TYPE_SYNONYMS
+        ):
+            raise ValueError(
+                f"Scene {scene_index}: media_type {media_type_raw!r} is not in the "
+                f"pipeline taxonomy. Known values: "
+                f"{sorted(set(MEDIA_TYPE_SYNONYMS))}. "
+                f"Stage 3 dispatches on this field and has no branch for it."
+            )
+
         try:
             scene = StoryboardScene(
                 scene_index=scene_index if isinstance(scene_index, int) else i,
@@ -344,22 +367,42 @@ def _extract_json_from_response(content: str) -> Any:
         except json.JSONDecodeError:
             continue
 
-    # Try finding JSON array or object
-    for start_char, end_char in [("[", "]"), ("{", "}")]:
+    # Try finding a JSON object or array embedded in prose.
+    #
+    # WP-53 (P2.55). This loop used to try "[" before "{", unconditionally. For
+    # the response shape the Stage 2 prompt actually asks for --
+    # `{"scenes": [...]}` with a sentence in front of it -- that found the INNER
+    # array first and returned it, discarding the wrapper and every sibling
+    # field on it. The direct-parse and code-fence paths above return the object
+    # intact, which is exactly why only one of the three extraction tests failed
+    # and the defect read as a test problem.
+    #
+    # Take whichever delimiter opens FIRST. That is the outermost structure by
+    # definition, so it works for a wrapped object AND for a bare top-level
+    # array with a preamble -- the case a naive "{" before "[" flip would have
+    # broken instead.
+    candidates = [
+        (idx, open_char, close_char)
+        for open_char, close_char in (("{", "}"), ("[", "]"))
+        if (idx := content.find(open_char)) >= 0
+    ]
+
+    for _, start_char, end_char in sorted(candidates):
         start_idx = content.find(start_char)
-        if start_idx >= 0:
-            # Find matching closing bracket
-            depth = 0
-            for i in range(start_idx, len(content)):
-                if content[i] == start_char:
-                    depth += 1
-                elif content[i] == end_char:
-                    depth -= 1
-                    if depth == 0:
-                        try:
-                            return json.loads(content[start_idx : i + 1])
-                        except json.JSONDecodeError:
-                            break
+        # Find matching closing bracket
+        depth = 0
+        for i in range(start_idx, len(content)):
+            if content[i] == start_char:
+                depth += 1
+            elif content[i] == end_char:
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return json.loads(content[start_idx : i + 1])
+                    except json.JSONDecodeError:
+                        # This span is not valid JSON; fall through to the other
+                        # delimiter rather than giving up on extraction.
+                        break
 
     raise ValueError(
         f"Could not extract valid JSON from LLM response. "
