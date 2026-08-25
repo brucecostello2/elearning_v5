@@ -513,6 +513,26 @@ def handle_stage_completion(
         ),
     )
 
+    # WP-45. The job row must name the task that is running NOW, not the one
+    # that started the run.
+    #
+    # `render_jobs.celery_task_id` was written once, at dispatch, and never
+    # again - so it held the id of the ORCHESTRATOR task, which finishes in
+    # milliseconds. `POST /jobs/{id}/cancel` revokes whatever that column says,
+    # and by the time an operator presses Cancel the orchestrator task is long
+    # gone while the GPU work is a different task id nothing recorded.
+    #
+    # Measured 2026-08-25: cancelling job 1e65b11d delivered a revoke for
+    # 4c28a899 to every worker on the fleet - the revoked set confirms it - and
+    # 4c28a899 had already succeeded 25 seconds earlier. The running stage-1
+    # task was 7dac75fa, which the revoke never named. The cancel was correctly
+    # delivered to the wrong task.
+    #
+    # Updating it here, at every sequential hop, means Cancel reaches the stage
+    # actually burning GPU. A media fan-out is the exception and is handled at
+    # its own dispatch site.
+    _update_job_celery_task_id(job_id, result.id, config)
+
     log.info(
         "next_stage_dispatched",
         next_stage=next_stage,
@@ -685,6 +705,12 @@ def dispatch_media_generation(
     # dispatch (max_retries=2) instead of starting a join nothing can report to.
     _store_media_task_count(job_id, total_media_tasks, config)
 
+    # WP-45. Media generation fans out to up to THREE parallel stage tasks and
+    # `render_jobs.celery_task_id` is one column, so it cannot name them all.
+    # It keeps naming this dispatcher, which is honest: a cancel during media
+    # generation revokes the fan-out task, not the three renders it started.
+    # Stated in the report as a known limit of Cancel rather than papered over
+    # by recording an arbitrary one of the three.
     log.info(
         "media_generation_dispatched",
         image_scenes=len(image_scenes),
@@ -939,6 +965,7 @@ def _handle_media_generation_completion(
             kwargs={"task_input_dict": task_input},
             queue=STAGE_QUEUE_MAP.get(next_stage, "default"),
         )
+        _update_job_celery_task_id(job_id, result.id, config)
 
         return {
             "job_id": job_id,
