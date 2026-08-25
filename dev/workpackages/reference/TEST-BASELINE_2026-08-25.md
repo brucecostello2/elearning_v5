@@ -16,14 +16,15 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **833** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
-| `ivgs-workers` | 754 | 22 | 48 | 15 | 27 failed (WP-45) |
+| `ivgs-workers` | 766 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | 30 | 16 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1643** | **59** | **63** | **45** | |
+| **Total** | **1655** | **55** | **63** | **45** | |
 
-`ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 11
-distinct causes, all named below.
+`ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 8
+distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
+P2.55.)
 
 The scheduler's "was" column is not a regression: 32 of its 43 tests errored at
 setup on one unresolvable import and never ran. WP-52 resolved that import, so
@@ -85,7 +86,7 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 754 passed, 22 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 766 passed, 18 failed, 48 skipped, 15 errors
 
 ```bash
 .venv/bin/python -m pytest ivgs-workers/tests
@@ -99,22 +100,25 @@ Runtime 20s.
 |---|---|---|
 | `test_quality_gate.py` — all 15 | `test_quality_gate.py:43` does `from test_scheduler import FakeRedis` — a helper that lives in the SCHEDULER's suite. Unresolvable under `--import-mode=importlib`, which does not put a test file's directory on `sys.path`. | **P2.51** |
 
-### 3.2 Failures (22)
+### 3.2 Failures (18)
 
 | Count | Tests | Cause | Ledger |
 |---|---|---|---|
 | 10 | `test_dlq_service.py` (all) | `mock_db_session_factory` is built as `AsyncMock(return_value=session)`, so `factory()` returns a **coroutine**. The production code does `async with self._db_session_factory() as session:` — a real `async_sessionmaker` is a SYNC callable returning an async context manager. `TypeError: 'coroutine' object does not support the asynchronous context manager protocol`. One-word fix per fixture (`MagicMock`). | **P2.53** |
 | 2 | `test_orphan_cleanup.py::TestScanType2/TestScanType3` | Same fixture defect. | **P2.53** |
 | 2 | `test_retry_engine.py::TestAttemptRecording` (both) | Same fixture defect. | **P2.53** |
-| 1 | `test_fallback_chain.py::test_all_levels_fail_routes_to_dlq` | **A real production defect.** `services/fallback_chain.py:459` does `from ivgs_workers.services.dlq_service import FailureCategory`. No `ivgs_workers` package exists — the directory is `ivgs-workers` (hyphen), which is not an importable name. Confirmed unimportable INSIDE the deployed image (`ivgs-workers:v5.11.0-apibatch`), so on chain exhaustion the DLQ hand-off raises before it can send. Needs a build. | **P2.50** |
 | 2 | `test_stage1.py::test_full_task_execution`, `test_stage2.py::TestStage2Integration::test_full_task_execution` | Test-side stale: the fixtures pass `project_id="proj-aaa-bbb-ccc"`, and the tasks now do `UUID(project_id)` (`stage1_transcript.py:506`, `stage2_storyboard.py:526`). `ValueError: badly formed hexadecimal UUID string`. Same class as the ids WP-52 corrected in `test_stage3.py`. | **P2.59** |
-| 1 | `test_stage2.py::test_media_type_normalization` | **A real defect with pipeline consequences.** `models/task_result.py:240` declares `media_type: str = "image"` — a bare string, no enum coercion, no normalisation. An LLM that writes `"video"` gets `"video"`, and `stage3_images.py:372` branches on `scene.media_type == MediaType.VIDEO_CLIP.value`, so that scene silently takes the IMAGE path. | **P2.54** |
-| 1 | `test_stage2.py::test_duration_validation` | Same model: `duration_seconds: float = 10.0` with no lower bound, so `-1` is accepted. `DID NOT RAISE`. | **P2.54** |
-| 1 | `test_stage2.py::test_json_with_preamble` | `_extract_json_from_response` (`stage2_storyboard.py:348`) searches for `[` BEFORE `{`. A preambled `{"scenes": [...]}` therefore returns the inner ARRAY and the object wrapper is discarded. The fenced and bare-JSON paths are correct, which is why only this one of the three fails. | **P2.55** |
 | 1 | `test_talking_head_task.py::test_requires_at_least_one_audio_ref` | `Stage6Input.scene_audio_refs` (`talking_head_task.py:126`) has no `min_length=1`, so a render with zero audio references is accepted. `DID NOT RAISE`. | **P2.56** |
 | 1 | `test_quality_validator.py::test_caption_full_validation` | `quality_validator.py:299` stores `round(elapsed, 3)`. Caption validation finishes in well under a millisecond, so it records `0.0` and `assert report.validation_duration_s > 0` fails. The measurement is too coarse, not the assertion too strict — repair on the code side (more precision), not by relaxing the test. | **P2.59** |
 
 **48 skipped** — pre-existing and expected; not introduced or changed by WP-52.
+
+**Closed by WP-53** (2026-08-25), and the rows removed from the table above:
+**P2.50** `test_fallback_chain.py::test_all_levels_fail_routes_to_dlq`,
+**P2.54** `test_stage2.py::test_media_type_normalization` and
+`::test_duration_validation`, **P2.55** `test_stage2.py::test_json_with_preamble`.
+WP-53 also added 12 tests across those two files, which is the rest of the
+754 → 766 move.
 
 ---
 

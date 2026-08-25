@@ -35,6 +35,14 @@ from services.fallback_chain import (
     SceneType,
 )
 
+# WP-53 (P2.50). Imported from the REAL module, so the assertions below compare
+# enum identity rather than whatever an AsyncMock happened to record. A mock
+# accepts a wrong category, a string, or a stub silently -- which is how the
+# broken `ivgs_workers.services.dlq_service` import survived: every test that
+# reached the DLQ hand-off was asserting `assert_called_once()` and nothing about
+# what was called with.
+from services.dlq_service import FailureCategory
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -204,6 +212,68 @@ class TestFallbackChainExecution:
         assert result.routed_to_dlq is True
         assert len(result.attempts) == 4
         mock_dlq_service.send_to_dlq.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_dlq_receives_the_exhausted_chain_message(
+        self,
+        fallback_service: FallbackChainService,
+        mock_media_dispatch: AsyncMock,
+        mock_motion_graphics: AsyncMock,
+        mock_dlq_service: AsyncMock,
+    ) -> None:
+        """The DLQ gets the MESSAGE, not just a call.
+
+        WP-53 (P2.50). `test_all_levels_fail_routes_to_dlq` asserted
+        `send_to_dlq.assert_called_once()` and stopped there, so it could not
+        tell a correct hand-off from a hand-off that named the wrong queue,
+        dropped the scene id, or passed a stubbed `FailureCategory` that an
+        `AsyncMock` invented on attribute access. The import that fed it
+        (`from ivgs_workers.services.dlq_service import FailureCategory`) had
+        been raising `ModuleNotFoundError` on this exact path for as long as it
+        has existed, and no assertion in this file could see that either --
+        the raise happened before `send_to_dlq`, so the sibling test failed with
+        an import error rather than an assertion error, which reads as
+        environment noise.
+
+        This pins the payload, and it pins `FailureCategory.EXTERNAL` by
+        IDENTITY against the real enum -- which is only importable if the module
+        path is right.
+        """
+        job_id = str(uuid.uuid4())
+        scene_id = str(uuid.uuid4())
+
+        mock_media_dispatch.side_effect = RuntimeError("Generation failed")
+        mock_motion_graphics.apply_ken_burns.side_effect = RuntimeError("Ken Burns failed")
+        mock_motion_graphics.apply_zoom_pan.side_effect = RuntimeError("Pan/zoom failed")
+
+        result = await fallback_service.execute_fallback_chain(
+            job_id=job_id,
+            scene_id=scene_id,
+            scene_type=SceneType.ACTION,
+            original_prompt="A failing scene",
+            original_queue="gpu_video",
+        )
+
+        assert result.routed_to_dlq is True
+        kwargs = mock_dlq_service.send_to_dlq.await_args.kwargs
+
+        # The queue the work came off, so a replay goes back where it belongs.
+        assert kwargs["original_queue"] == "gpu_video"
+        assert kwargs["task_name"] == "media_generation_task"
+
+        # Enough to reconstruct and replay the scene.
+        assert kwargs["task_kwargs"]["job_id"] == job_id
+        assert kwargs["task_kwargs"]["scene_id"] == scene_id
+
+        # Why it is here, in terms an operator can triage.
+        assert kwargs["exception_type"] == "FallbackChainExhausted"
+        assert scene_id in kwargs["exception_message"]
+        assert kwargs["retry_count_exhausted"] == 4
+
+        # The real enum member from the real module. `is`, not `==`: an
+        # AsyncMock attribute would satisfy equality against itself and prove
+        # nothing about the import.
+        assert kwargs["failure_category"] is FailureCategory.EXTERNAL
 
     @pytest.mark.asyncio
     async def test_start_from_l2(

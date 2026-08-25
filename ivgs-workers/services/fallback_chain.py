@@ -35,6 +35,8 @@ from typing import Any, Optional
 import structlog
 from pydantic import BaseModel, Field
 
+from services.dlq_service import FailureCategory
+
 logger = structlog.get_logger(__name__)
 
 
@@ -456,10 +458,19 @@ class FallbackChainService:
             total_attempts=len(attempts),
         )
 
-        from ivgs_workers.services.dlq_service import (
-            FailureCategory,
-        )
-
+        # WP-53 (P2.50). Was `from ivgs_workers.services.dlq_service import ...`.
+        # There is no `ivgs_workers` package anywhere -- the directory is
+        # `ivgs-workers`, a hyphen, which is not an importable module name.
+        # Confirmed unimportable inside the deployed image, not just the tree.
+        # Every sibling in this package imports `services.<module>`, which is
+        # what the container's WORKDIR makes resolvable.
+        #
+        # This import sits AFTER the L1-L4 loop, on the exhausted-chain path, so
+        # it raised only when the chain had actually run out of levels -- the one
+        # moment the DLQ hand-off below is the last thing standing between a
+        # failed scene and silence. Moved to module scope: a deferred import on a
+        # rarely-taken path is an import that is never tested by the paths that
+        # ARE taken.
         await self._dlq_service.send_to_dlq(
             original_queue=original_queue,
             task_name=task_name or "media_generation_task",
