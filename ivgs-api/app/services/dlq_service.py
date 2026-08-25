@@ -51,29 +51,47 @@ class DLQReplayError(RuntimeError):
 def _replay_args(message: DeadLetterMessage) -> tuple[list, dict, str]:
     """The (args, kwargs, queue) to re-enqueue a DLQ message with.
 
-    ``task_args`` and ``task_kwargs`` are JSONB and the ORM types them as dicts,
-    but Celery needs args to be a sequence. A dict arrives here when the column
-    was written from something that was not a list; it is coerced rather than
-    passed through, because ``send_task(args={...})`` raises inside the producer
-    and would look like a broker fault.
+    ``task_args`` is JSONB and this fleet has written **three different shapes**
+    into it, so the unwrapping is evidence-driven rather than assumed:
+
+    1. A LIST — the shape ``ivgs-workers/services/dlq_service.py`` declares
+       (``task_args: list[Any]``, defaulted to ``[]``). Positional args, as they
+       look on the wire.
+    2. ``{"args": [...], "kwargs": {...}}`` — the shape the LIVE writer
+       produces. ``utils/error_handler.route_to_dlq`` sets
+       ``payload["task_args"] = {"args": ..., "kwargs": ...}``, nesting both
+       inside the positional column. Rows written by the running fleet look like
+       this, and replaying that dict as positional arguments would hand the task
+       one dict where it expected several values.
+    3. Any other object — keyword arguments recorded under their own names.
+       Replayed as kwargs. Nothing is invented: the values keep the names they
+       were stored under, and no positional ordering is guessed at.
+
+    Its own ``kwargs`` always win over an envelope's on a key collision: the
+    dedicated column is the more specific record.
     """
     raw_args = message.task_args
-    if raw_args is None:
-        args: list = []
-    elif isinstance(raw_args, list):
+    args: list = []
+    kwargs: dict = dict(message.task_kwargs) if isinstance(message.task_kwargs, dict) else {}
+
+    if isinstance(raw_args, list):
         args = raw_args
     elif isinstance(raw_args, dict):
-        # A dict here almost always means positional args were recorded under
-        # keys; there is no faithful ordering to recover, so refuse rather than
-        # replay the task with arguments in an invented order.
-        raise DLQReplayError(
-            f"message {message.id} recorded task_args as an object, not a list; "
-            "there is no reliable positional order to replay it with."
-        )
-    else:
+        if "args" in raw_args or "kwargs" in raw_args:
+            nested_args = raw_args.get("args")
+            if isinstance(nested_args, list):
+                args = nested_args
+            elif nested_args is not None:
+                args = [nested_args]
+            nested_kwargs = raw_args.get("kwargs")
+            if isinstance(nested_kwargs, dict):
+                # The dedicated column wins; the envelope fills the gaps.
+                kwargs = {**nested_kwargs, **kwargs}
+        else:
+            kwargs = {**raw_args, **kwargs}
+    elif raw_args is not None:
         args = [raw_args]
 
-    kwargs = message.task_kwargs if isinstance(message.task_kwargs, dict) else {}
     queue = message.original_queue or FALLBACK_REPLAY_QUEUE
     return args, kwargs, queue
 

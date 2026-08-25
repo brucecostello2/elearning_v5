@@ -80,12 +80,20 @@ class TestGetJob:
 
 class TestCancelJob:
     async def test_cancel_pending_job(self, db_session, project_id: str):
+        """A job with no dispatched task says so, rather than claiming a revoke.
+
+        WP-45 Task 3, site 3. Cancel now revokes the running Celery task; a job
+        that was never dispatched has no task to revoke, and "cancelled" and
+        "cancelled, and nothing was running" are different facts. The message
+        records which happened instead of asserting the first for both.
+        """
         jid = await _create_job(db_session, project_id, "pending")
         svc = JobService(db_session)
         job = await svc.cancel_job(jid)
         assert job is not None
         assert job.status == "failed"
-        assert job.error_message == "Cancelled by user"
+        assert job.error_message.startswith("Cancelled by user")
+        assert "not revoked" in job.error_message
         assert job.completed_at is not None
 
     async def test_cancel_running_job(self, db_session, project_id: str):

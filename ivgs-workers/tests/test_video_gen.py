@@ -253,7 +253,7 @@ class TestProcessSingleVideo:
     @patch("tasks.video_generation_task._upload_asset")
     @patch("tasks.video_generation_task._generate_with_wan21")
     @patch("tasks.video_generation_task._generate_video_prompt")
-    @patch("tasks.video_generation_task.check_duplicate_asset")
+    @patch("tasks.video_generation_task.find_duplicate_or_none")
     async def test_successful_generation(
         self,
         mock_dedup,
@@ -325,7 +325,7 @@ class TestProcessSingleVideo:
     @patch("tasks.video_generation_task._upload_asset")
     @patch("tasks.video_generation_task._generate_with_wan21")
     @patch("tasks.video_generation_task._generate_video_prompt")
-    @patch("tasks.video_generation_task.check_duplicate_asset")
+    @patch("tasks.video_generation_task.find_duplicate_or_none")
     async def test_a_rejected_clip_is_not_uploaded(
         self,
         mock_dedup,
@@ -388,7 +388,7 @@ class TestProcessSingleVideo:
         mock_upload.assert_not_called()
 
     @pytest.mark.asyncio
-    @patch("tasks.video_generation_task.check_duplicate_asset")
+    @patch("tasks.video_generation_task.find_duplicate_or_none")
     @patch("tasks.video_generation_task._generate_video_prompt")
     async def test_dedup_hit(
         self,
@@ -396,9 +396,14 @@ class TestProcessSingleVideo:
         mock_dedup,
         mock_config,
     ):
+        # WP-45: the API sends `seaweedfs_path`. This fixture said
+        # `storage_path`, a key AssetResponse has never carried - and the task
+        # read it under that name, so a dedup hit set result.seaweedfs_path to
+        # "" and the scene lost its file reference. The fixture now matches the
+        # wire, and `asset_storage_path` reads the real field.
         mock_dedup.return_value = {
             "id": "existing-asset",
-            "storage_path": "/ivgs/videos/existing.mp4",
+            "seaweedfs_path": "/ivgs/videos/existing.mp4",
             "content_hash": "existing_hash",
         }
         mock_prompt.return_value = "test prompt"
@@ -421,3 +426,8 @@ class TestProcessSingleVideo:
 
         assert result.was_deduplicated is True
         assert result.asset_id == "existing-asset"
+        # The path survives the hit now. It did not before.
+        assert result.seaweedfs_path == "/ivgs/videos/existing.mp4"
+        # The probe asks by PARAMS hash: video dedups before it renders, so a
+        # hit skips the GPU work rather than just the upload.
+        assert mock_dedup.call_args.kwargs["hash_kind"] == "params"

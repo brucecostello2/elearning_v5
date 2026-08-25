@@ -102,7 +102,21 @@ class TestSceneRegenerate:
     """Test scene regeneration."""
 
     async def test_regenerate_scene(self, client: AsyncClient, operator_token: str, scene_fixture: dict):
-        """Test queuing scene regeneration creates a render job."""
+        """Regeneration creates a render job AND dispatches it (WP-45 Task 3).
+
+        Two assertions changed with the behaviour, both deliberately:
+
+        `job_type` was `storyboard_generation`, which named the wrong work.
+        Pressing Regen on a scene card does not re-run the storyboard LLM; it
+        re-renders that scene's media. The row now says which branch will run.
+
+        `status` was `pending`, and stayed pending forever, because nothing was
+        dispatched - nine such rows accumulated on the reference project. The
+        row is `running` once a broker message exists behind it.
+
+        What the message contains is asserted in tests/test_wp45_dispatch.py,
+        which is where the acceptance criterion for this fix lives.
+        """
         project_id = scene_fixture["project_id"]
         scene_id = scene_fixture["id"]
         response = await client.post(
@@ -111,5 +125,6 @@ class TestSceneRegenerate:
         )
         assert response.status_code == 202
         data = response.json()
-        assert data["job_type"] == "storyboard_generation"
-        assert data["status"] == "pending"
+        assert data["job_type"] == "image_generation"
+        assert data["status"] == "running"
+        assert data["celery_task_id"]

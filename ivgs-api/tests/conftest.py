@@ -1452,3 +1452,117 @@ async def talking_head_store(db_session):
     db_session.add_all([latentsync, sadtalker])
     await db_session.commit()
     return {"latentsync": latentsync, "sadtalker": sadtalker}
+
+
+# ============================================================================
+# CELERY PRODUCER — WP-45
+#
+# Before WP-45, eight endpoints created a row, returned 202 and dispatched
+# nothing, so no test in this suite could ever have touched a broker. Now that
+# they dispatch, a test that does not stub the producer reaches out to
+# `redis:6379`, a hostname that resolves inside the compose network and nowhere
+# else - which turns a unit test into an environment test.
+#
+# This is AUTOUSE deliberately. Opt-in stubbing would mean the next endpoint
+# that learns to dispatch silently starts depending on a live broker, and the
+# failure would look like flakiness rather than a missing stub. A test that
+# wants to ASSERT on what was published patches this again with its own
+# recorder (see tests/test_wp45_dispatch.py); an inner patch wins.
+# ============================================================================
+
+class _RecordingBroker:
+    """Records send_task / control.revoke instead of reaching a broker."""
+
+    def __init__(self):
+        self.sent = []
+        self.revoked = []
+        self.control = _RecordingControl(self)
+
+    def send_task(self, name, args=None, kwargs=None, queue=None, **_ignored):
+        self.sent.append(
+            {"name": name, "args": args, "kwargs": kwargs, "queue": queue}
+        )
+        return _StubAsyncResult(f"stub-task-{len(self.sent)}")
+
+
+class _RecordingControl:
+    def __init__(self, broker):
+        self._broker = broker
+
+    def revoke(self, task_id, **kwargs):
+        self._broker.revoked.append({"task_id": task_id, **kwargs})
+
+
+class _StubAsyncResult:
+    def __init__(self, task_id):
+        self.id = task_id
+
+
+@pytest.fixture(autouse=True)
+def stub_celery_producer(monkeypatch):
+    """Every test runs against a recording producer, never a live broker."""
+    broker = _RecordingBroker()
+    monkeypatch.setattr(
+        "app.services.celery_producer.celery_app", broker, raising=False
+    )
+    return broker
+
+
+# ============================================================================
+# GPU SCHEDULER and MODEL SERVING — WP-45
+#
+# Same reasoning as the producer stub above. Two more surfaces learned to reach
+# out of process in WP-45, and neither of them may turn a unit test into an
+# environment test:
+#
+#   * GET /api/v1/gpu/{nodes,utilization} read the SCHEDULER's registry (Task
+#     4(b), D-2 ruled read-through), because `gpu_nodes` has always had zero
+#     rows - workers register with the scheduler, not with the API.
+#   * The Prompt Playground calls a real model (Task 3, site 8). It used to
+#     return a hand-written placeholder string in the model_response field.
+#
+# Both default to the EMPTY / benign answer, so a test that has not thought
+# about them still passes; a test that cares patches the same target and wins.
+# ============================================================================
+
+_EMPTY_FLEET = {
+    "total_nodes": 0, "alive_nodes": 0, "draining_nodes": 0,
+    "total_vram_mb": 0, "used_vram_mb": 0, "available_vram_mb": 0,
+    "fleet_utilization_pct": 0.0,
+    "queue_depth": {"urgent": 0, "normal": 0, "batch": 0},
+    "nodes": [],
+}
+
+
+@pytest.fixture(autouse=True)
+def stub_scheduler_fleet(monkeypatch):
+    """No test reaches a live GPU scheduler."""
+    async def _fleet(*_args, **_kwargs):
+        return dict(_EMPTY_FLEET)
+
+    monkeypatch.setattr(
+        "app.services.gpu_service.fetch_fleet", _fleet, raising=False
+    )
+    return _fleet
+
+
+@pytest.fixture(autouse=True)
+def stub_llm_playground(monkeypatch):
+    """No test reaches a live vLLM/Ollama endpoint."""
+    async def _completion(prompt, model_id, engine="vllm", parameters=None):
+        return {
+            "model_response": f"[stubbed completion for {model_id}]",
+            "usage": {
+                "prompt_tokens": None,
+                "completion_tokens": None,
+                "total_tokens": None,
+            },
+            "engine": engine,
+            "endpoint": "http://stubbed-model.test:8000",
+            "finish_reason": "stop",
+        }
+
+    monkeypatch.setattr(
+        "app.services.prompt_service.run_completion", _completion, raising=False
+    )
+    return _completion

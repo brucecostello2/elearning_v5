@@ -15,6 +15,49 @@ import uuid
 from datetime import datetime, timezone
 
 import pytest
+from unittest.mock import AsyncMock, patch
+
+# ---------------------------------------------------------------------------
+# WP-45 Task 4(b), D-2 RULED. `list_nodes` and `get_fleet_utilization` read the
+# SCHEDULER's registry, not `gpu_nodes` - the table has always had zero rows
+# because workers register with the scheduler and nothing has ever called
+# POST /api/v1/gpu/nodes. The tests below that exercise those two methods stub
+# the read-through; the ones that exercise registration, reservations and
+# `gpu_nodes` itself are unchanged, because that table is still real and still
+# referenced by gpu_reservations.
+# ---------------------------------------------------------------------------
+
+
+def _scheduler_fleet(*, nodes=None):
+    nodes = nodes if nodes is not None else [{
+        "node_id": "node-04:gpu0", "gpu_index": 0, "gpu_model": "RTX PRO 6000",
+        "total_vram_mb": 97887, "used_vram_mb": 24576,
+        "available_vram_mb": 73311, "gpu_utilization_pct": 25.0,
+        "current_jobs": [], "last_heartbeat": "2026-08-25T13:00:00+00:00",
+        "is_alive": True, "is_draining": False, "loaded_models": [],
+        "circuit_breaker_state": "closed",
+    }]
+    total = sum(n["total_vram_mb"] for n in nodes)
+    used = sum(n["used_vram_mb"] for n in nodes)
+    return {
+        "total_nodes": len(nodes),
+        "alive_nodes": sum(1 for n in nodes if n["is_alive"]),
+        "draining_nodes": sum(1 for n in nodes if n["is_draining"]),
+        "total_vram_mb": total, "used_vram_mb": used,
+        "available_vram_mb": total - used, "fleet_utilization_pct": 0.0,
+        "queue_depth": {"urgent": 0, "normal": 0, "batch": 0}, "nodes": nodes,
+    }
+
+
+def _node(node_id, alive=True, draining=False, vram=97887, used=0):
+    return {
+        "node_id": node_id, "gpu_index": 0, "gpu_model": "RTX PRO 6000",
+        "total_vram_mb": vram, "used_vram_mb": used,
+        "available_vram_mb": vram - used, "gpu_utilization_pct": 0.0,
+        "current_jobs": [], "last_heartbeat": "2026-08-25T13:00:00+00:00",
+        "is_alive": alive, "is_draining": draining, "loaded_models": [],
+        "circuit_breaker_state": "closed",
+    }
 from sqlalchemy import text
 
 from app.services.gpu_service import GpuService
@@ -130,18 +173,21 @@ class TestCriticalPath7:
         assert drained.status == "draining"
 
     async def test_gpu_fleet_utilization_aggregation(self, db_session):
-        """Fleet summary aggregates across multiple nodes."""
-        await _ensure_project(db_session)
+        """Fleet summary aggregates across the SCHEDULER's nodes (WP-45)."""
         svc = GpuService(db_session)
-        n1 = await _register_node(svc, hostname=f"fleet-{uuid.uuid4().hex[:4]}", index=0, vram=16384)
-        n2 = await _register_node(svc, hostname=f"fleet-{uuid.uuid4().hex[:4]}", index=0, vram=24576)
-        await _create_reservation(db_session, n1.id, vram_mb=4096, status="active")
-
-        summary = await svc.get_fleet_utilization()
-        assert summary.total_nodes >= 2
-        assert summary.total_vram_mb >= 16384 + 24576
-        assert summary.used_vram_mb >= 4096
-        assert summary.fleet_utilization_pct >= 0
+        fleet = _scheduler_fleet(nodes=[
+            _node("node-02:gpu0", vram=16384, used=4096),
+            _node("node-03:gpu0", vram=24576, used=0),
+        ])
+        with patch(
+            "app.services.gpu_service.fetch_fleet", AsyncMock(return_value=fleet),
+        ):
+            summary = await svc.get_fleet_utilization()
+        assert summary.total_nodes == 2
+        assert summary.total_vram_mb == 16384 + 24576
+        assert summary.used_vram_mb == 4096
+        assert summary.available_vram_mb == 16384 + 24576 - 4096
+        assert summary.fleet_utilization_pct > 0
 
 
 # ===========================================================================
@@ -167,24 +213,59 @@ class TestRegisterNode:
 
 
 class TestListNodes:
+    """WP-45: these read the scheduler's registry, not gpu_nodes."""
+
     async def test_list_all(self, db_session):
         svc = GpuService(db_session)
+        # A row in gpu_nodes must NOT appear: it is not what the fleet is.
         await _register_node(svc, hostname=f"list-{uuid.uuid4().hex[:6]}")
-        nodes, total = await svc.list_nodes()
-        assert total >= 1
-        assert len(nodes) >= 1
+        with patch(
+            "app.services.gpu_service.fetch_fleet",
+            AsyncMock(return_value=_scheduler_fleet()),
+        ):
+            nodes, total = await svc.list_nodes()
+        assert total == 1
+        assert nodes[0].node_hostname == "node-04"
 
     async def test_list_with_status_filter(self, db_session):
         svc = GpuService(db_session)
-        host = f"filt-{uuid.uuid4().hex[:6]}"
-        await _register_node(svc, hostname=host)
-        nodes, total = await svc.list_nodes(status_filter="online")
+        fleet = _scheduler_fleet(nodes=[
+            _node("node-02:gpu0", alive=True),
+            _node("node-03:gpu0", alive=False),
+            _node("node-04:gpu0", alive=True, draining=True),
+        ])
+        with patch(
+            "app.services.gpu_service.fetch_fleet", AsyncMock(return_value=fleet),
+        ):
+            nodes, total = await svc.list_nodes(status_filter="online")
+        assert total == 1
         assert all(n.status == "online" for n in nodes)
 
     async def test_list_pagination(self, db_session):
         svc = GpuService(db_session)
-        nodes, _ = await svc.list_nodes(page=1, per_page=2)
-        assert len(nodes) <= 2
+        fleet = _scheduler_fleet(nodes=[
+            _node(f"node-0{i}:gpu0") for i in range(2, 6)
+        ])
+        with patch(
+            "app.services.gpu_service.fetch_fleet", AsyncMock(return_value=fleet),
+        ):
+            nodes, total = await svc.list_nodes(page=1, per_page=2)
+        assert total == 4
+        assert len(nodes) == 2
+
+    async def test_an_unreachable_scheduler_raises_rather_than_reporting_zero(
+        self, db_session,
+    ):
+        # "no nodes" and "I could not ask" must not be the same answer.
+        from app.services.scheduler_fleet import SchedulerUnavailable
+
+        svc = GpuService(db_session)
+        with patch(
+            "app.services.gpu_service.fetch_fleet",
+            AsyncMock(side_effect=SchedulerUnavailable("refused")),
+        ):
+            with pytest.raises(SchedulerUnavailable):
+                await svc.list_nodes()
 
 
 class TestGetNode:
@@ -280,21 +361,25 @@ async def _set_node_status(db, node_id, status):
 
 
 class TestFleetUtilizationStatusBranches:
-    """Cover the offline/draining branches in get_fleet_utilization (lines 246-249)."""
+    """WP-45: the three statuses come from the scheduler's two booleans."""
 
     async def test_fleet_counts_nodes_in_all_states(self, db_session):
-        await _ensure_project(db_session)
         svc = GpuService(db_session)
-        online_node = await _register_node(svc, hostname=f"fleet-on-{uuid.uuid4().hex[:6]}")
-        offline_node = await _register_node(svc, hostname=f"fleet-off-{uuid.uuid4().hex[:6]}")
-        draining_node = await _register_node(svc, hostname=f"fleet-drn-{uuid.uuid4().hex[:6]}")
-        await _set_node_status(db_session, offline_node.id, "offline")
-        await _set_node_status(db_session, draining_node.id, "draining")
-        summary = await svc.get_fleet_utilization()
-        assert summary.online_nodes >= 1
-        assert summary.offline_nodes >= 1
-        assert summary.draining_nodes >= 1
-
+        fleet = _scheduler_fleet(nodes=[
+            _node("node-02:gpu0", alive=True, draining=False),
+            _node("node-03:gpu0", alive=False, draining=False),
+            _node("node-04:gpu0", alive=True, draining=True),
+        ])
+        with patch(
+            "app.services.gpu_service.fetch_fleet", AsyncMock(return_value=fleet),
+        ):
+            summary = await svc.get_fleet_utilization()
+        assert summary.total_nodes == 3
+        assert summary.online_nodes == 1
+        assert summary.offline_nodes == 1
+        # Draining wins over alive: a draining node is still heartbeating, and
+        # what matters is that it is not taking new work.
+        assert summary.draining_nodes == 1
 
 class TestUtilizationHistoryValidation:
     """Cover the 6 validation branches of get_utilization_history (lines 364-505)."""
