@@ -221,6 +221,9 @@ class AssetService:
         # Compute SHA-256 hash for deduplication
         content_hash = hashlib.sha256(file_content).hexdigest()
 
+        if generation_params_hash is not None:
+            generation_params_hash = generation_params_hash.strip() or None
+
         if claimed_content_hash:
             claimed = claimed_content_hash.strip().lower()
             if len(claimed) != 64 or any(c not in "0123456789abcdef" for c in claimed):
@@ -229,15 +232,43 @@ class AssetService:
                     f"{len(claimed_content_hash)} characters"
                 )
             if claimed != content_hash:
-                raise ValueError(
-                    "content_hash does not match the uploaded bytes "
-                    f"(claimed {claimed[:16]}..., computed {content_hash[:16]}...). "
-                    "The upload was corrupted in transit, or the caller hashed "
-                    "something other than what it sent."
-                )
-
-        if generation_params_hash is not None:
-            generation_params_hash = generation_params_hash.strip() or None
+                if generation_params_hash is None:
+                    # PRE-WP-45 ANIMATION CALLER. Compatibility, with a shelf
+                    # life, and it is not a guess.
+                    #
+                    # animation_generation_task used to send its PARAMETERS hash
+                    # in the content_hash field and put the real content hash in
+                    # metadata. The moment this route started honouring
+                    # content_hash, every animation upload from a worker still on
+                    # v5.10.0 would have been rejected as corrupt - and the
+                    # workers on nodes 02-05 update on a separate operator step,
+                    # so that window is real rather than theoretical.
+                    #
+                    # A mismatch with NO generation_params_hash is unambiguous:
+                    # every WP-45 caller sends the two in their own fields, so a
+                    # caller that sends one hash under the wrong name and no
+                    # params hash is the old animation task. The value is stored
+                    # where it was always meant to go.
+                    #
+                    # REMOVE THIS once every node runs >= v5.11.0-apibatch. The
+                    # event below is the greppable proof of when that is true:
+                    # when it stops appearing, the branch is dead.
+                    logger.warning(
+                        "asset_upload_legacy_hash_field: project=%s type=%s "
+                        "claimed=%s computed=%s - a pre-WP-45 caller sent its "
+                        "generation-parameters hash in the content_hash field. "
+                        "Stored as generation_params_hash. Upgrade this node's "
+                        "worker to retire this path.",
+                        project_id, asset_type, claimed[:16], content_hash[:16],
+                    )
+                    generation_params_hash = claimed
+                else:
+                    raise ValueError(
+                        "content_hash does not match the uploaded bytes "
+                        f"(claimed {claimed[:16]}..., computed {content_hash[:16]}...). "
+                        "The upload was corrupted in transit, or the caller hashed "
+                        "something other than what it sent."
+                    )
 
         # Check for existing asset with same hash (deduplication per §10.4).
         # The generation-parameters hash counts too: video and animation dedup on

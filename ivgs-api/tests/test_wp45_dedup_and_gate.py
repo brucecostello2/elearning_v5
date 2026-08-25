@@ -240,10 +240,52 @@ class TestTask1UploadPersistsWhatCallersSend:
         # can never be found by its real content.
         resp = await self._upload(
             client, admin_token, dedup_project.id,
-            {"asset_type": "image", "content_hash": "f" * 64},
+            {
+                "asset_type": "image",
+                "content_hash": "f" * 64,
+                # A caller that sends BOTH fields knows the difference between
+                # them, so a mismatch from it is corruption, not the legacy
+                # shape below.
+                "generation_params_hash": "9" * 64,
+            },
         )
         assert resp.status_code == 400
         assert "does not match" in resp.text
+
+    async def test_the_pre_wp45_animation_shape_is_accepted_and_logged(
+        self, client: AsyncClient, admin_token, dedup_project, db_session, seaweed,
+    ):
+        """A worker still on v5.10.0 sends its PARAMS hash as content_hash.
+
+        The workers on nodes 02-05 update on a separate operator step, so this
+        window is real. animation_generation_task used to put its parameters
+        hash in the content_hash field and the real content hash in metadata;
+        the moment this route started honouring content_hash, every animation
+        upload from an un-upgraded node would have been rejected as corrupt.
+
+        A mismatch with NO generation_params_hash is unambiguous - every WP-45
+        caller sends the two in their own fields - so the value is stored where
+        it was always meant to go. Remove the branch when every node runs
+        >= v5.11.0-apibatch.
+        """
+        params_hash = "7" * 64
+        resp = await self._upload(
+            client, admin_token, dedup_project.id,
+            {"asset_type": "image", "content_hash": params_hash},
+        )
+        assert resp.status_code == 201, resp.text
+
+        row = (await db_session.execute(
+            text(
+                "SELECT content_hash, generation_params_hash FROM assets "
+                "WHERE id = :i"
+            ),
+            {"i": resp.json()["id"]},
+        )).first()
+        # The stored content hash is the one computed from the bytes, always.
+        assert row[0] == hashlib.sha256(b"the bytes").hexdigest()
+        # And the caller's value landed in the column it actually meant.
+        assert row[1] == params_hash
 
     async def test_a_malformed_content_hash_is_refused_by_shape(
         self, client: AsyncClient, admin_token, dedup_project, seaweed,
