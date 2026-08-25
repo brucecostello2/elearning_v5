@@ -8,6 +8,7 @@ import { canTriggerPipeline, useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import PipelineTracker from "@/components/PipelineTracker";
 import PipelineGateButton from "@/components/PipelineGateButton";
+import PresetApplyPanel from "@/components/project/PresetApplyPanel";
 import { PROJECT_TABS, tabHref } from "@/lib/project-tabs";
 
 /**
@@ -39,6 +40,13 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
   const canTrigger =
     (user?.role === "admin" || user?.role === "operator") &&
     canTriggerPipeline(project?.state);
+
+  /* `POST /projects/{id}/apply-preset` is behind `require_operator_or_admin`,
+     so a viewer must not see the control rather than press it into a 403 —
+     the same WP-40 Task 3b rule as the trigger button above. Unlike
+     `canTrigger` this does not depend on lifecycle state: a preset can be
+     applied to a project at any point. */
+  const canManage = user?.role === "admin" || user?.role === "operator";
 
   /** Format runtime from seconds to MM:SS display. */
   const formatRuntime = useCallback((seconds: number | null | undefined): string => {
@@ -157,6 +165,9 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
           />
         </div>
       </section>
+
+      {/* ── Preset application — AD-09.5 / AD-09.15 criterion 1 ──────── */}
+      <PresetApplyPanel projectId={projectId} canApply={canManage} />
 
       {/* ── Quick access ─────────────────────────────────────────────── */}
       <section>

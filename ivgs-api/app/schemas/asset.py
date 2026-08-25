@@ -27,6 +27,10 @@ class AssetUploadResponse(BaseModel):
     generation_metadata: Optional[Dict[str, Any]] = None
     reference_count: int = 1
     was_deduplicated: bool = False
+    # WP-56 / AD-09.4.2. Non-null when this asset is a library REFERENCE rather
+    # than an independent upload. Declared here only because the API populates
+    # it — see the WP-40/43 rule in app/schemas/library.py.
+    library_asset_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +58,8 @@ class AssetResponse(BaseModel):
     # worker fleet reads `id` and `seaweedfs_path` off this shape.
     generation_params_hash: Optional[str] = None
     generation_metadata: Optional[Dict[str, Any]] = None
+    # WP-56 / AD-09.4.2: the library origin, or null for pipeline-generated media.
+    library_asset_id: Optional[UUID] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

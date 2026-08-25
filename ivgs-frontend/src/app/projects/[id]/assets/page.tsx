@@ -6,6 +6,7 @@ import { useAssets } from "@/hooks/useAssets";
 import { useAuth } from "@/hooks/useAuth";
 import AssetBrowser from "@/components/AssetBrowser";
 import AssetUploader from "@/components/AssetUploader";
+import LibraryPicker from "@/components/project/LibraryPicker";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import Toast from "@/components/Toast";
 import type { Asset } from "@/types/api";
@@ -202,6 +203,18 @@ export default function AssetsPage(): React.ReactElement {
           )}
         </div>
       </div>
+
+      {/* ── Select-from-library (AD-09.11) ─────────────────────────── */}
+      {canEdit && (
+        <LibraryPicker
+          projectId={projectId}
+          onReferenced={(message) => {
+            setToastMessage(message);
+            setToastType("success");
+            void mutate();
+          }}
+        />
+      )}
 
       {/* ── Upload Area ────────────────────────────────────────────── */}
       {showUploader && canEdit && (

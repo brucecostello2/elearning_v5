@@ -62,6 +62,14 @@ from app.api.v1.model_store import (
     selections_router as model_selections_router,
 )
 
+# --- Production content libraries (AD-09.4 / AD-09.5, WP-56) ---
+from app.api.v1.library import (
+    actors_router,
+    library_router,
+    presets_router,
+    project_library_router,
+)
+
 
 api_v1_router = APIRouter()
 
@@ -122,6 +130,14 @@ api_v1_router.include_router(retention_router)         # prefix built into route
 api_v1_router.include_router(quotas_router, prefix="/quotas", tags=["Quotas"])
 api_v1_router.include_router(backup_router, prefix="/backup", tags=["Backup"])
 api_v1_router.include_router(rollback_router)          # prefix built into router
+
+# Production content libraries — AD-09.4 (assets, actors), AD-09.5 (presets).
+# Every route has a GUI surface (AD-09.15 criterion 7) and NO worker reads any
+# of these tables, which is WP-56's boundary condition against the cutover.
+api_v1_router.include_router(library_router)           # /library/assets
+api_v1_router.include_router(actors_router)            # /actors
+api_v1_router.include_router(presets_router)           # /presets
+api_v1_router.include_router(project_library_router)   # /projects/{id}/...
 
 # WebSocket
 api_v1_router.include_router(ws_logs_router)

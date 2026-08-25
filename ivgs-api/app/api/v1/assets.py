@@ -106,6 +106,19 @@ async def upload_asset(
         default=None,
         description="JSON object of per-asset generation provenance.",
     ),
+    library_kind: Optional[str] = Form(
+        default=None,
+        description=(
+            "AD-09.4.2 upload-on-use. When set, the media is ALSO written to the "
+            "asset library (owner_scope=user) and this asset records its "
+            "library origin. OPT-IN: the GUI sends it, workers do not, and "
+            "defaulting it on would pour every generated frame into the library."
+        ),
+    ),
+    library_name: Optional[str] = Form(
+        default=None,
+        description="Operator-facing name for the library entry; defaults to the filename.",
+    ),
     current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -178,6 +191,9 @@ async def upload_asset(
             claimed_content_hash=content_hash,
             generation_params_hash=generation_params_hash,
             generation_metadata=generation_metadata,
+            library_kind=library_kind,
+            library_name=library_name,
+            created_by=current_user.id,
         )
     except ValueError as e:
         raise HTTPException(

@@ -637,12 +637,28 @@ export interface HealthResponse {
 // Pagination Wrapper
 // ---------------------------------------------------------------------------
 
+/**
+ * The paginated envelope this API ACTUALLY sends (Appendix C.1):
+ * `{ data, total, page, per_page, pages, has_more }`.
+ *
+ * WP-56 Task 5 CORRECTED THIS TYPE. It previously declared
+ * `{ items, total, page, per_page, total_pages }` — and the API has never sent
+ * `items` or `total_pages` from any route. It was a PHANTOM TYPE of the WP-40/43
+ * family: nothing read it yet, so nothing was visibly broken, but the first
+ * component to trust it would have read `undefined` and rendered an empty list
+ * for a populated response. `src/lib/unwrap.ts` has documented the real shape
+ * as `PaginatedEnvelope` since WP-35; the two disagreed and the wrong one had
+ * the more inviting name.
+ *
+ * Reaching for `.items` is now a compile error, which is the point.
+ */
 export interface PaginatedResponse<T> {
-  items: T[];
+  data: T[];
   total: number;
   page: number;
   per_page: number;
-  total_pages: number;
+  pages: number;
+  has_more: boolean;
 }
 
 // ---------------------------------------------------------------------------

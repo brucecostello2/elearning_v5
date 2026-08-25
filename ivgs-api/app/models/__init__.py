@@ -7,7 +7,11 @@ SQLAlchemy's Base.metadata, which is required for:
   - Base.metadata.create_all() in tests
   - Relationship back-population
 
-All 23 models correspond to tables created by migrations 0001–0014.
+Models correspond to tables created by migrations 0001–0032.
+
+Three of them — Asset, DeadLetterMessage and TaskRetry — are re-exports; the
+classes live in ``shared/models/`` so the WORKER image can import them too
+(WP-56 Task 1, ledger P2.60).
 """
 # Core domain models (0001_initial_core)
 from app.models.user import User  # noqa: F401
@@ -44,6 +48,14 @@ from app.models.storage_quota import StorageQuota  # noqa: F401
 from app.models.backup_record import BackupRecord  # noqa: F401
 from app.models.fallback_policy import FallbackPolicy  # noqa: F401
 
+# Production content libraries — AD-09.4/.5 (0030–0032, WP-56).
+# These are API-side only: no worker reads them, which is WP-56's boundary
+# condition against the Temporal cutover. That is why they are NOT in
+# `shared/models/` alongside Asset / DeadLetterMessage / TaskRetry.
+from app.models.library_asset import LibraryAsset  # noqa: F401
+from app.models.actor import Actor  # noqa: F401
+from app.models.preset import Preset  # noqa: F401
+
 __all__ = [
     # Core domain
     "User",
@@ -76,4 +88,8 @@ __all__ = [
     # Backup & fallback
     "BackupRecord",
     "FallbackPolicy",
+    # Production content libraries (AD-09)
+    "LibraryAsset",
+    "Actor",
+    "Preset",
 ]

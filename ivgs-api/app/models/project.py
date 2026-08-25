@@ -57,6 +57,21 @@ class Project(Base):
     target_audience: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True,
     )
+    # ── AD-09.5 preset provenance; WP-56 Task 4, migration 0032 ──
+    # PROVENANCE ONLY. Applying a preset writes concrete values into the
+    # project's own columns; nothing re-reads the preset at render time, so
+    # editing a preset later cannot change what this project renders.
+    preset_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("presets.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    # Denormalised on purpose: the FK is SET NULL, and when it fires this is
+    # the only surviving record of which VERSION produced the project.
+    # Provenance a delete can erase is not provenance.
+    preset_version: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

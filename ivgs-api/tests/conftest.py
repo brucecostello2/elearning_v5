@@ -158,6 +158,16 @@ _ALL_TABLES = [
     "fallback_policies",
     "audit_log",
     "assets",
+    # AD-09 production content libraries (WP-56, migrations 0030-0032).
+    # Children before parents: `actors` and `presets` FK into `library_assets`
+    # and `users`; `assets.library_asset_id` and `projects.preset_id` FK in too.
+    # The statement is a single TRUNCATE ... CASCADE, so order is convention
+    # rather than correctness -- but a missing table here is not: it would let
+    # a library row survive into the next test and turn the dedup index into a
+    # cross-test failure that reproduces only in suite order.
+    "actors",
+    "presets",
+    "library_assets",
     "render_jobs",
     "storyboard_scenes",
     "transcripts",

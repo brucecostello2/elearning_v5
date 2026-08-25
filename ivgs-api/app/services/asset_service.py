@@ -181,6 +181,9 @@ class AssetService:
         claimed_content_hash: Optional[str] = None,
         generation_params_hash: Optional[str] = None,
         generation_metadata: Optional[Dict[str, Any]] = None,
+        library_kind: Optional[str] = None,
+        library_name: Optional[str] = None,
+        created_by: Optional[UUID] = None,
     ) -> Tuple[Asset, bool]:
         """
         Upload an asset to SeaweedFS and create metadata record.
@@ -205,6 +208,18 @@ class AssetService:
         future dedup lookup with a row that can never be found by its real content.
         ``generation_params_hash`` is a caller-owned idempotency key over inputs the
         server never sees, so it is stored as given.
+
+        WP-56 Task 2 — AD-09.4.2 UPLOAD-ON-USE. Passing ``library_kind`` also
+        writes the media into the asset library (``owner_scope='user'``) and
+        links this row to it via ``library_asset_id``, so media supplied during
+        project creation becomes reusable without a second upload.
+
+        IT IS OPT-IN AND MUST STAY OPT-IN. Every media task in the fleet uploads
+        through this method; defaulting it on would pour generated frames,
+        per-scene audio and talking-head renders into the library at a rate no
+        retention policy governs (AD-09.14 open question 7 — library retention
+        and quota — is unanswered). The GUI is the only caller that passes it,
+        and no worker sends the field.
         """
         # Validate asset type
         if asset_type not in ASSET_TYPE_PATHS:
@@ -336,6 +351,25 @@ class AssetService:
             storage_tier=INITIAL_TIER,
             last_accessed_at=datetime.now(timezone.utc),
         )
+        # AD-09.4.2 upload-on-use. Written BEFORE the project asset is committed
+        # so a library failure cannot leave a project row pointing at a library
+        # id that was never created.
+        if library_kind:
+            from app.services.library_service import LibraryService
+            lib_asset, _ = await LibraryService(self.db).upload_asset(
+                kind=library_kind,
+                name=(library_name or filename).strip(),
+                file_content=file_content,
+                filename=filename,
+                content_type=content_type,
+                owner_scope="user",
+                created_by=created_by,
+            )
+            asset.library_asset_id = lib_asset.id
+            # A project asset that IS a library reference must not be tiered out
+            # from under the library entry it mirrors.
+            asset.preserve_flag = True
+
         self.db.add(asset)
         await self.db.commit()
         await self.db.refresh(asset)
