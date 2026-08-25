@@ -307,43 +307,128 @@ class ProjectService:
             f"job={job.id}"
         )
 
-        # P1.5: dispatch the worker orchestrator's real entrypoint.
-        # DRAFT -> TRANSCRIPT_REFINEMENT is the pipeline start. USER_REVIEW -> FINAL_RENDER
-        # (post-storyboard media resume) is wired separately (P1.5 item 2 / Stage 3).
-        if current_state == ProjectState.DRAFT:
-            from app.services.celery_producer import celery_app as _pipeline_celery
+        # P1.5 / WP-45 Task 2(b): dispatch the worker orchestrator's real entrypoint.
+        #
+        # This used to run for DRAFT only. From USER_REVIEW the method flipped the
+        # state to FINAL_RENDER, inserted a render_jobs row, logged "Pipeline
+        # triggered" - and sent no message. The comment said the other branch was
+        # "wired separately (P1.5 item 2 / Stage 3)", but that is the STORYBOARD
+        # path (approve_storyboard), not this one. So the "Start final render"
+        # button on a reviewed draft moved the project into FINAL_RENDER and
+        # nothing ever ran: gate 2 had a door and no corridor behind it
+        # (WP-39 §4 Gap B).
+        #
+        # Both branches now go through dispatch_pipeline, which reads
+        # current_stage and builds that stage's input with the orchestrator's own
+        # _build_stage_input - so Stage 8 gets its manifest, its talking-head
+        # asset and its scene list from the same code path Stage 7 used, rather
+        # than from a second, drifting copy of that logic living in the API.
+        from app.services.celery_producer import celery_app as _pipeline_celery
 
-            job_context = {
-                "job_id": str(job.id),
-                "project_id": str(project.id),
-                "project_name": getattr(project, "name", "") or "",
-                "project_description": getattr(project, "description", "") or "",
-                "target_audience": getattr(project, "target_audience", "") or "",
-                "language_code": getattr(project, "language_code", "en-US") or "en-US",
-                "priority": "normal",
-                "tier": tier,
-                "current_stage": "transcript_refinement",
-            }
-            # IVGS-0.1: the project's real runtime budget must reach the stage
-            # prompts. Omitted (not defaulted here) when the project genuinely
-            # has no value, so PipelineJobContext's 600s default is the ONLY
-            # source of that fallback and stays visible as such.
-            _max_runtime = getattr(project, "max_runtime_seconds", None)
-            if _max_runtime is not None:
-                job_context["max_runtime_seconds"] = int(_max_runtime)
-            dispatch = _pipeline_celery.send_task(
-                "tasks.pipeline_orchestrator_v2.dispatch_pipeline",
-                kwargs={"job_context_dict": job_context},
-                queue="default",
-            )
-            job.celery_task_id = dispatch.id
-            await self.db.commit()
-            logger.info(
-                f"Pipeline dispatched: project={project.id} job={job.id} "
-                f"celery_task={dispatch.id} -> tasks.pipeline_orchestrator_v2.dispatch_pipeline"
-            )
+        _start_stage = (
+            "transcript_refinement"
+            if current_state == ProjectState.DRAFT
+            else "final_render"
+        )
+        job_context = {
+            "job_id": str(job.id),
+            "project_id": str(project.id),
+            "project_name": getattr(project, "name", "") or "",
+            "project_description": getattr(project, "description", "") or "",
+            "target_audience": getattr(project, "target_audience", "") or "",
+            "language_code": getattr(project, "language_code", "en-US") or "en-US",
+            "priority": "normal",
+            "tier": tier,
+            "current_stage": _start_stage,
+        }
+        # IVGS-0.1: the project's real runtime budget must reach the stage
+        # prompts. Omitted (not defaulted here) when the project genuinely
+        # has no value, so PipelineJobContext's 600s default is the ONLY
+        # source of that fallback and stays visible as such.
+        _max_runtime = getattr(project, "max_runtime_seconds", None)
+        if _max_runtime is not None:
+            job_context["max_runtime_seconds"] = int(_max_runtime)
+        dispatch = _pipeline_celery.send_task(
+            "tasks.pipeline_orchestrator_v2.dispatch_pipeline",
+            kwargs={"job_context_dict": job_context},
+            queue="default",
+        )
+        job.celery_task_id = dispatch.id
+        job.status = "running"
+        job.started_at = datetime.now(timezone.utc)
+        await self.db.commit()
+        logger.info(
+            f"Pipeline dispatched: project={project.id} job={job.id} "
+            f"stage={_start_stage} celery_task={dispatch.id} "
+            "-> tasks.pipeline_orchestrator_v2.dispatch_pipeline"
+        )
 
         return await self._to_response(project)
+
+    async def reset_after_terminal_failure(
+        self,
+        project_id: UUID,
+        reason: str,
+    ) -> Optional[str]:
+        """Return a project to DRAFT after a terminal job failure. P1.4q, RULED.
+
+        A render job fails; the project is left in whatever in-progress state it
+        had reached; ``POST /projects/{id}/trigger`` then refuses the retry with
+        409 INVALID_STATE_TRANSITION, because the state machine only admits a
+        trigger from a resting state. Observed twice on 2026-08-23 during the
+        first end-to-end run, and the operator's only recourse was
+        ``UPDATE projects SET state='DRAFT'`` by hand.
+
+        **The ruling is DRAFT, and no new state.** The job history keeps the
+        record of what failed - render_jobs rows are not touched here - so the
+        project does not need a FAILED state to remember it.
+
+        The hop runs through ``transition_state``'s own validation twice, X ->
+        ERROR -> DRAFT, rather than assigning DRAFT directly. Both hops are
+        sanctioned by PROJECT_STATE_TRANSITIONS (every state may go to ERROR;
+        ERROR may return to any of them), so the state machine stays the single
+        authority on what is legal instead of acquiring a back door that
+        bypasses it.
+
+        Returns the state the project was in, or None if there was nothing to do.
+        This is called from a worker callback, so it takes no user and does its
+        own RBAC-free lookup deliberately: the pipeline is not a person.
+        """
+        project = await self.db.scalar(
+            select(Project).where(Project.id == project_id)
+        )
+        if project is None:
+            return None
+
+        current_state = ProjectState(project.state)
+        if current_state in (ProjectState.DRAFT, ProjectState.COMPLETE):
+            # A resting state is already retriggerable. COMPLETE is deliberate:
+            # a late failure on a finished project must not silently undo it.
+            return None
+
+        now = datetime.now(timezone.utc)
+        if current_state is not ProjectState.ERROR:
+            if ProjectState.ERROR not in PROJECT_STATE_TRANSITIONS.get(current_state, set()):
+                logger.warning(
+                    "P1.4q reset skipped: %s has no ERROR transition (project=%s)",
+                    current_state.value, project_id,
+                )
+                return None
+            project.state = ProjectState.ERROR.value
+            project.updated_at = now
+            await self.db.commit()
+
+        project.state = ProjectState.DRAFT.value
+        project.updated_at = now
+        await self.db.commit()
+        await self.db.refresh(project)
+
+        logger.info(
+            "P1.4q reset: project=%s %s -> ERROR -> DRAFT (reason=%s). "
+            "Job history retained.",
+            project_id, current_state.value, reason,
+        )
+        return current_state.value
 
 
     async def approve_storyboard(

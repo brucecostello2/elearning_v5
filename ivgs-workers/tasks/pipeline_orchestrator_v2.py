@@ -43,6 +43,7 @@ from models.task_result import (
     StageStatus,
 )
 from utils.error_handler import (
+    advance_project_state,
     save_checkpoint,
     update_job_status,
 )
@@ -138,6 +139,49 @@ STAGE_QUEUE_MAP: Dict[str, str] = {
     PipelineStage.PROTOTYPE_DRAFT.value: "composition",
     PipelineStage.FINAL_RENDER.value: "composition",
 }
+
+# ---------------------------------------------------------------------------
+# Project lifecycle states (WP-45 Task 2(a) / ORCH-5)
+# ---------------------------------------------------------------------------
+#
+# WP-39 §4 Gap A: nothing in this system advanced `projects.state` past
+# MEDIA_GENERATION. `ProjectService.transition_state` was implemented, validated
+# and had no caller; only trigger_pipeline, approve_storyboard and WP-38's
+# scene-write edge ever wrote the column. So five of the thirteen declared
+# states - MANIFEST_GENERATION, AUDIO_GENERATION, TALKING_HEAD_RENDER,
+# PROTOTYPE_DRAFT, USER_REVIEW - could never appear on any project, and the
+# draft-review gate spec §6.1 requires (`USER_REVIEW` after Stage 7) was
+# unreachable. `stage7_prototype_draft.py`'s docstring lists the transition as
+# step 9; no code performed it.
+#
+# The orchestrator is the right caller because it is the only component that
+# knows a stage finished and which one runs next. The map below is keyed by the
+# stage ABOUT TO RUN, so the project's state names what is happening now rather
+# than what has just stopped happening. Every hop it produces is one the
+# §6.1 PROJECT_STATE_TRANSITIONS table already sanctions - this adds a caller,
+# not a new rule.
+STAGE_PROJECT_STATE: Dict[str, str] = {
+    PipelineStage.TRANSCRIPT_REFINEMENT.value: "TRANSCRIPT_REFINEMENT",
+    PipelineStage.STORYBOARD_GENERATION.value: "STORYBOARD_GENERATION",
+    PipelineStage.IMAGE_GENERATION.value: "MEDIA_GENERATION",
+    PipelineStage.VIDEO_GENERATION.value: "MEDIA_GENERATION",
+    PipelineStage.ANIMATION_GENERATION.value: "MEDIA_GENERATION",
+    PipelineStage.COMPOSITION_MANIFEST.value: "MANIFEST_GENERATION",
+    PipelineStage.TTS_AUDIO.value: "AUDIO_GENERATION",
+    PipelineStage.TALKING_HEAD_RENDER.value: "TALKING_HEAD_RENDER",
+    PipelineStage.PROTOTYPE_DRAFT.value: "PROTOTYPE_DRAFT",
+    PipelineStage.FINAL_RENDER.value: "FINAL_RENDER",
+}
+
+# What a completed stage means for the project when the pipeline PAUSES there.
+# Storyboard is absent deliberately: the project is already in
+# STORYBOARD_GENERATION and the next write belongs to approve_storyboard, which
+# is the human's decision, not the pipeline's.
+GATE_PROJECT_STATE: Dict[str, str] = {
+    PipelineStage.PROTOTYPE_DRAFT.value: "USER_REVIEW",
+    PipelineStage.FINAL_RENDER.value: "COMPLETE",
+}
+
 
 # Media generation stages (dispatched in parallel per scene)
 MEDIA_GENERATION_STAGES = {
@@ -326,11 +370,25 @@ def handle_stage_completion(
         # keep gate_status in the log/return below for observability.
         update_job_status(job_id, "success")
 
+        # WP-45 Task 2(a). THIS is the write gate 2 was waiting for. A finished
+        # draft now leaves the project in USER_REVIEW, which is the state
+        # spec §6.1 requires and the state POST /projects/{id}/trigger accepts -
+        # so "Start final render" becomes reachable without a hand-written
+        # UPDATE against the database.
+        gate_state = GATE_PROJECT_STATE.get(completed_stage)
+        if gate_state:
+            advance_project_state(
+                project_id,
+                gate_state,
+                reason=f"gate after {completed_stage}",
+            )
+
         return {
             "job_id": job_id,
             "action": "user_gate",
             "completed_stage": completed_stage,
             "gate_status": gate_status,
+            "project_state": gate_state or "",
             "message": f"Stage {completed_stage} complete. Awaiting user action.",
         }
 
@@ -348,6 +406,18 @@ def handle_stage_completion(
     task_input = _build_stage_input(
         next_stage, None, config, stage_output_dict,
     )
+
+    # WP-45 Task 2(a): the project moves to the state that names the stage now
+    # starting, before the message goes out. Ordered that way deliberately - a
+    # project seen in MANIFEST_GENERATION while Stage 4 has not quite started is
+    # honest; a project seen in MEDIA_GENERATION while Stage 4 is running is not.
+    project_state = STAGE_PROJECT_STATE.get(next_stage)
+    if project_state:
+        advance_project_state(
+            project_id,
+            project_state,
+            reason=f"dispatching {next_stage} after {completed_stage}",
+        )
 
     result = celery_app.send_task(
         task_name,
@@ -768,6 +838,15 @@ def _handle_media_generation_completion(
 
         task_input = _build_stage_input(
             next_stage, None, config, stage_output,
+        )
+
+        # WP-45 Task 2(a): the media join is where MEDIA_GENERATION ends. This
+        # is the first hop of the back half, and the one whose absence pinned
+        # every project on the fleet at MEDIA_GENERATION forever.
+        advance_project_state(
+            stage_output.get("project_id", ""),
+            STAGE_PROJECT_STATE[next_stage],
+            reason=f"media join complete after {completed_stage}",
         )
 
         result = celery_app.send_task(
@@ -1416,6 +1495,15 @@ def media_join_watchdog() -> Dict[str, Any]:
             next_stage = PipelineStage.COMPOSITION_MANIFEST.value
             task_name = STAGE_TASK_MAP[next_stage]
             task_input = _build_stage_input(next_stage, None, config, ctx)
+            # WP-45 Task 2(a): the watchdog advances the pipeline, so it advances
+            # the project state with it. Otherwise a job rescued from a stranded
+            # join would run the whole back half with projects.state frozen at
+            # MEDIA_GENERATION - the exact condition this package removes.
+            advance_project_state(
+                ctx.get("project_id", ""),
+                STAGE_PROJECT_STATE[next_stage],
+                reason="media-join watchdog advance",
+            )
             result = celery_app.send_task(
                 task_name,
                 kwargs={"task_input_dict": task_input},

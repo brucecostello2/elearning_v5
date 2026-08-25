@@ -8,6 +8,7 @@ Endpoints:
 - PATCH  /api/v1/projects/{id}                — Update project metadata
 - DELETE /api/v1/projects/{id}                — Delete project (admin only)
 - POST   /api/v1/projects/{id}/trigger        — Trigger pipeline execution
+- PATCH  /api/v1/projects/{id}/state          — Advance lifecycle state (internal)
 - POST   /api/v1/projects/{id}/upload-talking-head — Upload talking head clip
 """
 import logging
@@ -15,16 +16,22 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
 from app.core.auth import get_current_user
-from app.core.rbac import require_admin, require_operator_or_admin
+from app.core.rbac import (
+    require_admin,
+    require_operator_or_admin,
+    require_service_or_privileged_user,
+)
 from app.models.user import User
 from app.schemas.base import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.services.project_service import DEFAULT_RENDER_TIER, ProjectService
 from app.services.asset_service import AssetService
+from shared.models.enums import ProjectState
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +187,103 @@ async def trigger_pipeline(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
         )
+    return result
+
+
+class ProjectStateUpdate(BaseModel):
+    """Body for PATCH /projects/{id}/state — the pipeline's own state callback."""
+
+    state: str = Field(
+        description="Target ProjectState, e.g. MANIFEST_GENERATION or USER_REVIEW."
+    )
+    reason: Optional[str] = Field(
+        default=None,
+        description="Free text recorded in the API log, e.g. the completed stage.",
+    )
+
+
+@router.patch(
+    "/{project_id}/state",
+    response_model=ProjectResponse,
+    summary="Advance project lifecycle state (internal)",
+)
+async def transition_project_state(
+    project_id: UUID,
+    payload: ProjectStateUpdate,
+    current_user: User = Depends(require_service_or_privileged_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Advance a project through the §6.1 state machine.
+
+    WP-45 Task 2(a) / ORCH-5, and WP-39 §4 Gap A. ``transition_state`` has been
+    implemented and validated since Phase 3 and **had no route and no caller**.
+    Only three writers ever touched ``projects.state``: ``trigger_pipeline``,
+    ``approve_storyboard``, and WP-38's scene-write edge. Nothing advanced a
+    project past MEDIA_GENERATION, so MANIFEST_GENERATION, AUDIO_GENERATION,
+    TALKING_HEAD_RENDER, PROTOTYPE_DRAFT and USER_REVIEW were states the system
+    declared and could never reach - and spec §6.1's "post-assembly: project
+    state transitions to USER_REVIEW", which gate 2 depends on, never happened.
+    ``stage7_prototype_draft.py``'s own docstring lists it as step 9; no code
+    performed it.
+
+    This is the caller. The orchestrator invokes it on each hop through the back
+    half of the pipeline, which is the only place that knows a stage finished.
+
+    Service-token authenticated like every other worker-to-API route, and
+    operator/admin may call it too - an operator moving a stuck project through
+    the machine by hand is doing what the state machine sanctions, which is
+    strictly better than the UPDATE statement they use today.
+
+    An illegal transition is a 409 with the legal set named. The validation lives
+    in ProjectService.transition_state against PROJECT_STATE_TRANSITIONS; this
+    route adds none of its own.
+    """
+    try:
+        target = ProjectState(payload.state)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": (
+                        f"Unknown project state '{payload.state}'. Valid: "
+                        f"{[s.value for s in ProjectState]}"
+                    ),
+                }
+            },
+        )
+
+    service = ProjectService(db)
+
+    # Idempotent by construction. This is a callback route and the worker fleet
+    # retries it; asking for the state a project is already in is a no-op, not a
+    # conflict. Doing it here rather than in transition_state keeps the state
+    # machine's own validation exactly as strict as it was.
+    existing = await service.get_project(project_id, current_user)
+    if existing is not None and existing.state == target.value:
+        logger.info(
+            "Project state already %s: project=%s reason=%s (no-op)",
+            target.value, project_id, payload.reason or "-",
+        )
+        return existing
+
+    try:
+        result = await service.transition_state(project_id, target, current_user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": str(e)}},
+        )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
+        )
+    logger.info(
+        "Project state advanced: project=%s -> %s reason=%s by=%s",
+        project_id, target.value, payload.reason or "-", current_user.username,
+    )
     return result
 
 

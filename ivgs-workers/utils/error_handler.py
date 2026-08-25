@@ -405,6 +405,98 @@ def update_job_status(
         return False
 
 
+def advance_project_state(
+    project_id: str,
+    new_state: str,
+    reason: str = "",
+) -> bool:
+    """Advance a project through the §6.1 lifecycle. WP-45 Task 2(a) / ORCH-5.
+
+    PATCH /api/v1/projects/{id}/state, the route that did not exist until this
+    package. ``ProjectService.transition_state`` has been implemented and
+    validated since Phase 3 with **no route and no caller**, so nothing in the
+    system ever advanced a project past MEDIA_GENERATION. MANIFEST_GENERATION,
+    AUDIO_GENERATION, TALKING_HEAD_RENDER, PROTOTYPE_DRAFT and USER_REVIEW were
+    states the schema declared and the running system could not reach - and
+    spec §6.1's "post-assembly: project state transitions to USER_REVIEW", on
+    which the whole draft-review gate depends, simply never happened
+    (WP-39 §4 Gap A).
+
+    Returns True when the project is now in ``new_state``.
+
+    **This does not raise, and that is deliberate.** A project-state write is a
+    record of where the pipeline is; the pipeline itself is the thing that
+    matters and it must not stop because a bookkeeping call failed. But the
+    failure is loud - one greppable ``project_state_advance_failed`` carrying
+    the status code - rather than the silent False that the swallow register
+    exists to catch. A 409 is logged separately at warning: it means the state
+    machine refused the hop, which is information about the run, not a fault in
+    this call.
+    """
+    if not project_id or not new_state:
+        logger.warning(
+            "project_state_advance_skipped",
+            project_id=project_id,
+            new_state=new_state,
+            reason="missing project_id or state",
+        )
+        return False
+
+    config = _get_config()
+    api_url = f"{config.pipeline_api.full_base_url}/projects/{project_id}/state"
+
+    try:
+        with httpx.Client(
+            timeout=config.pipeline_api.timeout_seconds,
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {config.pipeline_api.service_token}",
+            },
+        ) as client:
+            resp = client.patch(
+                api_url, json={"state": new_state, "reason": reason},
+            )
+    except Exception as exc:
+        logger.error(
+            "project_state_advance_failed",
+            project_id=project_id,
+            new_state=new_state,
+            error=str(exc),
+            consequence="pipeline continues; projects.state is now stale",
+        )
+        return False
+
+    if resp.status_code == 200:
+        logger.info(
+            "project_state_advanced",
+            project_id=project_id,
+            new_state=new_state,
+            reason=reason,
+        )
+        return True
+
+    if resp.status_code == 409:
+        # The state machine refused it. Usually because a human moved the
+        # project while a stage was running, which is legitimate.
+        logger.warning(
+            "project_state_transition_refused",
+            project_id=project_id,
+            new_state=new_state,
+            detail=resp.text[:300],
+        )
+        return False
+
+    logger.error(
+        "project_state_advance_failed",
+        project_id=project_id,
+        new_state=new_state,
+        status_code=resp.status_code,
+        detail=resp.text[:300],
+        consequence="pipeline continues; projects.state is now stale",
+    )
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Checkpoint save helper
 # ---------------------------------------------------------------------------
