@@ -121,6 +121,12 @@ ivgs-infra/.env.node0*
 ivgs-infra/docker-compose.smoke-*.yml
 ivgs-infra/.env.node01
 
+# WP-46: the MBCP weight-fetch credentials (serving token + HMAC signing key).
+# Delivered by the operator 2026-08-25 at mode 600. `git status` listed it as
+# untracked, i.e. one `git add -A` away from the history. Never commit it.
+.mbcp-weights.env
+ivgs-infra/.mbcp-weights.env
+
 # Pipeline evidence artifacts at the repository ROOT only (WP-TREE-TRIAGE 2026-08-22).
 # draft_pillar2_f78eb063.mp4, final_1080p_9007b2cf.mp4 and presenter.mp4 are the
 # cited evidence for ledger P1.4 and the 2026-08-14 status doc. Kept on disk, never

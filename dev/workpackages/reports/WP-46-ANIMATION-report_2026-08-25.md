@@ -805,6 +805,11 @@ like a model problem rather than a disk problem.
 
 ## 11. Push block — count-gated, for ALL held commits
 
+> **Superseded 2026-08-25 by the addendum's §A9.** Both commits below were pushed to
+> `origin/main` between the two halves of this package — not by me. `origin/main` is at
+> `2590e0d` as of the addendum. This block is kept as the record of what was held at the
+> time; use §A9.
+
 **HELD: 1 commit.** Nothing has been pushed.
 
 ```
@@ -832,3 +837,426 @@ fi
 `EXPECTED=2` — this report is committed after the code, so at push time there are two:
 the code commit above and the report commit. If you push before the report lands, set it
 to 1. If it reports any other number, stop and find out what else is held before pushing.
+
+---
+---
+
+# ADDENDUM — 2026-08-25, credentials delivered: the weights, and the first real animation
+
+The operator handed over the MBCP weight credentials. §6.1 steps 1–2 are done. **A real
+animation asset exists**, rendered by Wan2.2-Animate on node-03 from one scene of the
+banked reference storyboard, uploaded, checkpointed and scene-linked.
+
+| | |
+|---|---|
+| **Asset** | `3bc54e58-3901-440c-a2ea-8f89bbc7476c` — `/ivgs/videos/c12fa967-…/7c6d34ba-…_animation.mp4` |
+| **Render** | 768×1408, 30 fps, **77 frames**, 2.567 s, h264, 796,500 bytes |
+| **Wall clock** | **256.49 s** task, 255.63 s inside the engine (MBCP certified 299.02 s) |
+| **VRAM peak** | **56,139 MiB = 54.82 GiB** absolute; **34,874 MiB = 34.06 GiB** attributable to this render |
+| **Job** | `5eb2bda1-1267-4f29-a219-aee39c266801`, checkpoint `animation_generation` → `complete` |
+| **Store** | still **CANDIDATE**, engine still `animatediff`, `is_default` still false. Nothing touched. |
+| **State** | Committed and **HELD**. Nothing pushed. |
+
+---
+
+## A1. Credential handling
+
+`/opt/ivgs/ivgs-infra/.mbcp-weights.env`, mode 600, three variables:
+`MBCP_WEIGHT_SERVICE_TOKEN`, `MBCP_SERVING_TOKEN`, `MBCP_WEIGHT_SIGNING_KEY`. Sourced into
+the fetch process's environment and never written elsewhere, never echoed, never passed on
+a command line, and never copied to another host — the entire fetch ran on node-01.
+
+**One thing needed fixing first.** `git status` listed the file as untracked: it was one
+`git add -A` away from the repository's permanent history. `.gitignore` now covers it
+(`.mbcp-weights.env` and `ivgs-infra/.mbcp-weights.env`), verified with `git check-ignore`.
+
+---
+
+## A2. Step 1 — the nine bundles: fetched, verified, placed
+
+### A2.1 The tier is `candidate`, not `certified`
+
+`?tier=certified` returns `{"detail":"no such bundle"}` for every one of the nine. The
+serving plane holds **26 bundles**; all nine `wan_animate` components are present at
+`tier=candidate`, none revoked, and every one carries `promoted_at: null` — MBCP's
+`POST /promote/{stored_weight_id}` has never been run on them.
+
+So: **the model is certified; its weight bundles are not promoted.** The fetch therefore
+uses `tier=candidate`. That is a real gap between the certification record and the weight
+store, and it is worth an answer from MBCP before the row is approved — see A6.
+
+### A2.2 What was verified, stated exactly
+
+Using the repo's own seam-2 client (`ivgs-models/mbcp_fetch.py`) for both primitives:
+
+* **Manifest HMAC-SHA256 signature — verified for all nine.** This is the one that matters
+  most: it proves every `logical_name → sha256` pair in the manifest is MBCP's.
+* **Bundle digest — verified for all nine.** Recomputed from the manifest's file list with
+  `compute_bundle_digest` and compared to the published `bundle_digest`.
+* **Per-file SHA-256 — verified for all 23 files while streaming**, then **verified a
+  second time on node-03 after the copy**: `sha256sum -c` → **23 of 23 OK, zero failures**.
+
+> **One honest limitation.** For the Wan2.2-Animate bundle only, the include filter means
+> we keep 1 of 4 files, so the bundle digest cannot be a checksum of what is on disk — by
+> definition it covers all four. It is verified against the manifest (proving the manifest
+> intact and authentic) and the kept file's own SHA-256 is verified against it. The other
+> eight bundles were taken whole.
+
+### A2.3 Fetch evidence
+
+Full record at `/mnt/ivgs-shared/wan-weights-staging/FETCH_EVIDENCE.json`.
+
+| Component | tier | ver | files | sig | digest | bundle_digest |
+|---|---|---|---|:--:|:--:|---|
+| Wan2.2-Animate-14B | candidate | 2.2-fp8 | **1/4** | OK | OK | `5607289a96eb1804a229944d1a9d0ec2622232281671a18f7fc4772149258b42` |
+| UMT5-XXL-enc | candidate | bf16 | 3/3 | OK | OK | `783cf397eb788d4597accd2ebe792c8912c4262719cf1ab2add3cf1b8eee4cb2` |
+| Wan2.1-VAE | candidate | 2.1-bf16 | 3/3 | OK | OK | `36b520a5afa2c857b8891aa744e45244210f88faad693f8ee41fe9a93e72654e` |
+| CLIP-Vision-H | candidate | h | 3/3 | OK | OK | `1eedcacffe7a3d6bb3e5d4f1a50aca7323ebbd1f00c3f322692b455b17c3710b` |
+| WanAnimate-relight-LoRA | candidate | fp16 | 3/3 | OK | OK | `24766a12fde5555f57e59db660c945a81b732378824fdb3ca8b9e9c2f861ca54` |
+| Lightx2v-I2V-distill-LoRA | candidate | rank64-bf16 | 1/1 | OK | OK | `91a004b59ac3d8a30cfd99fc6768d1ed91b7e1192bf5c18912b34ca61d5add3a` |
+| ViTPose-L-wholebody | candidate | l-wholebody | 3/3 | OK | OK | `538377805047414abeb7b48a47dbe83573b8da7b8ff2ec89d963583945655abd` |
+| YOLOv10m-det | candidate | 10m | 3/3 | OK | OK | `d2906ea7811cb4d81ab20d728350c7d0c242d3da9e452ebf6d82531c69b060f7` |
+| SAM2.1-hiera-base-plus | candidate | 2.1-base-plus | 3/3 | OK | OK | `9b63962f6017d0ce097c3a781a9f377d99d8be62b2cc2363b4231d307677b54c` |
+
+Every manifest reports `engine_version: comfyui` — MBCP's own confirmation, at the weight
+store, that this family's engine is **`comfyui`** and not `animatediff` (§9 L-1).
+
+**23 files, 35,076,023,613 bytes (32.67 GiB), fetched in 66.2 s.**
+
+**The include filter earned its place.** The Wan2.2-Animate bundle holds all four fp8
+variants and weighs **71,437,807,292 bytes (66.5 GiB)**:
+
+```
+18,401,760,586  2936b314…  Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors   <- kept
+18,401,760,586  7d9c1efa…  Wan22Animate/Wan2_2-Animate-14B_fp8_e5m2_scaled_KJ.safetensors
+17,317,143,060  b1cd5a67…  Wan22Animate/Wan2_2-Animate-14B_fp8_scaled_e4m3fn_KJ_v2.safetensors
+17,317,143,060  5fff9ba1…  Wan22Animate/Wan2_2-Animate-14B_fp8_scaled_e5m2_KJ_v2.safetensors
+```
+
+The kept file is the one the certificate's `performance.model_used` names. Taking the
+bundle whole would have needed 66.5 GiB against node-03's 62 GiB free — it would not have
+fitted.
+
+### A2.4 Placement and the loaders
+
+`rsync` to node-03 at 291 MB/s (2m 0s), then `chown 10001:10001`, `755`/`644`. Node-03
+disk: 62 GB → 30 GB free. Layout is exactly MBCP's materialization map:
+
+```
+ 18,401,760,586  diffusion_models/Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors
+ 11,361,845,464  text_encoders/umt5-xxl-enc-bf16.safetensors
+  1,436,672,440  loras/WanAnimate_relight_lora_fp16.safetensors
+  1,264,219,396  clip_vision/clip_vision_h.safetensors
+  1,234,579,166  detection/vitpose-l-wholebody.onnx
+    738,005,744  loras/lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors
+    323,474,320  sam2/sam2.1_hiera_base_plus.safetensors
+    253,806,278  vae/Wan2_1_VAE_bf16.safetensors
+     61,659,339  detection/yolov10m.onnx
+```
+
+`docker restart ivgs-wan-animate-server-node03` — the WP-46 service only.
+`ivgs-cogvideox-server-node03` and `ivgs-cogvideox-worker-node03` reported identical
+`StartedAt` before and after.
+
+**The loaders now list exactly what the certified graph names, and nothing else:**
+
+```
+WanVideoModelLoader.model        ['Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors']
+WanVideoVAELoader.model_name     ['Wan2_1_VAE_bf16.safetensors']
+CLIPVisionLoader.clip_name       ['clip_vision_h.safetensors']
+WanVideoTextEncodeCached.model_name ['umt5-xxl-enc-bf16.safetensors']
+WanVideoLoraSelectMulti.lora_0   ['none', 'WanAnimate_relight_lora_fp16.safetensors',
+                                  'lightx2v_I2V_14B_480p_cfg_step_distill_rank64_bf16.safetensors']
+OnnxDetectionModelLoader.*       ['vitpose-l-wholebody.onnx', 'yolov10m.onnx']
+```
+
+Before the fetch every one of these was `[]`.
+
+---
+
+## A3. Step 2 — the render
+
+Same harness, same scene: project `c12fa967`, scene index **3**, `media_type=animation`,
+run from inside the deployed node-03 worker against the deployed engine, store row still
+CANDIDATE (so `engine_endpoint_override`, recorded as `binding_source=explicit-override`).
+
+```
+03:40:52 animation_generation_starting   join_stage=animation_generation total_scenes=1
+03:40:52 job_status_updated              status=running
+03:40:52 gpu_reservation_acquired        reservation_id=res-4fc5b4ab70bc42ab gpu_index=0
+03:40:53 animation_inputs_resolved       reference_image=ba59d633-…  driving_video=669e9ac0-…
+03:45:09 animation_generation_success    elapsed=256.49  engine_elapsed=255.63
+                                         prompt_id=7ebd665a-d5c6-48c5-bdd9-11233cb3d48b
+                                         model=Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors
+03:45:09 checkpoint_saved                stage_name=animation_generation status=running
+03:45:09 gpu_reservation_released        reservation_id=res-4fc5b4ab70bc42ab
+03:45:09 checkpoint_saved                stage_name=animation_generation status=success
+03:45:09 animation_generation_complete   successful=1 failed=0
+RENDER_RC=0 WALL_S=258
+```
+
+**The asset, in the database:**
+
+```
+id              3bc54e58-3901-440c-a2ea-8f89bbc7476c
+scene_id        7c6d34ba-e235-43ff-acb0-ac894b5f75c7   scene_index 3, media_type animation
+asset_type      video          mime_type video/mp4
+seaweedfs_fid   4,8c2c448fe6
+seaweedfs_path  /ivgs/videos/c12fa967-…/7c6d34ba-…_animation.mp4
+file_size_bytes 796500
+content_hash    32408643e3c4be400f68a858fab6e22eeaf75f755ca654b27ee6b83fe6204d5a
+```
+
+**The checkpoint:**
+
+```
+stage_name  animation_generation      <- not image_generation
+stage_index 3
+status      complete
+data        {"failed_count": 0, "successful_count": 1, "deduplicated_count": 0,
+             "total_generation_time": 256.49, "binding_source": "explicit-override"}
+```
+
+Round-trip verified: the bytes downloaded back out of SeaweedFS hash to
+`32408643e3c4be400f68a858fab6e22eeaf75f755ca654b27ee6b83fe6204d5a` — the value the task
+reported.
+
+### A3.1 It is an animation, not a still — measured
+
+The point of this package is that `media_type=animation` stopped producing a static PNG.
+So I measured motion rather than asserting it. 77 frames decoded to greyscale and
+compared pairwise:
+
+```
+frames decoded                    : 77
+distinct frames                   : 77 of 77
+identical consecutive pairs       : 0 of 76
+consecutive-frame mean abs diff   : min 0.296   mean 1.416   max 2.977   (0–255 scale)
+first-vs-last frame diff          : 10.214
+```
+
+Zero identical pairs, and the first-to-last difference is 7× the mean step — it moves, and
+it goes somewhere. Frame content is real, not a black or blown-out buffer (frames 0/38/76:
+mean 196–199, stdev 59–60, full 0–251 range).
+
+Container: `h264`, `yuv420p`, `768x1408`, `30/1` fps, `nb_frames=77`, `duration=2.567`.
+
+---
+
+## A4. The measured numbers, on this fleet
+
+VRAM sampled every 2 s across the whole run (128 samples over 257 s):
+
+| | MiB | GiB | note |
+|---|---:|---:|---|
+| Baseline at t=0 | 21,265 | 20.77 | CogVideoX 20,700 + Wan engine idle ~550 |
+| **Absolute peak** | **56,139** | **54.82** | 57.4% of the 97,887 MiB card |
+| **Attributable to this render** | **34,874** | **34.06** | peak − baseline |
+| Free at peak | 41,748 | 40.77 | |
+| Resident after the render | 41,227 | 40.26 | ComfyUI keeps the model cached |
+
+Trace (seconds : MiB) — the load, the sample, the release:
+
+```
+0:21265  21:21469  41:26277  61:55851  81:55915  101:55947  122:55979
+142:55979  162:56139  182:56139  202:56139  222:56139  243:42571
+```
+
+Peak reached 148 s in; the step from 26 GB to 55.8 GB between 41 s and 61 s is the 17.1 GiB
+checkpoint plus the 10.6 GiB text encoder loading from disk.
+
+**Wall clock: 256.49 s** for the task, 255.63 s inside the engine, 258 s including harness
+overhead. **14% faster than MBCP's certified 299.02 s** at identical settings.
+
+### A4.1 Against MBCP's certificate — and which number belongs in the store
+
+| | MBCP (cert `eb032794`) | IVGS (this run) |
+|---|---:|---:|
+| absolute peak | 44.39 GB | **54.82 GiB** |
+| baseline already resident | 29.77 GB | 20.77 GiB |
+| delta attributed to the model | 14.63 GB | **34.06 GiB** |
+| generation time | 299.02 s | **256.49 s** |
+
+The deltas differ by more than 2× and the reason matters: **MBCP's 14.63 GB delta was
+almost certainly measured warm.** Its baseline of 29.77 GB is larger than this run's
+*entire* engine-plus-CogVideoX baseline, which is consistent with the Wan checkpoint
+already being resident when its delta was sampled. This run measured it **cold** — the
+step at 41–61 s in the trace above is that load happening.
+
+**So the number to put in the store's VRAM field is 34.10, not 44.39.** That field feeds
+`acquire_gpu_reservation` as "how much must be free", and the honest answer for a cold
+start is the 34.06 GiB this run measured, rounded up. The absolute peak of 54.82 GiB is a
+*co-residency* figure — it includes CogVideoX's 20.7 GB — and would over-reserve on a node
+that is not also running CogVideoX.
+
+Corollaries worth knowing:
+* A second scene in the same job starts **warm** — 40.26 GiB stays resident after the
+  render — so per-scene time after the first will be well under 256 s.
+* `CERTIFIED_VRAM_MB = 45458` in the task is the fallback used only when the row carries no
+  `vram_gb`. It is now known to be conservative by ~10 GiB (asks for more than needed,
+  which fails safe). The store row's value overrides it, which is the intended path; I have
+  left the constant alone rather than ship a rebuild for a fallback that a registered row
+  replaces.
+
+---
+
+## A5. Findings from the first real render
+
+### A5.1 The geometry is wrong for a 16:9 lesson — QUALITY, not correctness
+
+The render succeeded and the model behaved. The **shape** is wrong for this content:
+
+```
+reference still : 1920x1080   aspect 1.778   (16:9 landscape)
+render output   :  768x1408   aspect 0.545   (portrait)
+ImageScale, crop: disabled -> x0.400 horizontally, x1.304 vertically
+                              = a 3.26x vertical stretch relative to horizontal
+```
+
+768×1408 is MBCP's certified benchmark geometry, and it is the right shape for what MBCP
+benchmarks: a single standing human. An educational scene showing a worked multiplication
+on a board is 16:9, and the certified graph's `ImageScale` node has `crop: disabled`, so it
+does not letterbox — it squashes.
+
+**The fix is two keys in the store row's `default_params`** (`output_width` /
+`output_height`, e.g. 1280×720 — both divisible by 16). But changing them **deviates from
+the certified configuration**, so the certificate's 44.39 GB / 299.02 s / Elo 1576.96 stop
+strictly applying, and VRAM scales with pixel count: 1280×720 is 0.85× the pixels of
+768×1408, so it should land slightly *under* today's 34.06 GiB. This is a decision, not a
+defect — see A7.2.
+
+The driving clip is `magihuman_testB_t2v.mp4`, 896×512, 25 fps, 425 frames (17.04 s); the
+graph consumes the first 77 frames at `force_rate: 0`, i.e. ~3.1 s of source motion
+rendered as 2.567 s at 30 fps.
+
+### A5.2 Content-hash dedup is dead — fleet-wide, and it is not mine
+
+`was_deduplicated: false` is correct here (first render), but it would be false forever.
+Two API gaps, measured:
+
+1. **`check_duplicate_asset` calls a route that does not exist.** It does
+   `GET /api/v1/assets?sha256=…`; `asset_router` has only `/{asset_id}`,
+   `/{asset_id}/download`, `/{asset_id}/regenerate` and DELETE. There is no bare list
+   route. The function catches every exception and returns `None`, so it fails silently —
+   a **swallowed failure** in the WP-00 register's sense.
+2. **`POST /projects/{id}/assets/upload` silently drops `content_hash` and `metadata`.**
+   Its signature takes `file`, `asset_type`, `scene_id`, `language_code` and nothing else;
+   FastAPI discards unknown form fields, and `AssetService` computes `content_hash` from
+   the bytes. Proof: the stored `content_hash` is `32408643…`, the hash of the *video*, not
+   the dedup key the task supplied.
+
+Consequence: the dedup key can never be found, **for animation, video and image alike** —
+`video_generation_task` and `stage3_images` pass the same two ignored fields. And the
+animation task's provenance metadata (engine, `prompt_id`, `engine_model`, and the two
+input asset ids) **is not persisted anywhere**, which is a real loss: those four facts are
+what would let anyone reconstruct how a given clip was made.
+
+I did not paper over this with a per-branch workaround. The fix is one API change —
+accept and persist a caller-supplied `content_hash` plus a `metadata` JSONB — and it fixes
+all three branches at once. `assets.content_hash` and `generation_params_hash` columns
+already exist. See A7.3.
+
+---
+
+## A6. Ledger additions
+
+**L-6. The weight bundles are not promoted.** All nine sit at serving tier `candidate`
+with `promoted_at: null`, while the *model* carries a certification. `?tier=certified`
+404s. Either promotion is a step MBCP has not run for this family, or certification and
+bundle promotion are deliberately independent. Worth an answer before approval, because
+"certified model, candidate weights" is not a state the AD-04 contract discusses.
+
+**L-7. `POST /projects/{id}/assets/upload` silently drops `content_hash` and `metadata`.**
+Every caller in the fleet passes both; none of them takes effect. Kills content-hash dedup
+across all three media branches and loses per-asset generation provenance. A6/A5.2.
+
+**L-8. `check_duplicate_asset` calls a nonexistent route and swallows the failure.**
+`utils/media_converter.py:498`. Add to the WP-00 swallowed-failures register.
+
+**L-9. The certified geometry does not fit 16:9 source material.** A5.1. Not a defect —
+a configuration decision with a certificate attached to it.
+
+---
+
+## A7. Decisions you own (updated)
+
+1. **Store registration is still yours and still untouched.** §5.2/§5.3 stand, with two
+   substitutions now that the numbers are real:
+   * **VRAM (GB): `34.10`** — IVGS-measured cold-start requirement (A4.1), not 44.39.
+   * attestation JSON below, with `ivgs_generation_verified: true`.
+
+2. **The render geometry.** Ship at the certified 768×1408 and accept a 3.26× vertical
+   squash on 16:9 scenes, or set `output_width`/`output_height` in `default_params` and
+   accept that the certificate's numbers no longer strictly describe what runs. My
+   recommendation is the latter — 1280×720 — with a re-measure, because a distorted lesson
+   is not shippable and the deviation is honest and recorded. Your call.
+
+3. **The asset-upload API gap (L-7/L-8).** Small change, fixes dedup and provenance for
+   image, video and animation together. Worth its own package; say the word and I will
+   scope it.
+
+4. **Driving video** — unchanged from §10.2, and now with a concrete illustration: this
+   render used 2.6 s of one 17 s clip. Twelve animation scenes would each replay the same
+   motion.
+
+5. **GHCR push** for `v5.8.0-animation` — still banked and deployed but not pushed.
+
+---
+
+## A8. §5.3 attestation, updated
+
+Everything in §5.2 stands except **VRAM (GB) = `34.10`**.
+
+**Vetting reference** — replace §5.3's with this:
+
+```
+MBCP certification eb032794-e46e-4787-a399-b45a548c52e5 (Wan2.2-Animate, family wan_animate, engine comfyui), ingested into IVGS 2026-07-10 02:22:24Z as attestation dc110421-c201-42ac-8635-20375b435423. MBCP certified measurement (run 7d958e88-3510-43ed-821d-eb029f0adbd7, result 661c5cd1-7d67-4886-85d3-e96906160d3f, hardware profile 2b739637-9fac-456f-bcf2-4e8840900d4c): measured_vram_gb 44.392578125, gen_time_s 299.02 at 768x1408 / 77 frames, human-eval Elo 1576.96 over 6 pairwise comparisons - the highest of the three certified animation candidates (MimicMotion 1423.04). VERIFIED ON THIS FLEET by WP-46-ANIMATION addendum 2026-08-25 (dev/workpackages/reports/WP-46-ANIMATION-report_2026-08-25.md): all nine certified component bundles fetched from the MBCP serving plane via ivgs-models/mbcp_fetch.py with manifest HMAC signature verified, bundle digest verified and per-file SHA-256 verified on fetch and again on node-03 (23/23 files OK); engine ivgs-wan-animate-server-node03 on node-03 from MBCP image comfyui-wan@sha256:58752ff6d84912d82e7f52d484ec84ec70829951c3e88c1592a12407604d62e2 running MBCP's certified wan_animate graph unmodified (sha256 84a00a2549c3802cdb9f2365430ebc0136cccb226c1c67eed491b0bac70b2525). Real render of reference project c12fa967 scene 3: asset 3bc54e58-3901-440c-a2ea-8f89bbc7476c, 768x1408, 30 fps, 77 frames, 2.567 s, h264, 796500 bytes, sha256 32408643e3c4be400f68a858fab6e22eeaf75f755ca654b27ee6b83fe6204d5a; 77/77 distinct frames with zero identical consecutive pairs (it is an animation, not a still). IVGS-measured: 256.49 s wall clock and 34.06 GiB VRAM attributable to the render (56139 MiB absolute peak with CogVideoX co-resident, 21265 MiB baseline). Weight bundles are at MBCP serving tier 'candidate' (promoted_at null), not 'certified'.
+```
+
+**Checklist (JSON object)** — replace §5.3's with this:
+
+```json
+{"reviewed": true, "engine_key_corrected": {"was": "animatediff", "now": "comfyui", "reason": "MBCP SSOT: family wan_animate is served by the unified ComfyUIAdapter and every fetched bundle manifest reports engine_version 'comfyui'. Root cause fixed in ad01_ingest._STAGE_DEFAULT_ENGINE by WP-46."}, "quality": {"status": "scored", "source": "MBCP human evaluation", "elo": 1576.9625705422015, "n_pairwise": 6, "beat": ["MimicMotion (1423.04)", "AnimateDiff-SD15 (not scored)"]}, "vram_gb_measured": 34.06, "vram_gb_measured_on_ivgs": 34.06, "vram_gb_measurement": {"absolute_peak_mib": 56139, "baseline_mib": 21265, "delta_mib": 34874, "note": "cold start on node-03 with CogVideoX co-resident; MBCP's 44.39 GB peak / 14.63 GB delta was measured warm, which is why the deltas differ", "samples": 128, "interval_s": 2}, "vram_gb_mbcp_certified": 44.392578125, "gen_time_s": 256.49, "gen_time_s_mbcp_certified": 299.02, "resolution": [768, 1408], "frames": 77, "fps": 30, "engine_image_digest": "sha256:58752ff6d84912d82e7f52d484ec84ec70829951c3e88c1592a12407604d62e2", "graph_sha256": "84a00a2549c3802cdb9f2365430ebc0136cccb226c1c67eed491b0bac70b2525", "weights": {"bundles": 9, "files": 23, "bytes": 35076023613, "serving_tier": "candidate", "manifest_signature_verified": true, "bundle_digest_verified": true, "per_file_sha256_verified": true, "reverified_on_target_node": "23/23 OK"}, "ivgs_generation_verified": true, "ivgs_generation_evidence": {"job_id": "5eb2bda1-1267-4f29-a219-aee39c266801", "asset_id": "3bc54e58-3901-440c-a2ea-8f89bbc7476c", "scene_id": "7c6d34ba-e235-43ff-acb0-ac894b5f75c7", "asset_sha256": "32408643e3c4be400f68a858fab6e22eeaf75f755ca654b27ee6b83fe6204d5a", "distinct_frames": "77/77", "identical_consecutive_pairs": 0}, "known_deviation": "certified geometry 768x1408 is portrait; the reference still is 1920x1080, and ImageScale (crop disabled) applies a 3.26x vertical stretch. Not corrected here - changing output_width/output_height deviates from the certified configuration and needs a re-measure.", "source": "WP-46-ANIMATION addendum 2026-08-25"}
+```
+
+`ivgs_generation_verified` is now **true**, and every number behind it was measured on this
+fleet rather than copied from the certificate.
+
+---
+
+## A9. Push block — count-gated, for ALL held commits
+
+**HELD: 1 commit.**
+
+`origin/main` moved while this package was in flight. The first two WP-46 commits are
+**already on the remote** — pushed between the two halves of this work, and not by me;
+I have never run `git push` in this package. Verified against a fresh `git fetch`:
+
+```
+origin/main = 2590e0d  docs(wp-46): the report - …the weights are not mine to fetch
+              d536967  feat(wp-46): animation gets a body - …
+```
+
+So exactly one commit is held now — this addendum:
+
+```
+<this>   docs(wp-46): addendum - the weights, and the first real animation
+```
+
+```bash
+\
+git fetch origin main && \
+EXPECTED=1 && \
+ACTUAL=$(git rev-list --count origin/main..HEAD) && \
+if [ "$ACTUAL" != "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git log --oneline origin/main..HEAD && \
+  git status --short && \
+  git push origin main && \
+  echo "PUSHED $ACTUAL commit(s)"
+fi
+```
+
+If it reports any other number, stop and find out what else is held before pushing.
