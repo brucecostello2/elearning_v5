@@ -2,7 +2,7 @@
   "name": "ivgs-frontend",
   "version": "5.0.0",
   "private": true,
-  "description": "IVGS v5 Dashboard \u2014 Next.js 14 unified content creation and operational monitoring",
+  "description": "IVGS v5 Dashboard — Next.js 14 unified content creation and operational monitoring",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "next build",
@@ -11,7 +11,7 @@
     "type-check": "tsc --noEmit",
     "format": "prettier --write 'src/**/*.{ts,tsx,css}'",
     "format:check": "prettier --check 'src/**/*.{ts,tsx,css}'",
-    "test:logic": "tsc src/lib/unwrap.ts src/lib/media.ts src/lib/text.ts src/lib/jobs.ts --outDir .test-build --module es2022 --target es2022 --moduleResolution bundler --skipLibCheck && node --test src/lib/__tests__/*.test.mjs"
+    "test:logic": "tsc src/lib/unwrap.ts src/lib/media.ts src/lib/text.ts src/lib/jobs.ts src/lib/errors.ts src/lib/scenes.ts src/lib/languages.ts src/lib/pipeline-run.ts src/lib/project-tabs.ts src/lib/project-state.ts --outDir .test-build --module es2022 --target es2022 --moduleResolution bundler --skipLibCheck && node --test src/lib/__tests__/*.test.mjs"
   },
   "dependencies": {
     "chart.js": "4.4.4",

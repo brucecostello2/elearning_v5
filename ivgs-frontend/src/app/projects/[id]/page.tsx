@@ -1,53 +1,35 @@
 "use client";
 
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+
 import { canTriggerPipeline, useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
-import StateBadge from "@/components/StateBadge";
 import PipelineTracker from "@/components/PipelineTracker";
 import PipelineGateButton from "@/components/PipelineGateButton";
-import LoadingSpinner from "@/components/LoadingSpinner";
-import ErrorBoundary from "@/components/ErrorBoundary";
-import type { Project, ProjectState } from "@/types/api";
+import { PROJECT_TABS, tabHref } from "@/lib/project-tabs";
 
 /**
- * §8.1.3 Project Detail Page (Tabbed Navigation)
+ * §8.1.3 Project Detail — the Overview tab.
  *
- * Table 8-2 defines the following tabs:
- *   - Overview: metadata, state timeline, runtime, pipeline progress
- *   - Transcripts: /projects/[id]/transcript
- *   - Storyboard: (Phase 12)
- *   - Media Assets: /projects/[id]/assets
- *   - Audio: /projects/[id]/audio
- *   - Talking Head: /projects/[id]/talking-head
- *   - Draft Preview: /projects/[id]/draft
- *   - Final Renders: /projects/[id]/renders
- *   - Prompts: (Phase 12)
- *   - Jobs: /projects/[id]/jobs
- *   - Languages: /projects/[id]/languages
+ * WP-43 Task 1. This file used to own the project header, the lifecycle
+ * strip and the whole tab bar, which is why those three things existed on
+ * this page and nowhere else. They now live in
+ * `src/components/project/ProjectShell.tsx`, rendered by the segment layout
+ * for every `/projects/{id}/*` route. What is left here is the Overview tab
+ * itself: the actions, the pipeline progress strip and the metadata.
  *
- * This page renders the Overview tab inline. Other tabs are linked via
- * Next.js routing to their own page components.
+ * The loading and error states also moved to the shell -- it holds the same
+ * SWR key, so a project that fails to load fails once, in one place, rather
+ * than in eleven pages with eleven wordings.
  */
-
-interface TabDefinition {
-  id: string;
-  label: string;
-  href: string;
-  inline: boolean;
-  minRole?: "admin" | "operator" | "viewer";
-  phase?: number;
-}
-
-export default function ProjectDetailPage(): React.ReactElement {
+export default function ProjectOverviewPage(): React.ReactElement | null {
   const params = useParams();
   const router = useRouter();
   const { user } = useAuth();
   const projectId = params.id as string;
-  const { project, isLoading, error, triggerPipeline } = useProjects(projectId);
-
-  const [activeTab, setActiveTab] = useState<string>("overview");
+  const { project, triggerPipeline } = useProjects(projectId);
 
   /**
    * WP-40 Task 3b. Operator or admin only -- `POST /projects/{id}/trigger`
@@ -58,384 +40,148 @@ export default function ProjectDetailPage(): React.ReactElement {
     (user?.role === "admin" || user?.role === "operator") &&
     canTriggerPipeline(project?.state);
 
-  /**
-   * Tab definitions per Table 8-2.
-   * Tabs with phase > 11 are placeholders that show "Coming soon".
-   */
-  const tabs = useMemo<TabDefinition[]>(
-    () => [
-      {
-        id: "overview",
-        label: "Overview",
-        href: `/projects/${projectId}`,
-        inline: true,
-      },
-      {
-        id: "transcripts",
-        label: "Transcripts",
-        href: `/projects/${projectId}/transcript`,
-        inline: false,
-      },
-      {
-        id: "storyboard",
-        label: "Storyboard",
-        href: `/projects/${projectId}/storyboard`,
-        inline: false,
-        phase: 12,
-      },
-      {
-        id: "assets",
-        label: "Media Assets",
-        href: `/projects/${projectId}/assets`,
-        inline: false,
-      },
-      {
-        id: "audio",
-        label: "Audio",
-        href: `/projects/${projectId}/audio`,
-        inline: false,
-      },
-      {
-        id: "talking-head",
-        label: "Talking Head",
-        href: `/projects/${projectId}/talking-head`,
-        inline: false,
-      },
-      {
-        id: "draft",
-        label: "Draft Preview",
-        href: `/projects/${projectId}/draft`,
-        inline: false,
-      },
-      {
-        id: "renders",
-        label: "Final Renders",
-        href: `/projects/${projectId}/renders`,
-        inline: false,
-      },
-      {
-        id: "prompts",
-        label: "Prompts",
-        href: `/projects/${projectId}/prompts`,
-        inline: false,
-        phase: 12,
-      },
-      {
-        id: "jobs",
-        label: "Jobs",
-        href: `/projects/${projectId}/jobs`,
-        inline: false,
-      },
-      {
-        id: "languages",
-        label: "Languages",
-        href: `/projects/${projectId}/languages`,
-        inline: false,
-      },
-    ],
-    [projectId]
-  );
-
-  /** Navigate to a tab — inline tabs stay here, others route to sub-page */
-  const handleTabClick = useCallback(
-    (tab: TabDefinition): void => {
-      if (tab.inline) {
-        setActiveTab(tab.id);
-      } else {
-        router.push(tab.href);
-      }
-    },
-    [router]
-  );
-
-  /**
-   * Format runtime from seconds to MM:SS display.
-   */
-  const formatRuntime = useCallback((seconds: number): string => {
+  /** Format runtime from seconds to MM:SS display. */
+  const formatRuntime = useCallback((seconds: number | null | undefined): string => {
+    if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "—";
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.round(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   }, []);
 
-  /**
-   * Pipeline state timeline: ordered list of state transitions.
-   */
-  const stateTimeline: { state: ProjectState; label: string; order: number }[] =
-    [
-      { state: "DRAFT", label: "Draft", order: 1 },
-      { state: "IN_PROGRESS", label: "In Progress", order: 2 },
-      { state: "REVIEW", label: "Review", order: 3 },
-      { state: "COMPLETE", label: "Complete", order: 4 },
-    ];
+  const formatDate = useCallback((value: unknown): string => {
+    if (typeof value !== "string" || value.length === 0) return "—";
+    const d = new Date(value);
+    return Number.isFinite(d.getTime()) ? d.toLocaleString() : "—";
+  }, []);
 
-  // ── Loading ─────────────────────────────────────────────────────────
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <LoadingSpinner size="lg" label="Loading project…" />
-      </div>
-    );
-  }
+  /* The shell renders loading and error; if it let us through without a
+     project there is nothing to draw. */
+  if (!project) return null;
 
-  // ── Error ───────────────────────────────────────────────────────────
-  if (error || !project) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="text-red-500 dark:text-red-400 text-lg font-semibold">
-          {error?.message || "Project not found"}
-        </div>
-        <button
-          onClick={() => router.push("/gallery")}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg hover:bg-gray-600 transition-colors"
-        >
-          Back to Gallery
-        </button>
-      </div>
-    );
-  }
+  /* `target_languages` is NOT on the project detail payload -- verified live
+     2026-08-25, which sends `language_variants: [{language_code, state}]`
+     instead. Read the shape that exists rather than the one the interface
+     used to claim. */
+  const languageCodes: string[] = Array.isArray(project.language_variants)
+    ? project.language_variants
+        .map((v) => v?.language_code)
+        .filter((c): c is string => typeof c === "string" && c.length > 0)
+    : Array.isArray(project.target_languages)
+    ? project.target_languages
+    : [];
 
   return (
-    <ErrorBoundary>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* ── Project Header ───────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-6">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white truncate">
-                {project.name}
-              </h1>
-              <StateBadge state={project.state} />
-            </div>
-            {project.description && (
-              <p className="text-gray-500 dark:text-gray-400 text-sm max-w-2xl">
-                {project.description}
-              </p>
-            )}
-            <div className="flex items-center gap-6 mt-3 text-sm text-gray-500 dark:text-gray-400">
-              <span>
-                Runtime: {formatRuntime(project.max_runtime_seconds)}
-              </span>
-              <span>
-                Created:{" "}
-                {new Date(project.created_at).toLocaleDateString()}
-              </span>
-              {project.target_languages &&
-                project.target_languages.length > 0 && (
-                  <span>
-                    Languages: {project.target_languages.join(", ").toUpperCase()}
-                  </span>
-                )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mt-4 sm:mt-0">
-            {/* WP-40 Task 3b (ledger M6). POST /projects/{id}/trigger accepts
-                only DRAFT and USER_REVIEW (project_service.py:266), and is
-                guarded by require_operator_or_admin -- so the button is shown
-                for exactly those states and never to a viewer. A 409 (wrong
-                state, or "no transcripts uploaded") is surfaced with the
-                server's own wording. */}
-            {canTrigger && (
-              <PipelineGateButton
-                label={
-                  project.state === "USER_REVIEW"
-                    ? "Start final render"
-                    : "Trigger pipeline"
-                }
-                confirmTitle={
-                  project.state === "USER_REVIEW"
-                    ? "Start the final render?"
-                    : "Trigger the pipeline?"
-                }
-                confirmBody={
-                  project.state === "USER_REVIEW"
-                    ? "This accepts the draft and starts the full-resolution render. It consumes GPU time."
-                    : "This starts transcript refinement and runs the pipeline forward. It requires at least one uploaded transcript and consumes GPU time."
-                }
-                confirmLabel={
-                  project.state === "USER_REVIEW" ? "Start render" : "Trigger"
-                }
-                successMessage="Pipeline triggered."
-                onConfirm={(tier) => triggerPipeline(tier)}
-              />
-            )}
-            {project.state === "COMPLETE" && (
-              <a
-                href={`/player/${project.id}`}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
-              >
-                ▶ Watch
-              </a>
-            )}
+    <div className="space-y-8">
+      {/* ── Actions ──────────────────────────────────────────────────── */}
+      {(canTrigger || project.state === "COMPLETE") && (
+        <div className="flex flex-wrap items-center gap-2">
+          {/* WP-40 Task 3b (ledger M6). POST /projects/{id}/trigger accepts
+              only DRAFT and USER_REVIEW (project_service.py:266), and is
+              guarded by require_operator_or_admin -- so the button is shown
+              for exactly those states and never to a viewer. A 409 (wrong
+              state, or "no transcripts uploaded") is surfaced with the
+              server's own wording. */}
+          {canTrigger && (
+            <PipelineGateButton
+              label={
+                project.state === "USER_REVIEW"
+                  ? "Start final render"
+                  : "Trigger pipeline"
+              }
+              confirmTitle={
+                project.state === "USER_REVIEW"
+                  ? "Start the final render?"
+                  : "Trigger the pipeline?"
+              }
+              confirmBody={
+                project.state === "USER_REVIEW"
+                  ? "This accepts the draft and starts the full-resolution render. It consumes GPU time."
+                  : "This starts transcript refinement and runs the pipeline forward. It requires at least one uploaded transcript and consumes GPU time."
+              }
+              confirmLabel={
+                project.state === "USER_REVIEW" ? "Start render" : "Trigger"
+              }
+              successMessage="Pipeline triggered."
+              onConfirm={(tier) => triggerPipeline(tier)}
+            />
+          )}
+          {project.state === "COMPLETE" && (
             <button
-              onClick={() => router.push("/gallery")}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-600 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
+              type="button"
+              onClick={() => router.push(`/player/${project.id}`)}
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-green-700"
             >
-              ← Gallery
+              ▶ Watch
             </button>
-          </div>
+          )}
         </div>
+      )}
 
-        {/* ── Tab Navigation per Table 8-2 ─────────────────────────── */}
-        <div className="border-b border-gray-300 dark:border-gray-700 mb-8">
-          <nav className="flex gap-1 overflow-x-auto pb-px -mb-px">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? "border-blue-500 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-                }`}
-              >
+      {/* ── Pipeline Progress per §8.2.1 ─────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+          Pipeline Progress
+        </h2>
+        <PipelineTracker projectId={projectId} />
+      </section>
+
+      {/* ── Project metadata ─────────────────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+          Project Details
+        </h2>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <MetadataCard label="Video Name" value={project.name} />
+          <MetadataCard
+            label="Maximum Runtime"
+            value={formatRuntime(project.max_runtime_seconds)}
+          />
+          <MetadataCard label="Created" value={formatDate(project.created_at)} />
+          <MetadataCard
+            label="Last Updated"
+            value={formatDate(project.updated_at)}
+          />
+          <MetadataCard
+            label="Scenes"
+            value={
+              typeof project.scene_count === "number"
+                ? String(project.scene_count)
+                : "—"
+            }
+          />
+          <MetadataCard
+            label="Languages"
+            value={
+              languageCodes.length > 0 ? languageCodes.join(", ") : "None yet"
+            }
+          />
+        </div>
+      </section>
+
+      {/* ── Quick access ─────────────────────────────────────────────── */}
+      <section>
+        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+          Quick Access
+        </h2>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          {PROJECT_TABS.filter((t) => t.segment).map((tab) => (
+            <Link
+              key={tab.id}
+              href={tabHref(projectId, tab)}
+              className="rounded-lg border border-gray-300 bg-gray-100 p-4 text-left transition-colors hover:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
+            >
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {tab.label}
-                {tab.phase && tab.phase > 11 && (
-                  <span className="ml-1 text-xs text-gray-600 dark:text-gray-400">(soon)</span>
-                )}
-              </button>
-            ))}
-          </nav>
+              </span>
+            </Link>
+          ))}
         </div>
-
-        {/* ── Overview Tab Content ─────────────────────────────────── */}
-        {activeTab === "overview" && (
-          <div className="space-y-8">
-            {/* State Timeline */}
-            <section>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Project Timeline
-              </h2>
-              <div className="flex items-center gap-2">
-                {stateTimeline.map((step, idx) => {
-                  const currentOrder =
-                    project.state === "ERROR"
-                      ? -1
-                      : stateTimeline.findIndex(
-                          (s) => s.state === project.state
-                        );
-                  const isCompleted = idx <= currentOrder;
-                  const isCurrent = idx === currentOrder;
-
-                  return (
-                    <React.Fragment key={step.state}>
-                      <div className="flex flex-col items-center">
-                        <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
-                            isCompleted
-                              ? isCurrent
-                                ? "bg-blue-600 text-white ring-4 ring-blue-600/30"
-                                : "bg-green-600 text-white"
-                              : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                          }`}
-                        >
-                          {isCompleted && !isCurrent ? "✓" : step.order}
-                        </div>
-                        <span
-                          className={`text-xs mt-1 ${
-                            isCompleted ? "text-gray-700 dark:text-gray-300" : "text-gray-600 dark:text-gray-400"
-                          }`}
-                        >
-                          {step.label}
-                        </span>
-                      </div>
-                      {idx < stateTimeline.length - 1 && (
-                        <div
-                          className={`flex-1 h-0.5 ${
-                            idx < currentOrder
-                              ? "bg-green-600"
-                              : "bg-gray-200 dark:bg-gray-700"
-                          }`}
-                        />
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
-              {project.state === "ERROR" && (
-                <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 text-sm">
-                  Pipeline encountered an error. Check the Jobs tab for details.
-                </div>
-              )}
-            </section>
-
-            {/* Pipeline Progress Tracker per §8.2.1 */}
-            <section>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Pipeline Progress
-              </h2>
-              <PipelineTracker projectId={projectId} />
-            </section>
-
-            {/* Project Metadata */}
-            <section>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Project Details
-              </h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <MetadataCard
-                  label="Video Name"
-                  value={project.name}
-                />
-                <MetadataCard
-                  label="Maximum Runtime"
-                  value={formatRuntime(project.max_runtime_seconds)}
-                />
-                <MetadataCard
-                  label="Created"
-                  value={new Date(project.created_at).toLocaleString()}
-                />
-                <MetadataCard
-                  label="Last Updated"
-                  value={new Date(project.updated_at).toLocaleString()}
-                />
-                <MetadataCard
-                  label="Created By"
-                  value={project.created_by_name || project.created_by}
-                />
-                <MetadataCard
-                  label="Target Languages"
-                  value={
-                    project.target_languages?.length
-                      ? project.target_languages
-                          .map((l: string) => l.toUpperCase())
-                          .join(", ")
-                      : "None specified"
-                  }
-                />
-              </div>
-            </section>
-
-            {/* Quick Links to tabs */}
-            <section>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Quick Access
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-                {tabs
-                  .filter((t) => !t.inline && (!t.phase || t.phase <= 11))
-                  .map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleTabClick(tab)}
-                      className="p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-left hover:border-gray-300 dark:hover:border-gray-600 hover:bg-gray-750 transition-colors"
-                    >
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        {tab.label}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-            </section>
-          </div>
-        )}
-      </div>
-    </ErrorBoundary>
+      </section>
+    </div>
   );
 }
 
-/**
- * Simple metadata display card for the Overview tab.
- */
+/** Simple metadata display card for the Overview tab. */
 function MetadataCard({
   label,
   value,
@@ -444,8 +190,8 @@ function MetadataCard({
   value: string;
 }): React.ReactElement {
   return (
-    <div className="p-4 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg">
-      <dt className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+    <div className="rounded-lg border border-gray-300 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800">
+      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
         {label}
       </dt>
       <dd className="mt-1 text-sm text-gray-900 dark:text-white">{value}</dd>

@@ -89,7 +89,7 @@ export default function JobsPage(): React.ReactElement {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Pipeline Jobs</h2>
@@ -97,12 +97,6 @@ export default function JobsPage(): React.ReactElement {
             {jobs?.length || 0} job{(jobs?.length || 0) !== 1 ? "s" : ""}
           </p>
         </div>
-        <a
-          href={`/projects/${projectId}`}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-        >
-          ← Back
-        </a>
       </div>
 
       {!jobs || jobs.length === 0 ? (

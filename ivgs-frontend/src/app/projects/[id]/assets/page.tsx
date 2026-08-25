@@ -181,7 +181,7 @@ export default function AssetsPage(): React.ReactElement {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="space-y-6">
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
@@ -200,12 +200,6 @@ export default function AssetsPage(): React.ReactElement {
               + Upload Asset
             </button>
           )}
-          <a
-            href={`/projects/${projectId}`}
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-          >
-            ← Back
-          </a>
         </div>
       </div>
 

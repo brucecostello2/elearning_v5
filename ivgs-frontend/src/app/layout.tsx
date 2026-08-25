@@ -63,7 +63,29 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 antialiased dark:bg-gray-50 dark:bg-gray-950 dark:text-gray-900 dark:text-gray-100">
+      {/*
+        WP-43 Task 4. This className used to carry each dark utility TWICE,
+        with contradictory values:
+
+          ... dark:bg-gray-950 ... dark:bg-gray-50 dark:bg-gray-950
+          ... dark:text-gray-100 ... dark:text-gray-900 dark:text-gray-100
+
+        Attribute order does not decide a Tailwind conflict -- sheet order
+        does, and Tailwind emits colour utilities by ascending shade. In the
+        deployed bundle (/app/.next/static/css/23624bb2737bd75a.css) that put
+        `dark:text-gray-900` at byte 55113, after `dark:text-gray-100` at
+        54618, and `dark:bg-gray-950` at 52808, after `dark:bg-gray-50` at
+        51982. So in dark mode the body painted rgb(17 24 39) text on
+        rgb(3 7 18) -- near-black on near-black.
+
+        Every normal page sets its own text colours on inner elements, which
+        is why the only thing that ever looked blank was the one surface that
+        INHERITS from body: Next's built-in 404, served for the Prompts tab,
+        which had no page component. Both halves are fixed -- there is now a
+        real not-found.tsx and a real Prompts page -- and the body no longer
+        contradicts itself either way.
+      */}
+      <body className="min-h-screen bg-gray-50 dark:bg-gray-950 font-sans text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider>
         <AuthProvider>
           <ToastProvider>
