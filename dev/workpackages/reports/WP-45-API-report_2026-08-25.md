@@ -7,7 +7,7 @@
 | **Version** | **`v5.11.0-apibatch`** — api, frontend, workers, as one coherent set |
 | **Deployed** | node-01 (5 services). **Nodes 02–05 NOT deployed — no SSH access from this session.** Paste blocks in `dev/workpackages/WP-45-operator-blocks.md` |
 | **Schema** | migration **0028** applied to `ivgs` and `ivgs_reconciliation_test`. Pre-migration dump banked |
-| **Repo state** | **Commit-and-HOLD. 8 commits, not pushed.** Count-gated push block in §12 |
+| **Repo state** | **Commit-and-HOLD. 9 commits, not pushed.** Count-gated push block in §12 |
 | **Suite** | 68 failed / 1578 passed / 63 skipped / 77 errors. **ZERO NEW FAILURES**, by before/after diff against `d76b355` over every module (§10.3) |
 
 ---
@@ -44,7 +44,7 @@ system.
 | Task | Verdict | One line |
 |---|---|---|
 | **1** asset dedup + provenance | **DONE, live-verified** | The probe route exists and answers; upload persists content hash, params hash and a provenance JSONB; all four media branches wired; dedup hit proven on identical inputs |
-| **2** gate 2 wired | **DONE, live-verified** | `PATCH /projects/{id}/state` is the caller ORCH-5 lacked; the back half advances state; Stage 8 dispatches from `USER_REVIEW`; P1.4q returns a failed project to `DRAFT` |
+| **2** gate 2 wired | **DONE, live-verified** | `PATCH /projects/{id}/state` is the caller ORCH-5 lacked; the back half advances state (observed); Stage 8 dispatches from `USER_REVIEW` (by broker message); P1.4q observed on a **real** terminal failure |
 | **3** the eight stub sites | **DONE, 8/8, tested by broker message** | Every site produces a real message to a registered task. Live: Regen replaced an asset end to end |
 | **4** GPU registry read-through | **DONE (a) partially — needs one paste per node** | API reads the scheduler; tiles read 3 online / 2,055,627 MB instead of 0/0. Urgent queue investigated, proven inert, cleared. `IVGS_NODE_NAME` needs the operator's node `.env` |
 | **5** job timestamps | **DONE** | Stamped at the one choke point every worker status change passes through |
@@ -372,6 +372,89 @@ render that succeeded**. WP-46's animation run finished; nothing wrote the
 terminal status back, which is precisely what Task 2 fixed. `success` is the
 honest status and the `error_message` records why it was set by hand.
 
+### 4.6 Live: resume, and a defect the live run exposed
+
+The regeneration run went on to expose something no test could have: **the
+pipeline was throttling itself out of its own back half.**
+
+Stage 5 synthesised all 18 voiceovers — the assets are on disk — and then died
+writing its own checkpoint:
+
+```
+CheckpointWriteError: checkpoint write for job b3df6eb6 stage tts_audio
+returned HTTP 429 ... The stage is not resumable without it.
+```
+
+That is WP-07's guard behaving exactly as designed: a checkpoint that cannot be
+written must never be reported as written. The fault is one layer up. The §16.3
+rate limits are an abuse control aimed at **people** — 60 writes a minute is
+generous for a browser and far too small for a pipeline. Stage 5 makes about
+three writes per scene (asset upload, scene audio link, quality verdict), so an
+18-scene project produces ~55 back to back, plus its stage checkpoint. Every
+worker on the fleet authenticates as the same `svc-pipeline` account, so **the
+whole pipeline shares one 60/min bucket with itself.**
+
+GETs were already exempt, which is why the dedup probes are not implicated; the
+two `advance_project_state` PATCHes this package adds are real but marginal
+against ~55. The condition is pre-existing and had simply never been reached,
+because the back half had never run unattended before — which is what Task 2
+made possible.
+
+Fixed: the service token is exempt from the user buckets, scoped by the token
+and compared in constant time against the same secret `get_service_or_user`
+accepts. A JWT, however privileged, still gets a user's limit. **The login
+bucket is never exempted**, and the exemption is conditioned on the bucket as
+well as the token, so a future classifier change cannot let it reach the
+brute-force control. Ceilings for everyone else are unchanged, and a test pins
+that too.
+
+The API was rebuilt and redeployed with the fix; the artifact was re-banked so
+the banked image matches the running one (`sha256:18c4924f…`).
+
+**Then the two remaining live acceptances, on that same failed job:**
+
+*P1.4q, on a real terminal failure rather than a synthetic one:*
+
+```
+PATCH /jobs/b3df6eb6  {"status":"failed", ...}          HTTP 200
+  completed_at  2026-08-25T15:31:10.522785Z     <- Task 5, stamped
+P1.4q reset: project=c12fa967 AUDIO_GENERATION -> ERROR -> DRAFT
+  (reason=job b3df6eb6 failed: tts_audio checkpoint write returned 429)
+  Job history retained.
+```
+
+Both hops through the validated state machine, and `projects.state` read `DRAFT`
+— retriggerable, without the `UPDATE` statement that was the documented recourse.
+
+*Site 7, resume, dispatching for real:*
+
+```
+POST /jobs/b3df6eb6/resume                              HTTP 200
+  new_job_id 90891425-b833-4cef-b1f7-adc6b9269705
+  "dispatched as Celery task 0495d242-c81e-48ec-b141-c8a46d8d3141"
+
+pipeline_resuming        resume_from=image_generation
+pipeline_stage_dispatched stage=image_generation
+                          task_name=tasks.stage3_images.generate_scene_images_task
+```
+
+`dispatch_pipeline`'s `resume_from_stage` branch — which has existed since it
+was written, with nothing to feed it — fired for the first time.
+
+**One wart observed and NOT fixed — and it was already on the record.** Resume
+computed `image_generation` as the resume point. `CheckpointService`'s
+`stage_order` list is in the eight **spec** stage names; checkpoints are written
+under **worker** stage names, so the lookup falls through to "resume from the
+stage that completed" rather than the one after it.
+
+I rediscovered this live and then found **swallow-register entry 17 had already
+documented it**, in 2026-08-23, as "a second defect, latent behind the first" —
+naming the same three mismatched stage names and the same fallback line. It was
+latent then because the checkpoints table was empty; today it is reachable, and
+this run is the first observation of it actually firing. Credited to entry 17
+rather than claimed as new. Wasteful, not wrong: it re-runs work already done
+rather than skipping work not done.
+
 ---
 
 ## 5. TASK 4 — three registries that disagreed
@@ -689,6 +772,25 @@ verified present by `\d` on the live database.
 adds nullable columns and widens one, and `v5.10.0-quality` neither reads nor
 writes any of them.
 
+### 8.5b The API was rebuilt once, mid-session
+
+The rate-limit fix (§4.6) was found by the live run, after the first deploy. The
+API image was rebuilt under the **same tag**, the artifact **re-banked** so the
+banked image matches the running one, and the service recreated. Content-gated
+again on the rebuilt image:
+
+```
+_is_internal_service_call      3
+hmac.compare_digest            1
+bucket != "login" guard        1
+```
+
+`MANIFEST.txt` therefore carries two `ivgs-api` lines for this tag. The banking
+script registers **saves, not invocations** (P1.4j), and the artifact on disk is
+the second one: `sha256:18c4924f9a84c45d188d7ed66d9198c2571801955c7322949c3ac088efe5d110`,
+`sha256sum -c` **OK**, `zstd -t` **OK**. That supersedes the `ed6f662b…` row in
+§8.2.
+
 ### 8.6 What was NOT deployed, and why
 
 **Nodes 02, 03, 04, 05 are still on `v5.10.0-quality`.** SSH from this session is
@@ -718,12 +820,15 @@ Stated plainly, because an exit code is not proof.
    was not exercised**, because the only running task at the time was the
    operator's own reference-project render and aborting it to make a point was
    not worth the cost. Named as owed rather than implied.
-4. **The full back half reaching `USER_REVIEW`.** The regeneration run advanced
-   to `AUDIO_GENERATION` and was still in TTS when this report was written. The
-   two hops that had never happened before *are* observed (§3.2); the remaining
+4. **The full back half reaching `USER_REVIEW`.** The first run advanced to
+   `AUDIO_GENERATION`, then Stage 5 died on the 429 (§4.6). After the fix the job
+   was resumed and was still re-rendering images when this report was finalised.
+   **Three of the five hops are observed** — `MANIFEST_GENERATION`,
+   `AUDIO_GENERATION` (§3.2) and the `ERROR → DRAFT` pair (§4.6). The remaining
    three (`TALKING_HEAD_RENDER`, `PROTOTYPE_DRAFT`, `USER_REVIEW`) use the same
-   code path and the same map, and are covered by tests, but were not watched to
-   completion.
+   map and the same call site, and are covered by tests, but were **not watched
+   to completion**. Until one is, "a finished draft leaves the project in
+   USER_REVIEW" is proven by construction and by test, not by observation.
 5. **Stage 8 running from the GUI button.** The dispatch is asserted by broker
    message; the button was not pressed in a browser.
 6. **Localisation actually producing a translated variant.** It cannot — there
@@ -827,7 +932,29 @@ saying a row written there will not appear on the fleet page.
 `asset_upload_legacy_hash_field` stops appearing in the API log, every node is on
 `v5.11.0` and the branch is dead code. §2.7.
 
-**WP-00 swallowed-failures register — instance 26**, opened and CLOSED:
+**L-5 — checkpoint resume computes the wrong stage vocabulary.** **Not a new
+finding**: swallow-register entry 17 documented it on 2026-08-23 as the second,
+latent defect behind that endpoint's primary lie. It was latent because the
+checkpoints table was empty; **today's run is the first observation of it
+firing**. Left open deliberately — WP-45's brief scoped the dispatch, not the
+stage arithmetic — and entry 17 is updated with the live evidence and with the
+shape of the fix (`WORKER_STAGE_TO_SPEC_STAGE` in `language_service.py`; the two
+should share one table rather than grow a second copy).
+
+**L-6 — the pipeline shared one user rate-limit bucket with itself.** FIXED
+here, and worth a ledger line because the condition is generic: any worker path
+that writes more than 60 times a minute under the service account would have hit
+it, and the failure surfaces as an unrelated-looking `CheckpointWriteError`.
+§4.6.
+
+**WP-00 swallowed-failures register — entry 17 CLOSED in part.** The primary lie
+(the endpoint dispatched nothing) is closed with live evidence. Its deferral —
+operator ruling 2026-08-23, WP-07 D-1, on the grounds that Temporal replaces
+resume at M3 — **is superseded by this brief**, which named the site. Recorded
+in the register rather than quietly overridden. The second defect it documented
+stays open (L-5).
+
+**WP-00 swallowed-failures register — entry 26**, opened and CLOSED:
 `check_duplicate_asset` caught every exception and returned `None`, which its
 four call sites read as "no duplicate exists". Closed on observed evidence: the
 probe now raises `DuplicateCheckError`, the fail-open is a named decision at one
@@ -837,9 +964,10 @@ call site under one greppable event, and the route it calls returns 200 live.
 
 ## 12. Push block — count-gated, for ALL held commits
 
-**HELD: 8 commits.** Nothing has been pushed.
+**HELD: 9 commits.** Nothing has been pushed.
 
 ```
+ec3bad5  fix(wp-45): the pipeline was throttling itself out of its own back half
 c8214ed  fix(wp-45): a worker still on v5.10.0 must not have its uploads rejected as corrupt
 292119c  test(wp-45): a broker message for every one of the eight sites, and what a hash lookup may claim
 7a35df5  feat(wp-45): the frontend stops labelling fields as unsaved, and stops reading six that were never sent
@@ -854,7 +982,7 @@ a301dbe  feat(wp-45): dedup was calling a route that was never built, and upload
 # RUN ON: IVGS node-01 (192.168.1.90)
 ( cd /opt/ivgs || exit 1
   git fetch origin main && \
-  EXPECTED=8 && \
+  EXPECTED=9 && \
   ACTUAL=$(git rev-list --count origin/main..HEAD) && \
   if [ "$ACTUAL" != "$EXPECTED" ]; then
     echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
@@ -882,4 +1010,6 @@ pushing.
 | **D-3** | **P2.46, the scheduler's drifted queue counter.** The data is reset; the code that drifted is in the pinned scheduler image. Fix now, or leave until the scheduler is next rebuilt? | Leave it, and take it with the next scheduler build. It is a one-line change (`zcard`, not the hash) and the data is currently correct. But do not read `queue_depth` as authoritative in the meantime. |
 | **D-4** | **`storage_quotas` provisioning.** Design recorded, nothing built, per the brief. Ruling goes in §7 of the draft. | **A + W**: admin-set quotas, derived usage. Reasoning in the document — a stored `current_bytes` is `pq:depths` again, with a bigger blast radius. |
 | **D-5** | **The regeneration cascade.** Pressing Regen on one scene re-runs the media join and flows on into a fresh manifest, TTS, talking head and draft. That is the ruled semantics and it is what happened live today. Keep it, or should Regen stop at the media stage? | Keep it. A regenerated scene that never reaches a new draft is a change the operator cannot see. But it is worth a confirmation dialog saying so — the current one says only "Existing generated assets will be replaced". |
-| **D-6** | **GHCR push** for `v5.11.0-apibatch`. Banked and deployed, not pushed. | Optional. Rule 1 keeps the registry off the deploy path and the artifacts are verified. |
+| **D-6** | **The service-token rate-limit exemption (§4.6).** The fleet now bypasses the 60/min user bucket entirely. The alternative is a large-but-finite fleet bucket. | Exempt, as shipped. A finite ceiling on the pipeline is a ceiling on project size — 18 scenes nearly hit 60 — and the number would need re-tuning every time a stage gained a write. The token is a deployment secret; anything holding it can already do far more than write quickly. |
+| **D-7** | **L-5, resume's stage vocabulary.** Resume re-runs the stage that already completed instead of the next one. Wasteful, not wrong. | Fix with the next `ivgs-api` change. `WORKER_STAGE_TO_SPEC_STAGE` in `language_service.py` is the collapse it needs; the two should share one table rather than grow a second copy. |
+| **D-8** | **GHCR push** for `v5.11.0-apibatch`. Banked and deployed, not pushed. | Optional. Rule 1 keeps the registry off the deploy path and the artifacts are verified. |

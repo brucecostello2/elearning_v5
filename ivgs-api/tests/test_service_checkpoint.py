@@ -106,7 +106,14 @@ class TestCriticalPath8:
         svc = CheckpointService(db_session)
         result = await svc.resume_from_checkpoint(jid, "admin")
         assert result is not None
-        assert result.resume_from_stage == "media_generation"
+        # WP-45: the same POSITION, in the vocabulary the orchestrator can
+        # actually dispatch. This value is handed to dispatch_pipeline as
+        # `resume_from_stage` and looked up in STAGE_TASK_MAP, which is keyed by
+        # PipelineStage values - and "media_generation" is not one of them.
+        # Naming the spec stage here produced a resume that could not be
+        # dispatched, which never showed because the endpoint dispatched nothing
+        # (swallow-register entry 17).
+        assert result.resume_from_stage == "image_generation"
         assert result.new_job_id is not None
 
     async def test_checkpoint_resume_skips_completed_stages(self, db_session):

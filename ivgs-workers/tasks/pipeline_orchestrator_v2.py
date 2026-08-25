@@ -238,6 +238,91 @@ def dispatch_pipeline(
     # project facts.
     _store_job_context(job_id, job_context.model_dump(mode="json"), config)
 
+    # WP-45. A media stage cannot be entered directly.
+    #
+    # Reachable for the first time because resume now dispatches (Task 3, site
+    # 7); before that, nothing ever set resume_from_stage, so this branch was
+    # latent behind the same dead endpoint as the two defects swallow-register
+    # entry 17 records. Measured on the first real resume, 2026-08-25:
+    #
+    #   ValidationError: 1 validation error for Stage3Input
+    #   scenes  Field required
+    #
+    # because `_build_stage_input` has no media branch and falls through to
+    # `base_input`, which carries no scenes.
+    #
+    # Routing through dispatch_media_generation rather than adding a scenes key
+    # is the same reasoning the API's regeneration helper uses: a media task
+    # reports to a media-join counter, and dispatching one without arming that
+    # counter sends the report into JOIN_UNKNOWN, three retries and the DLQ
+    # (WP-06 / P1.1). dispatch_media_generation arms the join for exactly the
+    # branches the scenes call for, and fans by media_type rather than assuming
+    # every scene is an image.
+    if start_stage in MEDIA_GENERATION_STAGES:
+        # `_fetch_project_scenes` returns raw SceneResponse dicts, which key the
+        # id as `id`; every media task reads `scene_id`. Normalised here for the
+        # same reason `_fetch_scenes_for_tts` does it - the wire shape and the
+        # task input shape are different contracts and neither should be assumed
+        # to be the other.
+        scenes = [
+            {
+                "scene_id": raw.get("scene_id") or raw.get("id", ""),
+                "scene_index": raw.get("scene_index", 0),
+                "narration_text": raw.get("narration_text"),
+                "visual_description": raw.get("visual_description"),
+                "media_type": raw.get("media_type") or "image",
+                "duration_seconds": raw.get("duration_seconds"),
+                **{
+                    k: raw[k]
+                    for k in (
+                        "camera_angle", "transition_type", "effects",
+                        "timing_offset_ms", "generation_params",
+                    )
+                    if raw.get(k) is not None
+                },
+            }
+            for raw in _fetch_project_scenes(project_id, config)
+        ]
+        if not scenes:
+            log.error("pipeline_resume_no_scenes", stage=start_stage)
+            update_job_status(
+                job_id, "failed",
+                error_message=(
+                    f"Cannot start at {start_stage}: the project has no "
+                    "storyboard scenes to generate media for."
+                ),
+            )
+            return {
+                "job_id": job_id, "status": "failed",
+                "error": "no scenes for media generation",
+            }
+
+        dispatch_input = {
+            **job_context.model_dump(mode="json"),
+            "job_id": job_id,
+            "project_id": project_id,
+            "scenes": scenes,
+        }
+        result = celery_app.send_task(
+            "tasks.pipeline_orchestrator_v2.dispatch_media_generation",
+            kwargs={"dispatch_input": dispatch_input},
+            queue="default",
+        )
+        _update_job_celery_task_id(job_id, result.id, config)
+        log.info(
+            "pipeline_media_stage_dispatched",
+            stage=start_stage,
+            scene_count=len(scenes),
+            celery_task_id=result.id,
+        )
+        return {
+            "job_id": job_id,
+            "project_id": project_id,
+            "stage": start_stage,
+            "celery_task_id": result.id,
+            "status": "dispatched",
+        }
+
     # Dispatch the starting stage
     task_name = STAGE_TASK_MAP.get(start_stage)
     if not task_name:

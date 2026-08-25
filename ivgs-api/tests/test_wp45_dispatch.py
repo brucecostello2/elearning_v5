@@ -787,3 +787,87 @@ class TestSite8PromptPlayground:
             )
         assert resp.status_code == 400
         assert called == [], "a syntax error must not cost a GPU call"
+
+
+# ---------------------------------------------------------------------------
+# Resume stage arithmetic — swallow-register entry 17's second half
+# ---------------------------------------------------------------------------
+
+class TestResumeComputesTheStageAfter:
+    """The stage AFTER the last completed one, in the orchestrator's vocabulary.
+
+    Register entry 17 documented this on 2026-08-23 as latent behind the dead
+    resume endpoint: the old list was in the eight SPEC stage names while
+    `save_checkpoint` writes the WORKER names the orchestrator dispatches by, so
+    three of eight did not match and the fallback resumed from
+    `last_checkpoint.stage_name` — the stage that had just completed.
+
+    It fired on the first real resume (job b3df6eb6, 2026-08-25): the last
+    complete checkpoint was `image_generation`, which is not in the spec list, so
+    the resume re-ran image generation. These pin the arithmetic.
+    """
+
+    def test_the_worker_vocabulary_resolves(self):
+        from app.services.checkpoint_service import _next_stage_after
+
+        # The three that did NOT match, which is the whole defect.
+        assert _next_stage_after("image_generation") == "composition_manifest"
+        assert _next_stage_after("composition_manifest") == "tts_audio"
+        assert _next_stage_after("tts_audio") == "talking_head_render"
+
+    def test_the_other_two_media_branches_share_the_media_position(self):
+        # They run in parallel; a checkpoint from any of them means the same
+        # thing about where the pipeline has got to.
+        from app.services.checkpoint_service import _next_stage_after
+
+        assert _next_stage_after("video_generation") == "composition_manifest"
+        assert _next_stage_after("animation_generation") == "composition_manifest"
+
+    def test_the_spec_vocabulary_still_resolves(self):
+        # Rows written before this fix, and any future writer using the spec
+        # names, must still resolve rather than falling through.
+        from app.services.checkpoint_service import _next_stage_after
+
+        assert _next_stage_after("media_generation") == "composition_manifest"
+        assert _next_stage_after("manifest_generation") == "tts_audio"
+        assert _next_stage_after("audio_generation") == "talking_head_render"
+
+    def test_the_rest_of_the_chain(self):
+        from app.services.checkpoint_service import _next_stage_after
+
+        assert _next_stage_after("transcript_refinement") == "storyboard_generation"
+        assert _next_stage_after("storyboard_generation") == "image_generation"
+        assert _next_stage_after("talking_head_render") == "prototype_draft"
+        assert _next_stage_after("prototype_draft") == "final_render"
+
+    def test_it_never_returns_the_stage_that_just_completed(self):
+        # THE DEFECT, stated as an invariant over the whole chain.
+        from app.services.checkpoint_service import RESUME_ORDER, _next_stage_after
+
+        for stage in RESUME_ORDER[:-1]:
+            assert _next_stage_after(stage) != stage, stage
+
+    def test_the_last_stage_has_nothing_after_it(self):
+        from app.services.checkpoint_service import _next_stage_after
+
+        assert _next_stage_after("final_render") == "final_render"
+
+    def test_an_unknown_stage_restarts_rather_than_guessing(self):
+        from app.services.checkpoint_service import _next_stage_after
+
+        # Re-running the whole pipeline is wasteful but correct; resuming from a
+        # stage whose name nothing understands is a guess.
+        assert _next_stage_after("quality_assurance") == "transcript_refinement"
+
+    def test_every_resume_target_is_a_stage_the_orchestrator_can_dispatch(self):
+        # The value goes to dispatch_pipeline and is looked up in STAGE_TASK_MAP.
+        # A name that is not a PipelineStage value is a dead dispatch.
+        from app.services.checkpoint_service import RESUME_ORDER
+
+        pipeline_stage_values = {
+            "transcript_refinement", "storyboard_generation", "image_generation",
+            "video_generation", "animation_generation", "composition_manifest",
+            "tts_audio", "talking_head_render", "prototype_draft", "final_render",
+        }
+        for stage in RESUME_ORDER:
+            assert stage in pipeline_stage_values, stage

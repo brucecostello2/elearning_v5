@@ -1393,3 +1393,121 @@ than *resumed*, costs nothing and stops the endpoint reporting work it did not d
 confirmation of the empty table the same day:
 `select count(*) from pipeline_checkpoints;` → `0`. The dispatch itself was **not**
 exercised — there is nothing to exercise.
+
+---
+
+### 26. A deduplication probe that could not report its own failure — **CLOSED 2026-08-25**
+
+**Where:** `ivgs-workers/utils/media_converter.py:498` (`check_duplicate_asset`),
+and its four call sites: `tasks/stage3_images.py`, `tasks/stage5_voiceover.py`,
+`tasks/video_generation_task.py`, `tasks/animation_generation_task.py`.
+
+**The swallow.** The helper wrapped its whole body in `try: ... except Exception
+as e: logger.warning(...); return None`. Every call site read `None` as "no
+duplicate exists". So "I could not check" and "I checked and there is nothing"
+were the same value, at four sites, in the four branches that generate every
+asset this system produces.
+
+**What made it consequential rather than merely untidy.** The route it called —
+`GET /api/v1/assets?sha256=` — **had never been built**. `asset_router` carried
+`/{asset_id}` and its children and no bare list route, so FastAPI matched the
+path to nothing and answered 404 on every call. The probe therefore failed
+*every single time it ran*, on every media branch, since it was written; the
+`except` caught the 404; and each call site proceeded to generate and upload as
+though it had confirmed the asset was new. Content-hash deduplication was dead
+fleet-wide and reported itself as working. `was_deduplicated: false` was true
+and would have stayed true forever.
+
+Found by WP-46-ANIMATION (addendum A5.2, ledger L-8) while measuring the first
+real animation render; fixed by WP-45-API.
+
+**What it cost.** Beyond the dedup itself: the video and animation branches probe
+on a *generation-parameters* hash **before** rendering, so a hit skips the GPU
+work rather than just the upload. WP-46 measured one animation render at 256.49 s.
+Every repeat of an identical request paid that in full.
+
+**The fix, and why it is not "catch less".** Fail-open is still the behaviour —
+deduplication is an optimisation, and a probe that cannot be answered should mean
+"generate it anyway". What changed is that the decision is now *taken in the
+open* rather than being the accidental consequence of a bare `except`:
+
+* `check_duplicate_asset` raises `DuplicateCheckError` on any transport failure
+  or non-200. `None` now means one thing only: checked, nothing found.
+* `find_duplicate_or_none` is the fail-open wrapper. It catches that exception
+  and emits one greppable event, modelled on WP-08's precedent:
+
+      dedup_check_unavailable  hash_kind=params  fail_open=True
+        consequence="asset will be generated and uploaded without a dedup check"
+
+* All four call sites use the wrapper, so the fail-open is a named decision at a
+  named line rather than a default hidden two files away.
+
+**Observed evidence that the failure now surfaces** (the register's closing bar):
+
+| Condition | Before | After |
+|---|---|---|
+| route missing (404) | `None` — indistinguishable from a clean miss | `DuplicateCheckError`, logged at **error** with `fail_open=True` |
+| API unreachable | `None` | `DuplicateCheckError`, ditto |
+| 500 from the API | `None` | `DuplicateCheckError`, ditto |
+| genuinely no duplicate | `None` | `None`, and **nothing logged at error** |
+
+Pinned by `ivgs-workers/tests/test_wp45_dedup_probe.py` (20 tests), which asserts
+each of those four rows separately — including that a clean miss does *not* log
+an error, because a register entry that closes by making every outcome loud has
+only moved the problem.
+
+**And the route exists.** Verified live on the deployed API, 2026-08-25:
+`GET /api/v1/assets?sha256=<64 zeros>` → **HTTP 200**, `[]`; a probe for a hash
+that really exists on project `c12fa967` returns that asset with its
+`seaweedfs_path`.
+
+**A second, smaller swallow closed with it.** Three call sites read
+`existing.get("storage_path")` — a key `AssetResponse` has never sent — so a
+dedup *hit* silently set the result's path to `""` and the scene lost its file
+reference. `asset_storage_path()` reads the field the API actually sends and
+keeps the old name as a fallback rather than asserting either exists.
+
+**Evidence basis:** source read at `d76b355`; route absence confirmed by route
+listing; the live 200 measured on `ivgs-api:v5.11.0-apibatch` after deploy.
+
+---
+
+### 17 (update). `POST /jobs/{id}/resume` manufactures a success — **CLOSED 2026-08-25, with one part still open**
+
+Entry 17 above was ruled **OPEN and deliberately not fixed** (operator ruling
+2026-08-23, WP-07 D-1) on the grounds that the Temporal migration replaces
+resume-from-checkpoint at M3, so a real dispatcher written now is throwaway.
+
+**That deferral is superseded by the WP-45-API brief**, which named
+`checkpoint_service.py:243` as one of eight endpoints required to dispatch. It
+is recorded here rather than quietly overridden.
+
+**The primary lie is closed.** The endpoint dispatched nothing — the stub named
+`pipeline.execute_stage`, a task registered nowhere in the fleet. It now sends
+`tasks.pipeline_orchestrator_v2.dispatch_pipeline` with `resume_from_stage` set,
+which is the field `dispatch_pipeline` has read since it was written with
+nothing ever feeding it. The response names the Celery task id, so "dispatched"
+is checkable. A dispatch that fails is a 502 and the new job row is marked
+failed, rather than left at `pending` looking queued.
+
+Observed live 2026-08-25 on job `b3df6eb6`:
+
+```
+POST /jobs/b3df6eb6/resume  ->  200
+  "New job 90891425-... dispatched as Celery task 0495d242-..."
+pipeline_resuming         resume_from=image_generation
+pipeline_stage_dispatched task_name=tasks.stage3_images.generate_scene_images_task
+```
+
+**The second defect this entry documented remains OPEN.** Entry 17 recorded that
+`:127-137` hardcodes a stage order in the eight *spec* names while
+`save_checkpoint` writes *worker* names, and that `:138-147` falls back to
+"the stage that just completed" when the name is not found. That is still true,
+and it was observed live in the run above: the last complete checkpoint was
+`image_generation`, which is not in the list, so the resume re-ran image
+generation rather than continuing past it. **Wasteful, not wrong** — it re-runs
+work already done rather than skipping work not done — and left open here
+deliberately, because WP-45's brief scoped the *dispatch*, not the stage
+arithmetic. `WORKER_STAGE_TO_SPEC_STAGE` in
+`ivgs-api/app/services/language_service.py` is the collapse it needs; the two
+should share one table rather than grow a second copy.

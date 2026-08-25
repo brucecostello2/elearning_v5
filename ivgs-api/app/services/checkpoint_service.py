@@ -30,6 +30,80 @@ class ResumeDispatchError(RuntimeError):
     """A pipeline resume could not be dispatched. WP-45 Task 3, site 7."""
 
 
+# ---------------------------------------------------------------------------
+# Resume stage arithmetic — WP-45, and swallow-register entry 17's second half
+# ---------------------------------------------------------------------------
+#
+# The old list was in the eight SPEC stage names ("media_generation",
+# "manifest_generation", "audio_generation") while `save_checkpoint` writes the
+# WORKER names the orchestrator dispatches by ("image_generation",
+# "composition_manifest", "tts_audio"). Three of eight did not match, and the
+# fallback resumed from `last_checkpoint.stage_name` — **the stage that just
+# completed**. A job that got through image generation "resumed" by re-running
+# image generation.
+#
+# Register entry 17 documented this on 2026-08-23 as latent, because the
+# checkpoints table was empty and the endpoint dispatched nothing. WP-45 made
+# both untrue, and it fired on the first real resume (job b3df6eb6, 2026-08-25).
+#
+# The order below is in the vocabulary the ORCHESTRATOR dispatches by, because
+# the value produced here is handed to `dispatch_pipeline` as
+# `resume_from_stage` and looked up in its STAGE_TASK_MAP. The three media
+# branches occupy ONE position: they run in parallel and a checkpoint from any
+# of them means the same thing about where the pipeline is.
+MEDIA_STAGE_NAMES = frozenset(
+    {"image_generation", "video_generation", "animation_generation",
+     "media_generation"}
+)
+
+RESUME_ORDER: tuple[str, ...] = (
+    "transcript_refinement",
+    "storyboard_generation",
+    "image_generation",      # the media position; see MEDIA_STAGE_NAMES
+    "composition_manifest",
+    "tts_audio",
+    "talking_head_render",
+    "prototype_draft",
+    "final_render",
+)
+
+# Spec names a checkpoint might carry, mapped onto the position they occupy.
+# Accepting both vocabularies is deliberate: rows written before this fix, and
+# any future writer using the spec names, must still resolve.
+_STAGE_ALIASES = {
+    "media_generation": "image_generation",
+    "manifest_generation": "composition_manifest",
+    "audio_generation": "tts_audio",
+}
+
+
+def _next_stage_after(completed_stage: str) -> str:
+    """The stage to resume from, given the last one that completed.
+
+    Returns the stage AFTER ``completed_stage``. An unrecognised name resumes
+    from the beginning rather than from itself: re-running the whole pipeline is
+    wasteful but correct, whereas resuming from a stage whose name nothing
+    understands is a guess.
+    """
+    name = _STAGE_ALIASES.get(completed_stage, completed_stage)
+    if name in MEDIA_STAGE_NAMES:
+        name = "image_generation"
+    try:
+        idx = RESUME_ORDER.index(name)
+    except ValueError:
+        logger.warning(
+            "Resume: checkpoint stage %r is not in the known order; "
+            "resuming from the beginning rather than guessing.",
+            completed_stage,
+        )
+        return RESUME_ORDER[0]
+    if idx + 1 < len(RESUME_ORDER):
+        return RESUME_ORDER[idx + 1]
+    # The last stage completed. There is nothing after it; re-running it is the
+    # only meaning "resume" can have here.
+    return RESUME_ORDER[-1]
+
+
 class CheckpointService:
     """Business logic for pipeline checkpoint management."""
 
@@ -203,27 +277,7 @@ class CheckpointService:
         if last_checkpoint is None:
             resume_stage = "transcript_refinement"
         else:
-            # Determine next stage from the completed one
-            stage_order = [
-                "transcript_refinement",
-                "storyboard_generation",
-                "media_generation",
-                "manifest_generation",
-                "audio_generation",
-                "talking_head_render",
-                "prototype_draft",
-                "final_render",
-            ]
-            current_idx = None
-            for i, name in enumerate(stage_order):
-                if name == last_checkpoint.stage_name:
-                    current_idx = i
-                    break
-
-            if current_idx is not None and current_idx + 1 < len(stage_order):
-                resume_stage = stage_order[current_idx + 1]
-            else:
-                resume_stage = last_checkpoint.stage_name
+            resume_stage = _next_stage_after(last_checkpoint.stage_name)
 
         # Create a new render job for the resume (BUG-CHECKPOINT-STAGE fix).
         # job_type must be a valid job_type enum value; we use "final_render"
