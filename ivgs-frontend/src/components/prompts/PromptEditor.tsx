@@ -157,7 +157,7 @@ Generate a JSON object with:
 - scene_index: {{ scene_number }}
 - narration_text: the refined narration
 - visual_description: detailed description for image/video generation
-- media_type: one of IMAGE, VIDEO, ANIMATION, TALKING_HEAD
+- media_type: one of image, video_clip, animation
 - duration_seconds: estimated duration based on narration length`,
 
   image_generation: `Generate a photorealistic instructional image.
