@@ -81,17 +81,9 @@ groups:
       # Severity: Critical
       # Action: Auto-reschedule jobs; alert ops
       # -----------------------------------------------------------------------
-      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_worker_last_heartbeat_timestamp`
-      # is produced by no target on this fleet, and the name appears
-      # nowhere in the IVGS tree either -- it were written against
-      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
-      # This rule has therefore never been capable of firing.
-      #
-      # KEPT DELIBERATELY, not deleted. The data exists: `worker_heartbeats` is a real table (0 rows today, which is its own finding).
-      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
-      # only record that the fleet is supposed to be watching this. Root cause
-      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
-      # at all -- which is where all five of these belong. Ledger P2.64.
+      # WP-55 (P2.64): this rule now HAS a metric. `ivgs_worker_last_heartbeat_timestamp`
+      # Written by every worker's liveness beacon (ivgs-workers/utils/liveness.py) and exported by ivgs-api /api/v1/metrics. UNIT: unix SECONDS, the same unit as time(), so the 300 threshold is 300 seconds.
+      # It was inert from the day it was written until 2026-08-25.
       - alert: WorkerDown
         expr: |
           time() - ivgs_worker_last_heartbeat_timestamp > 300
@@ -117,17 +109,9 @@ groups:
       # Severity: Critical
       # Action: Alert ops for investigation
       # -----------------------------------------------------------------------
-      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_dlq_message_count`
-      # is produced by no target on this fleet, and the name appears
-      # nowhere in the IVGS tree either -- it were written against
-      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
-      # This rule has therefore never been capable of firing.
-      #
-      # KEPT DELIBERATELY, not deleted. The data exists: `dead_letter_messages` is a real table (0 rows -- and until WP-53 fixed fallback_chain.py the worker could not write to it at all, so this alert was silent about a queue nothing could reach).
-      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
-      # only record that the fleet is supposed to be watching this. Root cause
-      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
-      # at all -- which is where all five of these belong. Ledger P2.64.
+      # WP-55 (P2.64): this rule now HAS a metric. `ivgs_dlq_message_count`
+      # Exported by ivgs-api /api/v1/metrics from dead_letter_messages WHERE resolution IS NULL. UNIT: a count, the same unit as the 10 threshold.
+      # It was inert from the day it was written until 2026-08-25.
       - alert: DLQHighCount
         expr: |
           ivgs_dlq_message_count > 10
@@ -154,17 +138,9 @@ groups:
       # Severity: Critical
       # Action: Investigate pipeline errors
       # -----------------------------------------------------------------------
-      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_pipeline_jobs_failed_total` and `ivgs_pipeline_jobs_total`
-      # are produced by no target on this fleet, and the names appear
-      # nowhere in the IVGS tree either -- they were written against
-      # §13.1 Table 13-3, the design, and nothing was ever built to emit them.
-      # This rule has therefore never been capable of firing.
-      #
-      # KEPT DELIBERATELY, not deleted. The data exists AND is populated: `render_jobs` holds 35 rows with status. This one could be exported today with no new plumbing.
-      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
-      # only record that the fleet is supposed to be watching this. Root cause
-      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
-      # at all -- which is where all five of these belong. Ledger P2.64.
+      # WP-55 (P2.64): this rule now HAS a metric. `ivgs_pipeline_jobs_failed_total / _total`
+      # Exported by ivgs-api /api/v1/metrics from render_jobs. UNIT: counts; the expression divides them and scales by 100, so the 10 threshold is 10 PERCENT.
+      # It was inert from the day it was written until 2026-08-25.
       - alert: JobFailureRateHigh
         expr: |
           (
@@ -304,17 +280,9 @@ groups:
       # Severity: Warning
       # Action: Consider scaling workers
       # -----------------------------------------------------------------------
-      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_render_queue_pending_segments`
-      # is produced by no target on this fleet, and the name appears
-      # nowhere in the IVGS tree either -- it were written against
-      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
-      # This rule has therefore never been capable of firing.
-      #
-      # KEPT DELIBERATELY, not deleted. The data exists: `render_segments` is a real table (0 rows). NOT to be substituted with `ivgs_scheduler_queue_depth`, which measures the GPU admission queue, is a different quantity, and is itself unreliable (P2.46).
-      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
-      # only record that the fleet is supposed to be watching this. Root cause
-      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
-      # at all -- which is where all five of these belong. Ledger P2.64.
+      # WP-55 (P2.64): this rule now HAS a metric. `ivgs_render_queue_pending_segments`
+      # Exported by ivgs-api /api/v1/metrics from render_segments WHERE status='pending'. UNIT: a count, the same unit as the 20 threshold.
+      # It was inert from the day it was written until 2026-08-25.
       - alert: RenderQueueBacklog
         expr: |
           ivgs_render_queue_pending_segments > 20
@@ -350,10 +318,26 @@ groups:
       # preallocates its KV cache, so a node serving an LLM sits near the top of
       # VRAM by design. The alert has been incapable of saying so for its whole
       # life; the first thing it does once repaired is report a real condition.
+      # WP-55 (WP-54 D-2, RULED). SCOPED TO role="image", and joined by two
+      # sibling rules below rather than replaced by them.
+      #
+      # This rule was fleet-wide and fired continuously on node-02 — correctly,
+      # and uselessly. Measured 2026-08-25: node-02 90.4% used with 8.55 GiB
+      # free and FLAT over an hour (min_over_time == current), because vLLM
+      # preallocates its KV cache; node-03 21.7%; node-04 28.5%. One threshold
+      # cannot mean the same thing on all three.
+      #
+      # The threshold is NOT raised and the rule is NOT deleted. It keeps its
+      # name and its 90% and now applies to the role whose steady state is low
+      # enough for 90% to be a signal. node-02 stays covered, by
+      # GPULLMNodeFreeVRAMLow; node-03 by GPUVRAMSaturatedVideoNode.
+      #
+      # `for` 5m -> 10m: image generation legitimately spikes for the length of
+      # a batch, and a rule that pages on a normal batch gets muted.
       - alert: GPUVRAMHigh
         expr: |
-          (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 > 90
-        for: 5m
+          (nvidia_smi_memory_used_bytes{role="image"} / nvidia_smi_memory_total_bytes{role="image"}) * 100 > 90
+        for: 10m
         labels:
           severity: warning
           team: infrastructure
@@ -376,6 +360,66 @@ groups:
       # Severity: Warning
       # Action: Identify runaway process
       # -----------------------------------------------------------------------
+      # -----------------------------------------------------------------------
+      # WP-55: VRAM saturation on the VIDEO node.
+      # CogVideoX and Wan-Animate are co-resident on node-03 and the profile is
+      # legitimately high and spiky, so the level is the same 90%-class question
+      # but the DURATION is what separates a long render from a stuck one.
+      # 95% for 30m: a render that has held 95% for half an hour is not a
+      # render, and 30m is longer than any single clip this pipeline produces.
+      # -----------------------------------------------------------------------
+      - alert: GPUVRAMSaturatedVideoNode
+        expr: |
+          (nvidia_smi_memory_used_bytes{role="video"} / nvidia_smi_memory_total_bytes{role="video"}) * 100 > 95
+        for: 30m
+        labels:
+          severity: warning
+          team: infrastructure
+          component: gpu
+        annotations:
+          summary: "VRAM on {{ $labels.node }} (video) has held >95% for 30m ({{ $value | printf \"%.1f\" }}%)"
+          description: >-
+            node {{ $labels.node }} serves CogVideoX and Wan-Animate co-resident,
+            so high VRAM during a render is expected and is not alerted on. This
+            fires only on SUSTAINED saturation: 95% held for 30 minutes, which is
+            longer than any single clip this pipeline renders. Check for a job
+            that failed without releasing, or two engines loaded at once.
+          action: "Check running renders on {{ $labels.node }}; look for a stuck job holding VRAM."
+          runbook: "docs/runbooks/gpu-vram-high.md"
+
+      # -----------------------------------------------------------------------
+      # WP-55: HEADROOM, not level, on the LLM node.
+      #
+      # A level threshold measures the allocator, not the health. vLLM takes its
+      # KV cache at startup and holds it: node-02 reads 90.4% used the moment it
+      # is idle and would read the same under load, so "used %" carries almost
+      # no information about whether the node can serve. What matters is whether
+      # there is enough left to admit work.
+      #
+      # 4 GiB, chosen against measurement rather than intuition: node-02's free
+      # VRAM is 8.55 GiB and flat, so this sits comfortably below its steady
+      # state (it is healthy today, and capable of firing) while still being a
+      # real floor — a 96 GB card with under 4 GiB free cannot load anything.
+      # -----------------------------------------------------------------------
+      - alert: GPULLMNodeFreeVRAMLow
+        expr: |
+          nvidia_smi_memory_free_bytes{role="llm"} < 4294967296
+        for: 15m
+        labels:
+          severity: warning
+          team: infrastructure
+          component: gpu
+        annotations:
+          summary: "Free VRAM on {{ $labels.node }} (LLM) is {{ $value | humanize1024 }}B, under the 4 GiB floor"
+          description: >-
+            node {{ $labels.node }} runs vLLM, which preallocates its KV cache,
+            so a high USED percentage is its normal resting state and is not
+            alerted on. This fires on HEADROOM instead: free VRAM under 4 GiB
+            for 15 minutes means the node cannot admit further work. Check for a
+            second model loaded alongside the primary, or a leaked allocation.
+          action: "Inspect vLLM on {{ $labels.node }}; check for a second loaded model."
+          runbook: "docs/runbooks/gpu-vram-high.md"
+
       - alert: NodeHighCPU
         expr: |
           (

@@ -28,13 +28,17 @@ success code.
 
 WHY THERE IS AN EXEMPTION LIST AND WHY IT IS NOT A SKIP MARKER
 ---------------------------------------------------------------
-Five rules are inert TODAY and must not be deleted — deleting them would remove
-the only record that the fleet is supposed to watch those things, which is the
-gap-hiding move this package exists to prevent. They are listed below with what
-is missing and a ledger id, and `test_no_exemption_has_quietly_become_available`
+A rule with no metric must not be deleted — deleting it would remove the only
+record that the fleet is supposed to watch that thing, which is the gap-hiding
+move this package exists to prevent. Such rules are listed below with what is
+missing and a ledger id, and `test_no_exemption_has_quietly_become_available`
 makes the list self-expiring: the moment someone ships the exporter, the
 exemption fails and has to be removed. An exemption that could outlive its cause
 would be a skip marker wearing a better hat.
+
+That is not theoretical. WP-54 listed five; WP-55 built the exporter, this test
+went red naming all four it had just satisfied, and four entries were retired.
+One remains.
 """
 
 from __future__ import annotations
@@ -56,24 +60,24 @@ RULE_FILES = [REPO_ROOT / "ivgs-infra" / "configs" / "prometheus" / "alert_rules
 # ---------------------------------------------------------------------------
 # Ledgered exemptions — rules kept deliberately with no metric behind them.
 #
-# Each entry is {alert name: (missing metric names, ledger id)}. Measured
-# 2026-08-25: none of these names is produced by any target, and none appears
-# anywhere in the IVGS tree either — they were written against §13.1 Table 13-3,
-# the design, and nothing was ever built to emit them. The data exists in
-# Postgres in every case; the gap is an exporter, and its root cause is shared
-# with P2.62 (ivgs-api serves no /metrics endpoint at all).
+# Each entry is {alert name: (missing metric names, ledger id)}.
 #
 # To retire an entry: ship the metric, then delete the line. Do not delete the
 # line to make this file green.
 # ---------------------------------------------------------------------------
 KNOWN_INERT: dict[str, tuple[tuple[str, ...], str]] = {
-    "WorkerDown": (("ivgs_worker_last_heartbeat_timestamp",), "P2.64"),
-    "DLQHighCount": (("ivgs_dlq_message_count",), "P2.64"),
-    "JobFailureRateHigh": (
-        ("ivgs_pipeline_jobs_failed_total", "ivgs_pipeline_jobs_total"),
-        "P2.64",
-    ),
-    "RenderQueueBacklog": (("ivgs_render_queue_pending_segments",), "P2.64"),
+    # WP-55 retired four entries here — WorkerDown, DLQHighCount,
+    # JobFailureRateHigh and RenderQueueBacklog — after building the exporter
+    # that produces their metrics. This test failed first and demanded it,
+    # which is the mechanism working: the exemption expired the moment its
+    # cause did.
+    #
+    # StorageQuotaAlert is the one that remains, and its REASON has changed.
+    # The metrics are implemented (ivgs-api/app/api/v1/metrics.py emits
+    # ivgs_user_storage_used_bytes / _quota_bytes from `storage_quotas`), but
+    # that table holds 0 rows, so the families carry no samples and Prometheus
+    # indexes no series. "Built, no data yet" is not the same fact as "never
+    # built", and it will retire itself the first time a quota row exists.
     "StorageQuotaAlert": (
         ("ivgs_user_storage_used_bytes", "ivgs_user_storage_quota_bytes"),
         "P2.64",

@@ -51,23 +51,23 @@ rule_files:
 # ---------------------------------------------------------------------------
 scrape_configs:
   - job_name: "ivgs-api"
-    metrics_path: "/metrics"
+    # WP-55: was metrics_path "/metrics" against "node-01:8000". Both halves
+    # were wrong and P2.62 recorded it: the API served no metrics endpoint at
+    # all, and the port is 8001. The endpoint now exists
+    # (app/api/v1/metrics.py) and is mounted under the versioned prefix, and
+    # the target is reached by container DNS for the ufw reason described in
+    # Group 3. This job is what makes WorkerDown, DLQHighCount,
+    # JobFailureRateHigh, RenderQueueBacklog and StorageQuotaAlert capable of
+    # firing for the first time.
+    metrics_path: "/api/v1/metrics"
     scrape_interval: 15s
     static_configs:
-      # WP-53: LEFT AS IS, and this is deliberate. The other four node-01
-      # targets were dead because of ufw and container DNS fixes them. This one
-      # is not: measured 2026-08-25, `ivgs-api` serves NO Prometheus endpoint at
-      # all. It imports no prometheus_client and registers no /metrics route
-      # (compare ivgs-scheduler/main.py:883, which does) — probed
-      # /metrics, /api/metrics and /api/v1/metrics on the live container and all
-      # three 404. The published port is 8001, not the 8000 written here.
-      #
-      # Pointing this at "ivgs-fastapi:8001" would turn a connection timeout
-      # into a 404 and change nothing that matters, while making the target
-      # LOOK addressed. Fixing it means giving the API a metrics endpoint,
-      # which is code, not config. Ledger P2.62.
+      # WP-53 left this at "node-01:8000" deliberately: the API served no
+      # metrics endpoint, so pointing it at a reachable address would have
+      # turned a timeout into a 404 and made the target LOOK addressed. WP-55
+      # built the endpoint, so the address is now worth correcting. P2.62 closed.
       - targets:
-          - "node-01:8000"
+          - "ivgs-fastapi:8001"
         labels:
           service: "ivgs-api"
           node: "node-01"
@@ -180,6 +180,12 @@ scrape_configs:
   # Metrics: GPU utilization %, VRAM used/total, temperature, power draw,
   #          clock speeds
   # ---------------------------------------------------------------------------
+  # WP-55: each target carries a `role` label. VRAM alerting is per-role
+  # (WP-54 D-2, RULED) because a single fleet-wide threshold cannot be right:
+  # measured 2026-08-25, node-02 sits at 90.4% used with 8.55 GiB free and does
+  # not move, because vLLM preallocates its KV cache; node-03 reads 21.7% and
+  # node-04 28.5%. 90% means "healthy" on one of those nodes and "investigate"
+  # on another. The label is what lets alert_rules.yml say which.
   - job_name: "nvidia-gpu-exporter"
     metrics_path: "/metrics"
     scrape_interval: 15s
@@ -188,24 +194,28 @@ scrape_configs:
           - "node-02:9400"
         labels:
           node: "node-02"
+          role: "llm"
           gpu_model: "RTX 6000 Blackwell"
           vram_total_gb: "96"
       - targets:
           - "node-03:9400"
         labels:
           node: "node-03"
+          role: "video"
           gpu_model: "RTX 6000 Blackwell"
           vram_total_gb: "96"
       - targets:
           - "node-04:9400"
         labels:
           node: "node-04"
+          role: "image"
           gpu_model: "RTX 5000 Pro Blackwell"
           vram_total_gb: "48"
       - targets:
           - "node-05:9400"
         labels:
           node: "node-05"
+          role: "quality"
           gpu_model: "RTX PRO 5000 Blackwell"   # WP-48: was "RTX 5080"
           # WP-53: was "16", left behind when WP-48 corrected the model on the
           # line above. nvidia-smi on the box reports 48935 MiB. node-05 is OUT
@@ -229,6 +239,7 @@ scrape_configs:
           - "node-06:9400"
         labels:
           node: "node-06"
+          role: "compositor"
           gpu_model: "NVIDIA GeForce RTX 5080"
           vram_total_gb: "16"
     relabel_configs:

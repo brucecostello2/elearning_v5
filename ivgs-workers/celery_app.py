@@ -573,6 +573,23 @@ def on_worker_ready(sender: Any = None, **kwargs: Any) -> None:
         hostname=sender.hostname if sender else "unknown",
         pid=os.getpid(),
     )
+    # WP-55 (P2.64): the liveness beacon `WorkerDown` needs. UNCONDITIONAL and
+    # deliberately first — before the GPU registration below, which skips on any
+    # worker with no GPU identity and so has never covered node-01's
+    # default-worker or composition-worker. A critical alert cannot be built on
+    # a heartbeat that only some workers send.
+    try:
+        from config import WorkerConfig as _Cfg
+        from utils.liveness import start_liveness_beacon
+
+        _cfg = _Cfg()
+        start_liveness_beacon(
+            worker_id=sender.hostname if sender else _cfg.node_hostname,
+            node_hostname=_cfg.node_hostname,
+        )
+    except Exception as exc:
+        slog.warning("worker_liveness_beacon_failed", error=str(exc))
+
     # M2-1: register the node with the GPU scheduler and keep it alive. Skips
     # cleanly on non-GPU workers (no GPU identity) — see register_node.
     try:
@@ -598,6 +615,17 @@ def on_worker_shutdown(
     """Graceful shutdown: release GPU reservations, send final heartbeat."""
     import structlog
     slog = structlog.get_logger("ivgs.worker.shutdown")
+
+    # WP-55: stop writing, but LEAVE the last-seen record in place. A worker
+    # that is stopped and not restarted must trip WorkerDown five minutes
+    # later; deleting the record here would make an intentional stop and a
+    # crash produce identical evidence.
+    try:
+        from utils.liveness import stop_liveness_beacon
+
+        stop_liveness_beacon()
+    except Exception:  # noqa: BLE001 - shutdown path, never block on this
+        pass
     slog.warning(
         "worker_shutting_down",
         hostname=sender.hostname if sender else "unknown",

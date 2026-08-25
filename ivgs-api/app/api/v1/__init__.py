@@ -10,6 +10,7 @@ from fastapi import APIRouter
 from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
 from app.api.v1.health import router as health_router
+from app.api.v1.metrics import router as metrics_router
 
 # --- Domain routers ---
 from app.api.v1.projects import router as projects_router
@@ -66,6 +67,11 @@ api_v1_router = APIRouter()
 
 # Health (no prefix — mounted at /api/v1/health by convention)
 api_v1_router.include_router(health_router, tags=["Health"])
+
+# WP-55: Prometheus scrape endpoint at /api/v1/metrics. Unauthenticated, like
+# health, and mounted here rather than at the app root so it inherits the
+# versioned prefix the scrape config points at. See P2.64/P2.62.
+api_v1_router.include_router(metrics_router, tags=["Metrics"])
 
 # Authentication & Users
 api_v1_router.include_router(auth_router, prefix="/auth", tags=["Authentication"])

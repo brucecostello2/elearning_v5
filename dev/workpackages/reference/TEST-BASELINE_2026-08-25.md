@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **843** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
+| `ivgs-api` | **850** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
 | `ivgs-workers` | 766 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | 35 | 16 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1670** | **55** | **63** | **45** | |
+| **Total** | **1677** | **55** | **63** | **45** | |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 8
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -64,13 +64,17 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 843 passed, 0 failed
+## 2. `ivgs-api` — 850 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m05s. **No remaining failures.**
+Runtime 4m45s. **No remaining failures.**
+
+WP-55 added 7 tests (2026-08-25): `test_wp55_metrics_exporter.py`, pinning the
+exact metric names and units the Prometheus alert rules reference against
+`app/api/v1/metrics.py`. 843 → 850.
 
 WP-53 added 10 tests here (2026-08-25): nine on the AD-04 seam-1 receiver
 (`test_api_model_export.py` — `request_constraints` round-trip and the
