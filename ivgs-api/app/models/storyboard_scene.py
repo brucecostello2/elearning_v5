@@ -10,7 +10,7 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import String, Integer, Float, Text, DateTime, ForeignKey, text, Index
-from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from shared.database import Base
@@ -42,6 +42,27 @@ class StoryboardScene(Base):
     )
     duration_seconds: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True,
+    )
+    # ── WP-43 D-2, ruled EXTEND; migration 0028 ──
+    # The Edit Scene modal has always sent these five keys. SceneUpdate declared
+    # four, so Pydantic dropped the rest without an error and the dialog looked
+    # exactly as though it had saved them. camera_angle and transition_type are
+    # read by the generation and composition prompts, so removing the controls
+    # would have discarded intent the operator was already expressing.
+    camera_angle: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True,
+    )
+    transition_type: Mapped[Optional[str]] = mapped_column(
+        String(64), nullable=True,
+    )
+    effects: Mapped[Optional[list]] = mapped_column(
+        JSONB, nullable=True,
+    )
+    timing_offset_ms: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True,
+    )
+    generation_params: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

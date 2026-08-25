@@ -54,7 +54,11 @@ from config import WorkerConfig
 from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
-from utils.media_converter import check_duplicate_asset, compute_asset_sha256
+from utils.media_converter import (
+    asset_storage_path,
+    compute_asset_sha256,
+    find_duplicate_or_none,
+)
 from utils.quality_reporting import submit_quality_score
 from utils.video_validator import VideoValidator
 
@@ -185,8 +189,22 @@ async def _upload_asset(
     sha256_hash: str,
     metadata: Dict[str, Any],
     config: WorkerConfig,
+    generation_params_hash: str = "",
 ) -> Dict[str, Any]:
-    """Upload asset to SeaweedFS via Pipeline API."""
+    """Upload asset to SeaweedFS via Pipeline API.
+
+    WP-45 Task 1: ``generation_params_hash`` travels as its own field. It is the
+    key the dedup probe above looks the clip up by, and until now it was never
+    stored - so the probe could not have hit even once the route existed.
+    """
+    form = {
+        "scene_id": scene_id,
+        "asset_type": asset_type,
+        "content_hash": sha256_hash,
+        "metadata": json.dumps(metadata),
+    }
+    if generation_params_hash:
+        form["generation_params_hash"] = generation_params_hash
     async with httpx.AsyncClient(
         timeout=120.0,
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
@@ -194,16 +212,12 @@ async def _upload_asset(
         resp = await client.post(
             f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={"file": (f"{scene_id}_video.mp4", data, content_type)},
-            data={
-                "project_id": project_id,
-                "scene_id": scene_id,
-                "asset_type": asset_type,
-                "content_hash": sha256_hash,
-                "metadata": json.dumps(metadata),
-            },
+            data=form,
         )
         if resp.status_code not in (200, 201):
-            raise RuntimeError(f"Asset upload failed: HTTP {resp.status_code}")
+            raise RuntimeError(
+                f"Asset upload failed: HTTP {resp.status_code} — {resp.text[:300]}"
+            )
         return resp.json()
 
 
@@ -327,11 +341,21 @@ async def _process_single_video(
         ).hexdigest()
 
         if enable_dedup:
-            existing = check_duplicate_asset(sha256_hash=params_hash, api_base_url=config.pipeline_api.full_base_url, service_token=config.pipeline_api.service_token)
+            # WP-45: the PARAMS hash, probed before any GPU work. A hit here is
+            # the expensive one to get right - it skips the render, not just the
+            # upload. It could never hit before, because the upload route
+            # discarded generation_params_hash and the probe route did not exist.
+            existing = find_duplicate_or_none(
+                sha256_hash=params_hash,
+                api_base_url=config.pipeline_api.full_base_url,
+                service_token=config.pipeline_api.service_token,
+                hash_kind="params",
+                project_id=project_id,
+            )
             if existing:
                 log.info("video_deduplicated", existing_asset_id=existing["id"])
                 result.asset_id = existing["id"]
-                result.seaweedfs_path = existing.get("storage_path", "")
+                result.seaweedfs_path = asset_storage_path(existing)
                 result.sha256_hash = existing.get("content_hash", "")
                 result.was_deduplicated = True
                 result.model_used = "deduplicated"
@@ -458,14 +482,21 @@ async def _process_single_video(
             content_type="video/mp4",
             sha256_hash=sha256,
             metadata={
+                "media_type": "video_clip",
+                "stage": PipelineStage.VIDEO_GENERATION.value,
                 "model": result.model_used,
+                "prompt": prompt[:2000],
                 "width": result.width,
                 "height": result.height,
                 "fps": result.fps,
                 "duration": result.duration_seconds,
                 "fallback_level": fallback_level,
+                "job_id": job_id,
+                "content_sha256": sha256,
+                "generation_params_hash": params_hash,
             },
             config=config,
+            generation_params_hash=params_hash,
         )
 
         result.asset_id = upload_result.get("id", "")

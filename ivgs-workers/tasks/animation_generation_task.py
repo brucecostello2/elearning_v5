@@ -73,7 +73,11 @@ from shared.providers.binding import ModelBinding, resolve_endpoint
 from shared.providers.factory import get_binding
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
-from utils.media_converter import check_duplicate_asset, compute_asset_sha256
+from utils.media_converter import (
+    asset_storage_path,
+    compute_asset_sha256,
+    find_duplicate_or_none,
+)
 from utils.person_detector import PersonDetector, PersonPresence
 from utils.quality_reporting import submit_quality_score
 from utils.video_validator import VideoValidator
@@ -253,8 +257,27 @@ async def _upload_asset(
     sha256_hash: str,
     metadata: Dict[str, Any],
     config: WorkerConfig,
+    generation_params_hash: str = "",
 ) -> Dict[str, Any]:
-    """Upload the rendered animation to SeaweedFS, linked to its scene."""
+    """Upload the rendered animation to SeaweedFS, linked to its scene.
+
+    WP-45 Task 1, and a defect fixed on the way: this used to send the
+    **parameters** hash in the ``content_hash`` field. The two are different
+    kinds of value with different verification rules - a content hash is a claim
+    about the bytes and the server checks it; a parameters hash is a caller-owned
+    idempotency key the server cannot check. Sending one under the other's name
+    meant that the moment the route started honouring ``content_hash``, every
+    animation upload would have been rejected as corrupt. They now travel in
+    their own fields.
+    """
+    form = {
+        "scene_id": scene_id,
+        "asset_type": "video",
+        "content_hash": sha256_hash,
+        "metadata": json.dumps(metadata),
+    }
+    if generation_params_hash:
+        form["generation_params_hash"] = generation_params_hash
     async with httpx.AsyncClient(
         timeout=300.0,
         headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
@@ -262,16 +285,12 @@ async def _upload_asset(
         resp = await client.post(
             f"{config.pipeline_api.full_base_url}/projects/{project_id}/assets/upload",
             files={"file": (f"{scene_id}_animation.mp4", data, "video/mp4")},
-            data={
-                "project_id": project_id,
-                "scene_id": scene_id,
-                "asset_type": "video",
-                "content_hash": sha256_hash,
-                "metadata": json.dumps(metadata),
-            },
+            data=form,
         )
         if resp.status_code not in (200, 201):
-            raise RuntimeError(f"Asset upload failed: HTTP {resp.status_code}")
+            raise RuntimeError(
+                f"Asset upload failed: HTTP {resp.status_code} — {resp.text[:300]}"
+            )
         return resp.json()
 
 
@@ -485,15 +504,17 @@ async def _process_single_animation(
         ).hexdigest()
 
         if enable_dedup:
-            existing = check_duplicate_asset(
+            existing = find_duplicate_or_none(
                 sha256_hash=params_hash,
                 api_base_url=config.pipeline_api.full_base_url,
                 service_token=config.pipeline_api.service_token,
+                hash_kind="params",
+                project_id=project_id,
             )
             if existing:
                 log.info("animation_deduplicated", existing_asset_id=existing["id"])
                 result.asset_id = existing["id"]
-                result.seaweedfs_path = existing.get("storage_path", "")
+                result.seaweedfs_path = asset_storage_path(existing)
                 result.sha256_hash = existing.get("content_hash", "")
                 result.was_deduplicated = True
                 result.model_used = "deduplicated"
@@ -554,7 +575,9 @@ async def _process_single_animation(
             project_id=project_id,
             scene_id=scene.scene_id,
             data=render.video_data,
-            sha256_hash=params_hash,
+            # The CONTENT hash. This used to pass params_hash - see _upload_asset.
+            sha256_hash=result.sha256_hash,
+            generation_params_hash=params_hash,
             metadata={
                 "model": result.model_used,
                 "engine": "comfyui",
@@ -567,6 +590,8 @@ async def _process_single_animation(
                 "num_frames": render.num_frames,
                 "duration": render.duration_seconds,
                 "content_sha256": result.sha256_hash,
+                "generation_params_hash": params_hash,
+                "job_id": job_id,
                 "prompt_id": render.prompt_id,
                 "generation_time_seconds": render.generation_time_seconds,
                 **input_ids,

@@ -26,6 +26,7 @@ Pipeline Stage 3 per §6.1:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 from datetime import datetime, timezone
@@ -66,7 +67,8 @@ from utils.llm_binding import resolve_text_llm_binding
 from utils.quality_reporting import submit_quality_score as _submit_quality_score
 from utils.media_converter import (
     ImageConverter,
-    check_duplicate_asset,
+    asset_storage_path,
+    find_duplicate_or_none,
     compute_asset_sha256,
 )
 
@@ -244,13 +246,31 @@ async def _upload_to_seaweedfs(
     project_id: str,
     scene_id: str,
     config: WorkerConfig,
+    metadata: Optional[Dict[str, Any]] = None,
+    generation_params_hash: str = "",
 ) -> Tuple[str, str]:
     """
     Upload image to SeaweedFS and register asset in database.
 
     Returns (asset_id, seaweedfs_path).
+
+    WP-45 Task 1: the form fields are the ones the route now declares. Three of
+    the old ones — ``storage_path``, ``sha256``, ``file_size`` — were names the
+    route never had, so FastAPI dropped them without complaint. ``content_hash``
+    is verified server-side against the bytes, so sending it is a checksum on
+    the transfer rather than a value the server takes on trust.
     """
     seaweedfs_path = f"/ivgs/images/{project_id}/scenes/{scene_id}/image.png"
+
+    form: Dict[str, str] = {
+        "asset_type": "image",
+        "scene_id": scene_id,
+        "content_hash": compute_asset_sha256(image_data),
+    }
+    if generation_params_hash:
+        form["generation_params_hash"] = generation_params_hash
+    if metadata:
+        form["metadata"] = json.dumps(metadata)
 
     async with httpx.AsyncClient(
         timeout=60.0,
@@ -264,14 +284,7 @@ async def _upload_to_seaweedfs(
             files={
                 "file": ("image.png", image_data, "image/png"),
             },
-            data={
-                "project_id": project_id,
-                "scene_id": scene_id,
-                "asset_type": "image",
-                "storage_path": seaweedfs_path,
-                "sha256": compute_asset_sha256(image_data),
-                "file_size": str(len(image_data)),
-            },
+            data=form,
         )
 
         if resp.status_code not in (200, 201):
@@ -280,7 +293,10 @@ async def _upload_to_seaweedfs(
             )
 
         data = resp.json()
-        return data.get("asset_id", data.get("id", "")), seaweedfs_path
+        return (
+            data.get("asset_id", data.get("id", "")),
+            data.get("seaweedfs_path") or seaweedfs_path,
+        )
 
 
 def _quality_fields(validation: Any) -> Dict[str, Any]:
@@ -472,10 +488,14 @@ async def _process_single_scene(
         was_deduplicated = False
 
         if task_input.enable_dedup:
-            existing = check_duplicate_asset(
+            # WP-45: the content hash of bytes that now exist. A hit saves the
+            # upload and the duplicate row; the GPU time is already spent.
+            existing = find_duplicate_or_none(
                 sha256_hash=sha256_hash,
                 api_base_url=config.pipeline_api.full_base_url,
                 service_token=config.pipeline_api.service_token,
+                hash_kind="content",
+                project_id=task_input.project_id,
             )
             if existing:
                 log.info(
@@ -484,7 +504,7 @@ async def _process_single_scene(
                 )
                 was_deduplicated = True
                 asset_id = existing.get("id", "")
-                seaweedfs_path = existing.get("storage_path", "")
+                seaweedfs_path = asset_storage_path(existing)
 
                 return SceneImageResult(
                     scene_id=scene.scene_id,
@@ -509,6 +529,24 @@ async def _process_single_scene(
             project_id=task_input.project_id,
             scene_id=scene.scene_id,
             config=config,
+            # WP-45 Task 1: per-asset generation provenance. Which engine, which
+            # model, which prompt, at what size — the facts that let anyone
+            # reconstruct how this frame was made once the worker log has rotated.
+            metadata={
+                "media_type": "image",
+                "stage": PipelineStage.IMAGE_GENERATION.value,
+                "engine": "comfyui",
+                "model": model_used,
+                "prompt": positive_prompt[:2000],
+                "width": validation.actual_width,
+                "height": validation.actual_height,
+                "requested_width": task_input.target_width,
+                "requested_height": task_input.target_height,
+                "tier": getattr(task_input, "tier", "") or "",
+                "job_id": task_input.job_id,
+                "content_sha256": sha256_hash,
+                "generation_time_seconds": round(time.monotonic() - start_time, 3),
+            },
         )
 
         # 8. Submit quality score.

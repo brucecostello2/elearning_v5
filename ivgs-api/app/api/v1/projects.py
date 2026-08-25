@@ -228,7 +228,9 @@ async def upload_talking_head(
 
     # Upload asset
     asset_service = AssetService(db)
-    asset = await asset_service.upload_asset(
+    # WP-45: upload_asset returns (asset, was_deduplicated). Re-uploading the
+    # same reference clip re-references the stored row instead of a second copy.
+    asset, _deduplicated = await asset_service.upload_asset(
         project_id=project_id,
         file_content=content,
         filename=file.filename or "talking_head.mp4",

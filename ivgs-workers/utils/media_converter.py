@@ -495,35 +495,132 @@ def compute_asset_sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+class DuplicateCheckError(RuntimeError):
+    """The deduplication probe could not be answered.
+
+    WP-45 Task 1, and WP-00 swallowed-failures register. The old helper caught
+    every exception and returned ``None``, which the four call sites read as
+    "no duplicate exists" — so a probe against a route that **did not exist**
+    (``GET /api/v1/assets?sha256=`` was never implemented; ``asset_router`` had
+    only ``/{asset_id}`` and its children) answered 404, was swallowed, and
+    reported itself as a clean miss. Content-hash dedup was dead fleet-wide for
+    image, video, animation and audio alike and nothing on any surface said so
+    (WP-46 addendum A5.2 / ledger L-8).
+
+    "I could not check" and "I checked and there is nothing" are different
+    facts. This exception is the first one; ``None`` is now only ever the
+    second.
+    """
+
+
 def check_duplicate_asset(
     sha256_hash: str,
     api_base_url: str,
     service_token: str,
+    hash_kind: str = "content",
+    project_id: Optional[str] = None,
+    timeout_seconds: float = 10.0,
 ) -> Optional[Dict[str, Any]]:
-    """
-    Check if an asset with the same SHA-256 already exists in SeaweedFS.
+    """Find an existing asset with this hash, or ``None`` if there is none.
 
-    Calls GET /api/v1/assets?sha256={hash} to find duplicates.
-    Returns asset metadata if found, None otherwise.
+    ``hash_kind`` names which question is being asked, because the two are not
+    interchangeable:
+
+    * ``"content"`` — the SHA-256 of bytes that already exist. Stage 3 and
+      Stage 5 dedup on this *after* generating, so it saves the upload and the
+      duplicate row, not the GPU time.
+    * ``"params"`` — the caller's idempotency key over prompt, parameters and
+      input digests. Video and animation dedup on this *before* generating,
+      which is the case where a repeat run costs seconds instead of minutes.
+
+    Raises ``DuplicateCheckError`` when the probe cannot be answered. Callers
+    decide whether to fail open; they no longer have that decision made for
+    them by an ``except Exception: return None``.
+    """
+    import httpx
+
+    param = {
+        "content": "content_hash",
+        "params": "generation_params_hash",
+        "any": "sha256",
+    }.get(hash_kind)
+    if param is None:
+        raise ValueError(
+            f"hash_kind must be one of content|params|any; got {hash_kind!r}"
+        )
+
+    params: Dict[str, Any] = {param: sha256_hash}
+    if project_id:
+        params["project_id"] = project_id
+
+    try:
+        with httpx.Client(
+            timeout=timeout_seconds,
+            headers={"Authorization": f"Bearer {service_token}"},
+        ) as client:
+            resp = client.get(f"{api_base_url}/assets", params=params)
+    except Exception as exc:
+        raise DuplicateCheckError(
+            f"deduplication probe could not reach {api_base_url}/assets: {exc}"
+        ) from exc
+
+    if resp.status_code != 200:
+        raise DuplicateCheckError(
+            f"deduplication probe to {api_base_url}/assets returned HTTP "
+            f"{resp.status_code}: {resp.text[:200]}"
+        )
+
+    data = resp.json()
+    items = data if isinstance(data, list) else data.get("data", data.get("items", []))
+    if not items:
+        return None
+    return items[0]
+
+
+def find_duplicate_or_none(
+    sha256_hash: str,
+    api_base_url: str,
+    service_token: str,
+    hash_kind: str = "content",
+    project_id: Optional[str] = None,
+) -> Optional[Dict[str, Any]]:
+    """``check_duplicate_asset`` with a deliberate, logged fail-open.
+
+    Deduplication is an optimisation: if the probe cannot be answered, the
+    right behaviour is to generate the asset anyway. That was also the OLD
+    behaviour — the difference is that the decision is now made here, in the
+    open, under one greppable event, instead of being the accidental
+    consequence of a bare ``except``. The WP-08 ``gpu_reservation_unavailable
+    ... fail_open=True`` line is the precedent.
     """
     try:
-        import httpx
-        with httpx.Client(
-            timeout=10.0,
-            headers={
-                "Authorization": f"Bearer {service_token}",
-            },
-        ) as client:
-            resp = client.get(
-                f"{api_base_url}/assets",
-                params={"sha256": sha256_hash},
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                items = data if isinstance(data, list) else data.get("items", [])
-                if items:
-                    return items[0]
-            return None
-    except Exception as e:
-        logger.warning("duplicate_check_failed", error=str(e))
+        return check_duplicate_asset(
+            sha256_hash=sha256_hash,
+            api_base_url=api_base_url,
+            service_token=service_token,
+            hash_kind=hash_kind,
+            project_id=project_id,
+        )
+    except DuplicateCheckError as exc:
+        logger.error(
+            "dedup_check_unavailable",
+            hash_kind=hash_kind,
+            error=str(exc),
+            fail_open=True,
+            consequence="asset will be generated and uploaded without a dedup check",
+        )
         return None
+
+
+def asset_storage_path(asset: Optional[Dict[str, Any]]) -> str:
+    """The SeaweedFS path off an asset payload.
+
+    ``AssetResponse`` sends ``seaweedfs_path``. Three call sites read
+    ``storage_path``, a key the API has never sent, so a dedup hit set the
+    result's path to ``""`` and the scene lost its file reference. Reads the
+    real field and keeps the old name as a fallback rather than asserting
+    either one exists.
+    """
+    if not asset:
+        return ""
+    return asset.get("seaweedfs_path") or asset.get("storage_path") or ""

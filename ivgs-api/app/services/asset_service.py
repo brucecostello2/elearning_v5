@@ -8,12 +8,13 @@ Per §5.1.5, §10.1–10.4:
 - Download proxy from SeaweedFS through API
 """
 import hashlib
+import io
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asset import Asset
@@ -102,6 +103,72 @@ class AssetService:
             await self.db.commit()
         return asset
 
+    async def find_by_hash(
+        self,
+        content_hash: Optional[str] = None,
+        generation_params_hash: Optional[str] = None,
+        any_hash: Optional[str] = None,
+        project_id: Optional[UUID] = None,
+        limit: int = 10,
+    ) -> List[Asset]:
+        """Find live assets by content hash and/or generation-parameters hash.
+
+        WP-45 Task 1. This is the lookup behind ``GET /api/v1/assets?sha256=``,
+        the route ``check_duplicate_asset`` (``ivgs-workers/utils/media_converter.py``)
+        has called since it was written and which **did not exist** — ``asset_router``
+        had only ``/{asset_id}`` and its children, so every dedup probe on the fleet
+        404'd into a bare ``except`` and returned ``None``. Content-hash dedup was
+        therefore dead for image, video, animation and audio alike (WP-46 addendum
+        A5.2, ledger L-8).
+
+        The two hashes answer different questions and both are needed:
+
+        * ``content_hash`` — "have these exact bytes been stored before?" It is
+          computed from the bytes on upload, so it can only be known *after* the
+          GPU work. Stage 3 and Stage 5 dedup on it: it saves the upload, not the
+          render.
+        * ``generation_params_hash`` — "has this exact request been rendered
+          before?" It is the caller's idempotency key over prompt/params/inputs
+          and is known *before* the GPU work. Video and animation dedup on it,
+          which is what makes a repeat run cost seconds instead of minutes.
+
+        ``any_hash`` matches either column, because ``check_duplicate_asset``'s
+        wire contract has one ``sha256`` parameter and its four callers put
+        different kinds of hash in it. A 64-hex value colliding across the two
+        columns is not a practical risk; a caller that wants precision passes the
+        named parameter instead.
+
+        Deleted-tier assets are excluded: a tombstone is not a dedup target.
+        """
+        conditions = []
+        if content_hash:
+            conditions.append(Asset.content_hash == content_hash)
+        if generation_params_hash:
+            conditions.append(
+                Asset.generation_params_hash == generation_params_hash
+            )
+        if any_hash:
+            conditions.append(
+                or_(
+                    Asset.content_hash == any_hash,
+                    Asset.generation_params_hash == any_hash,
+                )
+            )
+        if not conditions:
+            return []
+
+        query = select(Asset).where(
+            and_(or_(*conditions), Asset.storage_tier != "deleted")
+        )
+        if project_id is not None:
+            query = query.where(Asset.project_id == project_id)
+
+        # Oldest first: the original is the canonical row to re-reference, and a
+        # newest-first order would hand back a copy made by an earlier dedup miss.
+        query = query.order_by(Asset.created_at.asc()).limit(limit)
+        result = await self.db.execute(query)
+        return list(result.scalars().all())
+
     async def upload_asset(
         self,
         project_id: UUID,
@@ -111,14 +178,33 @@ class AssetService:
         asset_type: str,
         scene_id: Optional[UUID] = None,
         language_code: Optional[str] = None,
-    ) -> Asset:
+        claimed_content_hash: Optional[str] = None,
+        generation_params_hash: Optional[str] = None,
+        generation_metadata: Optional[Dict[str, Any]] = None,
+    ) -> Tuple[Asset, bool]:
         """
         Upload an asset to SeaweedFS and create metadata record.
+
+        Returns ``(asset, was_deduplicated)``.
 
         Implements deduplication via SHA-256 hash (§10.4):
         - If a completed asset with the same hash exists, increment reference_count
           and return existing asset reference.
         - Otherwise, upload to SeaweedFS and create new record.
+
+        WP-45 Task 1: ``claimed_content_hash``, ``generation_params_hash`` and
+        ``generation_metadata`` are the three fields every media task in the fleet
+        has always sent and this route has always discarded — FastAPI drops unknown
+        form fields silently, so the workers' provenance and idempotency keys went
+        nowhere and no caller could tell (WP-46 addendum A5.2 / ledger L-7).
+
+        ``claimed_content_hash`` is **verified, not trusted**: it is a claim about
+        the bytes that arrived, and the server hashes those bytes itself. A
+        mismatch means the upload was corrupted in transit and raises, because the
+        alternative — storing bytes under a hash that is not theirs — poisons every
+        future dedup lookup with a row that can never be found by its real content.
+        ``generation_params_hash`` is a caller-owned idempotency key over inputs the
+        server never sees, so it is stored as given.
         """
         # Validate asset type
         if asset_type not in ASSET_TYPE_PATHS:
@@ -135,15 +221,41 @@ class AssetService:
         # Compute SHA-256 hash for deduplication
         content_hash = hashlib.sha256(file_content).hexdigest()
 
-        # Check for existing asset with same hash (deduplication per §10.4)
+        if claimed_content_hash:
+            claimed = claimed_content_hash.strip().lower()
+            if len(claimed) != 64 or any(c not in "0123456789abcdef" for c in claimed):
+                raise ValueError(
+                    f"content_hash must be 64 lowercase hex characters; got "
+                    f"{len(claimed_content_hash)} characters"
+                )
+            if claimed != content_hash:
+                raise ValueError(
+                    "content_hash does not match the uploaded bytes "
+                    f"(claimed {claimed[:16]}..., computed {content_hash[:16]}...). "
+                    "The upload was corrupted in transit, or the caller hashed "
+                    "something other than what it sent."
+                )
+
+        if generation_params_hash is not None:
+            generation_params_hash = generation_params_hash.strip() or None
+
+        # Check for existing asset with same hash (deduplication per §10.4).
+        # The generation-parameters hash counts too: video and animation dedup on
+        # it before they render, and a params hit means these exact bytes were
+        # produced from these exact inputs already.
+        dedup_conditions = [Asset.content_hash == content_hash]
+        if generation_params_hash:
+            dedup_conditions.append(
+                Asset.generation_params_hash == generation_params_hash
+            )
         existing = await self.db.execute(
             select(Asset).where(
                 and_(
-                    Asset.content_hash == content_hash,
+                    or_(*dedup_conditions),
                     Asset.project_id == project_id,
                     Asset.storage_tier != "deleted",
                 )
-            )
+            ).order_by(Asset.created_at.asc()).limit(1)
         )
         existing_asset = existing.scalar_one_or_none()
 
@@ -151,13 +263,20 @@ class AssetService:
             # Deduplication: increment reference_count, don't re-upload
             existing_asset.reference_count += 1
             existing_asset.last_accessed_at = datetime.now(timezone.utc)
+            # Backfill the keys the original row was uploaded without, so an
+            # asset stored before this fix becomes findable by params hash the
+            # first time it is re-uploaded rather than staying invisible forever.
+            if generation_params_hash and not existing_asset.generation_params_hash:
+                existing_asset.generation_params_hash = generation_params_hash
+            if generation_metadata and not existing_asset.generation_metadata:
+                existing_asset.generation_metadata = generation_metadata
             await self.db.commit()
             await self.db.refresh(existing_asset)
             logger.info(
                 f"Asset deduplicated: hash={content_hash[:16]}... "
                 f"existing_id={existing_asset.id} ref_count={existing_asset.reference_count}"
             )
-            return existing_asset
+            return existing_asset, True
 
         # Build SeaweedFS path
         base_path = ASSET_TYPE_PATHS[asset_type]
@@ -181,6 +300,8 @@ class AssetService:
             file_size_bytes=len(file_content),
             language_code=language_code,
             content_hash=content_hash,
+            generation_params_hash=generation_params_hash,
+            generation_metadata=generation_metadata,
             storage_tier=INITIAL_TIER,
             last_accessed_at=datetime.now(timezone.utc),
         )
@@ -190,9 +311,11 @@ class AssetService:
 
         logger.info(
             f"Asset uploaded: id={asset.id} type={asset_type} "
-            f"size={len(file_content)} path={seaweedfs_path}"
+            f"size={len(file_content)} path={seaweedfs_path} "
+            f"params_hash={(generation_params_hash or '-')[:16]} "
+            f"provenance_keys={sorted(generation_metadata) if generation_metadata else []}"
         )
-        return asset
+        return asset, False
 
     async def download_asset(self, asset_id: UUID) -> Optional[Tuple[bytes, str, str]]:
         """
@@ -215,6 +338,64 @@ class AssetService:
         mime_type = asset.mime_type or "application/octet-stream"
 
         return content, mime_type, filename
+
+    async def build_thumbnail(
+        self, asset: Asset, width: int = 320,
+    ) -> Tuple[bytes, str]:
+        """Downscale an image asset to ``width`` px wide, preserving aspect.
+
+        WP-45 Task 6(b). Raises ``FileNotFoundError`` when the bytes cannot be
+        retrieved and ``ValueError`` when they are not a decodable image — the
+        two failures a caller must distinguish, and neither of which may be
+        answered with a placeholder that looks like a real thumbnail.
+
+        The output is JPEG for opaque images and PNG when the source has an
+        alpha channel, because flattening transparency onto an assumed white
+        background silently changes what the operator is looking at.
+        """
+        result = await self.download_asset(asset.id)
+        if result is None:
+            raise FileNotFoundError(f"asset {asset.id} has no retrievable content")
+        content, _mime, _filename = result
+
+        try:
+            from PIL import Image, UnidentifiedImageError
+        except ImportError as exc:  # pragma: no cover - dependency is pinned
+            raise ValueError(
+                "Pillow is not installed in this API image, so thumbnails "
+                f"cannot be generated: {exc}"
+            ) from exc
+
+        try:
+            with Image.open(io.BytesIO(content)) as img:
+                img.load()
+                has_alpha = img.mode in ("RGBA", "LA", "PA") or (
+                    img.mode == "P" and "transparency" in img.info
+                )
+                if img.width <= width:
+                    # Already smaller than asked for. Re-encoding would only lose
+                    # quality; hand back the original bytes and say what they are.
+                    return content, asset.mime_type or "image/png"
+
+                height = max(1, round(img.height * (width / img.width)))
+                resized = img.convert("RGBA" if has_alpha else "RGB").resize(
+                    (width, height), Image.LANCZOS
+                )
+                buf = io.BytesIO()
+                if has_alpha:
+                    resized.save(buf, format="PNG", optimize=True)
+                    return buf.getvalue(), "image/png"
+                resized.save(buf, format="JPEG", quality=82, optimize=True)
+                return buf.getvalue(), "image/jpeg"
+        except UnidentifiedImageError as exc:
+            raise ValueError(
+                f"asset {asset.id} is stored as an image but its bytes are not "
+                f"a decodable image: {exc}"
+            ) from exc
+        except OSError as exc:
+            raise ValueError(
+                f"asset {asset.id} could not be decoded: {exc}"
+            ) from exc
 
     async def delete_asset(self, asset_id: UUID) -> bool:
         """

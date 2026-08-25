@@ -13,7 +13,7 @@ from sqlalchemy import (
     String, BigInteger, Float, Integer, Boolean,
     DateTime, ForeignKey, text,
 )
-from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
+from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from shared.database import Base
@@ -90,6 +90,14 @@ class Asset(Base):
     )
     generation_params_hash: Mapped[Optional[str]] = mapped_column(
         String(64), nullable=True,
+    )
+    # WP-45 Task 1 / migration 0028. Per-asset generation provenance: the engine,
+    # the model, the prompt id, the input asset ids, the parameters. Every media
+    # task in the fleet already sent this and the upload route discarded it
+    # (WP-46 addendum A5.2, ledger L-7), so how a given clip was made was
+    # unrecoverable the moment the worker log rotated.
+    generation_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

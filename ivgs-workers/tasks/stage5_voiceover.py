@@ -24,6 +24,7 @@ Pipeline Stage 4 (Audio Generation) per §6.1:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import time
 from datetime import datetime, timezone
@@ -54,7 +55,8 @@ from utils.gpu_utils import acquire_gpu_reservation
 from utils.llm_binding import resolve_text_llm_binding
 from utils.media_converter import (
     AudioConverter,
-    check_duplicate_asset,
+    asset_storage_path,
+    find_duplicate_or_none,
     compute_asset_sha256,
 )
 from utils.tts_text import (
@@ -211,9 +213,25 @@ async def _upload_audio_to_seaweedfs(
     scene_id: str,
     language_code: str,
     config: WorkerConfig,
+    metadata: Optional[Dict[str, Any]] = None,
 ) -> Tuple[str, str]:
-    """Upload audio to SeaweedFS."""
+    """Upload audio to SeaweedFS.
+
+    WP-45 Task 1: ``storage_path``, ``sha256`` and ``file_size`` were names the
+    upload route never declared, so FastAPI dropped all three without an error.
+    The route's real field is ``content_hash``, and it verifies it against the
+    bytes.
+    """
     seaweedfs_path = f"/ivgs/audio/{project_id}/{scene_id}/{language_code}.wav"
+
+    form = {
+        "asset_type": "audio",
+        "scene_id": scene_id,
+        "language_code": language_code,
+        "content_hash": compute_asset_sha256(audio_data),
+    }
+    if metadata:
+        form["metadata"] = json.dumps(metadata)
 
     async with httpx.AsyncClient(
         timeout=60.0,
@@ -226,15 +244,7 @@ async def _upload_audio_to_seaweedfs(
             files={
                 "file": (f"{language_code}.wav", audio_data, "audio/wav"),
             },
-            data={
-                "project_id": project_id,
-                "asset_type": "audio",
-                "scene_id": scene_id,
-                "language_code": language_code,
-                "storage_path": seaweedfs_path,
-                "sha256": compute_asset_sha256(audio_data),
-                "file_size": str(len(audio_data)),
-            },
+            data=form,
         )
 
         if resp.status_code not in (200, 201):
@@ -243,7 +253,10 @@ async def _upload_audio_to_seaweedfs(
             )
 
         data = resp.json()
-        return data.get("asset_id", data.get("id", "")), seaweedfs_path
+        return (
+            data.get("asset_id", data.get("id", "")),
+            data.get("seaweedfs_path") or seaweedfs_path,
+        )
 
 
 async def _update_scene_audio(
@@ -433,16 +446,18 @@ async def _process_single_voiceover(
         was_deduplicated = False
 
         if task_input.enable_dedup:
-            existing = check_duplicate_asset(
+            existing = find_duplicate_or_none(
                 sha256_hash=sha256_hash,
                 api_base_url=config.pipeline_api.full_base_url,
                 service_token=config.pipeline_api.service_token,
+                hash_kind="content",
+                project_id=task_input.project_id,
             )
             if existing:
                 log.info("audio_deduplicated", existing_asset_id=existing.get("id"))
                 was_deduplicated = True
                 asset_id = existing.get("id", "")
-                seaweedfs_path = existing.get("storage_path", "")
+                seaweedfs_path = asset_storage_path(existing)
 
                 await _update_scene_audio(
                     task_input.project_id, scene.scene_id, asset_id, config
@@ -480,6 +495,18 @@ async def _process_single_voiceover(
             scene_id=scene.scene_id,
             language_code=scene.language_code,
             config=config,
+            metadata={
+                "media_type": "audio",
+                "stage": PipelineStage.TTS_AUDIO.value,
+                "model": synthesis_result.model_used,
+                "language_code": scene.language_code,
+                "text_source": text_source,
+                "sample_rate": validation.actual_sample_rate,
+                "bit_depth": validation.actual_bit_depth,
+                "duration": validation.actual_duration_seconds,
+                "job_id": task_input.job_id,
+                "content_sha256": sha256_hash,
+            },
         )
 
         # 8. Update scene record

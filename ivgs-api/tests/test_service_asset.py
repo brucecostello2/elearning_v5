@@ -32,13 +32,17 @@ async def _create_project_with_user(db):
 
 
 async def _upload_test_asset(svc, project_id, content=b"test image data", asset_type="image"):
-    return await svc.upload_asset(
+    # WP-45: upload_asset returns (asset, was_deduplicated). The helper keeps
+    # returning just the asset so the existing assertions read unchanged; the
+    # dedup flag has its own tests in test_wp45_asset_dedup.py.
+    asset, _deduplicated = await svc.upload_asset(
         project_id=project_id,
         file_content=content,
         filename="test.png",
         content_type="image/png",
         asset_type=asset_type,
     )
+    return asset
 
 
 # ===========================================================================
@@ -108,7 +112,7 @@ class TestUploadAsset:
         await db_session.commit()
 
         svc = AssetService(db_session)
-        asset = await svc.upload_asset(
+        asset, _deduplicated = await svc.upload_asset(
             project_id=pid,
             file_content=b"scene asset",
             filename="scene.png",

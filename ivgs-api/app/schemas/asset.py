@@ -4,7 +4,7 @@ Asset Pydantic schemas per §5.1.5.
 Includes: AssetUploadResponse, AssetResponse, AssetFilter.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
@@ -20,6 +20,13 @@ class AssetUploadResponse(BaseModel):
     mime_type: Optional[str] = None
     file_size_bytes: Optional[int] = None
     content_hash: Optional[str] = None
+    # WP-45 Task 1. `was_deduplicated` tells the caller whether these bytes were
+    # stored or an existing row was re-referenced. It used to be unknowable from
+    # the response: a dedup hit and a fresh upload were byte-identical replies.
+    generation_params_hash: Optional[str] = None
+    generation_metadata: Optional[Dict[str, Any]] = None
+    reference_count: int = 1
+    was_deduplicated: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -42,6 +49,11 @@ class AssetResponse(BaseModel):
     preserve_flag: bool = False
     content_hash: Optional[str] = None
     reference_count: int = 1
+    # WP-45 Task 1: the dedup key and the provenance record, both persisted by
+    # the upload route and both readable here. `check_duplicate_asset` in the
+    # worker fleet reads `id` and `seaweedfs_path` off this shape.
+    generation_params_hash: Optional[str] = None
+    generation_metadata: Optional[Dict[str, Any]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
