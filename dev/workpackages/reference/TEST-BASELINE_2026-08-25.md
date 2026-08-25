@@ -133,7 +133,7 @@ passes and 19 diagnosed failures.
 |---|---|---|---|
 | 6 | `test_admission.py` — `test_invalid_stage_transition`, `test_insufficient_vram_fails`, `test_no_alive_nodes_fails`, `test_exceeds_concurrency_limit`, `test_all_circuits_open_fails`, `test_release_nonexistent_reservation` | `ImportError: cannot import name 'PhaseGateError' from 'main' (/opt/ivgs/ivgs-api/main.py)`. The scheduler's PRODUCTION code does `from main import ...` at six sites (`admission_control.py:230,252,265,292,318,348`, `scheduler.py:210,260`, `gpu_registry.py:208`) to dodge a circular import. Both `ivgs-api` and `ivgs-scheduler` ship a top-level `main.py`; `pyproject.toml` lists `ivgs-api` FIRST on `pythonpath`, so `main` is the API's. `ivgs-api/tests/test_ws_job_status.py:22` genuinely needs `main` to be the API's, so path order cannot satisfy both. | **P2.51** |
 | 1 | `test_scheduler.py::test_schedule_no_capacity_error` | Same import, via `scheduler.py:210`. | **P2.51** |
-| 9 | `test_circuit_breaker.py` — all but `test_zero_requests_returns_zero_rate` | `AttributeError: 'FakePipeline' object has no attribute 'zremrangebyscore'`. The fake has not kept up with the production sliding-window sorted sets. | **P2.52** |
+| 8 | `test_circuit_breaker.py` — 8 of its 9 failures; the exception is `test_zero_requests_returns_zero_rate`, the row below | `AttributeError: 'FakePipeline' object has no attribute 'zremrangebyscore'`. The fake has not kept up with the production sliding-window sorted sets. | **P2.52** |
 | 1 | `test_circuit_breaker.py::test_zero_requests_returns_zero_rate` | `AttributeError: 'FakeRedis' object has no attribute 'zcount'`. Same drift. | **P2.52** |
 | 4 | `test_load_balancer.py` — `test_idle_gpu_has_max_weight`, `test_busy_gpu_has_low_weight`, `test_candidates_sorted_by_weight_desc`, `test_balanced_fleet_no_warning` | Same missing `zremrangebyscore`. | **P2.52** |
 | 1 | `test_scheduler.py::test_reservation_extension` | `TypeError: FakePipeline.hset() takes from 2 to 3 positional arguments but 4 were given` — the fake models only the `mapping=` form. | **P2.52** |
@@ -225,3 +225,23 @@ problem — cite the row and move on.
 If a package fixes one of the ledgered causes, update the affected rows here in
 the same commit. This document going stale is the one way it becomes worse than
 having no baseline at all.
+
+---
+
+## 9. Errata
+
+**2026-08-25, WP-53 Task 0 — §4's cause table double-counted one test.** The
+first `test_circuit_breaker.py` row read **9** and the row below it claimed
+**1** for `test_zero_requests_returns_zero_rate`, but that test is one of the
+nine, not a tenth. §4 summed to 22 against §0's 21.
+
+Re-measured: `test_circuit_breaker.py` collects 10, passes 1, fails 9 — eight on
+`zremrangebyscore` and one (`test_zero_requests_returns_zero_rate`) on `zcount`.
+**§0's 21 was right; the §4 row was wrong** and is now 8. The corrected table
+sums 6 + 1 + 8 + 1 + 4 + 1 = 21, and the ledger totals it feeds are unchanged:
+P2.51 = 7 tests, P2.52 = 14.
+
+Cross-checked every other table in this document at the same time. `ivgs-workers`
+(22 = 10+2+2+1+2+1+1+1+1+1), `tests_system` (16 = 6+1+2+2+1+4 failures, 30 = 28+2
+errors) and the §0 totals (1643 / 59 / 63 / 45) all reconcile. This was the only
+arithmetic defect.
