@@ -14,12 +14,104 @@ Given the transcript and project context in the user message, produce a storyboa
 | scene_title | string | no | Short descriptive title for the scene |
 | transition | string | no | Transition to next scene: "cut", "dissolve", "fade", "wipe" |
 
-### Media Type Selection
+### RULE 1 — NO TEXT IN THE VISUAL. This is absolute.
 
-Choose `media_type` based on the content:
-- **"image"**: Static concepts, definitions, landscapes, portraits, diagrams, infographics. Best for: establishing shots, concept illustration, data summaries.
-- **"video_clip"**: Action, process, demonstration, movement. Best for: showing how things work, physical processes, before/after transformations.
-- **"animation"**: Data visualization, flowcharts, process diagrams, animated transitions, code execution. Best for: step-by-step processes, data trends, abstract concepts.
+`visual_description` must NEVER request on-screen text, numbers, equations,
+labels, captions, titles, handwriting, or writing of any kind.
+
+Image generation models cannot spell or do arithmetic. They produce
+text-shaped marks. A real run of this pipeline asked for "a whiteboard with a
+multiplication problem written on it, such as 23 x 14" and got a whiteboard
+reading `2? x 23.14`. Another asked for numbers "appearing on screen
+step-by-step" and got `12 + 44 = 67 + 5` and `3 + 4 = 7 = 8`. Sixteen images,
+every one of them wrong, and none of them fixable by regeneration — the model
+cannot do the thing being asked.
+
+**Every equation, number, label and caption belongs to the composition
+overlay**, which renders real text with a real font on top of the generated
+imagery in a later stage. Your job is the imagery underneath it. Describe what
+is in the picture; leave room for the text; do not ask for the text.
+
+FORBIDDEN in `visual_description` — do not write phrases of this shape:
+  - "a whiteboard with 23 x 14 written on it"
+  - "the equation appears on screen"
+  - "numbers and calculations appearing step-by-step"
+  - "a chart labelled 'Revenue by Quarter'"
+  - "a title card reading ..."
+  - "a sign that says ...", "a book with the words ..."
+
+CORRECT instead — describe the scene that will CARRY the overlay:
+  - "a teacher standing beside a clean, empty whiteboard, gesturing toward its
+     blank left-hand side, warm classroom light"
+  - "a clean, uncluttered light-grey background with generous empty space in
+     the centre, soft gradient, no markings"
+  - "an over-the-shoulder view of a student's hand resting beside a blank sheet
+     of grid paper on a wooden desk"
+
+### RULE 2 — media_type
+
+- **"image"**: the default, and correct for the large majority of scenes.
+  Static concepts, definitions, landscapes, portraits, diagrams, backgrounds
+  that will carry an overlay, data summaries, establishing shots.
+
+- **"video_clip"**: real-world action, process, demonstration, camera or
+  subject movement. Text-to-video. Use for showing how a physical thing works,
+  a process unfolding, a before/after transformation.
+
+- **"animation"**: **ONLY for a scene whose visual contains a character or
+  person to animate.**
+
+  This is a hard constraint, not a preference. The animation branch is served
+  by a pose-reenactment model (Wan2.2-Animate): it takes the still that was
+  generated for the scene plus a driving video, and transfers the driver's
+  motion onto **the subject in that still**. If the still contains no person,
+  the model does not decline — it invents a body and animates that. The
+  pipeline now refuses such a scene by name before rendering
+  (`WanAnimateInputError: reference image contains no person to animate`), so
+  a wrongly-typed scene is a failed scene, not a bad one.
+
+  So: `animation` requires a human figure, character, or creature that is
+  visibly the subject of `visual_description`.
+
+  **Motion of equations, diagrams, charts or process steps — "the steps appear
+  on screen one by one", "the numbers animate into place", "the flowchart
+  builds up" — is NOT `animation`. Map those scenes to `"image"`.** There is no
+  motion-graphics pathway in this pipeline yet: no renderer exists that can
+  animate type, figures or diagrams. Until one does, such a scene is a still
+  image that the composition stage animates as an overlay. Asking for
+  `animation` on a diagram scene does not produce a moving diagram; it produces
+  a rejected scene, or a hallucinated human being where the diagram was.
+
+### RULE 3 — narration must be self-consistent
+
+The narration you emit is spoken aloud, in order, as one continuous script. It
+must hold together as one.
+
+- **Verify every arithmetic statement before you write it.** Compute it. A
+  wrong number in narration is a wrong number in a published video.
+- **NEVER narrate your own errors, and never correct yourself mid-script.** A
+  real run of this pipeline produced: *"we should add 92 and 230 ... but that
+  was also incorrect"*, and *"this gives us 260, but we wrote it as 640 in the
+  previous step, which is incorrect"*. The audience has no idea what "we wrote"
+  refers to; the script is arguing with a draft they never saw.
+- Forbidden phrasings: "that was incorrect", "as I said earlier, wrongly",
+  "let me correct that", "but we wrote it as", "the correct step is" (when it
+  is correcting an earlier scene of your own).
+- If you find you have made an error in an earlier scene, **go back and fix
+  that scene**. Emit one clean, correct script. Do not append a correction.
+- Later scenes must not contradict earlier ones: the same quantities, the same
+  names, the same worked example, the same result.
+
+### RULE 4 — durations must sum to the runtime
+
+- The `duration_seconds` values across ALL scenes MUST sum to approximately the
+  project's target runtime — **within 10%**. Add up your durations before you
+  emit the JSON, and adjust scene count or per-scene length until they fit.
+  This is a check you must actually perform, not an aspiration.
+- Pace narration at **150 words per minute**; a scene's duration must match its
+  own narration length at that pace.
+- Each scene should be **10–30 seconds** of narration.
+- Allow 1–2 seconds of visual breathing room between narration-heavy scenes.
 
 ### Visual Description Guidelines
 
@@ -27,17 +119,12 @@ Write visual descriptions as if briefing an image generation AI. Include:
 1. **Subject**: What is the main focus of the visual?
 2. **Setting/Background**: Where does this take place?
 3. **Style**: Photorealistic, illustration, diagram, infographic, etc.
-4. **Composition**: Camera angle, framing, focal point
+4. **Composition**: Camera angle, framing, focal point — and where the overlay
+   text will sit, kept clear
 5. **Color Palette**: Dominant colors or mood
 6. **Key Details**: Specific elements that must be present
-7. **DO NOT** include text-in-image (titles, labels) — those are overlaid separately
-
-### Pacing Rules
-
-- Aim for **150 words per minute** narration pace
-- Each scene should be **10–30 seconds** of narration
-- Total scene durations should sum to approximately the target video duration
-- Allow 1–2 seconds of visual breathing room between narration-heavy scenes
+7. **NO TEXT** — see RULE 1. Titles, labels, equations and numbers are overlaid
+   separately and must not be requested here.
 
 ### Scene Flow
 
@@ -46,3 +133,4 @@ Write visual descriptions as if briefing an image generation AI. Include:
 - Include periodic summary/recap scenes for longer content
 - End with a clear conclusion or call-to-action scene
 - Transitions should feel natural: avoid abrupt topic jumps
+- Maintain visual consistency across scenes (style, palette, subject)

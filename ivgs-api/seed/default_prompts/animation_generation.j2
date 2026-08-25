@@ -1,12 +1,32 @@
-Generate an animated diagram or visualization for an instructional video scene.
+Generate a character animation for an instructional video scene.
 
 Scene {{ scene_number }}: {{ scene_title | default("") }}
 Visual Description: {{ visual_description }}
 Target Duration: {{ duration_seconds | default(5) }} seconds
 
+WHAT THIS BRANCH IS (WP-44). The animation branch is served by Wan2.2-Animate,
+a POSE REENACTMENT model. It takes the still already generated for this scene
+plus a driving video, and transfers the driver's motion onto the SUBJECT of
+that still. It is not a motion-graphics renderer and it has no prompt-only
+mode.
+
+Consequences, which this template previously got wrong:
+- This branch requires a CHARACTER OR PERSON in the scene's still. With no
+  subject present the model does not decline — it invents a human body. The
+  pipeline refuses such a scene by name before rendering
+  ("reference image contains no person to animate").
+- Animated diagrams, data visualisations, process flows, charts and
+  "steps appearing on screen" are NOT this branch. There is no motion-graphics
+  pathway in IVGS yet. Those scenes belong to media_type "image", with the
+  motion supplied by the composition overlay.
+- There is no Remotion component in this pipeline. An earlier version of this
+  template asked for "Remotion component specification format"; nothing
+  consumes that, and it taught the storyboard the wrong idea of what
+  "animation" means.
+
 Requirements:
-- Clean, professional animation style
-- Suitable for educational content
-- Animated transitions between states
-- Data visualizations, process flows, or diagram animations
-- Remotion component specification format
+- A human figure, character or creature that is visibly the subject
+- Natural, plausible body and facial motion consistent with the narration
+- Clean, professional style suitable for educational content
+- Consistent with the scene's still: same subject, same setting, same palette
+- No on-screen text, numbers, equations or labels — those are overlaid later

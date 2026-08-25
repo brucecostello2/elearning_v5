@@ -9,14 +9,60 @@ Generate a JSON array of scene objects from the transcript. Each scene must incl
 - "narration_text": The narration spoken during this scene
 - "visual_description": Detailed description of the visual to be generated
 - "media_type": One of "image", "video_clip", or "animation"
-- "duration_seconds": Duration for this scene (sum should approximate total runtime)
+- "duration_seconds": Duration for this scene
+
+RULE 1 — NO TEXT IN THE VISUAL. Absolute.
+"visual_description" must NEVER request on-screen text, numbers, equations,
+labels, captions, titles, handwriting or writing of any kind. Image models
+cannot spell or do arithmetic; they produce text-shaped marks. A real run of
+this pipeline asked for "a whiteboard with a multiplication problem written on
+it, such as 23 x 14" and got a whiteboard reading "2? x 23.14"; another asked
+for calculations "appearing on screen" and got "12 + 44 = 67 + 5". Every
+equation, number, label and caption is rendered by the COMPOSITION OVERLAY in a
+later stage, with a real font. Describe only the imagery that sits beneath the
+overlay, and leave clear space where the overlay will go.
+  - WRONG: "a whiteboard with 23 x 14 written on it"
+  - WRONG: "the equation appears on screen step by step"
+  - RIGHT: "a teacher beside a clean, empty whiteboard, gesturing to its blank
+    left-hand side, warm classroom light"
+
+RULE 2 — media_type
+- "image": the default. Static concepts, diagrams, portraits, backgrounds that
+  will carry an overlay, summaries, establishing shots.
+- "video_clip": real-world action, process, demonstration, movement.
+- "animation": ONLY for a scene whose visual contains a character or person to
+  animate. The animation branch is pose reenactment (Wan2.2-Animate): it
+  transfers a driving video's motion onto the subject of the scene's still. A
+  still with no person in it does not produce a moving diagram — the model
+  invents a human body, and the pipeline now refuses the scene by name
+  ("reference image contains no person to animate"). Motion of equations,
+  charts, flowcharts or "steps appearing on screen" is therefore NOT
+  "animation": map those scenes to "image". There is no motion-graphics
+  pathway in this pipeline yet; until there is, that motion belongs to the
+  composition overlay on top of a still.
+
+RULE 3 — narration must be self-consistent
+The narration is spoken aloud in order as one continuous script.
+- Verify every arithmetic statement before writing it.
+- NEVER narrate your own errors and never correct yourself mid-script. A real
+  run produced "we should add 92 and 230 ... but that was also incorrect" and
+  "this gives us 260, but we wrote it as 640 in the previous step, which is
+  incorrect". The audience never saw the draft being argued with.
+- If an earlier scene is wrong, GO BACK AND FIX IT. Emit one clean script.
+- Later scenes must not contradict earlier ones: same quantities, same worked
+  example, same result.
+
+RULE 4 — durations must sum to the runtime
+Sum your "duration_seconds" values before emitting. They must total
+approximately {{ max_duration_seconds | default(1800) }} seconds, within 10%.
+Adjust the scene count or the per-scene lengths until they do. Pace narration
+at ~150 words per minute so each scene's duration matches its own narration.
 
 Visual guidelines:
-- Prefer "image" for concepts, diagrams, and static explanations
-- Use "video_clip" for demonstrations, processes, and dynamic content
-- Use "animation" for data visualizations, flowcharts, and step-by-step processes
 - Visual descriptions should be detailed enough for AI image generation
 - Maintain visual consistency across scenes (style, color palette)
+- Name subject, setting, style, composition, palette and key details
+- Contain no text of any kind (RULE 1)
 
 TRANSCRIPT:
 {{ combined_transcript }}
