@@ -458,15 +458,16 @@ missing category is a worse report, not a worse outcome.
 
 ### 7.3 The limitation, measured — this is not a solved problem
 
-Run against the **19 real failure messages** in the live database (read-only,
-nothing written):
+Run against the real failure messages in the live database (read-only, nothing
+written). **The denominator moved while this package was running — see §7.5 —
+so the count is 21 failed rows, 20 of which carry a message:**
 
 ```
 transient  17
-external    3
+external    3     (of 20 messages; one failed row has no message at all)
 ```
 
-**17 of 19 come back `transient`, and 15 of those reach it through the
+**17 of 20 come back `transient`, and 15 of those reach it through the
 classifier's DEFAULT branch rather than any pattern match.**
 
 The reason is structural: `ErrorClassifier` is built around an exception **type**,
@@ -486,11 +487,33 @@ frozen set or in `celery_app.py`, which the Temporal cutover replaces. **D-4.**
 
 ### 7.4 Historical rows stay NULL
 
-No backfill, as ruled, and no existing row was changed — confirmed: the 19 rows
-are untouched. Writing a category onto them now would be this package's guess
+No backfill, as ruled, and no existing row was changed — confirmed: all 21 rows
+are still `failure_category IS NULL`. Writing a category onto them now would be this package's guess
 presented as the pipeline's record, the same defect class as inventing
 `actors.engine_bindings` (WP-56). A NULL that means "never recorded" is honest; a
 value that means "WP-58 guessed in 2026-08" is not.
+
+### 7.5 The failed-job count moved from 19 to 21, and both are mine
+
+WP-56 measured 19. There are now **21**, and the two new rows are honest to
+report rather than quietly absorbed into a denominator:
+
+| id | created | error_message |
+|---|---|---|
+| `89383cdd` | 2026-08-25 22:35:35 | `Stage prototype_draft failed` |
+| `de838c11` | 2026-08-25 22:35:37 | `Stage prototype_draft failed` |
+
+Both completed within four seconds of creation, at the minute the **WP-56**
+container recreate ran (`docker compose up -d` on `celery-worker-default`,
+`-composition` and `-beat`). They are in-flight tasks lost when their workers
+were replaced — a consequence of that deploy, not of anything in WP-58, and not
+a new defect: recreating a Celery worker drops what it is holding.
+
+Worth recording for two reasons. It is the visible cost of a mid-session
+container recreate, which no previous report has noted. And both rows still have
+`failure_category IS NULL`, because they failed *before* this package's derivation
+was deployed — which is the correct behaviour and a small live confirmation that
+nothing backfilled.
 
 ---
 
@@ -640,7 +663,8 @@ keep being rediscovered.
 | 2 | `e99d710` | `feat(wp-58): indefinite retention for material that cannot be regenerated` |
 | 3 | `c09c37b` | `fix(wp-58): the sweep - three inert rate limits, and artifact naming made enforceable` |
 | 4 | `b8bd49e` | `fix(wp-58): stage-2 budget scales, and failure_category stops being NULL` |
-| 5 | *(this commit)* | `docs(wp-58): report, and the baseline moved to 787/56` |
+| 5 | `8793209` | `docs(wp-58): report, and the baseline moved to 787/56` |
+| 6 | *(this commit)* | `fix(wp-58): correct the failure-message denominator, 19 -> 21 rows / 20 messages` — a commit cannot carry its own SHA; `git log --oneline -6` shows it |
 
 **Count gate — must print `GATE PASS` before pushing:**
 
