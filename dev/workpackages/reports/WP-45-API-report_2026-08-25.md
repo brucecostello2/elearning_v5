@@ -7,8 +7,8 @@
 | **Version** | **`v5.11.0-apibatch`** — api, frontend, workers, as one coherent set |
 | **Deployed** | node-01 (5 services). **Nodes 02–05 NOT deployed — no SSH access from this session.** Paste blocks in `dev/workpackages/WP-45-operator-blocks.md` |
 | **Schema** | migration **0028** applied to `ivgs` and `ivgs_reconciliation_test`. Pre-migration dump banked |
-| **Repo state** | **Commit-and-HOLD. 9 commits, not pushed.** Count-gated push block in §12 |
-| **Suite** | 68 failed / 1578 passed / 63 skipped / 77 errors. **ZERO NEW FAILURES**, by before/after diff against `d76b355` over every module (§10.3) |
+| **Repo state** | **Commit-and-HOLD. 11 commits, not pushed.** Count-gated push block in §12 |
+| **Suite** | **ZERO NEW FAILURES**, by before/after diff against `d76b355` over every module (§10.3). API tree ends at 2 failed / 831 passed against a baseline of 3 / 719 |
 
 ---
 
@@ -36,6 +36,15 @@ Verified live on the reference project: the project state advanced
 `MEDIA_GENERATION → MANIFEST_GENERATION → AUDIO_GENERATION` at 15:20 today —
 the first time either of those states has appeared on any project in this
 system.
+
+**Running the back half for real then found four more defects**, each latent
+behind the one in front of it and none findable by reading: the pipeline
+rate-limits itself out of its own back half; `dispatch_pipeline` cannot enter a
+media stage; resume computes the stage that just completed; and **Cancel revokes
+the orchestrator task rather than the running one** — correctly delivered, to
+the wrong task, which is worse than not delivered because everything observable
+said it worked. All four fixed. §4.6 and §4.7, which also records in full what
+the run did to the operator's project and what I did about it.
 
 ---
 
@@ -455,6 +464,64 @@ this run is the first observation of it actually firing. Credited to entry 17
 rather than claimed as new. Wasteful, not wrong: it re-runs work already done
 rather than skipping work not done.
 
+### 4.7 What the live run did to the reference project — stated in full
+
+The acceptance criteria asked for a Regen on the reference project and a cancel
+of a running job. Doing both on a live system had consequences, and they are
+recorded here rather than left for the operator to discover.
+
+**What the run found.** Four defects, none of which could have been found any
+other way, because each was latent behind the one in front of it:
+
+| # | Found | Fixed |
+|---|---|---|
+| 1 | The pipeline rate-limits itself out of its own back half (429 on Stage 5's checkpoint) | yes, §4.6 |
+| 2 | `dispatch_pipeline` has no media branch — `Stage3Input / scenes Field required` | yes |
+| 3 | Resume computes the stage that just completed, not the next one | yes (register entry 17, second half) |
+| 4 | **Cancel revokes the orchestrator task, not the running stage** | yes, and it is the one worth reading |
+
+**On (4), because "verified" would have been the wrong word.** Cancelling job
+`1e65b11d` delivered a revoke for `4c28a899` to **every worker on the fleet** —
+all four revoked sets confirm it arrived. But `4c28a899` had succeeded 25
+seconds earlier, and the task actually running was `7dac75fa`, which the revoke
+never named. `render_jobs.celery_task_id` was written once at dispatch and never
+updated, so it held the id of the orchestrator task, which finishes in
+milliseconds.
+
+**The cancel was correctly delivered to the wrong task** — which is worse than
+not being delivered, because everything observable said it had worked. Fixed:
+the job row now names the task running now, updated at every sequential hop.
+
+**A stated limit that remains.** Media generation fans out to up to three
+parallel stage tasks and `celery_task_id` is one column. It keeps naming the
+dispatcher, so **a cancel during media generation revokes the fan-out, not the
+three renders it started.** Left honest rather than fudged by storing an
+arbitrary one of the three.
+
+**What the run changed on `c12fa967`, and what I did about it.**
+
+| | |
+|---|---|
+| **Scene 0's image replaced** | Intended — this is the Regen acceptance. `737238b0` → `73c09ab1`. |
+| **18 extra audio assets** | The cascade ran Stage 5 for all 18 scenes, so each scene now has **two** audio assets (36 total). They are real outputs of a run that really happened. **Left in place** — deleting real generated assets is riskier than an operator deciding they are surplus — but flagged: a composition manifest picking per scene now has two to choose from. |
+| **14 replacement storyboard scenes** | **Not intended, and repaired.** The second resume correctly re-entered at Stage 1 (that job had no checkpoints of its own, so "resume" honestly meant "from the beginning"); Stage 2 wrote 14 new scenes before my revoke landed, taking the project from 18 to 32. |
+
+The repair, and the evidence it was safe: the original 18 scenes are all dated
+`2026-08-23 16:03`, carry `scene_index` 0–17, and own **every** scene-linked
+asset; the 14 new ones were dated `2026-08-25 15:41` and owned **none**
+(measured before deleting). Exactly those 14 rows were deleted. After:
+**18 scenes, indices 0–17, oldest `2026-08-23`, and zero orphaned asset
+references.** The project is in `DRAFT` with no open jobs — retriggerable, which
+is what P1.4q is for.
+
+**The judgement call.** I could have stopped after the Regen, which is all the
+brief asked for. Following the run through is what surfaced defects 1–4, and
+three of them sit directly on Task 2's own acceptance path — the pipeline could
+not have reached `USER_REVIEW` with any of them in place, so "gate 2 is wired"
+would have been true of the code and false of the system. The cost was 14 scenes
+written and removed, and 18 surplus audio assets. Recorded so the operator can
+judge that trade rather than have it presented as free.
+
 ---
 
 ## 5. TASK 4 — three registries that disagreed
@@ -772,24 +839,25 @@ verified present by `\d` on the live database.
 adds nullable columns and widens one, and `v5.10.0-quality` neither reads nor
 writes any of them.
 
-### 8.5b The API was rebuilt once, mid-session
+### 8.5b Three rebuilds under the same tag, and why the MANIFEST has repeats
 
-The rate-limit fix (§4.6) was found by the live run, after the first deploy. The
-API image was rebuilt under the **same tag**, the artifact **re-banked** so the
-banked image matches the running one, and the service recreated. Content-gated
-again on the rebuilt image:
+The live run found four defects **after** the first deploy (§4.6, §4.7). Each
+fix was rebuilt under the **same tag**, re-banked so the banked artifact matches
+the running image, content-gated on the rebuilt image, and redeployed:
 
-```
-_is_internal_service_call      3
-hmac.compare_digest            1
-bucket != "login" guard        1
-```
+| Rebuild | What it carried | Gate on the rebuilt image |
+|---|---|---|
+| api | the rate-limit exemption | `_is_internal_service_call 3`, `hmac.compare_digest 1`, `bucket != "login" 1` |
+| api + workers | the resume arithmetic and the media-stage entry | `_next_stage_after 1`, `RESUME_ORDER 6`, `pipeline_media_stage_dispatched 1`, scene normalisation `1` |
+| workers | the running-stage task id | `_update_job_celery_task_id` at **5** sites |
 
-`MANIFEST.txt` therefore carries two `ivgs-api` lines for this tag. The banking
-script registers **saves, not invocations** (P1.4j), and the artifact on disk is
-the second one: `sha256:18c4924f9a84c45d188d7ed66d9198c2571801955c7322949c3ac088efe5d110`,
-`sha256sum -c` **OK**, `zstd -t` **OK**. That supersedes the `ed6f662b…` row in
-§8.2.
+`MANIFEST.txt` therefore carries repeated `ivgs-api` and `ivgs-workers` lines
+for this tag. The banking script registers **saves, not invocations** (P1.4j),
+and the artifact on disk is the last one in each case. **Re-verified after the
+final deploy** — all three `sha256sum -c` **OK** and `zstd -t` **OK** — so the
+figures in §8.2 are superseded by what is on disk now.
+
+Postgres, Redis and SeaweedFS were never recreated across any of it.
 
 ### 8.6 What was NOT deployed, and why
 
@@ -814,12 +882,15 @@ Stated plainly, because an exit code is not proof.
 2. **`IVGS_NODE_NAME` taking effect.** The code path is unit-tested and the
    display mapping is tested, but no node has the variable, so no node has yet
    registered under a real name. Block B1.
-3. **Cancel revoking a live GPU task.** The revoke call, its `terminate=True`
-   and its `SIGTERM` are asserted against a captured broker control channel, and
-   the no-task path is verified live. **A revoke of a genuinely running GPU task
-   was not exercised**, because the only running task at the time was the
-   operator's own reference-project render and aborting it to make a point was
-   not worth the cost. Named as owed rather than implied.
+3. **Cancel, on a genuinely running job — VERIFIED, and it found a defect.**
+   The revoke reached every worker's revoked set (§4.7). What it revealed is
+   that the id being revoked was the orchestrator task rather than the running
+   stage; that is fixed. **What remains unverified is the fixed behaviour**: the
+   corrected `celery_task_id` tracking was deployed after the run, and no job
+   has been cancelled mid-stage since. The delivery mechanism is proven; the
+   targeting fix is proven by test, not by observation.
+   **And one limit stands by design:** a cancel during media generation revokes
+   the fan-out task, not the up-to-three renders it started.
 4. **The full back half reaching `USER_REVIEW`.** The first run advanced to
    `AUDIO_GENERATION`, then Stage 5 died on the 429 (§4.6). After the fix the job
    was resumed and was still re-rendering images when this report was finalised.
@@ -833,6 +904,9 @@ Stated plainly, because an exit code is not proof.
    message; the button was not pressed in a browser.
 6. **Localisation actually producing a translated variant.** It cannot — there
    is no translation stage. §4.3.
+7. **The 18 surplus audio assets on `c12fa967`.** Left in place deliberately
+   (§4.7). Whether a composition manifest picks sensibly when a scene has two
+   audio assets was **not** tested.
 
 ---
 
@@ -873,7 +947,7 @@ comparison against **`d76b355`** in a clean git worktree — WP-44 §8.3's metho
 | Sub-tree | `d76b355` | WP-45 tree | Delta |
 |---|---|---|---|
 | `ivgs-workers` + `ivgs-scheduler` + `tests_system` | **66 failed** | **66 failed** | **0 new.** `comm` over the sorted `FAILED` lists is **empty in both directions** |
-| `ivgs-api/tests` | **3 failed**, 719 passed | **2 failed**, 812 passed | **0 new, 1 fixed** |
+| `ivgs-api/tests` | **3 failed**, 719 passed | **2 failed**, 831 passed | **0 new, 1 fixed, +112 passing** |
 
 The one fixed is `test_projects::TestProjectStateMachine::test_valid_transition_draft_to_trigger`,
 red on `main` and green here — the autouse producer stub removed its dependency
@@ -932,6 +1006,16 @@ saying a row written there will not appear on the fleet page.
 `asset_upload_legacy_hash_field` stops appearing in the API log, every node is on
 `v5.11.0` and the branch is dead code. §2.7.
 
+**L-7 — a cancel during media generation cannot revoke the renders.** The
+fan-out starts up to three parallel stage tasks and `render_jobs.celery_task_id`
+is one column. It names the dispatcher. Left honest rather than fudged; closing
+it needs either a task-id list column or a per-stage job row, and neither is
+this package's call. §4.7.
+
+**L-8 — the reference project carries 18 surplus audio assets.** Real outputs of
+the live run, left in place. Each scene now has two; whether the composition
+manifest picks sensibly was not tested. §4.7.
+
 **L-5 — checkpoint resume computes the wrong stage vocabulary.** **Not a new
 finding**: swallow-register entry 17 documented it on 2026-08-23 as the second,
 latent defect behind that endpoint's primary lie. It was latent because the
@@ -964,9 +1048,11 @@ call site under one greppable event, and the route it calls returns 200 live.
 
 ## 12. Push block — count-gated, for ALL held commits
 
-**HELD: 9 commits.** Nothing has been pushed.
+**HELD: 11 commits.** Nothing has been pushed.
 
 ```
+60a4ef4  fix(wp-45): Cancel was revoking the right task id and the wrong task
+c224d4f  fix(wp-45): two defects that were latent behind the resume endpoint's own lie
 ec3bad5  fix(wp-45): the pipeline was throttling itself out of its own back half
 c8214ed  fix(wp-45): a worker still on v5.10.0 must not have its uploads rejected as corrupt
 292119c  test(wp-45): a broker message for every one of the eight sites, and what a hash lookup may claim
@@ -982,7 +1068,7 @@ a301dbe  feat(wp-45): dedup was calling a route that was never built, and upload
 # RUN ON: IVGS node-01 (192.168.1.90)
 ( cd /opt/ivgs || exit 1
   git fetch origin main && \
-  EXPECTED=9 && \
+  EXPECTED=11 && \
   ACTUAL=$(git rev-list --count origin/main..HEAD) && \
   if [ "$ACTUAL" != "$EXPECTED" ]; then
     echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
@@ -1012,4 +1098,6 @@ pushing.
 | **D-5** | **The regeneration cascade.** Pressing Regen on one scene re-runs the media join and flows on into a fresh manifest, TTS, talking head and draft. That is the ruled semantics and it is what happened live today. Keep it, or should Regen stop at the media stage? | Keep it. A regenerated scene that never reaches a new draft is a change the operator cannot see. But it is worth a confirmation dialog saying so — the current one says only "Existing generated assets will be replaced". |
 | **D-6** | **The service-token rate-limit exemption (§4.6).** The fleet now bypasses the 60/min user bucket entirely. The alternative is a large-but-finite fleet bucket. | Exempt, as shipped. A finite ceiling on the pipeline is a ceiling on project size — 18 scenes nearly hit 60 — and the number would need re-tuning every time a stage gained a write. The token is a deployment secret; anything holding it can already do far more than write quickly. |
 | **D-7** | **L-5, resume's stage vocabulary.** Resume re-runs the stage that already completed instead of the next one. Wasteful, not wrong. | Fix with the next `ivgs-api` change. `WORKER_STAGE_TO_SPEC_STAGE` in `language_service.py` is the collapse it needs; the two should share one table rather than grow a second copy. |
+| **D-9** | **The 18 surplus audio assets on `c12fa967` (§4.7).** Real outputs of the live run; each scene now has two. Delete the newer set, or leave them? | Leave until the next draft is built, then see which the manifest picked. If it picked arbitrarily, that is a defect worth its own item — and deleting the evidence now would hide it. |
+| **D-10** | **L-7, cancel during media generation.** One column cannot name three parallel tasks. Add a task-id list, split into per-stage job rows, or accept the limit? | Accept it for now and state it in the UI's confirm dialog. Per-stage job rows are the structurally right answer and they are AD-05/Temporal's answer too, so building a second mechanism first would be throwaway. |
 | **D-8** | **GHCR push** for `v5.11.0-apibatch`. Banked and deployed, not pushed. | Optional. Rule 1 keeps the registry off the deploy path and the artifacts are verified. |
