@@ -353,6 +353,12 @@ def _safe_serialize(obj: Any) -> Any:
 # Job status update helper
 # ---------------------------------------------------------------------------
 
+# WP-58 Task 6. The statuses that mean "this job is over and it did not work".
+# Kept as a named set rather than an inline == "failed" so a future terminal
+# status cannot be added without this line being considered.
+_TERMINAL_FAILURE_STATUSES = frozenset({"failed", "cancelled"})
+
+
 def update_job_status(
     job_id: str,
     status: str,
@@ -364,9 +370,57 @@ def update_job_status(
     Update render job status via Pipeline API.
 
     PATCH /api/v1/jobs/{job_id} with status and optional error details.
+
+    WP-58 Task 6: when ``status`` is a terminal failure and the caller supplied
+    no ``failure_category``, one is derived from ``error_message`` by
+    ``ErrorClassifier``. See the inline note below for why the derivation lives
+    here rather than at the 31 call sites.
+
+    HISTORICAL ROWS STAY NULL. No backfill is performed and none is in scope:
+    the 19 existing failures were classified by nobody at the time, and writing
+    a category onto them now would be this package's guess presented as the
+    pipeline's record - the same class of defect as inventing
+    ``actors.engine_bindings`` (WP-56). A NULL that means "never recorded" is
+    honest; a value that means "WP-58 guessed in 2026-08" is not.
     """
     config = _get_config()
     api_url = f"{config.pipeline_api.full_base_url}/jobs/{job_id}"
+
+    # WP-58 Task 6. `render_jobs.failure_category` was NULL on all 19 failed
+    # jobs (WP-56 §6.4): the column exists, the PostgreSQL ENUM exists, this
+    # function has always ACCEPTED the parameter, and `JobStatusUpdate`
+    # (ivgs-api/app/api/v1/jobs.py:179) has always declared and written it. Every
+    # link was present except a caller. Thirty-one sites call this function and
+    # not one passed a category.
+    #
+    # CLASSIFIED HERE, NOT AT THE CALL SITES, AND THAT IS THE DESIGN. Most
+    # terminal-failure calls live inside the eight stage task bodies
+    # (stage7_prototype_draft, stage8_final_render, talking_head_task,
+    # video_generation_task, animation_generation_task), which AD-05 §8 and
+    # CLAUDE.md §3 freeze: "Wrapping is allowed; editing is not." Deriving the
+    # category at this choke point fills the column for all 31 callers while
+    # touching none of them.
+    #
+    # An explicitly-passed category always wins - a caller that knows the real
+    # cause knows better than a regex over its own error string.
+    #
+    # ErrorCategory's four values are transient | config | external | resource,
+    # which is the `failure_category` ENUM exactly; there is no mapping table to
+    # drift. A classification failure must not cost the status write, so it is
+    # caught: the job status is the thing that matters and a missing category is
+    # a worse report, not a worse outcome.
+    if status in _TERMINAL_FAILURE_STATUSES and not failure_category and error_message:
+        try:
+            from services.error_classifier import ErrorClassifier
+
+            failure_category = ErrorClassifier().classify_from_strings(
+                exception_type="", exception_message=error_message,
+            ).value
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(
+                "failure_category_classification_failed",
+                job_id=job_id, error=str(exc),
+            )
 
     payload: Dict[str, Any] = {"status": status}
     if error_message:

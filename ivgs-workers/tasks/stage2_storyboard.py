@@ -627,6 +627,20 @@ async def _run_storyboard_generation(
 
     # Idempotency hash
     vllm_config = config.get_vllm_config_for_stage("storyboard_generation")
+
+    # WP-58 Task 5. Scale the OUTPUT budget to the storyboard actually being
+    # asked for. WP-37 raised this stage off the shared 2048-token knob onto a
+    # fixed 8192, which is comfortable for the largest storyboard measured
+    # (18 scenes, ~2,700 output tokens) - but a fixed ceiling is the same defect
+    # one course-size larger, and 2048 was comfortable too until it was not.
+    #
+    # `storyboard_max_tokens_for` can only WIDEN the budget, never narrow it, so
+    # a target_scene_count that is absent or wrong-low falls back to the floor
+    # rather than reintroducing truncation. The finish_reason guard in
+    # `VLLMClient.chat_json` remains the backstop for everything this misjudges.
+    vllm_config["max_tokens"] = config.storyboard_max_tokens_for(
+        task_input.target_scene_count
+    )
     idempotency_hash = ""
     if config.enable_idempotency_check:
         idempotency_hash = VLLMClient.compute_request_hash(

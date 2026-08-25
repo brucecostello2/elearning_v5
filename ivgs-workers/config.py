@@ -123,6 +123,27 @@ class VLLMConfig:
     storyboard_max_tokens: int = _env(
         "IVGS_VLLM_STORYBOARD_MAX_TOKENS", 8192, int
     )
+    # WP-58 Task 5. The FLOOR above is a fixed number, and a fixed number is the
+    # same latent defect one course-size larger: WP-37's truncation happened
+    # because 2048 was adequate until a storyboard was not. These two scale the
+    # budget with what is actually being asked for.
+    #
+    # 400 tokens/scene is ~2.6x the MEASURED density. Real data, read from the
+    # live database rather than estimated: the largest successful storyboard
+    # payload is 10,831 characters for 18 scenes (job bd99fe37), i.e. ~600
+    # chars ~ 150 tokens per scene.
+    #
+    # The cap exists because node-02 serves --max-model-len 32768 and the budget
+    # is OUTPUT only. Measured input is ~2,000 tokens; at 5x transcript length
+    # that is ~10,000, so 10,000 + 16,384 = 26,384 still fits. Asking for more
+    # output than the context can hold is refused by the server, which would
+    # turn a large course into a hard failure instead of a long one.
+    storyboard_tokens_per_scene: int = _env(
+        "IVGS_VLLM_STORYBOARD_TOKENS_PER_SCENE", 400, int
+    )
+    storyboard_max_tokens_cap: int = _env(
+        "IVGS_VLLM_STORYBOARD_MAX_TOKENS_CAP", 16384, int
+    )
     temperature: float = _env("IVGS_VLLM_TEMPERATURE", 0.3, float)
     top_p: float = _env("IVGS_VLLM_TOP_P", 0.9, float)
 
@@ -357,6 +378,25 @@ class WorkerConfig:
     def redis_url(self) -> str:
         """Redis URL for app-level keys; aliases the Celery broker (same Redis)."""
         return self.celery_broker_url
+
+    def storyboard_max_tokens_for(self, scene_count: Optional[int] = None) -> int:
+        """Output budget for one storyboard, scaled to the scene count.
+
+        WP-58 Task 5. ``scene_count`` is ``target_scene_count`` from the stage
+        input and is frequently ``None`` - the operator does not have to state
+        it. When it is None the fixed floor applies, which is the pre-WP-58
+        behaviour and is already comfortable for the largest storyboard this
+        system has produced (18 scenes, ~2,700 output tokens measured).
+
+        Never returns less than ``storyboard_max_tokens``: this may only widen
+        the budget, never narrow it. A scene count that is wrong-low must not be
+        able to reintroduce the truncation it exists to prevent.
+        """
+        floor = self.vllm.storyboard_max_tokens
+        if not scene_count or scene_count < 1:
+            return floor
+        scaled = 2048 + (scene_count * self.vllm.storyboard_tokens_per_scene)
+        return max(floor, min(scaled, self.vllm.storyboard_max_tokens_cap))
 
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
