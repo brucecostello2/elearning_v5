@@ -87,6 +87,35 @@ both genuinely ran `v5.5.4-metrics`.
 
 Never read a tag variable out of a container and believe it.
 
+### 6.1 GHCR IS OFF THE DEPLOY PATH - images travel as artifacts
+
+**Recorded 2026-08-25 (WP-55) because it stopped two packages.** WP-53 and WP-54
+both declined to deploy on the grounds that node-01 "has no registry
+credentials". node-01 DOES have them, under **root**, not the `dev` user - and
+more importantly **they are not needed**. Nodes 02/03/04 do not pull. WP-34
+rule 1: images travel as artifacts.
+
+    build on node-01
+      -> sudo docker save <image> | sudo sh -c "zstd -o /mnt/ivgs-shared/image-artifacts/<name>.tar.zst"
+      -> docker load on each node
+      -> docker compose up -d --pull never --no-deps <service>
+
+That is how `v5.12.0-correctness` and `v5.13.0-silent-alarms` each reached the
+fleet on 2026-08-25. **Note the pipe runs as two users** - `sudo docker save |
+sudo sh -c "zstd -o ..."` - or the write fails with permission denied, because
+only the second half is elevated in the naive form.
+
+A GHCR push is optional convenience. **It is never a precondition for a deploy,
+and "no registry credentials" is never a reason to stop.**
+
+### 6.2 node-03's worker service is `cogvideox-worker`, not `celery-worker`
+
+Container `ivgs-cogvideox-worker-node03`. node-03 also DECLARES a
+`celery-worker` under `profiles: ["standby"]` which is **not running**. Naming
+the wrong one starts a second worker competing for the same queues and leaves
+the real one on the old image. WP-44 S6.3 recorded exactly this happening.
+Nodes 02 and 04 use `celery-worker`; node-03 does not.
+
 ## 7. Known traps
 
 | Trap | Reality |

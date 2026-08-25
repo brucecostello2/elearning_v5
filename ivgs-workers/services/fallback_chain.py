@@ -255,6 +255,18 @@ class FallbackChainService:
                 # not remove it.
                 #
                 # it is defined NOWHERE IN THE REPOSITORY, in either service. This import
+                #
+                # RULED 2026-08-25 (WP-55 Task 5a, ledger P2.66): LEAVE IT BROKEN.
+                # Combined with WP-53's finding that nothing anywhere references
+                # FallbackChainService, the picture is not a broken import in a
+                # working subsystem -- it is a subsystem that was specified,
+                # partly written, and never wired up. Repairing this import
+                # would create the APPEARANCE of a database-backed fallback
+                # policy system with no policy table, no writer and no caller
+                # behind it, which is a worse state than an honest gap: the next
+                # reader would believe policies load. They never have.
+                # The correct repair is to finish the design or delete the
+                # subsystem, and that is an operator decision, not an edit.
                 # has never had a target. It sits inside a try/except that falls back to
                 # DEFAULT_FALLBACK_POLICIES, so database-held policies have never loaded
                 # and nothing has ever said so -- the same shape as the alert rules this

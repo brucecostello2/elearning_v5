@@ -101,9 +101,35 @@ jobs:
         # WP-54: was `pytest tests/`. That directory has not existed since
         # WP-32.1 renamed it to `tests_system/` to break the module-name
         # collision with `ivgs-api/tests`. `pytest` on a missing path exits 4,
-        # so this step has been failing for its own reason rather than running
+        # so this step had been failing for its own reason rather than running
         # anything -- a gate that reports on a suite it never executed.
-        run: pytest tests_system/ -v --tb=short
+        #
+        # WP-55: MEASURED what this runner can actually execute, rather than
+        # assuming `tests_system/` as a whole. Most of that tree talks to the
+        # live fleet -- the API on 8001, the scheduler on 8002, SeaweedFS,
+        # Prometheus -- none of which exists on a GitHub runner, so pointing the
+        # step at the whole tree would produce 30 connection errors that say
+        # nothing about the commit. Those suites are run on node-01 and their
+        # results live in dev/workpackages/reference/TEST-BASELINE_2026-08-25.md.
+        #
+        # The four paths below need nothing but the checkout. Measured with
+        # every service unreachable: 27 passed, 2 skipped (the alert gate's
+        # live half, which says so), 4 failed.
+        #
+        # THOSE 4 FAILURES ARE REAL AND THIS STEP IS RED UNTIL THEY ARE FIXED.
+        # They are test_scanner_detects_pip_packages: `match_glob` in
+        # scripts/compliance_scanner.py cannot match "requirements*.txt", so
+        # §F.2 Rule 2 has never been enforced and a prohibited pip package
+        # would pass the compliance gate today. Ledger P2.49, raised by WP-52,
+        # one line to fix, blast radius measured as zero. Left red on purpose:
+        # WP-55's brief is explicit that a step going red when pointed at real
+        # tests is a finding, not a reason to point it back at nothing.
+        run: |
+          pytest tests_system/providers \
+                 tests_system/spec_compliance \
+                 tests_system/test_compliance_scanner.py \
+                 tests_system/test_alert_rules_have_metrics.py \
+                 -v --tb=short -rs
 
       # ================================================================
       # WP-54: alert rules must reference metrics that exist.
@@ -116,6 +142,8 @@ jobs:
       # without Prometheus would be committing the defect it exists to catch,
       # so it says which half it ran.
       # ================================================================
+      # Also included in the step above; kept as its own named step so a
+      # failure here is legible in the CI summary without reading a combined log.
       - name: Alert rules reference metrics that exist (static half)
         run: pytest tests_system/test_alert_rules_have_metrics.py -v --tb=short -rs
 
