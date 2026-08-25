@@ -23,6 +23,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass, field
+from fnmatch import fnmatchcase
 from pathlib import Path
 from typing import Optional
 
@@ -103,18 +104,28 @@ SKIP_FILES = {"compliance_scanner.py", "test_compliance_scanner.py", "v4_to_v5_m
 
 
 def match_glob(filename: str, globs: set[str]) -> bool:
-    """Check if filename matches any of the glob patterns."""
-    for pattern in globs:
-        if pattern.startswith("*"):
-            suffix = pattern[1:]
-            if filename.endswith(suffix) or ("*" in suffix and filename.endswith(suffix.replace("*", ""))):
-                return True
-            # Handle *.env* matching .env, .env.node01, etc.
-            if suffix == ".env*" and ".env" in filename:
-                return True
-        elif filename == pattern:
-            return True
-    return False
+    """Check if filename matches any of the glob patterns.
+
+    WP-56 Task 0, ledger P2.49. The previous implementation special-cased only
+    ``*``-PREFIXED globs and exact filenames. Every glob with an INFIX ``*``
+    fell through to the ``filename == pattern`` branch and matched nothing, so
+    ``PIP_FILE_GLOBS``' ``"requirements*.txt"`` never selected a file and
+    Appendix F.2 **Rule 2 was never enforced** -- the only one of the four
+    categories with such a glob. Anyone could add ``openai==1.0.0`` to a
+    requirements file and the CI compliance gate stayed green; measured by
+    WP-52, all four prohibited packages scored rc=0.
+
+    ``fnmatchcase`` is the whole fix. It is case-SENSITIVE deliberately:
+    ``fnmatch.fnmatch`` normalises case against the host platform, which would
+    make this scanner's verdict differ between a Linux runner and a macOS
+    checkout. A compliance gate that answers differently per platform is worse
+    than one that answers wrongly in the same way everywhere.
+
+    The old ``*.env*``-matches-``.env`` special case is not needed and is not
+    reproduced: ``fnmatchcase(".env", "*.env*")`` is already True, because both
+    stars are free to match the empty string.
+    """
+    return any(fnmatchcase(filename, pattern) for pattern in globs)
 
 
 def scan_file(

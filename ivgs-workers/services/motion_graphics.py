@@ -528,16 +528,12 @@ class MotionGraphicsService:
             ValueError: If asset not found.
         """
         # Import here to avoid circular dependency
-        # ⛔ WP-54: THIS IMPORT CANNOT BE REPAIRED BY RENAMING, and is left standing
-        # deliberately so the gap it names stays visible. Ledger P2.60.
-        #
-        # ASSUMED: an `ivgs_api` package exposing `app.models.Asset`.
-        # PROVIDED: the worker image ships `shared.models.{enums, model_store}` and
-        # nothing else -- checked inside the running container, where `app.models`
-        # fails too. `Asset` is defined only in `ivgs-api/app/models/asset.py`.
-        # There is no module path that resolves, so a rename would move the failure,
-        # not remove it.
-        from ivgs_api.app.models import Asset
+        # WP-56 Task 1 REPAIRED this import (ledger P2.60). It used to name
+        # `ivgs_api.app.models`, a package that resolves in NO image; the model was
+        # moved to `shared/models/`, which IS copied into the worker image
+        # (`ivgs-workers/Dockerfile:30`). Deferred rather than module-level to keep
+        # the original circular-import avoidance intact.
+        from shared.models.asset import Asset
         from sqlalchemy import select
 
         # Use a lightweight query approach

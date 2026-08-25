@@ -722,16 +722,12 @@ class DLQService:
         Uses the declarative model from Phase 2 database models.
         Table schema per Table 15 of the functional specification.
         """
-        # ⛔ WP-54: THIS IMPORT CANNOT BE REPAIRED BY RENAMING, and is left standing
-        # deliberately so the gap it names stays visible. Ledger P2.60.
-        #
-        # ASSUMED: an `ivgs_api` package exposing `app.models.DeadLetterMessage`.
-        # PROVIDED: the worker image ships `shared.models.{enums, model_store}` and
-        # nothing else -- checked inside the running container, where `app.models`
-        # fails too. `DeadLetterMessage` is defined only in `ivgs-api/app/models/dead_letter_queue.py`.
-        # There is no module path that resolves, so a rename would move the failure,
-        # not remove it.
-        from ivgs_api.app.models import DeadLetterMessage
+        # WP-56 Task 1 REPAIRED this import (ledger P2.60). It used to name
+        # `ivgs_api.app.models`, a package that resolves in NO image; the model was
+        # moved to `shared/models/`, which IS copied into the worker image
+        # (`ivgs-workers/Dockerfile:30`). Deferred rather than module-level to keep
+        # the original circular-import avoidance intact.
+        from shared.models.dead_letter_queue import DeadLetterMessage
 
         return DeadLetterMessage.__table__
 

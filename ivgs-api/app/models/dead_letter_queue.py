@@ -1,85 +1,14 @@
-"""
-ORM model for the ``dead_letter_messages`` table (§4.1 Table 15).
+"""Re-export of :class:`DeadLetterMessage`, which now lives in ``shared/models/dead_letter_queue.py``.
 
-Migration: 0006_dead_letter_queue
+MOVED by WP-56 Task 1 (ledger P2.60) so the worker image can import it --
+``shared/`` is copied into both images, ``ivgs-api/`` into only one.
+
+This module is a re-export and must stay one. Re-DECLARING the class here
+would raise ``InvalidRequestError: Table is already defined`` on the shared
+``Base.metadata``, because both packages register against the same base.
 """
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import Any, Optional
+from shared.models.dead_letter_queue import DeadLetterMessage  # noqa: F401
 
-from sqlalchemy import String, Integer, Text, DateTime, text, Index
-from sqlalchemy.dialects.postgresql import UUID, JSONB, ENUM as PG_ENUM
-from sqlalchemy.orm import Mapped, mapped_column
-
-from shared.database import Base
-
-
-class DeadLetterMessage(Base):
-    __tablename__ = "dead_letter_messages"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        server_default=text("uuid_generate_v4()"),
-    )
-    original_queue: Mapped[Optional[str]] = mapped_column(
-        String(128), nullable=True,
-    )
-    task_name: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True,
-    )
-    task_args: Mapped[Optional[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=True,
-    )
-    task_kwargs: Mapped[Optional[dict[str, Any]]] = mapped_column(
-        JSONB, nullable=True,
-    )
-    exception_type: Mapped[Optional[str]] = mapped_column(
-        String(255), nullable=True,
-    )
-    exception_message: Mapped[Optional[str]] = mapped_column(
-        Text, nullable=True,
-    )
-    traceback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    failure_category: Mapped[Optional[str]] = mapped_column(
-        PG_ENUM("transient", "config", "external", "resource",
-                name="failure_category", create_type=False),
-        nullable=True,
-        doc="PostgreSQL ENUM failure_category",
-    )
-    retry_count_exhausted: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True,
-    )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        server_default=text("now()"),
-    )
-    reviewed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True), nullable=True,
-    )
-    reviewed_by: Mapped[Optional[str]] = mapped_column(
-        String(64), nullable=True,
-    )
-    resolution: Mapped[Optional[str]] = mapped_column(
-        PG_ENUM("replayed", "discarded", "escalated",
-                name="dlq_resolution", create_type=False),
-        nullable=True,
-        doc="PostgreSQL ENUM dlq_resolution",
-    )
-
-    __table_args__ = (
-        Index(
-            "ix_dlq_category_created",
-            "failure_category",
-            text("created_at DESC"),
-        ),
-    )
-
-    def __repr__(self) -> str:
-        return (
-            f"<DeadLetterMessage id={self.id} task={self.task_name} "
-            f"category={self.failure_category}>"
-        )
+__all__ = ["DeadLetterMessage"]

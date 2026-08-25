@@ -1,46 +1,14 @@
-"""
-ORM model for the ``task_retries`` table (§6.3).
+"""Re-export of :class:`TaskRetry`, which now lives in ``shared/models/task_retry.py``.
 
-Migration: 0004_retry_tracking
+MOVED by WP-56 Task 1 (ledger P2.60) so the worker image can import it --
+``shared/`` is copied into both images, ``ivgs-api/`` into only one.
+
+This module is a re-export and must stay one. Re-DECLARING the class here
+would raise ``InvalidRequestError: Table is already defined`` on the shared
+``Base.metadata``, because both packages register against the same base.
 """
 from __future__ import annotations
 
-import uuid
-from datetime import datetime
-from typing import Optional
+from shared.models.task_retry import TaskRetry  # noqa: F401
 
-from sqlalchemy import String, Integer, Float, Text, DateTime, ForeignKey, text
-from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
-from sqlalchemy.orm import Mapped, mapped_column
-
-from shared.database import Base
-
-
-class TaskRetry(Base):
-    """Tracks per-task retry attempts for observability and retry policy (§6.3)."""
-    __tablename__ = "task_retries"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True,
-        server_default=text("uuid_generate_v4()"),
-    )
-    job_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True),
-        ForeignKey("render_jobs.id", ondelete="CASCADE"),
-        nullable=False,
-    )
-    stage_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
-    attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
-    failure_type: Mapped[Optional[str]] = mapped_column(
-        PG_ENUM("transient", "config", "external", "resource",
-                name="failure_category", create_type=False),
-        nullable=True,
-        doc="failure_category ENUM: transient | config | external | resource",
-    )
-    error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    error_traceback: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    retry_after_seconds: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False,
-        server_default=text("now()"),
-    )
+__all__ = ["TaskRetry"]
