@@ -272,7 +272,7 @@ services:
       # drift out of step. Unset, the route answers 503 and the validator
       # records `clip_score: "unavailable"`; there is no path by which an
       # absent scorer yields a number.
-      IVGS_CLIP_SERVICE_URL: "http://${NODE_05_IP}:${IVGS_CLIP_PORT:-8300}"
+      IVGS_CLIP_SERVICE_URL: "http://${NODE_06_IP}:${IVGS_CLIP_PORT:-8300}"
       UVICORN_WORKERS: "4"
       UVICORN_HOST: "0.0.0.0"
       UVICORN_PORT: "8001"

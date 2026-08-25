@@ -1,0 +1,94 @@
+# =============================================================================
+# IVGS v5 — quality-services stack, node-06   (WP-44-QUALITY)
+# =============================================================================
+# ONE tracked file, deployed to node-06 only. It follows the WP-48 telemetry
+# overlay pattern exactly, for the same reasons:
+#
+#   * Its own compose project (`name: ivgs-quality`), so this file can never be
+#     composed against another node's stack file and can never recreate an
+#     engine. `docker compose -f docker-compose.quality.node05.yml up -d`
+#     reaches exactly the one service below and nothing else. That is the
+#     WP-34 "additive only" rule expressed in the file rather than trusted to
+#     the command line.
+#
+#   * NO `networks:` key, deliberately. node-06 has no `ivgs-net`, and the API
+#     reaches this service over the host port. node-02 spent hours "running"
+#     while serving nothing because its container held a compose network that
+#     had been removed underneath it (WP-48 S2). The default project bridge is
+#     the one network that is always recreated with the project.
+#
+#   * `pull_policy: never`. The image is distributed as a banked artifact via
+#     /mnt/ivgs-shared + `docker load` (WP-34 rule 1: the registry is NOT on
+#     the deploy path). A compose run that tried to pull would fail on a node
+#     that has never authenticated to GHCR — and it must not silently succeed
+#     by pulling something different from what was banked.
+#
+# WHY node-06. It is the ruled quality-services node: an RTX PRO 5000
+# Blackwell, 48935 MiB, measured 2026-08-25, previously idle apart from the
+# telemetry pair. See ledger P2.43 for the AD-02 amendment this needs.
+#
+# WHY THE PORT IS BOUND TO ALL INTERFACES. node-01's API is the only client
+# (ivgs-api `app/api/v1/clip.py` proxies to it); workers never talk to node-06
+# directly. The exposure is one POST that returns a float. It carries no
+# credential and mutates nothing.
+# =============================================================================
+
+name: ivgs-quality
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # CLIP image/text scorer — the model the quality gate always assumed it had.
+  #
+  # openai/clip-vit-base-patch32, weights baked into the image at build time,
+  # so the container needs no network and no HuggingFace reachability. The
+  # model choice is NOT arbitrary: IVGS's thresholds (clip_score_approved 0.25,
+  # clip_score_flagged 0.18) are on the raw-cosine scale ViT-B/32 produces.
+  # Substituting a larger tower silently re-calibrates every threshold in the
+  # fleet and needs its own measurement pass.
+  #
+  # HONESTY: this service returns a score or an error. There is no fallback
+  # constant and no "conservative default" — the defect this whole package
+  # exists to end (swallow register instance 24) was a missing scorer being
+  # paid the full CLIP weight.
+  # ---------------------------------------------------------------------------
+  clip-scorer:
+    image: ghcr.io/brucecostello2/ivgs-clip-scorer:v5.10.0-quality
+    container_name: ivgs-clip-scorer
+    restart: unless-stopped
+    pull_policy: never
+    ports:
+      - "0.0.0.0:8300:8300"
+    environment:
+      IVGS_NODE_NAME: "node-06"
+      IVGS_CLIP_MODEL: "openai/clip-vit-base-patch32"
+      IVGS_CLIP_MODEL_DIR: "/models/clip"
+      IVGS_CLIP_DEVICE: "cuda"
+      # The wheels carry their own CUDA runtime; this only picks the card.
+      NVIDIA_VISIBLE_DEVICES: "all"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # model_loaded, not process-is-up. A container whose model failed to load
+    # is UNHEALTHY, so a degraded scorer is visible before it is depended on.
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "curl -fsS http://127.0.0.1:8300/health | grep -q '\"model_loaded\":true'"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 180s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "clip-scorer"
+      com.ivgs.wp: "WP-44-QUALITY"
+      com.ivgs.node: "node-06"
