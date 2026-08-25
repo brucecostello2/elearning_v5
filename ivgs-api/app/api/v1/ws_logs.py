@@ -4,8 +4,10 @@ IVGS v5 — WebSocket Log Streaming
 
 Implements §13.4 minimum requirement: stream docker logs to dashboard.
 Endpoints:
-  WS /ws/nodes/{node_id}/logs   — Live log stream from node
   WS /ws/jobs/{job_id}/status   — Real-time job progress (§5.1.7)
+
+Node log streaming used to live here and did not work; see the block below the
+imports. Node logs are now GET /api/v1/nodes/{node_id}/logs (app/core/node_logs.py).
 """
 
 from __future__ import annotations
@@ -13,10 +15,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
-from typing import Optional
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select
 
 logger = logging.getLogger("ivgs.api.ws")
@@ -65,83 +65,30 @@ async def _authenticate_ws(websocket: WebSocket) -> bool:
 
     return True
 
-# Node SSH targets resolve from the node registry (NODE_0x_IP env — the single
-# source, the same values the compose x-gpu-service-urls anchor consumes). No hardcoded IPs.
-def _node_ip(node_id: str) -> Optional[str]:
-    """Return a node's registry IP, or None for an unknown/unregistered node."""
-    if not node_id.startswith("node-"):
-        return None
-    suffix = node_id.split("-")[-1]
-    return os.environ.get(f"NODE_{suffix}_IP") or None
-
-
-@router.websocket("/ws/nodes/{node_id}/logs")
-async def stream_node_logs(
-    websocket: WebSocket,
-    node_id: str,
-    service: Optional[str] = Query(None),
-    tail: int = Query(100),
-):
-    """
-    WebSocket stream for live log output from a node.
-    Streams docker logs from the specified node via SSH.
-    Requires JWT token via ``?token=<JWT>`` query parameter (BUG-012 fix).
-    """
-    if not await _authenticate_ws(websocket):
-        return
-    await websocket.accept()
-
-    host = _node_ip(node_id)
-    if host is None:
-        await websocket.send_json(
-            {"error": f"Unknown or unregistered node: {node_id}"}
-        )
-        await websocket.close(code=1008)
-        return
-
-    docker_cmd = "docker compose logs --follow --tail"
-    if service:
-        cmd = f"ssh {host} '{docker_cmd} {tail} {service}'"
-    else:
-        cmd = f"ssh {host} '{docker_cmd} {tail}'"
-
-    process = None  # Initialize before try block (BUG-013 fix)
-    try:
-        process = await asyncio.create_subprocess_shell(
-            cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.STDOUT,
-        )
-
-        async def read_output():
-            while True:
-                line = await process.stdout.readline()
-                if not line:
-                    break
-                try:
-                    await websocket.send_json({
-                        "node_id": node_id,
-                        "log": line.decode("utf-8", errors="replace").strip(),
-                        "timestamp": __import__("datetime").datetime.now(
-                            __import__("datetime").timezone.utc
-                        ).isoformat(),
-                    })
-                except WebSocketDisconnect:
-                    break
-
-        await read_output()
-
-    except WebSocketDisconnect:
-        logger.info("WebSocket disconnected for node %s", node_id)
-    except Exception as exc:
-        logger.exception(f"Log streaming error for {node_id}: {exc}")
-        try:
-            await websocket.send_json({"error": str(exc)})
-        except Exception:
-            pass
-    finally:
-        if process and process.returncode is None:
-            process.terminate()
+# ---------------------------------------------------------------------------
+# REMOVED 2026-08-25 (WP-48-TELEMETRY Task 3): `WS /ws/nodes/{node_id}/logs`.
+#
+# It could never have produced a line. The handler ran
+#     ssh <node_ip> 'docker compose logs --follow --tail 100'
+# with `asyncio.create_subprocess_shell` from inside this container, and this
+# container has no `ssh` binary, no key and no `docker` CLI -- measured
+# 2026-08-25 in the running `ivgs-fastapi`: `command -v ssh` and `command -v
+# docker` both return nothing. The subprocess exits immediately, `readline()`
+# returns empty, the loop breaks, and the socket closes having sent nothing.
+# It never raised, so it never surfaced: exactly the WP-00 swallow shape.
+#
+# It was also not the endpoint the UI advertised. The Node Monitor modal named
+#     ws://node-01:8000/api/v1/nodes/{id}/logs/stream
+# which has never been a registered route on this app at all.
+#
+# Replaced by a real, polled source that is proven to work end to end:
+#     GET /api/v1/nodes/{node_id}/containers
+#     GET /api/v1/nodes/{node_id}/logs?container=&tail=
+# backed by `app/core/node_logs.py` and the per-node `ivgs-node-logs` service in
+# ivgs-infra/docker-compose.telemetry.yml. Deleted rather than left in place:
+# a route that cannot work is worse than no route, because the page kept
+# pointing at it.
+# ---------------------------------------------------------------------------
 
 
 @router.websocket("/ws/jobs/{job_id}/status")

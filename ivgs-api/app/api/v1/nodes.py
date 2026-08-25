@@ -21,10 +21,17 @@ non-pipeline host into the "N online" denominator. See the WP-24 report, D-1.
 """
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.core.auth import get_current_user
 from app.core.node_health import collect_fleet_health, node_health_notes
+from app.core.node_logs import (
+    DEFAULT_TAIL,
+    MAX_TAIL,
+    fetch_logs,
+    list_containers,
+    node_logs_notes,
+)
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
@@ -76,12 +83,21 @@ NODE_TOPOLOGY = {
     },
     "node-05": {
         "hostname": "node-05",
-        "role": "GPU Fallback Image + Ollama",
-        # OFFLINE since before 2026-08-14 (CLAUDE.md s2). Declared, not measured.
-        "gpu_model": "NVIDIA RTX 5080",
-        "total_vram_mb": 16384,
-        "topology_verified": False,
-        "services": ["comfyui-fallback", "ollama", "celery-worker"],
+        "role": "Quality services (earmarked)",
+        # CORRECTED 2026-08-25 (WP-48). This read "NVIDIA RTX 5080" / 16384 MB
+        # and the node was documented OFFLINE everywhere -- CLAUDE.md s2,
+        # README, AD-02, the functional spec. All three claims were wrong.
+        # Measured on the box the same day: nvidia-smi reports "NVIDIA RTX PRO
+        # 5000 Blackwell, 48935 MiB, driver 580.173.02", the node answers, and
+        # its node-exporter has been UP in Prometheus throughout. A fallback
+        # sized against 16 GB on a 48 GB card is the same class of error WP-24
+        # corrected on node-04, in the other direction.
+        "gpu_model": "NVIDIA RTX PRO 5000 Blackwell",
+        "total_vram_mb": 48935,
+        "topology_verified": True,
+        # Earmarked, not deployed. Listing services it does not run would put
+        # this row straight back into the state WP-24 removed.
+        "services": ["node-exporter", "nvidia-gpu-exporter", "node-logs"],
     },
     "node-06": {
         "hostname": "node-06",
@@ -121,12 +137,19 @@ def _node_payload(node_id, info, health, detail=False):
         "used_vram_mb": metrics.get("used_vram_mb"),
         "gpu_utilization_pct": metrics.get("gpu_utilization_pct"),
         "temperature_c": metrics.get("temperature_c"),
+        # WP-48 Task 2. This was inside `if detail:` and nothing else was.
+        # The Node Monitor CARD reads GET /nodes (the list route), and the card
+        # has a Power cell -- so Power read "no data" on every card while
+        # Prometheus held a live `nvidia_smi_power_draw_watts` for the node and
+        # node_health.py was already querying it. The whole defect was this one
+        # field being served on a route the card does not call. It is a
+        # measurement like the other three and belongs beside them.
+        "power_draw_w": metrics.get("power_draw_w"),
         "telemetry": health["telemetry"],
         "services": info["services"],
         "active_jobs": [],
     }
     if detail:
-        payload["power_draw_w"] = metrics.get("power_draw_w")
         payload["last_heartbeat_at"] = None
     return payload
 
@@ -157,7 +180,9 @@ async def get_health_notes(
 
     Registered before /{node_id} so the literal path wins the route match.
     """
-    return node_health_notes()
+    notes = node_health_notes()
+    notes["logs"] = node_logs_notes()["not_a_stream"]
+    return notes
 
 
 @router.get("/{node_id}", summary="Single node detail")
@@ -178,3 +203,45 @@ async def get_node(
         )
     health = collect_fleet_health([node_id])[node_id]
     return _node_payload(node_id, info, health, detail=True)
+
+
+def _require_known_node(node_id: str) -> dict:
+    info = NODE_TOPOLOGY.get(node_id)
+    if info is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Node {node_id} not found"}},
+        )
+    return info
+
+
+@router.get("/{node_id}/containers", summary="Containers running on one node")
+async def get_node_containers(
+    node_id: str,
+    current_user: User = Depends(get_current_user),
+):
+    """The node's container list, read from its `ivgs-node-logs` source.
+
+    WP-48 Task 3. Same honesty contract as the rest of this router: a node with
+    no log source, or an unreachable one, returns `available: false` and the
+    reason. It never returns an empty list as though the node had no containers.
+    """
+    _require_known_node(node_id)
+    return list_containers(node_id)
+
+
+@router.get("/{node_id}/logs", summary="Tail one container's logs on one node")
+async def get_node_logs(
+    node_id: str,
+    container: str = Query(..., description="Container name or id on that node"),
+    tail: int = Query(DEFAULT_TAIL, ge=1, le=MAX_TAIL),
+    current_user: User = Depends(get_current_user),
+):
+    """A bounded tail of one container's logs.
+
+    This is a POLLED TAIL, not a stream -- see `app.core.node_logs` for why, and
+    for what the page used to promise instead. `/nodes/health-notes` carries the
+    same caveat to the UI.
+    """
+    _require_known_node(node_id)
+    return fetch_logs(node_id, container, tail)
