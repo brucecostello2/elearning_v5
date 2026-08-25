@@ -4,17 +4,42 @@ Language variant service: CRUD for localization targets.
 Per §5.1.8 — manages language variant records and retry.
 """
 import logging
-from typing import List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from datetime import datetime, timezone
 
+from app.models.checkpoint import PipelineCheckpoint
 from app.models.language_variant import LanguageVariant
 from app.models.project import Project
 from app.models.render_job import RenderJob
+
+# The eight spec stages (§6.1). The denominator of the progress figure.
+SPEC_STAGES = (
+    "transcript_refinement",
+    "storyboard_generation",
+    "media_generation",
+    "manifest_generation",
+    "audio_generation",
+    "talking_head_render",
+    "prototype_draft",
+    "final_render",
+)
+
+# Checkpoints are written at WORKER stage granularity; the progress figure is
+# over the eight SPEC stages. Same collapse the Pipeline Tracker applies
+# (WP-40 §2.5), kept here so the two surfaces cannot drift apart in what they
+# count as one stage.
+WORKER_STAGE_TO_SPEC_STAGE = {
+    "image_generation": "media_generation",
+    "video_generation": "media_generation",
+    "animation_generation": "media_generation",
+    "composition_manifest": "manifest_generation",
+    "tts_audio": "audio_generation",
+}
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +146,120 @@ class LanguageService:
         logger.info("Language variant created: %s for project=%s", language_code, project_id)
         return variant
 
+    async def variant_progress(
+        self,
+        project_id: UUID,
+        language_code: str,
+        is_source_language: bool,
+    ) -> Dict[str, Any]:
+        """Per-language progress, derived from that variant's checkpoints.
+
+        WP-45 Task 6(c) / WP-43 D-1, RULED derive-never-store.
+
+        The measure is: of the eight pipeline stages, how many have a
+        ``complete`` checkpoint on the newest job attributed to this variant.
+        Checkpoints are written by the stages themselves as they finish, so this
+        number cannot claim progress that did not happen - which is the exact
+        property a separately-written column cannot offer.
+
+        Attribution: a job carries ``language_code`` when it renders a specific
+        variant (set by ``retry_variant``); NULL means the project's source
+        language, which is what every job predating migration 0028 is. So the
+        source-language variant reads the project's own pipeline jobs and a
+        target-language variant reads only its own runs. A variant that has
+        never been rendered returns ``progress_percent=None`` - not 0, because
+        "no run" and "a run that has completed nothing" are different facts and
+        conflating them is the defect WP-43 found.
+
+        Checkpoints are counted at WORKER stage granularity and collapsed onto
+        the eight spec stages, the same collapse the Pipeline Tracker does
+        (WP-40 §2.5): image_generation / video_generation / animation_generation
+        all belong to MEDIA_GENERATION, so three complete media checkpoints are
+        one complete stage, not three.
+        """
+        job_query = select(RenderJob).where(RenderJob.project_id == project_id)
+        if is_source_language:
+            # NULL or an explicit match: pre-0028 rows have no attribution and
+            # belong to the source language by definition.
+            job_query = job_query.where(
+                or_(
+                    RenderJob.language_code.is_(None),
+                    RenderJob.language_code == language_code,
+                )
+            )
+        else:
+            job_query = job_query.where(RenderJob.language_code == language_code)
+
+        job = await self.db.scalar(
+            job_query.order_by(RenderJob.created_at.desc()).limit(1)
+        )
+        if job is None:
+            return {
+                "progress_percent": None,
+                "completed_stages": None,
+                "total_stages": len(SPEC_STAGES),
+                "progress_source": "no render job for this language yet",
+            }
+
+        rows = await self.db.execute(
+            select(PipelineCheckpoint.stage_name, PipelineCheckpoint.status)
+            .where(PipelineCheckpoint.job_id == job.id)
+        )
+        checkpoints = list(rows.all())
+        if not checkpoints:
+            return {
+                "progress_percent": None,
+                "completed_stages": None,
+                "total_stages": len(SPEC_STAGES),
+                "progress_source": (
+                    f"job {job.id} has written no checkpoints yet"
+                ),
+            }
+
+        complete: set[str] = set()
+        for stage_name, cp_status in checkpoints:
+            if cp_status != "complete":
+                continue
+            spec_stage = WORKER_STAGE_TO_SPEC_STAGE.get(stage_name, stage_name)
+            if spec_stage in SPEC_STAGES:
+                complete.add(spec_stage)
+
+        completed = len(complete)
+        percent = round(completed / len(SPEC_STAGES) * 100.0, 1)
+        return {
+            "progress_percent": percent,
+            "completed_stages": completed,
+            "total_stages": len(SPEC_STAGES),
+            "progress_source": (
+                f"derived from {len(checkpoints)} checkpoint(s) on job {job.id}"
+            ),
+        }
+
+    async def variants_with_progress(
+        self, project_id: UUID,
+    ) -> List[Tuple[LanguageVariant, Dict[str, Any]]]:
+        """Every variant for a project, each with its derived progress.
+
+        The source language is the variant of the project's oldest variant row -
+        the one created when the project was, before any localisation target was
+        added. ``projects`` has no source-language column, so this is inferred
+        rather than read, and the inference is stated here rather than assumed
+        at the call site.
+        """
+        variants = await self.list_variants(project_id)
+        if not variants:
+            return []
+        source_id = min(variants, key=lambda v: v.created_at).id
+        out = []
+        for variant in variants:
+            progress = await self.variant_progress(
+                project_id,
+                variant.language_code,
+                is_source_language=(variant.id == source_id),
+            )
+            out.append((variant, progress))
+        return out
+
     async def retry_variant(
         self,
         project_id: UUID,
@@ -147,6 +286,10 @@ class LanguageService:
             project_id=project_id,
             job_type="localisation",
             status="pending",
+            # WP-45 Task 6(c): the attribution that makes per-language progress
+            # derivable at all. Without it there is no join from a variant to
+            # the checkpoints of the run that produced it.
+            language_code=variant.language_code,
         )
         self.db.add(job)
         await self.db.commit()

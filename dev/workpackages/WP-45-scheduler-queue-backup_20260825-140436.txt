@@ -1,0 +1,118 @@
+# WP-45 Task 4 - scheduler priority-queue state, captured 2026-08-25T14:04:36Z
+# Redis db 1 on ivgs-redis (SCHEDULER_REDIS_URL=redis://redis:6379/1)
+## pq:depths (BEFORE)
+normal
+-6
+urgent
+28
+## pq:queue:urgent ZRANGE WITHSCORES (BEFORE)
+2ce7a4cf-59eb-4ea7-8942-af83082f1a0b
+1.7803461460706873e+9
+e66c641f-f295-408d-90b7-6e533cf6d21f
+1780347285.874524
+790384e8-5f5d-4543-9bec-cb10b45aee3b
+1.7803476581779354e+9
+5247a1dd-991a-40af-af94-f6f3554bb7f5
+1780348058.187458
+c81cc9be-9519-42ae-b068-529853ae91bc
+1780348642.305905
+a2af8e3b-3c6a-42e5-a01b-9c7507d470d1
+1.7803495925419214e+9
+8caf292e-fa5f-478a-9dcc-7fcb26f64197
+1.7803520954853394e+9
+e8e42e22-ed32-44c3-99f3-a779e1d85f58
+1.7805942626799831e+9
+64124c00-a36e-4ea4-8370-9380bd0a17a4
+1780604988.354953
+18bfd75c-85e8-487a-8ab4-04162f6a7bcf
+1780616227.457834
+79b90f48-8c14-4884-9364-6957cf77ac5b
+1780618352.8999
+9148c984-4b44-4266-8a11-235a835bf389
+1.7806347670413713e+9
+4798bdbd-d4c9-4006-8831-fa1fc648b7fd
+1.7806374888981843e+9
+b78fd45d-bccc-447c-9a20-6d3e4f2e01c0INSERT01
+1786758692.008628
+a3d2d3fc-97aa-4920-ad89-ca1cf4e06bf6
+1.7867635532623003e+9
+e408515a-f9ca-43a3-b4fc-f271f475f606
+1.7874986745807931e+9
+d8fedd37-e89d-403b-bc2f-b88029a49360
+1.7876191315994263e+9
+wp46-proof-0000
+1.7876262046734211e+9
+e038ea52-440e-4810-b0a3-ebca87cd22ee
+1787626248.101842
+5eb2bda1-1267-4f29-a219-aee39c266801
+1.7876292527768197e+9
+## pq:queue:normal ZRANGE WITHSCORES (BEFORE)
+bd99fe37-0621-40da-aa30-e058cc776c23
+1.7875008600366092e+9
+## pq:job:* hashes (BEFORE)
+### pq:job:d8fedd37-e89d-403b-bc2f-b88029a49360
+job_id
+d8fedd37-e89d-403b-bc2f-b88029a49360
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787619131.5994263
+aging_bumps
+1
+### pq:job:bd99fe37-0621-40da-aa30-e058cc776c23
+job_id
+bd99fe37-0621-40da-aa30-e058cc776c23
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787500860.0366092
+aging_bumps
+0
+### pq:job:e038ea52-440e-4810-b0a3-ebca87cd22ee
+job_id
+e038ea52-440e-4810-b0a3-ebca87cd22ee
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787626248.101842
+aging_bumps
+1
+### pq:job:5eb2bda1-1267-4f29-a219-aee39c266801
+job_id
+5eb2bda1-1267-4f29-a219-aee39c266801
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787629252.7768197
+aging_bumps
+1
+### pq:job:e408515a-f9ca-43a3-b4fc-f271f475f606
+job_id
+e408515a-f9ca-43a3-b4fc-f271f475f606
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787498674.5807931
+aging_bumps
+1
+### pq:job:wp46-proof-0000
+job_id
+wp46-proof-0000
+base_priority
+normal
+effective_priority
+urgent
+submitted_at
+1787626204.6734211
+aging_bumps
+1

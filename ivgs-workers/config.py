@@ -34,6 +34,20 @@ def _env(key: str, default: Any = None, cast: type = str) -> Any:
     return cast(val)
 
 
+def _first_set(*keys: str, default: str) -> str:
+    """First environment variable in ``keys`` with a non-blank value.
+
+    ``_env`` returns "" for a variable that is set-but-empty, which for a node
+    identity is worse than unset: it would register the node under an empty
+    hostname. This treats blank as absent.
+    """
+    for key in keys:
+        val = os.getenv(key, "")
+        if val and val.strip():
+            return val.strip()
+    return default
+
+
 def _env_required(key: str, cast: type = str) -> Any:
     """Read a required environment variable; raise on missing."""
     val = os.getenv(key)
@@ -262,11 +276,27 @@ class WorkerConfig:
     task_hard_time_limit: int = _env("IVGS_TASK_HARD_TIME_LIMIT", 3600, int)
     task_soft_time_limit: int = _env("IVGS_TASK_SOFT_TIME_LIMIT", 3300, int)
 
-    node_hostname: str = _env(
-        "IVGS_NODE_HOSTNAME", os.getenv("HOSTNAME", "worker-unknown")
+    # WP-45 Task 4(a) / WP-40 D-2.
+    #
+    # This is the name the GPU scheduler keys the node by: its registry id is
+    # `{node_hostname}:gpu{index}`. The default is the CONTAINER's hostname - a
+    # 12-character hex id that changes on every recreate - so the registry filled
+    # with entries like `61c7c02b3a8a:gpu0`, one per container the node has ever
+    # run, and nothing on the fleet could say which physical node any of them
+    # was. Measured 2026-08-25: 21 registered "nodes", 3 alive, on a fleet of
+    # three GPUs.
+    #
+    # IVGS_NODE_NAME is the stable per-node name (node-02 ... node-06) and is
+    # read FIRST. IVGS_NODE_HOSTNAME is kept as a fallback so a node that has
+    # not been given the new variable behaves exactly as it did before rather
+    # than changing identity on upgrade.
+    node_hostname: str = _first_set(
+        "IVGS_NODE_NAME", "IVGS_NODE_HOSTNAME",
+        default=os.getenv("HOSTNAME", "worker-unknown"),
     )
-    node_id: str = _env(
-        "IVGS_NODE_ID", os.getenv("HOSTNAME", "worker-unknown")
+    node_id: str = _first_set(
+        "IVGS_NODE_ID", "IVGS_NODE_NAME",
+        default=os.getenv("HOSTNAME", "worker-unknown"),
     )
     worker_id: str = _env(
         "IVGS_WORKER_ID",

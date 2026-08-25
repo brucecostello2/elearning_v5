@@ -29,6 +29,11 @@ from app.schemas.gpu import (
     ActiveJobSummary,
     GpuUtilizationPoint,
 )
+from app.services.scheduler_fleet import (
+    SchedulerUnavailable,
+    fetch_fleet,
+    fleet_node_views,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -45,6 +50,72 @@ class GpuService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def _fleet_views(self) -> List[dict]:
+        """The scheduler's fleet, mapped. Raises SchedulerUnavailable."""
+        payload = await fetch_fleet()
+        self._last_fleet_payload = payload
+        return fleet_node_views(payload)
+
+    async def _scheduler_node_response(self, view: dict) -> GpuNodeResponse:
+        """One mapped fleet node as a GpuNodeResponse.
+
+        ``active_jobs`` is filled from the scheduler's ``current_jobs`` by
+        looking the ids up in render_jobs, so the fleet page shows what a GPU is
+        working on. A job id the scheduler holds that the database does not know
+        is skipped rather than rendered as a blank row - it means the job was
+        deleted under a running reservation, which is information the log
+        carries, not something to draw as an unnamed job.
+        """
+        active_jobs: List[ActiveJobSummary] = []
+        for raw_job_id in view["current_jobs"]:
+            try:
+                job_uuid = UUID(str(raw_job_id))
+            except (ValueError, AttributeError):
+                continue
+            job = await self.db.scalar(
+                select(RenderJob).where(RenderJob.id == job_uuid)
+            )
+            if job is None:
+                logger.info(
+                    "Scheduler reports job %s on %s; no such render_jobs row",
+                    raw_job_id, view["scheduler_node_id"],
+                )
+                continue
+            project_name = await self.db.scalar(
+                select(Project.name).where(Project.id == job.project_id)
+            )
+            active_jobs.append(
+                ActiveJobSummary(
+                    job_id=job.id,
+                    project_name=project_name,
+                    stage=job.job_type,
+                    started_at=job.started_at,
+                )
+            )
+
+        return GpuNodeResponse(
+            id=view["id"],
+            node_hostname=view["node_hostname"],
+            gpu_index=view["gpu_index"],
+            gpu_model=view["gpu_model"],
+            total_vram_mb=view["total_vram_mb"],
+            used_vram_mb=view["used_vram_mb"],
+            available_vram_mb=view["available_vram_mb"],
+            gpu_utilization_pct=view["gpu_utilization_pct"],
+            # The scheduler registry carries neither temperature nor power. They
+            # come from the node exporters (WP-48) and are left at their schema
+            # defaults here rather than being invented from the VRAM figures.
+            temperature_c=0.0,
+            power_draw_w=0.0,
+            power_tdp_w=None,
+            compute_capability=None,
+            status=view["status"],
+            registered_at=view["registered_at"] or datetime.now(timezone.utc),
+            last_heartbeat_at=view["last_heartbeat_at"],
+            active_jobs=active_jobs,
+            reservations=[],
+        )
+
     async def list_nodes(
         self,
         page: int = 1,
@@ -52,29 +123,78 @@ class GpuService:
         status_filter: Optional[str] = None,
     ) -> Tuple[List[GpuNodeResponse], int]:
         """
-        List all registered GPU nodes with current status and VRAM utilization.
+        List the GPU fleet, read through from the scheduler's registry.
 
-        Returns paginated list with computed fields.
+        WP-45 Task 4(b) / WP-40 D-2, RULED read-through. This used to read the
+        ``gpu_nodes`` table, which has always had zero rows: workers register
+        with the **scheduler** (``POST /register``) and nothing in ivgs-workers
+        has ever called ``POST /api/v1/gpu/nodes``. "GPU Nodes Online" showed
+        0/0 while three GPUs were alive and working, and the GPU Fleet page
+        summed VRAM over an empty array.
+
+        No sync job, as ruled: one source of truth, asked directly. A periodic
+        copy would add a fourth registry and a staleness window to a system that
+        already had three registries disagreeing.
+
+        Raises ``SchedulerUnavailable`` rather than returning an empty list. The
+        caller turns that into a 503 with the reason, because "no nodes" and "I
+        could not ask" must not render as the same tile.
         """
-        query = select(GpuNode).options(selectinload(GpuNode.reservations))
-
+        views = await self._fleet_views()
         if status_filter:
-            query = query.where(GpuNode.status == status_filter)
+            views = [v for v in views if v["status"] == status_filter]
 
-        count_query = select(func.count()).select_from(query.subquery())
-        total_result = await self.db.execute(count_query)
-        total = total_result.scalar() or 0
+        total = len(views)
+        start = (page - 1) * per_page
+        page_views = views[start:start + per_page]
 
-        query = query.order_by(GpuNode.node_hostname, GpuNode.gpu_index)
-        query = query.offset((page - 1) * per_page).limit(per_page)
-        result = await self.db.execute(query)
-        nodes = result.scalars().unique().all()
+        return [await self._scheduler_node_response(v) for v in page_views], total
 
-        responses = []
-        for node in nodes:
-            responses.append(await self._to_response(node))
+    async def get_node_by_uuid(self, node_id: UUID) -> Optional[GpuNodeResponse]:
+        """One fleet node, resolved by the UUID5 derived from its scheduler id."""
+        for view in await self._fleet_views():
+            if view["id"] == node_id:
+                return await self._scheduler_node_response(view)
+        return None
 
-        return responses, total
+    async def resolve_scheduler_node_id(self, node_id: UUID) -> Optional[str]:
+        """The scheduler's own node id for an API-side UUID, or None."""
+        for view in await self._fleet_views():
+            if view["id"] == node_id:
+                return view["scheduler_node_id"]
+        return None
+
+    async def drain_scheduler_node(self, node_id: UUID) -> dict:
+        """Drain a node through the scheduler that actually schedules on it.
+
+        The old ``drain_node`` set ``gpu_nodes.status = 'draining'`` on a table
+        the scheduler does not read, so a drained node kept receiving work. This
+        posts to the scheduler's own ``POST /drain/{node_id}``, which is the only
+        thing placement consults.
+        """
+        import httpx
+
+        from app.services.scheduler_fleet import scheduler_base_url
+
+        scheduler_node_id = await self.resolve_scheduler_node_id(node_id)
+        if scheduler_node_id is None:
+            return {}
+
+        url = f"{scheduler_base_url()}/drain/{scheduler_node_id}"
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(url)
+        except Exception as exc:
+            raise SchedulerUnavailable(
+                f"could not reach the GPU scheduler to drain "
+                f"{scheduler_node_id}: {exc}"
+            ) from exc
+        if resp.status_code != 200:
+            raise SchedulerUnavailable(
+                f"scheduler refused the drain of {scheduler_node_id}: "
+                f"HTTP {resp.status_code} {resp.text[:200]}"
+            )
+        return resp.json()
 
     async def get_node(self, node_id: UUID) -> Optional[GpuNodeResponse]:
         """Get a single GPU node by ID with reservations."""
@@ -215,63 +335,47 @@ class GpuService:
 
     async def get_fleet_utilization(self) -> GpuFleetSummary:
         """
-        Fleet-wide GPU utilization summary with per-node breakdown.
+        Fleet-wide GPU utilization, read through from the scheduler's registry.
 
-        Aggregates VRAM usage across all registered nodes.
+        WP-45 Task 4(b). Same change as ``list_nodes`` and for the same reason:
+        this aggregated over ``gpu_nodes``, which has zero rows, so
+        ``/api/v1/gpu/utilization`` answered ``total_nodes=0, online=0,
+        total_vram_mb=0`` on a fleet with three live GPUs and ~2 TB of VRAM
+        registered.
+
+        ``active_reservations`` counts nodes reporting a current job. The
+        ``gpu_reservations`` table is a different mechanism - the scheduler holds
+        its reservations in Redis, and this is the count that corresponds to what
+        the fleet is actually doing rather than to rows nobody writes.
         """
-        result = await self.db.execute(
-            select(GpuNode).options(selectinload(GpuNode.reservations))
-            .order_by(GpuNode.node_hostname, GpuNode.gpu_index)
-        )
-        nodes = result.scalars().unique().all()
+        views = await self._fleet_views()
 
-        total_vram = 0
-        used_vram = 0
-        online_count = 0
-        offline_count = 0
-        draining_count = 0
-        active_reservations = 0
-        node_summaries = []
+        total_vram = sum(v["total_vram_mb"] for v in views)
+        used_vram = sum(v["used_vram_mb"] for v in views)
+        online_count = sum(1 for v in views if v["status"] == "online")
+        offline_count = sum(1 for v in views if v["status"] == "offline")
+        draining_count = sum(1 for v in views if v["status"] == "draining")
+        active_reservations = sum(1 for v in views if v["current_jobs"])
 
-        for node in nodes:
-            node_total = node.total_vram_mb or 0
-            node_used = node.used_vram_mb
-            node_available = node.available_vram_mb
-
-            total_vram += node_total
-            used_vram += node_used
-
-            if node.status == "online":
-                online_count += 1
-            elif node.status == "offline":
-                offline_count += 1
-            elif node.status == "draining":
-                draining_count += 1
-
-            active_res_count = sum(
-                1 for r in (node.reservations or [])
-                if r.status in ("reserved", "active")
+        node_summaries = [
+            GpuNodeSummary(
+                id=v["id"],
+                node_hostname=v["node_hostname"],
+                gpu_index=v["gpu_index"],
+                gpu_model=v["gpu_model"],
+                total_vram_mb=v["total_vram_mb"],
+                used_vram_mb=v["used_vram_mb"],
+                available_vram_mb=v["available_vram_mb"],
+                status=v["status"],
+                active_reservation_count=len(v["current_jobs"]),
             )
-            active_reservations += active_res_count
-
-            node_summaries.append(
-                GpuNodeSummary(
-                    id=node.id,
-                    node_hostname=node.node_hostname,
-                    gpu_index=node.gpu_index,
-                    gpu_model=node.gpu_model,
-                    total_vram_mb=node_total,
-                    used_vram_mb=node_used,
-                    available_vram_mb=node_available,
-                    status=node.status,
-                    active_reservation_count=active_res_count,
-                )
-            )
+            for v in views
+        ]
 
         fleet_util = (used_vram / total_vram * 100.0) if total_vram > 0 else 0.0
 
         return GpuFleetSummary(
-            total_nodes=len(nodes),
+            total_nodes=len(views),
             online_nodes=online_count,
             offline_nodes=offline_count,
             draining_nodes=draining_count,

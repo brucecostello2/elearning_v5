@@ -32,10 +32,24 @@ async def list_variants(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """List language variants with status badges."""
+    """List language variants with status badges and derived progress.
+
+    WP-45 Task 6(c): ``progress_percent`` is computed here from each variant's
+    own pipeline checkpoints, on every request. It is null - never 0 - when
+    there is nothing to measure, because "no run yet" and "a run that has
+    completed nothing" are different facts, and rendering the first as 0% is the
+    defect WP-43 §3.3 found beside a language with a finished draft on disk.
+    """
     service = LanguageService(db)
-    variants = await service.list_variants(project_id)
-    return [LanguageVariantResponse.model_validate(v) for v in variants]
+    out: List[LanguageVariantResponse] = []
+    for variant, progress in await service.variants_with_progress(project_id):
+        response = LanguageVariantResponse.model_validate(variant)
+        response.progress_percent = progress["progress_percent"]
+        response.completed_stages = progress["completed_stages"]
+        response.total_stages = progress["total_stages"]
+        response.progress_source = progress["progress_source"]
+        out.append(response)
+    return out
 
 
 @router.post(

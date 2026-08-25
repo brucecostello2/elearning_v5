@@ -69,6 +69,13 @@ async def create_scene(
         visual_description=data.visual_description,
         media_type=data.media_type,
         duration_seconds=data.duration_seconds,
+        # WP-45 Task 6(d): Stage 2 can now persist these on creation rather than
+        # having them added by hand afterwards.
+        camera_angle=data.camera_angle,
+        transition_type=data.transition_type,
+        effects=data.effects,
+        timing_offset_ms=data.timing_offset_ms,
+        generation_params=data.generation_params,
     )
     # WP-38 / ORCH-5. Nothing advanced projects.state when a stage completed:
     # the only writers were trigger_pipeline (DRAFT -> TRANSCRIPT_REFINEMENT) and
@@ -132,16 +139,31 @@ async def update_scene(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Update narration_text, visual_description, media_type, or duration_seconds."""
+    """Update any of the nine scene fields the Edit Scene modal sends.
+
+    WP-45 Task 6(d) / WP-43 D-2: camera_angle, transition_type, effects,
+    timing_offset_ms and generation_params are persisted for the first time.
+    They were sent, accepted with a 200, and dropped by Pydantic because
+    SceneUpdate did not declare them.
+
+    ``exclude_unset`` is what makes clearing a field possible: only keys the
+    client actually sent are written, so ``{"camera_angle": null}`` clears it
+    while omitting the key leaves it alone. Under the old fixed signature both
+    arrived as ``None`` and neither could be told from the other.
+    """
     service = StoryboardService(db)
-    scene = await service.update_scene(
-        project_id=project_id,
-        scene_id=scene_id,
-        narration_text=data.narration_text,
-        visual_description=data.visual_description,
-        media_type=data.media_type,
-        duration_seconds=data.duration_seconds,
-    )
+    fields = data.model_dump(exclude_unset=True)
+    try:
+        scene = await service.update_scene(
+            project_id=project_id,
+            scene_id=scene_id,
+            **fields,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+        )
     if scene is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

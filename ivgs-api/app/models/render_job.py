@@ -73,6 +73,13 @@ class RenderJob(Base):
         nullable=True,
         doc="PostgreSQL ENUM failure_category",
     )
+    # WP-45 Task 6(c) / migration 0028. Which language variant this job renders.
+    # NULL means the project's source language. Attribution only - the per-language
+    # progress figure is DERIVED from this job's pipeline_checkpoints every time
+    # it is asked for, never stored (WP-43 D-1, ruled).
+    language_code: Mapped[Optional[str]] = mapped_column(
+        String(10), nullable=True,
+    )
     resume_from_stage: Mapped[Optional[str]] = mapped_column(
         String(64),
         nullable=True,

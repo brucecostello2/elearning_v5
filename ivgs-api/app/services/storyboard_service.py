@@ -5,7 +5,7 @@ Per §5.1.4 — scenes are ordered by scene_index within a project.
 """
 import logging
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from sqlalchemy import select
@@ -53,8 +53,13 @@ class StoryboardService:
         visual_description: Optional[str] = None,
         media_type: Optional[str] = None,
         duration_seconds: Optional[float] = None,
+        camera_angle: Optional[str] = None,
+        transition_type: Optional[str] = None,
+        effects: Optional[List[str]] = None,
+        timing_offset_ms: Optional[int] = None,
+        generation_params: Optional[Dict[str, Any]] = None,
     ) -> StoryboardScene:
-        """Create a new storyboard scene."""
+        """Create a new storyboard scene (WP-43 D-2 fields included)."""
         scene = StoryboardScene(
             project_id=project_id,
             scene_index=scene_index,
@@ -62,6 +67,11 @@ class StoryboardService:
             visual_description=visual_description,
             media_type=media_type,
             duration_seconds=duration_seconds,
+            camera_angle=camera_angle,
+            transition_type=transition_type,
+            effects=effects,
+            timing_offset_ms=timing_offset_ms,
+            generation_params=generation_params,
         )
         self.db.add(scene)
         await self.db.commit()
@@ -69,28 +79,50 @@ class StoryboardService:
         logger.info("Scene created: id=%s project=%s index=%s", scene.id, project_id, scene_index)
         return scene
 
+    # WP-45 Task 6(d) / WP-43 D-2. The five fields the Edit Scene modal has
+    # always sent and this service never had columns for. Listed once so the
+    # loop below and the route cannot drift out of step with each other.
+    OPTIONAL_SCENE_FIELDS = (
+        "narration_text",
+        "visual_description",
+        "media_type",
+        "duration_seconds",
+        "camera_angle",
+        "transition_type",
+        "effects",
+        "timing_offset_ms",
+        "generation_params",
+    )
+
     async def update_scene(
         self,
         project_id: UUID,
         scene_id: UUID,
-        narration_text: Optional[str] = None,
-        visual_description: Optional[str] = None,
-        media_type: Optional[str] = None,
-        duration_seconds: Optional[float] = None,
+        **fields: Any,
     ) -> Optional[StoryboardScene]:
-        """Update scene fields."""
+        """Update scene fields. Only keys present in ``fields`` are written.
+
+        WP-45 Task 6(d). Takes the caller's **set** fields rather than a fixed
+        signature of Optionals, so that clearing a field is expressible. Under
+        the old shape ``None`` meant "not supplied", which made
+        ``camera_angle: null`` - the way a modal says "I removed this" -
+        indistinguishable from not mentioning it at all.
+        """
         scene = await self.get_scene(project_id, scene_id)
         if scene is None:
             return None
 
-        if narration_text is not None:
-            scene.narration_text = narration_text
-        if visual_description is not None:
-            scene.visual_description = visual_description
-        if media_type is not None:
-            scene.media_type = media_type
-        if duration_seconds is not None:
-            scene.duration_seconds = duration_seconds
+        unknown = set(fields) - set(self.OPTIONAL_SCENE_FIELDS)
+        if unknown:
+            # Loudly, because this whole package exists because a schema
+            # dropping fields in silence looked exactly like saving them.
+            raise ValueError(
+                f"Unknown scene field(s): {', '.join(sorted(unknown))}. "
+                f"Updatable: {', '.join(self.OPTIONAL_SCENE_FIELDS)}"
+            )
+
+        for field, value in fields.items():
+            setattr(scene, field, value)
 
         scene.updated_at = datetime.now(timezone.utc)
         await self.db.commit()

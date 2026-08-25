@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from shared.models.model_store import (
     CapabilityDimension,
@@ -122,12 +122,54 @@ class ModelUpdateIn(BaseModel):
     is_default: bool | None = None
 
 
+# WP-45 Task 6(e). 512 characters is not an attestation, it is a note.
+#
+# WP-46 §A8's vetting reference is 1,912 characters, and it is a SHORT one: it
+# names the MBCP certification, the run, the result, the hardware profile, the
+# measured VRAM and generation time, the engine image digest, the graph SHA, the
+# nine weight bundles, and the IVGS report that verified all of it. Every clause
+# is the kind of thing an auditor asks for, and the old cap forced whoever pasted
+# it to choose which provenance to delete. Truncating a provenance record to fit
+# a column is the one thing an attestation may not do.
+#
+# TEXT in the database (migration 0028); a generous but stated cap here, so an
+# accidental paste of an entire report is still refused with a message rather
+# than silently accepted into a column with no bound.
+MAX_VETTING_REFERENCE = 8192
+MAX_ATTESTED_BY = 256
+
+
 class ApproveIn(BaseModel):
     """POST /models/{id}/approve — AD-01.7.2 attestation (all required)."""
 
-    attested_by: str = Field(min_length=1, max_length=128)
-    vetting_reference: str = Field(min_length=1, max_length=512)
+    attested_by: str = Field(min_length=1, max_length=MAX_ATTESTED_BY)
+    vetting_reference: str = Field(
+        min_length=1,
+        max_length=MAX_VETTING_REFERENCE,
+        description=(
+            "Free-text evidence: certification ids, measured figures, the "
+            "report that verified them. Stored in full."
+        ),
+    )
     checklist: dict
+
+    @field_validator("vetting_reference")
+    @classmethod
+    def validate_vetting_reference(cls, v: str) -> str:
+        """Inline refusal, worded the way the rest of the API words its own."""
+        text = v.strip()
+        if not text:
+            raise ValueError(
+                "vetting_reference cannot be blank. An approval without "
+                "evidence is not an attestation."
+            )
+        if len(text) > MAX_VETTING_REFERENCE:
+            raise ValueError(
+                f"vetting_reference is {len(text)} characters; the maximum is "
+                f"{MAX_VETTING_REFERENCE}. Cite the evidence document rather "
+                "than pasting it."
+            )
+        return text
 
 
 class AvailabilityIn(BaseModel):

@@ -4,10 +4,28 @@ Storyboard scene Pydantic schemas per §5.1.4.
 Includes: SceneCreate, SceneUpdate, SceneResponse, SceneReorderRequest.
 """
 from datetime import datetime
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+# WP-43 D-2, RULED EXTEND. The Edit Scene modal has always sent nine keys;
+# SceneUpdate declared four, and Pydantic drops what a model does not declare -
+# silently, with a 200. So camera_angle, transition_type, effects,
+# timing_offset_ms and generation_params were serialised, sent, and discarded,
+# and the dialog looked exactly as though it had saved them. WP-43 could only
+# label them "Not saved to the server" from the frontend; migration 0028 gives
+# them columns and this gives them a schema.
+#
+# The operator ruling was EXTEND rather than remove, and the reason is on the
+# record: camera_angle and transition_type are read by the generation and
+# composition prompts, so deleting the controls would discard intent the
+# operator is already expressing.
+MAX_EFFECTS = 32
+MAX_EFFECT_NAME = 64
+# +/- 60 seconds. A timing offset is a nudge against the narration; anything
+# larger is a duration change or a reorder, and both have their own controls.
+MAX_TIMING_OFFSET_MS = 60_000
 
 
 class SceneCreate(BaseModel):
@@ -19,6 +37,54 @@ class SceneCreate(BaseModel):
     media_type: Optional[str] = Field(default=None, description="image | video_clip | animation")
     duration_seconds: Optional[float] = Field(default=None, ge=0.1, le=600.0)
 
+    camera_angle: Optional[str] = Field(
+        default=None, max_length=64,
+        description="Camera framing for this scene, e.g. wide, close-up.",
+    )
+    transition_type: Optional[str] = Field(
+        default=None, max_length=64,
+        description="Transition into this scene, e.g. cut, fade, dissolve.",
+    )
+    effects: Optional[List[str]] = Field(
+        default=None,
+        description="Effect identifiers applied to this scene.",
+    )
+    timing_offset_ms: Optional[int] = Field(
+        default=None,
+        ge=-MAX_TIMING_OFFSET_MS,
+        le=MAX_TIMING_OFFSET_MS,
+        description="Millisecond nudge of this scene against the narration.",
+    )
+    generation_params: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Per-scene generation overrides (seed, steps, guidance...).",
+    )
+
+    @field_validator("effects")
+    @classmethod
+    def validate_effects(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Inline, worded the way the server words its other refusals (WP-43)."""
+        if v is None:
+            return v
+        if len(v) > MAX_EFFECTS:
+            raise ValueError(
+                f"At most {MAX_EFFECTS} effects per scene; got {len(v)}."
+            )
+        cleaned = []
+        for item in v:
+            if not isinstance(item, str):
+                raise ValueError("Each effect must be a string identifier.")
+            name = item.strip()
+            if not name:
+                raise ValueError("An effect identifier cannot be blank.")
+            if len(name) > MAX_EFFECT_NAME:
+                raise ValueError(
+                    f"Effect identifier is longer than {MAX_EFFECT_NAME} "
+                    f"characters: {name[:32]}..."
+                )
+            cleaned.append(name)
+        return cleaned
+
     @field_validator("media_type")
     @classmethod
     def validate_media_type(cls, v: Optional[str]) -> Optional[str]:
@@ -28,12 +94,64 @@ class SceneCreate(BaseModel):
 
 
 class SceneUpdate(BaseModel):
-    """Schema for PATCH /api/v1/projects/{id}/scenes/{sid}."""
+    """Schema for PATCH /api/v1/projects/{id}/scenes/{sid}.
+
+    WP-45 Task 6(d) / WP-43 D-2: the five fields the modal has always sent are
+    declared here for the first time. Until now they were dropped in silence.
+    """
 
     narration_text: Optional[str] = None
     visual_description: Optional[str] = None
     media_type: Optional[str] = None
     duration_seconds: Optional[float] = Field(default=None, ge=0.1, le=600.0)
+
+    camera_angle: Optional[str] = Field(
+        default=None, max_length=64,
+        description="Camera framing for this scene, e.g. wide, close-up.",
+    )
+    transition_type: Optional[str] = Field(
+        default=None, max_length=64,
+        description="Transition into this scene, e.g. cut, fade, dissolve.",
+    )
+    effects: Optional[List[str]] = Field(
+        default=None,
+        description="Effect identifiers applied to this scene.",
+    )
+    timing_offset_ms: Optional[int] = Field(
+        default=None,
+        ge=-MAX_TIMING_OFFSET_MS,
+        le=MAX_TIMING_OFFSET_MS,
+        description="Millisecond nudge of this scene against the narration.",
+    )
+    generation_params: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Per-scene generation overrides (seed, steps, guidance...).",
+    )
+
+    @field_validator("effects")
+    @classmethod
+    def validate_effects(cls, v: Optional[List[str]]) -> Optional[List[str]]:
+        """Inline, worded the way the server words its other refusals (WP-43)."""
+        if v is None:
+            return v
+        if len(v) > MAX_EFFECTS:
+            raise ValueError(
+                f"At most {MAX_EFFECTS} effects per scene; got {len(v)}."
+            )
+        cleaned = []
+        for item in v:
+            if not isinstance(item, str):
+                raise ValueError("Each effect must be a string identifier.")
+            name = item.strip()
+            if not name:
+                raise ValueError("An effect identifier cannot be blank.")
+            if len(name) > MAX_EFFECT_NAME:
+                raise ValueError(
+                    f"Effect identifier is longer than {MAX_EFFECT_NAME} "
+                    f"characters: {name[:32]}..."
+                )
+            cleaned.append(name)
+        return cleaned
 
     @field_validator("media_type")
     @classmethod
@@ -53,6 +171,11 @@ class SceneResponse(BaseModel):
     visual_description: Optional[str] = None
     media_type: Optional[str] = None
     duration_seconds: Optional[float] = None
+    camera_angle: Optional[str] = None
+    transition_type: Optional[str] = None
+    effects: Optional[List[str]] = None
+    timing_offset_ms: Optional[int] = None
+    generation_params: Optional[Dict[str, Any]] = None
     created_at: datetime
     updated_at: datetime
 

@@ -33,10 +33,36 @@ from app.schemas.gpu import (
     GpuUtilizationHistoryResponse,
 )
 from app.services.gpu_service import GpuService
+from app.services.scheduler_fleet import SchedulerUnavailable
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/gpu", tags=["GPU Management"])
+
+
+def _scheduler_unavailable(exc: SchedulerUnavailable) -> HTTPException:
+    """503, with the reason.
+
+    WP-45 Task 4(b). These routes now read through to the scheduler, and the
+    one thing they must never do is answer "0 nodes online" when the truth is
+    "I could not ask". That conflation is what made the GPU tiles trustworthy-
+    looking while three GPUs were working: an empty table rendered exactly like
+    an empty fleet.
+    """
+    logger.warning("GPU fleet read-through failed: %s", exc)
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail={
+            "error": {
+                "code": "SCHEDULER_UNAVAILABLE",
+                "message": (
+                    f"{exc}. GPU fleet status is read from the scheduler's "
+                    "registry; no cached copy is kept, so no figure can be "
+                    "shown while it is unreachable."
+                ),
+            }
+        },
+    )
 
 
 @router.get(
@@ -55,11 +81,14 @@ async def list_gpu_nodes(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """List all registered GPU nodes with current status and VRAM utilization."""
+    """List the GPU fleet, read through from the scheduler's registry (WP-45)."""
     service = GpuService(db)
-    nodes, total = await service.list_nodes(
-        page=page, per_page=per_page, status_filter=status_filter
-    )
+    try:
+        nodes, total = await service.list_nodes(
+            page=page, per_page=per_page, status_filter=status_filter
+        )
+    except SchedulerUnavailable as exc:
+        raise _scheduler_unavailable(exc)
     pages = (total + per_page - 1) // per_page if per_page > 0 else 0
     return PaginatedResponse(
         data=nodes,
@@ -82,7 +111,20 @@ async def register_gpu_node(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Register a new GPU node. Uses upsert: re-registers if (hostname, gpu_index) exists."""
+    """Register a new GPU node in the API's own table.
+
+    WP-45 Task 4(b), recorded rather than removed: **nothing reads this table
+    any more.** Workers register with the scheduler (``POST /register`` on
+    :8001), which is what ``GET /gpu/nodes`` and ``/gpu/utilization`` now read.
+    A row written here will not appear on the GPU Fleet page and will not
+    receive work. The route is kept because ``gpu_reservations`` still
+    references ``gpu_nodes.id``; it is not the way to add a node to the fleet.
+    """
+    logger.warning(
+        "POST /gpu/nodes wrote gpu_nodes for %s:%s - this table is no longer "
+        "read by the fleet endpoints (WP-45 Task 4b read-through)",
+        data.node_hostname, data.gpu_index,
+    )
     service = GpuService(db)
     return await service.register_node(data)
 
@@ -97,9 +139,12 @@ async def get_gpu_node(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Get a single GPU node with reservations and active jobs."""
+    """Get a single GPU node with its current jobs, from the scheduler."""
     service = GpuService(db)
-    node = await service.get_node(node_id)
+    try:
+        node = await service.get_node_by_uuid(node_id)
+    except SchedulerUnavailable as exc:
+        raise _scheduler_unavailable(exc)
     if node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -124,7 +169,34 @@ async def update_gpu_node(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Update GPU node metadata or status (admin only)."""
+    """Update GPU node metadata or status (admin only).
+
+    WP-45 Task 4(b): the fleet is now read through from the scheduler's
+    registry, which is where the workers register and where placement decisions
+    are made. This route still writes ``gpu_nodes``, a table nothing reads any
+    more, so it is answered with a 409 naming what to do instead rather than a
+    200 that changes nothing anyone will see.
+
+    Draining is ``POST /gpu/nodes/{id}/drain``, which goes to the scheduler.
+    Model, VRAM and compute capability come from each worker's own
+    ``IVGS_GPU_*`` environment and are re-sent on every registration.
+    """
+    raise HTTPException(
+        status_code=status.HTTP_409_CONFLICT,
+        detail={
+            "error": {
+                "code": "READ_THROUGH_REGISTRY",
+                "message": (
+                    "GPU node facts are owned by the scheduler's registry and "
+                    "cannot be edited through the API. To stop scheduling onto "
+                    "a node use POST /api/v1/gpu/nodes/{id}/drain. To change a "
+                    "node's declared model or VRAM, set IVGS_GPU_MODEL / "
+                    "IVGS_GPU_VRAM_MB / IVGS_GPU_COMPUTE_CAP in that node's "
+                    ".env and recreate its worker."
+                ),
+            }
+        },
+    )
     service = GpuService(db)
     node = await service.update_node(node_id, data)
     if node is None:
@@ -177,20 +249,29 @@ async def drain_gpu_node(
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Mark GPU node for draining — stops scheduling new jobs (admin only)."""
+    """Drain a GPU node — stop scheduling new jobs onto it (admin only).
+
+    WP-45 Task 4(b): this drains through the **scheduler**, which is the only
+    component placement consults. It used to set ``gpu_nodes.status='draining'``
+    on a table the scheduler does not read, so a node the operator had drained
+    kept being handed work.
+    """
     service = GpuService(db)
     try:
-        node = await service.drain_node(node_id)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "error": {
-                    "code": "INVALID_STATE_TRANSITION",
-                    "message": str(e),
-                }
-            },
-        )
+        result = await service.drain_scheduler_node(node_id)
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail={
+                    "error": {
+                        "code": "RESOURCE_NOT_FOUND",
+                        "message": f"GPU node {node_id} is not in the scheduler's fleet",
+                    }
+                },
+            )
+        node = await service.get_node_by_uuid(node_id)
+    except SchedulerUnavailable as exc:
+        raise _scheduler_unavailable(exc)
     if node is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -213,9 +294,12 @@ async def get_gpu_utilization(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Fleet-wide GPU utilization summary with per-node breakdown."""
+    """Fleet-wide GPU utilization summary, read through from the scheduler."""
     service = GpuService(db)
-    return await service.get_fleet_utilization()
+    try:
+        return await service.get_fleet_utilization()
+    except SchedulerUnavailable as exc:
+        raise _scheduler_unavailable(exc)
 
 
 @router.get(

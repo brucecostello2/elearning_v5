@@ -315,8 +315,16 @@ class ModelApproval(Base):
         ForeignKey("models.id", ondelete="CASCADE"),
         nullable=False,
     )
-    attested_by: Mapped[str] = mapped_column(String(128), nullable=False)
-    vetting_reference: Mapped[str] = mapped_column(String(512), nullable=False)
+    attested_by: Mapped[str] = mapped_column(String(256), nullable=False)
+    # WP-45 Task 6(e) / migration 0028: TEXT, not VARCHAR(512). A real AD-01
+    # vetting reference names the certification, the run, the result, the
+    # hardware profile, the measured figures and the report that verified them -
+    # WP-46's is 1,912 characters and is a short one. The cap forced whoever
+    # pasted it to choose which provenance to delete, which is the one thing an
+    # attestation may not do. The schema states a generous bound inline
+    # (ApproveIn.MAX_VETTING_REFERENCE) so the refusal is a message, not a
+    # truncation.
+    vetting_reference: Mapped[str] = mapped_column(Text, nullable=False)
     checklist: Mapped[dict] = mapped_column(JSONVariant, nullable=False)
     attested_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("now()"),

@@ -33,7 +33,24 @@ class LanguageVariantCreate(BaseModel):
 
 
 class LanguageVariantResponse(BaseModel):
-    """Response schema for a language variant."""
+    """Response schema for a language variant.
+
+    WP-45 Task 6(c) / WP-43 D-1, RULED derive. The Languages tab read
+    ``variant.progress_percent || 0`` over a field the API had never sent, so an
+    absent measurement rendered as a confident 0% beside a language with a
+    finished 720p draft on disk. WP-43 replaced that with "not tracked yet" and
+    recorded the backend gap; this is the gap closed.
+
+    The figure is DERIVED, on every request, from the ``pipeline_checkpoints``
+    of the newest job attributed to this variant. It is not a column, and it is
+    deliberately not one: a separately-written progress column can disagree with
+    what actually ran, and this system has already been bitten by exactly that
+    class of drift. ``progress_source`` names where the number came from so a
+    reader is never left guessing what it measures.
+
+    ``progress_percent`` is ``None`` — never 0 — when there is nothing to
+    measure. Zero means "measured, and nothing has completed".
+    """
 
     id: UUID
     project_id: UUID
@@ -41,6 +58,10 @@ class LanguageVariantResponse(BaseModel):
     state: str
     final_render_1080p_id: Optional[UUID] = None
     final_render_4k_id: Optional[UUID] = None
+    progress_percent: Optional[float] = None
+    completed_stages: Optional[int] = None
+    total_stages: Optional[int] = None
+    progress_source: Optional[str] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -13,7 +13,17 @@ Three unrelated columns families, one migration, because they ship in one deploy
    Scene modal has always sent these five keys; ``SceneUpdate`` declared four, so
    Pydantic discarded them silently and the UI looked as though it had saved.
 
-3. ``model_approvals.vetting_reference`` VARCHAR(512) -> TEXT — WP-45 Task 6(e).
+3. ``render_jobs.language_code`` — WP-45 Task 6(c). Per-language progress is
+   RULED derived, never a written column (WP-43 D-1), and it is derived from
+   that variant's ``pipeline_checkpoints``. But nothing recorded WHICH language a
+   job was rendering, so there was no join from a variant to its checkpoints and
+   the derivation was impossible for any language. This column is the
+   attribution, not the measure: it says which variant a job belongs to, and the
+   progress figure is still computed from the checkpoints every time it is asked
+   for. NULL means the project's source language, which is what every existing
+   row is.
+
+4. ``model_approvals.vetting_reference`` VARCHAR(512) -> TEXT — WP-45 Task 6(e).
    A real AD-01 attestation reference is not 512 characters. WP-46 §A8's is 1,912,
    and it is a *short* one: it names the certification, the run, the result, the
    hardware profile, the measured numbers and the evidence report. Truncating a
@@ -97,12 +107,40 @@ def upgrade() -> None:
         ),
     )
 
-    # --- 3. attestation evidence length (WP-45 Task 6e) ---
+    # --- 3. language attribution for jobs (WP-45 Task 6c) ---
+    op.add_column(
+        "render_jobs",
+        sa.Column(
+            "language_code",
+            sa.String(length=10),
+            nullable=True,
+            comment=(
+                "The language variant this job renders. NULL = the project's "
+                "source language. Attribution only: per-language progress is "
+                "derived from pipeline_checkpoints, never stored."
+            ),
+        ),
+    )
+    op.create_index(
+        "ix_render_jobs_project_language",
+        "render_jobs",
+        ["project_id", "language_code"],
+        unique=False,
+    )
+
+    # --- 4. attestation evidence length (WP-45 Task 6e) ---
     op.alter_column(
         "model_approvals",
         "vetting_reference",
         existing_type=sa.String(length=512),
         type_=sa.Text(),
+        existing_nullable=False,
+    )
+    op.alter_column(
+        "model_approvals",
+        "attested_by",
+        existing_type=sa.String(length=128),
+        type_=sa.String(length=256),
         existing_nullable=False,
     )
 
@@ -125,11 +163,21 @@ def downgrade() -> None:
         )
     op.alter_column(
         "model_approvals",
+        "attested_by",
+        existing_type=sa.String(length=256),
+        type_=sa.String(length=128),
+        existing_nullable=False,
+    )
+    op.alter_column(
+        "model_approvals",
         "vetting_reference",
         existing_type=sa.Text(),
         type_=sa.String(length=512),
         existing_nullable=False,
     )
+
+    op.drop_index("ix_render_jobs_project_language", table_name="render_jobs")
+    op.drop_column("render_jobs", "language_code")
 
     op.drop_column("storyboard_scenes", "generation_params")
     op.drop_column("storyboard_scenes", "timing_offset_ms")
