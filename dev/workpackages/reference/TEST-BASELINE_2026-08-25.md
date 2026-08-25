@@ -16,11 +16,11 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **875** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
-| `ivgs-workers` | 766 | 18 | 48 | 15 | 27 failed (WP-45) |
+| `ivgs-workers` | 787 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | 39 | 12 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1706** | **47** | **63** | **45** | |
+| `tests_system` | 56 | 12 | 15 | 30 | 15 passed / 31 failed / 28 errors |
+| **Total** | **1744** | **47** | **63** | **45** | |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -112,13 +112,21 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 766 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 787 passed, 18 failed, 48 skipped, 15 errors
 
 ```bash
 .venv/bin/python -m pytest ivgs-workers/tests
 ```
 
 Runtime 20s.
+
+WP-58 added 21 tests (2026-08-25): `test_wp58_storyboard_budget.py` (8) pinning
+the scene-count-scaled Stage-2 output budget and the `finish_reason == "length"`
+guard, and `test_wp58_failure_category.py` (13) pinning that a terminal failure
+now carries a `failure_category` — including one test that deliberately pins the
+LIMITATION (an orchestrator summary message still falls through to the
+classifier's `transient` default). 766 → 787; failures, skips and errors
+unchanged.
 
 ### 3.1 Errors (15) — all one cause
 
@@ -197,11 +205,18 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 39 passed, 12 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 56 passed, 12 failed, 15 skipped, 30 errors
 
 ```bash
 .venv/bin/python -m pytest --timeout=120 tests_system
 ```
+
+WP-58 added `test_wp58_retention.py` here (17 tests, 2026-08-25). It lives in
+this tree because it drives the REAL `scripts/*.sh` as subprocesses and asserts
+on what they do to a filesystem — a fixture would be a second statement of what
+someone believed the prune did, which is the shape of the defect it exists to
+close. **Every path it touches is a pytest `tmp_path`; nothing in it can reach
+/mnt/backup.** 39 → 56 passed; failures, skips and errors unchanged.
 
 WP-54 added `test_alert_rules_have_metrics.py` here (5 tests, 2026-08-25): the
 gate that fails when an alert rule references a metric no configured target
