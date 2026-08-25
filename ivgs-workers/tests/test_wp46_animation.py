@@ -261,13 +261,43 @@ class TestRefusesRatherThanSubstituting:
 # Result shape
 # ---------------------------------------------------------------------------
 
+#: Fields an animation result carries that a video result does not, and why.
+#: WP-46's invariant is that the join and the manifest can read an animation
+#: result AS a video result — that requires every video field to be present,
+#: not that the sets are identical. An extra field named here is additive and
+#: downstream-invisible; an extra field NOT named here fails the test below,
+#: which is what keeps the invariant from eroding by accident.
+ANIMATION_ONLY_FIELDS = {
+    # WP-44 Task 5. The input guard's verdict on the reference image
+    # (present | absent | unavailable). Only this branch has a reference
+    # image, so only this branch can have a verdict on one. Recorded even on
+    # success, so a render made while the detector was unavailable stays
+    # distinguishable from one made against a verified subject.
+    "reference_person_check",
+}
+
+
 class TestSceneResultShape:
-    def test_animation_scene_results_match_video_scene_results_field_for_field(self):
+    def test_animation_scene_results_carry_every_video_scene_result_field(self):
         """The media join and the manifest builder read all three branches with
-        one shape. An animation result that carried an extra field, or lacked
-        one, would be a per-branch special case downstream."""
-        assert set(SceneAnimationResult.model_fields) == set(
+        one shape. An animation result LACKING a video field would be a
+        per-branch special case downstream."""
+        missing = set(SceneVideoResult.model_fields) - set(
+            SceneAnimationResult.model_fields
+        )
+        assert missing == set(), (
+            f"animation results no longer carry {sorted(missing)}, which the "
+            f"media join and manifest builder read on every branch"
+        )
+
+    def test_any_animation_only_field_is_declared_and_justified(self):
+        extra = set(SceneAnimationResult.model_fields) - set(
             SceneVideoResult.model_fields
+        )
+        assert extra <= ANIMATION_ONLY_FIELDS, (
+            f"undeclared animation-only field(s) {sorted(extra - ANIMATION_ONLY_FIELDS)}. "
+            f"Add them to ANIMATION_ONLY_FIELDS with the reason, or put them on "
+            f"SceneVideoResult too — do not let the two shapes drift silently."
         )
 
     def test_defaults_match_too(self):

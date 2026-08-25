@@ -29,11 +29,41 @@ from tasks.video_generation_task import (
     _process_single_video,
     _select_model,
 )
+from utils.video_validator import VideoQualityDecision, VideoValidationResult
 
 
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+def _passing_validation() -> VideoValidationResult:
+    """A clean verdict, for tests that are about generation and not validation.
+
+    WP-44: the video task runs the real VideoValidator now, and the fixtures in
+    this module are 16-byte placeholders. Tests about the generation path stub
+    the verdict; the validator itself is exercised against real ffmpeg-built
+    MP4s in `test_wp44_video_validator.py`.
+    """
+    return VideoValidationResult(
+        is_valid=True,
+        decision=VideoQualityDecision.APPROVED,
+        quality_score=1.0,
+        codec_ok=True,
+        resolution_ok=True,
+        fps_ok=True,
+        duration_ok=True,
+        audio_ok=True,
+        corruption_ok=True,
+        file_size_ok=True,
+        distinctness_ok=True,
+        actual_width=1280,
+        actual_height=720,
+        actual_fps=30.0,
+        actual_duration_seconds=5.0,
+        check_coverage=1.0,
+        quality_score_complete=True,
+    )
+
 
 @pytest.fixture
 def sample_video_input() -> VideoGenerationInput:
@@ -218,6 +248,8 @@ class TestProcessSingleVideo:
     """Test single video processing with mocks."""
 
     @pytest.mark.asyncio
+    @patch("tasks.video_generation_task.submit_quality_score")
+    @patch("tasks.video_generation_task.VideoValidator")
     @patch("tasks.video_generation_task._upload_asset")
     @patch("tasks.video_generation_task._generate_with_wan21")
     @patch("tasks.video_generation_task._generate_video_prompt")
@@ -228,8 +260,17 @@ class TestProcessSingleVideo:
         mock_prompt,
         mock_wan21,
         mock_upload,
+        mock_validator_cls,
+        mock_submit,
         mock_config,
     ):
+        # WP-44: the video task validates for real now. `b"fake_video_bytes"`
+        # is 16 bytes and no ffprobe on earth reads it, so the validator is
+        # stubbed here to keep this test about the GENERATION path. The
+        # rejection path gets its own test below, and the validator itself is
+        # exercised against real MP4s in test_wp44_video_validator.py.
+        mock_validator_cls.return_value.validate_bytes.return_value = _passing_validation()
+        mock_submit.return_value = True
         mock_dedup.return_value = None
         mock_prompt.return_value = "A bustling city street"
         mock_wan21.return_value = Wan21GenerationResult(
@@ -271,6 +312,80 @@ class TestProcessSingleVideo:
         assert result.status == "success"
         assert result.model_used == "wan2.1"
         assert result.asset_id == "asset-001"
+        # WP-44: the verdict is carried, and it reaches the review queue.
+        assert result.quality_decision == "approved"
+        assert result.quality_score == 1.0
+        assert result.quality_score_complete is True
+        assert result.checks_missing == []
+        mock_submit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    @patch("tasks.video_generation_task.submit_quality_score")
+    @patch("tasks.video_generation_task.VideoValidator")
+    @patch("tasks.video_generation_task._upload_asset")
+    @patch("tasks.video_generation_task._generate_with_wan21")
+    @patch("tasks.video_generation_task._generate_video_prompt")
+    @patch("tasks.video_generation_task.check_duplicate_asset")
+    async def test_a_rejected_clip_is_not_uploaded(
+        self,
+        mock_dedup,
+        mock_prompt,
+        mock_wan21,
+        mock_upload,
+        mock_validator_cls,
+        mock_submit,
+        mock_config,
+    ):
+        """WP-44. A clip the gate rejects does not become an asset.
+
+        Before this package the validator was built and discarded, so a still
+        in an MP4 container uploaded exactly as a real clip did, and carried
+        `quality_decision: ""` with it.
+        """
+        rejected = _passing_validation()
+        rejected.is_valid = False
+        rejected.decision = VideoQualityDecision.REJECTED
+        rejected.quality_score = 0.0
+        rejected.errors = [
+            "Video does not move: all 60 decoded frames are identical to "
+            "their neighbour."
+        ]
+        mock_validator_cls.return_value.validate_bytes.return_value = rejected
+        mock_dedup.return_value = None
+        mock_prompt.return_value = "A bustling city street"
+        mock_wan21.return_value = Wan21GenerationResult(
+            request_id="req-002",
+            video_data=b"fake_video_bytes",
+            width=1280,
+            height=720,
+            fps=30,
+            duration_seconds=5.0,
+            num_frames=150,
+            file_size_bytes=1024,
+            generation_time_seconds=8.0,
+            seed_used=42,
+            params_hash="abc",
+        )
+
+        result = await _process_single_video(
+            scene=SceneVideoInput(
+                scene_id="s1",
+                scene_index=0,
+                visual_description="busy city",
+                duration_seconds=5.0,
+                scene_type="broll",
+            ),
+            vllm_client=MagicMock(),
+            config=mock_config,
+            target_audience="general",
+            enable_dedup=True,
+            project_id="proj-001",
+        )
+
+        assert result.status == "failed"
+        assert result.asset_id is None
+        assert any("does not move" in e for e in result.errors)
+        mock_upload.assert_not_called()
 
     @pytest.mark.asyncio
     @patch("tasks.video_generation_task.check_duplicate_asset")
