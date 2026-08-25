@@ -266,17 +266,61 @@ class QualityService:
             f"by={reviewed_by} regenerate={regenerate}"
         )
 
+        regeneration_note: Optional[str] = None
+
         if regenerate:
-            # Phase 8: dispatch regeneration task
-            # asset = await self.db.get(Asset, score.asset_id)
-            # if asset and asset.generation_prompt_id:
-            #     celery_app.send_task(
-            #         "pipeline.regenerate_asset",
-            #         args=[str(score.asset_id)],
-            #     )
-            logger.info(
-                f"Regeneration queued for asset={score.asset_id} "
-                f"(stub — Phase 8)"
+            # WP-45 Task 3, site 6. This logged "Regeneration queued for
+            # asset=... (stub - Phase 8)" and queued nothing. A reviewer
+            # rejecting a flagged asset and ticking "regenerate" got a rejection
+            # that stuck and a regeneration that never happened, with the word
+            # "stub" visible only in the server log.
+            #
+            # The rejection is already committed above, deliberately: a reviewer's
+            # verdict is theirs and stands whether or not the fleet can act on it
+            # right now. What must not happen is reporting the regeneration as
+            # queued when it was not, so a dispatch failure is recorded on the
+            # response instead of being logged and dropped.
+            from app.services.regeneration import (
+                RegenerationError,
+                dispatch_scene_media_regeneration,
+                scene_for_asset,
             )
 
-        return QualityScoreResponse.model_validate(score)
+            asset = await self.db.scalar(
+                select(Asset).where(Asset.id == score.asset_id)
+            )
+            if asset is None:
+                regeneration_note = (
+                    f"Asset {score.asset_id} no longer exists; nothing to regenerate."
+                )
+                logger.warning(regeneration_note)
+            else:
+                try:
+                    scene = await scene_for_asset(self.db, asset.scene_id, asset.id)
+                    job = await dispatch_scene_media_regeneration(
+                        self.db, scene,
+                        reason=f"quality_reject:{score_id}",
+                    )
+                    regeneration_note = (
+                        f"Regeneration dispatched as job {job.id} "
+                        f"(celery task {job.celery_task_id})."
+                    )
+                    logger.info(
+                        "Quality rejection regeneration dispatched: score=%s "
+                        "asset=%s scene=%s job=%s",
+                        score_id, asset.id, scene.id, job.id,
+                    )
+                except RegenerationError as exc:
+                    regeneration_note = (
+                        f"Rejection recorded, but regeneration was NOT "
+                        f"dispatched: {exc}"
+                    )
+                    logger.warning(
+                        "Quality rejection regeneration NOT dispatched: "
+                        "score=%s asset=%s reason=%s",
+                        score_id, score.asset_id, exc,
+                    )
+
+        response = QualityScoreResponse.model_validate(score)
+        response.regeneration_note = regeneration_note
+        return response

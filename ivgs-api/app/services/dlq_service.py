@@ -26,6 +26,80 @@ from app.schemas.dlq import (
 
 logger = logging.getLogger(__name__)
 
+# The queue a replay lands on when the DLQ row does not record one. "default" is
+# the orchestrator's own queue and is consumed on node-01, so a replay with a
+# lost queue name still reaches a worker rather than sitting in a queue nothing
+# reads. Recorded in the response so the operator can see it was a fallback.
+FALLBACK_REPLAY_QUEUE = "default"
+
+
+class DLQReplayError(RuntimeError):
+    """A DLQ message could not be re-enqueued.
+
+    WP-45 Task 3, site 4. Replay used to mark the row ``resolution='replayed'``,
+    commit, and return a 200 whose body said the message had been replayed -
+    with the send_task sitting underneath as a five-line comment. The operator
+    was told the failed task had been re-run; nothing had been. Worse, the row
+    was now marked resolved, so it dropped out of the unresolved list and out of
+    the operator's view: the DLQ's one job is to retain what failed, and its
+    replay button quietly discarded messages instead.
+
+    Raised so the resolution is never written for a replay that did not happen.
+    """
+
+
+def _replay_args(message: DeadLetterMessage) -> tuple[list, dict, str]:
+    """The (args, kwargs, queue) to re-enqueue a DLQ message with.
+
+    ``task_args`` and ``task_kwargs`` are JSONB and the ORM types them as dicts,
+    but Celery needs args to be a sequence. A dict arrives here when the column
+    was written from something that was not a list; it is coerced rather than
+    passed through, because ``send_task(args={...})`` raises inside the producer
+    and would look like a broker fault.
+    """
+    raw_args = message.task_args
+    if raw_args is None:
+        args: list = []
+    elif isinstance(raw_args, list):
+        args = raw_args
+    elif isinstance(raw_args, dict):
+        # A dict here almost always means positional args were recorded under
+        # keys; there is no faithful ordering to recover, so refuse rather than
+        # replay the task with arguments in an invented order.
+        raise DLQReplayError(
+            f"message {message.id} recorded task_args as an object, not a list; "
+            "there is no reliable positional order to replay it with."
+        )
+    else:
+        args = [raw_args]
+
+    kwargs = message.task_kwargs if isinstance(message.task_kwargs, dict) else {}
+    queue = message.original_queue or FALLBACK_REPLAY_QUEUE
+    return args, kwargs, queue
+
+
+def _send_replay(message: DeadLetterMessage) -> str:
+    """Re-enqueue one DLQ message. Returns the new Celery task id."""
+    if not message.task_name:
+        raise DLQReplayError(
+            f"message {message.id} has no task_name, so there is nothing to "
+            "re-enqueue. Discard it instead."
+        )
+    args, kwargs, queue = _replay_args(message)
+
+    from app.services.celery_producer import celery_app as pipeline_celery
+
+    try:
+        result = pipeline_celery.send_task(
+            message.task_name, args=args, kwargs=kwargs, queue=queue,
+        )
+    except Exception as exc:
+        raise DLQReplayError(
+            f"could not re-enqueue {message.task_name} for message "
+            f"{message.id}: {exc}"
+        ) from exc
+    return result.id
+
 
 class DLQService:
     """Business logic for dead letter queue management."""
@@ -108,6 +182,13 @@ class DLQService:
                 f"Cannot replay a resolved message."
             )
 
+        # Dispatch FIRST, mark resolved second. The old order marked the row
+        # replayed and then did nothing; this order cannot mark a row replayed
+        # unless a broker message exists, and a failed dispatch leaves the
+        # message unresolved and still visible in the DLQ - which is where a
+        # message that has not been re-run belongs.
+        celery_task_id = _send_replay(message)
+
         message.resolution = "replayed"
         message.reviewed_at = datetime.now(timezone.utc)
         message.reviewed_by = replayed_by
@@ -116,17 +197,11 @@ class DLQService:
         await self.db.refresh(message)
 
         logger.info(
-            f"DLQ message replayed: id={message_id} task={message.task_name} "
-            f"by={replayed_by}"
+            "DLQ message replayed: id=%s task=%s queue=%s celery_task=%s by=%s",
+            message_id, message.task_name,
+            message.original_queue or FALLBACK_REPLAY_QUEUE,
+            celery_task_id, replayed_by,
         )
-
-        # Phase 5: dispatch Celery task
-        # celery_app.send_task(
-        #     message.task_name,
-        #     args=message.task_args,
-        #     kwargs=message.task_kwargs,
-        #     queue=message.original_queue,
-        # )
 
         return DLQDetailResponse.model_validate(message)
 
@@ -197,31 +272,45 @@ class DLQService:
 
         now = datetime.now(timezone.utc)
         replayed_ids = []
+        failures: List[str] = []
 
         for message in messages:
+            # Per message, not all-or-nothing. One malformed row in a hundred
+            # must not block the other ninety-nine, and a row that could not be
+            # replayed stays unresolved so it is still in the operator's list.
+            try:
+                celery_task_id = _send_replay(message)
+            except DLQReplayError as exc:
+                failures.append(f"{message.id}: {exc}")
+                logger.warning("DLQ bulk replay skipped %s: %s", message.id, exc)
+                continue
+
             message.resolution = "replayed"
             message.reviewed_at = now
             message.reviewed_by = replayed_by
             replayed_ids.append(message.id)
-
-            # Phase 5: dispatch Celery task
-            # celery_app.send_task(
-            #     message.task_name,
-            #     args=message.task_args,
-            #     kwargs=message.task_kwargs,
-            #     queue=message.original_queue,
-            # )
+            logger.info(
+                "DLQ bulk replay: id=%s task=%s celery_task=%s",
+                message.id, message.task_name, celery_task_id,
+            )
 
         await self.db.commit()
 
         logger.info(
-            f"DLQ bulk replay: {len(replayed_ids)} messages replayed by={replayed_by} "
-            f"filters={filters.model_dump(exclude_unset=True)}"
+            "DLQ bulk replay: %s replayed, %s skipped, by=%s filters=%s",
+            len(replayed_ids), len(failures), replayed_by,
+            filters.model_dump(exclude_unset=True),
         )
 
+        # replayed_count counts messages that produced a broker message. It used
+        # to count rows the loop had touched, which was every match, whether or
+        # not anything was re-run - so the number the operator read was the size
+        # of the filter, not the size of the action.
         return DLQBulkReplayResponse(
             replayed_count=len(replayed_ids),
             message_ids=replayed_ids,
+            skipped_count=len(failures),
+            skipped_reasons=failures[:20],
         )
 
     async def get_analytics(self) -> DLQAnalyticsResponse:

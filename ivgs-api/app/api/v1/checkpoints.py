@@ -32,7 +32,7 @@ from app.schemas.checkpoint import (
     CheckpointDetailResponse,
     ResumeResponse,
 )
-from app.services.checkpoint_service import CheckpointService
+from app.services.checkpoint_service import CheckpointService, ResumeDispatchError
 from shared.models.enums import UserRole
 
 logger = logging.getLogger(__name__)
@@ -206,11 +206,23 @@ async def resume_pipeline(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Trigger pipeline resume from last successful checkpoint."""
+    """Resume the pipeline from the last successful checkpoint.
+
+    WP-45 Task 3, site 7. This used to create a second job row carrying
+    ``resume_from_stage`` and dispatch nothing - the stub named
+    ``pipeline.execute_stage``, which is not a registered task. The real entry
+    point, ``dispatch_pipeline``, has read ``resume_from_stage`` off the job
+    context since it was written; nothing ever sent it one.
+    """
     await _verify_job_access(job_id, current_user, db)
     service = CheckpointService(db)
     try:
         result = await service.resume_from_checkpoint(job_id, current_user.username)
+    except ResumeDispatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "DISPATCH_FAILED", "message": str(e)}},
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

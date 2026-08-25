@@ -31,7 +31,7 @@ from app.schemas.dlq import (
     DLQBulkReplayResponse,
     DLQAnalyticsResponse,
 )
-from app.services.dlq_service import DLQService
+from app.services.dlq_service import DLQReplayError, DLQService
 
 logger = logging.getLogger(__name__)
 
@@ -118,10 +118,22 @@ async def replay_dlq_message(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Re-enqueue original task with same arguments."""
+    """Re-enqueue original task with same arguments.
+
+    WP-45 Task 3: a 200 here means a broker message exists. It used to mean the
+    row had been marked ``replayed`` - which also removed it from the unresolved
+    list, so the button quietly discarded messages it claimed to have re-run.
+    """
     service = DLQService(db)
     try:
         result = await service.replay_message(message_id, current_user.username)
+    except DLQReplayError as e:
+        # 502: the API is fine, the re-enqueue is not. The message stays
+        # unresolved and stays in the operator's list.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "REPLAY_DISPATCH_FAILED", "message": str(e)}},
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -209,6 +221,11 @@ async def bulk_replay_dlq(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Bulk replay by filter criteria. Only replays unresolved messages."""
+    """Bulk replay by filter criteria. Only replays unresolved messages.
+
+    WP-45 Task 3: per-message, not all-or-nothing. A message that could not be
+    re-enqueued is left unresolved and counted under ``skipped_count`` with its
+    reason, so a partial replay reports itself as partial.
+    """
     service = DLQService(db)
     return await service.bulk_replay(data, current_user.username)

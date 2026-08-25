@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.storyboard_scene import StoryboardScene
 from app.models.render_job import RenderJob
+from app.services.regeneration import dispatch_scene_media_regeneration
 
 logger = logging.getLogger(__name__)
 
@@ -149,29 +150,33 @@ class StoryboardService:
         project_id: UUID,
         scene_id: UUID,
     ) -> Optional[RenderJob]:
-        """
-        Queue LLM regeneration of a specific scene.
+        """Re-run this scene's media generation, from the scene's current fields.
 
-        Creates a render job record. Actual LLM call dispatched in Phase 5.
+        WP-45 Task 3, site 1 - the original WP-43 D-3 finding, and the one that
+        named the whole family. This inserted a ``storyboard_generation`` job
+        row, logged "Scene regeneration queued", returned 202 and dispatched
+        nothing. Nine such rows are sitting ``pending`` with zero checkpoints on
+        the reference project alone, two of them created 2026-08-25; nothing was
+        ever going to consume them, and the progress strip read them as work in
+        flight.
+
+        Two things change besides the dispatch.
+
+        The job_type was ``storyboard_generation``, which named the wrong work:
+        pressing Regen on a scene card does not re-run the storyboard LLM, it
+        re-renders that scene's media. The row now says image_generation /
+        video_generation / animation_generation, matching the branch that will
+        actually run, so the Jobs tab and the tracker stop mislabelling it.
+
+        And the regeneration consumes the scene's **current** fields, as ruled.
+        An operator pressing Regen has usually just edited the scene; replaying
+        the arguments that produced the asset they are replacing would regenerate
+        exactly what they were trying to change.
         """
         scene = await self.get_scene(project_id, scene_id)
         if scene is None:
             return None
 
-        job = RenderJob(
-            project_id=project_id,
-            job_type="storyboard_generation",
-            status="pending",
+        return await dispatch_scene_media_regeneration(
+            self.db, scene, reason=f"scene_regenerate:{scene_id}",
         )
-        self.db.add(job)
-        await self.db.commit()
-        await self.db.refresh(job)
-
-        logger.info(
-            f"Scene regeneration queued: scene={scene_id} project={project_id} job={job.id}"
-        )
-
-        # Phase 5: dispatch Celery task
-        # celery_app.send_task("pipeline.regenerate_scene", args=[str(job.id), str(scene_id)])
-
-        return job

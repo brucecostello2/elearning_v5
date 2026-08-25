@@ -19,7 +19,7 @@ from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.language_variant import LanguageVariantCreate, LanguageVariantResponse
 from app.schemas.render_job import JobResponse
-from app.services.language_service import LanguageService
+from app.services.language_service import LanguageService, LocalisationDispatchError
 
 logger = logging.getLogger(__name__)
 
@@ -78,10 +78,26 @@ async def retry_variant(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Retry failed localization pipeline."""
+    """Retry a failed localization by re-running the back half in that language.
+
+    WP-45 Task 3, site 5. This used to reset the variant to ``pending``, insert
+    a ``localisation`` job row and dispatch nothing - the stub named
+    ``pipeline.localise``, a task that is not registered anywhere in the fleet.
+
+    **Honest scope:** IVGS has no translation stage. The retry re-runs TTS,
+    talking head, draft and final render with the variant's ``language_code``,
+    so the target language's voice is used - but the scene narration is stored
+    once, in the source language, and nothing translates it. Recorded as a gap
+    rather than implied to be closed.
+    """
     service = LanguageService(db)
     try:
         job = await service.retry_variant(project_id, variant_id)
+    except LocalisationDispatchError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "DISPATCH_FAILED", "message": str(e)}},
+        )
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

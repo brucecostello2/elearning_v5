@@ -140,12 +140,21 @@ class PromptTestRequest(BaseModel):
 
 
 class PromptTestResponse(BaseModel):
-    """Response from Prompt Playground test."""
+    """Response from Prompt Playground test.
+
+    WP-45 Task 3: ``engine`` and ``endpoint`` say which model actually answered
+    and where it lives. They exist because ``model_response`` used to be a
+    hand-written placeholder in exactly this field, and a caller had no way to
+    tell a real completion from a plausible-looking sentence about the tool.
+    """
 
     rendered_prompt: str
     model_id: str
     model_response: str
     usage: Optional[Dict[str, Any]] = None
+    engine: Optional[str] = None
+    endpoint: Optional[str] = None
+    finish_reason: Optional[str] = None
 
 
 class PromptRenderRequest(BaseModel):

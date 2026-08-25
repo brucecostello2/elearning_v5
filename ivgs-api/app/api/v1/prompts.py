@@ -43,6 +43,7 @@ from app.schemas.prompt import (
     PromptTestResponse,
     EffectivePrompt,
 )
+from app.services.llm_playground import PlaygroundError
 from app.services.prompt_service import PromptService
 
 logger = logging.getLogger(__name__)
@@ -184,6 +185,14 @@ async def test_prompt(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+        )
+    except PlaygroundError as e:
+        # WP-45 Task 3: the model was not reached, or refused. Said plainly,
+        # with the server's own message, instead of returning a well-formed
+        # 200 whose model_response is a sentence nobody generated.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "MODEL_UNAVAILABLE", "message": str(e)}},
         )
     return PromptTestResponse(**result)
 
@@ -410,6 +419,14 @@ async def playground_execute(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+        )
+    except PlaygroundError as e:
+        # WP-45 Task 3: the model was not reached, or refused. Said plainly,
+        # with the server's own message, instead of returning a well-formed
+        # 200 whose model_response is a sentence nobody generated.
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "MODEL_UNAVAILABLE", "message": str(e)}},
         )
     return PromptTestResponse(**result)
 

@@ -25,6 +25,12 @@ class QualityScoreResponse(BaseModel):
     reviewed_at: Optional[datetime] = None
     review_notes: Optional[str] = None
     created_at: datetime
+    # WP-45 Task 3, site 6. What actually happened to the regeneration a
+    # rejection asked for. Absent when none was requested. This exists because
+    # the rejection and the regeneration can succeed independently, and a
+    # reviewer who ticked "regenerate" must be able to see which of the two
+    # happened rather than reading "rejected" and assuming both.
+    regeneration_note: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

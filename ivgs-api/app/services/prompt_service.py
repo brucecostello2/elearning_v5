@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.prompt import Prompt
 from app.schemas.prompt import EffectivePrompt
+from app.services.llm_playground import DEFAULT_ENGINE, PlaygroundError, run_completion
 
 logger = logging.getLogger(__name__)
 
@@ -313,6 +314,30 @@ class PromptService:
         except UndefinedError as e:
             raise ValueError(f"Undefined variable in prompt: {e}")
 
+    async def _engine_for_model(self, model_id: str) -> str:
+        """Which serving engine holds ``model_id``, per the AD-01 model store.
+
+        Falls back to vllm when the store has no row for the name - the
+        playground must stay usable for a model an operator is serving but has
+        not registered. A non-chat engine is refused loudly by run_completion
+        rather than being coerced into one that happens to answer.
+        """
+        from sqlalchemy import text as _sql_text
+
+        try:
+            row = await self.db.execute(
+                _sql_text(
+                    "SELECT engine::text FROM models WHERE name = :name "
+                    "AND enabled IS TRUE LIMIT 1"
+                ),
+                {"name": model_id},
+            )
+            engine = row.scalar_one_or_none()
+        except Exception as exc:  # model store absent in this environment
+            logger.warning("Playground engine lookup failed for %s: %s", model_id, exc)
+            engine = None
+        return engine or DEFAULT_ENGINE
+
     async def test_prompt(
         self,
         prompt_text: str,
@@ -321,10 +346,20 @@ class PromptService:
         template_variables: Optional[Dict[str, str]] = None,
     ) -> Dict:
         """
-        Prompt Playground: test a prompt against a self-hosted model.
+        Prompt Playground: send the rendered prompt to a self-hosted model.
 
-        Phase 3 stub: returns rendered prompt and a placeholder response.
-        Phase 5: will call vLLM/Ollama through LLMProvider interface.
+        WP-45 Task 3, site 8. This used to render the template, validate its
+        Jinja2, and return a hand-written sentence in the ``model_response``
+        field - "[Phase 3 stub] This is a placeholder response..." - with a 200
+        and a word-count in the ``usage`` block that looked like token counts.
+        An operator tuning a storyboard prompt was reading a description of the
+        tool instead of the model's answer.
+
+        The rendering half was never the stub and is unchanged: Jinja2 syntax is
+        still validated whether or not variables are supplied, and a syntax error
+        is still a 400 before anything is dispatched. What is new is that the
+        rendered prompt goes to the engine the model store says serves this
+        model, and the returned text is the model's.
         """
         # Always validate Jinja2 syntax; render if variables provided
         rendered = prompt_text
@@ -335,22 +370,25 @@ class PromptService:
         if template_variables:
             rendered = self.render_template(prompt_text, template_variables)
 
-        # Stub response — real vLLM call in Phase 5
-        logger.info("Prompt Playground test: model=%s prompt_length=%s", model_id, len(rendered))
+        engine = await self._engine_for_model(model_id)
+        logger.info(
+            "Prompt Playground test: model=%s engine=%s prompt_length=%s",
+            model_id, engine, len(rendered),
+        )
+        result = await run_completion(
+            prompt=rendered,
+            model_id=model_id,
+            engine=engine,
+            parameters=parameters,
+        )
         return {
             "rendered_prompt": rendered,
             "model_id": model_id,
-            "model_response": (
-                "[Phase 3 stub] This is a placeholder response. "
-                "In Phase 5, this will call the self-hosted vLLM/Ollama model. "
-                f"Model requested: {model_id}. "
-                f"Prompt length: {len(rendered)} chars."
-            ),
-            "usage": {
-                "prompt_tokens": len(rendered.split()),
-                "completion_tokens": 0,
-                "total_tokens": len(rendered.split()),
-            },
+            "model_response": result["model_response"],
+            "usage": result["usage"],
+            "engine": result["engine"],
+            "endpoint": result["endpoint"],
+            "finish_reason": result["finish_reason"],
         }
 
     # ── New methods for missing CRUD endpoints ───────────────────────

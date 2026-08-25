@@ -118,7 +118,16 @@ class DLQAnalyticsResponse(BaseModel):
 
 
 class DLQBulkReplayResponse(BaseModel):
-    """Response for bulk replay operation."""
+    """Response for bulk replay operation.
+
+    WP-45 Task 3: ``replayed_count`` counts messages that produced a broker
+    message. It used to count every row the loop touched, whether or not
+    anything was re-enqueued - so the number was the size of the filter, not the
+    size of the action. ``skipped_count`` and ``skipped_reasons`` exist so a
+    partial replay reports itself as partial instead of rounding up.
+    """
 
     replayed_count: int = 0
     message_ids: List[UUID] = []
+    skipped_count: int = 0
+    skipped_reasons: List[str] = []

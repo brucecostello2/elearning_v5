@@ -23,6 +23,7 @@ from app.models.user import User
 from app.schemas.storyboard import SceneResponse, SceneUpdate, SceneReorderRequest, SceneCreate
 from app.schemas.render_job import JobResponse
 from app.services.storyboard_service import StoryboardService
+from app.services.regeneration import RegenerationError
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
@@ -180,9 +181,19 @@ async def regenerate_scene(
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Queue LLM regeneration of a specific scene."""
+    """Re-run this scene's media generation from its current fields (WP-45 Task 3).
+
+    A 202 from this route now means a broker message was produced. It used to
+    mean a row was inserted.
+    """
     service = StoryboardService(db)
-    job = await service.regenerate_scene(project_id, scene_id)
+    try:
+        job = await service.regenerate_scene(project_id, scene_id)
+    except RegenerationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "REGENERATION_UNAVAILABLE", "message": str(e)}},
+        )
     if job is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
