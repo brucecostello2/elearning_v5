@@ -43,3 +43,19 @@ python-dotenv==1.0.1
 tenacity==9.0.0
 orjson==3.10.14
 Pillow==12.2.0
+
+# --- Image / video analysis (WP-44-QUALITY) ---
+# numpy was NEVER declared here, and ImageValidator's blank/solid-colour and
+# pixel-variance checks sit behind `import numpy`. In the shipped image that
+# import raised ImportError and the old code marked both checks PASSED, which
+# is how sixteen deformed images scored 1.0 on the first e2e run (swallow
+# register instance 24). Declaring it is half the fix; the other half is that
+# the checks now report themselves MISSING rather than passed if it is ever
+# absent again.
+numpy==2.2.1
+
+# onnxruntime powers the WP-46 animation input guard: YOLOv10m person detection
+# on the reference image before any GPU time is spent rendering a "person"
+# that is not in the picture. CPU execution provider only - measured ~1.3 s per
+# 1920x1080 still on one thread, against the 256 s a real Wan render costs.
+onnxruntime==1.20.1

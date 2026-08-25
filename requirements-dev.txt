@@ -41,6 +41,20 @@ pytest-timeout==2.3.1
 factory-boy==3.3.1
 freezegun==1.4.0
 
+# ---------------------------------------------------------------------------
+# WP-44-QUALITY (2026-08-26). The image/video validators and the animation
+# input guard are real numerical code now, and their tests exercise them with
+# real pixels and real frames rather than with mocks. Same pins as
+# ivgs-workers/requirements.txt, for the same reason as above.
+#
+# Pillow was ALREADY declared in ivgs-workers/requirements.txt and missing
+# from .venv, which is why the WP-44 tests found no PIL. numpy and onnxruntime
+# are new declarations made by WP-44 itself.
+# ---------------------------------------------------------------------------
+Pillow==12.2.0
+numpy==2.2.1
+onnxruntime==1.20.1
+
 # Deliberately NOT here: aiosqlite. WP-32.2 took option (b) and pointed the root
 # suite at the disposable Postgres instead, because SQLite cannot reproduce this
 # schema's enums, TRUNCATE ... CASCADE, or partitioning -- a pass under SQLite

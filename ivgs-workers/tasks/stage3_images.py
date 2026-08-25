@@ -63,6 +63,7 @@ from utils.error_handler import (
 from utils.gpu_utils import acquire_gpu_reservation
 from utils.image_validator import ImageValidator
 from utils.llm_binding import resolve_text_llm_binding
+from utils.quality_reporting import submit_quality_score as _submit_quality_score
 from utils.media_converter import (
     ImageConverter,
     check_duplicate_asset,
@@ -130,6 +131,17 @@ class SceneImageResult(BaseModel):
     quality_score: float = 0.0
     quality_decision: str = ""
     clip_score: Optional[float] = None
+    # WP-44. `clip_score: None` used to mean three different things — not
+    # requested, service unreachable, and "scored zero" — and the first e2e run
+    # recorded sixteen of them next to a quality_score of 1.0. The status field
+    # is what disambiguates: "scored" | "unavailable" | "not_requested". A
+    # reader must never have to infer which from a null.
+    clip_status: str = "not_requested"
+    # Which checks did NOT run, and how much of the scoring weight did. A
+    # quality_score computed with checks missing has to say so on its face.
+    checks_missing: List[str] = Field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
@@ -271,33 +283,23 @@ async def _upload_to_seaweedfs(
         return data.get("asset_id", data.get("id", "")), seaweedfs_path
 
 
-async def _submit_quality_score(
-    asset_id: str,
-    quality_score: float,
-    quality_decision: str,
-    scoring_details: Dict[str, Any],
-    config: WorkerConfig,
-) -> None:
-    """Submit quality score to Phase 4 Quality Scores API."""
-    async with httpx.AsyncClient(
-        timeout=15.0,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {config.pipeline_api.service_token}",
-        },
-    ) as client:
-        try:
-            await client.post(
-                f"{config.pipeline_api.full_base_url}/quality-scores",
-                json={
-                    "asset_id": asset_id,
-                    "quality_score": quality_score,
-                    "decision": quality_decision,
-                    "scoring_details": scoring_details,
-                },
-            )
-        except Exception as e:
-            logger.warning("quality_score_submit_failed", error=str(e))
+def _quality_fields(validation: Any) -> Dict[str, Any]:
+    """The quality half of a SceneImageResult, from one validation result.
+
+    WP-44. Three call sites used to copy `quality_score` / `quality_decision` /
+    `clip_score` by hand and none of them carried the fact that checks had been
+    skipped. One helper, so a field added to the validator cannot be forgotten
+    by two of three constructors.
+    """
+    return {
+        "quality_score": validation.quality_score,
+        "quality_decision": validation.decision.value,
+        "clip_score": validation.clip_score,
+        "clip_status": validation.clip_status,
+        "checks_missing": list(validation.checks_missing),
+        "check_coverage": validation.check_coverage,
+        "quality_score_complete": validation.quality_score_complete,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +437,13 @@ async def _process_single_scene(
             f"{config.pipeline_api.base_url}/api/v1/clip"
             if task_input.enable_clip_scoring else None
         )
-        validator = ImageValidator(clip_api_url=clip_api_url)
+        validator = ImageValidator(
+            clip_api_url=clip_api_url,
+            # The scoring route is service-token authenticated like every other
+            # worker->API route. Without this the call is a 403 and CLIP is
+            # recorded "unavailable" — correct, and worthless.
+            clip_auth_token=config.pipeline_api.service_token,
+        )
         validation = validator.validate(
             image_data=final_image,
             prompt=positive_prompt,
@@ -452,13 +460,11 @@ async def _process_single_scene(
             return SceneImageResult(
                 scene_id=scene.scene_id,
                 scene_index=scene.scene_index,
-                quality_score=validation.quality_score,
-                quality_decision=validation.decision.value,
-                clip_score=validation.clip_score,
                 model_used=model_used,
                 generation_time_seconds=round(time.monotonic() - start_time, 3),
                 errors=validation.errors,
                 status="failed",
+                **_quality_fields(validation),
             )
 
         # 5. SHA-256 dedup check
@@ -489,13 +495,11 @@ async def _process_single_scene(
                     width=validation.actual_width,
                     height=validation.actual_height,
                     file_size_bytes=len(final_image),
-                    quality_score=validation.quality_score,
-                    quality_decision=validation.decision.value,
-                    clip_score=validation.clip_score,
                     model_used=model_used,
                     generation_time_seconds=round(time.monotonic() - start_time, 3),
                     was_deduplicated=True,
                     status="success",
+                    **_quality_fields(validation),
                 )
 
         # 6. Upload to SeaweedFS
@@ -507,21 +511,22 @@ async def _process_single_scene(
             config=config,
         )
 
-        # 8. Submit quality score
-        if task_input.enable_clip_scoring:
-            await _submit_quality_score(
-                asset_id=asset_id,
-                quality_score=validation.quality_score,
-                quality_decision=validation.decision.value,
-                scoring_details={
-                    "clip_score": validation.clip_score,
-                    "resolution_ok": validation.resolution_ok,
-                    "format_ok": validation.format_ok,
-                    "corruption_ok": validation.corruption_ok,
-                    "prompt_used": positive_prompt[:200],
-                },
-                config=config,
-            )
+        # 8. Submit quality score.
+        # WP-44: unconditional. It used to be gated on `enable_clip_scoring`, so
+        # turning CLIP off also turned off the whole quality record — the gate's
+        # verdict vanished along with one of its metrics. The verdict is worth
+        # recording whether or not CLIP contributed to it, and the details now
+        # say which checks ran.
+        details = validation.scoring_details()
+        details["prompt_used"] = positive_prompt[:200]
+        await _submit_quality_score(
+            asset_id=asset_id,
+            quality_score=validation.quality_score,
+            quality_decision=validation.decision.value,
+            scoring_details=details,
+            config=config,
+            job_id=task_input.job_id,
+        )
 
         elapsed = round(time.monotonic() - start_time, 3)
         log.info(
@@ -540,13 +545,11 @@ async def _process_single_scene(
             width=validation.actual_width,
             height=validation.actual_height,
             file_size_bytes=len(final_image),
-            quality_score=validation.quality_score,
-            quality_decision=validation.decision.value,
-            clip_score=validation.clip_score,
             model_used=model_used,
             generation_time_seconds=elapsed,
             was_deduplicated=was_deduplicated,
             status="success",
+            **_quality_fields(validation),
         )
 
     except Exception as e:
