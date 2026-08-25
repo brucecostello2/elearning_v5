@@ -809,7 +809,13 @@ the WP-44 seam in the meantime — narrower than what `test_stage3.py` claims.
 
 ## 11. Push block — count-gated, for ALL held commits
 
-**HELD: 7 commits.** Nothing has been pushed. I have not run `git push` in this package.
+> **Superseded 2026-08-26 by §13.3.** `origin/main` moved while the operator rulings were
+> being applied: all seven commits below are **already on the remote** — pushed between the
+> two halves of this package, and not by me. Use §13.3, which is count-gated for what is
+> actually held now. This block is kept as the record of what was held when the report was
+> written.
+
+**HELD at the time of writing: 7 commits.** Nothing has been pushed. I have not run `git push` in this package.
 
 ```
 842caf7  fix(wp-44): the gate stops paying a missing checker, and numpy stops being optional
@@ -868,3 +874,188 @@ fi
 | every existing engine untouched | **MET** — verified by uptime and by unchanged `IVGS_LATENTSYNC_TAG` |
 | full suite at most twice | **MET** — twice; delta established by targeted comparison |
 | commit and HOLD | **MET** — 7 commits, nothing pushed |
+
+---
+
+## 13. Rulings and execution
+
+Operator rulings on §10, received 2026-08-26 after the report was written. All five decided.
+
+| | Ruling | Action |
+|---|---|---|
+| **D-1** | **Do NOT create a store row.** The CLIP scorer is raised with MBCP as a taxonomy question — image-text scoring is not one of the nine capability stages, and no certification exists to attest to. | **None.** The recommendation in §3.7 is adopted as ruled. The provenance that exists stays as stated: model id and revision pinned by the image digest, reported by `/health`, and carried on every score as `model` / `served_by`. |
+| **D-2** | **RUN IT.** Execute `WP-44-storyboard-prompt-v3.sql` against the live database with `COMMIT`. | **EXECUTED.** §13.1 |
+| **D-3** | **RUN IT with `--write`.** The reference project stays frozen as the Temporal conformance baseline; RUN-2 uses a fresh project. | **EXECUTED.** §13.2 |
+| **D-4** | **AD-02 Draft 4 adopted in principle.** P2.43 stays OPEN pending operator review of its four sub-questions. No spec text edits. | **None.** The draft stands as written; no specification file is touched, and P2.43's ledger status is unchanged — still OPEN, still blocked on review rather than on work. |
+| **D-5** | **Acknowledged.** The real `IVGS_SERVICE_TOKEN` will be set in the queued S-1 credential-rotation window, not in this package. | **None.** Recorded here so the deferral is on the record next to the route it guards. |
+
+### 13.1 D-2 executed — the live storyboard prompt
+
+`docker exec -i ivgs-postgres psql -U ivgs -d ivgs -v ON_ERROR_STOP=1 < dev/workpackages/WP-44-storyboard-prompt-v3.sql` → `PSQL_EXIT=0`, ending in `COMMIT`.
+
+The row-level backup taken immediately before (`pg_dump -t prompts --data-only`, 43 lines)
+is in the session scratch, not the repo — it contains no secrets but it is not project
+record either; the rollback path in the SQL's own header is the supported one.
+
+**Pre-state, which the md5 guards required and found:**
+
+```
+storyboard_generation  v1  f  system         397998b23f3dd3754c6127e0d8ea8e70  1070
+storyboard_generation  v2  t  WP-IVGS-0 F6   03b91dd57e98c75477bf44efdae1f73e  1075
+animation_generation   v1  t  system         5b301ffb23acb9141ee5a4d0f5188074   472
+```
+
+**Post-state:**
+
+```
+storyboard_generation  v1  f  system         397998b23f3dd3754c6127e0d8ea8e70  1070
+storyboard_generation  v2  f  WP-IVGS-0 F6   03b91dd57e98c75477bf44efdae1f73e  1075
+storyboard_generation  v3  t  wp-44-quality  8b120d1ff6f84f8286bf16d6022041a0  3793
+animation_generation   v1  f  system         5b301ffb23acb9141ee5a4d0f5188074   472
+animation_generation   v2  t  wp-44-quality  d8f8b018c51931cc7caa0b1df140b9f8  1744
+```
+
+**The three confirmations asked for:**
+
+1. **Exactly one active global row per type** — checked across all ten prompt types, not
+   just the two touched:
+
+   ```
+   master 1 | transcript_refinement 1 | storyboard_generation 1 | image_generation 1
+   video_generation 1 | animation_generation 1 | tts_voice 1 | talking_head 1
+   composition 1 | translation 1
+   ```
+
+2. **md5s match the committed seed files**, compared live against the files in git:
+
+   ```
+   storyboard_generation  db=8b120d1ff6f84f8286bf16d6022041a0  file=8b120d1ff6f84f8286bf16d6022041a0  MATCH
+   animation_generation   db=d8f8b018c51931cc7caa0b1df140b9f8  file=d8f8b018c51931cc7caa0b1df140b9f8  MATCH
+   ```
+
+3. **Old versions deactivated, not deleted** — `storyboard_generation` now has three
+   versions and `animation_generation` two; v1 and v2 are present and `is_active = false`.
+   The `WP-IVGS-0 F6` row that fixed the `{{ narration_text }}` binding is still there,
+   still readable, still restorable through the existing version path.
+
+**And the rules are in the row Stage 2 actually fetches** — checked against the live active
+row rather than against the file that seeded it:
+
+```
+rule_a (NO TEXT IN THE VISUAL)         t
+rule_b (pose reenactment)              t
+rule_c (but that was also incorrect)   t
+rule_d (within 10%)                    t
+```
+
+**Consequence, now live:** the storyboard no longer instructs the model to type equation
+cards as `animation`, which is what makes the Task-5 guard a safety net rather than a
+tripwire. §5.4's judgement call is resolved by this execution — prompt and guard are now
+in step.
+
+### 13.2 D-3 executed — the reference run re-scored
+
+`docker exec ivgs-celery-default python /tmp/rescore_tool.py --write` →
+`persisted: 19 of 19`.
+
+**Verdict counts match the dry run exactly:**
+
+```
+verdicts : {"approved": 10, "flagged": 1, "rejected": 8}
+```
+
+**The two confirmations asked for:**
+
+1. **Row count.** `SELECT count(*) FROM asset_quality_scores` → **20**: the 19 re-score
+   rows plus the one probe row from §3.5, which is kept. Separable by
+   `scoring_details->>'rescored_by'`:
+
+   ```
+   rescored_by = 'WP-44-QUALITY'  ->  approved 10 | rejected 8 | flagged 1   (19)
+   rescored_by IS NULL            ->  approved 1                             (1, the probe)
+   distinct assets covered        ->  19
+   ```
+
+2. **Verdict counts match the dry run** — 10 / 1 / 8, identical, which is the point: the
+   gate is deterministic over the same bytes and the same prompts.
+
+**Every row is an unreviewed machine verdict**, which is what keeps it distinguishable
+from a human decision in the queue:
+
+```
+reviewed_by set on 0 of 20 rows      reviewed_at set on 0 of 20 rows
+```
+
+**The honesty fields survived into the database**, which was the whole point of writing
+them:
+
+```
+quality_score_complete=true   check_coverage=1.0   ->  16 rows
+quality_score_complete=false  check_coverage=0.9   ->   3 rows
+```
+
+The three incomplete ones are the video assets: `audio_ok` is not applicable to a
+video-only MP4, so it is recorded as a **missing check** rather than a failed one, and
+their scores say so on their face. The single flagged row, read back:
+
+```
+asset_id       3bc54e58-3901-440c-a2ea-8f89bbc7476c   (video — the WP-46 Wan render)
+quality_score  0.7222      decision  flagged      reviewed_by  NULL
+checks_missing ["audio_ok"]  coverage 0.9   quality_score_complete false
+```
+
+**One thing worth recording about the read path.** `GET /api/v1/quality/flagged` is
+JWT-gated (`get_current_user`), not service-token — a service token gets 401 and an
+unauthenticated call gets 403. That is correct for a human-facing review route, and it
+means the confirmations above are taken from the database directly rather than through
+that endpoint. Not a defect and not changed; noted so nobody reads "I could not query it
+with the service token" as "the queue is empty". It is not: it holds 20 rows, and for the
+first time in this system's life those rows mean something.
+
+### 13.3 Push block — count-gated, superseding §11
+
+**HELD: 1 commit.**
+
+`origin/main` moved while the rulings were being applied. The seven commits §11 listed are
+**already on the remote** — pushed between the two halves of this package, and **not by
+me**; I have not run `git push` in this package at any point. Verified against a fresh
+`git fetch origin main`, each of the seven confirmed an ancestor of `origin/main`:
+
+```
+origin/main = 8fc57a6  fix(wp-44): a malformed image is not an unavailable scorer
+              26cdc02  docs(wp-44): the report, the AD-02 draft, and two register entries closed
+              da6f1a5  test(wp-44): what a quality score is allowed to claim, pinned
+              f39a777  fix(wp-44): the storyboard learns the four rules this week's runs paid for
+              da61fe5  feat(wp-44): video assets get a validator that runs, and animation gets an input guard
+              ce708c4  feat(wp-44): a CLIP model that exists, and the two routes the gate was talking to
+              842caf7  fix(wp-44): the gate stops paying a missing checker, and numpy stops being optional
+```
+
+So exactly one commit is held now — this one:
+
+```
+<HEAD>   docs(wp-44): operator rulings on all five decisions, and the D-2/D-3 execution evidence
+         (a commit cannot contain its own hash — `git log --oneline -1` gives it)
+```
+
+Run this as one block. It refuses unless the count is exactly what this section claims.
+
+```bash
+git fetch origin main && \
+EXPECTED=1 && \
+ACTUAL=$(git rev-list --count origin/main..HEAD) && \
+if [ "$ACTUAL" != "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git log --oneline origin/main..HEAD && \
+  git status --short && \
+  git push origin main
+fi
+```
+
+**Note on the two live executions.** D-2 and D-3 changed the *database*, not the repo, and
+neither is undone by a revert of any commit. Their rollback paths are the ones already
+written down: the SQL header's version-reactivation block for D-2, and for D-3 nothing —
+the 19 rows are additive, delete nothing, and are separable at any time by
+`scoring_details->>'rescored_by' = 'WP-44-QUALITY'`.
