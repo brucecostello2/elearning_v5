@@ -106,6 +106,11 @@ export interface SceneEditDraft {
   visual_description?: string | null;
   media_type?: unknown;
   duration_seconds?: number | null;
+  camera_angle?: string | null;
+  transition_type?: string | null;
+  effects?: string[] | null;
+  timing_offset_ms?: number | null;
+  generation_params?: Record<string, unknown> | null;
 }
 
 /** Exactly the keys `SceneUpdate` declares. */
@@ -114,7 +119,23 @@ export interface SceneUpdateWire {
   visual_description?: string | null;
   media_type?: MediaType;
   duration_seconds?: number;
+  camera_angle?: string | null;
+  transition_type?: string | null;
+  effects?: string[] | null;
+  timing_offset_ms?: number | null;
+  generation_params?: Record<string, unknown> | null;
 }
+
+/**
+ * `SceneUpdate.timing_offset_ms: int = Field(ge=-60000, le=60000)`.
+ *
+ * A timing offset is a nudge against the narration; a change larger than a
+ * minute is a duration edit or a reorder, and both have their own controls.
+ */
+export const TIMING_OFFSET_MIN_MS = -60000;
+export const TIMING_OFFSET_MAX_MS = 60000;
+/** `SceneUpdate` bounds on the effects list. */
+export const EFFECTS_MAX = 32;
 
 /** The API's own bounds: `duration_seconds: float = Field(ge=0.1, le=600.0)`. */
 export const DURATION_MIN_SECONDS = 0.1;
@@ -129,12 +150,19 @@ export const DURATION_MAX_SECONDS = 600;
  *    An unrecognised value is DROPPED rather than sent and rejected -- the
  *    edit to narration still lands instead of the whole save failing.
  *
- * 2. Only the four declared keys survive. The modal used to send
+ * 2. All NINE declared keys survive, as of WP-45.
+ *
  *    `camera_angle`, `transition_type`, `effects`, `timing_offset_ms` and
- *    `generation_params` as well. Pydantic ignores unknown keys, so those
- *    were never an error -- but they were never STORED either, and the
- *    modal presented them as saved settings. They are now marked in the UI
- *    as local-only rather than silently discarded.
+ *    `generation_params` used to be sent and dropped: Pydantic ignores keys a
+ *    model does not declare, so there was no error on either side and the modal
+ *    presented them as saved settings. WP-43 could only label them "Not saved
+ *    to the server"; WP-45 gave them columns (migration 0028) and a schema, so
+ *    they are sent for real and the notices are gone.
+ *
+ *    They are emitted only when the draft actually carries them, because the
+ *    route reads `model_dump(exclude_unset=True)`: an omitted key leaves the
+ *    stored value alone, and an explicit `null` clears it. Sending `null` for a
+ *    field the operator never touched would wipe it on every save.
  */
 export function sceneUpdatePayload(draft: SceneEditDraft): SceneUpdateWire {
   const out: SceneUpdateWire = {};
@@ -156,7 +184,64 @@ export function sceneUpdatePayload(draft: SceneEditDraft): SceneUpdateWire {
     out.duration_seconds = draft.duration_seconds;
   }
 
+  // WP-45 / WP-43 D-2. `undefined` means "not part of this edit" and is left
+  // off the wire entirely; `null` means "clear it" and is sent.
+  if (draft.camera_angle !== undefined) {
+    out.camera_angle = emptyToNull(draft.camera_angle);
+  }
+  if (draft.transition_type !== undefined) {
+    out.transition_type = emptyToNull(draft.transition_type);
+  }
+  if (draft.effects !== undefined) {
+    out.effects = Array.isArray(draft.effects)
+      ? draft.effects
+          .filter((e): e is string => typeof e === "string" && e.trim().length > 0)
+          .slice(0, EFFECTS_MAX)
+      : null;
+  }
+  if (draft.timing_offset_ms !== undefined) {
+    out.timing_offset_ms =
+      typeof draft.timing_offset_ms === "number" &&
+      Number.isFinite(draft.timing_offset_ms)
+        ? Math.round(draft.timing_offset_ms)
+        : null;
+  }
+  if (draft.generation_params !== undefined) {
+    // Only a plain object reaches the wire. The route refuses anything else,
+    // and a 422 on generation params would fail the whole save including the
+    // narration edit the operator actually came for.
+    out.generation_params =
+      draft.generation_params &&
+      typeof draft.generation_params === "object" &&
+      !Array.isArray(draft.generation_params)
+        ? draft.generation_params
+        : null;
+  }
+
   return out;
+}
+
+/** "" and whitespace mean "cleared"; the API stores null, not an empty string. */
+function emptyToNull(value: string | null | undefined): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/**
+ * Client-side timing-offset check, worded as the server words its own refusal.
+ *
+ * Returns null when the value is acceptable.
+ */
+export function timingOffsetError(ms: unknown): string | null {
+  if (ms === null || ms === undefined) return null;
+  if (typeof ms !== "number" || !Number.isFinite(ms)) {
+    return "Timing offset must be a whole number of milliseconds.";
+  }
+  if (ms < TIMING_OFFSET_MIN_MS || ms > TIMING_OFFSET_MAX_MS) {
+    return `Timing offset must be between ${TIMING_OFFSET_MIN_MS} and ${TIMING_OFFSET_MAX_MS} ms.`;
+  }
+  return null;
 }
 
 /**

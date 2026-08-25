@@ -380,12 +380,23 @@ export interface JobResponse {
   job_type: string;
   node_id: string | null;
   status: JobStatus;
+  /**
+   * WP-45 Task 5 / WP-40 D-4, ruled. These were dead columns: NULL on all 23
+   * rows on the fleet, and nothing in ivgs-api, ivgs-workers or shared/ ever
+   * wrote them. They are stamped now, on the status callback every worker
+   * already makes. Still nullable -- a job that has not started has no start.
+   */
   started_at: string | null;
   completed_at: string | null;
   error_message: string | null;
   retry_count: number;
   max_retries: number;
   failure_category: FailureCategory | null;
+  /** WP-45: the stage the worker last reported. Null until one does. */
+  resume_from_stage?: string | null;
+  /** WP-45 Task 6(c): the language variant this job rendered; null = source. */
+  language_code?: string | null;
+  created_at?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -580,6 +591,20 @@ export interface LanguageVariantResponse {
   state: string;
   final_render_1080p_id: string | null;
   final_render_4k_id: string | null;
+  /**
+   * WP-45 Task 6(c) / WP-43 D-1, ruled derive-never-store. Computed by the API
+   * on every request from this variant's own pipeline checkpoints.
+   *
+   * `null` -- never 0 -- when there is nothing to measure. WP-43 found this
+   * field being read as `progress_percent || 0` when it did not exist at all,
+   * so an absent measurement rendered as a confident 0% beside a language with
+   * a finished 720p draft on disk.
+   */
+  progress_percent?: number | null;
+  completed_stages?: number | null;
+  total_stages?: number | null;
+  /** Where the figure came from, in words. Shown as the column's tooltip. */
+  progress_source?: string | null;
   created_at: string;
 }
 
@@ -641,20 +666,26 @@ export type Project = ProjectResponse & {
 
 export type Asset = AssetResponse;
 
-export type RenderJob = JobResponse & {
-  /** Computed fields added by the API for pipeline views */
-  current_stage?: string;
-  has_checkpoint?: boolean;
-  checkpoint_data?: Record<string, unknown>;
-  assigned_node?: string;
-  assigned_gpu?: string;
-  duration_seconds?: number;
-  /*
-   * WP-40: `stage_statuses` was removed. `JobResponse` does not send it, so
-   * the project Overview's stage strip rendered eight grey circles after a
-   * complete run. Stage state comes from GET /jobs/{id}/checkpoints.
-   */
-};
+/**
+ * WP-45 Task 6(f). Six of the seven "computed fields added by the API" were
+ * never added by the API. `current_stage`, `has_checkpoint`, `checkpoint_data`,
+ * `assigned_node`, `assigned_gpu` and `duration_seconds` are not sent by
+ * `JobResponse` and never were, so the Jobs tab rendered "-" for stage,
+ * "Unassigned" for node and "N/A" for GPU on every row -- every job looked
+ * identical and none of them was identified.
+ *
+ * They are deleted rather than made optional-and-guarded, which is the fix
+ * WP-40's addendum A6 established: a declared field that nothing sends will be
+ * read by the next person who writes a component.
+ *
+ * `duration_seconds` is the one that had a real source: it is derived
+ * client-side from started_at/completed_at (now populated -- WP-45 Task 5) and
+ * falls back to the checkpoint span, which is what the tracker already does.
+ *
+ * `stage_statuses` was removed by WP-40 for the same reason. Stage state comes
+ * from GET /jobs/{id}/checkpoints.
+ */
+export type RenderJob = JobResponse;
 
 /**
  * WP-40 addendum: the `filename` alias was removed. It was not sent by the

@@ -94,10 +94,19 @@ interface PipelineJobFilters {
  *   - AVG DURATION "—", because a project has no started_at/completed_at.
  *   - Rows labelled "Job #c12fa967", which is the project's id.
  *
- * There is no cross-project job route on this API (jobs.py exposes only
- * `GET /projects/{id}/jobs` and `GET /jobs/{id}`), so the list is assembled
- * client-side: projects, then that project's jobs, then -- for terminal jobs
- * only -- the checkpoints that carry the sole timing this system records.
+ * WP-45 Task 6(a): `GET /api/v1/jobs` now exists, so the list is ONE request
+ * instead of 1 + N. It was 17 requests per 15-second poll on this fleet, and
+ * every one of them was a project fetched only to ask for its jobs.
+ *
+ * Project NAMES still come from the projects list -- `JobResponse` carries a
+ * project_id and not a name -- but that is one request that was already being
+ * made, and it is made in parallel with the jobs now rather than before them.
+ *
+ * Checkpoint spans are still fetched for terminal jobs: WP-45 Task 5 made
+ * started_at/completed_at real, so most jobs no longer need one, but a job that
+ * predates that fix has no span of its own and the checkpoints remain the only
+ * timing the system recorded for it (WP-40 D-4: checkpoint-derived duration
+ * stays the fallback).
  *
  * Filters are applied here too. They were previously sent as query params to
  * the projects route, which ignores every one of them, so the state, search
@@ -140,25 +149,23 @@ export interface AggregatedJob extends PipelineJob {
 }
 
 async function fetchAggregatedJobs(): Promise<AggregatedJob[]> {
-  const projectsResp = await fetcher("/api/v1/projects?per_page=100");
-  const projects = unwrapList<{ id: string; name?: string }>(projectsResp);
+  /* WP-45 Task 6(a): two requests, in parallel, whatever the project count. */
+  const [projectsResp, jobsResp] = await Promise.all([
+    fetcher("/api/v1/projects?per_page=100"),
+    fetcher("/api/v1/jobs?per_page=100"),
+  ]);
 
-  const perProject = await Promise.all(
-    projects.map(async (project) => {
-      try {
-        const resp = await fetcher(
-          `/api/v1/projects/${project.id}/jobs?per_page=100`
-        );
-        const jobs = unwrapList<WireJob>(resp);
-        return jobs.map((job) => ({ job, project }));
-      } catch {
-        /* One unreadable project must not blank the whole tracker. */
-        return [];
-      }
-    })
+  const projects = unwrapList<{ id: string; name?: string }>(projectsResp);
+  const projectNames = new Map<string, string>(
+    projects.map((p) => [p.id, p.name ?? p.id])
   );
 
-  const flat = perProject.flat();
+  const flat = unwrapList<WireJob>(jobsResp).map((job) => ({
+    job,
+    /* A job whose project is not in the first 100 keeps its id as its label,
+       rather than being dropped from a list that claims to be all jobs. */
+    project: { id: job.project_id, name: projectNames.get(job.project_id) },
+  }));
 
   /* Timing, for terminal jobs we have not measured yet. */
   const pending = flat

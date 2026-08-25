@@ -156,7 +156,23 @@ function AssetThumbnail({
   const inView = useInView(containerRef);
   const kind = assetMediaKind(asset);
   const isImage = kind === "image";
-  const { url, isLoading, error } = useAssetObjectUrl(asset.id, isImage && inView);
+  /*
+   * WP-45 Task 6(b) / WP-40 §9.3. 480px, not the full-size original.
+   *
+   * This grid drew every image card from the download route, so a 40-card page
+   * pulled ~10 MB of full-size PNGs to render cards a few hundred pixels wide.
+   * There was no alternative until the thumbnail route existed. 480 rather than
+   * the card's own width so the image stays sharp on a 2x display and when the
+   * grid switches to its larger card size.
+   *
+   * The PREVIEW below deliberately does not pass a width: a preview shows the
+   * asset, and a thumbnail is not the asset.
+   */
+  const { url, isLoading, error } = useAssetObjectUrl(
+    asset.id,
+    isImage && inView,
+    480,
+  );
 
   return (
     <div ref={containerRef} className="w-full h-full">

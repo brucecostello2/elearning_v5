@@ -36,7 +36,9 @@ import type { LanguageVariant } from "@/types/api";
  *     verbatim, at the field, in the PipelineGateButton manner.
  *
  * (b) **"PENDING 0%" over a language that has a finished draft.** The 0% was
- *     `variant.progress_percent || 0` over a field that does not exist:
+ *     WP-45 Task 6(c) CLOSED this: the API derives progress from each
+ *     variant's own pipeline checkpoints and sends it. The original defect:
+ *     `variant.progress_percent || 0` over a field that did not exist:
  *     `LanguageVariantResponse` sends id, project_id, language_code, state,
  *     final_render_1080p_id, final_render_4k_id, created_at — and nothing
  *     else. No per-language progress figure is written anywhere in
@@ -304,9 +306,12 @@ export default function LanguagesPage(): React.ReactElement {
                           /* The honest replacement for a fabricated 0%. */
                           <span
                             className="text-xs italic text-gray-500 dark:text-gray-400"
-                            title="No per-language progress figure is recorded by this system. See the WP-43 report."
+                            title={
+                              variant.progress_source ??
+                              "No render job has been attributed to this language yet."
+                            }
                           >
-                            not tracked yet
+                            not started
                           </span>
                         ) : (
                           <div className="flex items-center gap-2">
@@ -316,7 +321,10 @@ export default function LanguagesPage(): React.ReactElement {
                                 style={{ width: `${percent}%` }}
                               />
                             </div>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                            <span
+                              className="text-xs text-gray-500 dark:text-gray-400"
+                              title={variant.progress_source ?? undefined}
+                            >
                               {percent}%
                             </span>
                           </div>

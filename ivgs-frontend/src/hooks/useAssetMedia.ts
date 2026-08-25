@@ -4,7 +4,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
 import { unwrapList } from "@/lib/unwrap";
-import { assetDownloadPath, assetFilename, type MediaAssetLike } from "@/lib/media";
+import {
+  assetDownloadPath,
+  assetFilename,
+  assetThumbnailPath,
+  type MediaAssetLike,
+} from "@/lib/media";
 
 /**
  * Authenticated media loading for asset cards (WP-40 Task 1).
@@ -40,6 +45,13 @@ interface AssetObjectUrl {
 export function useAssetObjectUrl(
   assetId: string | null | undefined,
   enabled: boolean,
+  /**
+   * WP-45 Task 6(b). When set, fetch the width-limited thumbnail instead of the
+   * full-size original. Card grids pass a width; anything that shows the asset
+   * itself (the preview modal, the download) must not, because a thumbnail is
+   * not the asset.
+   */
+  thumbnailWidth?: number,
 ): AssetObjectUrl {
   const [url, setUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -53,8 +65,13 @@ export function useAssetObjectUrl(
     setIsLoading(true);
     setError(null);
 
+    const path =
+      typeof thumbnailWidth === "number"
+        ? assetThumbnailPath(assetId, thumbnailWidth)
+        : assetDownloadPath(assetId);
+
     apiClient
-      .blob(assetDownloadPath(assetId))
+      .blob(path)
       .then(({ blob }) => {
         if (cancelled) return;
         const objectUrl = URL.createObjectURL(blob);
@@ -77,7 +94,7 @@ export function useAssetObjectUrl(
       }
       setUrl(null);
     };
-  }, [assetId, enabled]);
+  }, [assetId, enabled, thumbnailWidth]);
 
   return { url, isLoading, error };
 }

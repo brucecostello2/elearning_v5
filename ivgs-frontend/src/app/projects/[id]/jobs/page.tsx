@@ -19,6 +19,47 @@ import type { RenderJob } from "@/types/api";
  *   - Real-time polling for active jobs
  */
 
+/**
+ * The blank a field gets when the system does not record it.
+ *
+ * WP-45 Task 6(f). "—" and "Unassigned" and "N/A" all read as measurements:
+ * "no stage", "no node", "no GPU". They were none of those - they were six
+ * field names the API has never sent. Where a value is genuinely unrecorded the
+ * tab says so, in words, once.
+ */
+const notRecorded = (
+  <span className="text-xs italic text-gray-400 dark:text-gray-500">
+    not recorded
+  </span>
+);
+
+/** `job_type` is a lowercase enum on the wire; this is its display form. */
+function jobTypeLabel(jobType: string | null | undefined): string {
+  if (!jobType) return "unknown";
+  return jobType.replace(/_/g, " ");
+}
+
+/**
+ * Job duration in seconds, from the columns that now carry it.
+ *
+ * WP-45 Task 5 / WP-40 D-4: `started_at` and `completed_at` were dead columns -
+ * NULL on every row on the fleet, written by nothing - and the tab read a
+ * `duration_seconds` field the API has never sent, so the column was blank on
+ * every job. They are stamped now. Returns null, not 0, when the span cannot be
+ * measured: `formatDuration(0)` renders "—", which would make "instant"
+ * indistinguishable from "unrecorded", the two worst things to conflate on a
+ * duration display (WP-40 §2.4).
+ */
+function jobDurationSeconds(job: RenderJob): number | null {
+  if (!job.started_at) return null;
+  const started = new Date(job.started_at).getTime();
+  const ended = job.completed_at ? new Date(job.completed_at).getTime() : Date.now();
+  if (!Number.isFinite(started) || !Number.isFinite(ended)) return null;
+  const seconds = Math.round((ended - started) / 1000);
+  return seconds >= 0 ? seconds : null;
+}
+
+
 export default function JobsPage(): React.ReactElement {
   const params = useParams();
   const projectId = params.id as string;
@@ -63,7 +104,8 @@ export default function JobsPage(): React.ReactElement {
    * Format duration from seconds to human readable.
    */
   const formatDuration = (seconds: number | null | undefined): string => {
-    if (!seconds) return "—";
+    if (seconds === null || seconds === undefined) return "not recorded";
+    if (seconds === 0) return "under 1s";
     if (seconds < 60) return `${seconds}s`;
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -113,10 +155,13 @@ export default function JobsPage(): React.ReactElement {
                     Status
                   </th>
                   <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    Stage
+                    Job
                   </th>
                   <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    Node
+                    Type
+                  </th>
+                  <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+                    Created
                   </th>
                   <th className="px-5 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                     Started
@@ -146,19 +191,34 @@ export default function JobsPage(): React.ReactElement {
                       <td className="px-5 py-3">
                         <StateBadge state={job.status} />
                       </td>
-                      <td className="px-5 py-3 text-gray-900 dark:text-white font-medium">
-                        {job.current_stage || "—"}
+                      {/* WP-45 Task 6(f): the row identifies the job. It used
+                          to draw job.current_stage and job.assigned_node, two
+                          field names the API has never sent, so every row read
+                          "—" and "Unassigned" and none of them said which job
+                          it was. */}
+                      <td className="px-5 py-3 text-gray-900 dark:text-white font-mono text-xs">
+                        {job.id.slice(0, 8)}
                       </td>
                       <td className="px-5 py-3 text-gray-700 dark:text-gray-300">
-                        {job.assigned_node || "Unassigned"}
+                        {jobTypeLabel(job.job_type)}
+                        {job.language_code && (
+                          <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[10px] text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                            {job.language_code}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
+                        {job.created_at
+                          ? new Date(job.created_at).toLocaleString()
+                          : notRecorded}
                       </td>
                       <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
                         {job.started_at
                           ? new Date(job.started_at).toLocaleString()
-                          : "—"}
+                          : notRecorded}
                       </td>
                       <td className="px-5 py-3 text-gray-500 dark:text-gray-400">
-                        {formatDuration(job.duration_seconds)}
+                        {formatDuration(jobDurationSeconds(job))}
                       </td>
                       <td className="px-5 py-3">
                         <span
@@ -172,10 +232,17 @@ export default function JobsPage(): React.ReactElement {
                         </span>
                       </td>
                       <td className="px-5 py-3">
+                        {/* WP-45: `job.has_checkpoint` was never sent by the
+                            API, so the Resume button could not appear on any
+                            row, ever. The server decides whether a resume is
+                            possible -- it answers 409 with the reason when the
+                            job has no completed checkpoint -- so the button is
+                            offered on terminal-failed jobs and the refusal is
+                            surfaced as a toast rather than guessed at here. */}
                         {canResume &&
                           (job.status === "FAILED" ||
-                            job.status === "ERROR") &&
-                          job.has_checkpoint && (
+                            job.status === "ERROR" ||
+                            job.status === "failed") && (
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -195,7 +262,7 @@ export default function JobsPage(): React.ReactElement {
                     {/* Expanded Detail Row */}
                     {expandedJobId === job.id && (
                       <tr>
-                        <td colSpan={7} className="px-5 py-4 bg-gray-850">
+                        <td colSpan={8} className="px-5 py-4 bg-gray-850">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
@@ -205,12 +272,45 @@ export default function JobsPage(): React.ReactElement {
                                 {job.id}
                               </p>
                             </div>
+                            {/* WP-45 Task 6(f): honest blanks. `assigned_gpu`
+                                was a field the API has never sent, rendered as
+                                "N/A" -- which reads as "this job used no GPU"
+                                rather than "nobody records this". The fields
+                                below are the ones the API populates. */}
                             <div>
                               <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                                GPU
+                                Node
                               </span>
                               <p className="text-gray-700 dark:text-gray-300 mt-0.5">
-                                {job.assigned_gpu || "N/A"}
+                                {job.node_id || notRecorded}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                                Last stage reported
+                              </span>
+                              <p className="text-gray-700 dark:text-gray-300 mt-0.5">
+                                {job.resume_from_stage
+                                  ? jobTypeLabel(job.resume_from_stage)
+                                  : notRecorded}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                                Celery task
+                              </span>
+                              <p className="text-gray-700 dark:text-gray-300 font-mono text-xs mt-0.5 break-all">
+                                {job.celery_task_id || notRecorded}
+                              </p>
+                            </div>
+                            <div>
+                              <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                                Completed
+                              </span>
+                              <p className="text-gray-700 dark:text-gray-300 mt-0.5">
+                                {job.completed_at
+                                  ? new Date(job.completed_at).toLocaleString()
+                                  : notRecorded}
                               </p>
                             </div>
                             {job.error_message && (
@@ -221,20 +321,6 @@ export default function JobsPage(): React.ReactElement {
                                 <pre className="mt-1 p-3 bg-red-100 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-xs overflow-x-auto whitespace-pre-wrap">
                                   {job.error_message}
                                 </pre>
-                              </div>
-                            )}
-                            {job.checkpoint_data && (
-                              <div className="sm:col-span-2">
-                                <span className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-                                  Last Checkpoint
-                                </span>
-                                <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">
-                                  Stage: {String(job.checkpoint_data.stage)} | Progress:{" "}
-                                  {String(job.checkpoint_data.progress)}% | Saved:{" "}
-                                  {new Date(
-                                    String(job.checkpoint_data.saved_at)
-                                  ).toLocaleString()}
-                                </p>
                               </div>
                             )}
                           </div>

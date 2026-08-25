@@ -61,7 +61,13 @@ export default function SceneThumbnail({
     );
   }, [assets, sceneId]);
 
-  const { url, error } = useAssetObjectUrl(image?.id, Boolean(image) && inView);
+  /* WP-45 Task 6(b): a scene card is ~240px wide; 320 keeps it sharp on a 2x
+     display without pulling the full-size original. */
+  const { url, error } = useAssetObjectUrl(
+    image?.id,
+    Boolean(image) && inView,
+    320,
+  );
 
   return (
     <div ref={containerRef} className="w-full h-full">

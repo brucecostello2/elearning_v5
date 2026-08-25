@@ -66,6 +66,29 @@ export function assetDownloadPath(assetId: string): string {
   return `/api/v1/assets/${assetId}/download`;
 }
 
+/**
+ * A width-limited preview of an image asset.
+ *
+ * WP-45 Task 6(b) / WP-40 §9.3. Image cards used to draw from
+ * `assetDownloadPath`, so a 40-card grid pulled roughly 10 MB of full-size
+ * PNGs to render thumbnails a few hundred pixels wide. There was no
+ * alternative: the route did not exist. It does now, images only, with a
+ * content-hash ETag so a re-render gets 304s.
+ *
+ * `width` is clamped to the route's own bounds (16..1024) rather than sent
+ * out of range and 422'd -- a thumbnail that fails is a blank card.
+ */
+export const THUMBNAIL_MIN_WIDTH = 16;
+export const THUMBNAIL_MAX_WIDTH = 1024;
+
+export function assetThumbnailPath(assetId: string, width = 320): string {
+  const w = Math.min(
+    THUMBNAIL_MAX_WIDTH,
+    Math.max(THUMBNAIL_MIN_WIDTH, Math.round(width)),
+  );
+  return `/api/v1/assets/${assetId}/thumbnail?w=${w}`;
+}
+
 /** Filename from the SeaweedFS path, else a stable synthetic one. */
 export function assetFilename(asset: MediaAssetLike | null | undefined): string {
   if (!asset) return "asset";

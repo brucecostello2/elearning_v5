@@ -16,6 +16,7 @@ import {
   mediaTypeLabel,
   normalizeMediaType,
   sceneUpdatePayload,
+  timingOffsetError,
 } from "@/lib/scenes";
 
 /**
@@ -124,28 +125,22 @@ const MEDIA_TYPES: { value: MediaType; label: string; description: string }[] = 
   },
 ];
 
-/**
- * WP-43 Task 7 (recorded, not fixed here).
+/*
+ * WP-45 Task 6(d) / WP-43 D-2, ruled EXTEND. CLOSED.
  *
- * The modal presents nine editable properties. `SceneUpdate`
- * (`ivgs-api/app/schemas/storyboard.py:30`) declares FOUR: narration_text,
- * visual_description, media_type, duration_seconds. Pydantic ignores unknown
- * keys, so the other five were serialised, sent, and dropped on the floor --
- * no error, no storage, and a UI that looked as though it had saved them.
+ * The modal presents nine editable properties, and until migration 0028
+ * `SceneUpdate` declared four. Pydantic ignores keys a model does not declare,
+ * so camera_angle, transition_type, effects, timing_offset_ms and
+ * generation_params were serialised, sent, and dropped on the floor -- no
+ * error, no storage, and a UI that looked exactly as though it had saved them.
+ * WP-43 could only mark them "Not saved to the server" from here.
  *
- * Building the columns to hold them is API work and is out of scope for a
- * frontend-only package, so the honest move is to say so at the field.
+ * All nine now have columns, a schema and a route that writes them, so the
+ * notices are gone rather than reworded. The ruling was EXTEND rather than
+ * remove because camera_angle and transition_type are read by the generation
+ * and composition prompts: deleting the controls would have discarded intent
+ * the operator was already expressing.
  */
-const NOT_PERSISTED_NOTICE = (
-  <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
-    <strong>Not saved to the server.</strong> The scene update route accepts
-    narration text, visual description, media type and duration. Camera angle,
-    transition, effects, timing offset and generation params have no column
-    behind them — they used to be sent and silently discarded, which looked
-    exactly like saving. They are kept visible, and labelled, until the API
-    stores them.
-  </div>
-);
 
 interface SceneEditModalProps {
   /** Scene to edit */
@@ -325,22 +320,56 @@ export default function SceneEditModal({
       return;
     }
 
+    /* The API's own bound: timing_offset_ms = Field(ge=-60000, le=60000). */
+    const offsetErr = timingOffsetError(timingOffsetMs);
+    if (offsetErr) {
+      setSaveError(offsetErr);
+      setIsSaving(false);
+      return;
+    }
+
     try {
       /*
-       * WP-43 Task 7. `sceneUpdatePayload` emits exactly the four keys
-       * `SceneUpdate` declares, with `media_type` mapped to the wire
-       * vocabulary. The old body sent nine keys, one of which (`media_type`)
-       * was in a vocabulary the API rejects -- a guaranteed 422 -- and five
-       * of which (`camera_angle`, `transition_type`, `effects`,
-       * `timing_offset_ms`, `generation_params`) Pydantic silently discards
-       * because the schema does not declare them. Those five are labelled
-       * in the UI as not persisted rather than being sent into a void.
+       * WP-45 Task 6(d) / WP-43 D-2, ruled EXTEND.
+       *
+       * All nine keys are now sent and all nine are stored. Until migration
+       * 0028 `SceneUpdate` declared four, and Pydantic drops what a model does
+       * not declare -- silently, with a 200 -- so camera angle, transition,
+       * effects, timing offset and generation params were serialised, sent and
+       * discarded while the dialog looked exactly as though it had saved them.
+       * WP-43 could only label them; this sends them for real.
+       *
+       * `media_type` is still mapped to the wire vocabulary and dropped when it
+       * normalises to nothing, so an edit to narration lands rather than the
+       * whole save failing on a 422 (WP-43 Task 7).
        */
+      let parsedGenerationParams: Record<string, unknown> | null = null;
+      const trimmedParams = generationParams.trim();
+      if (trimmedParams.length > 0) {
+        const parsed: unknown = JSON.parse(trimmedParams);
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          parsedGenerationParams = parsed as Record<string, unknown>;
+        } else {
+          /* The route refuses a non-object, so refuse here with the reason
+             rather than sending a body that will 422 the whole save. */
+          setSaveError(
+            "Generation params must be a JSON object, e.g. {\"seed\": 42}."
+          );
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const updates = sceneUpdatePayload({
         narration_text: narrationText.trim(),
         visual_description: visualDescription.trim() || null,
         media_type: mediaType || null,
         duration_seconds: durationSeconds,
+        camera_angle: cameraAngle,
+        transition_type: transitionType,
+        effects: effects,
+        timing_offset_ms: timingOffsetMs,
+        generation_params: parsedGenerationParams,
       });
 
       await onSave(scene.id, updates as Partial<Scene>);
@@ -582,7 +611,6 @@ export default function SceneEditModal({
           {/* ── Visual Tab ────────────────────────────────────── */}
           {activeTab === "visual" && (
             <>
-              {NOT_PERSISTED_NOTICE}
               {/* Camera Angle */}
               <div>
                 <label
@@ -692,7 +720,6 @@ export default function SceneEditModal({
           {/* ── Timing Tab ────────────────────────────────────── */}
           {activeTab === "timing" && (
             <>
-              {NOT_PERSISTED_NOTICE}
               {/* Duration */}
               <div>
                 <label
@@ -790,7 +817,6 @@ export default function SceneEditModal({
           {/* ── Advanced Tab ──────────────────────────────────── */}
           {activeTab === "advanced" && (
             <>
-              {NOT_PERSISTED_NOTICE}
               {/* Generation Parameters (JSON) */}
               <div>
                 <label
