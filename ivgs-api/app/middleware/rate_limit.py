@@ -8,12 +8,14 @@ Limits:
 
 Uses Redis sliding window counters.
 """
+import hmac
 import logging
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 
+from shared.config import settings
 from shared.redis_client import redis_client
 
 logger = logging.getLogger(__name__)
@@ -61,6 +63,46 @@ def _get_user_id_from_token(request: Request) -> str:
     return ""
 
 
+def _is_internal_service_call(request: Request) -> bool:
+    """Is this the worker fleet calling the API with the internal service token?
+
+    WP-45. These limits are a §16.3 abuse control aimed at PEOPLE: 60 writes a
+    minute is generous for a browser and far too small for a pipeline. Stage 5
+    alone makes roughly three writes per scene - the asset upload, the scene
+    audio link, the quality verdict - so an 18-scene project produces ~55 writes
+    back to back, plus its stage checkpoint. Every one of them authenticates as
+    the same `svc-pipeline` account, so the fleet shares ONE 60/min bucket with
+    itself.
+
+    Observed 2026-08-25 on the reference project, and it is not a theoretical
+    margin: Stage 5 synthesised all 18 voiceovers successfully and then died
+    writing its own checkpoint -
+
+        CheckpointWriteError: checkpoint write for job b3df6eb6 stage tts_audio
+        returned HTTP 429 ... The stage is not resumable without it.
+
+    That is WP-07's guard behaving exactly as designed - a checkpoint that
+    cannot be written must not be reported as written - firing on a stage whose
+    work had actually completed. The pipeline was throttling itself out of its
+    own back half.
+
+    The service token is not a user and must not share a user's ceiling. It is
+    compared in constant time against the same secret ``get_service_or_user``
+    accepts, so this exempts exactly the fleet and nothing else: a JWT, however
+    privileged, still gets a user's limit. The login bucket is deliberately NOT
+    exempted below - nothing about being the pipeline should ease a brute-force
+    control.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header.startswith("Bearer "):
+        return False
+    token = auth_header[7:]
+    service_token = getattr(settings, "IVGS_SERVICE_TOKEN", "") or ""
+    if not service_token:
+        return False
+    return hmac.compare_digest(token, service_token)
+
+
 class RateLimitMiddleware(BaseHTTPMiddleware):
     """ASGI middleware enforcing per-user and per-IP rate limits via Redis."""
 
@@ -75,6 +117,13 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         bucket = _classify_request(path, method)
+
+        # WP-45: the worker fleet is not a user. See _is_internal_service_call.
+        # Checked after bucket classification and BEFORE the login branch below,
+        # so the exemption cannot reach the login limiter even if a future
+        # classifier change put a service path in that bucket.
+        if bucket != "login" and _is_internal_service_call(request):
+            return await call_next(request)
         client_ip = _get_client_ip(request)
 
         # --- Pre-request Redis-backed rate limit checks (BUG-011) ---
