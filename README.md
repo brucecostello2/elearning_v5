@@ -20,7 +20,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 | node-02 | NVIDIA RTX 6000 Blackwell | 96 GB | vLLM — Llama 3.3 70B (tensor parallel w/ node-03), CogVideoX 5B, Wan2.1 |
 | node-03 | NVIDIA RTX 6000 Blackwell | 96 GB | vLLM — Qwen2.5 72B (tensor parallel w/ node-02), CogVideoX 5B, Wan2.1 |
 | node-04 | NVIDIA RTX 5000 Pro Blackwell | 48 GB | ComfyUI (FLUX.1 Dev, AnimateDiff), Coqui XTTS v2, Kokoro TTS, WhisperX, LatentSync, SadTalker, vLLM Mistral 24B |
-| node-05 | NVIDIA RTX 5080 | 16 GB | ComfyUI (SDXL / SD3.5 fallback), Ollama (small models), FFmpeg composition |
+| node-05 | NVIDIA RTX PRO 5000 Blackwell | 48 GB | Quality-services stack (earmarked). Documented as RTX 5080 / 16 GB until 2026-08-25; corrected (WP-48) against `nvidia-smi` on the box. |
 | node-06 | NVIDIA RTX 6000 Blackwell | 96 GB | CogVideoX 5B / Wan2.1 (second video node), Remotion renderer (lower-thirds, captions, animated titles, Ken-Burns L2 fill), primary FFmpeg compositor, Llama-3.3-70B-FP8 (failover only) |
 
 > NVIDIA driver ≥ 570.x, CUDA ≥ 12.4 (Blackwell). Every GPU-bearing node is CUDA; the Intel oneAPI/IPEX path is withdrawn (AD-02 Draft 3).
@@ -33,7 +33,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 | node-02 | 192.168.1.91 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#1) |
 | node-03 | 192.168.1.92 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
 | node-04 | 192.168.1.93 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
-| node-05 | 192.168.1.94 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 5080 16 GB |
+| node-05 | 192.168.1.94 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX PRO 5000 Blackwell 48 GB |
 | node-06 | 192.168.1.95 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 6000 Blackwell 96 GB (#3) |
 
 #### Node Roles (Table 2-2)
@@ -44,7 +44,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 | node-02 | vLLM (70B+ TP), CogVideoX/Wan2.1 worker, Celery worker, node-exporter, nvidia-gpu-exporter |
 | node-03 | vLLM (70B+ TP), CogVideoX/Wan2.1 worker, Celery worker, node-exporter, nvidia-gpu-exporter |
 | node-04 | vLLM (mid-size), ComfyUI, Coqui TTS, Kokoro TTS, WhisperX, LatentSync, SadTalker, Celery worker, node-exporter, nvidia-gpu-exporter |
-| node-05 | ComfyUI (SDXL/SD3.5), Ollama, FFmpeg worker, Celery worker, node-exporter, nvidia-gpu-exporter |
+| node-05 | Quality-services stack (earmarked, not yet deployed). Running today: node-exporter, nvidia-gpu-exporter, node-logs. |
 | node-06 | Remotion renderer, FFmpeg worker, CogVideoX worker, Celery worker, node-exporter, nvidia-gpu-exporter, profile-gated vLLM failover (stopped by default) |
 
 ## 8-Stage Pipeline (§6.1)

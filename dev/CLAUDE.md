@@ -20,8 +20,9 @@ on any node other than node-01 unless explicitly handed over.
 | node-02 | 192.168.1.91 | LLM only (vLLM) |
 | node-03 | 192.168.1.92 | Video only |
 | node-04 | 192.168.1.93 | Image + TTS + talking head. RTX PRO 6000 96 GB. |
-| node-05 | 192.168.1.94 | OFFLINE |
+| node-05 | 192.168.1.94 | ONLINE. RTX PRO 5000 Blackwell, 48935 MiB (~48 GB), driver 580.173.02. Earmarked for the quality-services stack. Corrected 2026-08-25 (WP-48) - this row read OFFLINE and every doc said RTX 5080 16 GB. Both wrong; `nvidia-smi` on the box is the source. |
 | node-06 | 192.168.1.95 | OFFLINE. Card swapped to RTX 6000 96 GB - now CUDA, not Intel. |
+| node-07 | 192.168.1.96 | Temporal cluster ONLY (WP-31 Lane B). No queue, no GPU, no pipeline service - deliberately absent from `/api/v1/nodes` so it cannot enter the "N online" denominator (WP-24 D-1). UI :8080, gRPC :7233, compose at `/opt/temporal/`. |
 | .7 | 192.168.1.7 | TrueNAS. Backup target: /mnt/store/ivgs and /mnt/store/ivgs-archive |
 | .9 | 192.168.1.9 | RETIRED CIFS NAS. Do not write to it. |
 | .51 | 192.168.1.51 | MBCP management plane |

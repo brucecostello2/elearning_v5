@@ -1218,8 +1218,35 @@ Each is a runtime-only `next_stage_task_not_registered` waiting to happen; none 
 **Scope/action:** update `projects.state` on each transition. **FIX-WHEN:** once state advances correctly, tighten the guard per spec Table 4-3. *(Under WS-T this becomes a workflow query — truthful by construction. Consider deferring the full fix into WS-T rather than fixing twice.)*
 
 ## P2.6 — GPU monitoring + heartbeat registry (Blackwell) *(carried, v3.1 P2.29)*
-**Status:** OPEN — two coupled gaps; dashboard GPU telemetry is **not trustworthy**.
-(a) **Exporter:** `utkuozdemir/nvidia_gpu_exporter:1.2.1` panics on Blackwell (`clocks_event_reasons_counters.sw_thermal_slowdown [us]` → invalid metric name) → CrashLoop on nodes 02/03/04. Restrict `--query-gpu`, bump to a name-sanitizing tag, or move to dcgm on a Blackwell tag. (b) **Heartbeat:** registry empty (`total_nodes:0` → `gpu_reservation_skipped`; scheduler `:8002` → 503). Wire node GPU heartbeat registration. **Pairs with P1.3** — the reservation subsystem fails open, which is why this stayed invisible. *Not addressed by WS-T.*
+**Status:** **(a) CLOSED 2026-08-25 (WP-48-TELEMETRY). (b) still OPEN.**
+
+**(a) Exporter — CLOSED.** The panic diagnosis was right and the fix was the restricted
+`--query-field-names` list, now in ONE tracked file — `ivgs-infra/docker-compose.telemetry.yml`,
+its own compose project `ivgs-telemetry` so it cannot recreate an engine — deployed to
+nodes **02, 03, 04 and 05**. Evidence, measured 2026-08-25 after deploy: all four
+`nvidia-gpu-exporter` Prometheus targets **UP**; `nvidia_smi_power_draw_watts` present for
+all four (16.32 / 16.29 / 19.31 / 15.93 W); `GET /api/v1/nodes` returns non-null
+`used_vram_mb`, `gpu_utilization_pct`, `temperature_c` **and** `power_draw_w` for all four.
+This replaced three separately hand-written untracked `docker-compose.gpuexp.yml` files
+(three shapes, two container names) that had each drifted on their own node.
+
+Two things the old diagnosis had wrong, recorded because they cost hours:
+* **node-02 was not a panic.** Its exporter was running and logging `Listening on
+  [::]:9835`, and the host port returned nothing because the container held **no network
+  at all** — `NetworkSettings.Networks == {}`, no docker-proxy, no DNAT rule. Its compose
+  project's network had been removed underneath the running container. A `down` + `up`
+  reattached it. "The process is up" and "the port is published" are independent facts.
+* **The dcgm detour is traced and cleaned.** `ivgs-dcgm-exporter` on node-02 came from
+  hand-run `docker run` trials (`/root/.bash_history` 378–423) that were then written into
+  a compose block and a systemd unit (lines 449–451, 476, 495). Its metric names are
+  `DCGM_FI_DEV_*`, which nothing in this repo reads. The 928 MB dangling image is removed;
+  no dcgm container, compose block or unit file remains. See P2.42 for the one inert trace.
+
+**(b) Heartbeat — still OPEN.** Registry still empty (`total_nodes:0` → `gpu_reservation_skipped`;
+scheduler `:8002` → 503). Wire node GPU heartbeat registration. **Pairs with P1.3** — the
+reservation subsystem fails open, which is why this stayed invisible. **Note:** the exporters
+are now real, so (b) is no longer blocked on measurement — a heartbeat can be sourced from
+the same Prometheus series `/api/v1/nodes` already reads. *Not addressed by WS-T.*
 
 ## P2.7 — MBCP: `serving-authoring-loop-1` unhealthy *(new, handoff register #2)*
 **Status:** OPEN — pre-existing on `.51`. Diagnose.
@@ -1467,6 +1494,119 @@ ever noticed — because every acquire fails open (P1.3, swallow-register entry 
 **Unknown and worth establishing:** where the queue lives (in-process in `ivgs-scheduler`
 or backed by Redis), whether it survives a scheduler restart, whether it is bounded, and
 what these 23 requests are — the scheduler has been up 8 days.
+
+## P2.40 — Five of node-01's own Prometheus targets have been DOWN the whole time *(new, WP-48-TELEMETRY, 2026-08-25)*
+**Status:** OPEN — measured, not inferred. `GET /api/v1/targets` on node-01, 2026-08-25:
+
+    ivgs-api           http://node-01:8000/metrics   down   context deadline exceeded
+    ivgs-scheduler     http://node-01:8001/metrics   down   context deadline exceeded
+    node-exporter      http://node-01:9100/metrics   down   context deadline exceeded
+    postgres-exporter  http://node-01:9187/metrics   down   context deadline exceeded
+    redis-exporter     http://node-01:9121/metrics   down   context deadline exceeded
+
+while **every remote node target is UP** from the same Prometheus. That asymmetry is the
+tell: this is the ufw blind spot `node_health.py` already documents — ufw on node-01 admits
+only `192.168.1.0/24` to the host and the compose bridge is `172.x`, so a container on
+node-01 cannot reach node-01's own published ports. Prometheus is such a container.
+
+**Consequence.** node-01 has no host metrics, no API metrics, no Postgres or Redis metrics
+in Prometheus, and has not had them for as long as this configuration has stood. Grafana's
+`pipeline_overview` dashboard is reading a Prometheus that holds nothing for the hub. Five
+permanently-firing `up == 0` targets also desensitise anyone watching the target page.
+
+**Scope/action:** scrape these over the container network instead of the host port — the
+services are all siblings on `ivgs-infra_ivgs-net`, so `http://fastapi-backend:8000`,
+`http://postgres-exporter:9187`, `http://redis-exporter:9121` need no firewall change at
+all. `node-exporter` is the one genuine exception (it wants the host namespace) and is the
+only one that needs a ufw decision. **Note the precedent:** WP-48 solved the identical
+problem for node-01's log source by attaching it to `ivgs-net` and addressing it by
+container DNS (`docker-compose.telemetry.node01.yml`) rather than opening a port.
+**Pairs with P2.29** (compose/monitoring-net reconciliation).
+
+## P2.41 — AD-04 "pull-only" doctrine contradicts the SSOT on the metadata seam *(new, WP-48-TELEMETRY Task 4, 2026-08-25 — needs an OPERATOR RULING, no code change proposed)*
+**Status:** OPEN — **spec/doctrine conflict, not an implementation defect.** The
+implementation was checked against primary sources and **conforms to the SSOT**; what does
+not fit is the rule as stated in the work order ("PULL-ONLY: IVGS initiates all transfers
+from MBCP; MBCP never pushes").
+
+**What the SSOT says — verbatim.** `MBCP_Master_Functional_Specification_SSOT_v3.3.md`:
+
+> §12.4 — `connected` → `AD01Export`: transmits to the live AD-01 ingest endpoint.
+
+> §12.6 — In `connected` mode, `AD01Export` **posts the package** to `MBCP_AD01_URL`
+> authenticated by `MBCP_AD01_TOKEN`. On the IVGS side, AD-01 ingests the package as a
+> `CANDIDATE` registration whose attestation is the MBCP certification, and a new
+> IVGS-side fetch client (in `ivgs-models`) retrieves the weight bundle from the serving
+> plane.
+
+**Where "pull-only" actually comes from.** `IVGS_v5_Addendum_AD-04_v3.1_Amendment.md`,
+closed decision **#2 — Weight-serving transport**:
+
+> **Direction is pull: IVGS pulls, MBCP does not push.**
+
+That sentence is scoped to decision #2, the **weight** transport (Seam 2). AD-04-v3 §3.14
+is explicit that the other seam runs the other way: *"`AD01Export` (**Phase 4**): POSTs the
+bundle to AD-01"*.
+
+**So the two seams have opposite directions by design** — metadata/attestation pushed by
+MBCP, weights pulled by IVGS — and a rule stated as "IVGS initiates all transfers" is true
+of one and false of the other.
+
+**The ruling needed.** Either (i) the doctrine is Seam-2-scoped and the fleet documents
+should say so explicitly, or (ii) the doctrine stands as written, in which case the SSOT
+§12.4/§12.6 and MBCP's `AD01Export` + `export_drain` must change — an MBCP-owned,
+change-controlled spec amendment (SSOT §787 freezes the export-factory seam), plus a new
+IVGS-side scheduled puller and demotion of `ad01_ingest.py` to a disabled receiver.
+**Nothing is implemented either way.** Full evidence in the WP-48 report, S6.
+
+## P2.42 — node-02 `vllm.service`: a disabled unit that would run the wrong compose *(new, WP-48-TELEMETRY, 2026-08-25)*
+**Status:** OPEN — inert today, a landmine if ever enabled. `/etc/systemd/system/vllm.service`
+on node-02 is `disabled` and `inactive`, and:
+
+    Description=IVGS node-02 container stack (vLLM + dcgm + node-exporter)
+    WorkingDirectory=/opt/ivgs
+    ExecStart=/usr/bin/docker compose up -d
+
+Two problems. The description still names **dcgm**, which is the last trace of the removed
+exporter (P2.6a) and will mislead the next person who greps for it. And `docker compose up -d`
+with **no `-f`** in `/opt/ivgs` does not describe any stack this fleet runs — node-02's
+services come from `-f ivgs-infra/docker-compose.node02.yml` with `--env-file`. Enabling this
+unit would not restore node-02; it would fail, or act on whatever compose file happens to
+resolve. **Scope/action:** delete the unit, or rewrite it to the real invocation. Left
+untouched by WP-48 deliberately — editing a systemd unit is outside an additive-exporter
+package, and the unit is inert.
+
+## P2.43 — node-05's hardware is corrected in the operational docs but not in the specs *(new, WP-48-TELEMETRY Task 5, 2026-08-25)*
+**Status:** OPEN — a spec amendment, needs the change-control path, not a quiet edit.
+Measured on the box 2026-08-25: `NVIDIA RTX PRO 5000 Blackwell, 48935 MiB, driver 580.173.02`,
+node online, node-exporter UP in Prometheus throughout. Every document said **RTX 5080,
+16 GB, OFFLINE**. All three claims were wrong, and a fallback sized against 16 GB on a 48 GB
+card is the node-04 error WP-24 corrected, inverted.
+
+**Corrected by WP-48** (operational, safe to change): `dev/CLAUDE.md` §2 (+ a node-07
+Temporal row, which was missing entirely), `README.md` ×3 tables,
+`ivgs-api/app/api/v1/nodes.py` `NODE_TOPOLOGY`, both `prometheus.yml` copies' node-05 labels,
+and `tests/test_wp24_node_honesty.py` (node-05 is measured now, so `topology_verified` is
+True and only node-06 stays unverified).
+
+**Still wrong, and NOT changed** — these are specification documents:
+* `docs/IVGS_v5_Addendum_AD-02_Node_Specialization.md` — §"node-05" and the Draft-3 role
+  table both read *"RTX 5080, 16 GB — ComfyUI SDXL/SD3.5 image fallback … Ollama … Unchanged."*
+* `docs/ivgs_v5_functional_spec.md` — three sites (`:855`, `:951`, `:1431`).
+* `ivgs-infra/docker-compose.node05.yml:7` header comment, and `tests_system/smoke/test_gpu_nodes.py`
+  (`node-05 GPU smoke tests — RTX 5080 16 GB`, plus a ComfyUI/Ollama service map for services
+  the node does not run).
+
+**Scope/action:** amend AD-02 and the functional spec under change control, and decide what
+node-05's role actually is — the work order says *quality-services stack*, which is neither
+the AD-02 "image fallback + Ollama" role nor anything currently deployed (the node runs the
+telemetry pair and nothing else; it has no `/opt/ivgs` checkout at all).
+
+## P2.44 — node-04 `wp42probe`: a container left in `Created` since WP-42 *(new, WP-48-TELEMETRY, 2026-08-25)*
+**Status:** OPEN — trivial, recorded so it is not rediscovered. `docker ps -a` on node-04 shows
+`wp42probe  ghcr.io/brucecostello2/ivgs-workers:coqui-v5.2.7-h0  Created`. It never ran and
+never will; it pins an image and clutters every container listing on the node — including,
+now, the Node Monitor's log panel container picker. **Scope/action:** `docker rm wp42probe`.
 
 **Related, and why it is not the same item:** there is **no `GET /reservations`** on the
 scheduler at all — only `DELETE /reservations/{reservation_id}` — so there is no
