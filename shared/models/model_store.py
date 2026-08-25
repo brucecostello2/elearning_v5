@@ -185,6 +185,16 @@ class Model(Base):
         Boolean, nullable=False, server_default=text("true"),
     )
     default_params: Mapped[dict | None] = mapped_column(JSONVariant, nullable=True)
+    # WP-53, migration 0029. AD-04 seam 1: the DECLARED geometry and sampler
+    # rules a request must obey, as MBCP's export bundle has carried them since
+    # 2026-08-21 (WP-E32-R). Deliberately NOT folded into `default_params`
+    # above -- those are defaults a caller may override, these are constraints a
+    # caller must satisfy, and the two are one careless read apart from the
+    # sampler failure MBCP documented. Carried opaquely; IVGS does not interpret
+    # it as of WP-53.
+    request_constraints: Mapped[dict | None] = mapped_column(
+        JSONVariant, nullable=True,
+    )
     is_default: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default=text("false"),
     )

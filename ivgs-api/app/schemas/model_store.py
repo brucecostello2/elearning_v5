@@ -50,7 +50,30 @@ class ExportBundleIn(BaseModel):
     left for the operator at the approval gate — a recorded MBCP-side gap.
     """
 
-    model_config = ConfigDict(extra="ignore")
+    # WP-53. Was `extra="ignore"`.
+    #
+    # `extra="ignore"` on a SEAM schema is the swallow pattern in schema form:
+    # the sender amends the contract, the receiver returns 201, and the
+    # amendment goes in the bin without a line anywhere saying so. That is
+    # exactly what happened to `request_constraints` between 2026-08-21 and
+    # this change.
+    #
+    # WHY NOT `extra="forbid"`. It was the other option on the table and it is
+    # the wrong one HERE, for a reason specific to this seam. AD-04 seam 1 is an
+    # MBCP-initiated PUSH and IVGS is a receiver (dev/CLAUDE.md 11.1) -- MBCP
+    # amends the bundle unilaterally and has done so at least twice. Under
+    # `forbid`, the next unilateral amendment would 422 every certification
+    # export until someone on this side shipped a schema change: a silent drop
+    # traded for a total ingest outage, with the sender unable to fix it. For a
+    # receiver that does not control the contract, availability of the seam
+    # beats strictness about its edges.
+    #
+    # `allow` + a validator that RECORDS is what "must produce a record, not
+    # silence" actually asks for. The record is durable, not just a log line
+    # that rotates: `receive_certified_model` writes the field names onto the
+    # store row. So an unknown field costs one warning and one stored name, and
+    # the bundle still lands.
+    model_config = ConfigDict(extra="allow")
 
     certification_id: UUID
     model_id: UUID | None = None  # MBCP's model id (provenance only)
@@ -70,8 +93,52 @@ class ExportBundleIn(BaseModel):
     quantization: str | None = Field(default=None, max_length=64)
     provenance: ProvenanceIn | None = None
     quality_summary: dict = Field(default_factory=dict)
+    # WP-53. MBCP has sent this since 2026-08-21 (WP-E32-R, its Appendix G) and
+    # IVGS dropped it silently until now: the DECLARED geometry and sampler
+    # rules a request must obey, from the adapter serving that cert's stage.
+    #
+    # NOT the same thing as `quality_summary.performance.resolution`, and the
+    # distinction is the whole point. That is what was MEASURED under test -- a
+    # real 1920x1080 for Wan2.2-T2V. A consumer that builds a request from the
+    # measurement reproduces a 135/134 sampler failure while holding MBCP's
+    # certificate, which is WP-47's scenario, named by the sender in its own
+    # code comment before it happened here.
+    #
+    # NULLABLE, and that is not a detail. Mirrors
+    # `mbcp_core/schemas/export.py:82` -- `request_constraints: dict | None =
+    # None` -- read off origin/main at 156ddb4.
+    #
+    # MBCP sends an explicit `null` for most models: `request_constraints()`
+    # returns None for anything with no declared rule, and its own tests pin
+    # that for FLUX.1-dev and for unregistered names. A `dict` field with a
+    # `default_factory` would have 422'd every one of those bundles -- turning a
+    # silently-dropped field into a rejected export, which is worse than the
+    # defect being fixed.
+    #
+    # `None` and `{}` MUST stay distinct, in MBCP's words: "An empty block would
+    # be the claim 'we checked'; a missing one is the truth 'we have declared
+    # nothing'." IVGS therefore stores NULL for a null and never substitutes an
+    # empty object.
+    #
+    # Typed `dict`, not a model: carried, stored, surfaced, NOT interpreted --
+    # WP-53's scope. The real block is self-describing anyway, and leads with an
+    # honesty label: `kind: "declared"`, `declared_by`, `declared_on`, then
+    # optional `geometry`, `frame_count_rule`, `value_rules` and a NESTED
+    # `default_params` of legal defaults. That nested key is one more reason
+    # this does not belong inside `models.default_params` -- they would collide.
+    request_constraints: dict | None = None
     certified_at: datetime | None = None
     certified_by: str = Field(default="mbcp", min_length=1, max_length=128)
+
+    @property
+    def unknown_fields(self) -> list[str]:
+        """Names MBCP sent that this schema does not declare, sorted.
+
+        Empty for a bundle that matches the contract. Non-empty means the seam
+        has drifted and IVGS is behind -- which is a fact worth storing next to
+        the row it arrived with, not a reason to reject the row.
+        """
+        return sorted(self.__pydantic_extra__ or {})
 
 
 class ExportReceiptOut(BaseModel):

@@ -12,6 +12,8 @@ correctable at the CANDIDATE -> APPROVED gate, before the model is selectable.
 """
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +29,8 @@ from shared.models.model_store import (
     ModelState,
     ModelTier,
 )
+
+logger = logging.getLogger(__name__)
 
 ad01_router = APIRouter(prefix="/ad01/v1", tags=["AD-01 Ingest"])
 
@@ -98,6 +102,20 @@ async def receive_certified_model(
             },
         )
 
+    # WP-53. `ExportBundleIn` was `extra="ignore"`, so a field MBCP added to the
+    # bundle was accepted with a 201 and discarded without a trace -- which is
+    # what happened to `request_constraints` for the four days before this
+    # change. Logged FIRST, before the replay branch can return, so a re-send of
+    # a drifted bundle still says so.
+    unknown = bundle.unknown_fields
+    if unknown:
+        logger.warning(
+            "ad01_export_unknown_fields certification_id=%s model_name=%s fields=%s",
+            bundle.certification_id,
+            bundle.model_name,
+            ",".join(unknown),
+        )
+
     cert_ref = str(bundle.certification_id)
 
     # Replay dedup on the certification id (MBCP's Idempotency-Key).
@@ -116,6 +134,11 @@ async def receive_certified_model(
         )
 
     params: dict = {"weight_tier": bundle.weight_tier}
+    if unknown:
+        # A durable record, because a log line rotates and the question "when
+        # did the seam drift?" gets asked months later. Underscore-prefixed:
+        # this is IVGS bookkeeping about the transfer, not an MBCP parameter.
+        params["_unknown_export_fields"] = unknown
     if bundle.engine_version:
         params["engine_version"] = bundle.engine_version
     if bundle.quantization:
@@ -155,6 +178,11 @@ async def receive_certified_model(
             license=bundle.license,
             vram_gb=bundle.measured_vram_gb,
             default_params=params,
+            # WP-53: carried and stored, never interpreted here. Passed
+            # through as-is: MBCP distinguishes `null` ("we have declared
+            # nothing") from a block, and collapsing either into the other
+            # would be IVGS inventing a claim on the sender's behalf.
+            request_constraints=bundle.request_constraints,
             created_by=bundle.certified_by,
         )
         db.add(model)
@@ -172,6 +200,12 @@ async def receive_certified_model(
             model.vram_gb = bundle.measured_vram_gb
         if bundle.license is not None:
             model.license = bundle.license
+        # WP-53: same supplied-wins rule as engine/VRAM/license above. A lean
+        # re-cert that omits constraints must not erase the ones the previous
+        # cert declared -- silently dropping them on re-certification would be
+        # the same defect this field exists to fix, one step later.
+        if bundle.request_constraints is not None:
+            model.request_constraints = bundle.request_constraints
         merged = dict(model.default_params or {})
         merged.update(params)
         model.default_params = merged
