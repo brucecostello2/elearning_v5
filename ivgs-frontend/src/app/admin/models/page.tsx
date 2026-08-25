@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { fieldErrors } from "@/lib/errors";
 import { useModels } from "@/hooks/useModels";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -91,21 +92,52 @@ interface ApproveFormState {
   checklist: string; // JSON text
 }
 
+/**
+ * WP-43 Task 6a. `parseJsonField` THREW, and every caller's `catch` routed
+ * the message to `flashErr` -> the `actionError` banner, which is rendered
+ * at page level, at line ~419 -- **underneath the modal's `fixed inset-0`
+ * backdrop**. So a checklist that was valid JSON but not an object (an
+ * ARRAY, the exact case the operator hit) produced: no inline message, no
+ * banner the operator could see, and not even a spinner, because the throw
+ * happens before `setBusyId`. The Approve button simply did nothing.
+ *
+ * The validation itself was right. What was missing was somewhere to say so.
+ * `jsonFieldError` returns the message instead of throwing, so each dialog
+ * can render it at the field that is wrong; `parseJsonField` keeps the
+ * throwing behaviour for the paths that still want it.
+ */
+function jsonFieldError(text: string, field: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmed);
+  } catch (e) {
+    return `${field} is not valid JSON: ${
+      e instanceof Error ? e.message : "parse failed"
+    }`;
+  }
+  if (parsed === null) {
+    return `${field} must be a JSON object, e.g. {"reviewed": true} — got null.`;
+  }
+  if (Array.isArray(parsed)) {
+    return `${field} must be a JSON object, e.g. {"reviewed": true} — got an array. Wrap the entries in an object, such as {"checks": [...]}.`;
+  }
+  if (typeof parsed !== "object") {
+    return `${field} must be a JSON object, e.g. {"reviewed": true} — got a ${typeof parsed}.`;
+  }
+  return null;
+}
+
 function parseJsonField(
   text: string,
   field: string,
 ): Record<string, unknown> | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
-  try {
-    const parsed = JSON.parse(trimmed) as unknown;
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("not an object");
-    }
-    return parsed as Record<string, unknown>;
-  } catch {
-    throw new Error(`${field} must be a JSON object, e.g. {"temperature": 0.3}`);
-  }
+  const err = jsonFieldError(text, field);
+  if (err) throw new Error(err);
+  return JSON.parse(trimmed) as Record<string, unknown>;
 }
 
 export default function ModelStorePage(): React.ReactElement | null {
@@ -185,6 +217,12 @@ export default function ModelStorePage(): React.ReactElement | null {
     vetting_reference: "",
     checklist: "{}",
   });
+  /* WP-43 Task 6a: messages that belong AT the field, inside the modal --
+     not on a banner the modal's own backdrop is covering. */
+  const [approveFieldErrors, setApproveFieldErrors] = useState<
+    Partial<Record<keyof ApproveFormState, string>>
+  >({});
+  const [approveFormError, setApproveFormError] = useState<string | null>(null);
 
   const flashOk = (msg: string): void => {
     setActionSuccess(msg);
@@ -272,6 +310,8 @@ export default function ModelStorePage(): React.ReactElement | null {
 
   const openApprove = (m: StoreModel): void => {
     setApproveTarget(m);
+    setApproveFieldErrors({});
+    setApproveFormError(null);
     setApproveForm({
       attested_by: user?.username ?? "",
       vetting_reference: "",
@@ -281,22 +321,66 @@ export default function ModelStorePage(): React.ReactElement | null {
 
   const submitApprove = async (): Promise<void> => {
     if (!approveTarget) return;
+    const f = approveForm;
+
+    /* Validate every field before deciding anything, so the operator sees
+       all of the problems at once rather than one per press. */
+    const errs: Partial<Record<keyof ApproveFormState, string>> = {};
+    if (!f.attested_by.trim()) {
+      errs.attested_by = "Required — who vetted this model.";
+    }
+    if (!f.vetting_reference.trim()) {
+      errs.vetting_reference =
+        "Required — the evidence reference (cert id, review doc, benchmark run).";
+    }
+    const checklistErr = jsonFieldError(f.checklist, "Checklist");
+    if (checklistErr) {
+      errs.checklist = checklistErr;
+    } else if (
+      Object.keys(
+        (JSON.parse(f.checklist.trim() || "{}") ?? {}) as Record<string, unknown>,
+      ).length === 0
+    ) {
+      /* The route refuses an empty checklist itself -- `if not body.checklist`
+         (model_store.py:174) -> "attestation checklist must not be empty
+         (AD-01.7.2)". Saying it here avoids a round trip; the server's own
+         wording still wins if it refuses for a reason this does not know. */
+      errs.checklist =
+        "The attestation checklist must not be empty (AD-01.7.2). Record at least one check, e.g. {\"reviewed\": true}.";
+    }
+
+    setApproveFieldErrors(errs);
+    setApproveFormError(null);
+    if (Object.keys(errs).length > 0) return;
+
     try {
-      const f = approveForm;
-      if (!f.attested_by.trim() || !f.vetting_reference.trim()) {
-        throw new Error("Attested-by and vetting reference are required.");
-      }
       const payload: ModelApprovePayload = {
         attested_by: f.attested_by.trim(),
         vetting_reference: f.vetting_reference.trim(),
-        checklist: parseJsonField(f.checklist, "Checklist") ?? {},
+        checklist: JSON.parse(f.checklist.trim()) as Record<string, unknown>,
       };
       setBusyId(approveTarget.id);
       const updated = await approveModel(approveTarget.id, payload);
       setApproveTarget(null);
       flashOk(`Approved "${updated.display_name}" — now selectable.`);
     } catch (e) {
-      flashErr(e, "Failed to approve model.");
+      /* A server refusal lands in the modal, where the operator is looking.
+         A 422 arrives with per-field detail, so it is placed at the field. */
+      const perField = fieldErrors(
+        (e as { body?: unknown } | null)?.body ?? null,
+      );
+      const mapped: Partial<Record<keyof ApproveFormState, string>> = {};
+      for (const key of ["attested_by", "vetting_reference", "checklist"] as const) {
+        if (perField[key]) mapped[key] = perField[key]!;
+      }
+      setApproveFieldErrors(mapped);
+      setApproveFormError(
+        Object.keys(mapped).length > 0
+          ? null
+          : e instanceof Error && e.message
+          ? e.message
+          : "Failed to approve model.",
+      );
     } finally {
       setBusyId(null);
     }
@@ -1017,43 +1101,100 @@ export default function ModelStorePage(): React.ReactElement | null {
                 </p>
               </div>
               <div className="space-y-4 px-6 py-4">
+                {/* WP-43 Task 6a. Every message below is rendered INSIDE the
+                    modal. The page-level banner these used to reach sits
+                    behind this dialog's own backdrop, which is why an array
+                    in the checklist produced a dead Approve button and no
+                    message of any kind. */}
                 <div>
                   <label className={labelCls}>Attested by</label>
                   <input
-                    className={inputCls}
+                    className={`${inputCls} ${
+                      approveFieldErrors.attested_by
+                        ? "border-red-500 dark:border-red-500"
+                        : ""
+                    }`}
+                    aria-invalid={approveFieldErrors.attested_by ? true : undefined}
                     value={approveForm.attested_by}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setApproveFieldErrors((p) => ({ ...p, attested_by: undefined }));
                       setApproveForm((f) => ({
                         ...f,
                         attested_by: e.target.value,
-                      }))
-                    }
+                      }));
+                    }}
                   />
+                  {approveFieldErrors.attested_by && (
+                    <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {approveFieldErrors.attested_by}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Vetting reference</label>
                   <input
-                    className={inputCls}
+                    className={`${inputCls} ${
+                      approveFieldErrors.vetting_reference
+                        ? "border-red-500 dark:border-red-500"
+                        : ""
+                    }`}
+                    aria-invalid={
+                      approveFieldErrors.vetting_reference ? true : undefined
+                    }
                     value={approveForm.vetting_reference}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      setApproveFieldErrors((p) => ({
+                        ...p,
+                        vetting_reference: undefined,
+                      }));
                       setApproveForm((f) => ({
                         ...f,
                         vetting_reference: e.target.value,
-                      }))
-                    }
+                      }));
+                    }}
                     placeholder="cert id / review doc / benchmark run"
                   />
+                  {approveFieldErrors.vetting_reference && (
+                    <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {approveFieldErrors.vetting_reference}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className={labelCls}>Checklist (JSON object)</label>
                   <textarea
-                    className={`${inputCls} h-24 font-mono`}
+                    className={`${inputCls} h-24 font-mono ${
+                      approveFieldErrors.checklist
+                        ? "border-red-500 dark:border-red-500"
+                        : ""
+                    }`}
+                    aria-invalid={approveFieldErrors.checklist ? true : undefined}
                     value={approveForm.checklist}
-                    onChange={(e) =>
-                      setApproveForm((f) => ({ ...f, checklist: e.target.value }))
-                    }
+                    onChange={(e) => {
+                      setApproveFieldErrors((p) => ({ ...p, checklist: undefined }));
+                      setApproveForm((f) => ({ ...f, checklist: e.target.value }));
+                    }}
                   />
+                  {approveFieldErrors.checklist ? (
+                    <p role="alert" className="mt-1 text-xs text-red-600 dark:text-red-400">
+                      {approveFieldErrors.checklist}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      A JSON object — an array or a bare value is refused.
+                      Example: {"{"}&quot;reviewed&quot;: true,
+                      &quot;benchmarked&quot;: true{"}"}
+                    </p>
+                  )}
                 </div>
+                {approveFormError && (
+                  <p
+                    role="alert"
+                    className="rounded-md border border-red-200 bg-red-100 px-3 py-2 text-sm text-red-700 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
+                  >
+                    {approveFormError}
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-2 border-t border-gray-200 dark:border-gray-800 px-6 py-4">
                 <button
