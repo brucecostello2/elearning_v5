@@ -53,7 +53,9 @@ readonly LOG_DIR="/var/log/ivgs"
 
 IVGS_ROOT="${IVGS_ROOT:-/opt/ivgs}"
 BACKUP_NAS_DIR="${BACKUP_NAS_DIR:-/mnt/backup/ivgs/config}"
-BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-90}"
+# WP-58 Task 1 - see the banner in scripts/backup.sh for the full reasoning.
+# Reads its OWN class variable.
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_CONFIG_DAYS:-${BACKUP_RETENTION_DAYS:-90}}"
 PROMETHEUS_PUSHGATEWAY="${PROMETHEUS_PUSHGATEWAY:-http://localhost:9091}"
 
 readonly STAGING_DIR="/tmp/ivgs-config-backup-${TIMESTAMP}"

@@ -10,7 +10,13 @@ services:
       - /var/log/ivgs:/var/log/ivgs
     environment:
       WAL_ARCHIVE_DIR: /mnt/wal-archive
-      WAL_RETENTION_DAYS: 7
+      # WP-58 Task 2. Was a hardcoded `7`, which meant ivgs-infra/.env's
+      # BACKUP_RETENTION_WAL_DAYS governed nothing and this literal governed
+      # everything. Interpolated from the same .env value the other three
+      # retention classes use, so the two names cannot drift apart again. The
+      # `:-7` keeps the previous behaviour if the variable is ever unset.
+      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
+      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
 
   fastapi-backend:
     volumes:
@@ -64,7 +70,9 @@ services:
       BACKUP_GPG_RECIPIENT: bruce@fourthirds.com
       PROMETHEUS_PUSHGATEWAY: http://pushgateway:9091
       WAL_ARCHIVE_DIR: /mnt/backup/ivgs/wal
-      WAL_RETENTION_DAYS: 7
+      # WP-58 Task 2 - see the postgres service above.
+      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
+      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
       # GPG keyring location matches the volume mount
       GNUPGHOME: /home/ivgs/.gnupg
     volumes:

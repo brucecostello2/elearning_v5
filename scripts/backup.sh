@@ -87,7 +87,22 @@ POSTGRES_USER="${POSTGRES_USER:-ivgs}"
 POSTGRES_DB="${POSTGRES_DB:-ivgs}"
 BACKUP_DIR="${BACKUP_DIR:-/tmp/ivgs-backup}"
 BACKUP_NAS_DIR="${BACKUP_NAS_DIR:-/mnt/backup/ivgs/db}"
-BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
+# WP-58 Task 1. This used to read BACKUP_RETENTION_DAYS, a name the container
+# environment has never provided - `docker exec ivgs-backup-worker env` supplies
+# BACKUP_RETENTION_{ASSETS,DB,CONFIG,WAL}_DAYS and nothing called
+# BACKUP_RETENTION_DAYS at all. The script therefore always fell through to its
+# hardcoded default, which HAPPENED to equal the configured number, so the
+# setting looked to work and did not. Changing it in .env changed nothing.
+#
+# DO NOT "SIMPLIFY" THIS BACK to a single shared BACKUP_RETENTION_DAYS. All three
+# backup scripts read that one name, so one value would govern three retention
+# classes at once: set it to 14 for assets and database backups would start dying
+# at 14 days instead of 30. That is a worse defect than the one being repaired.
+#
+# The legacy name is still honoured as a middle fallback so an operator who has
+# exported it in a shell keeps the behaviour they expect, and the hardcoded 30
+# remains the last resort.
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DB_DAYS:-${BACKUP_RETENTION_DAYS:-30}}"
 PROMETHEUS_PUSHGATEWAY="${PROMETHEUS_PUSHGATEWAY:-http://localhost:9091}"
 MIN_DISK_SPACE_MB="${MIN_DISK_SPACE_MB:-5120}"
 

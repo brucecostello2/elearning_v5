@@ -29,7 +29,21 @@ set -euo pipefail
 readonly WAL_SOURCE_PATH="${1:?Usage: $0 <wal_path> <wal_filename>}"
 readonly WAL_FILENAME="${2:?Usage: $0 <wal_path> <wal_filename>}"
 readonly WAL_ARCHIVE_DIR="${WAL_ARCHIVE_DIR:-/mnt/backup/ivgs/wal}"
-readonly WAL_RETENTION_DAYS="${WAL_RETENTION_DAYS:-7}"
+# WP-58 Task 2. THE PACKAGE'S PREMISE WAS THAT wal_archive.sh IMPLEMENTS NO
+# RETENTION. It does - cleanup_old_wal() below has pruned since it was written.
+# What was broken is subtler and is the same defect as Task 1: the prune reads
+# WAL_RETENTION_DAYS, while ivgs-infra/.env sets BACKUP_RETENTION_WAL_DAYS, which
+# nothing anywhere reads. The value that actually governs was a hardcoded literal
+# `WAL_RETENTION_DAYS: 7` in docker-compose.override.node01.yml, in TWO services.
+# So there were two names for one setting: one configured and inert, one read and
+# not configurable.
+#
+# BACKUP_RETENTION_WAL_DAYS is now primary, matching the other three classes.
+# WAL_RETENTION_DAYS stays as a fallback because postgres' archive_command runs
+# this script with the container environment, and that variable is still set
+# there; the compose files now interpolate it from the same .env value so the two
+# cannot drift.
+readonly WAL_RETENTION_DAYS="${BACKUP_RETENTION_WAL_DAYS:-${WAL_RETENTION_DAYS:-7}}"
 readonly LOG_FILE="/var/log/ivgs/wal_archive.log"
 readonly LOG_DIR="/var/log/ivgs"
 
