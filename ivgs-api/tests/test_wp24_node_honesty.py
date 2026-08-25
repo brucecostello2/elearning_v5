@@ -186,12 +186,18 @@ class TestPayloadContract:
         assert n4["topology_verified"] is True
 
     def test_offline_nodes_are_flagged_as_unverified_topology(self):
-        """node-05/06 cannot be measured while powered off, so their declared
-        hardware must not be presented as established fact."""
+        """A node that cannot be measured must not present declared hardware as
+        established fact.
+
+        WP-48 (2026-08-25) narrowed this from node-05/06 to node-06 alone --
+        because node-05 was measured. It is online, and nvidia-smi on the box
+        reports an RTX PRO 5000 Blackwell with 48935 MiB, against a topology
+        table that declared an RTX 5080 with 16384 MiB. Keeping
+        topology_verified False there would now be the lie, not the caution."""
         from app.api.v1.nodes import NODE_TOPOLOGY
 
-        assert NODE_TOPOLOGY["node-05"]["topology_verified"] is False
         assert NODE_TOPOLOGY["node-06"]["topology_verified"] is False
+        assert NODE_TOPOLOGY["node-05"]["topology_verified"] is True
 
     def test_node_07_is_absent(self):
         """WP-24 D-1: node-07 hosts Temporal only. It is not a pipeline node and

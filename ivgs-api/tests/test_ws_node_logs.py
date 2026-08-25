@@ -1,197 +1,67 @@
 """
-Phase 2: WebSocket node logs streaming tests.
+WS node-log streaming — REMOVED, and pinned removed (WP-48-TELEMETRY, 2026-08-25).
 
-Tests /api/v1/ws/nodes/{node_id}/logs endpoint:
-  - SSH subprocess output streaming
-  - Service filter and tail parameters
-  - Process cleanup on disconnect
-  - SSH failure handling (BUG-013 — FIXED)
+WHAT THIS FILE USED TO BE. Eight tests over `WS /api/v1/ws/nodes/{node_id}/logs`:
+SSH subprocess output streaming, service filter, tail parameter, process cleanup
+on disconnect, SSH failure handling. Every one of them passed. Every one of them
+patched `asyncio.create_subprocess_shell`.
+
+WHY THAT MATTERED. The handler ran `ssh <node_ip> 'docker compose logs --follow'`
+from inside `ivgs-fastapi`, and that container has no `ssh` binary, no key and no
+`docker` CLI — measured in the running container 2026-08-25:
+
+    $ docker exec ivgs-fastapi sh -c 'command -v ssh; command -v docker'
+    (both empty)
+
+So in production the subprocess exited immediately, `readline()` returned empty,
+the loop broke, and the socket closed having sent nothing — without raising. The
+Node Monitor's log pane was blank on every node since the page shipped. These
+tests could not have caught that, because mocking the subprocess mocks away the
+only thing that was broken. They pinned the shape of a handler that never ran.
+
+That is the failure mode ledger P2.22 named — a test that freezes a stub — and
+the swallow shape of WP-00-SWALLOWED-FAILURES: a failure that renders as silence.
+
+WHAT REPLACES IT. `ivgs-api/tests/test_wp48_telemetry.py`, against
+`app/core/node_logs.py` and the real `ivgs-node-logs` source on each node:
+Docker frame demux, ANSI stripping, nullable level inference, path-traversal
+refusal, and — the part that matters here — an unreachable node reporting a
+*reason* rather than an empty line list.
+
+This file is kept, rather than deleted, so the removal is visible in the tree and
+cannot quietly regress.
 """
 
-import pytest
-from unittest.mock import patch, AsyncMock, MagicMock, call
-from starlette.testclient import TestClient
 
-AUTH_PATCH = "app.api.v1.ws_logs._authenticate_ws"
+def test_the_ssh_based_node_log_route_is_gone():
+    """No route in ws_logs may serve node logs.
 
-
-@pytest.fixture(autouse=True)
-def _registry_env(monkeypatch):
-    """Populate node registry env so ws_logs._node_ip resolves test targets."""
-    _reg = {"01": "192.168.1.90", "02": "192.168.1.91", "03": "192.168.1.92",
-            "04": "192.168.1.93", "05": "192.168.1.94", "06": "192.168.1.95"}
-    for _n, _ip in _reg.items():
-        monkeypatch.setenv(f"NODE_{_n}_IP", _ip)
-
-
-@pytest.fixture
-def sync_client():
-    """Synchronous TestClient for WebSocket testing."""
-    from main import app
-    with TestClient(app) as c:
-        yield c
-
-
-def _make_mock_process(lines=None, returncode=0):
-    """Create a mock async subprocess with stdout lines.
-
-    Args:
-        lines: list of byte strings to return from readline().
-               Automatically appends b"" (EOF).
-        returncode: process return code (None = still running)
+    If this fails, something re-added a node-log WebSocket. Before doing that,
+    read the module docstring above: the endpoint the UI advertised
+    (`/api/v1/nodes/{id}/logs/stream`) never existed at all, and the one that did
+    could not reach a node. Node logs are `GET /api/v1/nodes/{node_id}/logs`.
     """
-    if lines is None:
-        lines = []
+    from app.api.v1 import ws_logs
 
-    mock_process = AsyncMock()
-    mock_process.returncode = returncode
-    mock_process.terminate = MagicMock()
-
-    side_effects = list(lines) + [b""]
-    mock_process.stdout = AsyncMock()
-    mock_process.stdout.readline = AsyncMock(side_effect=side_effects)
-
-    return mock_process
+    assert not hasattr(ws_logs, "stream_node_logs")
+    paths = [getattr(r, "path", "") for r in ws_logs.router.routes]
+    assert not any("nodes" in p and "logs" in p for p in paths), paths
 
 
-# ===================================================================
-# Log streaming
-# ===================================================================
+def test_job_status_streaming_is_untouched():
+    """The other WebSocket in this module is real and stays."""
+    from app.api.v1 import ws_logs
+
+    assert hasattr(ws_logs, "stream_job_status")
+    paths = [getattr(r, "path", "") for r in ws_logs.router.routes]
+    assert any("jobs" in p and "status" in p for p in paths), paths
 
 
-def test_node_logs_streams_output(sync_client):
-    """SSH output lines should be streamed as JSON messages."""
-    mock_process = _make_mock_process(
-        lines=[b"INFO: server started\n", b"DEBUG: request received\n"]
-    )
+def test_the_replacement_is_reachable_and_honest_about_unknown_nodes():
+    """The HTTP replacement exists and refuses an unregistered node by name."""
+    from app.core.node_logs import list_containers
 
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process):
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
-                msg1 = ws.receive_json()
-                assert msg1["node_id"] == "node-01"
-                assert "server started" in msg1["log"]
-                assert "timestamp" in msg1
-
-                msg2 = ws.receive_json()
-                assert "request received" in msg2["log"]
-
-
-def test_node_logs_multiple_lines(sync_client):
-    """Should handle multiple log lines correctly."""
-    lines = [f"line {i}\n".encode() for i in range(5)]
-    mock_process = _make_mock_process(lines=lines)
-
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process):
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-02/logs") as ws:
-                received = []
-                for _ in range(5):
-                    msg = ws.receive_json()
-                    received.append(msg["log"])
-                assert received == [f"line {i}" for i in range(5)]
-
-
-# ===================================================================
-# Query parameters
-# ===================================================================
-
-
-def test_node_logs_with_service_filter(sync_client):
-    """Service query param should be passed to docker command."""
-    mock_process = _make_mock_process(lines=[b"svc log\n"])
-
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process) as mock_shell:
-            with sync_client.websocket_connect(
-                "/api/v1/ws/nodes/node-01/logs?service=render-engine"
-            ) as ws:
-                ws.receive_json()
-
-    cmd_arg = mock_shell.call_args[0][0]
-    assert "render-engine" in cmd_arg
-    assert "192.168.1.90" in cmd_arg
-
-
-def test_node_logs_with_tail_param(sync_client):
-    """Tail query param should be passed to docker command."""
-    mock_process = _make_mock_process(lines=[b"tail log\n"])
-
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process) as mock_shell:
-            with sync_client.websocket_connect(
-                "/api/v1/ws/nodes/node-01/logs?tail=50"
-            ) as ws:
-                ws.receive_json()
-
-    cmd_arg = mock_shell.call_args[0][0]
-    assert "50" in cmd_arg
-
-
-def test_node_logs_default_tail_100(sync_client):
-    """Default tail should be 100 when not specified."""
-    mock_process = _make_mock_process(lines=[b"default tail\n"])
-
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process) as mock_shell:
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
-                ws.receive_json()
-
-    cmd_arg = mock_shell.call_args[0][0]
-    assert "100" in cmd_arg
-
-
-# ===================================================================
-# Process cleanup
-# ===================================================================
-
-
-def test_node_logs_process_cleanup_on_disconnect(sync_client):
-    """Process should be terminated when client disconnects."""
-    mock_process = _make_mock_process(lines=[b"line\n"])
-    mock_process.returncode = None  # Still running
-
-    with patch(AUTH_PATCH, return_value=True):
-        with patch("asyncio.create_subprocess_shell", return_value=mock_process):
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
-                ws.receive_json()
-
-    mock_process.terminate.assert_called_once()
-
-
-# ===================================================================
-# Error handling — BUG-013 FIXED
-# ===================================================================
-
-
-def test_node_logs_ssh_failure(sync_client):
-    """SSH subprocess failure should be handled gracefully.
-
-    BUG-013 FIX: process = None initialised before try block, so the
-    finally block no longer raises UnboundLocalError when subprocess
-    creation fails.
-    """
-    with patch(AUTH_PATCH, return_value=True):
-        with patch(
-            "asyncio.create_subprocess_shell",
-            side_effect=OSError("SSH connection refused"),
-        ):
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
-                data = ws.receive_json()
-                assert "error" in data
-
-
-def test_node_logs_subprocess_create_failure_cleanup(sync_client):
-    """BUG-013 FIX: process = None before try prevents NameError in finally.
-
-    When create_subprocess_shell raises, the finally block should
-    safely skip termination (process is None) and not crash.
-    """
-    with patch(AUTH_PATCH, return_value=True):
-        with patch(
-            "asyncio.create_subprocess_shell",
-            side_effect=OSError("Permission denied"),
-        ):
-            with sync_client.websocket_connect("/api/v1/ws/nodes/node-01/logs") as ws:
-                data = ws.receive_json()
-                assert "error" in data
+    out = list_containers("node-99")
+    assert out["available"] is False
+    assert out["containers"] == []
+    assert "no registry entry" in out["reason"]
