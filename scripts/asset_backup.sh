@@ -72,7 +72,48 @@ readonly SRC_SHARED_VOLUME="/mnt/ivgs-shared"
 
 # Target / retention / metrics
 BACKUP_NAS_DIR="${BACKUP_NAS_DIR:-/mnt/backup/ivgs/assets}"
-BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
+
+# WP-58 Task 3. AD-09.14 open question 7, RULED: library assets and actors get
+# INDEFINITE retention.
+#
+# WHY THEY ARE DIFFERENT FROM EVERY OTHER ASSET. A project asset is
+# REGENERABLE - the prompt, the certified model and the seed are all held, so a
+# lost render can be re-rendered. A library asset is SOURCE MATERIAL WITH NO
+# UPSTREAM: an uploaded logo, an actor's reference clip, a music bed, a font.
+# Nothing can reproduce it. AD-09.4.2 stores both in the same SeaweedFS volumes,
+# so the 14-day prune below would eventually delete the only copy of material
+# that cannot be remade - and the schema already says the opposite is intended
+# (`library_assets.superseded_by`: never hard-deleted while referenced). Backup
+# retention must not contradict the schema's own intent.
+#
+# TIERED, NOT A SEPARATE LINEAGE. The alternative was a second backup that
+# identifies library objects and copies them on their own. Rejected: this script
+# is a whole-volume rsync and "has no concept of an asset" by construction.
+# Teaching it one means resolving library_assets -> fids -> filer objects, which
+# is a second copy path that can silently drift out of step with the volume
+# snapshot. The volume rsync ALREADY captures library assets; the only thing
+# missing was a copy the daily prune cannot reach.
+#
+# COST IS ~ZERO AND THAT IS MEASURED, not assumed: with --link-dest an unchanged
+# day costs 274 KB on the live store (2026-08-20/21/22), and the NAS is at 1% of
+# 20T. A monthly snapshot of static material is one directory of hard links.
+MONTHLY_DIR="${MONTHLY_DIR:-${BACKUP_NAS_DIR}/monthly}"
+
+# THE GUARD THAT MAKES THIS SAFE. Both the prune and the link-dest search below
+# used a bare `-type d` under BACKUP_NAS_DIR. Adding ANY sibling directory to
+# that path - which is exactly what MONTHLY_DIR is - would have made it a
+# candidate for both:
+#   * the prune would `rm -rf` the monthly tree the day it turned 15 days old,
+#     destroying the very thing this task exists to protect;
+#   * determine_link_dest sorts descending and takes the first hit, and
+#     "monthly" sorts AFTER "2026-..." , so every future backup would have
+#     hard-linked against the wrong tree.
+# Restricting both finds to date-named directories closes both at once.
+readonly DATED_SNAPSHOT_GLOB='20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+# WP-58 Task 1 - see the banner in scripts/backup.sh for the full reasoning.
+# Reads its OWN class variable. A single shared name would let the assets number
+# govern database retention too.
+BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_ASSETS_DAYS:-${BACKUP_RETENTION_DAYS:-14}}"
 PROMETHEUS_PUSHGATEWAY="${PROMETHEUS_PUSHGATEWAY:-http://localhost:9091}"
 MIN_DISK_SPACE_MB="${MIN_DISK_SPACE_MB:-5120}"
 
@@ -254,7 +295,11 @@ determine_link_dest() {
     # that is not today's. rsync --link-dest will hard-link unchanged files
     # to dramatically reduce space + bandwidth for incremental backups.
     local latest
+    # WP-58 Task 3: -name "${DATED_SNAPSHOT_GLOB}". Without it `monthly` is a
+    # candidate, and it sorts AFTER every 2026-.. name, so `sort -r | head -1`
+    # would pick it every time.
     latest="$(find "${BACKUP_NAS_DIR}" -maxdepth 1 -mindepth 1 -type d \
+              -name "${DATED_SNAPSHOT_GLOB}" \
               -not -name "${TIMESTAMP}" 2>/dev/null | sort -r | head -1)"
     if [ -n "${latest}" ] && [ -d "${latest}" ]; then
         echo "${latest}"
@@ -352,6 +397,62 @@ RECORD_EOF
 }
 
 # ---------------------------------------------------------------------------
+# Monthly promotion — indefinite retention for unregenerable material
+# ---------------------------------------------------------------------------
+# WP-58 Task 3 / AD-09.14 Q7. One snapshot per calendar month, hard-linked from
+# that month's first successful daily run, kept FOREVER.
+#
+# THERE IS NO PRUNE FOR THIS TREE AND THAT IS THE POINT. Do not add one without
+# re-opening AD-09.14 Q7: the ruling is indefinite retention, and a monthly
+# snapshot of static source material costs one directory of hard links.
+#
+# `cp -al` is what makes it free: -a preserves attributes, -l links instead of
+# copying, so a promoted month shares every inode with the daily snapshot it
+# came from. When the daily is pruned 14 days later, `rm -rf` only decrements
+# each link count - the bytes stay reachable through the monthly copy. That is
+# the mechanism, not a happy accident, and it is what makes "the prune cannot
+# delete the last surviving copy" structurally true rather than a matter of care.
+promote_monthly_snapshot() {
+    local month target
+    month="$(date +%Y-%m)"
+    target="${MONTHLY_DIR}/${month}"
+
+    if [ -d "${target}" ]; then
+        log_info "Monthly snapshot already present, not re-promoting" \
+            "{\"month\":\"${month}\",\"target\":\"${target}\"}"
+        return 0
+    fi
+
+    if [ ! -d "${TARGET_DIR}" ]; then
+        log_info "No daily snapshot to promote" "{\"expected\":\"${TARGET_DIR}\"}"
+        return 0
+    fi
+
+    mkdir -p "${MONTHLY_DIR}"
+
+    # Hard-link the whole day into the monthly tree. A failure here must NOT
+    # fail the backup: the daily snapshot is already on the NAS and is the
+    # thing the operator depends on today. It is logged loudly instead, because
+    # a silently-missing monthly is how indefinite retention quietly becomes
+    # 14-day retention.
+    if cp -al "${TARGET_DIR}" "${target}" 2>/dev/null; then
+        log_info "Monthly snapshot promoted (hard-linked, indefinite retention)" \
+            "{\"month\":\"${month}\",\"source\":\"${TARGET_DIR}\",\"target\":\"${target}\"}"
+    else
+        # cp -al cannot hard-link across filesystems. Fall back to a real copy
+        # rather than skipping: correctness of the retention guarantee outranks
+        # the disk saving, and the operator is told which one happened.
+        if cp -a "${TARGET_DIR}" "${target}" 2>/dev/null; then
+            log_info "Monthly snapshot promoted BY FULL COPY (hard-link failed)" \
+                "{\"month\":\"${month}\",\"target\":\"${target}\"}"
+        else
+            log_error "MONTHLY PROMOTION FAILED - library assets have no long-term copy for this month" \
+                "{\"month\":\"${month}\",\"target\":\"${target}\"}"
+        fi
+    fi
+}
+
+# ---------------------------------------------------------------------------
 # Retention cleanup (14 days per Table 14-1)
 # ---------------------------------------------------------------------------
 cleanup_old_backups() {
@@ -364,7 +465,14 @@ cleanup_old_backups() {
             log_info "Removing old asset backup: ${dir}"
             rm -rf "${dir}"
             ((deleted_count++)) || true
+        # WP-58 Task 3. -name "${DATED_SNAPSHOT_GLOB}" is LOAD-BEARING, not
+        # tidiness. Without it this find matches ${MONTHLY_DIR} itself and
+        # `rm -rf` destroys the indefinite-retention tree the moment it is older
+        # than BACKUP_RETENTION_ASSETS_DAYS - i.e. this prune would delete the
+        # only surviving copy of every library asset, which is precisely the
+        # outcome Task 3 exists to make impossible. Never widen this pattern.
         done < <(find "${BACKUP_NAS_DIR}" -maxdepth 1 -mindepth 1 -type d \
+            -name "${DATED_SNAPSHOT_GLOB}" \
             -mtime "+${BACKUP_RETENTION_DAYS}" -print0 2>/dev/null)
     fi
 
@@ -411,6 +519,12 @@ main() {
     fi
 
     capture_metadata "${total_size}"
+
+    # WP-58 Task 3. ORDER MATTERS AND IS NOT COSMETIC: promote BEFORE pruning.
+    # Reversing these two lines on the first of a month would prune the day that
+    # was about to be promoted, and the month would silently have no long-term
+    # snapshot.
+    promote_monthly_snapshot
     cleanup_old_backups
 
     local end_time
