@@ -281,6 +281,28 @@ async def _override_db_functions(test_engine, test_session_factory, monkeypatch)
 
     monkeypatch.setattr("shared.database.check_db_connection", _test_check_db_connection)
 
+    # WP-52. The line above is not enough on its own. `app/api/v1/health.py:13`
+    # does `from shared.database import check_db_connection`, which binds the
+    # function OBJECT into the health module's namespace at import time --
+    # rebinding the attribute on `shared.database` afterwards never reaches it.
+    #
+    # It looked like it worked because `app.api.v1.health` was normally first
+    # imported *inside* a test, while this fixture was active, so it happened to
+    # capture the patched function. Any collection-time import of `app.api.v1.*`
+    # breaks that accident: `test_node_topology.py:7` and
+    # `test_wp27_manifest_layers.py:14` import sibling route modules at module
+    # scope, `app/api/v1/__init__.py` pulls in every router including health, and
+    # from then on the health route calls the REAL check against the real engine
+    # at the `shared.config` default of localhost:5432 -- unreachable here, since
+    # Postgres publishes on 192.168.1.90 only. Result: 503, and the two
+    # status-code assertions in test_health.py failed for the whole suite while
+    # passing when that file was run alone.
+    #
+    # Patch the name where it is USED. Import order stops mattering.
+    from app.api.v1 import health as _health_module
+
+    monkeypatch.setattr(_health_module, "check_db_connection", _test_check_db_connection)
+
     # Override dispose_engine
     async def _test_dispose_engine():
         pass
