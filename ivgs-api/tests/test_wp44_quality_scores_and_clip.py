@@ -309,6 +309,51 @@ class TestClipProxy:
         assert response.status_code == 503
         assert "score" not in response.json()
 
+    async def test_a_backend_4xx_is_passed_through_not_called_unavailable(
+        self, client: AsyncClient, operator_token: str, monkeypatch
+    ):
+        """A malformed image is not an unavailable scorer.
+
+        The scorer being reachable and the input being usable are two different
+        facts, and collapsing them would be the same imprecision this package
+        exists to remove.
+        """
+        import httpx as _httpx
+        from app.api.v1 import clip as clip_module
+
+        class _Resp:
+            status_code = 400
+            text = '{"detail":{"error":{"code":"BAD_IMAGE"}}}'
+
+            def json(self):
+                return {"detail": {"error": {"code": "BAD_IMAGE"}}}
+
+        class _Client:
+            def __init__(self, *a, **k):
+                pass
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def post(self, *a, **k):
+                return _Resp()
+
+        monkeypatch.setattr(clip_module, "CLIP_SERVICE_URL", "http://node-05:8300")
+        monkeypatch.setattr(_httpx, "AsyncClient", _Client)
+
+        response = await client.post(
+            "/api/v1/clip/score",
+            headers={"Authorization": f"Bearer {operator_token}"},
+            json={"image_base64": "", "text": "a cat"},
+        )
+        assert response.status_code == 400, "a client error must not become a 503"
+        body = response.json()
+        assert body["detail"]["error"]["code"] == "BAD_SCORING_REQUEST"
+        assert "score" not in body
+
     async def test_health_reports_unavailable_honestly(
         self, client: AsyncClient, operator_token: str, monkeypatch
     ):

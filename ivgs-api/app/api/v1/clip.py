@@ -137,6 +137,31 @@ async def score_image(
         raise _unavailable("backend unreachable", backend=CLIP_SERVICE_URL,
                            detail_text=str(exc)[:200])
 
+    if 400 <= resp.status_code < 500:
+        # The backend rejected the REQUEST — a malformed image, usually. That is
+        # not an unavailable scorer, and calling it one would be the same
+        # imprecision this package exists to remove: the caller would be told
+        # "no scorer" when what it actually got was "your bytes are not an
+        # image". Passed through with its own status.
+        logger.warning(
+            "clip_score_bad_request status=%s body=%s",
+            resp.status_code, resp.text[:200],
+        )
+        raise HTTPException(
+            status_code=resp.status_code,
+            detail={
+                "error": {
+                    "code": "BAD_SCORING_REQUEST",
+                    "message": (
+                        "The scoring service rejected this request. The scorer "
+                        "is reachable; the input was not usable."
+                    ),
+                    "backend_status": resp.status_code,
+                    "backend_body": resp.text[:200],
+                }
+            },
+        )
+
     if resp.status_code != 200:
         raise _unavailable(
             f"backend returned HTTP {resp.status_code}",

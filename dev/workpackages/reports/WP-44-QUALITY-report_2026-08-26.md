@@ -5,7 +5,7 @@
 | **Ships** | `ivgs-workers:v5.10.0-quality` (4 nodes), `ivgs-api:v5.10.0-quality` (node-01), **`ivgs-clip-scorer:v5.10.0-quality` (node-05, new)** |
 | **Closes** | swallow register **instance 24**, and **instance 25** — found while closing 24. Ledger **P2.41**. |
 | **Opens** | ledger **P2.45** (a stale test module, pre-existing) |
-| **State** | Committed and **HELD**. 6 commits. Nothing pushed. |
+| **State** | Committed and **HELD**. 7 commits. Nothing pushed. |
 | **Engines** | vLLM, CogVideoX, LatentSync, ComfyUI, Coqui, Kokoro, WhisperX, Wan-Animate — **all untouched**, verified by uptime. |
 | **Frontend** | not touched; stays `v5.9.0-telemetry`. |
 
@@ -132,6 +132,13 @@ model the CLIPScore literature is calibrated on. A bigger tower shifts that scal
 silently re-calibrates every threshold on the fleet; that is a change needing its own
 measurement pass, not a default. The service reports `scale: "raw_cosine_similarity"` in
 every response and exposes `/thresholds` so a future substitution has to confront it.
+
+**A bad request is not an unavailable scorer.** The proxy passes a backend 4xx through
+with its own status and a `BAD_SCORING_REQUEST` code, rather than folding it into the 503.
+"The scorer is unreachable" and "your bytes are not an image" are different facts, and
+collapsing them would be the same imprecision this package exists to remove. Verified live:
+an empty `image_base64` returns **HTTP 400** naming the decode failure, while a real image
+still scores 0.3402 through the same route.
 
 **Honesty contract.** `/score` returns a score or an error. No fallback constant, no
 "conservative default", no `0.80`-on-exception. `/health` reports `model_loaded` from the
@@ -530,14 +537,14 @@ the banked artifact, which is exactly what exists.
 | Image | ID | Artifact sha256 | Size |
 |---|---|---|---|
 | `ivgs-workers:v5.10.0-quality` | `138250c69a60` | `ac59465e2453934c36b33633a9c0324e535a2c664684c836d0f5860addae5fe7` | 313 M |
-| `ivgs-api:v5.10.0-quality` | `4d8d338ba3a4` | `d409ff942597a5829a43c7869f2987911fce3ca203981690a91090d1a23f72bd` | 113 M |
+| `ivgs-api:v5.10.0-quality` | see `docker images` | `253631cda7fd55e1f3f1b2568479b098df37f97be5cd4c94ccbfeae1d1d7e264` | 113 M |
 | `ivgs-clip-scorer:v5.10.0-quality` | `c52d6020a4cf` | `eec9193ccc24916dc2f20da84ccc72f1303f92dcc6999295966b67858b56b7f0` | 4.3 G |
 
-All three: `sha256sum -c` OK and `zstd -t` OK. **Note:** MANIFEST.txt carries three
-`ivgs-workers:v5.10.0-quality` lines. The register records *saves*, not invocations, and
-the image was rebuilt twice after banking — once for the CLIP auth fix (§3.4) and once for
-the Temporal payload mirrors (§8.2). The **last** line is the deployed artifact; the sha in
-the table above is the one on disk now, and it matches the image on all four nodes.
+All three: `sha256sum -c` OK and `zstd -t` OK. **Note:** MANIFEST.txt carries repeated lines for `ivgs-workers` and `ivgs-api`. The
+register records *saves*, not invocations, and both images were rebuilt after their first
+banking — workers twice (the CLIP auth fix, §3.4; the Temporal payload mirrors, §8.2) and
+api once (the 4xx pass-through, §3.1). The **last** line for each is the deployed artifact;
+the shas in the table above are the ones on disk now and they match the running images.
 
 ### 6.6 Rollback
 
@@ -802,7 +809,7 @@ the WP-44 seam in the meantime — narrower than what `test_stage3.py` claims.
 
 ## 11. Push block — count-gated, for ALL held commits
 
-**HELD: 6 commits.** Nothing has been pushed. I have not run `git push` in this package.
+**HELD: 7 commits.** Nothing has been pushed. I have not run `git push` in this package.
 
 ```
 842caf7  fix(wp-44): the gate stops paying a missing checker, and numpy stops being optional
@@ -810,15 +817,20 @@ ce708c4  feat(wp-44): a CLIP model that exists, and the two routes the gate was 
 da61fe5  feat(wp-44): video assets get a validator that runs, and animation gets an input guard
 f39a777  fix(wp-44): the storyboard learns the four rules this week's runs paid for
 da6f1a5  test(wp-44): what a quality score is allowed to claim, pinned
-<HEAD>   docs(wp-44): the report, the AD-02 draft, and two register entries closed
-         (this commit — its own hash cannot appear inside itself; `git log --oneline -1` gives it)
+26cdc02  docs(wp-44): the report, the AD-02 draft, and two register entries closed
+<HEAD>   fix(wp-44): a malformed image is not an unavailable scorer
+         (this commit; a commit cannot contain its own hash — `git log --oneline -1`)
 ```
+
+The last commit lands after the report's own, because the defect it fixes was found by
+probing the route the report describes. The report is amended in that commit rather than
+left stale.
 
 Run this as one block. It refuses unless the count is exactly what this report claims.
 
 ```bash
 git fetch origin main && \
-EXPECTED=6 && \
+EXPECTED=7 && \
 ACTUAL=$(git rev-list --count origin/main..HEAD) && \
 if [ "$ACTUAL" != "$EXPECTED" ]; then
   echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
@@ -855,4 +867,4 @@ fi
 | api `v5.10.0-quality` on node-01 | **MET** |
 | every existing engine untouched | **MET** — verified by uptime and by unchanged `IVGS_LATENTSYNC_TAG` |
 | full suite at most twice | **MET** — twice; delta established by targeted comparison |
-| commit and HOLD | **MET** — 6 commits, nothing pushed |
+| commit and HOLD | **MET** — 7 commits, nothing pushed |
