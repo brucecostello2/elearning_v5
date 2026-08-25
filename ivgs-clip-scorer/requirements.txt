@@ -1,0 +1,10 @@
+# IVGS v5 — CLIP scorer (WP-44-QUALITY). Pinned; reproducible builds.
+# torch is NOT listed here: it comes from the CUDA-matched wheel index in the
+# Dockerfile, because the PyPI default wheel bundles its own CUDA libraries and
+# would double the image for no benefit on a node that already has the driver.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+transformers==4.48.0
+pillow==11.1.0
+pydantic==2.10.4
+numpy==2.2.1

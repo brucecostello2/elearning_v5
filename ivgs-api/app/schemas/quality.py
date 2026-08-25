@@ -47,6 +47,30 @@ class FlaggedAssetResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class QualityScoreCreateRequest(BaseModel):
+    """Worker-submitted automated quality verdict for one asset.
+
+    WP-44. The pipeline has been POSTing exactly this body to
+    ``/api/v1/quality-scores`` since Phase 4 and the route did not exist, so
+    every verdict of the first e2e run 404'd and ``asset_quality_scores``
+    is empty for it. The route exists now.
+
+    ``scoring_details`` is free-form on purpose, but the image validator
+    populates a fixed shape — per-check booleans plus ``checks_missing``,
+    ``check_coverage``, ``quality_score_complete`` and ``clip_status`` — so a
+    reviewer can tell a score that measured everything from one that did not.
+    """
+
+    asset_id: UUID
+    quality_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    safety_score: Optional[float] = Field(default=None, ge=0.0, le=1.0)
+    decision: str = Field(
+        description="approved | flagged | rejected",
+    )
+    job_id: Optional[UUID] = None
+    scoring_details: Optional[Dict[str, Any]] = None
+
+
 class QualityApproveRequest(BaseModel):
     """Request body for approving a flagged asset."""
 

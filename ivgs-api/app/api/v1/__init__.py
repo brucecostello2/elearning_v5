@@ -30,7 +30,12 @@ from app.api.v1.prompts import (
 )
 
 # --- Quality & Pipeline routers ---
-from app.api.v1.quality import job_quality_router, quality_router
+from app.api.v1.quality import (
+    job_quality_router,
+    quality_router,
+    quality_scores_router,
+)
+from app.api.v1.clip import router as clip_router
 from app.api.v1.checkpoints import router as checkpoints_router
 from app.api.v1.manifests import router as manifests_router
 
@@ -94,6 +99,8 @@ api_v1_router.include_router(scene_prompt_router)       # /projects/{id}/scenes/
 # Quality
 api_v1_router.include_router(job_quality_router)       # prefix built into router
 api_v1_router.include_router(quality_router)           # prefix built into router
+api_v1_router.include_router(quality_scores_router)    # /quality-scores (WP-44)
+api_v1_router.include_router(clip_router)              # /clip/* (WP-44)
 api_v1_router.include_router(checkpoints_router)       # prefix built into router
 api_v1_router.include_router(manifests_router, prefix="/jobs", tags=["Manifests"])
 

@@ -21,6 +21,7 @@ from app.schemas.quality import (
     QualityScoreResponse,
     FlaggedAssetResponse,
     JobQualityResponse,
+    QualityScoreCreateRequest,
 )
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,52 @@ class QualityService:
             )
 
         return responses, total
+
+    async def record_score(
+        self,
+        data: QualityScoreCreateRequest,
+    ) -> QualityScoreResponse:
+        """Persist one automated quality verdict from the pipeline.
+
+        WP-44. Raises ``LookupError`` if the asset does not exist — a quality
+        score for an asset that is not there is not a record, it is noise, and
+        the caller turns it into a 404 rather than writing an orphan row.
+
+        Automated verdicts are written unreviewed: ``reviewed_by`` and
+        ``reviewed_at`` stay NULL and are what separate a machine decision from
+        a human one in the review queue.
+        """
+        decision = (data.decision or "").strip().lower()
+        allowed = ("approved", "flagged", "rejected")
+        if decision not in allowed:
+            raise ValueError(
+                f"decision must be one of {allowed}, got {data.decision!r}"
+            )
+
+        asset_result = await self.db.execute(
+            select(Asset).where(Asset.id == data.asset_id)
+        )
+        if asset_result.scalar_one_or_none() is None:
+            raise LookupError(f"Asset {data.asset_id} not found")
+
+        score = AssetQualityScore(
+            asset_id=data.asset_id,
+            job_id=data.job_id,
+            quality_score=data.quality_score,
+            safety_score=data.safety_score,
+            scoring_details=data.scoring_details,
+            decision=decision,
+        )
+        self.db.add(score)
+        await self.db.commit()
+        await self.db.refresh(score)
+
+        logger.info(
+            f"Quality score recorded: id={score.id} asset={data.asset_id} "
+            f"decision={decision} score={data.quality_score} "
+            f"complete={(data.scoring_details or {}).get('quality_score_complete')}"
+        )
+        return QualityScoreResponse.model_validate(score)
 
     async def approve_score(
         self,

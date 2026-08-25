@@ -264,6 +264,15 @@ services:
       NODE_05_IP: ${NODE_05_IP}
       NODE_06_IP: ${NODE_06_IP}
       <<: *gpu-service-urls
+      # WP-44-QUALITY. The CLIP scoring service on node-05, behind
+      # `POST /api/v1/clip/score`. Set HERE and not in *gpu-service-urls: the
+      # API is the only client. Workers reach the scorer through the API's
+      # proxy route — the URL stage 3 has always built — so exactly one place
+      # on the fleet holds node-05's address and there is no per-node env to
+      # drift out of step. Unset, the route answers 503 and the validator
+      # records `clip_score: "unavailable"`; there is no path by which an
+      # absent scorer yields a number.
+      IVGS_CLIP_SERVICE_URL: "http://${NODE_05_IP}:${IVGS_CLIP_PORT:-8300}"
       UVICORN_WORKERS: "4"
       UVICORN_HOST: "0.0.0.0"
       UVICORN_PORT: "8001"
