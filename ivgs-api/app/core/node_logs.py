@@ -329,8 +329,19 @@ def node_logs_notes() -> Dict[str, str]:
             "but healthy log pane."
         ),
         "node-06": (
-            "node-06 is offline and has no log source. node-01 is served over the "
-            "container network rather than a host port - ufw blocks a container "
-            "from reaching node-01's own published ports."
+            "node-06 is ONLINE but UNPROVISIONED - corrected 2026-08-25 (WP-53); "
+            "this note used to say it was offline. Measured from node-01 the same "
+            "day: it answers ICMP and its node-exporter serves :9100, while :9430 "
+            "is closed because the log-source container has never been deployed "
+            "there. It has no /opt/ivgs at all. So the pane reports "
+            "`available: false` for the right reason - nothing is listening - and "
+            "NOT because the machine is down. Deploying "
+            "ivgs-infra/docker-compose.telemetry.yml on node-06 is all this needs; "
+            "it is an operator job and was deliberately out of scope for WP-53."
+        ),
+        "node-01": (
+            "node-01 is served over the container network rather than a host port "
+            "- ufw admits only 192.168.1.0/24 to the host and the compose bridge "
+            "is 172.x, so a container cannot reach node-01's own published ports."
         ),
     }

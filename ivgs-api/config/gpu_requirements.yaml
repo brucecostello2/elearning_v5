@@ -120,13 +120,29 @@ node_hardware:
     vram_mb: 49152          # 48 GB
     architecture: "Blackwell"
     tdp_watts: 350
+  # CORRECTED 2026-08-25 (WP-53). Both rows below were wrong, and wrong in a
+  # way worth naming: node-05's row carried NODE-06's actual card. The "RTX
+  # 5080 / 16 GB" written here is a real card in this fleet -- it is in node-06.
+  #
+  # Measured on the boxes:
+  #   node-05  NVIDIA RTX PRO 5000 Blackwell, 48935 MiB (WP-48, nvidia-smi)
+  #   node-06  NVIDIA GeForce RTX 5080,       16303 MiB (WP-28, re-confirmed
+  #                                                      WP-53 2026-08-25)
+  #
+  # node-06 has never held an Intel Arc B70 Pro in any measurement anyone has
+  # taken. The Battlemage row is the third distinct hardware claim this file's
+  # history contains for that slot.
+  #
+  # NOTE: this `node_hardware` block is currently UNREAD -- shared/config_loader.py
+  # only consumes the `gpu_requirements` key above it. Corrected anyway: an
+  # unread table that contradicts the hardware is a table someone will read.
   node-05:
-    gpu_model: "NVIDIA RTX 5080"
-    vram_mb: 16384          # 16 GB
+    gpu_model: "NVIDIA RTX PRO 5000 Blackwell"
+    vram_mb: 48935          # measured, not the 49152 a "48 GB" label implies
     architecture: "Blackwell"
     tdp_watts: 300
   node-06:
-    gpu_model: "Intel Arc B70 Pro"
-    vram_mb: 32768          # 32 GB
-    architecture: "Battlemage"
-    tdp_watts: 150
+    gpu_model: "NVIDIA GeForce RTX 5080"
+    vram_mb: 16303          # measured
+    architecture: "Blackwell"
+    tdp_watts: 360

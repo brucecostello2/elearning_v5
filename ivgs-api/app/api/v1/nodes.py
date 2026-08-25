@@ -101,14 +101,32 @@ NODE_TOPOLOGY = {
     },
     "node-06": {
         "hostname": "node-06",
+        # DISPUTED, and left as-is on purpose. AD-02 gave node-06 an on-demand
+        # fp8-70B LLM-failover leg, which was sized against the 96 GB this row
+        # used to claim. The card is 16 GB. That leg is not possible on this
+        # hardware and the role needs an operator re-ruling, not a silent edit
+        # here -- WP-53 D-1. Correcting the measured facts below without
+        # touching the role keeps the contradiction visible, which is the point.
         "role": "GPU Video + Compositor + LLM failover",
-        # OFFLINE (CLAUDE.md s2), and this entry is DISPUTED: CLAUDE.md records the
-        # card was swapped to an RTX 6000 96 GB and is now CUDA, not Intel. It
-        # cannot be measured while the node is off, so the claim is flagged rather
-        # than replaced with a different unverified claim. WP-24 D-5.
-        "gpu_model": "NVIDIA RTX 6000 Blackwell",
-        "total_vram_mb": 98304,
-        "topology_verified": False,
+        # CORRECTED 2026-08-25 (WP-53). This read "NVIDIA RTX 6000 Blackwell" /
+        # 98304 MB with topology_verified False, carrying WP-24 D-5's DISPUTED
+        # flag because the node was off and could not be measured.
+        #
+        # It is on now, and it was measured: nvidia-smi reports "NVIDIA GeForce
+        # RTX 5080", 16303 MiB, driver 580.173.02. A Proxmox VM on host rtx5080
+        # with the card passed through. So the swap CLAUDE.md recorded did not
+        # put a 96 GB card in this box -- it is a 16 GB consumer 5080, six times
+        # smaller than the row claimed, and the third node-06 hardware claim in
+        # this file's history.
+        #
+        # topology_verified True: this is now a measurement, not a declaration.
+        "gpu_model": "NVIDIA GeForce RTX 5080",
+        "total_vram_mb": 16303,
+        "topology_verified": True,
+        # DECLARED, not observed. node-06 has never been provisioned -- it has no
+        # /opt/ivgs and, measured from node-01 the same day, only :9100
+        # (node-exporter) answers; 9400 and 9430 are closed. Provisioning is an
+        # operator job and is deliberately not part of WP-53.
         "services": ["cogvideox", "remotion", "ffmpeg", "celery-worker"],
     },
 }

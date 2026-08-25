@@ -9,7 +9,7 @@
 #   node-03: vLLM (secondary), CogVideoX
 #   node-04: vLLM (Mistral 24B), ComfyUI (FLUX.1), Coqui TTS, LatentSync
 #   node-05: ComfyUI (SDXL), Ollama (Llama 3.2 8B)
-#   node-06: Remotion renderer (Intel GPU acceleration)
+#   node-06: Remotion renderer (NVIDIA RTX 5080 — WP-53; was "Intel GPU acceleration")
 # =============================================================================
 
 import os
@@ -22,7 +22,10 @@ import pytest_asyncio
 # Endpoints resolve from the canonical node registry (single source: node-01 .env /
 # x-gpu-service-urls anchor) -- never hardcoded IPs. Spec 2.3 (192.168.1.0/24) + A.2.
 # gpu_exporter has no canonical service URL, so it is built from NODE_0x_IP + its port.
-_EXPORTER_PORT = {"node-02": 9400, "node-03": 9400, "node-04": 9400, "node-05": 9400, "node-06": 9401}
+# WP-53: node-06 was 9401, the Intel exporter port. The card is NVIDIA and the
+# exporter is nvidia_smi_* on 9400, same as every other GPU node. Matches the
+# ivgs-infra/configs/prometheus/prometheus.yml change in the same commit.
+_EXPORTER_PORT = {"node-02": 9400, "node-03": 9400, "node-04": 9400, "node-05": 9400, "node-06": 9400}
 
 
 def _exporter(node_ip_var: str, node: str) -> str:
@@ -210,10 +213,16 @@ class TestNode05:
 
 
 # ---------------------------------------------------------------------------
-# node-06: Remotion / Intel GPU
+# node-06: Remotion / NVIDIA GPU (WP-53: was "Intel GPU")
 # ---------------------------------------------------------------------------
 class TestNode06:
-    """node-06 smoke tests — Intel B70 Pro 32 GB."""
+    """node-06 smoke tests — NVIDIA GeForce RTX 5080, 16303 MiB.
+
+    CORRECTED 2026-08-25 (WP-53); read "Intel B70 Pro 32 GB". node-06 has held
+    an NVIDIA card since the swap and holds a consumer 5080 today. These tests
+    skip without the node-registry env, so the wrong docstring was never going
+    to be contradicted by a run.
+    """
 
     @pytest.mark.asyncio
     async def test_remotion_health(self, client: httpx.AsyncClient):

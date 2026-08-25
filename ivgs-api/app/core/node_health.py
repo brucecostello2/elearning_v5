@@ -5,7 +5,16 @@ WHY THIS EXISTS. `/api/v1/nodes` used to return `status="online"` for all six
 nodes unconditionally, with `used_vram_mb`/`gpu_utilization_pct`/`temperature_c`
 hardcoded to 0. The dashboard rendered that as "6 online | 0 offline" and six GPU
 cards sitting at 0 C -- an assertion about hardware that no code path had ever
-measured. node-05 and node-06 have been physically off the whole time.
+measured.
+
+That last sentence used to read "node-05 and node-06 have been physically off the
+whole time." Both halves have since been measured and both were wrong, which is
+worth leaving on the record given what this module is for. node-05 was never off
+-- WP-48 found its node-exporter had been UP in Prometheus throughout (it is out
+of service NOW, 2026-08-25, for a RAM fault, which is a different fact). node-06
+is on as of 2026-08-25 and answers on :9100. Neither claim was ever an
+observation; both were repeated until they read like one. That is the failure
+mode this module exists to prevent, and it was sitting in its own docstring.
 
 WHAT IS TRUE HERE INSTEAD. Three states, and they are kept distinct:
 

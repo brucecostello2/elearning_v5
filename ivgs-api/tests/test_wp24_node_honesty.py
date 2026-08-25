@@ -45,7 +45,13 @@ ALL_NODES = ["node-01", "node-02", "node-03", "node-04", "node-05", "node-06"]
 class TestReachabilityHonesty:
     def test_down_nodes_report_offline_not_online(self, monkeypatch):
         """PRE-FIX: nodes.py:83 returned "online" for all six unconditionally,
-        so node-05 and node-06 -- physically powered off -- showed Online."""
+        so nodes believed to be powered off still showed Online.
+
+        WP-53 note: the fixture below still feeds node-05/06 a probe result of
+        0, because this test is about the MAPPING from probe to status, not
+        about the fleet. Both of those nodes have since been measured as up at
+        one time or another, so do not read the fixture as a claim about
+        hardware -- it is a controlled input."""
         monkeypatch.setattr(nh, "_query", _fake_query({
             nh.REACHABILITY_QUERY: _vector([
                 ("node-02", 1), ("node-03", 1), ("node-04", 1),
@@ -185,19 +191,38 @@ class TestPayloadContract:
         assert "PRO 6000" in n4["gpu_model"]
         assert n4["topology_verified"] is True
 
-    def test_offline_nodes_are_flagged_as_unverified_topology(self):
-        """A node that cannot be measured must not present declared hardware as
-        established fact.
+    def test_topology_verified_tracks_measurement_not_optimism(self):
+        """A row must not present declared hardware as established fact.
 
-        WP-48 (2026-08-25) narrowed this from node-05/06 to node-06 alone --
-        because node-05 was measured. It is online, and nvidia-smi on the box
-        reports an RTX PRO 5000 Blackwell with 48935 MiB, against a topology
-        table that declared an RTX 5080 with 16384 MiB. Keeping
-        topology_verified False there would now be the lie, not the caution."""
+        RENAMED and re-scoped 2026-08-25 (WP-53), from
+        `test_offline_nodes_are_flagged_as_unverified_topology`. WP-48 had
+        already narrowed it from node-05/06 to node-06 alone, because node-05
+        turned out to be online and measurable. node-06 has now been measured
+        too -- NVIDIA GeForce RTX 5080, 16303 MiB -- so `False` there would be
+        the lie rather than the caution, exactly as WP-48 argued for node-05.
+
+        Every row in the table is a measurement today, so the old assertion has
+        no subject left. The INVARIANT still does, and it is the thing worth
+        pinning: the flag and the claim have to agree. A row may not sit at
+        `topology_verified: False` while stating a GPU model and a VRAM figure
+        as though they were observed -- that combination is precisely the
+        "6 online | 0 offline over six cards at 0 C" defect WP-24 removed,
+        re-expressed as a topology claim.
+        """
         from app.api.v1.nodes import NODE_TOPOLOGY
 
-        assert NODE_TOPOLOGY["node-06"]["topology_verified"] is False
+        assert NODE_TOPOLOGY["node-06"]["topology_verified"] is True
         assert NODE_TOPOLOGY["node-05"]["topology_verified"] is True
+
+        for node_id, row in NODE_TOPOLOGY.items():
+            verified = row["topology_verified"]
+            assert isinstance(verified, bool), node_id
+            if not verified:
+                assert row["gpu_model"] is None, (
+                    f"{node_id}: topology_verified is False but the row still "
+                    f"asserts gpu_model={row['gpu_model']!r}. State the "
+                    f"measurement or state nothing."
+                )
 
     def test_node_07_is_absent(self):
         """WP-24 D-1: node-07 hosts Temporal only. It is not a pipeline node and

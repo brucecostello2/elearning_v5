@@ -14,12 +14,19 @@ from app.api.v1.nodes import NODE_TOPOLOGY
 RTX6000 = "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
 VRAM_96 = 97887
 
-# node-06 is OFF, so its row is DECLARED, not measured, and it still carries the
-# pre-swap strings. Pinning it to the measured constants above would assert a
-# measurement nobody has taken -- the thing WP-24 exists to prevent. It gets its
-# own pair, and the fact that they differ is the point.
-RTX6000_DECLARED = "NVIDIA RTX 6000 Blackwell"
-VRAM_96_DECLARED = 98304
+# CORRECTED 2026-08-25 (WP-53). These were named *_DECLARED because node-06 was
+# off and its row could not be measured -- pinning it to a measurement nobody
+# had taken is exactly what WP-24 exists to prevent. The node is on now and it
+# HAS been measured: nvidia-smi reports "NVIDIA GeForce RTX 5080", 16303 MiB,
+# driver 580.173.02. So these stop being declarations and become measurements,
+# and the values change by a factor of six.
+#
+# Worth recording why the old values were wrong rather than just replacing them:
+# CLAUDE.md s2 said the card had been swapped to an RTX 6000 96 GB. It had been
+# swapped -- to a consumer 5080. "The card was changed" was true; the card it
+# was changed to was not what anyone wrote down.
+RTX5080_MEASURED = "NVIDIA GeForce RTX 5080"
+VRAM_16_MEASURED = 16303
 
 
 def test_node02_is_llm_only():
@@ -41,21 +48,28 @@ def test_node03_is_video_only():
 
 def test_node06_is_cuda_video_compositor_failover():
     n = NODE_TOPOLOGY["node-06"]
-    assert n["gpu_model"] == RTX6000_DECLARED  # Intel B70 swapped out (Draft 3)
-    assert n["total_vram_mb"] == VRAM_96_DECLARED
-    assert n["topology_verified"] is False  # declared while the node is off
+    assert n["gpu_model"] == RTX5080_MEASURED  # Intel B70 swapped out (Draft 3); 5080, not 6000
+    assert n["total_vram_mb"] == VRAM_16_MEASURED
+    # WP-53: was `is False`, with "declared while the node is off". The node is
+    # on and has been measured, so the row is a measurement now.
+    assert n["topology_verified"] is True
     assert "cogvideox" in n["services"]  # 2nd video node
     assert "ffmpeg" in n["services"] and "remotion" in n["services"]  # compositor
     assert "Video" in n["role"] and "failover" in n["role"]
 
 
-def test_three_cuda_96gb_video_class_nodes():
-    """node-02/03/06 are all 96 GB-class CUDA peers after the swap.
+def test_the_cuda_video_class_nodes_are_not_one_class():
+    """node-02/03 are 96 GB peers. node-06 is not, and the name said it was.
 
-    WP-48 split this. node-02/03 are MEASURED (WP-24, nvidia-smi on the box);
-    node-06 is DECLARED and cannot be measured while it is off. Asserting one
-    pair of constants across all three was wrong in both directions, and had
-    been failing since WP-24 corrected the measured half.
+    RENAMED 2026-08-25 (WP-53), from `test_three_cuda_96gb_video_class_nodes`.
+    WP-48 had already split the assertions because node-02/03 were MEASURED and
+    node-06 was only DECLARED -- but the name kept asserting, in English, that
+    all three were 96 GB-class, which is the claim the whole test exists to
+    check. node-06 has now been measured at 16303 MiB: it is a sixth of the
+    others, not a peer, and the name has to stop saying otherwise.
+
+    This matters beyond tidiness. AD-02 gave node-06 an on-demand fp8-70B
+    LLM-failover leg on the strength of 96 GB. See WP-53 D-1.
     """
     for node_id in ("node-02", "node-03"):
         assert NODE_TOPOLOGY[node_id]["gpu_model"] == RTX6000
@@ -63,9 +77,12 @@ def test_three_cuda_96gb_video_class_nodes():
         assert NODE_TOPOLOGY[node_id]["topology_verified"] is True
 
     n6 = NODE_TOPOLOGY["node-06"]
-    assert n6["gpu_model"] == RTX6000_DECLARED
-    assert n6["total_vram_mb"] == VRAM_96_DECLARED
-    assert n6["topology_verified"] is False
+    assert n6["gpu_model"] == RTX5080_MEASURED
+    assert n6["total_vram_mb"] == VRAM_16_MEASURED
+    # Measured on the box 2026-08-25, so it is no longer a declaration.
+    assert n6["topology_verified"] is True
+    # The gap the role still assumes away, pinned so it cannot be forgotten.
+    assert n6["total_vram_mb"] < VRAM_96 // 4
 
 
 def test_no_node_conflates_llm_and_video():

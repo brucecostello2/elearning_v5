@@ -21,7 +21,7 @@ on any node other than node-01 unless explicitly handed over.
 | node-03 | 192.168.1.92 | Video only |
 | node-04 | 192.168.1.93 | Image + TTS + talking head. RTX PRO 6000 96 GB. |
 | node-05 | 192.168.1.94 | ONLINE. RTX PRO 5000 Blackwell, 48935 MiB (~48 GB), driver 580.173.02. Earmarked for the quality-services stack. Corrected 2026-08-25 (WP-48) - this row read OFFLINE and every doc said RTX 5080 16 GB. Both wrong; `nvidia-smi` on the box is the source. |
-| node-06 | 192.168.1.95 | OFFLINE. Card swapped to RTX 6000 96 GB - now CUDA, not Intel. |
+| node-06 | 192.168.1.95 | **ONLINE, UNPROVISIONED.** NVIDIA GeForce RTX 5080, **16303 MiB**, driver 580.173.02. A Proxmox VM on host rtx5080 with the card passed through. It answers ICMP and serves node-exporter on :9100; :9400 and :9430 are closed because it has **no `/opt/ivgs`** and has never been provisioned. Corrected 2026-08-25 (WP-53) - this row read "OFFLINE. Card swapped to RTX 6000 96 GB". The swap happened; the card it was swapped to is a **consumer 5080, six times smaller** than 96 GB. WP-28 measured exactly this figure and WP-29 filed it as an erratum; it sat unapplied while WP-24, WP-48 and WP-52 all went on quoting 96 GB. **AD-02's on-demand fp8-70B LLM-failover leg was sized against 96 GB and is not possible on 16 GB** - open for operator re-ruling, WP-53 D-1. |
 | node-07 | 192.168.1.96 | Temporal cluster ONLY (WP-31 Lane B). No queue, no GPU, no pipeline service - deliberately absent from `/api/v1/nodes` so it cannot enter the "N online" denominator (WP-24 D-1). UI :8080, gRPC :7233, compose at `/opt/temporal/`. |
 | .7 | 192.168.1.7 | TrueNAS. Backup target: /mnt/store/ivgs and /mnt/store/ivgs-archive |
 | .9 | 192.168.1.9 | RETIRED CIFS NAS. Do not write to it. |

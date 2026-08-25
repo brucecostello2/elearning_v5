@@ -56,14 +56,33 @@ const NODE_IDS = [
   "node-06",
 ] as const;
 
-/** GPU capability labels per §3.2 */
+/**
+ * GPU capability labels.
+ *
+ * CORRECTED 2026-08-25 (WP-53). Every one of the five GPU rows was wrong, and
+ * had been since the page was written: A6000 48 GB for node-02/03, RTX 4090
+ * 24 GB for node-04/05, Intel Arc A770 16 GB for node-06. Not one of those
+ * cards is in this fleet. The comment above them said "per S3.2", which is how
+ * a set of invented labels acquired a citation.
+ *
+ * These are now MEASURED values, read the same day from
+ * `nvidia_smi_gpu_info` / `nvidia_smi_memory_total_bytes` in the live
+ * Prometheus for nodes 02-04, from WP-48's nvidia-smi run for node-05, and from
+ * WP-28/WP-53's measurement for node-06.
+ *
+ * CAVEAT worth knowing before trusting any single number here: node-04's
+ * measured 96 GB CONTRADICTS `NODE_TOPOLOGY` in the API, which declares 48 GB
+ * for it. That gap is real and is NOT resolved by this change -- see WP-53 D-2.
+ * It is left visible rather than papered over, because the API's figure is what
+ * admission control would use and this page is only what a human reads.
+ */
 const GPU_LABELS: Record<string, string> = {
   "node-01": "Management (No GPU)",
-  "node-02": "NVIDIA A6000 (48 GB)",
-  "node-03": "NVIDIA A6000 (48 GB)",
-  "node-04": "NVIDIA RTX 4090 (24 GB)",
-  "node-05": "NVIDIA RTX 4090 (24 GB)",
-  "node-06": "Intel Arc A770 (16 GB)",
+  "node-02": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
+  "node-03": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
+  "node-04": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
+  "node-05": "NVIDIA RTX PRO 5000 Blackwell (48 GB)",
+  "node-06": "NVIDIA GeForce RTX 5080 (16 GB)",
 };
 
 /** View mode for the page */

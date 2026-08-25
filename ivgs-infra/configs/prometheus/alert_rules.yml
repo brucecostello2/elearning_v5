@@ -36,11 +36,27 @@ groups:
       # Severity: Critical
       # Action: Page on-call; consider draining node
       # -----------------------------------------------------------------------
+      # CORRECTED 2026-08-25 (WP-53). This alert could never fire.
+      #
+      # It matched `nvidia_gpu_temperature_celsius` OR
+      # `intel_gpu_temperature_celsius`. NEITHER SERIES EXISTS. Queried against
+      # the live Prometheus the same day, the only GPU temperature series in the
+      # instance is `nvidia_smi_temperature_gpu` (the nvidia-gpu-exporter's
+      # actual metric name, up on node-02/03/04); `intel_*` returns nothing at
+      # all, and `DCGM_FI_DEV_GPU_TEMP` is a stale name in the label index with
+      # zero live series.
+      #
+      # So a CRITICAL page-on-call rule for GPU overtemperature has been
+      # evaluating to empty on every cycle since it was written. It did not
+      # fail, it did not warn: an alert that matches nothing looks exactly like
+      # an alert whose condition is not met.
+      #
+      # The intel leg is dropped with the intel-gpu-exporter job (prometheus.yml
+      # Group 5) -- node-06 is NVIDIA. Safe to enable: the three live GPUs read
+      # 29-35 C at the time of the change, nowhere near the 85 C threshold.
       - alert: GPUOvertemperature
         expr: |
-          nvidia_gpu_temperature_celsius > 85
-            or
-          intel_gpu_temperature_celsius > 85
+          nvidia_smi_temperature_gpu > 85
         for: 2m
         labels:
           severity: critical

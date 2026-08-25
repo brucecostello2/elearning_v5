@@ -21,7 +21,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 | node-03 | NVIDIA RTX 6000 Blackwell | 96 GB | vLLM — Qwen2.5 72B (tensor parallel w/ node-02), CogVideoX 5B, Wan2.1 |
 | node-04 | NVIDIA RTX 5000 Pro Blackwell | 48 GB | ComfyUI (FLUX.1 Dev, AnimateDiff), Coqui XTTS v2, Kokoro TTS, WhisperX, LatentSync, SadTalker, vLLM Mistral 24B |
 | node-05 | NVIDIA RTX PRO 5000 Blackwell | 48 GB | Quality-services stack (earmarked). Documented as RTX 5080 / 16 GB until 2026-08-25; corrected (WP-48) against `nvidia-smi` on the box. |
-| node-06 | NVIDIA RTX 6000 Blackwell | 96 GB | CogVideoX 5B / Wan2.1 (second video node), Remotion renderer (lower-thirds, captions, animated titles, Ken-Burns L2 fill), primary FFmpeg compositor, Llama-3.3-70B-FP8 (failover only) |
+| node-06 | NVIDIA GeForce RTX 5080 | **16 GB** (16303 MiB) | Remotion renderer, FFmpeg compositor. **Corrected 2026-08-25 (WP-53)**: read "RTX 6000 Blackwell / 96 GB" — WP-28 measured a 5080/16303 MiB and WP-29 filed the erratum, unapplied until now. CogVideoX 5B / Wan2.1 and the Llama-3.3-70B-FP8 failover leg were **sized against 96 GB and do not fit 16 GB**; open for operator re-ruling (WP-53 D-1). Online but **unprovisioned** — no `/opt/ivgs`. |
 
 > NVIDIA driver ≥ 570.x, CUDA ≥ 12.4 (Blackwell). Every GPU-bearing node is CUDA; the Intel oneAPI/IPEX path is withdrawn (AD-02 Draft 3).
 
@@ -34,7 +34,7 @@ IVGS v5 runs on a **6-node Proxmox cluster** with dedicated GPU allocation (§2.
 | node-03 | 192.168.1.92 | 16 | 48 GB | 200 GB SSD | 2 TB NVMe | RTX 6000 Blackwell 96 GB (#2) |
 | node-04 | 192.168.1.93 | 12 | 32 GB | 200 GB SSD | 1 TB NVMe | RTX 5000 Pro Blackwell 48 GB |
 | node-05 | 192.168.1.94 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX PRO 5000 Blackwell 48 GB |
-| node-06 | 192.168.1.95 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | RTX 6000 Blackwell 96 GB (#3) |
+| node-06 | 192.168.1.95 | 8 | 24 GB | 200 GB SSD | 1 TB NVMe | **GeForce RTX 5080 16 GB** (host `rtx5080`) — WP-53, measured |
 
 #### Node Roles (Table 2-2)
 

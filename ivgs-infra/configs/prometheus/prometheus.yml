@@ -9,8 +9,9 @@
 #   1. ivgs-api          — node-01:8000/metrics
 #   2. ivgs-scheduler    — node-01:8001/metrics
 #   3. node-exporter     — all nodes :9100/metrics
-#   4. nvidia-gpu-exporter — nodes 02-05 :9400/metrics
-#   5. intel-gpu-exporter  — node-06:9401/metrics
+#   4. nvidia-gpu-exporter — nodes 02-06 :9400/metrics
+#   5. (was intel-gpu-exporter on node-06:9401 — removed 2026-08-25, WP-53;
+#      the card is NVIDIA, see Group 4)
 #   6. postgres-exporter   — node-01:9187/metrics
 #   7. redis-exporter      — node-01:9121/metrics
 # =============================================================================
@@ -53,6 +54,18 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 15s
     static_configs:
+      # WP-53: LEFT AS IS, and this is deliberate. The other four node-01
+      # targets were dead because of ufw and container DNS fixes them. This one
+      # is not: measured 2026-08-25, `ivgs-api` serves NO Prometheus endpoint at
+      # all. It imports no prometheus_client and registers no /metrics route
+      # (compare ivgs-scheduler/main.py:883, which does) — probed
+      # /metrics, /api/metrics and /api/v1/metrics on the live container and all
+      # three 404. The published port is 8001, not the 8000 written here.
+      #
+      # Pointing this at "ivgs-fastapi:8001" would turn a connection timeout
+      # into a 404 and change nothing that matters, while making the target
+      # LOOK addressed. Fixing it means giving the API a metrics endpoint,
+      # which is code, not config. Ledger P2.62.
       - targets:
           - "node-01:8000"
         labels:
@@ -76,8 +89,12 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 15s
     static_configs:
+      # WP-53 (P2.40). Was "node-01:8001" and DOWN with "context deadline
+      # exceeded" for the ufw reason described in Group 3. Verified 2026-08-25
+      # over container DNS from a peer on ivgs-infra_ivgs-net: 200, 7.7 KB,
+      # prometheus_client output. The scheduler's endpoint is main.py:883.
       - targets:
-          - "node-01:8001"
+          - "ivgs-scheduler:8001"
         labels:
           service: "ivgs-scheduler"
           node: "node-01"
@@ -96,8 +113,26 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 15s
     static_configs:
+      # WP-53 (P2.40). Was "node-01:9100", which has been DOWN with
+      # "context deadline exceeded" since this file was written: ufw admits only
+      # 192.168.1.0/24 to the host and the compose bridge is 172.x, so a
+      # container cannot reach node-01's own published ports. The container-DNS
+      # remedy is the one WP-48 proved for node-01's log source and that
+      # `pushgateway` below has been using successfully all along.
+      #
+      # NO ufw change is needed, contrary to what was expected: measured
+      # 2026-08-25, `ivgs-node-exporter` is on ivgs-infra_ivgs-net (not host
+      # networking) and answered 200 with 108 KB of metrics over container DNS.
+      # It runs with --path.procfs=/host/proc --path.sysfs=/host/sys
+      # --path.rootfs=/rootfs against host mounts, so these are HOST metrics,
+      # not the container's.
+      #
+      # This one matters beyond tidiness: app/core/node_health.py reads
+      # up{job="node-exporter"}, so node-01 has been rendering as `unknown` in
+      # the Node Monitor — the healthiest machine in the fleet, unable to
+      # observe itself.
       - targets:
-          - "node-01:9100"
+          - "ivgs-node-exporter:9100"
         labels:
           node: "node-01"
           role: "infrastructure"
@@ -130,7 +165,10 @@ scrape_configs:
         labels:
           node: "node-06"
           role: "remotion-compositor"
-          gpu: "intel-b70-pro"
+          # WP-53: was "intel-b70-pro". Measured 2026-08-25 — NVIDIA GeForce
+          # RTX 5080, 16303 MiB, driver 580.173.02. This target is UP; only the
+          # label was wrong.
+          gpu: "nvidia-rtx-5080"
     relabel_configs:
       - source_labels: [__address__]
         target_label: instance
@@ -169,6 +207,29 @@ scrape_configs:
         labels:
           node: "node-05"
           gpu_model: "RTX PRO 5000 Blackwell"   # WP-48: was "RTX 5080"
+          # WP-53: was "16", left behind when WP-48 corrected the model on the
+          # line above. nvidia-smi on the box reports 48935 MiB. node-05 is OUT
+          # OF SERVICE as of 2026-08-25 (RAM fault, corrupting data under load)
+          # so this target is down and correctly so; the label is fixed anyway
+          # because a wrong capacity is wrong whether or not it is reachable.
+          vram_total_gb: "48"
+      # WP-53. node-06 moved here from the intel-gpu-exporter job, which has been
+      # removed. It was registered as an INTEL exporter on :9401; the card is
+      # NVIDIA, so that target could never have come up and never did. Measured
+      # 2026-08-25 on the box: "NVIDIA GeForce RTX 5080", 16303 MiB, driver
+      # 580.173.02 — a consumer 5080, NOT the RTX 6000 96 GB every document
+      # claimed after the swap.
+      #
+      # This target will be DOWN until node-06 is provisioned. That is deliberate
+      # and it is the honest state: node-06 answers on :9100 today and nothing
+      # else, because it has never had docker-compose.telemetry.yml deployed and
+      # has no /opt/ivgs. Registering it now means the target goes green the
+      # moment the operator provisions it, with no config change to remember.
+      - targets:
+          - "node-06:9400"
+        labels:
+          node: "node-06"
+          gpu_model: "NVIDIA GeForce RTX 5080"
           vram_total_gb: "16"
     relabel_configs:
       - source_labels: [__address__]
@@ -177,24 +238,19 @@ scrape_configs:
         replacement: "${1}"
 
   # ---------------------------------------------------------------------------
-  # Scrape Target Group 5: Intel GPU Exporter — Node 06 (§13.1 Row 5)
-  # Metrics: Intel GPU utilization, memory, power
+  # Scrape Target Group 5: REMOVED 2026-08-25 (WP-53).
+  #
+  # This was `intel-gpu-exporter` scraping node-06:9401, labelled
+  # "Intel B70 Pro" / 32 GB. node-06 has not held an Intel card for some time
+  # and holds an NVIDIA RTX 5080 today, so the target was scraping a port that
+  # nothing has ever listened on — Prometheus has been reporting it DOWN for its
+  # whole life and there was no configuration change that could have fixed it.
+  #
+  # node-06 now appears in Group 4 on :9400 with its measured card. Coverage
+  # moved; it was not dropped. No alert rule referenced this job by name; the one
+  # rule that referenced `intel_gpu_temperature_celsius` is handled in
+  # alert_rules.yml.
   # ---------------------------------------------------------------------------
-  - job_name: "intel-gpu-exporter"
-    metrics_path: "/metrics"
-    scrape_interval: 15s
-    static_configs:
-      - targets:
-          - "node-06:9401"
-        labels:
-          node: "node-06"
-          gpu_model: "Intel B70 Pro"
-          vram_total_gb: "32"
-    relabel_configs:
-      - source_labels: [__address__]
-        target_label: instance
-        regex: "(.+):\\d+"
-        replacement: "${1}"
 
   # ---------------------------------------------------------------------------
   # Scrape Target Group 6: PostgreSQL Exporter (§13.1 Row 6)
@@ -204,6 +260,12 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 15s
     static_configs:
+      # WP-53: LEFT AS IS. Like `ivgs-api` above, and unlike the two node-01
+      # targets container DNS repaired, this one is not a networking problem:
+      # measured 2026-08-25, there is NO postgres-exporter container on this host
+      # (`docker ps -a` has none), so `postgres_exporter` has never been deployed.
+      # Giving it a container name would point it at something that does not
+      # exist. Ledger P2.62.
       - targets:
           - "node-01:9187"
         labels:
@@ -225,6 +287,12 @@ scrape_configs:
     metrics_path: "/metrics"
     scrape_interval: 15s
     static_configs:
+      # WP-53: LEFT AS IS. Like `ivgs-api` above, and unlike the two node-01
+      # targets container DNS repaired, this one is not a networking problem:
+      # measured 2026-08-25, there is NO redis-exporter container on this host
+      # (`docker ps -a` has none), so `redis_exporter` has never been deployed.
+      # Giving it a container name would point it at something that does not
+      # exist. Ledger P2.62.
       - targets:
           - "node-01:9121"
         labels:
