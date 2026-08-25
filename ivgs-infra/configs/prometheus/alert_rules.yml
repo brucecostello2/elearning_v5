@@ -81,6 +81,17 @@ groups:
       # Severity: Critical
       # Action: Auto-reschedule jobs; alert ops
       # -----------------------------------------------------------------------
+      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_worker_last_heartbeat_timestamp`
+      # is produced by no target on this fleet, and the name appears
+      # nowhere in the IVGS tree either -- it were written against
+      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
+      # This rule has therefore never been capable of firing.
+      #
+      # KEPT DELIBERATELY, not deleted. The data exists: `worker_heartbeats` is a real table (0 rows today, which is its own finding).
+      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
+      # only record that the fleet is supposed to be watching this. Root cause
+      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
+      # at all -- which is where all five of these belong. Ledger P2.64.
       - alert: WorkerDown
         expr: |
           time() - ivgs_worker_last_heartbeat_timestamp > 300
@@ -106,6 +117,17 @@ groups:
       # Severity: Critical
       # Action: Alert ops for investigation
       # -----------------------------------------------------------------------
+      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_dlq_message_count`
+      # is produced by no target on this fleet, and the name appears
+      # nowhere in the IVGS tree either -- it were written against
+      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
+      # This rule has therefore never been capable of firing.
+      #
+      # KEPT DELIBERATELY, not deleted. The data exists: `dead_letter_messages` is a real table (0 rows -- and until WP-53 fixed fallback_chain.py the worker could not write to it at all, so this alert was silent about a queue nothing could reach).
+      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
+      # only record that the fleet is supposed to be watching this. Root cause
+      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
+      # at all -- which is where all five of these belong. Ledger P2.64.
       - alert: DLQHighCount
         expr: |
           ivgs_dlq_message_count > 10
@@ -132,6 +154,17 @@ groups:
       # Severity: Critical
       # Action: Investigate pipeline errors
       # -----------------------------------------------------------------------
+      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_pipeline_jobs_failed_total` and `ivgs_pipeline_jobs_total`
+      # are produced by no target on this fleet, and the names appear
+      # nowhere in the IVGS tree either -- they were written against
+      # §13.1 Table 13-3, the design, and nothing was ever built to emit them.
+      # This rule has therefore never been capable of firing.
+      #
+      # KEPT DELIBERATELY, not deleted. The data exists AND is populated: `render_jobs` holds 35 rows with status. This one could be exported today with no new plumbing.
+      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
+      # only record that the fleet is supposed to be watching this. Root cause
+      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
+      # at all -- which is where all five of these belong. Ledger P2.64.
       - alert: JobFailureRateHigh
         expr: |
           (
@@ -235,9 +268,19 @@ groups:
       # Severity: Warning
       # Action: Review queue backlog
       # -----------------------------------------------------------------------
+      # CORRECTED 2026-08-25 (WP-54). `nvidia_gpu_utilization_pct` is produced by
+      # nothing on this fleet -- the name appears in no exporter and nowhere in
+      # the IVGS tree. The live exporter emits `nvidia_smi_utilization_gpu_ratio`.
+      #
+      # THE UNIT CHANGE IS NOT COSMETIC. The exporter's metric is a RATIO in
+      # [0, 1]; the rule and its annotation are written in PERCENT. A bare
+      # rename would have compared a ratio against 30 and been true for every
+      # possible value the metric can take -- an alert that cannot stop firing,
+      # which is the mirror image of the one that cannot start. It would have
+      # looked correct today only because an idle fleet reads 0 either way.
       - alert: GPUUtilizationLow
         expr: |
-          avg(nvidia_gpu_utilization_pct) < 30
+          avg(nvidia_smi_utilization_gpu_ratio) * 100 < 30
         for: 15m
         labels:
           severity: warning
@@ -261,6 +304,17 @@ groups:
       # Severity: Warning
       # Action: Consider scaling workers
       # -----------------------------------------------------------------------
+      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_render_queue_pending_segments`
+      # is produced by no target on this fleet, and the name appears
+      # nowhere in the IVGS tree either -- it were written against
+      # §13.1 Table 13-3, the design, and nothing was ever built to emit it.
+      # This rule has therefore never been capable of firing.
+      #
+      # KEPT DELIBERATELY, not deleted. The data exists: `render_segments` is a real table (0 rows). NOT to be substituted with `ivgs_scheduler_queue_depth`, which measures the GPU admission queue, is a different quantity, and is itself unreliable (P2.46).
+      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
+      # only record that the fleet is supposed to be watching this. Root cause
+      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
+      # at all -- which is where all five of these belong. Ledger P2.64.
       - alert: RenderQueueBacklog
         expr: |
           ivgs_render_queue_pending_segments > 20
@@ -286,9 +340,19 @@ groups:
       # Severity: Warning
       # Action: Check for reservation leaks
       # -----------------------------------------------------------------------
+      # CORRECTED 2026-08-25 (WP-54). `nvidia_gpu_memory_used_bytes` /
+      # `_total_bytes` are produced by nothing on this fleet. The live exporter
+      # emits `nvidia_smi_memory_used_bytes` / `nvidia_smi_memory_total_bytes`,
+      # in the same unit, so this one is a straight rename.
+      #
+      # It fires immediately on node-02, and that is a TRUE positive, measured
+      # at the time of the change: 92792684544 / 102641958912 = 90.4%. vLLM
+      # preallocates its KV cache, so a node serving an LLM sits near the top of
+      # VRAM by design. The alert has been incapable of saying so for its whole
+      # life; the first thing it does once repaired is report a real condition.
       - alert: GPUVRAMHigh
         expr: |
-          (nvidia_gpu_memory_used_bytes / nvidia_gpu_memory_total_bytes) * 100 > 90
+          (nvidia_smi_memory_used_bytes / nvidia_smi_memory_total_bytes) * 100 > 90
         for: 5m
         labels:
           severity: warning
@@ -379,6 +443,17 @@ groups:
       # Severity: Info
       # Action: Notify user via dashboard
       # -----------------------------------------------------------------------
+      # ⛔ NO METRIC BEHIND THIS RULE. Measured 2026-08-25 (WP-54): `ivgs_user_storage_used_bytes` and `ivgs_user_storage_quota_bytes`
+      # are produced by no target on this fleet, and the names appear
+      # nowhere in the IVGS tree either -- they were written against
+      # §13.1 Table 13-3, the design, and nothing was ever built to emit them.
+      # This rule has therefore never been capable of firing.
+      #
+      # KEPT DELIBERATELY, not deleted. The data exists: `storage_quotas` is a real table (0 rows).
+      # The gap is an EXPORTER, not a rule: deleting the rule would remove the
+      # only record that the fleet is supposed to be watching this. Root cause
+      # is shared with WP-53's P2.62 -- `ivgs-api` serves no /metrics endpoint
+      # at all -- which is where all five of these belong. Ledger P2.64.
       - alert: StorageQuotaAlert
         expr: |
           (ivgs_user_storage_used_bytes / ivgs_user_storage_quota_bytes) * 100 > 80
