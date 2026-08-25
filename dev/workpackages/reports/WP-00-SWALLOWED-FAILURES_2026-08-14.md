@@ -1129,7 +1129,7 @@ unknowable one is neither. That is the observation this register requires.
 
 ---
 
-### 24. A quality gate that scores a missing checker as a pass - OPEN
+### 24. A quality gate that scores a missing checker as a pass - **CLOSED 2026-08-26**
 
 **Added 2026-08-23 by WP-39-MEDIA-JOIN**, verified live from the Celery result backend.
 
@@ -1191,12 +1191,140 @@ learns to ignore it.
 Also noted: the 2 video assets carry `quality_decision: ""` and `quality_score: 0.0` -
 the video path runs no validator at all.
 
-**Disposition: OPEN, recorded not fixed** (WP-39 scope). (b) is a `requirements.txt` and
-image change that re-opens blank/noise detection on real footage and needs its own
-verification pass. (a) needs either a CLIP scoring service, which does not exist, or the
-honest alternative: stop constructing a URL for a route that was never built, delete the
-free 0.15, and record `clip_score: unavailable` as a distinct value from a measured
-`None`. Both belong in one package about what a quality score is permitted to claim.
+**Disposition when recorded: OPEN, recorded not fixed** (WP-39 scope). (b) was a
+`requirements.txt` and image change; (a) needed either a CLIP scoring service, which did
+not exist, or the honest alternative. Both belonged in one package about what a quality
+score is permitted to claim.
+
+---
+
+**CLOSED 2026-08-26 by WP-44-QUALITY**, on observed live evidence in the deployed
+`ivgs-workers:v5.10.0-quality` image. The closing rule of this register is that a failure
+must be watched surfacing; all three limbs were.
+
+**(a) is closed by building the scorer, not by deleting the term.** `ivgs-clip-scorer`
+runs on node-05 (`openai/clip-vit-base-patch32`, weights baked into the image), reached
+through a new `POST /api/v1/clip/score` proxy on node-01 — the URL stage 3 was already
+constructing. Measured inside the deployed worker, calling the real route:
+
+```
+scene 0 image vs ITS OWN prompt   clip_score 0.3402  approved  coverage 1.0  complete True
+scene 0 image vs unrelated prompt clip_score 0.1393  REJECTED  "CLIP score too low: 0.139"
+```
+
+`score += 0.15  # Default pass if CLIP unavailable` is gone. The negative gate is run
+against the built image: no line matching `^\s+score \+= 0\.15` exists in
+`/app/utils/image_validator.py`.
+
+**(b) is closed by installing numpy and by refusing to trust it.** `numpy==2.2.1` is a
+pinned worker dependency and imports inside all four deployed workers. The `ImportError`
+handler stays, and now sets **nothing** to True: it appends both names to
+`checks_missing`. Watched surfacing, with the import forced to fail:
+
+```
+checks_missing  ['blank_check_ok', 'clip_ok', 'noise_check_ok']
+blank_check_ok  False        <- missing, and no longer reading as passed
+decision        flagged      <- a gate may not APPROVE what it did not measure
+```
+
+And the check now catches real assets: six of the first run's sixteen images are
+**rejected** for `Image appears blank or solid color`.
+
+**The compound result is what actually changed.** An unavailable scorer is removed from
+the numerator *and* the denominator, so it can neither award nor withhold credit, and the
+record says how much of the gate ran:
+
+```
+scorer present : quality_score 1.0    coverage 1.00  complete True   clip_score 0.3402
+scorer absent  : quality_score 1.0    coverage 0.85  complete False  clip_score "unavailable"
+```
+
+Both say 1.0 and they are no longer the same claim: the second says *"of the 85% of this
+gate that ran, everything passed"*, names `clip_ok` as missing, and cannot reach
+`approved`. `clip_score` is the literal string `"unavailable"` in the submitted record —
+never a bare `None` that reads as a zero or as a score.
+
+**The video half is closed too.** `VideoValidator` existed and was built-and-discarded
+(`_validator = VideoValidator()  # noqa: F841`), which is why the two video assets carried
+`quality_decision: ""`. It runs now in both `video_generation_task` and
+`animation_generation_task`, including a frame-distinctness measurement. Live, on node-03,
+against the real WP-46 render:
+
+```
+asset 3bc54e58  768x1408 30fps h264  77/77 distinct, 0/76 identical consecutive pairs
+asset 3e133509  REJECTED  "Unsupported video codec: mpeg4"
+```
+
+**One caveat, stated rather than buried.** A real gate is not an omniscient one. CLIP
+cannot do arithmetic, so scene 0's image — whose whiteboard reads `2? x 23.14` where the
+prompt asked for `23 x 14` — still scores **0.3673** and is **approved**. CLIP is
+measuring *"is this a teacher at a whiteboard"*, and it is. No scorer available to this
+fleet catches deformed on-screen text, which is exactly why WP-44 Task 4 forbids
+requesting it. **The gate is honest now; it is not all-seeing, and entry 25 below is the
+adjacent defect it does not cover.**
+
+**Evidence:** `dev/workpackages/reports/WP-44-QUALITY-report_2026-08-26.md`, S1–S3, S7c.
+
+---
+
+### 25. A quality verdict POSTed into a route that does not exist - **CLOSED 2026-08-26**
+
+**Found and closed 2026-08-26 by WP-44-QUALITY**, while closing entry 24.
+
+Entry 3's shape — *a write nobody checks* — one layer above entry 24. Even after a
+quality verdict is computed honestly, it has to be **recorded**, and it never was.
+
+`tasks/stage3_images._submit_quality_score` has POSTed to
+`{pipeline_api.full_base_url}/quality-scores` since Phase 4. **That route did not exist.**
+`ivgs-api` served `/quality/flagged`, `/quality/{id}/approve`, `/quality/{id}/reject` and
+`/jobs/{id}/quality` — no `POST /quality-scores` anywhere. And the call site was:
+
+```
+        try:
+            await client.post(f"{...}/quality-scores", json={...})
+        except Exception as e:
+            logger.warning("quality_score_submit_failed", error=str(e))
+```
+
+`await client.post` on a 404 **raises nothing** — httpx returns a response object, and
+only `raise_for_status()` would have objected. So every automated verdict the pipeline has
+ever produced was thrown away without a single log line.
+
+**Measured on the live database, 2026-08-26:**
+
+```
+SELECT count(*) FROM asset_quality_scores;   ->  0
+GET /api/v1/quality/flagged                  ->  0 rows
+```
+
+Zero. Not "16 stale rows" — zero, for the entire life of the system. The only copy those
+sixteen verdicts ever had was the Celery result row, and `celery.backend_cleanup` has
+since reaped every stage-3 task from `celery_taskmeta`. **This is why WP-44's Task 6(c) —
+"decide whether to clear or re-score the 18 stale flagged review items" — had to be
+answered by correcting its premise: there is no review history to clear.**
+
+**Two swallows in series, and the second hid the first.** The gate manufactured a perfect
+score (entry 24) and then failed to file it (this entry). Either alone would have been
+noticed sooner: a review queue full of suspicious 1.0s invites a question, and an empty
+review queue after a completed run invites a different one. A queue that is empty
+*because* the writes 404'd, while the run reports success, invites neither.
+
+**Fixed.** `POST /api/v1/quality-scores` exists (`ivgs-api/app/api/v1/quality.py`,
+`QualityService.record_score`), validates the decision enum, 404s on an unknown asset
+rather than writing an orphan row, and records automated verdicts unreviewed
+(`reviewed_by`/`reviewed_at` NULL) so a machine decision stays distinguishable from a
+human one. The worker side now checks `resp.status_code not in (200, 201)` and logs the
+status, the URL and the asset id; a failed submission still does not fail the scene, but
+it is no longer invisible. Image, video and animation all report through one shared
+`utils/quality_reporting.submit_quality_score`.
+
+**Watched surfacing:** `ivgs-api/tests/test_wp44_quality_scores_and_clip.py` asserts the
+route is not a 404, that the verdict is readable back out of `/quality/flagged`, and that
+`checks_missing` / `check_coverage` / `quality_score_complete` survive the round trip into
+`scoring_details`. Live route listing on the deployed API shows
+`/api/v1/quality-scores ['post']`.
+
+**Evidence:** `dev/workpackages/reports/WP-44-QUALITY-report_2026-08-26.md`, S3.4 and S7c.
 
 ---
 

@@ -148,6 +148,41 @@ either side).
 Read `/opt/MBCP/dev/CLAUDE.md` and `/opt/MBCP/dev/workorders/WORK_PACKAGES.md`
 before touching anything seam-related.
 
+### 11.1 Seam direction - the AD-04 doctrine, as ruled (P2.41)
+
+**The two seams run in OPPOSITE directions, by design. This is not a defect and
+it is not a drafting slip.** WP-48 raised the conflict; it is ruled here under
+ledger **P2.41**, which is CLOSED by this entry.
+
+| | Seam 1 - metadata / attestation | Seam 2 - weights |
+|---|---|---|
+| **Direction** | **MBCP-initiated PUSH** | **IVGS-initiated PULL** |
+| **Mechanism** | MBCP `AD01Export` POSTs the certification package to `MBCP_AD01_URL` | IVGS's `ivgs-models` fetch client retrieves the bundle from MBCP's serving plane |
+| **IVGS side** | `ad01_ingest.py` - a RECEIVER, and correctly so | `mbcp_fetch.py` - a client, and correctly so |
+| **Authority** | SSOT §12.4 / §12.6 | AD-04 v3.1 Amendment, closed decision #2 |
+
+The rule as it has been stated in work orders - *"PULL-ONLY: IVGS initiates all
+transfers from MBCP; MBCP never pushes"* - is **true of Seam 2 and false of
+Seam 1**. Its source is AD-04 v3.1's closed decision **#2**, which is titled
+*Weight-serving transport*: **"Direction is pull: IVGS pulls, MBCP does not
+push."** That sentence is scoped to weights. AD-04-v3 §3.14 says the other seam
+runs the other way in as many words: *"`AD01Export` (Phase 4): POSTs the bundle
+to AD-01."*
+
+**Ruling: the doctrine is Seam-2-scoped.** Write it that way. IVGS's
+implementation already conforms to the SSOT on both seams and needs no change;
+what needed correcting was the sentence, not the code. Anyone quoting
+"pull-only" without naming the seam is quoting it wrong.
+
+Practical consequence: **do not "fix" `ad01_ingest.py` into a puller.** It is a
+receiver because §12.6 makes it one. Turning it into a scheduled poller would
+be an MBCP-owned, change-controlled amendment to a spec section that §787
+freezes - not an IVGS refactor.
+
+Verified against primary sources: `MBCP_Master_Functional_Specification_SSOT_v3.3.md`
+§12.4/§12.6 and `IVGS_v5_Addendum_AD-04_v3.1_Amendment.md` decision #2.
+Evidence: WP-48-TELEMETRY report S6; ruling recorded by WP-44-QUALITY, 2026-08-26.
+
 Terminology trap: IVGS has EIGHT pipeline stages; MBCP has NINE capability
 stages (mbcp_core/enums.py). They are different taxonomies. MBCP's
 image_generation / video_generation / animation_generation all map to IVGS

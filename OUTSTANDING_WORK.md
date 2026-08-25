@@ -1523,8 +1523,19 @@ problem for node-01's log source by attaching it to `ivgs-net` and addressing it
 container DNS (`docker-compose.telemetry.node01.yml`) rather than opening a port.
 **Pairs with P2.29** (compose/monitoring-net reconciliation).
 
-## P2.41 — AD-04 "pull-only" doctrine contradicts the SSOT on the metadata seam *(new, WP-48-TELEMETRY Task 4, 2026-08-25 — needs an OPERATOR RULING, no code change proposed)*
-**Status:** OPEN — **spec/doctrine conflict, not an implementation defect.** The
+## P2.41 — AD-04 "pull-only" doctrine contradicts the SSOT on the metadata seam *(new, WP-48-TELEMETRY Task 4, 2026-08-25; **CLOSED 2026-08-26 by WP-44-QUALITY Task 6a**)*
+**Status:** **CLOSED — ruled option (i): the doctrine is Seam-2-scoped.** The ruling is
+written into `dev/CLAUDE.md` §11.1 as a table of the two seams, their directions, their
+mechanisms and their authorities, with the AD-04 v3.1 decision-#2 quote that scopes it to
+weights and the AD-04-v3 §3.14 quote that sends the metadata seam the other way. Nothing
+in the implementation changes: it already conformed to the SSOT on both seams, and the
+sentence was what needed correcting. `ad01_ingest.py` stays a receiver — §12.6 makes it
+one, and turning it into a poller would be an MBCP-owned amendment to a section §787
+freezes. Anyone quoting "pull-only" without naming the seam is quoting it wrong.
+
+<details><summary>Original analysis (WP-48), retained</summary>
+
+**Status when raised:** OPEN — **spec/doctrine conflict, not an implementation defect.** The
 implementation was checked against primary sources and **conforms to the SSOT**; what does
 not fit is the rule as stated in the work order ("PULL-ONLY: IVGS initiates all transfers
 from MBCP; MBCP never pushes").
@@ -1558,6 +1569,8 @@ should say so explicitly, or (ii) the doctrine stands as written, in which case 
 change-controlled spec amendment (SSOT §787 freezes the export-factory seam), plus a new
 IVGS-side scheduled puller and demotion of `ad01_ingest.py` to a disabled receiver.
 **Nothing is implemented either way.** Full evidence in the WP-48 report, S6.
+
+</details>
 
 ## P2.42 — node-02 `vllm.service`: a disabled unit that would run the wrong compose *(new, WP-48-TELEMETRY, 2026-08-25)*
 **Status:** OPEN — inert today, a landmine if ever enabled. `/etc/systemd/system/vllm.service`
@@ -1601,6 +1614,54 @@ True and only node-06 stays unverified).
 node-05's role actually is — the work order says *quality-services stack*, which is neither
 the AD-02 "image fallback + Ollama" role nor anything currently deployed (the node runs the
 telemetry pair and nothing else; it has no `/opt/ivgs` checkout at all).
+
+**Update 2026-08-26 (WP-44-QUALITY Task 6b): the amendment is DRAFTED and awaits review.**
+`docs/IVGS_v5_Addendum_AD-02_Draft4_node05_quality_services_DRAFT.md` — a document, under
+§18 change control. **No specification text has been edited**: AD-02 Draft 3 and
+`docs/ivgs_v5_functional_spec.md` are untouched, deliberately. The draft proposes replacing
+the node-05 bullet and the Appendix AD-B row with *the quality-services node*, carries the
+measured basis (RTX PRO 5000 Blackwell 48935 MiB; the deployed CLIP scorer occupying 1040
+MiB / **2.1%** of the card at 21 ms median compute), inventories the four consequential
+edit sites, and leaves four questions for the reviewer — including whether the SDXL and
+Ollama fallbacks survive anywhere at all, and where §11.1's unimplemented safety
+classifier goes. **This item stays OPEN until the draft is reviewed and adopted**; it is
+now blocked on a decision rather than on the work.
+
+**Also now true, and new:** node-05 *does* have `/opt/ivgs/ivgs-infra` and *does* run a
+service — `ivgs-clip-scorer` on :8300, from the tracked
+`ivgs-infra/docker-compose.quality.node05.yml` overlay. The "runs nothing" half of the
+description above is superseded.
+
+## P2.45 — `ivgs-workers/tests/test_stage3.py`: five tests red on `main`, against a signature that no longer exists *(new, WP-44-QUALITY, 2026-08-26)*
+**Status:** OPEN — a stale test module, not a product defect. **Pre-existing: verified red at
+`5a9fd23` with the WP-44 working tree stashed**, i.e. before this package touched anything.
+
+Five of the module's tests fail at collection or setup for three separate reasons, all of
+them drift between the tests and a Stage 3 that has been rewritten under them:
+
+| Symptom | Cause |
+|---|---|
+| `AttributeError: ... does not have the attribute '_update_scene_asset'` (×3 patch sites) | that helper does not exist in `tasks/stage3_images` and per `git log` never has |
+| `AttributeError: ... does not have the attribute 'CogVideoXClient'` | the module imports `CogVideoXGenerationParams` / `CogVideoXModel`, not the client class — the provider-factory rewrite (WP-IVGS-0) moved client construction out |
+| `TypeError: _process_single_scene() got an unexpected keyword argument 'flux_client'` | same rewrite: the function takes a provider, not per-engine clients |
+
+**Why WP-44 did not fix it.** The first cause is a three-line deletion and WP-44 made it,
+then reverted: the second and third need four tests rewritten against the provider-factory
+signature, with mocks for a path that reaches `build_provider`. That is real work with its
+own failure modes, and half-repairing a stale module leaves it broken in a *different*
+shape — worse for the next person than finding it broken in the documented one. The revert
+is deliberate and this entry is the record.
+
+**What covers Stage 3 in the meantime.** WP-44 added
+`ivgs-workers/tests/test_wp44_quality_gate.py::TestStage3CarriesTheRecord` — six tests
+pinning the validator→result→API seam this package changed (the single `_quality_fields`
+helper at all three constructors, the honesty fields on `SceneImageResult`, the submitted
+record being the validator's own, submission no longer gated on `enable_clip_scoring`, and
+the non-2xx logging). That is narrower than what `test_stage3.py` claims to cover.
+
+**Scope/action:** rewrite the four `_process_single_scene` tests against the current
+signature and drop the three dead patch targets. Small, self-contained, and best done by
+whoever next touches Stage 3's control flow.
 
 ## P2.44 — node-04 `wp42probe`: a container left in `Created` since WP-42 *(new, WP-48-TELEMETRY, 2026-08-25)*
 **Status:** OPEN — trivial, recorded so it is not rediscovered. `docker ps -a` on node-04 shows
