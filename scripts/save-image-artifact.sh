@@ -19,7 +19,14 @@ REF="${1:?usage: save-image-artifact.sh <image-ref>}"
 STORE="${IVGS_IMAGE_ARTIFACTS:-/mnt/ivgs-shared/image-artifacts}"
 mkdir -p "$STORE"
 
-NAME="$(echo "$REF" | sed 's#^[^/]*/##; s#[/:]#_#g')"
+# WP-58 Task 4: the derivation moved to scripts/lib/artifact_name.sh so there is
+# ONE definition. This script is no longer the only place that knows the name,
+# which is what let a hand-rolled `docker save | zstd -o <name>` produce a file
+# no deploy path could find (2026-08-25).
+# shellcheck source=lib/artifact_name.sh
+source "$(dirname "${BASH_SOURCE[0]}")/lib/artifact_name.sh"
+
+NAME="$(artifact_name_for "$REF")"
 
 if command -v zstd >/dev/null 2>&1; then
   EXT="tar.zst"; COMP="zstd -T0"; DECOMP="zstd -d -c"

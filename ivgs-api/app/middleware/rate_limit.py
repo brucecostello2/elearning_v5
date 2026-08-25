@@ -10,6 +10,7 @@ Uses Redis sliding window counters.
 """
 import hmac
 import logging
+import os
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -20,11 +21,55 @@ from shared.redis_client import redis_client
 
 logger = logging.getLogger(__name__)
 
+# WP-58 Task 4 — a second instance of the retention defect, found by the sweep.
+#
+# `ivgs-infra/.env` and `.env.node01` have both set RATE_LIMIT_AUTH_LOGIN,
+# RATE_LIMIT_JOB_TRIGGERS and RATE_LIMIT_CONTENT_CRUD since they were written,
+# and NOTHING HAS EVER READ ANY OF THEM. This table was a Python literal, so the
+# §16.3 abuse controls were not configurable and an operator editing .env to
+# loosen or tighten a limit changed nothing at all. Same shape as the four
+# BACKUP_RETENTION_* variables: a setting that looks live and is decorative.
+#
+# The configured values happen to equal the literals below (5, 10 and 60 per
+# minute), which is exactly why this went unnoticed — as with retention, the
+# defect is invisible until someone tries to change a value.
+#
+# The literals are kept as DEFAULTS, so an unset or malformed variable produces
+# today's behaviour rather than an unlimited bucket. A rate limiter that fails
+# open because its configuration is unparseable is worse than one that is not
+# configurable, so `_parse_rate` never widens a limit on bad input.
+
+_WINDOW_SECONDS = {"second": 1, "minute": 60, "hour": 3600, "day": 86400}
+
+
+def _parse_rate(raw: str | None, fallback: tuple[int, int]) -> tuple[int, int]:
+    """Parse a ``"N/period"`` rate string into ``(max_requests, window_seconds)``.
+
+    Returns ``fallback`` for anything it cannot parse, and says so in the log.
+    Deliberately conservative: an unreadable limit must not become no limit.
+    """
+    if not raw:
+        return fallback
+    try:
+        count_text, _, period = raw.strip().partition("/")
+        count = int(count_text)
+        window = _WINDOW_SECONDS[period.strip().lower().rstrip("s")]
+        if count < 1:
+            raise ValueError(f"rate count must be >= 1, got {count}")
+        return count, window
+    except (ValueError, KeyError) as exc:
+        logger.warning(
+            "Unparseable rate limit %r (%s); falling back to %s req / %ss",
+            raw, exc, fallback[0], fallback[1],
+        )
+        return fallback
+
+
 # Rate limit configurations: (max_requests, window_seconds)
 RATE_LIMITS = {
-    "login": (5, 60),       # 5 attempts/min per IP
-    "job_trigger": (10, 60), # 10 req/min per user
-    "default": (60, 60),     # 60 req/min per user
+    "login": _parse_rate(os.environ.get("RATE_LIMIT_AUTH_LOGIN"), (5, 60)),
+    "job_trigger": _parse_rate(os.environ.get("RATE_LIMIT_JOB_TRIGGERS"), (10, 60)),
+    "default": _parse_rate(os.environ.get("RATE_LIMIT_CONTENT_CRUD"), (60, 60)),
 }
 
 LOGIN_LOCKOUT_THRESHOLD = 10   # consecutive failures
