@@ -43,14 +43,26 @@ _IVGS_STAGE_MAP: dict[str, ModelStage] = {
     "composition": ModelStage.COMPOSITION,
 }
 
-# Default engine per stage (recorded gap: MBCP does not send the engine type).
+# Default engine per stage, used ONLY when the bundle omits ``engine``
+# (recorded gap: older MBCP exports do not send the engine type).
+#
+# WP-46 — this table mis-registered every animation model IVGS has.
+# ``animation_generation`` defaulted to ``animatediff``, which is the name of
+# ONE MBCP model family, not of an engine. MBCP serves its whole animation
+# line — Wan2.2-Animate, MimicMotion and AnimateDiff-SD15 alike — on the
+# unified ComfyUI runtime (``mbcp_adapters/comfyui.py``: one ComfyUIAdapter,
+# one graph per family), so the engine is ``comfyui`` for all three. All three
+# IVGS candidate rows landed with engine ``animatediff`` because of this line,
+# and ``models`` registration fields are immutable, so each has to be
+# disabled and re-registered by hand. The default is now what MBCP actually
+# serves; the fix does not touch the rows already written.
 _STAGE_DEFAULT_ENGINE: dict[ModelStage, ModelEngine] = {
     ModelStage.TRANSCRIPT_REFINEMENT: ModelEngine.VLLM,
     ModelStage.STORYBOARD_GENERATION: ModelEngine.VLLM,
     ModelStage.TRANSLATION: ModelEngine.VLLM,
     ModelStage.IMAGE_GENERATION: ModelEngine.COMFYUI,
     ModelStage.VIDEO_GENERATION: ModelEngine.COGVIDEOX,
-    ModelStage.ANIMATION_GENERATION: ModelEngine.ANIMATEDIFF,
+    ModelStage.ANIMATION_GENERATION: ModelEngine.COMFYUI,
     ModelStage.VOICEOVER_TTS: ModelEngine.COQUI,
     ModelStage.TALKING_HEAD: ModelEngine.LATENTSYNC,
 }

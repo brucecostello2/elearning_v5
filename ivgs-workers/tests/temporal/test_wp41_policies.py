@@ -42,7 +42,7 @@ LIVE_TASKS = [
     (policies.REFINE_TRANSCRIPT, "tasks.stage1_transcript", "refine_transcript_task"),
     (policies.GENERATE_STORYBOARD, "tasks.stage2_storyboard", "generate_storyboard_task"),
     (policies.RENDER_SCENE_IMAGE, "tasks.stage3_images", "generate_scene_images_task"),
-    (policies.RENDER_SCENE_ANIMATION, "tasks.stage3_images", "generate_scene_images_task"),
+    (policies.RENDER_SCENE_ANIMATION, "tasks.animation_generation_task", "generate_scene_animations"),
     (policies.RENDER_SCENE_VIDEO, "tasks.video_generation_task", "generate_video_clips"),
     (policies.BUILD_COMPOSITION_MANIFEST, "tasks.stage4_manifest", "build_composition_manifest"),
     (policies.GENERATE_VOICEOVER, "tasks.stage5_voiceover", "generate_voiceover_task"),
@@ -135,8 +135,15 @@ class TestLiveness:
 
 class TestQueues:
     def test_queues_match_ad05_section_4_2(self):
+        """AD-05 §4.2's set, plus the one WP-46 added.
+
+        ``gpu_animation`` is not in §4.2 because §4.2 was written while
+        animation still borrowed the image queue. It is a real capability
+        queue by the same rule as the rest: one queue per engine that can
+        occupy a card, so node specialisation survives.
+        """
         assert {p.queue for p in ALL_POLICIES} <= {
-            "default", "gpu_llm", "gpu_image", "gpu_video",
+            "default", "gpu_llm", "gpu_image", "gpu_video", "gpu_animation",
             "gpu_tts", "gpu_talking_head", "composition",
         }
 
@@ -156,9 +163,10 @@ class TestQueues:
             prefix = policy.celery_task_name.rsplit(".", 1)[0] + ".*"
             assert policy.queue == TASK_ROUTES[prefix]["queue"], policy.activity
 
-    def test_image_and_animation_share_gpu_image(self):
+    def test_each_media_branch_has_its_own_queue(self):
+        """WP-46: animation left gpu_image when it stopped being a still."""
         assert policies.RENDER_SCENE_IMAGE.queue == "gpu_image"
-        assert policies.RENDER_SCENE_ANIMATION.queue == "gpu_image"
+        assert policies.RENDER_SCENE_ANIMATION.queue == "gpu_animation"
         assert policies.RENDER_SCENE_VIDEO.queue == "gpu_video"
 
 

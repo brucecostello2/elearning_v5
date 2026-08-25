@@ -35,10 +35,18 @@ a single mislabelled report could strand the whole job. Eighteen scenes now
 mean eighteen activity completions, each matched by the server to the
 scheduled event that started it.
 
-Image and animation deliberately share these payload types, because they share
-one Celery task and one engine and always did. What they no longer share is
-their identity: ``ActivityContext.label`` is set from the DagNode, never
-defaulted from the task.
+Image and animation USED TO share these payload types, because they shared one
+Celery task and one engine. WP-46 ended that: animation is
+``tasks.animation_generation_task`` on the Wan ComfyUI, with its own models,
+so it now has its own mirrored pair (``RenderSceneAnimationInput`` /
+``RenderSceneAnimationOutput``). What they never shared, since WP-39, is their
+identity: ``ActivityContext.label`` is set from the DagNode, never defaulted
+from the task.
+
+The animation pair carries two fields the image pair has no use for —
+``reference_image_asset_id`` and ``driving_video_asset_id``. They are not
+decoration: Wan2.2-Animate is pose reenactment, and those two inputs are the
+whole difference between an animation and a still.
 """
 
 from __future__ import annotations
@@ -300,6 +308,78 @@ class RenderSceneImageOutput:
 
     # The label this scene was rendered UNDER -- image_generation or
     # animation_generation. Never defaulted; set from the DagNode.
+    stage: str = ""
+    idempotency_key: str = ""
+    attempt: int = 0
+
+
+# ---------------------------------------------------------------------------
+# Stage 3 — animation branch (gpu_animation)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class RenderSceneAnimationInput:
+    """
+    One scene of the animation branch.
+
+    Mirrors ``SceneAnimationInput``. The batch-level settings a per-scene
+    activity has no batch to read come across as ``_EXTRA``, as they do for
+    image and video.
+    """
+
+    _MIRRORS: ClassVar[str] = "tasks.animation_generation_task:SceneAnimationInput"
+    _EXTRA: ClassVar[FrozenSet[str]] = frozenset(
+        {"ctx", "project_name", "project_description", "target_audience",
+         "language_code", "tier", "enable_dedup"}
+    )
+
+    ctx: ActivityContext
+    scene_id: str = ""
+    scene_index: int = 0
+    visual_description: str = ""
+    narration_text: str = ""
+    duration_seconds: float = 5.0
+    scene_title: Optional[str] = None
+    # The two pose-reenactment inputs. Absent, the activity resolves them from
+    # the project's assets; absent there too, the render is refused by name.
+    reference_image_asset_id: Optional[str] = None
+    driving_video_asset_id: Optional[str] = None
+
+    # carried down from AnimationGenerationInput
+    project_name: str = ""
+    project_description: str = ""
+    target_audience: str = "general"
+    language_code: str = "en-US"
+    tier: str = "prototype"
+    enable_dedup: bool = True
+
+
+@dataclass
+class RenderSceneAnimationOutput:
+    _MIRRORS: ClassVar[str] = "tasks.animation_generation_task:SceneAnimationResult"
+    _EXTRA: ClassVar[FrozenSet[str]] = frozenset({"stage", "idempotency_key", "attempt"})
+
+    scene_id: str = ""
+    scene_index: int = 0
+    asset_id: Optional[str] = None
+    seaweedfs_path: Optional[str] = None
+    sha256_hash: str = ""
+    width: int = 0
+    height: int = 0
+    fps: int = 0
+    duration_seconds: float = 0.0
+    file_size_bytes: int = 0
+    quality_score: float = 0.0
+    quality_decision: str = ""
+    model_used: str = ""
+    generation_time_seconds: float = 0.0
+    was_deduplicated: bool = False
+    fallback_level: int = 0
+    errors: List[str] = field(default_factory=list)
+    status: str = "success"
+
+    # The label this scene was rendered UNDER. Never defaulted; set from the
+    # DagNode. This is the WP-39 rule, and it survives the WP-46 split.
     stage: str = ""
     idempotency_key: str = ""
     attempt: int = 0
@@ -798,6 +878,8 @@ MIRRORED_PAYLOADS = (
     GenerateStoryboardOutput,
     RenderSceneImageInput,
     RenderSceneImageOutput,
+    RenderSceneAnimationInput,
+    RenderSceneAnimationOutput,
     RenderSceneVideoInput,
     RenderSceneVideoOutput,
     BuildManifestInput,

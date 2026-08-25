@@ -152,20 +152,25 @@ RENDER_SCENE_IMAGE = ActivityPolicy(
     heartbeat_s=60,
 )
 
-# Same engine, same queue, same Celery task as the image branch -- and, until
-# WP-39, the same stage label, which is exactly how a 12-scene run of it was
-# swallowed. It gets its own policy row for the same reason it gets its own
-# DagNode: so that "which stage is this" is never inferred.
+# It shared the image branch's engine, queue and Celery task -- and, until
+# WP-39, its stage label, which is exactly how a 12-scene run of it was
+# swallowed. WP-46 ended the sharing: its own task on its own queue, running
+# Wan2.2-Animate. The policy row was always its own, for the same reason it
+# has its own DagNode: so that "which stage is this" is never inferred.
+#
+# Timings follow the video branch, not the image branch: MBCP measured 299.02s
+# for one certified scene (certificate eb032794), so an 1800s soft limit would
+# cap a job at six scenes.
 RENDER_SCENE_ANIMATION = ActivityPolicy(
     activity="render_scene_animation",
     label=PipelineStage.ANIMATION_GENERATION.value,
-    queue="gpu_image",
-    celery_task_name="tasks.stage3_images.generate_scene_images_task",
+    queue="gpu_animation",
+    celery_task_name="tasks.animation_generation_task.generate_scene_animations",
     celery_max_retries=2,
-    celery_retry_delay_s=10,
-    celery_soft_time_limit_s=1800,
-    celery_time_limit_s=2100,
-    start_to_close_s=45 * 60,
+    celery_retry_delay_s=30,
+    celery_soft_time_limit_s=3600,
+    celery_time_limit_s=3900,
+    start_to_close_s=70 * 60,
     heartbeat_s=60,
 )
 

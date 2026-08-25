@@ -92,13 +92,21 @@ class TestThreeMediaLabels:
             "animation_generation",
         ]
 
-    def test_image_and_animation_share_a_queue_but_not_a_label(self):
-        """They share the queue and the engine. They must not share identity."""
+    def test_image_and_animation_share_nothing_but_the_wave(self):
+        """WP-46: they no longer share a queue or an engine, and never an identity.
+
+        They shared ``gpu_image`` while animation ran the image task on the
+        image ComfyUI — which is the whole reason an animation was a still.
+        Animation now runs Wan2.2-Animate on the Wan ComfyUI, on the node that
+        holds those weights, so the queue parts company with the label.
+        """
         media = {
             n.id: n for n in build_pipeline_dag(REFERENCE_MIX)
             if n.kind is NodeKind.FANOUT
         }
-        assert media["s3_image"].queue == media["s3_animation"].queue == "gpu_image"
+        assert media["s3_image"].queue == "gpu_image"
+        assert media["s3_animation"].queue == "gpu_animation"
+        assert media["s3_video"].queue == "gpu_video"
         assert media["s3_image"].label != media["s3_animation"].label
         assert (
             media["s3_image"].idempotency_stage

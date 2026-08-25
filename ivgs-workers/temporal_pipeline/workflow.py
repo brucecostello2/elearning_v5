@@ -85,6 +85,7 @@ with workflow.unsafe.imports_passed_through():
         ManifestScene,
         RefineTranscriptInput,
         RenderFinalInput,
+        RenderSceneAnimationInput,
         RenderSceneImageInput,
         RenderSceneVideoInput,
         RenderTalkingHeadInput,
@@ -103,7 +104,9 @@ WORKFLOW_PATCH_GPU_BRACKET = "wp41-gpu-reservation-bracket"
 
 # Queues that take a GPU reservation bracket. `default` and `composition` do
 # not touch a GPU, so they do not ask ivgs-scheduler for one.
-GPU_QUEUES = frozenset({"gpu_llm", "gpu_image", "gpu_video", "gpu_tts", "gpu_talking_head"})
+GPU_QUEUES = frozenset(
+    {"gpu_llm", "gpu_image", "gpu_video", "gpu_animation", "gpu_tts", "gpu_talking_head"}
+)
 
 
 @dataclass
@@ -411,14 +414,29 @@ class VideoPipelineWorkflow:
                 **self._activity_opts(policy),
             )
 
-        # Image and animation: one input shape, two activity names, two labels.
-        activity_fn = (
-            activities.render_scene_animation
-            if node.id == "s3_animation"
-            else activities.render_scene_image
-        )
+        # WP-46: animation is its own activity with its own input shape now,
+        # not the image shape under a second name. The two pose-reenactment
+        # inputs are the reason the shapes had to part company.
+        if node.id == "s3_animation":
+            return workflow.execute_activity(
+                activities.render_scene_animation,
+                RenderSceneAnimationInput(
+                    ctx=ctx,
+                    scene_id=scene.scene_id,
+                    scene_index=scene.scene_index,
+                    visual_description=scene.visual_description,
+                    narration_text=scene.narration_text,
+                    duration_seconds=scene.duration_seconds,
+                    scene_title=scene.scene_title,
+                    project_name=inp.project_name,
+                    language_code=inp.language_code,
+                    tier=inp.tier,
+                ),
+                **self._activity_opts(policy),
+            )
+
         return workflow.execute_activity(
-            activity_fn,
+            activities.render_scene_image,
             RenderSceneImageInput(
                 ctx=ctx,
                 scene_id=scene.scene_id,

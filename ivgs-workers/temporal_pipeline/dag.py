@@ -156,9 +156,9 @@ class MediaBranch:
     idempotency_stage: str
 
 
-# Order matches dispatch_media_generation's plan loop after the WP-39 fix:
-# (image_generation, gpu_image), (video_generation, gpu_video),
-# (animation_generation, gpu_image).
+# Order matches dispatch_media_generation's plan loop after the WP-39 fix and
+# the WP-46 re-route: (image_generation, gpu_image),
+# (video_generation, gpu_video), (animation_generation, gpu_animation).
 MEDIA_BRANCHES: Tuple[MediaBranch, ...] = (
     MediaBranch(
         media_type=MediaType.IMAGE.value,
@@ -175,12 +175,14 @@ MEDIA_BRANCHES: Tuple[MediaBranch, ...] = (
         idempotency_stage="s3v",
     ),
     MediaBranch(
-        # Animation runs the image engine and the image queue — it always did.
-        # What it did NOT have, until WP-39, was a label of its own.
+        # Animation ran the image engine and the image queue until WP-46, which
+        # is why an animation was a still. It now has its own task, its own
+        # engine (Wan2.2-Animate on the Wan ComfyUI) and its own queue on the
+        # node where those weights live. WP-39 had already given it the label.
         media_type=MediaType.ANIMATION.value,
         node_id="s3_animation",
         label=PipelineStage.ANIMATION_GENERATION.value,
-        queue="gpu_image",
+        queue="gpu_animation",
         idempotency_stage="s3a",
     ),
 )

@@ -101,7 +101,9 @@ STAGE_TASK_MAP: Dict[str, str] = {
         "tasks.video_generation_task.generate_video_clips"
     ),
     PipelineStage.ANIMATION_GENERATION.value: (
-        "tasks.stage3_images.generate_scene_images_task"  # Animations via same Stage 3
+        # WP-46: animation has a body of its own. It used to name the image
+        # task here, which is why an "animation" was a still.
+        "tasks.animation_generation_task.generate_scene_animations"
     ),
     PipelineStage.COMPOSITION_MANIFEST.value: (
         "tasks.stage4_manifest.build_composition_manifest"
@@ -126,7 +128,10 @@ STAGE_QUEUE_MAP: Dict[str, str] = {
     PipelineStage.STORYBOARD_GENERATION.value: "gpu_llm",
     PipelineStage.IMAGE_GENERATION.value: "gpu_image",
     PipelineStage.VIDEO_GENERATION.value: "gpu_video",
-    PipelineStage.ANIMATION_GENERATION.value: "gpu_image",
+    # WP-46: off gpu_image (node-04's image ComfyUI) and onto gpu_animation,
+    # which node-03's worker consumes alongside gpu_video — the node where the
+    # Wan engine and its weights live.
+    PipelineStage.ANIMATION_GENERATION.value: "gpu_animation",
     PipelineStage.COMPOSITION_MANIFEST.value: "default",
     PipelineStage.TTS_AUDIO.value: "gpu_tts",
     PipelineStage.TALKING_HEAD_RENDER.value: "gpu_talking_head",
@@ -454,8 +459,8 @@ def dispatch_media_generation(
     # WP-39: the join counts one report per dispatched media STAGE and guards
     # each with a (job_id, stage) idempotency key, so every dispatch here MUST
     # report back under a distinct stage label. Animation did not.
-    # STAGE_TASK_MAP routes animation_generation to the same Celery task as
-    # image_generation (tasks.stage3_images.generate_scene_images_task), and
+    # STAGE_TASK_MAP USED TO route animation_generation to the same Celery task
+    # as image_generation (tasks.stage3_images.generate_scene_images_task), and
     # that task stamped its output with a hardcoded "image_generation" - so the
     # animation run's completion was indistinguishable from the image run's and
     # the duplicate guard dropped it. Measured on job bd99fe37 (2026-08-23):
@@ -465,12 +470,15 @@ def dispatch_media_generation(
     #
     # `join_stage` travels with the task input and comes back on the completion
     # (stage3_images.Stage3Output.stage, video_generation_task.
-    # VideoGenerationOutput.stage), so each dispatch reports under its own label
-    # even when two of them share a task.
+    # VideoGenerationOutput.stage, animation_generation_task.
+    # AnimationGenerationOutput.stage), so each dispatch reports under its own
+    # label. WP-46 gave animation its own task, so the three no longer share
+    # one - but the rule holds regardless of which task serves which branch,
+    # and that is the point of carrying the label rather than deriving it.
     dispatch_plan = (
         (PipelineStage.IMAGE_GENERATION.value, "gpu_image", image_scenes),
         (PipelineStage.VIDEO_GENERATION.value, "gpu_video", video_scenes),
-        (PipelineStage.ANIMATION_GENERATION.value, "gpu_image", animation_scenes),
+        (PipelineStage.ANIMATION_GENERATION.value, "gpu_animation", animation_scenes),
     )
     expected_stages: List[str] = [
         stage_label for stage_label, _, stage_scenes in dispatch_plan if stage_scenes

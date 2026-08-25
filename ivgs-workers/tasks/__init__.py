@@ -13,6 +13,7 @@ filenames; see ``celery_app.TASK_ROUTES``):
 - Stage 2: tasks.stage2_storyboard.generate_storyboard_task
 - Stage 3: tasks.stage3_images.generate_scene_images_task
            + tasks.video_generation_task.generate_video_clips
+           + tasks.animation_generation_task.generate_scene_animations  (WP-46)
 - Stage 4: tasks.stage4_manifest.build_composition_manifest
 - Stage 5: tasks.stage4_voiceover.generate_voiceover_task        (file stage5_voiceover.py)
 - Stage 6: tasks.talking_head_task.render_talking_head
@@ -48,6 +49,7 @@ from tasks import (  # noqa: F401
     stage7_prototype_draft,
     stage8_final_render,
     video_generation_task,
+    animation_generation_task,
     talking_head_task,
     pipeline_orchestrator_v2,
 )
@@ -69,6 +71,7 @@ __all__ = [
     "stage7_prototype_draft",
     "stage8_final_render",
     "video_generation_task",
+    "animation_generation_task",
     "talking_head_task",
     "pipeline_orchestrator_v2",
 ]

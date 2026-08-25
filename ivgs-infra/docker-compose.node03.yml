@@ -8,12 +8,13 @@
 #   vLLM inference (70B+ models, tensor parallel with node-03)
 #   CogVideoX / Wan2.1 video generation
 #
-# Services (5 per §2.4):
-#   1. vllm             — OpenAI-compatible LLM API (:8000)
-#   2. cogvideox-worker — CogVideoX/Wan2.1 Celery worker
-#   3. celery-worker    — LLM + video generation queues
-#   4. node-exporter    — System metrics (:9100)
-#   5. nvidia-gpu-exporter — GPU metrics (:9400)
+# Services (6 as deployed):
+#   1. vllm               — OpenAI-compatible LLM API (:8000)  [profile: standby]
+#   2. cogvideox-worker   — CogVideoX/Wan2.1 + animation Celery worker
+#   3. cogvideox-server   — CogVideoX/Wan2.1 model server (:8200)
+#   4. wan-animate-server — Wan2.2-Animate ComfyUI engine (:8220)  [WP-46]
+#   5. celery-worker      — LLM + video generation queues  [profile: standby]
+#   6. node-exporter      — System metrics (:9100)
 # =============================================================================
 
 
@@ -109,6 +110,15 @@ services:
       SEAWEEDFS_FILER_URL: http://${NODE_01_IP}:8888
       NODE_HOSTNAME: node-03
       COGVIDEOX_URL: http://cogvideox-server:8200
+      # WP-46. Wan2.2-Animate's engine key is `comfyui` (MBCP's SSOT value),
+      # so resolve_endpoint('comfyui') reads IVGS_COMFYUI_URL — the same
+      # variable node-04's worker uses to reach the FLUX image ComfyUI. Two
+      # ComfyUI instances, one engine key, one endpoint map: they are told
+      # apart by the PER-WORKER value of this variable, which is why this
+      # worker must only ever consume gpu_video and gpu_animation. If an image
+      # queue is ever added here, this line has to be revisited first — the
+      # animation task's capability gate will refuse loudly either way.
+      IVGS_COMFYUI_URL: http://wan-animate-server:8188
       VLLM_PRIMARY_URL: "http://vllm:8000"
       VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT:-8000}"
       VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT:-8000}"
@@ -127,7 +137,7 @@ services:
     command: >
       celery -A celery_app worker
         --loglevel=info
-        --queues=gpu_video
+        --queues=gpu_video,gpu_animation
         --concurrency=1
         --max-tasks-per-child=10
         -n cogvideox-worker@node03
@@ -154,6 +164,59 @@ services:
     networks:
       - ivgs-net
     shm_size: "8g"
+
+  # ---------------------------------------------------------------------------
+  # Wan2.2-Animate serving engine (WP-46). MBCP's CERTIFIED ComfyUI image,
+  # pinned by digest and never substituted (AD-04-v3 envelope directive: the
+  # digest carries the patches). It is a SECOND ComfyUI instance, not a change
+  # to node-04's: the two live in different dependency eras — kijai's
+  # WanVideoWrapper needs diffusers >= 0.33 while node-04's image is pinned to
+  # 0.29.2 for CogVideoX/MimicMotion — and node-04's ComfyUI carries no custom
+  # nodes at all (measured 2026-08-25: 761 node types, `{}` for every
+  # WanVideo*, VHS_* and PoseAndFaceDetection class). Teaching it this graph
+  # would mean a new image and six new mounts, i.e. recreating a running
+  # engine container, which WP-46 forbids.
+  #
+  # Source: 192.168.1.51:5000/mbcp/comfyui-wan
+  #         @sha256:58752ff6d84912d82e7f52d484ec84ec70829951c3e88c1592a12407604d62e2
+  #         (MBCP deploy/images.env, MBCP_COMFYUI_WAN_IMAGE)
+  # `pull_policy: never` — the image is in node-03's local store; the MBCP
+  # registry is not on the deploy path, exactly as cogvideox-server is not.
+  #
+  # Weights are mounted READ-ONLY from the .51-materialized tree, in the layout
+  # MBCP's materialization map defines (mbcp_core/weights/materialization.py,
+  # ENGINE_MATERIALIZATION["comfyui-wan"]). The engine writes nothing
+  # persistent: outputs are fetched over /view and persisted by the worker.
+  # ---------------------------------------------------------------------------
+  wan-animate-server:
+    image: 192.168.1.51:5000/mbcp/comfyui-wan@sha256:58752ff6d84912d82e7f52d484ec84ec70829951c3e88c1592a12407604d62e2
+    container_name: ivgs-wan-animate-server-node03
+    pull_policy: never
+    <<: [*common-restart, *common-logging, *gpu-resources]
+    volumes:
+      - /opt/models/comfyui-wan/models/diffusion_models:/app/ComfyUI/models/diffusion_models:ro
+      - /opt/models/comfyui-wan/models/text_encoders:/app/ComfyUI/models/text_encoders:ro
+      - /opt/models/comfyui-wan/models/vae:/app/ComfyUI/models/vae:ro
+      - /opt/models/comfyui-wan/models/clip_vision:/app/ComfyUI/models/clip_vision:ro
+      - /opt/models/comfyui-wan/models/detection:/app/ComfyUI/models/detection:ro
+      - /opt/models/comfyui-wan/models/loras:/app/ComfyUI/models/loras:ro
+      - /opt/models/comfyui-wan/models/sam2:/app/ComfyUI/models/sam2:ro
+      - /opt/models/comfyui-wan/models/onnx:/app/ComfyUI/models/onnx:ro
+    ports:
+      - "8220:8188"                            # host/cross-node access; the
+                                               # worker reaches it by service
+                                               # name on :8188
+    networks:
+      - ivgs-net
+    shm_size: "8g"
+    # No healthcheck override: the image ships one (HTTP root, 90s start
+    # period), and a 14B fp8 model takes most of that to become answerable.
+    #
+    # NOT in cogvideox-worker's depends_on, deliberately. depends_on only
+    # orders startup, the worker resolves this endpoint lazily at task time,
+    # and every entry widens what a `docker compose up <service>` without
+    # --no-deps reaches. node-04's celery-worker already demonstrates that
+    # hazard (dev/CLAUDE.md section 6).
 
   # ---------------------------------------------------------------------------
   # Service 3: Celery Worker (LLM + video queues)

@@ -15,6 +15,7 @@ Queues (§6.4 Table 6-7):
     gpu_llm         — node-02/03/04: vLLM inference (transcript, storyboard)
     gpu_image       — node-04/05: ComfyUI image + animation generation
     gpu_video       — node-02/03: CogVideoX / Wan2.1 video generation
+    gpu_animation   — node-03: Wan2.2-Animate pose-guided scene animation
     gpu_tts         — node-04: Coqui XTTS v2, Kokoro TTS, WhisperX
     gpu_talking_head — node-04: LatentSync, SadTalker
     composition     — node-05/06: FFmpeg, Remotion
@@ -84,6 +85,20 @@ TASK_QUEUES = (
         },
     ),
     Queue(
+        # WP-46: animation gets a queue of its own. It shares node-03's worker
+        # with gpu_video (one card, concurrency=1, so they serialise either
+        # way), but a separate queue is what lets the operator move the
+        # animation engine to another node later without touching video, and
+        # it keeps the WP-39 identity split true at the transport layer too.
+        "gpu_animation",
+        exchange=gpu_exchange,
+        routing_key="gpu.animation",
+        queue_arguments={
+            "x-max-priority": 10,
+            "x-message-ttl": 3_600_000,
+        },
+    ),
+    Queue(
         "gpu_tts",
         exchange=gpu_exchange,
         routing_key="gpu.tts",
@@ -139,6 +154,10 @@ TASK_ROUTES: Dict[str, Dict[str, str]] = {
     "tasks.video_generation_task.*": {
         "queue": "gpu_video",
         "routing_key": "gpu.video",
+    },
+    "tasks.animation_generation_task.*": {
+        "queue": "gpu_animation",
+        "routing_key": "gpu.animation",
     },
     "tasks.stage4_manifest.*": {
         "queue": "default",
@@ -325,6 +344,7 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
         "tasks.stage7_prototype_draft",
         "tasks.stage8_final_render",
         "tasks.video_generation_task",
+        "tasks.animation_generation_task",
         "tasks.talking_head_task",
         "tasks.pipeline_orchestrator",
         "tasks.pipeline_orchestrator_v2",

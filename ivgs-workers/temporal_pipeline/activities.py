@@ -20,13 +20,15 @@ The ledger and the effect store are two separate counts on purpose. WP-31's
 first evidence run reported a false PASS over an empty table; the pair
 "N bodies executed" against "M effects exist" cannot be trivially true.
 
-Image and animation share ONE implementation and TWO registered activity
-names. That is the honest shape: they are one Celery task and one engine
-today. The difference is that ``ctx.label`` and ``ctx.idempotency_key`` arrive
-from the DagNode, so neither run can be mistaken for the other — which is
-exactly what happened on 2026-08-23 when ``Stage3Output.stage`` defaulted to a
-hardcoded ``image_generation`` and a 12-scene animation completion was dropped
-as a duplicate.
+Image and animation used to share ONE implementation under TWO registered
+activity names — the honest shape while they were one Celery task on one
+engine. WP-46 gave animation its own task, its own engine (Wan2.2-Animate on
+the Wan ComfyUI) and its own queue, so they are now two implementations with
+two input shapes. What has not changed is the rule underneath: ``ctx.label``
+and ``ctx.idempotency_key`` arrive from the DagNode, so neither run can be
+mistaken for the other — which is exactly what happened on 2026-08-23 when
+``Stage3Output.stage`` defaulted to a hardcoded ``image_generation`` and a
+12-scene animation completion was dropped as a duplicate.
 """
 
 from __future__ import annotations
@@ -58,6 +60,8 @@ from temporal_pipeline.payloads import (
     RefinedTranscript,
     RenderFinalInput,
     RenderFinalOutput,
+    RenderSceneAnimationInput,
+    RenderSceneAnimationOutput,
     RenderSceneImageInput,
     RenderSceneImageOutput,
     RenderSceneVideoInput,
@@ -333,15 +337,47 @@ async def render_scene_image(inp: RenderSceneImageInput) -> RenderSceneImageOutp
 
 
 @activity.defn
-async def render_scene_animation(inp: RenderSceneImageInput) -> RenderSceneImageOutput:
+async def render_scene_animation(
+    inp: RenderSceneAnimationInput,
+) -> RenderSceneAnimationOutput:
     """
-    Same body, same queue, same engine as ``render_scene_image``.
+    The animation branch: its own shape, its own queue, its own engine.
 
-    A separate registered name so that "which stage ran" is answerable from the
-    event history alone, without decoding a payload -- the question WP-39 could
-    not answer for three hours.
+    Kept a separate registered name since WP-39 so that "which stage ran" is
+    answerable from the event history alone, without decoding a payload -- the
+    question WP-39 could not answer for three hours. WP-46 made the separation
+    real rather than nominal: this mirrors
+    ``tasks.animation_generation_task``, which renders on Wan2.2-Animate from a
+    reference image and a driving video.
+
+    Still a shadow body (``stub://``) like every activity in this module --
+    WP-41 is the migration's scaffolding, not its cutover.
     """
-    return await _render_scene_image_impl(inp, _FAIL_SCENES.get(inp.ctx.job_id, []))
+    ctx = _start(inp.ctx)
+    _maybe_fail(ctx, _FAIL_SCENES.get(ctx.job_id, []))
+    await _work(inp.duration_seconds if inp.duration_seconds < 8 else 4.0)
+
+    def produce() -> Dict[str, Any]:
+        return {
+            "artifact": f"stub://{ctx.job_id}/{ctx.label}/scene{inp.scene_index}",
+            "scene_id": inp.scene_id,
+            "label": ctx.label,
+        }
+
+    record = _run_once(ctx, produce)
+    _done(ctx)
+    return RenderSceneAnimationOutput(
+        scene_id=inp.scene_id,
+        scene_index=inp.scene_index,
+        asset_id=record["artifact"],
+        seaweedfs_path=record["artifact"],
+        model_used="stub",
+        status="success",
+        # From the DagNode, never from a default. This one line is WP-39.
+        stage=ctx.label,
+        idempotency_key=ctx.idempotency_key,
+        attempt=ctx.attempt,
+    )
 
 
 @activity.defn

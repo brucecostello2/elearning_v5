@@ -4,7 +4,8 @@ The dev worker for the node-07 shadow cluster (WP-41 Task 2).
 Runs on node-01, connects to ``192.168.1.96:7233``, and serves **one worker per
 AD-05 §4.2 task queue** inside a single process:
 
-    default, gpu_llm, gpu_image, gpu_video, gpu_tts, gpu_talking_head, composition
+    default, gpu_llm, gpu_image, gpu_video, gpu_animation, gpu_tts,
+    gpu_talking_head, composition
 
 Seven queues in one process rather than seven processes, for one reason: the
 resume demonstration needs a single pid to ``SIGKILL``. The queue names are
@@ -50,11 +51,14 @@ QUEUES = (
     "gpu_llm",
     "gpu_image",
     "gpu_video",
+    "gpu_animation",
     "gpu_tts",
     "gpu_talking_head",
     "composition",
 )
-GPU_QUEUES = frozenset({"gpu_llm", "gpu_image", "gpu_video", "gpu_tts", "gpu_talking_head"})
+GPU_QUEUES = frozenset(
+    {"gpu_llm", "gpu_image", "gpu_video", "gpu_animation", "gpu_tts", "gpu_talking_head"}
+)
 
 # The workflow itself is scheduled on `default`, which is where a job is
 # started from. Activities route themselves by policy.
