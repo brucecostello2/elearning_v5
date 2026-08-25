@@ -15,16 +15,16 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **850** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
+| `ivgs-api` | **875** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
 | `ivgs-workers` | 766 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | 35 | 16 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1677** | **55** | **63** | **45** | |
+| `tests_system` | 39 | 12 | 15 | 30 | 15 passed / 31 failed / 28 errors |
+| **Total** | **1706** | **47** | **63** | **45** | |
 
-`ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 8
+`ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
-P2.55.)
+P2.55; WP-56 closed P2.49.)
 
 The scheduler's "was" column is not a regression: 32 of its 43 tests errored at
 setup on one unresolvable import and never ran. WP-52 resolved that import, so
@@ -64,13 +64,29 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 850 passed, 0 failed
+## 2. `ivgs-api` — 875 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m45s. **No remaining failures.**
+Runtime 4m27s. **No remaining failures.**
+
+WP-56 added 25 tests (2026-08-25): `test_wp56_library.py`, covering the AD-09.4
+asset library and actors and the AD-09.5 presets — dedup within scope, the
+admin gate on `global`, supersede-not-delete, reference-don't-copy asserted on
+the SeaweedFS call count rather than the status code, opt-in upload-on-use, and
+preset versioning. 850 → 875. This tree now needs migration **0032**.
+
+**A NOTE ON A KILLED RUN, because the number it produced was wrong and the
+reason is reusable.** WP-56's first attempt at this suite was killed by a
+2-minute harness timeout mid-test. The `db_session` teardown TRUNCATE never
+ran, so `operator_token_user` survived into the next run and errored its FIRST
+test at setup with `UniqueViolationError: users_username_key`. That is residue
+from the kill, not a regression: the module passes alone, and a clean re-run
+after verifying `SELECT count(*) FROM users` = 0 gave 875/0/0/0. **A timeout-
+killed run leaves this database dirty. Check it before believing the next
+number.**
 
 WP-55 added 7 tests (2026-08-25): `test_wp55_metrics_exporter.py`, pinning the
 exact metric names and units the Prometheus alert rules reference against
@@ -181,7 +197,7 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 35 passed, 16 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 39 passed, 12 failed, 15 skipped, 30 errors
 
 ```bash
 .venv/bin/python -m pytest --timeout=120 tests_system
@@ -216,11 +232,21 @@ All 30 are `admin_token` / `admin_headers` fixture setup.
 | 2 | `test_gpu_integration::test_fleet_returns_all_nodes`, `::test_fleet_node_schema` | The scheduler's `GET /fleet` returns an OBJECT (`{'alive_nodes': 3, 'available_vram_mb': 293661, 'fleet_utilization_pct': 0.0, ...}`); the tests expect a LIST of node rows. `assert isinstance(data, list)` / `KeyError: 0`. Contract drift between the scheduler and its tests. | **P2.58** |
 | 2 | `test_gpu_integration::test_schedule_job`, `::test_schedule_exceeds_vram` | `POST /schedule` returns 422 — the request body the tests send no longer matches the endpoint's schema. | **P2.58** |
 | 1 | `test_projects_integration::test_create_project_unauthenticated` | Unauthenticated `POST /projects` returns **403**, the test expects **401**. FastAPI's `HTTPBearer` returns 403 on a missing credential. One of the two is wrong and it is worth deciding which; §16 of the spec says 401. | **P2.58** |
-| 4 | `test_compliance_scanner::test_scanner_detects_pip_packages[*]` | **A real defect in the code under test, and these four tests are RIGHT to fail.** `scripts/compliance_scanner.py`'s `match_glob` handles only `*`-prefixed globs and exact filenames, so `"requirements*.txt"` matches nothing and §F.2 **Rule 2 has never been enforced**. Anyone can add `openai==1.0.0` to a requirements file and the CI compliance gate passes. Measured: all four prohibited packages score `rc=0` (clean). Fixing the glob would NOT turn the repo red — no tracked requirements file carries a prohibited package today. | **P2.49** |
-
 **15 skipped** — `smoke/test_gpu_nodes.py`, all with the reason *"GPU smoke tests
 need the node registry env (configured node / live fleet)"*. Expected; this
 package touches no GPU node.
+
+**Closed by WP-56** (2026-08-25), and the row removed from the table above:
+**P2.49** — the four `test_compliance_scanner::test_scanner_detects_pip_packages[*]`
+cases. `scripts/compliance_scanner.py`'s `match_glob` handled only
+`*`-PREFIXED globs and exact filenames, so every glob with an INFIX `*` fell
+through to `filename == pattern` and matched nothing. `PIP_FILE_GLOBS`'
+`"requirements*.txt"` was the only such glob in the file, which is why §F.2
+Rule 2 alone was unenforced. Replaced with `fnmatch.fnmatchcase` — case-
+SENSITIVE deliberately, so the gate cannot answer differently on Linux and
+macOS. Blast radius re-measured after the fix and it is still zero: the scanner
+over the whole tree reports 1455 files, 0 violations, `rc=0`. All 19 cases in
+that module now pass. 35 → 39 passed, 16 → 12 failed.
 
 ---
 
@@ -232,7 +258,9 @@ package touches no GPU node.
   `postgres:17.2`, `redis:7.4`.
 * Python 3.12.3, pytest 8.3.4, pytest-asyncio 0.24.0, pytest-timeout 2.3.1
   (installed by WP-52).
-* Test database `ivgs_reconciliation_test`, migration 0028 (applied by WP-45).
+* Test database `ivgs_reconciliation_test`, migration **0032** (0029 applied by
+  WP-53; 0030–0032 by WP-56, and their downgrade path was exercised —
+  `alembic downgrade 0029` then `upgrade head` round-trips clean).
 * Every count in §0 is the tail line of a real run. No number here was carried
   forward from an earlier package without being re-measured.
 
