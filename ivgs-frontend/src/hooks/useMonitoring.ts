@@ -1,6 +1,8 @@
 import useSWR, { type SWRConfiguration, type KeyedMutator } from "swr";
 import { api } from "@/lib/api";
 import { unwrapList } from "@/lib/unwrap";
+import type { RunCandidate, SelectedRun } from "@/lib/pipeline-run";
+import { selectPipelineRun } from "@/lib/pipeline-run";
 import type { DisplayCheckpoint } from "@/lib/jobs";
 import {
   isTerminalStatus,
@@ -389,6 +391,89 @@ export function useJobCheckpoints(jobId: string | null | undefined): {
   );
 
   return { checkpoints: data ?? [], isLoading };
+}
+
+/**
+ * useProjectPipelineRun — the run the Overview's progress strip describes.
+ *
+ * WP-43 Task 5. `PipelineTracker` used to take `jobs[0]` and read that one
+ * job's checkpoints. `GET /projects/{id}/jobs` is ordered newest-first, and
+ * on the reference project the newest seven rows are `storyboard_generation`
+ * jobs that are still `pending` and have written **zero** checkpoints. The
+ * run that actually produced the project's draft — `bd99fe37`, seven stages,
+ * six complete — is the EIGHTH row. So the strip was correctly reporting the
+ * emptiness of a job nobody cared about, and it read as "nothing has ever
+ * happened". Not a caching artifact: the same all-grey result reproduces
+ * from the captured payloads in `src/lib/__tests__/ui-nav.test.mjs`.
+ *
+ * This fetches the checkpoints for every job of the project and hands
+ * `selectPipelineRun` the lot; that function picks the newest job whose
+ * checkpoints map onto the eight display stages, and reports how many newer
+ * jobs had none so the strip can say which run it is showing.
+ *
+ * The per-job requests are capped at MAX_RUN_JOBS. A project with more jobs
+ * than that has its OLDEST ones dropped, never its newest, and the cap is
+ * surfaced rather than silent.
+ */
+const MAX_RUN_JOBS = 25;
+
+export function useProjectPipelineRun(projectId: string | null | undefined): {
+  run: SelectedRun | null;
+  isLoading: boolean;
+  /** Jobs beyond the cap that were not examined. */
+  truncated: number;
+} {
+  const { data, isLoading } = useSWR<{ run: SelectedRun; truncated: number }>(
+    projectId ? `project-pipeline-run:${projectId}` : null,
+    async (): Promise<{ run: SelectedRun; truncated: number }> => {
+      const jobsResp = await api.get<unknown>(
+        `/api/v1/projects/${projectId}/jobs?per_page=100`,
+      );
+      const jobs = unwrapList<{
+        id?: string;
+        job_type?: string;
+        status?: string;
+        created_at?: string;
+      }>(jobsResp.data).filter((j) => typeof j?.id === "string");
+
+      const considered = jobs.slice(0, MAX_RUN_JOBS);
+
+      const candidates: RunCandidate[] = await Promise.all(
+        considered.map(async (job) => {
+          let checkpoints: ReturnType<typeof mergeCheckpoints> = [];
+          try {
+            const resp = await api.get<{ checkpoints?: unknown }>(
+              `/api/v1/jobs/${job.id}/checkpoints`,
+            );
+            checkpoints = mergeCheckpoints(
+              Array.isArray(resp.data?.checkpoints) ? resp.data.checkpoints : [],
+            );
+          } catch {
+            /* A single unreadable job must not blank the whole strip. */
+          }
+          return {
+            id: job.id as string,
+            created_at: job.created_at ?? null,
+            job_type: job.job_type ?? null,
+            status: job.status ?? null,
+            checkpoints,
+          };
+        }),
+      );
+
+      return {
+        run: selectPipelineRun(candidates),
+        truncated: Math.max(0, jobs.length - considered.length),
+      };
+    },
+    { refreshInterval: 15_000, dedupingInterval: 5_000 },
+  );
+
+  return {
+    run: data?.run ?? null,
+    isLoading,
+    truncated: data?.truncated ?? 0,
+  };
 }
 
 /**
