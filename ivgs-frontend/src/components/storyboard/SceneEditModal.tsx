@@ -5,12 +5,18 @@ import SceneThumbnail from "@/components/SceneThumbnail";
 import type {
   Scene,
   SceneStatus,
-  MediaType,
   CameraAngle,
   TransitionType,
   SceneEffect,
-  SceneUpdatePayload,
 } from "@/types/storyboard";
+import type { MediaType } from "@/lib/scenes";
+import {
+  MEDIA_TYPES as MEDIA_TYPE_VALUES,
+  durationError,
+  mediaTypeLabel,
+  normalizeMediaType,
+  sceneUpdatePayload,
+} from "@/lib/scenes";
 
 /**
  * §8.1.3 Storyboard Tab — Scene Detail Modal
@@ -18,7 +24,10 @@ import type {
  * Full editing modal for a single scene. All scene properties are editable:
  * - narration_text: Full narration text for this scene
  * - visual_description: Description for image/video generation
- * - media_type: IMAGE / VIDEO / ANIMATION / TALKING_HEAD / STOCK
+ * - media_type: image / video_clip / animation  (WP-43 Task 7 -- these are
+ *   the three values `SceneUpdate` accepts; the picker used to offer five
+ *   UPPERCASE names, none of which the API would take, so changing the media
+ *   type was impossible and every storyboard stayed all-static)
  * - duration_seconds: Scene duration (0.5 – 120 seconds)
  * - camera_angle: Camera angle/shot type for visual generation
  * - transition_type: Transition to next scene (CUT / FADE / DISSOLVE / etc.)
@@ -87,34 +96,56 @@ const AVAILABLE_EFFECTS: SceneEffect[] = [
   "LETTERBOX",
 ];
 
-/** Available media types per Table 9-2 */
+/**
+ * The media types this route accepts, and only those.
+ *
+ * WP-43 Task 7. The five entries that used to be here -- IMAGE, VIDEO,
+ * ANIMATION, TALKING_HEAD, STOCK -- were every one of them rejected by
+ * `SceneUpdate.validate_media_type`, so Save Changes failed with a bare
+ * "Request failed with status 422" for any change of type. TALKING_HEAD and
+ * STOCK are not merely mis-spelled: this route cannot select those pipelines
+ * at all, and offering them was a promise the API never made.
+ */
 const MEDIA_TYPES: { value: MediaType; label: string; description: string }[] = [
   {
-    value: "IMAGE",
+    value: "image",
     label: "Image",
     description: "Static image generated via FLUX.1/SDXL (§7.1.3)",
   },
   {
-    value: "VIDEO",
+    value: "video_clip",
     label: "Video Clip",
     description: "Short video via CogVideoX/Wan2.1 (§7.1.4)",
   },
   {
-    value: "ANIMATION",
+    value: "animation",
     label: "Animation",
     description: "Motion graphics via Remotion/AnimateDiff (§7.1.8)",
   },
-  {
-    value: "TALKING_HEAD",
-    label: "Talking Head",
-    description: "Lip-synced presenter via LatentSync/SadTalker (§7.1.7)",
-  },
-  {
-    value: "STOCK",
-    label: "Stock",
-    description: "User-uploaded stock footage or image",
-  },
 ];
+
+/**
+ * WP-43 Task 7 (recorded, not fixed here).
+ *
+ * The modal presents nine editable properties. `SceneUpdate`
+ * (`ivgs-api/app/schemas/storyboard.py:30`) declares FOUR: narration_text,
+ * visual_description, media_type, duration_seconds. Pydantic ignores unknown
+ * keys, so the other five were serialised, sent, and dropped on the floor --
+ * no error, no storage, and a UI that looked as though it had saved them.
+ *
+ * Building the columns to hold them is API work and is out of scope for a
+ * frontend-only package, so the honest move is to say so at the field.
+ */
+const NOT_PERSISTED_NOTICE = (
+  <div className="mb-4 rounded-lg border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-800 dark:border-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-300">
+    <strong>Not saved to the server.</strong> The scene update route accepts
+    narration text, visual description, media type and duration. Camera angle,
+    transition, effects, timing offset and generation params have no column
+    behind them — they used to be sent and silently discarded, which looked
+    exactly like saving. They are kept visible, and labelled, until the API
+    stores them.
+  </div>
+);
 
 interface SceneEditModalProps {
   /** Scene to edit */
@@ -143,7 +174,13 @@ export default function SceneEditModal({
   const [visualDescription, setVisualDescription] = useState<string>(
     scene.visual_description ?? ""
   );
-  const [mediaType, setMediaType] = useState<MediaType>(scene.media_type);
+  /* A scene whose media_type is null (or an old value this build no longer
+     recognises) starts UNSET rather than being silently reported as an
+     image -- and an unset value is simply not sent, so the rest of the edit
+     still saves. */
+  const [mediaType, setMediaType] = useState<MediaType | "">(
+    normalizeMediaType(scene.media_type) ?? "",
+  );
   const [durationSeconds, setDurationSeconds] = useState<number>(
     scene.duration_seconds ?? 5
   );
@@ -246,7 +283,7 @@ export default function SceneEditModal({
     return (
       narrationText !== scene.narration_text ||
       visualDescription !== (scene.visual_description ?? "") ||
-      mediaType !== scene.media_type ||
+      mediaType !== (normalizeMediaType(scene.media_type) ?? "") ||
       durationSeconds !== (scene.duration_seconds ?? 5) ||
       cameraAngle !== (scene.camera_angle ?? "") ||
       transitionType !== (scene.transition_type ?? "CUT") ||
@@ -280,18 +317,31 @@ export default function SceneEditModal({
     setSaveError(null);
     setIsSaving(true);
 
+    /* The API's own bound: duration_seconds = Field(ge=0.1, le=600.0). */
+    const durErr = durationError(durationSeconds);
+    if (durErr) {
+      setSaveError(durErr);
+      setIsSaving(false);
+      return;
+    }
+
     try {
-      const updates: SceneUpdatePayload = {
+      /*
+       * WP-43 Task 7. `sceneUpdatePayload` emits exactly the four keys
+       * `SceneUpdate` declares, with `media_type` mapped to the wire
+       * vocabulary. The old body sent nine keys, one of which (`media_type`)
+       * was in a vocabulary the API rejects -- a guaranteed 422 -- and five
+       * of which (`camera_angle`, `transition_type`, `effects`,
+       * `timing_offset_ms`, `generation_params`) Pydantic silently discards
+       * because the schema does not declare them. Those five are labelled
+       * in the UI as not persisted rather than being sent into a void.
+       */
+      const updates = sceneUpdatePayload({
         narration_text: narrationText.trim(),
         visual_description: visualDescription.trim() || null,
-        media_type: mediaType,
+        media_type: mediaType || null,
         duration_seconds: durationSeconds,
-        camera_angle: cameraAngle || null,
-        transition_type: transitionType,
-        effects: effects.length > 0 ? effects : null,
-        timing_offset_ms: timingOffsetMs,
-        generation_params: JSON.parse(generationParams),
-      };
+      });
 
       await onSave(scene.id, updates as Partial<Scene>);
     } catch (err: unknown) {
@@ -496,17 +546,35 @@ export default function SceneEditModal({
                   id="media-type"
                   value={mediaType}
                   onChange={(e) =>
-                    setMediaType(e.target.value as MediaType)
+                    setMediaType(
+                      normalizeMediaType(e.target.value) ?? "",
+                    )
                   }
                   disabled={!canEdit}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
                 >
+                  {mediaType === "" && (
+                    <option value="">
+                      Not set — {mediaTypeLabel(scene.media_type)}
+                    </option>
+                  )}
                   {MEDIA_TYPES.map((mt) => (
                     <option key={mt.value} value={mt.value}>
                       {mt.label} — {mt.description}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Sent as{" "}
+                  <code className="font-mono">
+                    {mediaType || "(unchanged)"}
+                  </code>
+                  . The API accepts{" "}
+                  <code className="font-mono">
+                    {MEDIA_TYPE_VALUES.join(" / ")}
+                  </code>{" "}
+                  and nothing else.
+                </p>
               </div>
             </>
           )}
@@ -514,6 +582,7 @@ export default function SceneEditModal({
           {/* ── Visual Tab ────────────────────────────────────── */}
           {activeTab === "visual" && (
             <>
+              {NOT_PERSISTED_NOTICE}
               {/* Camera Angle */}
               <div>
                 <label
@@ -623,6 +692,7 @@ export default function SceneEditModal({
           {/* ── Timing Tab ────────────────────────────────────── */}
           {activeTab === "timing" && (
             <>
+              {NOT_PERSISTED_NOTICE}
               {/* Duration */}
               <div>
                 <label
@@ -720,6 +790,7 @@ export default function SceneEditModal({
           {/* ── Advanced Tab ──────────────────────────────────── */}
           {activeTab === "advanced" && (
             <>
+              {NOT_PERSISTED_NOTICE}
               {/* Generation Parameters (JSON) */}
               <div>
                 <label

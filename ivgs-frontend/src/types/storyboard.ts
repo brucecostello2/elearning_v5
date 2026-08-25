@@ -21,15 +21,22 @@ export type SceneStatus =
   | "REGENERATING";
 
 /**
- * Media type for a scene per Table 9-2.
- * Determines which AI pipeline stage generates the visual asset.
+ * Media type for a scene.
+ *
+ * WP-43 Task 7. This union used to be five UPPERCASE names -- IMAGE, VIDEO,
+ * ANIMATION, TALKING_HEAD, STOCK. The API accepts three LOWERCASE ones and
+ * rejects everything else (`SceneUpdate.validate_media_type`,
+ * `ivgs-api/app/schemas/storyboard.py:39`), so **no value this type could
+ * hold was acceptable** -- which is why the operator could not set a scene
+ * to video or animation, and why every storyboard stayed all-static. Two of
+ * the five named pipelines this route cannot select at all.
+ *
+ * `src/types/api.ts` had the union right the whole time. The definition now
+ * lives once, in `@/lib/scenes`, alongside the payload builder and the
+ * display labels, and is re-exported here so existing imports keep working.
  */
-export type MediaType =
-  | "IMAGE"       // Static image via FLUX.1/SDXL (§7.1.3)
-  | "VIDEO"       // Short video clip via CogVideoX/Wan2.1 (§7.1.4)
-  | "ANIMATION"   // Motion graphics via Remotion/AnimateDiff (§7.1.8)
-  | "TALKING_HEAD" // Lip-synced presenter via LatentSync/SadTalker (§7.1.7)
-  | "STOCK";      // User-uploaded stock footage or image
+export type { MediaType } from "@/lib/scenes";
+import type { MediaType } from "@/lib/scenes";
 
 /**
  * Camera angle/shot type for visual generation.
@@ -110,8 +117,15 @@ export interface Scene {
   /** Visual description for image/video generation prompt */
   visual_description: string | null;
 
-  /** Media type determining which generation pipeline to use */
-  media_type: MediaType;
+  /**
+   * Media type determining which generation pipeline to use.
+   *
+   * `Optional[str]` on the API and genuinely null on scenes the pipeline has
+   * not typed, so it is nullable here. Use `mediaTypeLabel` / `mediaTypeIcon`
+   * from `@/lib/scenes` to display it -- indexing a Record by it is what made
+   * SceneCard render a blank type badge over the live value "image".
+   */
+  media_type: MediaType | null;
 
   /** Scene duration in seconds (0.5 – 120) */
   duration_seconds: number | null;

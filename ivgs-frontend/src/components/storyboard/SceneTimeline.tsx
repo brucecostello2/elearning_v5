@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { Scene, SceneStatus } from "@/types/storyboard";
+import { mediaTypeLabel } from "@/lib/scenes";
 
 /**
  * §8.2.5 Composition Timeline Editor (applied to Storyboard context)
@@ -285,7 +286,7 @@ export default function SceneTimeline({
               >
                 {widthPercent > 5 && (
                   <span className="text-[9px] text-gray-500 dark:text-gray-400 truncate px-1">
-                    {scene.media_type}
+                    {mediaTypeLabel(scene.media_type)}
                   </span>
                 )}
               </div>
@@ -312,7 +313,7 @@ export default function SceneTimeline({
               Start: {formatTime(hoveredTiming.startTime)} — End:{" "}
               {formatTime(hoveredTiming.endTime)}
             </div>
-            <div>Type: {hoveredTiming.scene.media_type}</div>
+            <div>Type: {mediaTypeLabel(hoveredTiming.scene.media_type)}</div>
             <div>Status: {hoveredTiming.scene.status}</div>
             <div className="mt-1 text-gray-500 dark:text-gray-400 max-w-xs truncate">
               {hoveredTiming.scene.narration_text.slice(0, 80)}

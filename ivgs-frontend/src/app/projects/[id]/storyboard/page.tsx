@@ -11,12 +11,13 @@ import SceneTimeline from "@/components/storyboard/SceneTimeline";
 import PipelineGateButton from "@/components/PipelineGateButton";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import type {
-  Scene,
-  SceneStatus,
-  MediaType,
-  StoryboardViewMode,
-} from "@/types/storyboard";
+import type { Scene, SceneStatus, StoryboardViewMode } from "@/types/storyboard";
+import type { MediaType } from "@/lib/scenes";
+import {
+  MEDIA_TYPES as MEDIA_TYPE_VALUES,
+  mediaTypeLabel,
+  normalizeMediaType,
+} from "@/lib/scenes";
 
 /**
  * §8.1.3 Storyboard Tab — Project Detail Page
@@ -45,14 +46,14 @@ const SCENE_STATUSES: SceneStatus[] = [
   "REGENERATING",
 ];
 
-/** Possible media types for filter dropdown per Table 9-2 */
-const MEDIA_TYPES: MediaType[] = [
-  "IMAGE",
-  "VIDEO",
-  "ANIMATION",
-  "TALKING_HEAD",
-  "STOCK",
-];
+/*
+ * WP-43 Task 7. This filter offered the same five UPPERCASE names the edit
+ * modal did, and compared them with `s.media_type === mediaTypeFilter`
+ * against a wire value of "image". Every option therefore emptied the grid,
+ * and two of the five named pipelines the API cannot select. The options are
+ * now the three values the API uses, so the comparison can match.
+ */
+const MEDIA_TYPES: readonly MediaType[] = MEDIA_TYPE_VALUES;
 
 export default function StoryboardPage(): React.ReactElement {
   // ── Route Params ──────────────────────────────────────────────────────
@@ -157,8 +158,10 @@ export default function StoryboardPage(): React.ReactElement {
 
     // Media type filter
     if (mediaTypeFilter !== "ALL") {
+      /* Compare NORMALISED values so a row written under an older
+         vocabulary still matches its own filter entry. */
       result = result.filter(
-        (s: Scene) => s.media_type === mediaTypeFilter
+        (s: Scene) => normalizeMediaType(s.media_type) === mediaTypeFilter
       );
     }
 
@@ -371,7 +374,7 @@ export default function StoryboardPage(): React.ReactElement {
   // ── Empty State ──────────────────────────────────────────────────────
   if (!scenes || scenes.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="space-y-6">
         <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
           <svg
             className="w-16 h-16 text-gray-500 dark:text-gray-400"
@@ -401,7 +404,7 @@ export default function StoryboardPage(): React.ReactElement {
 
   return (
     <ErrorBoundary>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="space-y-6">
         {/* ── Page Header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
@@ -549,7 +552,7 @@ export default function StoryboardPage(): React.ReactElement {
               <option value="ALL">All Types</option>
               {MEDIA_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type.replace("_", " ")}
+                  {mediaTypeLabel(type)}
                 </option>
               ))}
             </select>

@@ -2,11 +2,8 @@
 
 import React, { useState, useCallback } from "react";
 import SceneThumbnail from "@/components/SceneThumbnail";
-import type {
-  Scene,
-  SceneStatus,
-  MediaType,
-} from "@/types/storyboard";
+import { mediaTypeIcon, mediaTypeLabel } from "@/lib/scenes";
+import type { Scene, SceneStatus } from "@/types/storyboard";
 import type { DraggableProvidedDragHandleProps } from "react-beautiful-dnd";
 
 /**
@@ -17,7 +14,7 @@ import type { DraggableProvidedDragHandleProps } from "react-beautiful-dnd";
  * - Thumbnail image (or placeholder if not yet generated)
  * - Narration text (first 120 chars with ellipsis)
  * - Visual description snippet
- * - Media type badge (IMAGE / VIDEO / ANIMATION / TALKING_HEAD / STOCK)
+ * - Media type badge (image / video_clip / animation, as the API sends it)
  * - Duration in seconds
  * - Status badge with color coding
  * - Drag handle for reordering
@@ -78,23 +75,14 @@ const STATUS_LABELS: Record<SceneStatus, string> = {
   REGENERATING: "Regenerating",
 };
 
-/** Icon mapping for media types */
-const MEDIA_TYPE_ICONS: Record<MediaType, string> = {
-  IMAGE: "🖼️",
-  VIDEO: "🎬",
-  ANIMATION: "✨",
-  TALKING_HEAD: "🗣️",
-  STOCK: "📷",
-};
-
-/** Human-readable labels for media types */
-const MEDIA_TYPE_LABELS: Record<MediaType, string> = {
-  IMAGE: "Image",
-  VIDEO: "Video",
-  ANIMATION: "Animation",
-  TALKING_HEAD: "Talking Head",
-  STOCK: "Stock",
-};
+/*
+ * WP-43 Task 7. Two Records keyed by "IMAGE" / "VIDEO" / ... over a wire
+ * value of "image" resolved to `undefined` on every card: the thumbnail
+ * fallback fell through to a generic frame and the type badge rendered as an
+ * empty pill. `mediaTypeIcon` / `mediaTypeLabel` in `@/lib/scenes` key off
+ * the values the API actually sends, and name an untyped scene "Not set"
+ * instead of drawing nothing.
+ */
 
 /**
  * Truncate text to a maximum length with ellipsis.
@@ -242,9 +230,7 @@ export default function SceneCard({
           sceneId={scene.id}
           sceneIndex={scene.scene_index}
           fallback={
-            <span className="text-4xl">
-              {MEDIA_TYPE_ICONS[scene.media_type] ?? "🎞️"}
-            </span>
+            <span className="text-4xl">{mediaTypeIcon(scene.media_type)}</span>
           }
         />
 
@@ -297,8 +283,8 @@ export default function SceneCard({
         {/* Media Type & Status Badges */}
         <div className="flex items-center gap-2 mb-2">
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-200 dark:bg-gray-700 text-xs text-gray-700 dark:text-gray-300">
-            {MEDIA_TYPE_ICONS[scene.media_type]}{" "}
-            {MEDIA_TYPE_LABELS[scene.media_type]}
+            {mediaTypeIcon(scene.media_type)}{" "}
+            {mediaTypeLabel(scene.media_type)}
           </span>
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
