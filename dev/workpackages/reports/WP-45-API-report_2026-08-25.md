@@ -7,7 +7,7 @@
 | **Version** | **`v5.11.0-apibatch`** — api, frontend, workers, as one coherent set |
 | **Deployed** | node-01 (5 services). **Nodes 02–05 NOT deployed — no SSH access from this session.** Paste blocks in `dev/workpackages/WP-45-operator-blocks.md` |
 | **Schema** | migration **0028** applied to `ivgs` and `ivgs_reconciliation_test`. Pre-migration dump banked |
-| **Repo state** | **Commit-and-HOLD. 12 commits, not pushed.** Count-gated push block in §12 |
+| **Repo state** | **Commit-and-HOLD. 13 commits, not pushed.** Count-gated push block in §12 |
 | **Suite** | **ZERO NEW FAILURES**, by before/after diff against `d76b355` over every module (§10.3). API tree ends at 2 failed / 831 passed against a baseline of 3 / 719 |
 
 ---
@@ -891,15 +891,30 @@ Stated plainly, because an exit code is not proof.
    targeting fix is proven by test, not by observation.
    **And one limit stands by design:** a cancel during media generation revokes
    the fan-out task, not the up-to-three renders it started.
-4. **The full back half reaching `USER_REVIEW`.** The first run advanced to
-   `AUDIO_GENERATION`, then Stage 5 died on the 429 (§4.6). After the fix the job
-   was resumed and was still re-rendering images when this report was finalised.
+4. **The full back half reaching `USER_REVIEW`. NOT OBSERVED, and the project
+   was monitored for 50 minutes to be sure of it.**
+
+   The first run advanced to `AUDIO_GENERATION`, then Stage 5 died on the 429
+   (§4.6). The resume after the fix re-entered at Stage 1 and was cancelled
+   (§4.7), so the run never continued into the back half.
+
    **Three of the five hops are observed** — `MANIFEST_GENERATION`,
    `AUDIO_GENERATION` (§3.2) and the `ERROR → DRAFT` pair (§4.6). The remaining
    three (`TALKING_HEAD_RENDER`, `PROTOTYPE_DRAFT`, `USER_REVIEW`) use the same
-   map and the same call site, and are covered by tests, but were **not watched
-   to completion**. Until one is, "a finished draft leaves the project in
-   USER_REVIEW" is proven by construction and by test, not by observation.
+   map and the same call site and are covered by tests, but were **not watched
+   to completion**. A watcher polled `projects.state` every 20 s from 15:31 to
+   16:21 and recorded `DRAFT` on all 150 samples, so this is a measured absence
+   rather than an unchecked one.
+
+   **Until a draft is watched through to `USER_REVIEW`, "a finished draft leaves
+   the project in USER_REVIEW" is proven by construction and by test, not by
+   observation.** That is the single largest gap in this package's evidence, and
+   the cheapest way to close it is the next real end-to-end run.
+
+   **The system did come to rest cleanly**, which is the other thing that
+   50 minutes established. Measured at 16:24: project `DRAFT`, no job in
+   `pending` or `running` (3 success, 14 failed), all five workers idle, all
+   seven queues at depth 0, 18 scenes intact. Nothing is silently in flight.
 5. **Stage 8 running from the GUI button.** The dispatch is asserted by broker
    message; the button was not pressed in a browser.
 6. **Localisation actually producing a translated variant.** It cannot — there
@@ -1064,10 +1079,11 @@ call site under one greppable event, and the route it calls returns 200 live.
 
 ## 12. Push block — count-gated, for ALL held commits
 
-**HELD: 12 commits.** Nothing has been pushed.
+**HELD: 13 commits.** Nothing has been pushed.
 
 ```
-<this>   docs(wp-45): the full-suite figure predates the last three commits, and says so
+<this>   docs(wp-45): USER_REVIEW is a measured absence, not an unchecked one
+89a10c9  docs(wp-45): the full-suite figure predates the last three commits, and says so
 f9a8c2a  docs(wp-45): the report, the operator blocks, the quota decision, and two register entries
 60a4ef4  fix(wp-45): Cancel was revoking the right task id and the wrong task
 c224d4f  fix(wp-45): two defects that were latent behind the resume endpoint's own lie
@@ -1085,7 +1101,7 @@ a301dbe  feat(wp-45): dedup was calling a route that was never built, and upload
 # RUN ON: IVGS node-01 (192.168.1.90)
 ( cd /opt/ivgs || exit 1
   git fetch origin main && \
-  EXPECTED=12 && \
+  EXPECTED=13 && \
   ACTUAL=$(git rev-list --count origin/main..HEAD) && \
   if [ "$ACTUAL" != "$EXPECTED" ]; then
     echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
