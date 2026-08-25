@@ -124,7 +124,7 @@ scrape_configs:
         labels:
           node: "node-05"
           role: "image-utility"
-          gpu: "rtx-5080"
+          gpu: "rtx-pro-5000-blackwell"   # WP-48: was rtx-5080; measured on the box
       - targets:
           - "node-06:9100"
         labels:
@@ -168,7 +168,7 @@ scrape_configs:
           - "node-05:9400"
         labels:
           node: "node-05"
-          gpu_model: "RTX 5080"
+          gpu_model: "RTX PRO 5000 Blackwell"   # WP-48: was "RTX 5080"
           vram_total_gb: "16"
     relabel_configs:
       - source_labels: [__address__]

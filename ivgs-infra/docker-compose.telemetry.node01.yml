@@ -1,0 +1,60 @@
+# =============================================================================
+# IVGS v5 - node-01 log source  (WP-48-TELEMETRY, Task 3)
+# =============================================================================
+# node-01's half of docker-compose.telemetry.yml. It exists as a separate file
+# for one reason: node-01 cannot be reached over its own published ports from
+# inside a container. `ufw` admits only 192.168.1.0/24 to the host and the
+# compose bridge is 172.x, so ivgs-fastapi curling node-01:9430 times out the
+# same way Prometheus's scrape of node-01:9100 does (node_health.py, module
+# docstring; measured again 2026-08-25 and still true).
+#
+# So node-01's log source is NOT published on a host port. It joins
+# ivgs-infra_ivgs-net and ivgs-fastapi reaches it by container DNS:
+#   http://ivgs-node-logs:9430
+# which is what app/core/node_logs.py uses for node-01 and only node-01.
+#
+# The GPU exporter is deliberately absent: node-01 has no GPU.
+#
+# Deploy (node-01):
+#   docker compose -f ivgs-infra/docker-compose.telemetry.node01.yml up -d
+# Its own project (`ivgs-telemetry`) - it cannot recreate an IVGS service.
+# =============================================================================
+
+name: ivgs-telemetry
+
+networks:
+  ivgs-net:
+    external: true
+    name: ivgs-infra_ivgs-net
+
+services:
+
+  node-logs:
+    image: nginx:1.27-alpine
+    container_name: ivgs-node-logs
+    restart: unless-stopped
+    # No `ports:` - see the header. Reached by container DNS, not host port.
+    networks:
+      - ivgs-net
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/node-logs/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9430/containers/json?limit=1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "node-logs"
+      com.ivgs.wp: "WP-48-TELEMETRY"

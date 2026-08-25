@@ -1,0 +1,109 @@
+# =============================================================================
+# IVGS v5 - per-node telemetry overlay  (WP-48-TELEMETRY, ledger P2.6a)
+# =============================================================================
+# ONE tracked file, deployed identically to every GPU node (02, 03, 04, 05).
+# It replaces the ad-hoc untracked per-node `docker-compose.gpuexp.yml` files
+# that node-02/03/04 each grew separately, in three different shapes, with
+# three different container names.
+#
+# WHY ITS OWN COMPOSE PROJECT. The top-level `name:` pins the project to
+# `ivgs-telemetry`, so this file can never be composed against a node's stack
+# file and can never recreate an engine. `docker compose -f
+# docker-compose.telemetry.yml up -d` on any node reaches exactly the two
+# services below and nothing else. That is the WP-34 "additive only" rule
+# expressed in the file rather than trusted to the command line.
+#
+# WHY THE EXPLICIT --query-field-names. Auto-discovery kills this exporter on
+# this driver: it enumerates every field nvidia-smi advertises, and 580.x
+# advertises `power_smoothing.window_multiplier [ms]` and
+# `clocks_event_reasons_counters.sw_thermal_slowdown [us]`, neither of which can
+# become a valid Prometheus metric name. The exporter panics at startup. That is
+# the whole of ledger P2.6a's exporter half. The list below is the fixed set the
+# Node Monitor and Grafana actually read, and it INCLUDES power.draw.
+#
+# NO `networks:` KEY, DELIBERATELY. Prometheus scrapes these over the host port,
+# and node-02 spent hours "running" while serving nothing because its container
+# held a compose network that had been removed underneath it (WP-48 S2). The
+# default project bridge is the one thing that is always recreated with the
+# project.
+# =============================================================================
+
+name: ivgs-telemetry
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # GPU exporter - nvidia_smi_* on :9400 (scraped by node-01 Prometheus,
+  # job "nvidia-gpu-exporter", targets node-0X:9400)
+  # ---------------------------------------------------------------------------
+  gpu-exporter:
+    image: utkuozdemir/nvidia_gpu_exporter:1.2.1
+    container_name: ivgs-gpu-exporter
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:9400:9835"
+    command:
+      - "--query-field-names=uuid,name,memory.total,memory.used,memory.free,utilization.gpu,utilization.memory,temperature.gpu,power.draw,clocks.current.graphics"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+        limits:
+          cpus: "0.5"
+          memory: 128M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "gpu-exporter"
+      com.ivgs.wp: "WP-48-TELEMETRY"
+      com.ivgs.ledger: "P2.6a"
+
+  # ---------------------------------------------------------------------------
+  # Node log source - a read-only, GET-only, two-route window onto this node's
+  # Docker engine, on :9430. Consumed by ivgs-api `app/core/node_logs.py` for
+  # the Node Monitor detail panel.
+  #
+  # This is nginx in front of the Docker socket, NOT the Docker socket. The
+  # allowlist in configs/node-logs/nginx.conf admits exactly two GETs:
+  #   GET /containers/json          - the container list (names, image, state)
+  #   GET /containers/<id>/logs     - that container's log tail
+  # Everything else, and every method other than GET/HEAD, is 403 at nginx.
+  # `exec`, `start`, `stop`, image push/pull and - importantly - the
+  # `/containers/<id>/json` inspect route that would expose container
+  # environment (tokens) are all refused. See the report, S5, for the
+  # exposure this does and does not carry.
+  # ---------------------------------------------------------------------------
+  node-logs:
+    image: nginx:1.27-alpine
+    container_name: ivgs-node-logs
+    restart: unless-stopped
+    ports:
+      - "0.0.0.0:9430:9430"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./configs/node-logs/nginx.conf:/etc/nginx/nginx.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:9430/containers/json?limit=1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 64M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      com.ivgs.service: "node-logs"
+      com.ivgs.wp: "WP-48-TELEMETRY"
