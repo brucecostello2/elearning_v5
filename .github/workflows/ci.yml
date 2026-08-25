@@ -98,7 +98,26 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
           REDIS_URL: redis://localhost:6379/0
-        run: pytest tests/ -v --tb=short
+        # WP-54: was `pytest tests/`. That directory has not existed since
+        # WP-32.1 renamed it to `tests_system/` to break the module-name
+        # collision with `ivgs-api/tests`. `pytest` on a missing path exits 4,
+        # so this step has been failing for its own reason rather than running
+        # anything -- a gate that reports on a suite it never executed.
+        run: pytest tests_system/ -v --tb=short
+
+      # ================================================================
+      # WP-54: alert rules must reference metrics that exist.
+      #
+      # Runs here for the STATIC half -- exemption-list hygiene, rule-file
+      # parse -- which needs nothing but the checkout. The two assertions that
+      # compare against the live metric set SKIP here, loudly, because GitHub's
+      # runner has no Prometheus; they are the reason this same file is also
+      # run on node-01, where it can see one. A gate that quietly passed
+      # without Prometheus would be committing the defect it exists to catch,
+      # so it says which half it ran.
+      # ================================================================
+      - name: Alert rules reference metrics that exist (static half)
+        run: pytest tests_system/test_alert_rules_have_metrics.py -v --tb=short -rs
 
   # ================================================================
   # Job 3: Frontend Lint & Build

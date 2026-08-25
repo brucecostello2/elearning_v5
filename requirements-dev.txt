@@ -59,3 +59,12 @@ onnxruntime==1.20.1
 # suite at the disposable Postgres instead, because SQLite cannot reproduce this
 # schema's enums, TRUNCATE ... CASCADE, or partitioning -- a pass under SQLite
 # would prove less than it appears to.
+
+# ---------------------------------------------------------------------------
+# WP-54 (2026-08-25). `tests_system/test_alert_rules_have_metrics.py` parses the
+# Prometheus rule files, so it needs a YAML parser. PyYAML was already present
+# in .venv as a transitive dependency of something else, which is exactly the
+# kind of accident that breaks a clean install -- declared here so the gate does
+# not depend on another package's dependency tree staying the same.
+# ---------------------------------------------------------------------------
+PyYAML==6.0.3

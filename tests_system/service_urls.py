@@ -42,6 +42,11 @@ API_BASE_URL = (
 #: ivgs-scheduler. Published 8002 -> 8001. Not the same service as above.
 SCHEDULER_URL = os.getenv("IVGS_TEST_SCHEDULER_URL") or f"http://{TEST_HOST}:8002"
 
+#: Prometheus. Published to LOOPBACK ONLY on node-01
+#: (`127.0.0.1:9090->9090/tcp`), unlike the API and scheduler, so this one does
+#: NOT follow IVGS_TEST_HOST -- pointing it at 192.168.1.90 would be refused.
+PROMETHEUS_URL = os.getenv("IVGS_TEST_PROMETHEUS_URL") or "http://127.0.0.1:9090"
+
 #: Redis and SeaweedFS, for the environment block in `conftest.py`.
 #: Redis logical database 15 is the test scratch db and is deliberate.
 REDIS_URL = os.getenv("IVGS_TEST_REDIS_URL") or f"redis://{TEST_HOST}:6379/15"
@@ -56,6 +61,7 @@ __all__ = [
     "TEST_HOST",
     "API_BASE_URL",
     "SCHEDULER_URL",
+    "PROMETHEUS_URL",
     "REDIS_URL",
     "SEAWEEDFS_MASTER_URL",
     "SEAWEEDFS_FILER_URL",

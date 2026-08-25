@@ -19,8 +19,8 @@ output is quoted.
 | `ivgs-workers` | 766 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | 30 | 16 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1665** | **55** | **63** | **45** | |
+| `tests_system` | 35 | 16 | 15 | 30 | 15 passed / 31 failed / 28 errors |
+| **Total** | **1670** | **55** | **63** | **45** | |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 8
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -177,11 +177,18 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 30 passed, 16 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 35 passed, 16 failed, 15 skipped, 30 errors
 
 ```bash
 .venv/bin/python -m pytest --timeout=120 tests_system
 ```
+
+WP-54 added `test_alert_rules_have_metrics.py` here (5 tests, 2026-08-25): the
+gate that fails when an alert rule references a metric no configured target
+produces. It lives in this tree because it asserts against the LIVE Prometheus
+metric set — a fixture would be a third statement of what someone believed the
+metric names were, which is what was already wrong three times. 30 → 35 passed;
+failures and errors unchanged.
 
 Runtime 1.5s. Every module now REACHES its service: the responses below are
 422/429/404/200, not connection-refused. That is the WP-52 Task 2 deliverable;
