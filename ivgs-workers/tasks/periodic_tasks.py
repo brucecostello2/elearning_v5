@@ -163,11 +163,11 @@ def process_dlq(self: Any) -> dict[str, Any]:
         asyncio.set_event_loop(loop)
 
         try:
-            from ivgs_workers.services.dlq_service import DLQService
-            from ivgs_workers.config import get_db_session_factory
+            from services.dlq_service import DLQService
+            from shared.database import async_session_factory
 
             dlq_service = DLQService(
-                db_session_factory=get_db_session_factory(),
+                db_session_factory=async_session_factory,
                 celery_app=self.app,
             )
 
@@ -229,10 +229,10 @@ def supervise_heartbeats(self: Any) -> dict[str, Any]:
         asyncio.set_event_loop(loop)
 
         try:
-            from ivgs_workers.config import get_db_session_factory
+            from shared.database import async_session_factory
             from sqlalchemy import text
 
-            db_factory = get_db_session_factory()
+            db_factory = async_session_factory
             now = datetime.now(timezone.utc)
             suspected_threshold = now - timedelta(seconds=60)
             confirmed_threshold = now - timedelta(seconds=120)
@@ -362,13 +362,13 @@ def run_orphan_cleanup(self: Any) -> dict[str, Any]:
         asyncio.set_event_loop(loop)
 
         try:
-            from ivgs_workers.services.orphan_cleanup import (
+            from services.orphan_cleanup import (
                 OrphanCleanupService,
             )
-            from ivgs_workers.config import get_db_session_factory
+            from shared.database import async_session_factory
 
             service = OrphanCleanupService(
-                db_session_factory=get_db_session_factory(),
+                db_session_factory=async_session_factory,
             )
 
             report = loop.run_until_complete(service.run_cleanup())
@@ -430,13 +430,13 @@ def run_retention_migration(self: Any) -> dict[str, Any]:
         asyncio.set_event_loop(loop)
 
         try:
-            from ivgs_workers.services.retention_migration import (
+            from services.retention_migration import (
                 RetentionService,
             )
-            from ivgs_workers.config import get_db_session_factory
+            from shared.database import async_session_factory
 
             service = RetentionService(
-                db_session_factory=get_db_session_factory(),
+                db_session_factory=async_session_factory,
             )
 
             report = loop.run_until_complete(service.run_migration())
@@ -500,11 +500,11 @@ def verify_latest_backup(self: Any) -> dict[str, Any]:
         asyncio.set_event_loop(loop)
 
         try:
-            from ivgs_workers.config import get_db_session_factory
+            from shared.database import async_session_factory
             from sqlalchemy import text
             import hashlib
 
-            db_factory = get_db_session_factory()
+            db_factory = async_session_factory
 
             async def _verify() -> dict[str, Any]:
                 async with db_factory() as session:

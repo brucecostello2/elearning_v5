@@ -385,6 +385,15 @@ class RetryEngine:
         async with self._db_session_factory() as session:
             async with session.begin():
                 from sqlalchemy import insert
+                # ⛔ WP-54: THIS IMPORT CANNOT BE REPAIRED BY RENAMING, and is left standing
+                # deliberately so the gap it names stays visible. Ledger P2.60.
+                #
+                # ASSUMED: an `ivgs_api` package exposing `app.models.TaskRetry`.
+                # PROVIDED: the worker image ships `shared.models.{enums, model_store}` and
+                # nothing else -- checked inside the running container, where `app.models`
+                # fails too. `TaskRetry` is defined only in `ivgs-api/app/models/task_retry.py`, which is not copied into this image.
+                # There is no module path that resolves, so a rename would move the failure,
+                # not remove it.
                 from ivgs_api.app.models import TaskRetry
 
                 await session.execute(
@@ -430,6 +439,15 @@ class RetryEngine:
         """
         async with self._db_session_factory() as session:
             from sqlalchemy import select
+            # ⛔ WP-54: THIS IMPORT CANNOT BE REPAIRED BY RENAMING, and is left standing
+            # deliberately so the gap it names stays visible. Ledger P2.60.
+            #
+            # ASSUMED: an `ivgs_api` package exposing `app.models.TaskRetry`.
+            # PROVIDED: the worker image ships `shared.models.{enums, model_store}` and
+            # nothing else -- checked inside the running container, where `app.models`
+            # fails too. `TaskRetry` is defined only in `ivgs-api/app/models/task_retry.py`, which is not copied into this image.
+            # There is no module path that resolves, so a rename would move the failure,
+            # not remove it.
             from ivgs_api.app.models import TaskRetry
 
             table = TaskRetry.__table__

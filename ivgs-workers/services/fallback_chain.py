@@ -244,6 +244,21 @@ class FallbackChainService:
         try:
             async with self._db_session_factory() as session:
                 from sqlalchemy import select
+                # ⛔ WP-54: THIS IMPORT CANNOT BE REPAIRED BY RENAMING, and is left standing
+                # deliberately so the gap it names stays visible. Ledger P2.60.
+                #
+                # ASSUMED: an `ivgs_api` package exposing `app.models.FallbackPolicyModel`.
+                # PROVIDED: the worker image ships `shared.models.{enums, model_store}` and
+                # nothing else -- checked inside the running container, where `app.models`
+                # fails too. `FallbackPolicyModel` is worse than absent from this image:
+                # There is no module path that resolves, so a rename would move the failure,
+                # not remove it.
+                #
+                # it is defined NOWHERE IN THE REPOSITORY, in either service. This import
+                # has never had a target. It sits inside a try/except that falls back to
+                # DEFAULT_FALLBACK_POLICIES, so database-held policies have never loaded
+                # and nothing has ever said so -- the same shape as the alert rules this
+                # package exists for.
                 from ivgs_api.app.models import FallbackPolicyModel
 
                 result = await session.execute(

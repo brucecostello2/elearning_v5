@@ -98,8 +98,16 @@ async def seed_fallback_policies(
 
     # Get DB session factory
     if db_session_factory is None:
-        from ivgs_api.app.database import get_async_session_factory
-        db_session_factory = get_async_session_factory()
+        # WP-54. Was `from ivgs_api.app.database import get_async_session_factory`.
+        # Wrong twice: there is no `ivgs_api` package (the directory is
+        # `ivgs-api`, a hyphen), and there is no `app/database.py` or
+        # `get_async_session_factory` anywhere in the tree either -- so no
+        # rename could have fixed it. `shared.database.async_session_factory`
+        # is the real `async_sessionmaker` this call site wants, and it is what
+        # `shared.database` itself uses at lines 57 and 76.
+        from shared.database import async_session_factory
+
+        db_session_factory = async_session_factory
 
     # Seed policies
     inserted = 0
