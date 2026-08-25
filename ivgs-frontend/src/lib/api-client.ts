@@ -18,6 +18,7 @@
  */
 
 import { getAccessToken, getRefreshToken, setTokens, clearTokens } from "./auth";
+import { apiErrorMessage } from "./errors";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +29,8 @@ export interface ApiError {
   message: string;
   detail?: string;
   code?: string;
+  /** The parsed error body, so a form can map per-field messages. */
+  body?: unknown;
 }
 
 export interface ApiResponse<T> {
@@ -52,6 +55,8 @@ export class ApiRequestError extends Error {
   status: number;
   detail?: string;
   code?: string;
+  /** Parsed response body, kept so callers can call `fieldErrors` on it. */
+  body?: unknown;
 
   constructor(error: ApiError) {
     super(error.message);
@@ -59,6 +64,7 @@ export class ApiRequestError extends Error {
     this.status = error.status;
     this.detail = error.detail;
     this.code = error.code;
+    this.body = error.body;
   }
 }
 
@@ -81,12 +87,29 @@ async function refreshAccessToken(): Promise<boolean> {
         return false;
       }
 
+      /*
+       * WP-43 Task 6. This used to send the refresh token as an
+       * `Authorization` header with NO BODY. `POST /api/v1/auth/refresh`
+       * (`ivgs-api/app/api/v1/auth.py:102`) takes `body: RefreshRequest`,
+       * a JSON object with a required `refresh_token` field, and ignores
+       * the header entirely. FastAPI therefore rejected every refresh
+       * before the route ran. Reproduced live 2026-08-25:
+       *
+       *   POST /api/v1/auth/refresh   (header only, no body)  -> 422
+       *   {"detail":[{"type":"missing","loc":["body"],
+       *     "msg":"Field required","input":null}]}
+       *
+       * That is the recurring console 422. Its consequence is the one the
+       * operator felt: a refresh never succeeded, so `refreshAccessToken`
+       * returned false, `clearTokens()` ran, and the next write went out
+       * unauthenticated -- reads that were already cached kept working
+       * while writes failed. No API change is needed; the request was
+       * simply the wrong shape.
+       */
       const response = await fetch("/api/v1/auth/refresh", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${refreshToken}`,
-        },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
       if (!response.ok) {
@@ -96,11 +119,19 @@ async function refreshAccessToken(): Promise<boolean> {
 
       const data = (await response.json()) as {
         access_token: string;
+        refresh_token?: string;
         token_type: string;
         expires_in: number;
       };
 
-      setTokens(data.access_token, refreshToken);
+      /*
+       * `TokenResponse` (schemas/auth.py:16) returns a NEW refresh_token and
+       * the route's own docstring says "Old refresh token is invalidated
+       * after exchange". Re-storing the old one would have made the first
+       * refresh succeed and every later one fail -- so the rotation is
+       * honoured, with the previous token kept only if the server omits it.
+       */
+      setTokens(data.access_token, data.refresh_token || refreshToken);
       return true;
     } catch {
       clearTokens();
@@ -249,24 +280,19 @@ async function request<T>(
     }
 
     /* API errors arrive in several shapes ({"detail": "..."} |
-       {"detail": {"error": {"message": "..."}}} | {"error": {...}}).
+       {"detail": {"error": {"message": "..."}}} | {"error": {...}} |
+       FastAPI's own {"detail": [{loc, msg}, ...]} on a 422).
        Rendering a non-string as a React child crashes the page (React #31),
-       so always reduce to a string. */
-    const pickMessage = (v: unknown): string | null => {
-      if (typeof v === "string") return v;
-      if (v && typeof v === "object" && !Array.isArray(v)) {
-        const o = v as Record<string, unknown>;
-        return (
-          pickMessage(o["message"]) ??
-          pickMessage(o["detail"]) ??
-          pickMessage(o["error"]) ??
-          null
-        );
-      }
-      return null;
-    };
-    const message =
-      pickMessage(errorBody) ?? `Request failed with status ${response.status}`;
+       so always reduce to a string.
+
+       WP-43. The reducer that used to live here skipped ARRAYS, which is
+       exactly the shape a 422 always has, so every validation failure in
+       the app showed "Request failed with status 422" over a body that
+       named the field and the reason. `apiErrorMessage` reads that array
+       first and passes the server's `msg` through verbatim; `fieldErrors`
+       (`lib/errors.ts`) exposes the same information per field so a form
+       can point at the input that is wrong. */
+    const message = apiErrorMessage(errorBody, response.status);
 
     throw new ApiRequestError({
       status: response.status,
@@ -276,6 +302,7 @@ async function request<T>(
           ? (errorBody["detail"] as string)
           : undefined,
       code: errorBody["code"] as string | undefined,
+      body: errorBody,
     });
   }
 
@@ -360,9 +387,18 @@ export const apiClient = {
     const response = await authedFetch(path, { method: "GET" });
 
     if (!response.ok) {
+      /* WP-43: the same verbatim treatment as the JSON path. A protected
+         media route refusing for a stated reason should say the reason. */
+      let body: unknown = null;
+      try {
+        body = await response.clone().json();
+      } catch {
+        /* Binary route, non-JSON error body -- fall back to the status. */
+      }
       throw new ApiRequestError({
         status: response.status,
-        message: `Media request failed with status ${response.status}`,
+        message: apiErrorMessage(body, response.status),
+        body,
       });
     }
 
