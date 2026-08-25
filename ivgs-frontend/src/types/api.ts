@@ -170,20 +170,67 @@ export interface CreateUserRequest {
 // Project Types (§5.1.2, Table 1)
 // ---------------------------------------------------------------------------
 
+/**
+ * `GET /api/v1/projects/{id}` — `ProjectResponse`
+ * (`ivgs-api/app/schemas/project.py:79`).
+ *
+ * WP-43. Three fields declared here as REQUIRED were never sent by the API:
+ * `asset_count`, `target_languages` and `current_job_id`. The live payload
+ * for c12fa967, captured 2026-08-25, has exactly thirteen keys:
+ *
+ *   id, name, description, max_runtime_seconds, state, hero_image_url,
+ *   scene_count, total_duration_estimate_seconds, created_at, updated_at,
+ *   language_variants, active_job, created_by
+ *
+ * `target_languages` is the one that showed: the Overview header rendered
+ * "Languages: …" from it, so the row was permanently absent, and the
+ * metadata card said "None specified" for a project with two variants. The
+ * language list is `language_variants` — the field that IS sent.
+ *
+ * Same family as WP-40 T1/T5 and WP-38: a type asserting a shape the wire
+ * does not have. Optional fields below are optional because the schema
+ * declares them `Optional[...]`, not as a hedge.
+ */
 export interface ProjectResponse {
   id: string;
   name: string;
-  description: string;
+  description?: string | null;
   state: ProjectState;
-  max_runtime_seconds: number;
-  created_by: string;
+  max_runtime_seconds?: number | null;
+  created_by?: string | null;
   created_at: string;
   updated_at: string;
   scene_count: number;
-  asset_count: number;
-  target_languages: string[];
-  hero_image_url: string | null;
-  current_job_id: string | null;
+  total_duration_estimate_seconds?: number | null;
+  hero_image_url?: string | null;
+  /** `LanguageVariantSummary` — {language_code, state} and nothing else. */
+  language_variants?: LanguageVariantSummary[];
+  active_job?: ActiveJobInfo | null;
+  /**
+   * @deprecated Not sent by this API. Kept optional only so existing callers
+   * compile while they migrate to `language_variants`.
+   */
+  target_languages?: string[];
+}
+
+/** `ActiveJobInfo` (`schemas/project.py:59`) — embedded in the project. */
+export interface ActiveJobInfo {
+  id: string;
+  job_type: string;
+  status: string;
+  started_at: string | null;
+}
+
+/**
+ * `LanguageVariantSummary` (`schemas/project.py:70`).
+ *
+ * Two keys. Not the full variant: no `id`, so the Languages tab cannot
+ * retry from this payload — it reads `GET /projects/{id}/languages`, which
+ * carries the variant UUID the retry route needs.
+ */
+export interface LanguageVariantSummary {
+  language_code: string;
+  state: string;
 }
 
 export interface CreateProjectRequest {
@@ -473,21 +520,30 @@ export interface CompositionManifestResponse {
 // Language Variant Types (§17.1, Table 8)
 // ---------------------------------------------------------------------------
 
+/**
+ * `GET /api/v1/projects/{id}/languages` — `LanguageVariantResponse`
+ * (`ivgs-api/app/schemas/language_variant.py:35`).
+ *
+ * WP-43 Task 3b. This interface used to declare TEN fields the API has
+ * never sent, and the two that mattered were the ones the variants table
+ * read: `progress_percent` and `status`. `variant.progress_percent || 0`
+ * over an absent field is what rendered EN-US as a confident **0%** beside
+ * a **PENDING** badge, for a language that has a finished 720p draft on
+ * disk. It was never a measurement — nothing in ivgs-api, ivgs-workers or
+ * shared/ writes a per-language progress figure at all.
+ *
+ * The live payload, captured 2026-08-25, is exactly seven keys, and the two
+ * render ids are IDs, not URLs — `final_render_1080p_url` was wrong twice.
+ */
 export interface LanguageVariantResponse {
   id: string;
   project_id: string;
   language_code: string;
+  /** LOWERCASE on the wire, e.g. "pending". */
   state: string;
-  final_render_1080p_url: string | null;
-  final_render_4k_url: string | null;
-  language?: string;
-  status?: string;
-  progress_percent?: number;
-  updated_at?: string;
-  url_1080p?: string;
-  url_4k?: string;
-  subtitle_vtt_url?: string;
-  subtitle_srt_url?: string;
+  final_render_1080p_id: string | null;
+  final_render_4k_id: string | null;
+  created_at: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -540,9 +596,10 @@ export interface PaginatedResponse<T> {
  * where the renders actually live.
  */
 export type Project = ProjectResponse & {
-  /** Populated by joined query — display name of creator */
+  /**
+   * @deprecated Not sent. The payload carries `created_by` (a UUID) only.
+   */
   created_by_name?: string;
-  language_variants?: LanguageVariantResponse[];
 };
 
 export type Asset = AssetResponse;

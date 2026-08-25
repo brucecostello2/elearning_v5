@@ -29,8 +29,9 @@ interface UseProjectsReturn {
     assetType: ProjectAssetType
   ) => Promise<{ id: string }>;
   uploadTranscripts: (projectId: string, files: File[]) => Promise<unknown>;
-  addLanguage: (languageCode: string) => Promise<any>;
-  retryLanguage: (languageCode: string) => Promise<void>;
+  addLanguage: (languageCode: string) => Promise<LanguageVariant>;
+  /** Takes the variant UUID -- the retry route's path param is a UUID. */
+  retryLanguage: (variantId: string) => Promise<void>;
   triggerPipeline: (tier?: RenderTier) => Promise<Project>;
 }
 
@@ -170,12 +171,21 @@ export function useProjects(projectId?: string): UseProjectsReturn {
 
   /**
    * Add a language variant to the current project.
+   *
+   * WP-43 Task 3a. The route is `POST /projects/{id}/languages` with body
+   * `{language_code}` and it accepts exactly eight BCP-47 codes
+   * (`SUPPORTED_LANGUAGES`, `schemas/language_variant.py:11`). The form used
+   * to offer bare ISO-639-1 codes, none of which is in that set, so the
+   * response was always a 422 whose `detail` array the old client reduced to
+   * "Request failed with status 422". The picker now offers only accepted
+   * codes and the error, if one still arrives, arrives as the server's own
+   * sentence.
    */
   const addLanguage = async (
     languageCode: string
-  ): Promise<any> => {
+  ): Promise<LanguageVariant> => {
     if (!projectId) throw new Error("Project ID required");
-    const response = await apiClient.post<{ data: LanguageVariant }>(
+    const response = await apiClient.post<LanguageVariant>(
       `/api/v1/projects/${projectId}/languages`,
       { language_code: languageCode }
     );
@@ -185,11 +195,25 @@ export function useProjects(projectId?: string): UseProjectsReturn {
 
   /**
    * Retry a failed language variant.
+   *
+   * WP-43 Task 3a. This took a language CODE and put it in the path, but the
+   * route is `POST /projects/{id}/languages/{variant_id}/retry` and
+   * `variant_id` is a `UUID` path parameter. Reproduced live 2026-08-25:
+   *
+   *   POST .../languages/en-US/retry -> 422
+   *   {"detail":[{"type":"uuid_parsing","loc":["path","variant_id"],
+   *     "msg":"Input should be a valid UUID, ...","input":"en-US"}]}
+   *
+   * The variant id is not on the project detail payload -- its
+   * `language_variants` entries are `{language_code, state}` and nothing
+   * else -- which is why the caller now reads `GET /projects/{id}/languages`
+   * for the rows it renders.
    */
-  const retryLanguage = async (languageCode: string): Promise<void> => {
+  const retryLanguage = async (variantId: string): Promise<void> => {
     if (!projectId) throw new Error("Project ID required");
+    if (!variantId) throw new Error("Language variant id required");
     await apiClient.post(
-      `/api/v1/projects/${projectId}/languages/${languageCode}/retry`
+      `/api/v1/projects/${projectId}/languages/${encodeURIComponent(variantId)}/retry`
     );
     detailMutate();
   };

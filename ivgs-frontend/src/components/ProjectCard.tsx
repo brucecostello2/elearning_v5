@@ -28,9 +28,13 @@ export default function ProjectCard({
   /**
    * Format runtime seconds to MM:SS display.
    */
-  const formatRuntime = (seconds: number): string => {
+  /* WP-43: `max_runtime_seconds` is `Optional[int]` on the API and the
+     interface now says so. An absent runtime formats as "—" rather than
+     "NaN:NaN". */
+  const formatRuntime = (seconds: number | null | undefined): string => {
+    if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "—";
     const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const secs = Math.round(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
