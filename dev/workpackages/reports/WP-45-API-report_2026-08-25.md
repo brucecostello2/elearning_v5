@@ -7,7 +7,7 @@
 | **Version** | **`v5.11.0-apibatch`** — api, frontend, workers, as one coherent set |
 | **Deployed** | node-01 (5 services). **Nodes 02–05 NOT deployed — no SSH access from this session.** Paste blocks in `dev/workpackages/WP-45-operator-blocks.md` |
 | **Schema** | migration **0028** applied to `ivgs` and `ivgs_reconciliation_test`. Pre-migration dump banked |
-| **Repo state** | **Commit-and-HOLD. 11 commits, not pushed.** Count-gated push block in §12 |
+| **Repo state** | **Commit-and-HOLD. 12 commits, not pushed.** Count-gated push block in §12 |
 | **Suite** | **ZERO NEW FAILURES**, by before/after diff against `d76b355` over every module (§10.3). API tree ends at 2 failed / 831 passed against a baseline of 3 / 719 |
 
 ---
@@ -968,6 +968,22 @@ Run 1 (`98 failed, 1547 passed`) was taken before the six behaviour-changed
 tests were updated; the 26-failure difference between the runs is exactly those
 plus the GPU set, and each is accounted for in §10.2.
 
+**That full-suite figure predates the last three commits**, which came out of
+the live run (§4.6, §4.7) and landed after the budget was spent. Rather than
+take a third full run I was not budgeted, the delta over those three was
+re-established by the same sub-tree method, which is what the table above
+reports and what the header row quotes:
+
+| Sub-tree, after the final commit | Result |
+|---|---|
+| `ivgs-api/tests` | **2 failed, 831 passed** — the two pre-existing `test_health` ordering failures, and 112 more passing than the baseline |
+| `ivgs-workers/tests` | **27 failed**, `comm` against the verified baseline **empty in both directions** |
+
+So the headline full-suite number is a floor, not the final count: the three
+later commits added tests and fixed defects, and removed no failure from the
+red set. Stated this way rather than quietly re-quoting a number that was not
+re-measured.
+
 ### 10.4 Environment notes
 
 * The API suite needs `TEST_DATABASE_URL` pointed at `ivgs_reconciliation_test`;
@@ -1048,9 +1064,11 @@ call site under one greppable event, and the route it calls returns 200 live.
 
 ## 12. Push block — count-gated, for ALL held commits
 
-**HELD: 11 commits.** Nothing has been pushed.
+**HELD: 12 commits.** Nothing has been pushed.
 
 ```
+<this>   docs(wp-45): the full-suite figure predates the last three commits, and says so
+f9a8c2a  docs(wp-45): the report, the operator blocks, the quota decision, and two register entries
 60a4ef4  fix(wp-45): Cancel was revoking the right task id and the wrong task
 c224d4f  fix(wp-45): two defects that were latent behind the resume endpoint's own lie
 ec3bad5  fix(wp-45): the pipeline was throttling itself out of its own back half
@@ -1061,14 +1079,13 @@ c8214ed  fix(wp-45): a worker still on v5.10.0 must not have its uploads rejecte
 64e3595  fix(wp-45): eight endpoints that returned 202 and dispatched nothing
 33dae3f  feat(wp-45): gate 2 gets its corridor - the state machine gets a caller, and stage 8 gets dispatched
 a301dbe  feat(wp-45): dedup was calling a route that was never built, and upload threw the answer away
-<this>   docs(wp-45): the report, the operator blocks, and the quota design decision
 ```
 
 ```bash
 # RUN ON: IVGS node-01 (192.168.1.90)
 ( cd /opt/ivgs || exit 1
   git fetch origin main && \
-  EXPECTED=11 && \
+  EXPECTED=12 && \
   ACTUAL=$(git rev-list --count origin/main..HEAD) && \
   if [ "$ACTUAL" != "$EXPECTED" ]; then
     echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
