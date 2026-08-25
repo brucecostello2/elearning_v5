@@ -300,6 +300,16 @@ class RenderSceneImageOutput:
     quality_score: float = 0.0
     quality_decision: str = ""
     clip_score: Optional[float] = None
+    # "scored" | "unavailable" | "not_requested". `clip_score: None` used to
+    # mean all three, and sixteen assets shipped on that ambiguity.
+    clip_status: str = "not_requested"
+    # WP-44-QUALITY. The gate's verdict is no longer one number: it carries what
+    # was NOT measured alongside what was. These mirror the Celery result model
+    # field-for-field, which `tests/temporal/test_wp41_payload_shapes.py`
+    # enforces -- adding a field to one side and not the other is caught there.
+    checks_missing: List[str] = field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
@@ -371,6 +381,17 @@ class RenderSceneAnimationOutput:
     file_size_bytes: int = 0
     quality_score: float = 0.0
     quality_decision: str = ""
+    # WP-44-QUALITY. The gate's verdict is no longer one number: it carries what
+    # was NOT measured alongside what was. These mirror the Celery result model
+    # field-for-field, which `tests/temporal/test_wp41_payload_shapes.py`
+    # enforces -- adding a field to one side and not the other is caught there.
+    checks_missing: List[str] = field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
+    # WP-44 Task 5. The input guard's verdict on the reference image:
+    # present | absent | unavailable. Animation-only -- only this branch has a
+    # reference image, so only this branch can have a verdict on one.
+    reference_person_check: str = "not_run"
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
@@ -430,6 +451,12 @@ class RenderSceneVideoOutput:
     file_size_bytes: int = 0
     quality_score: float = 0.0
     quality_decision: str = ""
+    # WP-44-QUALITY. These three were 0.0/""/absent for every video ever
+    # generated, because VideoValidator was constructed and discarded. They are
+    # real now, and they carry what was NOT measured alongside what was.
+    checks_missing: List[str] = field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False

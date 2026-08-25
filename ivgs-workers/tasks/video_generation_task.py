@@ -55,6 +55,7 @@ from models.task_result import PipelineStage, StageStatus
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
 from utils.media_converter import check_duplicate_asset, compute_asset_sha256
+from utils.quality_reporting import submit_quality_score
 from utils.video_validator import VideoValidator
 
 logger = structlog.get_logger("ivgs.video_generation")
@@ -109,6 +110,12 @@ class SceneVideoResult(BaseModel):
     file_size_bytes: int = 0
     quality_score: float = 0.0
     quality_decision: str = ""
+    # WP-44. These three used to be 0.0/"" for every video ever generated,
+    # because VideoValidator was constructed and discarded. They are real now,
+    # and they carry what was NOT measured alongside what was.
+    checks_missing: List[str] = Field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
@@ -296,6 +303,7 @@ async def _process_single_video(
     target_audience: str,
     enable_dedup: bool,
     project_id: str,
+    job_id: str = "",
 ) -> SceneVideoResult:
     """Process a single scene video generation with fallback chain."""
     start_time = time.monotonic()
@@ -391,8 +399,52 @@ async def _process_single_video(
 
         result.fallback_level = fallback_level
 
-        # 4. Validate
-        _validator = VideoValidator()  # noqa: F841
+        # 4. Validate.
+        # WP-44: this line used to read `_validator = VideoValidator()  # noqa:
+        # F841` — the validator was built and thrown away, which is why the
+        # first e2e run's video assets carry quality_decision "" and
+        # quality_score 0.0. It runs now.
+        #
+        # expect_audio=False: CogVideoX and Wan2.1 both emit video-only MP4s.
+        # A missing audio stream is their normal output, not a defect, so the
+        # audio check is recorded as not-applicable rather than warned about on
+        # every single clip.
+        validator = VideoValidator()
+        validation = validator.validate_bytes(
+            video_data,
+            expected_duration=scene.duration_seconds,
+            expected_width=result.width or None,
+            expected_height=result.height or None,
+            expect_audio=False,
+        )
+        result.quality_score = validation.quality_score
+        result.quality_decision = validation.decision.value
+        result.checks_missing = list(validation.checks_missing)
+        result.check_coverage = validation.check_coverage
+        result.quality_score_complete = validation.quality_score_complete
+        if validation.actual_duration_seconds:
+            result.duration_seconds = validation.actual_duration_seconds
+        log.info(
+            "video_validated",
+            decision=validation.decision.value,
+            quality_score=validation.quality_score,
+            complete=validation.quality_score_complete,
+            missing=validation.checks_missing,
+            distinct=(validation.distinctness or {}).get("distinct_frame_ratio"),
+        )
+        if not validation.is_valid:
+            # A rejected clip is not uploaded and not linked. The scene fails
+            # naming the reason, rather than shipping a still-in-an-MP4 with a
+            # score attached to it.
+            log.warning(
+                "video_validation_rejected",
+                errors=validation.errors,
+            )
+            result.status = "failed"
+            result.errors.extend(validation.errors)
+            result.generation_time_seconds = round(time.monotonic() - start_time, 2)
+            return result
+
         sha256 = compute_asset_sha256(video_data)
         result.sha256_hash = sha256
         result.file_size_bytes = len(video_data)
@@ -419,6 +471,17 @@ async def _process_single_video(
         result.asset_id = upload_result.get("id", "")
         result.seaweedfs_path = upload_result.get("seaweedfs_path", "")
         result.generation_time_seconds = round(time.monotonic() - start_time, 2)
+
+        # 6. Record the verdict in the review queue (WP-44). Video assets never
+        # reached asset_quality_scores at all before this.
+        await submit_quality_score(
+            asset_id=result.asset_id,
+            quality_score=validation.quality_score,
+            quality_decision=validation.decision.value,
+            scoring_details=validation.scoring_details(),
+            config=config,
+            job_id=job_id,
+        )
 
         log.info(
             "video_generation_success",
@@ -531,6 +594,7 @@ def generate_video_clips(
                         target_audience=task_input.target_audience,
                         enable_dedup=task_input.enable_dedup,
                         project_id=project_id,
+                        job_id=job_id,
                     )
                 )
                 results.append(scene_result)

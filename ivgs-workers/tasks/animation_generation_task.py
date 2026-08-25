@@ -74,6 +74,9 @@ from shared.providers.factory import get_binding
 from utils.error_handler import save_checkpoint, update_job_status
 from utils.gpu_utils import acquire_gpu_reservation, release_acquired_reservation
 from utils.media_converter import check_duplicate_asset, compute_asset_sha256
+from utils.person_detector import PersonDetector, PersonPresence
+from utils.quality_reporting import submit_quality_score
+from utils.video_validator import VideoValidator
 
 logger = structlog.get_logger("ivgs.animation_generation")
 
@@ -160,6 +163,17 @@ class SceneAnimationResult(BaseModel):
     file_size_bytes: int = 0
     quality_score: float = 0.0
     quality_decision: str = ""
+    # WP-44. Same fields as SceneVideoResult so the review queue reads an
+    # animation exactly as it reads a video clip, including what was NOT
+    # measured.
+    checks_missing: List[str] = Field(default_factory=list)
+    check_coverage: float = 0.0
+    quality_score_complete: bool = False
+    #: The WP-44 Task-5 input guard's verdict on the reference image:
+    #: present | absent | unavailable. Recorded even on success, so a render
+    #: made while the detector was unavailable is distinguishable afterwards
+    #: from one made against a verified subject.
+    reference_person_check: str = "not_run"
     model_used: str = ""
     generation_time_seconds: float = 0.0
     was_deduplicated: bool = False
@@ -393,6 +407,7 @@ async def _process_single_animation(
     config: WorkerConfig,
     enable_dedup: bool,
     project_id: str,
+    job_id: str = "",
 ) -> SceneAnimationResult:
     """Render one animated scene end to end."""
     start_time = time.monotonic()
@@ -407,6 +422,49 @@ async def _process_single_animation(
         reference_image, driving_video, input_ids = await _resolve_inputs(
             scene, project_id, config, log
         )
+
+        # --- WP-44 Task 5: the input guard ---
+        # Wan2.2-Animate transfers a driver's pose onto the subject of the
+        # reference image. If the reference has no subject the model does not
+        # refuse — it invents a body. The reference project's storyboard sent
+        # equation cards to this branch (scenes 2, 4, 5 … carry "numbers and
+        # calculations appearing on screen" and no person at all), which is the
+        # run that paid for this check.
+        #
+        # It runs BEFORE _params_from_binding, before the dedup lookup and
+        # before any GPU reservation, because the whole point is to spend
+        # ~1.3 s of CPU instead of ~256 s of a 48 GB card.
+        detection = PersonDetector().detect(reference_image)
+        result.reference_person_check = detection.presence.value
+        log.info(
+            "animation_reference_person_check",
+            presence=detection.presence.value,
+            person_count=detection.person_count,
+            best_confidence=round(detection.best_confidence, 4),
+            elapsed_ms=round(detection.elapsed_ms, 1),
+            reason=detection.reason,
+        )
+        if detection.presence is PersonPresence.ABSENT:
+            raise WanAnimateInputError(
+                f"reference image contains no person to animate: scene "
+                f"{scene.scene_index} ({scene.scene_id}) reference asset "
+                f"{input_ids['reference_image_asset_id']} has no person "
+                f"detection above {detection.confidence_threshold} "
+                f"(best {detection.best_confidence:.3f}, model "
+                f"{detection.model}). Wan2.2-Animate is pose reenactment: with "
+                f"no subject in the reference it does not decline, it "
+                f"hallucinates one. Route this scene to media_type 'image', or "
+                f"supply a reference_image_asset_id that contains a character."
+            )
+        if detection.presence is PersonPresence.UNAVAILABLE:
+            # "We could not look" is not "there is nobody there". The render
+            # proceeds exactly as it did before this guard existed, and the
+            # fact that the check did not run travels with the result.
+            log.warning(
+                "animation_reference_person_check_unavailable",
+                reason=detection.reason,
+            )
+
         params = _params_from_binding(binding, scene)
 
         # Idempotency. The key covers the parameters AND the exact input bytes,
@@ -457,6 +515,41 @@ async def _process_single_animation(
         result.file_size_bytes = len(render.video_data)
         result.sha256_hash = compute_asset_sha256(render.video_data)
 
+        # --- WP-44 Task 3: validate the rendered clip ---
+        # expect_audio=False — the certified Wan graph emits a video-only MP4.
+        # The distinctness check is the WP-46 addendum's 77/77 measurement made
+        # standing: it is what separates an animation from a still in a
+        # container, and this branch exists precisely because "animation"
+        # used to mean "a PNG".
+        validator = VideoValidator()
+        validation = validator.validate_bytes(
+            render.video_data,
+            expected_duration=scene.duration_seconds,
+            expected_width=render.width or None,
+            expected_height=render.height or None,
+            expect_audio=False,
+        )
+        result.quality_score = validation.quality_score
+        result.quality_decision = validation.decision.value
+        result.checks_missing = list(validation.checks_missing)
+        result.check_coverage = validation.check_coverage
+        result.quality_score_complete = validation.quality_score_complete
+        log.info(
+            "animation_validated",
+            decision=validation.decision.value,
+            quality_score=validation.quality_score,
+            complete=validation.quality_score_complete,
+            missing=validation.checks_missing,
+            distinct_frames=(validation.distinctness or {}).get("distinct_frames"),
+            frames_decoded=(validation.distinctness or {}).get("frames_decoded"),
+        )
+        if not validation.is_valid:
+            log.warning("animation_validation_rejected", errors=validation.errors)
+            result.status = "failed"
+            result.errors.extend(validation.errors)
+            result.generation_time_seconds = round(time.monotonic() - start_time, 2)
+            return result
+
         upload_result = await _upload_asset(
             project_id=project_id,
             scene_id=scene.scene_id,
@@ -484,6 +577,20 @@ async def _process_single_animation(
         result.asset_id = upload_result.get("id", "")
         result.seaweedfs_path = upload_result.get("seaweedfs_path", "")
         result.generation_time_seconds = round(time.monotonic() - start_time, 2)
+
+        # Record the verdict in the review queue (WP-44). The reference-image
+        # check travels with it, so a reviewer can see whether the subject was
+        # verified or merely assumed.
+        details = validation.scoring_details()
+        details["reference_person_check"] = detection.to_dict()
+        await submit_quality_score(
+            asset_id=result.asset_id,
+            quality_score=validation.quality_score,
+            quality_decision=validation.decision.value,
+            scoring_details=details,
+            config=config,
+            job_id=job_id,
+        )
 
         log.info(
             "animation_generation_success",
@@ -642,6 +749,7 @@ def generate_scene_animations(
                         config=config,
                         enable_dedup=task_input.enable_dedup,
                         project_id=project_id,
+                        job_id=job_id,
                     )
                 )
                 results.append(scene_result)
