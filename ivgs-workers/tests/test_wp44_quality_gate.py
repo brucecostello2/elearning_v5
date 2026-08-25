@@ -393,15 +393,22 @@ class TestAScoreWithMissingChecksSaysSo:
 class TestStage3CarriesTheRecord:
     """The plumbing between the validator and the API, pinned.
 
-    ``ivgs-workers/tests/test_stage3.py`` cannot cover this: five of its tests
-    have been RED on ``main`` since well before WP-44 — they patch
-    ``tasks.stage3_images._update_scene_asset`` and
+    Written because ``ivgs-workers/tests/test_stage3.py`` could not cover it:
+    five of its tests were RED on ``main`` since well before WP-44 — they
+    patched ``tasks.stage3_images._update_scene_asset`` and
     ``tasks.stage3_images.CogVideoXClient``, neither of which exists, and they
-    call ``_process_single_scene`` with ``flux_client=`` /
+    called ``_process_single_scene`` with ``flux_client=`` /
     ``cogvideox_client=`` parameters the provider-factory rewrite removed.
-    Verified red at 5a9fd23 with this working tree stashed. Repairing that
-    module is its own piece of work (WP-44 report S8, ledger P2.45); these
-    assertions cover the WP-44 seam in the meantime.
+    Verified red at 5a9fd23 with this working tree stashed.
+
+    WP-52 repaired that module (ledger P2.45 CLOSED); it is green again and
+    exercises the same task through ``_process_single_scene``. These assertions
+    are KEPT and are not redundant: they read ``stage3_images.py`` as SOURCE and
+    pin the SHAPE of the WP-44 seam — that one helper builds the quality fields
+    at all three construction sites, and that submission is not re-gated on
+    ``enable_clip_scoring``. A behavioural test passes whether those three sites
+    share a helper or copy seven fields by hand three times; that is precisely
+    the regression WP-44 exists to prevent, so it is asserted where it lives.
     """
 
     from pathlib import Path as _Path
