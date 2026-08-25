@@ -31,7 +31,7 @@ import pytest_asyncio
 # ---------------------------------------------------------------------------
 # Configuration — overridden by environment or conftest.py
 # ---------------------------------------------------------------------------
-BASE_URL = "http://localhost:8001/api/v1"
+from tests_system.service_urls import API_BASE_URL as BASE_URL  # WP-52: was hardcoded localhost:8001
 ADMIN_EMAIL = "admin@ivgs.local"
 ADMIN_PASSWORD = "TestAdmin!2026_secure"
 

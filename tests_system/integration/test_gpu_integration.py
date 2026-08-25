@@ -12,7 +12,7 @@ import httpx
 import pytest
 import pytest_asyncio
 
-SCHEDULER_URL = "http://localhost:8002"
+from tests_system.service_urls import SCHEDULER_URL  # WP-52: was hardcoded localhost:8002
 
 
 @pytest_asyncio.fixture

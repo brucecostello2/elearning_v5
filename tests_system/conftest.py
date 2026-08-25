@@ -43,11 +43,23 @@ _TEST_DB = (
     or os.environ.get("DATABASE_URL")
     or "postgresql+asyncpg://ivgs:ivgs@192.168.1.90:5432/ivgs_reconciliation_test"
 )
+# WP-52. The three URLs below were hardcoded to localhost. node-01 publishes
+# Redis and SeaweedFS on its LAN address only (`192.168.1.90:6379`,
+# `:9333`, `:8888` in `docker ps`), so localhost was refused, not merely slow --
+# the same defect as the ten `BASE_URL` literals in this tree. They now come from
+# `tests_system.service_urls`, which is the single place this tree learns the
+# host, and each stays individually overridable.
+from tests_system.service_urls import (  # noqa: E402
+    REDIS_URL as _REDIS_URL,
+    SEAWEEDFS_FILER_URL as _SEAWEEDFS_FILER_URL,
+    SEAWEEDFS_MASTER_URL as _SEAWEEDFS_MASTER_URL,
+)
+
 os.environ.update({
     "DATABASE_URL": _TEST_DB,
-    "REDIS_URL": "redis://localhost:6379/15",
-    "SEAWEEDFS_MASTER_URL": "http://localhost:9333",
-    "SEAWEEDFS_FILER_URL": "http://localhost:8888",
+    "REDIS_URL": _REDIS_URL,
+    "SEAWEEDFS_MASTER_URL": _SEAWEEDFS_MASTER_URL,
+    "SEAWEEDFS_FILER_URL": _SEAWEEDFS_FILER_URL,
     "JWT_SECRET_KEY": "test_secret_key_for_testing_only_64_characters_minimum_padding!!",
     "LOG_LEVEL": "DEBUG",
     "LOG_FORMAT": "console",
