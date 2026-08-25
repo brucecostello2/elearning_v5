@@ -117,11 +117,48 @@ export interface NodeStatus {
   temperature_c: number | null;
   /** Why the observations above are present or absent. */
   telemetry?: NodeTelemetry;
+  /** OBSERVED. null = not measured.
+   *  WP-48: served by BOTH /nodes and /nodes/{id}. It used to be detail-only,
+   *  which is why every card's Power cell read "no data" while Prometheus held
+   *  a live reading. */
+  power_draw_w: number | null;
   services: string[];
   active_jobs: unknown[];
-  // Optional fields - only present on /api/v1/nodes/{node_id} detail endpoint
-  power_draw_w?: number | null;
+  // Optional field - only present on /api/v1/nodes/{node_id} detail endpoint
   last_heartbeat_at?: string | null;
+}
+
+/** One container on a node, from GET /api/v1/nodes/{id}/containers. WP-48. */
+export interface NodeContainer {
+  name: string;
+  image: string | null;
+  state: string | null;
+  status: string | null;
+}
+
+export interface NodeContainersResponse {
+  available: boolean;
+  source: string | null;
+  /** Why the list is unavailable. Non-null exactly when available is false. */
+  reason: string | null;
+  containers: NodeContainer[];
+}
+
+/** One log line. `level` is INFERRED from the text; null means the line
+ *  does not say, and must not be shown as "info". */
+export interface NodeLogLine {
+  timestamp: string | null;
+  level: "critical" | "error" | "warning" | "info" | "debug" | null;
+  message: string;
+}
+
+export interface NodeLogsResponse {
+  available: boolean;
+  source: string | null;
+  container: string;
+  reason: string | null;
+  as_of?: string;
+  lines: NodeLogLine[];
 }
 
 export type WorkerHeartbeatStatus =

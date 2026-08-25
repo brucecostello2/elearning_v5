@@ -23,6 +23,15 @@ import type { NodeStatus } from "@/types/api";
  *
  * Field naming follows the endpoint's contract (hostname, node_id-as-string),
  * not GpuNodeResponse.
+ *
+ * WP-48 (2026-08-25) adds a third rule, and it is the one that had this card
+ * showing "no data" under Power on a node whose exporter was healthy:
+ *
+ *   3. "not measured" and "measured, and the hardware reports nothing" are
+ *      different facts. When the exporter is being scraped (telemetry.available)
+ *      but one field is null, that field reads "n/a", not "no data". "no data"
+ *      points at a broken exporter; "n/a" points at the driver. Sending someone
+ *      to debug the wrong one is the same class of defect as rendering null as 0.
  */
 
 interface NodeCardProps {
@@ -70,6 +79,31 @@ export default function NodeCard({
       no data
     </span>
   );
+
+  /**
+   * WP-48. "no data" and "n/a" are different facts and the card must not
+   * collapse them, for the same reason WP-24 refused to collapse unknown into
+   * offline. The exporter is either being scraped or it is not:
+   *
+   *   telemetry.available === false  ->  nothing is measuring this node.
+   *                                      "no data" is the honest word.
+   *   telemetry.available === true   ->  the exporter IS scraped and returned
+   *     but this field is null           every other field, and this driver
+   *                                      reports nothing for this one.
+   *                                      "n/a" is the honest word, and saying
+   *                                      "no data" would send someone to debug
+   *                                      an exporter that is working.
+   */
+  const scraped = node.telemetry?.available === true;
+  const notApplicable = (
+    <span
+      className="text-sm font-medium text-gray-400 dark:text-gray-500"
+      title="The GPU exporter is up and reporting; this driver returns no value for this field on this card."
+    >
+      n/a
+    </span>
+  );
+  const missing = scraped ? notApplicable : noData;
 
   /** Status badge color triple. Phase 3 stub returns lowercase. */
   const statusKey = node.status.toLowerCase();
@@ -174,7 +208,7 @@ export default function NodeCard({
                 {(node.gpu_utilization_pct as number).toFixed(0)}%
               </span>
             ) : (
-              noData
+              missing
             )}
           </div>
 
@@ -187,7 +221,7 @@ export default function NodeCard({
                 {(node.temperature_c as number).toFixed(0)} C
               </span>
             ) : (
-              noData
+              missing
             )}
           </div>
 
@@ -198,7 +232,7 @@ export default function NodeCard({
                 {(node.power_draw_w as number).toFixed(0)}W
               </span>
             ) : (
-              noData
+              missing
             )}
           </div>
         </div>

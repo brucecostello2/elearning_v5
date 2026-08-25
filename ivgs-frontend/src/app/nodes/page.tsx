@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import NodeCard from "@/components/NodeCard";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import NodeLogPanel from "@/components/monitoring/NodeLogPanel";
 import type { NodeStatus } from "@/types/api";
 import StateBadge from "@/components/StateBadge";
 
@@ -23,9 +24,14 @@ import StateBadge from "@/components/StateBadge";
  * Polls /api/v1/nodes every 10 seconds.
  *
  * Node Detail Modal:
- *   - Live-streaming log output (WebSocket)
- *   - Log level filter, free-text search
- *   - Log download, historical job list
+ *   - Real container logs (WP-48). A POLLED TAIL from that node's
+ *     `ivgs-node-logs` source, NOT a WebSocket stream. This block used to say
+ *     "Live-streaming log output (WebSocket)" and the pane below it printed the
+ *     ws:// URL as prose; no line was ever displayed on any node, because the
+ *     advertised endpoint did not exist. See components/monitoring/NodeLogPanel.
+ *   - Log level filter, free-text search - now applied to real lines
+ *   - Log download - now the fetched lines, not a broken <a download> to an
+ *     unauthenticated route that never existed either
  *
  * RBAC per Table 8-3:
  *   - admin: full detail + logs
@@ -192,24 +198,19 @@ export default function NodesPage(): React.ReactElement {
                   placeholder="Search logs…"
                   className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <a
-                  href={`/api/v1/nodes/${selectedNode.hostname}/logs/download`}
-                  download
-                  className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-600 text-sm transition-colors"
-                >
-                  Download
-                </a>
+                {/* Download moved into NodeLogPanel: an <a download> cannot
+                    carry the Bearer token this API requires, and
+                    /logs/download was never a registered route. */}
               </div>
 
-              {/* Live Log Stream */}
-              <div className="flex-1 overflow-y-auto px-6 py-4 bg-gray-50 dark:bg-gray-950 font-mono text-xs text-gray-700 dark:text-gray-300 min-h-[300px]">
-                <p className="text-gray-600 dark:text-gray-400 italic">
-                  Live log streaming via WebSocket — connect to
-                  ws://node-01:8000/api/v1/nodes/{selectedNode.hostname}/logs/stream
-                </p>
-                <p className="text-gray-600 dark:text-gray-400 mt-2">
-                  [Log output will appear here in real-time]
-                </p>
+              {/* Container logs - real ones. WP-48. */}
+              <div className="flex-1 overflow-hidden flex flex-col">
+                <NodeLogPanel
+                  nodeId={selectedNode.node_id}
+                  hostname={selectedNode.hostname}
+                  levelFilter={logFilter}
+                  search={logSearch}
+                />
               </div>
 
               {/* Historical Jobs */}
