@@ -11,6 +11,7 @@ Uses Redis sliding window counters.
 import hmac
 import logging
 import os
+import re
 
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.requests import Request
@@ -76,11 +77,27 @@ LOGIN_LOCKOUT_THRESHOLD = 10   # consecutive failures
 LOGIN_LOCKOUT_SECONDS = 900    # 15 minutes
 
 
+# WP-59 Task 6. `DELETE /api/v1/projects/{uuid}` and nothing else -- not the
+# sub-resources (`/projects/{id}/languages/{id}`, `/projects/{id}/assets/...`),
+# which are ordinary content CRUD and belong in the 60/min bucket. Anchored at
+# the end of the path so a longer route cannot fall into the job-trigger bucket
+# by accident.
+_PROJECT_DELETE_PATH = re.compile(
+    r"/projects/[0-9a-fA-F-]{36}/?$"
+)
+
+
 def _classify_request(path: str, method: str) -> str:
     """Classify the request into a rate limit bucket."""
     if "/auth/login" in path and method == "POST":
         return "login"
     if "/trigger" in path and method == "POST":
+        return "job_trigger"
+    # WP-59 Task 6: "rate-limit it like the other job triggers". A project
+    # deletion is the most destructive single call the API offers and it is
+    # exactly as scriptable as a trigger, so it belongs in the 10/min bucket
+    # rather than the 60/min content bucket it fell into as a bare DELETE.
+    if method == "DELETE" and _PROJECT_DELETE_PATH.search(path):
         return "job_trigger"
     return "default"
 

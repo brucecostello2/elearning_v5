@@ -189,24 +189,23 @@ class ProjectService:
         logger.info("Project updated: id=%s fields=%s", project.id, list(update_data.keys()))
         return await self._to_response(project)
 
-    async def delete_project(
-        self,
-        project_id: UUID,
-        current_user: User,
-    ) -> bool:
-        """
-        Delete project and all associated assets (admin only, handled by RBAC dep).
-
-        Cascade delete removes transcripts, scenes, assets, prompts, jobs, variants.
-        """
-        project = await self._get_project_or_none(project_id, current_user, admin_override=True)
-        if project is None:
-            return False
-
-        await self.db.delete(project)
-        await self.db.commit()
-        logger.info("Project deleted: id=%s by=%s", project_id, current_user.username)
-        return True
+    # ``delete_project`` was REMOVED here by WP-59 and lives in
+    # ``app/services/project_deletion.ProjectDeletionService``.
+    #
+    # It was one ``self.db.delete(project)`` and a commit, with a docstring
+    # claiming it "queues asset cleanup" -- it queued nothing. What it left
+    # behind, measured against the live schema: every SeaweedFS object the
+    # project owned (nothing reads the assets rows before the cascade removes
+    # them, so the bytes become unreachable rather than deleted), every
+    # ``dead_letter_messages`` row naming its jobs and every ``storage_quotas``
+    # row (no foreign key reaches either, so they simply survive), and the
+    # per-job Redis scratch. It also deleted projects with jobs still running,
+    # leaving the GPU work orphaned from its row.
+    #
+    # It is not kept as a thin wrapper. A second entry point that skips the
+    # audit record, the job check and the binary purge is precisely the "second,
+    # weaker door" Task 6 forbids, and the only way to guarantee it is not used
+    # is for it not to exist.
 
     async def transition_state(
         self,

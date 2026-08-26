@@ -6,7 +6,7 @@ Tests business logic in app/services/project_service.py:
   - list_projects: RBAC (operator sees own, admin sees all)
   - transition_state: valid/invalid transitions
   - trigger_pipeline: triggerable states, transcript validation
-  - delete_project: cascade
+  - delete_project: REMOVED by WP-59 - see TestDeleteProject
 """
 
 import pytest
@@ -19,6 +19,7 @@ from app.services.project_service import ProjectService
 from app.services.user_service import create_user
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from shared.models.enums import ProjectState
+from app.services.project_deletion import CATEGORY_KEYS
 
 pytestmark = pytest.mark.asyncio
 
@@ -164,20 +165,50 @@ class TestTriggerPipeline:
 
 
 class TestDeleteProject:
-    async def test_delete_project_success(self, db_session):
+    """WP-59. ``ProjectService.delete_project`` NO LONGER EXISTS.
+
+    It was a bare ``self.db.delete(project)`` with a docstring claiming it
+    "queues asset cleanup", which it did not. It left every SeaweedFS object
+    the project owned unreachable rather than deleted, left the
+    ``dead_letter_messages`` and ``storage_quotas`` rows that no foreign key
+    reaches, left the per-job Redis scratch, wrote no audit record, and would
+    delete a project whose jobs were still running.
+
+    Deletion now lives in ``app/services/project_deletion.ProjectDeletionService``
+    and is exercised by ``test_wp59_deletion.py``. These two tests are kept, as
+    an assertion that the weaker path stays gone: a thin ``delete_project``
+    wrapper reintroduced for convenience would be the "second, weaker door"
+    WP-59 Task 6 forbids, and the only way to guarantee it is not used is for
+    it not to exist.
+    """
+
+    async def test_weak_delete_path_is_gone(self, db_session):
+        svc = ProjectService(db_session)
+        assert not hasattr(svc, "delete_project"), (
+            "ProjectService.delete_project was removed by WP-59. Deletion goes "
+            "through ProjectDeletionService, which refuses on non-terminal "
+            "jobs, writes an audit record before destroying anything, and "
+            "purges the binaries. Re-adding a cascade-only shortcut here "
+            "reopens every defect that package closed."
+        )
+
+    async def test_deletion_service_is_the_replacement(self, db_session):
+        from app.services.project_deletion import ProjectDeletionService
+
         admin = await _make_user(db_session, "proj_del_admin", "admin")
         svc = ProjectService(db_session)
         resp = await svc.create_project(ProjectCreate(name="Del Proj"), admin)
-        
-        result = await svc.delete_project(resp.id, admin)
-        assert result is True
-        
-        # Verify deleted
-        found = await svc.get_project(resp.id, admin)
-        assert found is None
 
-    async def test_delete_nonexistent_project(self, db_session):
-        admin = await _make_user(db_session, "proj_del_404", "admin")
-        svc = ProjectService(db_session)
-        result = await svc.delete_project(uuid4(), admin)
-        assert result is False
+        deletion = ProjectDeletionService(db_session)
+        try:
+            preview = await deletion.preview(resp.id)
+        finally:
+            await deletion.close()
+
+        assert preview is not None
+        assert preview.project_name == "Del Proj"
+        # Every category is present for a brand-new project, all at zero. A
+        # dialog that omitted the empty ones would let the reader complete the
+        # flow without reading, which is the one thing it exists to prevent.
+        assert {c.key for c in preview.categories} == set(CATEGORY_KEYS)
+        assert all(c.count == 0 for c in preview.categories)

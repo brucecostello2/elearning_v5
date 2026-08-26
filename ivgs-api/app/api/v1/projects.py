@@ -6,7 +6,8 @@ Endpoints:
 - POST   /api/v1/projects                     — Create new project
 - GET    /api/v1/projects/{id}                — Get project detail
 - PATCH  /api/v1/projects/{id}                — Update project metadata
-- DELETE /api/v1/projects/{id}                — Delete project (admin only)
+- DELETE /api/v1/projects/{id}?confirm_name=  — Delete project permanently (admin only)
+- GET    /api/v1/projects/{id}/deletion-preview — What a deletion would destroy (admin)
 - POST   /api/v1/projects/{id}/trigger        — Trigger pipeline execution
 - PATCH  /api/v1/projects/{id}/state          — Advance lifecycle state (internal)
 - POST   /api/v1/projects/{id}/upload-talking-head — Upload talking head clip
@@ -15,7 +16,9 @@ import logging
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import (
+    APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status,
+)
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,6 +34,18 @@ from app.schemas.base import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
 from app.services.project_service import DEFAULT_RENDER_TIER, ProjectService
 from app.services.asset_service import AssetService
+from app.services.project_deletion import (
+    AlreadyDeletedError,
+    ConfirmationMismatchError,
+    NonTerminalJobsError,
+    ProjectDeletionError,
+    ProjectDeletionService,
+)
+from app.schemas.project_deletion import (
+    DeletionCategory,
+    DeletionPreviewResponse,
+    DeletionResultResponse,
+)
 from shared.models.enums import ProjectState
 
 logger = logging.getLogger(__name__)
@@ -130,24 +145,169 @@ async def update_project(
     return project
 
 
-@router.delete(
-    "/{project_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    summary="Delete project (admin only)",
+@router.get(
+    "/{project_id}/deletion-preview",
+    response_model=DeletionPreviewResponse,
+    summary="Enumerate everything a deletion of this project would destroy",
 )
-async def delete_project(
+async def project_deletion_preview(
     project_id: UUID,
     current_user: User = Depends(require_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Delete project and all associated assets (admin only). Queues asset cleanup."""
-    service = ProjectService(db)
-    deleted = await service.delete_project(project_id, current_user)
-    if not deleted:
+    """WP-59 Task 1. The category list and the real count of each, for THIS project.
+
+    This route exists so the dialog cannot invent its own list. The categories
+    it returns ARE the categories the deletion destroys — both come from
+    ``PROJECT_CATEGORIES``, which was built by reading the live foreign keys
+    rather than the spec's table list. A category missing here is a category
+    silently left behind, so there is exactly one place it can go missing.
+
+    Admin-gated like the DELETE itself: this payload is a complete inventory of
+    a project's contents and its blocking jobs, which is not viewer material.
+    """
+    service = ProjectDeletionService(db)
+    try:
+        preview = await service.preview(project_id)
+    finally:
+        await service.close()
+    if preview is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
         )
+    return DeletionPreviewResponse(
+        project_id=preview.project_id,
+        project_name=preview.project_name,
+        project_state=preview.project_state,
+        categories=[
+            DeletionCategory(
+                key=c.key,
+                label=c.label,
+                detail=c.detail,
+                cascade=c.cascade,
+                count=c.count,
+                breakdown=c.breakdown,
+            )
+            for c in preview.categories
+        ],
+        blocking_jobs=preview.blocking_jobs,
+        gpu_reservations_held=preview.gpu_reservations_held,
+        total_rows=preview.total_rows,
+        total_bytes=preview.total_bytes,
+        deletable=preview.deletable,
+        scheduler_registry_error=preview.scheduler_registry_error,
+        redis_registry_error=preview.redis_registry_error,
+    )
+
+
+@router.delete(
+    "/{project_id}",
+    response_model=DeletionResultResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Delete project permanently (admin only)",
+)
+async def delete_project(
+    project_id: UUID,
+    request: Request,
+    confirm_name: str = Query(
+        ...,
+        description=(
+            "The project's EXACT name. Required, so an id alone cannot delete "
+            "anything."
+        ),
+    ),
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Permanently delete a project. WP-59 Tasks 2, 3, 4 and 6.
+
+    THE API IS NOT A SECOND, WEAKER DOOR (Task 6). Everything the GUI enforces
+    is enforced here, because the GUI is one caller of this route and not its
+    gatekeeper:
+
+    * ``require_admin`` — the same RBAC dependency the previous DELETE carried.
+    * ``confirm_name`` is REQUIRED and must equal the project's name exactly.
+      A bare ``curl -X DELETE .../projects/<uuid>`` gets a 422 for the missing
+      parameter, and a wrong name gets a 409. Deleting by id alone is not
+      reachable from any client.
+    * Non-terminal jobs are a 409 listing them (Task 3), and a GPU reservation
+      the SCHEDULER still holds is a 409 too — read from the scheduler's own
+      registry, not inferred from the job row.
+    * It is rate-limited in the ``job_trigger`` bucket alongside the pipeline
+      triggers (``app/middleware/rate_limit.py``), not the 60/min content
+      bucket.
+
+    THE RESPONSE IS THE DESTRUCTION, NOT A STATUS CODE. WP-45 Task 3 found
+    eight surfaces returning 202 while doing nothing, and its acceptance
+    criterion was deliberately not "returns 202" for exactly that reason. This
+    route runs the deletion synchronously and returns 200 with the per-table
+    row counts actually removed, the number of stored objects deleted, the
+    number PRESERVED and why. A 202 would assert only that the request was
+    accepted, which is the claim that was worthless the last eight times.
+    """
+    service = ProjectDeletionService(db)
+    try:
+        result = await service.delete(
+            project_id,
+            confirmation_name=confirm_name,
+            actor_id=current_user.id,
+            actor_name=current_user.username,
+            client_ip=request.client.host if request.client else None,
+        )
+    except LookupError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
+        )
+    except AlreadyDeletedError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "ALREADY_DELETED",
+                    "message": str(exc),
+                    "audit_id": exc.audit_id,
+                }
+            },
+        )
+    except ConfirmationMismatchError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "CONFIRMATION_MISMATCH", "message": str(exc)}},
+        )
+    except NonTerminalJobsError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "JOBS_NOT_TERMINAL",
+                    "message": str(exc),
+                    "jobs": exc.jobs,
+                }
+            },
+        )
+    except ProjectDeletionError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "DELETION_REFUSED", "message": str(exc)}},
+        )
+    finally:
+        await service.close()
+
+    return DeletionResultResponse(
+        project_id=result.project_id,
+        project_name=result.project_name,
+        audit_id=result.audit_id,
+        rows_deleted=result.rows_deleted,
+        total_rows_deleted=sum(result.rows_deleted.values()),
+        files_deleted=result.files_deleted,
+        files_preserved=result.files_preserved,
+        preserved_reasons=result.preserved_reasons,
+        files_failed=result.files_failed,
+        redis_keys_deleted=result.redis_keys_deleted,
+        resumed=result.resumed,
+    )
 
 
 @router.post(

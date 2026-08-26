@@ -13,7 +13,17 @@ import enum
 # ── §4.1 Table 1: project_state ──────────────────────────────────────
 
 class ProjectState(str, enum.Enum):
-    """13-state finite-state machine for project lifecycle (§6.1 Fig 6-1)."""
+    """14-state finite-state machine for project lifecycle (§6.1 Fig 6-1).
+
+    Thirteen lifecycle states plus ``DELETING`` (WP-59 Task 2, migration 0033),
+    which is not a lifecycle state at all: it is a TERMINAL marker meaning
+    "destruction has begun and this project is not coming back". It is
+    deliberately absent from ``PROJECT_STATE_TRANSITIONS`` in BOTH directions —
+    nothing may transition into it through the state machine (the deletion
+    service writes the column directly, because reaching it is not a lifecycle
+    event) and nothing may transition out of it, so a half-deleted project can
+    never be nursed back into a pipeline.
+    """
     DRAFT = "DRAFT"
     TRANSCRIPT_REFINEMENT = "TRANSCRIPT_REFINEMENT"
     STORYBOARD_GENERATION = "STORYBOARD_GENERATION"
@@ -27,6 +37,11 @@ class ProjectState(str, enum.Enum):
     COMPLETE = "COMPLETE"
     LOCALISATION = "LOCALISATION"
     ERROR = "ERROR"
+    # WP-59 Task 2. Written directly by ProjectDeletionService before the first
+    # row is destroyed, and committed, so a crash mid-delete leaves a project
+    # that is VISIBLY mid-delete rather than one that looks alive with missing
+    # organs. See PROJECT_STATE_TRANSITIONS below: it appears in no value set.
+    DELETING = "DELETING"
 
 
 # Valid transitions per §6.1 Table 6-1.

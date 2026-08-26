@@ -34,10 +34,11 @@ class Project(Base):
                 "MEDIA_GENERATION", "MANIFEST_GENERATION", "AUDIO_GENERATION",
                 "TALKING_HEAD_RENDER", "PROTOTYPE_DRAFT", "USER_REVIEW",
                 "FINAL_RENDER", "COMPLETE", "LOCALISATION", "ERROR",
+                "DELETING",
                 name="project_state", create_type=False),
         nullable=False,
         server_default="DRAFT",
-        doc="PostgreSQL ENUM project_state — 13 values",
+        doc="PostgreSQL ENUM project_state — 14 values (DELETING: WP-59, 0033)",
     )
     hero_image_asset_id: Mapped[Optional[uuid.UUID]] = mapped_column(
         UUID(as_uuid=True),

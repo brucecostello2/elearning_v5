@@ -143,19 +143,129 @@ class TestProjectCRUD:
         assert response.status_code == 200
         assert response.json()["name"] == "Updated Name"
 
-    async def test_delete_project_admin_only(self, client: AsyncClient, admin_token: str):
-        """Test that only admins can delete projects."""
+    async def test_delete_project_requires_confirm_name(
+        self, client: AsyncClient, admin_token: str
+    ):
+        """WP-59 Task 6: a bare curl cannot delete by id alone.
+
+        `confirm_name` is a REQUIRED query parameter, so a DELETE without it is
+        a 422 from FastAPI's own validation before any service code runs. This
+        is the whole "the API is not a second, weaker door" requirement: the
+        GUI types the name into a box, and a script has to supply the same
+        thing.
+        """
         create_resp = await client.post(
             "/api/v1/projects",
             json={"name": "Delete Me"},
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         project_id = create_resp.json()["id"]
-        response = await client.delete(
+
+        bare = await client.delete(
             f"/api/v1/projects/{project_id}",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
-        assert response.status_code == 204
+        assert bare.status_code == 422
+
+        # And the project is still there. Asserting the destruction did NOT
+        # happen matters as much as asserting that it does: a refusal that
+        # deleted anyway would pass a status-code-only test.
+        still_there = await client.get(
+            f"/api/v1/projects/{project_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert still_there.status_code == 200
+
+    async def test_delete_project_wrong_confirm_name_refused(
+        self, client: AsyncClient, admin_token: str
+    ):
+        """A confirmation that does not match the name exactly is a 409."""
+        create_resp = await client.post(
+            "/api/v1/projects",
+            json={"name": "Precisely This Name"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        project_id = create_resp.json()["id"]
+
+        # Near-misses, all refused. Case and whitespace are deliberately NOT
+        # normalised: the name is the thing being confirmed, and accepting a
+        # near-miss confirms something else.
+        for wrong in ("precisely this name", "Precisely This Name ", "Wrong"):
+            resp = await client.delete(
+                f"/api/v1/projects/{project_id}",
+                params={"confirm_name": wrong},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+            assert resp.status_code == 409, wrong
+            assert resp.json()["detail"]["error"]["code"] == "CONFIRMATION_MISMATCH"
+
+        still_there = await client.get(
+            f"/api/v1/projects/{project_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert still_there.status_code == 200
+
+    async def test_delete_project_admin_only(
+        self, client: AsyncClient, admin_token: str
+    ):
+        """The happy path: 200, and the response ASSERTS the destruction.
+
+        WP-45 Task 3 found eight surfaces returning 202 while doing nothing,
+        and its acceptance criterion was deliberately not "returns 202" for
+        exactly that reason. So this checks the row counts the server reports
+        removing, and then checks the project is actually gone.
+        """
+        create_resp = await client.post(
+            "/api/v1/projects",
+            json={"name": "Delete Me"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        project_id = create_resp.json()["id"]
+
+        response = await client.delete(
+            f"/api/v1/projects/{project_id}",
+            params={"confirm_name": "Delete Me"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert response.status_code == 200
+        body = response.json()
+        assert body["project_name"] == "Delete Me"
+        assert body["audit_id"]
+        # The project row itself is always one of the rows destroyed.
+        assert body["rows_deleted"]["projects"] == 1
+
+        gone = await client.get(
+            f"/api/v1/projects/{project_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert gone.status_code == 404
+
+    async def test_deletion_preview_is_admin_only(
+        self, client: AsyncClient, admin_token: str, operator_token: str
+    ):
+        """The inventory is admin material, like the DELETE it precedes."""
+        create_resp = await client.post(
+            "/api/v1/projects",
+            json={"name": "Preview Me"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        project_id = create_resp.json()["id"]
+
+        ok = await client.get(
+            f"/api/v1/projects/{project_id}/deletion-preview",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert ok.status_code == 200
+        payload = ok.json()
+        assert payload["project_name"] == "Preview Me"
+        assert len(payload["categories"]) >= 15
+        assert payload["blocking_jobs"] == []
+
+        denied = await client.get(
+            f"/api/v1/projects/{project_id}/deletion-preview",
+            headers={"Authorization": f"Bearer {operator_token}"},
+        )
+        assert denied.status_code == 403
 
     async def test_delete_project_operator_denied(self, client: AsyncClient, operator_token: str):
         """Test that operators cannot delete projects."""
@@ -167,6 +277,7 @@ class TestProjectCRUD:
         project_id = create_resp.json()["id"]
         response = await client.delete(
             f"/api/v1/projects/{project_id}",
+            params={"confirm_name": "Cannot Delete"},
             headers={"Authorization": f"Bearer {operator_token}"},
         )
         assert response.status_code == 403

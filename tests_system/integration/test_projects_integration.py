@@ -191,8 +191,15 @@ class TestProjectCRUD:
     async def test_delete_project(
         self, client: httpx.AsyncClient, admin_headers: dict
     ):
-        """Delete project → 204."""
-        # Create a project to delete
+        """Delete project -> 200 with the destruction reported.
+
+        UPDATED by WP-59. This asserted 204 against a route that took nothing
+        but an id. `confirm_name` is now required and must match exactly, so a
+        bare DELETE is a 422 -- and the response is no longer an empty 204 but
+        a body naming the rows actually removed, because "returns a status
+        code" is what WP-45 Task 3 found eight surfaces doing while doing
+        nothing.
+        """
         create = await client.post(
             "/projects",
             json={"name": "To Delete", "max_runtime_seconds": 60},
@@ -200,11 +207,20 @@ class TestProjectCRUD:
         )
         project_id = create.json()["id"]
 
+        # An id alone deletes nothing.
+        bare = await client.delete(
+            f"/projects/{project_id}", headers=admin_headers)
+        assert bare.status_code == 422
+
         response = await client.delete(
             f"/projects/{project_id}",
+            params={"confirm_name": "To Delete"},
             headers=admin_headers,
         )
-        assert response.status_code == 204
+        assert response.status_code == 200
+        body = response.json()
+        assert body["rows_deleted"]["projects"] == 1
+        assert body["audit_id"]
 
         # Verify deletion
         get_response = await client.get(

@@ -19,6 +19,14 @@ class Settings(BaseSettings):
     # --- Redis 7 ---
     REDIS_URL: str = "redis://localhost:6379/0"
     REDIS_MAX_CONNECTIONS: int = 50
+    # WP-59 Task 3. The SCHEDULER's registry lives in a DIFFERENT Redis
+    # database from the API's (db 1 vs db 0 — docker-compose.node01.yml:321-322,
+    # ivgs-scheduler/main.py:110). Deletion must verify that a project's GPU
+    # reservations are released against the registry that actually holds them,
+    # not against the render_jobs row that merely says a job finished. Same
+    # default the scheduler itself ships, so an unset variable reads the same
+    # place the scheduler writes.
+    SCHEDULER_REDIS_URL: str = "redis://localhost:6379/1"
 
     # --- SeaweedFS ---
     SEAWEEDFS_MASTER_URL: str = "http://localhost:9333"

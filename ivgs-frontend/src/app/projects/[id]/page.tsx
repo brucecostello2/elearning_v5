@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import PipelineTracker from "@/components/PipelineTracker";
 import PipelineGateButton from "@/components/PipelineGateButton";
 import PresetApplyPanel from "@/components/project/PresetApplyPanel";
+import DeleteProjectDialog from "@/components/project/DeleteProjectDialog";
 import { PROJECT_TABS, tabHref } from "@/lib/project-tabs";
 
 /**
@@ -48,6 +49,13 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
      applied to a project at any point. */
   const canManage = user?.role === "admin" || user?.role === "operator";
 
+  /* WP-59. `DELETE /projects/{id}` is behind `require_admin` -- an operator is
+     not an admin here, deliberately, because this is the one action in the
+     application that destroys work irreversibly. An operator must not see the
+     button and then be refused by the server; the same WP-40 Task 3b rule as
+     the trigger and preset controls above. */
+  const canDelete = user?.role === "admin";
+
   /** Format runtime from seconds to MM:SS display. */
   const formatRuntime = useCallback((seconds: number | null | undefined): string => {
     if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "—";
@@ -81,7 +89,7 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
   return (
     <div className="space-y-8">
       {/* ── Actions ──────────────────────────────────────────────────── */}
-      {(canTrigger || project.state === "COMPLETE") && (
+      {(canTrigger || project.state === "COMPLETE" || canDelete) && (
         <div className="flex flex-wrap items-center gap-2">
           {/* WP-40 Task 3b (ledger M6). POST /projects/{id}/trigger accepts
               only DRAFT and USER_REVIEW (project_service.py:266), and is
@@ -121,6 +129,18 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
             >
               ▶ Watch
             </button>
+          )}
+          {/* WP-59 spec item 1: a Delete button on the project page. Pushed to
+              the right so it is never adjacent to the action an operator
+              actually came here to press. */}
+          {canDelete && (
+            <div className="ml-auto">
+              <DeleteProjectDialog
+                projectId={projectId}
+                projectName={project.name}
+                canDelete={canDelete}
+              />
+            </div>
           )}
         </div>
       )}
