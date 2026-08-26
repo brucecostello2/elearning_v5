@@ -15,12 +15,22 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **910** | **0** | 0 | 0 | 904 (WP-59) |
-| `ivgs-workers` | **815** | 18 | 48 | 15 | 809 (WP-59) |
+| `ivgs-api` | **911** | **0** | 0 | 0 | 904 (WP-59) |
+| `ivgs-workers` | **823** | 18 | 48 | 15 | 809 (WP-59) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 22 / 21 (WP-59) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **100** | 12 | 15 | 30 | 73 (WP-59) |
-| **Total** | **1864** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
+| **Total** | **1873** | **50** | **63** | **45** | 1812 / **51** (see note) |
+
+**A correction to this table's own arithmetic, carried since WP-52.** The
+Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
+rows summed to **51** (0 + 18 + 21 + 0 + 12). Passed, skipped and errors all
+added up; only `failed` did not. WP-60 briefly propagated it by decrementing 47
+to 46 rather than re-adding the column. The Total row is now the sum of the
+rows above it — 50 — and every per-tree figure is unchanged and quoted from a
+run. **No test outcome changed; a total did.** It is exactly the class of
+defect this series of packages exists to close, in the document that scores
+them, and it is recorded rather than quietly corrected.
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -64,7 +74,7 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 910 passed, 0 failed
+## 2. `ivgs-api` — 911 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
@@ -143,7 +153,7 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 815 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 823 passed, 18 failed, 48 skipped, 15 errors
 
 WP-60 added 6 tests (2026-08-26): `test_wp60_orphan_guard.py` — the four
 constructed proofs WP-59 D-2's ruling requires, against REAL rows in this

@@ -22,16 +22,22 @@ the pattern held in both places.
 | **Real GPU telemetry has been arriving and being dropped one key name away.** | The worker sends `gpu_temperature_celsius`; the registry reads `gpu_temperature_c`. So "0 C" on the GPU Fleet page was never a cold GPU — it was a pydantic default over a field nothing set. §2 |
 | **A safety score of 100% was being asserted on no evidence.** | `((asset.safety_score ?? 1) * 100)` on the Quality Review card. `safety_score` is `null` on the live flagged row. The single most reassuring number that card can display, printed in green, for a check that never ran. §6 |
 
-**Test position: zero new failures, +51 tests, and one pre-existing failure closed.**
+**Test position: zero new failures, +61 tests, and one pre-existing failure closed.**
 
 | Tree | Baseline (WP-59) | Now | Δ passed | New failures |
 |---|---|---|---|---|
-| `ivgs-api` | 904 / 0 / 0 / 0 | **910** / 0 / 0 / 0 | +6 | **0** |
-| `ivgs-workers` | 809 / 18 / 48 / 15 | **815** / 18 / 48 / 15 | +6 | **0** |
+| `ivgs-api` | 904 / 0 / 0 / 0 | **911** / 0 / 0 / 0 | +7 | **0** |
+| `ivgs-workers` | 809 / 18 / 48 / 15 | **823** / 18 / 48 / 15 | +14 | **0** |
 | `ivgs-scheduler` | 22 / 21 / 0 / 0 | **35 / 20** / 0 / 0 | +13 | **0** (P2.52 closed) |
 | `ivgs-backup-worker` | 4 / 0 / 0 / 0 | 4 / 0 / 0 / 0 | 0 | 0 |
 | `tests_system` | 73 / 12 / 15 / 30 | **100** / 12 / 15 / 30 | +27 | **0** |
-| **Total** | 1812 / 47 / 63 / 45 | **1864 / 46** / 63 / 45 | **+52** | **0** |
+| **Total** | 1812 / **51** / 63 / 45 | **1873 / 50** / 63 / 45 | **+61** | **0** |
+
+**The baseline's Total row said 47 failed and its own rows summed to 51** —
+carried since WP-52, and this package propagated it once before re-adding the
+column. Corrected in the baseline with a note; no test outcome changed, a total
+did. It is the same class of defect as everything else here, in the document
+that scores it.
 
 No assertion weakened, no skip marker added, no coverage deleted. One test was
 UPDATED and it is strictly stronger — §12.2 sets out why, because "the
@@ -959,3 +965,690 @@ should disable on the same signal. Ledger it as **L-1**.
 Nothing was changed, cancelled or deleted on this project. Read-only
 throughout, as ruled.
 
+---
+
+## 14. Screenshots — and what is here instead
+
+**node-01 still has no browser and no browser-automation library** — WP-59 §12
+established this and nothing in this package changed it. No screenshots were
+taken and none are presented as such. The WP-59 §12 click-path stands.
+
+What follows is a faithful text rendering of each acceptance surface,
+**generated from the real API payloads captured against the deployed
+`v5.19.0-surfaces2` build** and laid out against the components as committed.
+Every figure is a live value.
+
+### 14.1 The Hot donut, with no capacity target
+
+Payload: `useStorageAnalytics()` maps every tier with `allocated: undefined`.
+
+```
++-------------------------------------+     BEFORE (v5.18.0)
+| # Hot                               |     +-------------------------------+
+| Frequently accessed, immediate      |     | # Hot                         |
+|                                     |     |                               |
+|         .-------------.             |     |      .-------------.          |
+|       /                 \           |     |    /                 \        |
+|      |   no capacity     |          |     |   |  57000000000%     |       |
+|      |     target        |          |     |   |                   |       |
+|       \                 /           |     |    \                 /        |
+|         '-------------'             |     |      '-------------'          |
+|                                     |     |                               |
+| Used          109.0 MB              |     | Used          109.0 MB        |
+| Allocated     not modelled          |     | Allocated     1 B             |
+| Assets        156                   |     | Assets        156             |
++-------------------------------------+     +-------------------------------+
+```
+
+The ring is drawn as one complete arc in the tier colour — it stands for what
+was measured and is not a proportion of anything. Hovering it reads
+`Stored: 109.0 MB — no capacity target`. **"not modelled" is the same string
+the table three rows below has used since WP-57**, from the same
+`allocationReason`.
+
+A tier absent from the response reads `not reported` / `no assets` / `—`,
+which is a different fact from a tier that reported zero.
+
+### 14.2 GPU Fleet, with labelled sources and no fabricated zeros
+
+Payload, live from `/api/v1/gpu/nodes` on the deployed build:
+
+```json
+{"node_hostname": "node-02", "total_vram_mb": 97887,
+ "used_vram_mb": 0, "reserved_vram_mb": 0,
+ "gpu_utilization_pct": null, "temperature_c": null, "power_draw_w": null}
+```
+
+```
++-----------------------------------------------------+   BEFORE
+| node-02   [online]                                  |   VRAM
+| NVIDIA RTX PRO 6000 Blackwell Workstation Edition   |     0.0 GB / 95.6 GB
+|                                                     |     0%
+| VRAM reserved by scheduler        0.0 GB / 95.6 GB  |   GPU Utilization  0%
+| [=                                              ]   |   Temperature      0 C
+|                                              0%    |   Power            0W
+|                                                     |
+| GPU Utilization                     not reported    |
+| Temperature                         not reported    |
+| Power                               not reported    |
++-----------------------------------------------------+
+```
+
+Tooltips carry the reasons: *"VRAM reserved by the scheduler for admitted jobs.
+This is the scheduler's own accounting, not a reading from the GPU — for
+physical VRAM see Node Monitor"*, and *"The scheduler registry holds no
+utilisation reading for this node."*
+
+Header tiles:
+
+```
+  Scheduler GPU workers        3 / 3 registered
+  Avg GPU Utilization          not reported
+```
+
+`3 / 3 registered` carries the tooltip naming what it counts and what it
+excludes. **The comparison that made the brief's point is now visible on the
+page rather than only in a report:** this card says 0.0 GB *reserved*, and Node
+Monitor says 86.4 GB *measured*, and both now say which they are.
+
+### 14.3 Both failed gallery previews, resolved
+
+The derivation now selects an asset the thumbnail route can serve. Live, on the
+deployed build:
+
+```
+double digit multiplication   73c09ab1…  image/png   HTTP 200   8,001 bytes  JPEG
+2B-scenes2-222906             f5e27f9f…  image/png   HTTP 200   6,480 bytes  JPEG
+```
+
+Both cards render their thumbnail. **Neither says "Preview failed to load"**,
+and that string is now reserved for a genuine transport failure.
+
+For a project with no still, the card renders the API's reason verbatim rather
+than the loader's excuse:
+
+```
++-------------------------------+   +-------------------------------+
+| New multiplication pass       |   |  (a video-only project)       |
+|                               |   |                               |
+|  This project has no still    |   |  This project's render is     |
+|  image yet; its newest asset  |   |  finished, but its only       |
+|  is talking_head.             |   |  visual output is video and   |
+|                    [est 1:35] |   |  this API cannot decode video |
++-------------------------------+   |  to make a still. Open the    |
+                                    |  project to play it.          |
+                                    +-------------------------------+
+```
+
+### 14.4 The Quality Review card
+
+Payload: `quality_score: 0.7222`, `safety_score: null`, `asset_type: "video"`,
+`actual_width: 768`, `actual_height: 1408`.
+
+```
++----------------------------------------------+   BEFORE
+| [video]                            [ 72% ]   |   [video]      [ 0.7222 ]
+|                                              |               ^^^^^^^^ red
+|                🎬                            |   [broken image icon]
+|      no inline preview for video             |
+|                                              |
+| [portrait 768x1408]                          |   (nothing)
++----------------------------------------------+
+| double digit multiplication                  |
+| Asset 3bc54e58… • flagged                    |
+|                                              |
+|  +-------------+   +-------------+           |   Quality  0.7222 (red)
+|  | Quality     |   | Safety      |           |   Safety   100    (green)
+|  |    72%      |   | not scored  |           |            ^^^ INVENTED
+|  +-------------+   +-------------+           |
+|                                              |
+| Metric Breakdown                             |
+|  actual_width              768.000           |   all rows green "pass",
+|  actual_height           1408.000            |   label ghosted on a light
+|  actual_fps                30.000            |   tint in dark mode
+|  frame_count               77.000            |
+|  check_coverage             0.900            |
+|  actual_duration_seconds    2.567            |
++----------------------------------------------+
+```
+
+The badge is amber at 72% (0.6 ≤ s < 0.8), not red. `safety_score: null` reads
+**"not scored"** with the tooltip *"No safety score was recorded for this
+asset. This is not the same as a safe result."* The metric rows are neutral
+grey — these keys have no threshold, so there is no verdict to give — and every
+row colour now has a dark-mode counterpart.
+
+**The orientation badge is the finding, stated:** `portrait 768x1408` on a
+landscape project. The numbers are untouched.
+
+### 14.5 The project page, agreeing about what it measures
+
+```
+Pipeline Progress
+  Run 1e65b11d · requested as final render · started 25/08/2026, 16:39:32
+  2 of 8 stages recorded complete for this run
+  next: stage 3 · Media Generation
+
+  (1)Transcript ==(2)Storyboard ==(3)Media  --(4)Manifest -- … 
+   complete        complete        next
+
+Project Details
+  ...
+  PROJECT RECORD EDITED     25 August 2026 at 16:31
+     ^ tooltip: "When this project's own record was last changed (name,
+       description, settings). Pipeline runs and generated assets do not
+       move it - see Pipeline Progress above for run activity."
+```
+
+---
+
+## 15. Deployment — node-01 only, WP-34 binding rules
+
+`v5.19.0-surfaces2`, one coherent set across the five images this package
+touched. GHCR is off the deploy path; artifacts under the standard name.
+
+| Container | Image | Status |
+|---|---|---|
+| `ivgs-fastapi` | `ivgs-api:v5.19.0-surfaces2` | healthy |
+| `ivgs-nextjs` | `ivgs-frontend:v5.19.0-surfaces2` | healthy |
+| `ivgs-celery-default` / `-composition` / `-beat` | `ivgs-workers:v5.19.0-surfaces2` | healthy |
+| `ivgs-scheduler` | `ivgs-scheduler:v5.19.0-surfaces2` | healthy |
+| `ivgs-backup-worker` | `ivgs-backup-worker:v5.19.0-surfaces2` | healthy |
+
+All five registered in `MANIFEST.txt` with sha256; the WP-58 conformance gate
+passes (`OK: 51 artifacts conforming, 2 allowlisted`).
+
+**`ivgs-scheduler` moves off `v5.0.0-20260522` for the first time since WP-09
+pinned it.** Task 3's leak fix lives there, so it had to. The pin comment in
+`docker-compose.node01.yml` is history about *why `latest` was replaced*, not a
+prohibition on ever rebuilding — but it is a tag that has not moved in three
+months and the operator should know it did.
+
+**`ivgs-postgres` was recreated**, and this is called out rather than buried:
+`-c hba_file=` and the `pg_hba.conf` mount are config changes, so compose
+recreates for them. Verified afterwards — healthy, the committed HBA file
+governing, `archive_mode=on` and `archive_command` intact, and WAL archiving
+proven by a `pg_switch_wal()` that took `archived_count` 235 → 236 with
+`failed_count` unmoved (§9.2).
+
+**No migration.** The schema is unchanged; the database stays at **0033**.
+
+**Nodes 02/03/04 need nothing.** Nothing here changes worker task code those
+nodes execute: the retention and orphan repairs run on node-01's
+`celery-default`, and the animation task's one-line fallback constant is inert
+until an AD-01 binding fails to resolve. Bringing them to the same tag is
+optional tidiness — **and node-03's service is `cogvideox-worker`, not
+`celery-worker`.** Nodes 05 and 06 were not touched and nothing was read from
+them.
+
+---
+
+## 16. Ledger and register entries
+
+**Swallow register** — for `WP-00-SWALLOWED-FAILURES_2026-08-14.md`:
+
+| # | Instance | Status |
+|---|---|---|
+| 29 | `OrphanCleanupService.run_cleanup` — one `except` around all three scans appending to a list nothing read, under a returned success | **CLOSED** — `report.status` is derived from errors and the task raises `OrphanCleanupError` |
+| 30 | `OrphanCleanupService._log_audit` — wrote `str(details)` into a JSONB column; asyncpg rejects it and the write failed into an `except` that logs and returns. **The audit trail has never been written once.** | **CLOSED** — `json.dumps`, and the failure log names the consequence |
+| 31 | `AdmissionController.cleanup_expired_reservations` — removed the index entries recording outstanding VRAM and left the VRAM outstanding, returning the tidy count as a recovery | **CLOSED** — it performs real releases and reports released/orphaned separately |
+
+**Phantom / inert-mechanism family:**
+
+| # | Instance | Status |
+|---|---|---|
+| 9 | `tasks.pipeline_orchestrator.run_orphan_cleanup` — beat dispatched a stub reporting SUCCESS nightly | **CLOSED** — the schedule is commented out; the real service is repaired and guarded, and turning it on is a future ruling |
+| 11 | `GpuNodeResponse.temperature_c` / `power_draw_w` — schema defaults of 0.0 rendered as measurements on a route whose sibling had the same defect removed by WP-24 | **CLOSED** |
+| 12 | `StorageTierChart` `allocated ?? 1` — a fabricated denominator producing a ten-digit percentage | **CLOSED** |
+
+**New ledger entries:**
+
+* **L-1 — the render trigger has no in-flight guard.** §13.4. Five clicks in 41
+  seconds produced five concurrent full pipeline runs on one project. The
+  pieces to fix it exist (`blocking_jobs`, WP-59 Task 3). Proposed for a future
+  package.
+* **L-2 — `transitions_performed` counts what a dry run *would* do.** The
+  nightly line reports `dry_run=True … moved=39` alongside `would_move` of the
+  same 39. Nothing is written — `test_dry_run_writes_nothing_and_reports_what_would_move`
+  pins that, and the live run changed no rows — but a field named "performed"
+  reading 39 on a run that performed nothing is one word away from the family
+  this package exists to close. Renaming it is a contract change and was not
+  taken unasked.
+* **L-3 — `gpu_utilization_pct` on the live registry still reads `"0.0"`** for
+  all three nodes, seeded by the OLD registration at 02:46 before this deploy.
+  It is not a leak and it will self-correct at the next re-registration, when
+  the new code writes `""` instead. Recorded so the first person to see a `0.0`
+  there does not read it as a measurement.
+* **L-4 — `ivgs-scheduler` was rebuilt** off a three-month-old pin (§15).
+
+---
+
+## 17. What was NOT done, and why
+
+* **No live data was changed** — Task 3's stale counter and Task 11's project
+  are read-only throughout, as ruled. The one counter the brief measured had
+  already self-cleared at 02:46 by re-registration, which §3.2 records as the
+  defect erasing its own evidence rather than as a fix.
+* **The orphan schedule stays OFF**, and is now off in the sense of nothing
+  running rather than a stub running.
+* **The tier-migration nightly stays `dry_run=True`.** Turning it off is a
+  future ruling.
+* **`scripts/prune-scheduler-model-keys.sh` was not applied.** Dry run only.
+* **No restore was run against the live database.** Task 12(a)'s acceptance is
+  a dry run and is quoted in full.
+* **No base backup was taken.** The pre-flight was exercised (`--dry-run`,
+  exit 0) and the replication handshake proven; the backup itself is the
+  operator's weekly job.
+* **Type 1 of the orphan sweep was not made to work** — it cannot be, with the
+  APIs available, and §12.2 states the coverage rather than inventing a number.
+* **No screenshots** — §14, with the reason and WP-59's reproduction path.
+* **Nothing was deployed to node-05 or node-06**, and nothing was read from
+  them. Nodes 02/03/04 were not deployed to (§15).
+
+---
+
+## 18. OPERATOR BLOCKS
+
+Every `docker exec` heredoc below uses **`-i`**, per Task 12(d).
+
+### 18.1 Task 3 — the reservation release path
+
+```bash
+# -- node-01 ---------------------------------------------------------------
+# STEP 1. READ-ONLY. Every node's reserved VRAM against the reservations that
+# justify it. Writes nothing.
+cd /opt/ivgs
+echo "--- registry, as it stands ---"
+for n in $(docker exec ivgs-redis redis-cli -n 1 SMEMBERS gpu:nodes:all | tr -d '\r'); do
+  used=$(docker exec ivgs-redis redis-cli -n 1 HGET "gpu:node:$n" used_vram_mb | tr -d '\r')
+  job=$(docker exec ivgs-redis redis-cli -n 1 HGET "gpu:node:$n" current_job_id | tr -d '\r')
+  res=$(docker exec ivgs-redis redis-cli -n 1 SCARD "sched:node_reservations:$n" | tr -d '\r')
+  printf '  %-16s used_vram_mb=%-8s current_job_id=%-38s reservations=%s\n' \
+     "$n" "${used:-?}" "${job:-<empty>}" "${res:-0}"
+done
+echo
+echo "--- reservation records that exist right now ---"
+docker exec ivgs-redis redis-cli -n 1 --scan --pattern 'sched:reservation*' | tr -d '\r' | sed 's/^/  /'
+echo "  (nothing listed = no live reservation. A node with used_vram_mb > 0,"
+echo "   an empty current_job_id and no reservations has leaked.)"
+```
+
+```bash
+# -- node-01 ---------------------------------------------------------------
+# STEP 2. THE RELEASE. Only after step 1 shows a leaked node.
+#
+# An API call, not a Redis edit: it is logged, it REPORTS the drift it
+# corrected, and it never invents a release - a node genuinely holding live
+# reservations keeps every megabyte of them.
+NODE="node-03:gpu0"   # <<< set from step 1
+
+curl -s -X POST "http://192.168.1.90:8002/reconcile/${NODE}" \
+  -H 'Content-Type: application/json' | python3 -m json.tool
+
+echo "--- after ---"
+docker exec ivgs-redis redis-cli -n 1 HGET "gpu:node:${NODE}" used_vram_mb
+echo "Expect used_vram_mb == the sum of that node's live reservations (0 when"
+echo "it has none). drift_mb in the JSON above is what had leaked."
+```
+
+```bash
+# -- node-01 ---------------------------------------------------------------
+# TASK 3(b) - the dead-container model keys. DRY RUN FIRST.
+cd /opt/ivgs
+scripts/prune-scheduler-model-keys.sh              # writes nothing
+# then, ONLY if the list is what you expect (18 keys, all hex ids):
+# scripts/prune-scheduler-model-keys.sh --apply    # backs up, then deletes
+```
+
+### 18.2 Nodes 02/03/04 — optional, tag tidiness only
+
+Nothing in this package changes code those nodes execute (§15). If you want one
+tag across the fleet:
+
+```bash
+# -- node-0N (N = 2 or 4) --------------------------------------------------
+set -u
+N=2   # <<< set to 2 or 4
+cd /opt/ivgs/ivgs-infra || exit 1
+A=/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_v5.19.0-surfaces2.tar.zst
+grep " $(basename "$A")\$" /mnt/ivgs-shared/image-artifacts/MANIFEST.txt | \
+  awk '{print $1"  "$2}' > /tmp/w.sha && (cd "$(dirname "$A")" && sha256sum -c /tmp/w.sha) || \
+  { echo "ABORT: artifact checksum mismatch"; exit 1; }
+zstd -d -c "$A" | sudo docker load
+sudo sed -i 's/^IVGS_WORKERS_TAG=.*/IVGS_WORKERS_TAG=v5.19.0-surfaces2/' .env
+sudo docker compose -f "docker-compose.node0${N}.yml" --env-file .env \
+  up -d --pull never --no-deps celery-worker
+docker ps --format '{{.Names}}\t{{.Image}}' | grep celery-worker
+```
+
+```bash
+# -- node-03 ---------------------------------------------------------------
+# THE SERVICE IS cogvideox-worker, NOT celery-worker. node-03 also declares a
+# celery-worker under profiles:["standby"] which is NOT running; naming it
+# starts a second worker competing for the same queues and leaves the real one
+# on the old image (WP-44 S6.3).
+set -u
+cd /opt/ivgs/ivgs-infra || exit 1
+A=/mnt/ivgs-shared/image-artifacts/brucecostello2_ivgs-workers_v5.19.0-surfaces2.tar.zst
+zstd -d -c "$A" | sudo docker load
+sudo sed -i 's/^IVGS_WORKERS_TAG=.*/IVGS_WORKERS_TAG=v5.19.0-surfaces2/' .env
+sudo docker compose -f docker-compose.node03.yml --env-file .env \
+  up -d --pull never --no-deps cogvideox-worker
+docker ps --format '{{.Names}}\t{{.Image}}' | grep cogvideox-worker
+```
+
+---
+
+## 19. Decisions needed
+
+### D-1 — turn the nightly tier migration live?
+
+The schedule now runs a **dry run** every night at 04:00 and reports 161
+scanned / 39 would-move hot→warm / 109,966,042 bytes, `policy_source=database`,
+zero errors. The operator's capped live pass has already moved 5 and all 5 fids
+still serve HTTP 200. Nothing in the mechanism is now unproven.
+
+Turning `dry_run=False` on the schedule is one kwarg and is **explicitly a
+future ruling**, not this package's. The argument for waiting: a week of
+nightly dry-run lines is cheap, and it is the first week this mechanism has
+ever been observable.
+
+### D-2 — turn the orphan sweep on?
+
+**Not yet, and the brief already ruled the schedule stays off.** What has
+changed is that it *could* now be turned on safely: the guard is in place and
+proven against constructed library and cross-project shares, the audit trail
+works for the first time, and `dry_run=True` is the default.
+
+**What still argues against it:** Type 1 has zero coverage on this fleet
+(§12.2) and cannot be made to work without a design decision about enumerating
+the fid namespace. So the sweep would find only Type-2 and Type-3 orphans —
+which is genuinely useful and is most of the value — but the mechanism should
+not be described as a complete backstop, and WP-59 Task 2 named it as one.
+
+Recommendation: run it manually as a dry run a few times first (`dry_run=True`
+is the default, so a bare dispatch is safe), and decide on the schedule after
+seeing what it reports on real data over a week.
+
+### D-3 — the render trigger has no in-flight guard (L-1)
+
+§13.4. Five clicks produced five concurrent pipeline runs, six talking-head
+renders and 3.5 hours of GPU time on one project. It is not hypothetical — it
+happened during the WP-59 session and is what Task 11 was asked to investigate.
+The fix is small and the pieces exist. Worth scheduling before it happens
+again on a longer pipeline.
+
+### D-4 — `ivgs-scheduler` is off its three-month pin
+
+§15, L-4. It had to move for Task 3. Nothing about the pin's original reason
+(`latest` did not exist in GHCR) is reintroduced — the new tag is a real,
+banked artifact — but a tag that had not moved since 2026-05-22 has moved, and
+that is the operator's to know rather than to discover.
+
+---
+
+## 20. Test evidence
+
+Measured on node-01 against the deployed stack, 2026-08-26. Two full-suite runs
+were taken, which is the limit: one before deployment and one after the three
+defects §21 records the deploy finding. Everything between was targeted.
+
+| Tree | Baseline (WP-59) | Now | Δ | New failures |
+|---|---|---|---|---|
+| `ivgs-api` | 904 / 0 / 0 / 0 | **911** / 0 / 0 / 0 | +7 | **0** |
+| `ivgs-workers` | 809 / 18 / 48 / 15 | **823** / 18 / 48 / 15 | +14 | **0** |
+| `ivgs-scheduler` | 22 / 21 / 0 / 0 | **35 / 20** / 0 / 0 | +13, −1 fail | **0** |
+| `ivgs-backup-worker` | 4 / 0 / 0 / 0 | 4 / 0 / 0 / 0 | 0 | 0 |
+| `tests_system` | 73 / 12 / 15 / 30 | **100** / 12 / 15 / 30 | +27 | **0** |
+
+Verbatim from the final run (`SELECT count(*) FROM users` was 0 before it):
+
+```
+ivgs-api            911 passed                                     in 272.35s
+ivgs-workers        18 failed, 823 passed, 48 skipped, 15 errors   in  20.66s
+ivgs-scheduler      20 failed,  35 passed                          in   1.33s
+ivgs-backup-worker   4 passed                                      in   0.30s
+tests_system        12 failed, 100 passed, 15 skipped, 30 errors   in   2.02s
+```
+
+New tests, and what each is actually for:
+
+* **`ivgs-api/tests/test_wp60_surfaces.py` (7)** — every one pins an
+  **absence**. A default always satisfies a test that only asserts "some
+  number", which is how `temperature_c: float = 0.0` survived on a route whose
+  sibling had the same defect removed by WP-24. One asserts on the **source**
+  rather than the schema, because the fifth site was a caller *overriding* the
+  default and no test of the default could have seen it.
+* **`ivgs-scheduler/tests/test_wp60_reservation_leak.py` (12)** — the leak,
+  **constructed** with an injectable TTL rather than waited five minutes for.
+  The one that matters most is the negative: `test_a_live_reservation_is_not_swept`.
+  A fix that freed VRAM a running job still holds would be worse than the leak.
+* **`ivgs-workers/tests/test_wp60_orphan_guard.py` (9)** — the four constructed
+  proofs against **real rows**, plus the guard failing closed and the storage
+  URLs.
+* **`tests_system/test_wp60_scripts.py` (25)** — driving the real scripts.
+* **`tests_system/test_wp58_retention.py` (+2)**, **`ivgs-workers/tests/test_wp59_retention.py` (+5)** — the beat-entry inversion (§20.2), the decorator-adjacency check (§21.2), the orphan-schedule check, and two on the nightly gauge (§21.4).
+
+### 20.1 P2.52 CLOSED — and why a broken double is worse than a broken test
+
+`test_reservation_extension` failed with
+`TypeError: FakePipeline.hset() takes from 2 to 3 positional arguments but 4
+were given`. The double implemented only `hset(key, mapping=…)` and rejected
+redis-py's documented `hset(name, key, value)` — which is what
+`release_vram_usage`, `drain_node`, `undrain_node` and `record_model_load` all
+call.
+
+**So the double was masking those paths, not measuring them.** It also handed
+back the live set object from `smembers`, and production iterates that while
+removing members. Both fixed, plus `incr`/`decr`/`zrangebyscore`. One
+previously-failing test now passes and 12 new ones became possible.
+
+### 20.2 The one test that was UPDATED, and why it is stronger
+
+`test_wp59_retention.py::TestTaskWiring` asserted the tier-migration beat entry
+stayed **commented out**. That was correct when WP-59 shipped it. §7.6 step 3
+has since been ruled and its preconditions met, so Task 8 enables it and the
+assertion **inverts**.
+
+**This is not a relaxation, and the distinction is the point.** What the old
+test really protected was *"no unattended tier migration"*. That property no
+longer rests on a `#`: the task defaults `dry_run` to True and the entry passes
+**no kwargs**. The test now pins THAT — an entry acquiring
+`"kwargs": {"dry_run": False}` fails it, which the old version could never have
+caught because it only looked for a comment character.
+
+No other assertion was weakened, no skip marker added, no coverage deleted.
+
+### 20.3 Two environment notes worth keeping
+
+**A killed run leaves the test database dirty** (baseline §2). The first
+attempt at the full suite was cut off by a two-minute harness timeout mid-API-tree.
+`SELECT count(*) FROM users` was checked as 0 before every run quoted here.
+
+**Nine `test_wp58_retention.py` tests passed alone and failed in the suite.**
+`_source_and_run` loads the backup scripts through a **process substitution**,
+where `BASH_SOURCE[0]` is `/dev/fd/63` — so WP-60's first logging change
+aborted each script under `set -e` before a line of it ran. It cost a full-suite
+run to find, and the fix is that the scripts now *search* for their helper and
+fall back to an inline definition. §9.3.
+
+---
+
+## 21. What the deploy found that the tests did not
+
+Three defects passed a green suite and failed on the running system. They are
+worth their own section because the order in which they were found is the
+lesson: reading the code found four layers of the telemetry defect, and only
+running it found the fifth.
+
+### 21.1 A fourth place wrote the GPU zeros, under a comment denying it
+
+The registry, `/fleet`, `to_node_view` and the pydantic schema were all fixed
+**and deployed** — and the card still showed 0 C / 0 W.
+
+```python
+# GpuService._scheduler_node_response
+# The scheduler registry carries neither temperature nor power. They
+# come from the node exporters (WP-48) and are left at their schema
+# defaults here rather than being invented from the VRAM figures.
+temperature_c=0.0,
+power_draw_w=0.0,
+```
+
+They were not *left* at anything. The constructor passed the zeros explicitly,
+three lines beneath a sentence denying it. **Four correct layers and one wrong
+one is a wrong answer**, and a comment describing the opposite of the code
+beneath it is the same class of defect as the surfaces this package exists to
+correct, one layer in. `reserved_vram_mb` was not wired through that
+constructor either.
+
+The test written for it asserts on the **source**, not on the schema default —
+because the defect was a caller *overriding* the default, and no test of a
+default can see that.
+
+### 21.2 My own helper stole a Celery decorator
+
+`_report_retention_migration_metrics` was inserted between
+`@shared_task(name="…run_retention_migration")` and
+`def run_retention_migration`. The **helper** took the decorator; the task
+became a plain function. The beat entry Task 8 had just enabled named something
+no longer registered, so **the nightly dry run would have raised
+`NotRegistered` every night** — loudly, into a log nobody reads, which is the
+same family as the stub reporting SUCCESS.
+
+Caught by dispatching it against the deployed image. The test added asserts
+decorator adjacency **in the source**, and deliberately not via
+`celery_app.tasks`: importing that module does not autodiscover, and WP-59 §3.1
+records concluding a task was unregistered from exactly that mistaken import.
+It was confirmed genuinely red by reverting the fix, watching it fail with the
+right message, and re-applying.
+
+### 21.3 The orphan sweep probed the container's own loopback
+
+`OrphanCleanupService` hardcoded `http://node-01:9333` / `:8888`. **Inside a
+compose container `node-01` resolves to 127.0.1.1 before 192.168.1.90** —
+
+```
+$ docker exec ivgs-celery-default getent hosts node-01
+127.0.1.1       node-01
+192.168.1.90    node-01
+```
+
+— and nothing listens there, so every probe hung until its connect timeout. On
+161 assets that is about half an hour of a *repaired* scan doing nothing, which
+is indistinguishable from a broken one. The right values
+(`SEAWEEDFS_MASTER_URL` / `SEAWEEDFS_FILER_URL`) have been in the environment
+the whole time and the service ignored them. The 30s/10s client timeout is now
+5s/2s: these are probes, not downloads.
+
+### 21.4 And one this package's own design caught
+
+The `would_move` gauge did `int(report.would_move or 0)`. `would_move` is a
+**mapping** — `{"hot->warm": {"assets": 39, "bytes": 109966042}}` — so the push
+raised `TypeError` on its very first live dispatch.
+
+It was caught because Task 8's design *required* a failed push to be loud
+rather than swallowed: `retention_migration_metrics_push_failed` appeared with
+the error type named. **The mechanism built to stop a silent failure caught its
+own.** That is the single best piece of evidence in this package that the rule
+it is built on works.
+
+---
+
+## 22. Push block — COMMITTED AND HELD, NOT PUSHED
+
+| # | Commit | Subject |
+|---|---|---|
+| 1 | `b94ec6f` | `fix(wp-60): the component layer stops asserting what it does not know` |
+| 2 | `81026f3` | `fix(wp-60): the GPU reservation leak, and it is a ratchet rather than a race` |
+| 3 | `e85e7e6` | `feat(wp-60): the tier-migration schedule runs nightly as a dry run, and the WAL window gains its margin` |
+| 4 | `7bc9eac` | `fix(wp-60): a dry run that could destroy production, and a log design the kernel forbids` |
+| 5 | `61e2af7` | `fix(wp-60): the orphan sweep is real, guarded, and proven - and still not scheduled` |
+| 6 | `abeb597` | `test(wp-60): the beat-entry assertion inverts with the ruling, and the log helper stops depending on BASH_SOURCE` |
+| 7 | `d146f51` | `fix(wp-60): three defects the deploy found that the tests did not` |
+| 8 | *(this commit)* | `docs(wp-60): report - the component layer, and what the deploy found that the tests did not` |
+
+`3dffd30` (WP-59) is the parent. Anything else below `b94ec6f` means the
+history is not what this report describes.
+
+**THE COUNT GATE. Must print `GATE PASS`.**
+
+```bash
+# -- node-01 ---------------------------------------------------------------
+cd /opt/ivgs
+
+# 1. The history is what the report describes.
+git log --oneline -9
+git status --short   # expect empty
+
+# 2. The test database must be clean before any number is believed.
+#    A timeout-killed run leaves it dirty and the next run errors on its
+#    FIRST test at setup (baseline s2).
+docker exec ivgs-postgres psql -U ivgs -d ivgs_reconciliation_test -tAc \
+  "SELECT (SELECT version_num FROM alembic_version)||'|'||(SELECT count(*) FROM users);"
+# expect: 0033|0
+
+PGPW=$(grep '^POSTGRES_PASSWORD=' ivgs-infra/.env | cut -d= -f2-)
+PGUSER=$(grep '^POSTGRES_USER=' ivgs-infra/.env | cut -d= -f2-)
+export TEST_DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPW}@192.168.1.90:5432/ivgs_reconciliation_test"
+export BACKUP_TEST_DSN="postgresql://${PGUSER}:${PGPW}@192.168.1.90:5432/ivgs_reconciliation_test"
+unset PGPW PGUSER
+
+API=$(.venv/bin/python -m pytest ivgs-api/tests -q 2>&1 | tail -1)
+WRK=$(.venv/bin/python -m pytest ivgs-workers/tests -q 2>&1 | tail -1)
+SCH=$(.venv/bin/python -m pytest ivgs-scheduler/tests -q 2>&1 | tail -1)
+BUP=$(.venv/bin/python -m pytest ivgs-backup-worker/tests -q 2>&1 | tail -1)
+SYS=$(.venv/bin/python -m pytest --timeout=120 tests_system -q 2>&1 | tail -1)
+printf 'api : %s\nwrk : %s\nsch : %s\nbup : %s\nsys : %s\n' "$API" "$WRK" "$SCH" "$BUP" "$SYS"
+
+ok=1
+echo "$API" | grep -q '911 passed'                          || ok=0
+echo "$WRK" | grep -q '18 failed, 823 passed, 48 skipped'   || ok=0
+echo "$SCH" | grep -q '20 failed, 35 passed'                || ok=0
+echo "$BUP" | grep -q '4 passed'                            || ok=0
+echo "$SYS" | grep -q '12 failed, 100 passed, 15 skipped'   || ok=0
+
+# 3. The other three gates.
+( cd ivgs-frontend && npx tsc --noEmit -p tsconfig.json )   || ok=0
+python3 scripts/compliance_scanner.py /opt/ivgs >/dev/null 2>&1 || ok=0
+scripts/check-image-artifacts.sh >/dev/null 2>&1            || ok=0
+
+# 4. The deployed images ARE the committed tree.
+docker ps --format '{{.Names}}\t{{.Image}}' | grep -E 'fastapi|nextjs|celery|scheduler|backup-worker'
+# expect all seven on v5.19.0-surfaces2
+
+if [ "$ok" -eq 1 ]; then echo "GATE PASS"; else echo "GATE FAIL - DO NOT PUSH"; fi
+```
+
+**Push, only after `GATE PASS` and only on the operator's word:**
+
+```bash
+git log --oneline -9 && git push origin main
+```
+
+---
+
+## 23. One closing observation
+
+Three of this package's twelve tasks turned out not to be the defect the brief
+described, and in each case the real one was worse:
+
+* Task 2's zeros were not missing telemetry — **real readings were arriving and
+  being dropped one key name away**, and a fifth layer overwrote the fix after
+  four correct ones had been deployed.
+* Task 4's failed previews were not a missing token fix — **the loader worked,
+  and was being handed an asset class the route refuses.**
+* Task 6's broken image was not the token guard either — **the fetch
+  succeeded**, and the card rendered a failure down a success path.
+
+And Task 11's "re-dispatch loop" was not a loop at all.
+
+The through-line is the one the brief states and this package kept re-learning:
+**a surface that is confidently wrong is more expensive than one that is
+visibly empty**, and the confident wrong answer is usually produced by the last
+line of code before the render — a `?? 1`, a `?? 0`, a `= 0.0`, a comment that
+describes the opposite of what sits beneath it.
+
+The best single piece of evidence that the rule works is §21.4: the mechanism
+this package built to stop a silent failure caught its own, on its first live
+dispatch, because it had been required to fail loudly.
