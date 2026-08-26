@@ -20,8 +20,8 @@ on any node other than node-01 unless explicitly handed over.
 | node-02 | 192.168.1.91 | LLM only (vLLM) |
 | node-03 | 192.168.1.92 | Video only |
 | node-04 | 192.168.1.93 | Image + TTS + talking head. RTX PRO 6000 96 GB. |
-| node-05 | 192.168.1.94 | ONLINE. RTX PRO 5000 Blackwell, 48935 MiB (~48 GB), driver 580.173.02. Earmarked for the quality-services stack. Corrected 2026-08-25 (WP-48) - this row read OFFLINE and every doc said RTX 5080 16 GB. Both wrong; `nvidia-smi` on the box is the source. |
-| node-06 | 192.168.1.95 | **ONLINE, UNPROVISIONED.** NVIDIA GeForce RTX 5080, **16303 MiB**, driver 580.173.02. A Proxmox VM on host rtx5080 with the card passed through. It answers ICMP and serves node-exporter on :9100; :9400 and :9430 are closed because it has **no `/opt/ivgs`** and has never been provisioned. Corrected 2026-08-25 (WP-53) - this row read "OFFLINE. Card swapped to RTX 6000 96 GB". The swap happened; the card it was swapped to is a **consumer 5080, six times smaller** than 96 GB. WP-28 measured exactly this figure and WP-29 filed it as an erratum; it sat unapplied while WP-24, WP-48 and WP-52 all went on quoting 96 GB. **AD-02's on-demand fp8-70B LLM-failover leg was sized against 96 GB and is not possible on 16 GB** - open for operator re-ruling, WP-53 D-1. |
+| node-05 | 192.168.1.94 | **ONLINE. THE QWEN LLM NODE.** RTX PRO 5000 Blackwell, 48935 MiB (~48 GB), driver 580.173.02; 78 GB host RAM. Serves `Qwen/Qwen3.8-27B-FP8` on vLLM, `--served-model-name qwen38-27b`, port 8000, ufw-restricted to 192.168.1.90-93. **No Celery worker, no queue, not in the scheduler's 3/3** - a vLLM server is not a Celery consumer, and AD-02's `dynamically_loadable=false` stands (the model is fixed at container start by `--model`). Corrected 2026-08-26 (WP-61): this row said "Earmarked for the quality-services stack", which was superseded by operator ruling the same week - the CLIP scorer moved to node-06 and node-06 is its sole host. Corrected 2026-08-25 (WP-48) before that: the row read OFFLINE and every doc said RTX 5080 16 GB. Both wrong; `nvidia-smi` on the box is the source. Stack file: `ivgs-infra/docker-compose.llm.node05.yml`, invoked WITH `--env-file ivgs-infra/.env.node05` (see section 6). |
+| node-06 | 192.168.1.95 | **ONLINE. OPERATOR-MANAGED: telemetry + the CLIP scorer, and it is the scorer's SOLE host** (verified `served_by: node-06`, 2026-08-26). NVIDIA GeForce RTX 5080, **16303 MiB**, driver 580.173.02. A Proxmox VM on host rtx5080 with the card passed through. Corrected 2026-08-26 (WP-61 Task 2): this row read "ONLINE, UNPROVISIONED ... no `/opt/ivgs` and has never been provisioned", which was true on 2026-08-25 and is not true now. **OUT OF BOUNDS for automated work** - operator-managed. Corrected 2026-08-25 (WP-53) - this row read "OFFLINE. Card swapped to RTX 6000 96 GB". The swap happened; the card it was swapped to is a **consumer 5080, six times smaller** than 96 GB. WP-28 measured exactly this figure and WP-29 filed it as an erratum; it sat unapplied while WP-24, WP-48 and WP-52 all went on quoting 96 GB. **AD-02's on-demand fp8-70B LLM-failover leg was sized against 96 GB and is not possible on 16 GB** - open for operator re-ruling, WP-53 D-1. |
 | node-07 | 192.168.1.96 | Temporal cluster ONLY (WP-31 Lane B). No queue, no GPU, no pipeline service - deliberately absent from `/api/v1/nodes` so it cannot enter the "N online" denominator (WP-24 D-1). UI :8080, gRPC :7233, compose at `/opt/temporal/`. |
 | .7 | 192.168.1.7 | TrueNAS. Backup target: /mnt/store/ivgs and /mnt/store/ivgs-archive |
 | .9 | 192.168.1.9 | RETIRED CIFS NAS. Do not write to it. |
@@ -116,6 +116,23 @@ the wrong one starts a second worker competing for the same queues and leaves
 the real one on the old image. WP-44 S6.3 recorded exactly this happening.
 Nodes 02 and 04 use `celery-worker`; node-03 does not.
 
+### 6.3 node-05's LLM stack needs `--env-file`, and it is not cosmetic
+
+    # node-05 only
+    docker compose --env-file ivgs-infra/.env.node05 \
+      -f ivgs-infra/docker-compose.llm.node05.yml up -d
+
+`env_file:` on a SERVICE injects variables into the CONTAINER. It does NOT feed
+`${VAR}` interpolation in the YAML. Every vLLM flag in that file's `command:` is
+a `${VAR}` with a `:-` default, so without `--env-file` they all silently
+collapse to their defaults - which are the right values, and that is worse, not
+better: an edit to `VLLM_GPU_UTIL` in `.env.node05` would be ignored and a 0.90
+run reported as whatever the operator thought they set. Same file, one project
+(`name: ivgs-llm`), no `networks:` key - node-05 has no `ivgs-net`.
+
+`.env.node05` is gitignored (`.gitignore:118`). The tracked statement of what it
+must contain is `ivgs-infra/.env.node05.example`.
+
 ## 7. Known traps
 
 | Trap | Reality |
@@ -128,6 +145,9 @@ Nodes 02 and 04 use `celery-worker`; node-03 does not.
 | node-01 memory | 16 GB, NOT 31 - reduced 2026-08-14. `free` shows ~15 GB usable. The Proxmox host OOM-killed this VM twice that day. Anything that spawns a sibling container with a multi-GB tmpfs (verify_backup.sh: 2 GB) can take the node down. Check headroom before running one. |
 | Swallowed failures | Backup tasks returned {'status':'failed'} and Celery recorded success - FIXED and deployed 2026-08-14, they now raise BackupTaskError. Same pattern still open in _decrement_media_task_count (returns 0 on error, pipeline_orchestrator_v2.py:880,893), save_checkpoint (returns False unchecked at all 5 call sites, error_handler.py:442,450), and run_backup_verification (a stub returning {'status':'ok'} on a daily schedule, pipeline_orchestrator.py:620). NOT acquire_gpu_reservation - it raises (gpu_utils.py:202); the swallow is at its 6 call sites, e.g. stage3_images.py:631. Five instances, ledger at workpackages/reports/WP-00-SWALLOWED-FAILURES_2026-08-14.md. |
 | set -euo pipefail + trap EXIT | Aborts before any `if [ $? -ne 0 ]` check. Those checks are dead code. Capture with `|| rc=$?`. |
+| `docker exec` heredocs | REQUIRE `-i`. Without it the heredoc executes EMPTY and exits 0 - a green result from a command that never ran. WP-60 Task 12(d); `tests_system/test_wp60_scripts.py` gates every shipped script on it. |
+| The Qwen invocation is measured, not designed | `--max-num-seqs 128` and `--reasoning-parser qwen3` are MANDATORY and both were found by failure: the default 1024 exceeds the available Mamba cache blocks and the engine REFUSES TO START, and without the parser ~1400 tokens of chain-of-thought land in `content`. FP8 build only - the BF16 base is ~56 GB and does not fit 48 GB. Banked at `/mnt/ivgs-shared/qwen-invocation.txt`; read it before changing a flag. |
+| "Matches the reference" is not "correct" | `reference-run-2026-08-23` is a CONFORMANCE baseline for the Temporal migration. Its scene-5 narration teaches 10x3=30, 10x2=20 => "320" written as 230, and no pipeline stage can catch that - every quality gate measures output-against-input. Do NOT regenerate it before M3.3, and storyboard/transcript stay on Llama until then so the model does not move under the diff. `docs/reference-run-2026-08-23-correctness-annotation.md`. |
 | rsync to NFS | Returns 23 (cannot set attributes) even on success. Treat 23/24 as non-fatal. |
 
 ## 8. Backups

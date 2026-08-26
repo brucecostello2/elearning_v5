@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **911** | **0** | 0 | 0 | 904 (WP-59) |
-| `ivgs-workers` | **823** | 18 | 48 | 15 | 809 (WP-59) |
-| `ivgs-scheduler` | **35** | **20** | 0 | 0 | 22 / 21 (WP-59) |
+| `ivgs-api` | **953** | **0** | 0 | 0 | 911 (WP-60) |
+| `ivgs-workers` | **838** | 18 | 48 | 15 | 823 (WP-60) |
+| `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | **100** | 12 | 15 | 30 | 73 (WP-59) |
-| **Total** | **1873** | **50** | **63** | **45** | 1812 / **51** (see note) |
+| `tests_system` | **125** | 12 | 15 | 30 | 100 (WP-60) |
+| **Total** | **1955** | **50** | **63** | **45** | 1873 / 50 (WP-60) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -80,7 +80,35 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m33s. **No remaining failures.**
+Runtime 4m34s. **No remaining failures.**
+
+WP-61 added 42 tests (2026-08-26). 911 → 953. **This tree now needs migration
+0034.**
+
+* `test_wp61_translation.py` (20) — the fail-and-flag contract. The assertions
+  are about what the TEXT CONTAINS and what the STATE BECOMES, not about status
+  codes, because the defect being guarded against is a translation that comes
+  back *improved*: nothing raises, nothing logs, every gate is green, and the
+  deliverable disagrees with the English in a language nobody on the team can
+  read. The one that matters most is
+  `test_the_marker_is_captured_AND_removed_from_the_deliverable` — recording the
+  flag correctly is no use if the English marker line is still in the Spanish
+  text that goes to TTS.
+* `test_wp61_trigger_guard.py` (9) — the in-flight guard, asserted on the
+  BROKER COUNT (WP-45's standard). **One of these was written wrong first and
+  the record is kept in the module docstring:** the obvious test (press twice
+  on a DRAFT project, assert one message) PASSES WITHOUT THE GUARD, because the
+  first trigger moves the project out of DRAFT and the state machine refuses
+  the second. Verified by deleting the guard: six of eight went green. The
+  class is now split — `TestGuardBites` constructs a triggerable project that
+  already has a non-terminal job and is red without the guard;
+  `TestStateMachineAlsoCoversTheSimpleCase` says in its own name that it is not
+  evidence the guard works.
+* `test_wp61_surfaces.py` (13) — node-05's row (role, and that it stays OUT of
+  the scheduler's 3) and the Prometheus telemetry overlay. One asserts on the
+  SOURCE: `gpu_utilization_pct` was never passed to `GpuNodeResponse` on the
+  fleet route at all, so the schema default supplied None and no test of a
+  default could see it.
 
 WP-60 added 6 tests (2026-08-26): `test_wp60_surfaces.py`. Every one of them
 pins an ABSENCE — a null telemetry reading, a null thumbnail reason — because a
@@ -153,7 +181,32 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 823 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 838 passed, 18 failed, 48 skipped, 15 errors
+
+WP-61 added 15 tests (2026-08-26): `test_wp61_schedules.py` — the two schedules
+ruled ON (nightly tier migration LIVE and capped at 500; orphan sweep weekly,
+quarantine-only, Type-1 excluded) and the two structural refusals that stop
+them going further than they were told to. 823 → 838.
+
+**TWO WP-59 TESTS INVERTED, AND BOTH GOT STRONGER.** The sequence is worth
+reading as a sequence, because the risk in a thrice-inverted assertion is that
+it gets weaker each time:
+
+| | what it really protected | what that rested on |
+|---|---|---|
+| WP-59 | "nothing unattended runs" | a `#` |
+| WP-60 | "nothing unattended MOVES" | a default the entry could not override |
+| WP-61 | "nothing unattended DESTROYS, and nothing moves uncapped" | a refusal in the service (`allow_delete`, `quarantine_only`) plus an explicit kwarg a reviewer can see |
+
+`TestTaskWiring::test_the_orphan_schedule_is_off_and_not_merely_pointed_at_a_stub`
+**was passing for the wrong reason** and this is recorded rather than quietly
+fixed: it asserted `'"orphan-cleanup"' not in line`, and WP-61's entry is named
+`"orphan-cleanup-weekly"`, so the literal with its closing quote did not match
+and the test stayed green over a schedule that had just been turned ON. It was
+matching a string, not measuring a property. Its stub half — "'off' never means
+'a stub runs and reports ok'" — is unchanged in strength and still asserted.
+
+No assertion was weakened, no skip marker added, no coverage deleted.
 
 WP-60 added 6 tests (2026-08-26): `test_wp60_orphan_guard.py` — the four
 constructed proofs WP-59 D-2's ruling requires, against REAL rows in this
@@ -291,7 +344,26 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 100 passed, 12 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 125 passed, 12 failed, 15 skipped, 30 errors
+
+WP-61 added 25 tests (2026-08-26): `test_wp61_node05.py`. 100 → 125. It drives
+the REAL `docker-compose.llm.node05.yml` and `.env.node05.example` as artefacts,
+for the same reason the other modules in this tree drive real scripts: the Qwen
+flags were established by FAILURE, not by design, and a fixture here would be a
+second statement of what somebody believed the invocation was. `--max-num-seqs
+128` and `--reasoning-parser qwen3` are each one careless edit away from a
+container that will not start, or one that starts and quietly poisons Stage 2's
+JSON extractor. It also pins that the 0.48 SIMULATION cap has not been carried
+onto the real card.
+
+**It closes a gap in WP-60's own check.**
+`test_wp60_scripts.py::test_no_shipped_script_runs_a_docker_exec_heredoc_without_stdin`
+globs `.sh` files only — and the defect it was written for was in WP-59's
+**operator blocks**, which are markdown. The test closing that hole could not
+see the file the hole was in. `TestOperatorBlocksAreSafeToPaste` scans every
+`WP-*-operator-blocks.md`: no `docker exec` heredoc without `-i`, no bare
+`exit`, no literal credential, and every fenced block declaring its node in its
+first three lines.
 
 WP-60 added 27 tests (2026-08-26): `test_wp60_scripts.py` (25 — Task 12, driving
 the REAL scripts: that a dry run cannot reach a destructive prompt, that the
@@ -379,13 +451,24 @@ that module now pass. 35 → 39 passed, 16 → 12 failed.
 
 ## 7. Provenance
 
-* Measured 2026-08-25 on node-01 (192.168.1.90) against the running stack:
-  `ivgs-api:v5.11.0-apibatch`, `ivgs-workers:v5.11.0-apibatch`,
-  `ivgs-scheduler:latest`, `ivgs-backup-worker:v5.1.0-stream-b`,
-  `postgres:17.2`, `redis:7.4`.
+* Re-measured 2026-08-26 on node-01 (192.168.1.90) by WP-61 against the running
+  stack: `ivgs-api:v5.20.0-qwen`, `ivgs-workers:v5.20.0-qwen`,
+  `ivgs-frontend:v5.20.0-qwen`, `ivgs-scheduler:v5.19.0-surfaces2`,
+  `ivgs-backup-worker:v5.19.0-surfaces2`, `postgres:17.2`, `redis:7.4`.
+* Originally measured 2026-08-25 against `ivgs-api:v5.11.0-apibatch`,
+  `ivgs-workers:v5.11.0-apibatch`, `ivgs-scheduler:latest`,
+  `ivgs-backup-worker:v5.1.0-stream-b`.
 * Python 3.12.3, pytest 8.3.4, pytest-asyncio 0.24.0, pytest-timeout 2.3.1
   (installed by WP-52).
-* Test database `ivgs_reconciliation_test`, migration **0033** (0029 applied by
+* Test database `ivgs_reconciliation_test`, migration **0034** (**0034 by
+  WP-61**, and its downgrade path was exercised — `alembic downgrade 0033` then
+  `upgrade head` round-trips clean. 0034 adds one ENUM label
+  (`language_variant_state.flagged`) and two nullable JSONB columns on
+  `language_variants`; the two columns drop cleanly and the enum label's
+  `downgrade()` is a deliberate no-op, the same treatment as 0027 and 0033.
+  **A tree at 0033 fails with `column language_variants.translation does not
+  exist` on any project read**, because the ORM declares the new columns.);
+  migration **0033** (0029 applied by
   WP-53; 0030–0032 by WP-56; **0033 by WP-59**, and its downgrade path was
   exercised — `alembic downgrade 0032` then `upgrade head` round-trips clean.
   0033 adds two ENUM labels and its `downgrade()` is a deliberate no-op:
