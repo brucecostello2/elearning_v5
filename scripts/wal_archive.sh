@@ -49,6 +49,16 @@ readonly LOG_DIR="/var/log/ivgs"
 
 readonly DEST_PATH="${WAL_ARCHIVE_DIR}/${WAL_FILENAME}"
 
+# WP-59 Task 9 (WP-57 D-3). THIS SCRIPT IS THE SECOND WRITER THAT WAS CAUGHT.
+# postgres' /mnt/wal-archive bind captured the local ext4 inode before the NFS
+# mount existed and this script archived segments 5B..D0 -- 1.9 GB -- into the
+# shadowed tree, with `archive_wal`'s own `mkdir -p` creating the directory it
+# then wrote into. The archive looked continuous from inside the container and
+# had a 1.9 GB hole from the NAS's point of view. See scripts/lib/nfs_guard.sh.
+#
+# shellcheck source=lib/nfs_guard.sh
+. "$(dirname "$0")/lib/nfs_guard.sh"
+
 # ---------------------------------------------------------------------------
 # Logging
 # ---------------------------------------------------------------------------
@@ -65,7 +75,24 @@ log_entry() {
 # Archive WAL segment
 # ---------------------------------------------------------------------------
 archive_wal() {
-    # Ensure archive directory exists
+    # PRE-FLIGHT BEFORE THE mkdir, not after it. The order is the whole point:
+    # `mkdir -p` on a path whose NFS mount is absent CREATES the shadowed local
+    # directory, and every subsequent segment lands in it. Asserting first means
+    # a missing or non-NFS destination can never be brought into existence by
+    # this script.
+    #
+    # Exit 1 is what PostgreSQL's archive_command needs: it treats non-zero as
+    # "not archived", keeps the segment in pg_wal, and retries. So refusing here
+    # does NOT lose WAL -- it holds it on the primary until the destination is
+    # real again, which is strictly better than writing it somewhere that is not
+    # the archive. The pg_wal directory grows meanwhile, which is the visible,
+    # recoverable pressure the operator should see rather than a silent split.
+    if ! assert_nfs_destination "${WAL_ARCHIVE_DIR}" "WAL archive"; then
+        log_entry "ERROR" "WAL archive destination is not an NFS mount: ${WAL_ARCHIVE_DIR} — refusing (segment stays in pg_wal and PostgreSQL will retry)"
+        return 1
+    fi
+
+    # Safe now: the parent is proven to be the NAS.
     mkdir -p "${WAL_ARCHIVE_DIR}"
 
     # Check if WAL file already archived (idempotency)
@@ -107,6 +134,13 @@ archive_wal() {
 # Retention cleanup (7 days)
 # ---------------------------------------------------------------------------
 cleanup_old_wal() {
+    # Guarded too. A prune that runs against a shadowed local tree deletes the
+    # wrong files while reporting a retention pass on the archive.
+    if ! assert_nfs_destination "${WAL_ARCHIVE_DIR}" "WAL archive (retention)"; then
+        log_entry "ERROR" "Skipping WAL retention: ${WAL_ARCHIVE_DIR} is not an NFS mount"
+        return 0
+    fi
+
     local deleted=0
     while IFS= read -r -d '' old_file; do
         rm -f "${old_file}"

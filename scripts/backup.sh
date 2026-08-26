@@ -177,6 +177,12 @@ EOF
 BACKUP_RECORD_TYPE="full_database"
 # shellcheck source=lib/backup_record.sh
 . "${SCRIPT_DIR}/lib/backup_record.sh"
+
+# WP-59 Task 9 (WP-57 D-3). assert_nfs_destination — the fstype check that
+# replaces the path check below. See scripts/lib/nfs_guard.sh for why a
+# `[ -d ... ]` test cannot see a shadowed local directory.
+# shellcheck source=lib/nfs_guard.sh
+. "${SCRIPT_DIR}/lib/nfs_guard.sh"
 ensure_backup_id
 
 push_backup_status() {
@@ -268,9 +274,18 @@ preflight_checks() {
         exit 3
     fi
 
-    # NAS mount check
-    if [ ! -d "${BACKUP_NAS_DIR}" ]; then
-        log_error "NAS backup directory not available: ${BACKUP_NAS_DIR}"
+    # NAS mount check — WP-59 Task 9.
+    #
+    # This was `[ ! -d "${BACKUP_NAS_DIR}" ]`, a PATH check. On 2026-08-24/25 it
+    # produced exit 6 for two nights running because the shadowed local tree
+    # happened not to contain `db/`. Had it contained one -- as it did for
+    # `assets/`, which is how 45 GB of July snapshots ended up on the root
+    # volume -- this check would have PASSED and the dump would have been
+    # written to local disk under the name of a NAS backup. The failure mode
+    # this guard exists for is the silent one, not the loud one.
+    if ! assert_nfs_destination "${BACKUP_NAS_DIR}" "database backup"; then
+        log_error "NAS backup directory is not an NFS mount: ${BACKUP_NAS_DIR}" \
+            "{\"guard\":\"assert_nfs_destination\",\"ledger\":\"WP-57 D-3\"}"
         exit 6
     fi
 

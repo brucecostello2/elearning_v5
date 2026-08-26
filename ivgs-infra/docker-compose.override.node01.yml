@@ -79,8 +79,22 @@ services:
       # Backup scripts (read-only — worker invokes them as subprocesses)
       - /opt/ivgs/scripts:/scripts:ro
       # Backup data — RW because verify_backup.sh writes the verification block
-      # back to backup_record.json on success
-      - /mnt/backup:/mnt/backup
+      # back to backup_record.json on success.
+      #
+      # WP-59 Task 9 (WP-57 D-3). `rslave` propagation: this container's two
+      # nights of failed dumps were the same defect as postgres' WAL split --
+      # the bind captured the local ext4 inode shadowed under the absent NFS
+      # mount, and the fix was `--force-recreate`, which is not something anyone
+      # thinks to run before they know. With rslave, a later NFS (re)mount on
+      # the host reaches this container while it is running. The in-process
+      # fstype guard in scripts/lib/nfs_guard.sh is the other half: propagation
+      # closes the "the mount arrived late" case, the guard closes the "write it
+      # to the wrong filesystem anyway" case.
+      - type: bind
+        source: /mnt/backup
+        target: /mnt/backup
+        bind:
+          propagation: rslave
       # GPG keyring for decryption during verify
       # NOTE: /root/.gnupg is owned by root on host; we mount it but inside the
       # container the GPG_HOME is /home/ivgs/.gnupg which is also a mount target.

@@ -72,6 +72,11 @@ readonly NAS_TARGET="${BACKUP_NAS_DIR}/${TIMESTAMP}/"
 BACKUP_RECORD_TYPE="config_backup"
 # shellcheck source=lib/backup_record.sh
 . "$(dirname "$0")/lib/backup_record.sh"
+
+# WP-59 Task 9 (WP-57 D-3): every process that writes under /mnt/backup gets
+# the fstype pre-flight, not just the two that were caught.
+# shellcheck source=lib/nfs_guard.sh
+. "$(dirname "$0")/lib/nfs_guard.sh"
 ensure_backup_id
 
 # ---------------------------------------------------------------------------
@@ -149,8 +154,9 @@ preflight() {
         exit 1
     fi
 
-    if [ ! -d "${BACKUP_NAS_DIR}" ]; then
-        log_entry "ERROR" "NAS config backup directory not available: ${BACKUP_NAS_DIR}"
+    # WP-59 Task 9: fstype, not path. See scripts/lib/nfs_guard.sh.
+    if ! assert_nfs_destination "${BACKUP_NAS_DIR}" "config backup"; then
+        log_entry "ERROR" "NAS config backup directory is not an NFS mount: ${BACKUP_NAS_DIR}"
         exit 1
     fi
 

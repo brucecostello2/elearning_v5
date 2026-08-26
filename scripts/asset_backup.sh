@@ -135,6 +135,13 @@ readonly RECORD_FILE="${TARGET_DIR}/backup_record.json"
 BACKUP_RECORD_TYPE="asset_backup"
 # shellcheck source=lib/backup_record.sh
 . "$(dirname "$0")/lib/backup_record.sh"
+
+# WP-59 Task 9 (WP-57 D-3). This script is the one whose destination check DID
+# pass over a shadowed local directory: the 45 GB of orphaned July snapshots on
+# node-01's root volume were written here, by this script, while its surface
+# reported the asset backup working.
+# shellcheck source=lib/nfs_guard.sh
+. "$(dirname "$0")/lib/nfs_guard.sh"
 ensure_backup_id
 
 # ---------------------------------------------------------------------------
@@ -268,9 +275,16 @@ preflight_checks() {
             "{\"note\":\"will skip rsync of shared volume\"}"
     fi
 
-    # NAS target check
-    if [ ! -d "$(dirname "${BACKUP_NAS_DIR}")" ]; then
-        log_error "NAS parent directory not available: $(dirname "${BACKUP_NAS_DIR}")"
+    # NAS target check — WP-59 Task 9.
+    #
+    # The PARENT is guarded rather than the target, because the target is
+    # created below and a not-yet-existing directory has no filesystem type of
+    # its own. Guarding the parent and only then creating the child is what
+    # makes the `mkdir -p` safe: it can no longer bring a local directory into
+    # existence underneath an absent mount, which is how the shadowed tree grew.
+    if ! assert_nfs_destination "$(dirname "${BACKUP_NAS_DIR}")" "asset backup"; then
+        log_error "NAS parent directory is not an NFS mount: $(dirname "${BACKUP_NAS_DIR}")" \
+            "{\"guard\":\"assert_nfs_destination\",\"ledger\":\"WP-57 D-3\"}"
         exit 6
     fi
     mkdir -p "${BACKUP_NAS_DIR}"
