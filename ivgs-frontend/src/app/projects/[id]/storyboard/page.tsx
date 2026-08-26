@@ -8,7 +8,8 @@ import { useProjects } from "@/hooks/useProjects";
 import StoryboardEditor from "@/components/storyboard/StoryboardEditor";
 import SceneEditModal from "@/components/storyboard/SceneEditModal";
 import SceneTimeline from "@/components/storyboard/SceneTimeline";
-import PipelineGateButton from "@/components/PipelineGateButton";
+import GateReviewPanel from "@/components/project/GateReviewPanel";
+import { useProjectProgress } from "@/hooks/useProjectProgress";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import type { Scene, SceneStatus, StoryboardViewMode } from "@/types/storyboard";
@@ -75,7 +76,6 @@ export default function StoryboardPage(): React.ReactElement {
     regenerateScene,
     regenerateScenes,
     updateScene,
-    approveStoryboard,
   } = useStoryboard(projectId);
 
   // ── View Mode ─────────────────────────────────────────────────────────
@@ -114,30 +114,34 @@ export default function StoryboardPage(): React.ReactElement {
   }, [user, project]);
 
   /**
-   * WP-40 Task 3a — who may approve, and when.
+   * WP-40 Task 3a — who may approve.
    *
-   * `POST /projects/{id}/scenes/approve` is guarded by
-   * `require_operator_or_admin`, so a viewer must never see this button.
-   * The service also rejects MEDIA_GENERATION and every later state
-   * (project_service.py:374) -- once media generation has started, the gate
-   * is behind you -- and requires at least one persisted scene, which the
-   * page has already established by rendering at all.
+   * WP-62 Task 2(d). THE "WHEN" HALF IS GONE FROM HERE, and that is the
+   * point. It was a hand-maintained list of eight `ProjectState` values kept
+   * in step with `project_service.py` by hand — a second copy of the gate's
+   * rule, in a browser, over a column this fleet has been demonstrably wrong
+   * about (WP-62 Task 3: `projects.state` was frozen at DRAFT on projects that
+   * had rendered). Whether the gate is open is now ONE server computation, the
+   * same one the stepper reads, anchored to the storyboard artefact rather
+   * than to a position.
+   *
+   * What is left here is RBAC, which is genuinely a client-side concern: the
+   * route is behind `require_operator_or_admin`, and a viewer must not be
+   * offered a control they would be refused.
    */
-  const canApprove = useMemo<boolean>(() => {
-    if (!user || !project) return false;
-    if (user.role !== "admin" && user.role !== "operator") return false;
-    const past = [
-      "MEDIA_GENERATION",
-      "MANIFEST_GENERATION",
-      "AUDIO_GENERATION",
-      "TALKING_HEAD_RENDER",
-      "PROTOTYPE_DRAFT",
-      "USER_REVIEW",
-      "FINAL_RENDER",
-      "COMPLETE",
-    ];
-    return !past.includes(String(project.state));
-  }, [user, project]);
+  const canDecideGate = useMemo<boolean>(
+    () => user?.role === "admin" || user?.role === "operator",
+    [user],
+  );
+
+  /* The same computation the top stepper reads. One answer to "is this gate
+     open", on every surface that asks. */
+  const { progress, mutate: mutateProgress } = useProjectProgress(projectId);
+  const storyboardGate = progress?.gates?.storyboard;
+  const gateIsOpen =
+    (progress?.steps ?? []).some(
+      (st) => st.gate === "storyboard" && st.status === "gated",
+    ) && storyboardGate !== undefined;
 
   /**
    * Filter scenes based on current filter state.
@@ -405,6 +409,22 @@ export default function StoryboardPage(): React.ReactElement {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
+        {/* ── The open review gate, as the primary action ─────────────
+            WP-62 Task 2(d). On this tab the preview IS the page, so the panel
+            sits directly above the storyboard it is asking about. */}
+        {gateIsOpen && storyboardGate && (
+          <GateReviewPanel
+            projectId={projectId}
+            gate="storyboard"
+            state={storyboardGate}
+            canDecide={canDecideGate}
+            onDecided={() => {
+              void mutateProgress();
+              void mutate();
+            }}
+          />
+        )}
+
         {/* ── Page Header ──────────────────────────────────────────── */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
@@ -426,17 +446,17 @@ export default function StoryboardPage(): React.ReactElement {
 
           {/* View Mode Toggle + review gate */}
           <div className="mt-4 sm:mt-0 flex items-center gap-2">
-            {canApprove && scenes.length > 0 && (
-              <PipelineGateButton
-                label="Approve storyboard"
-                confirmTitle="Approve this storyboard?"
-                confirmBody={`This releases all ${scenes.length} scenes into media generation and starts GPU work. It cannot be undone from this page.`}
-                confirmLabel="Approve"
-                successMessage="Storyboard approved — media generation dispatched."
-                onConfirm={(tier) => approveStoryboard(tier)}
-                className="px-4 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors text-sm font-medium mr-2"
-              />
-            )}
+            {/* WP-62 Task 2(d). THE APPROVE BUTTON HAS MOVED OFF THIS ROW.
+                It sat here, between the read-only badge and the Grid/Timeline
+                toggle, at the weight of a view toggle — a blocking review gate
+                rendered as a corner control. It is now the amber gate panel
+                above this header, which states what is being asked, shows the
+                decision's consequence, offers reject and regenerate as well as
+                approve (§6.4 requires all three; only approve existed), and
+                takes a note that lands in audit_log.
+
+                Leaving a second Approve control here as well would be the
+                same-screen duplication WP-62 Task 4 removes on Overview. */}
             <button
               onClick={() => setViewMode("grid")}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${

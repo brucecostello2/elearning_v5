@@ -12,6 +12,9 @@ import {
   formatBytes,
 } from "@/lib/media";
 import { useAssetDownload, useAssetObjectUrl } from "@/hooks/useAssetMedia";
+import { useAuth } from "@/hooks/useAuth";
+import GateReviewPanel from "@/components/project/GateReviewPanel";
+import { useProjectProgress } from "@/hooks/useProjectProgress";
 
 /**
  * §8.1.3 Table 8-2 — Draft Preview Tab
@@ -40,6 +43,19 @@ export default function DraftPreviewPage(): React.ReactElement {
   const params = useParams();
   const projectId = params.id as string;
   const { assets, isLoading, error } = useAssets(projectId);
+  const { user } = useAuth();
+
+  /* WP-62 Task 2(d). The DRAFT gate had no surface at all before this package:
+     `POST /projects/{id}/trigger` from USER_REVIEW WAS the approval, so
+     approving the draft and spending the GPU time on the full-resolution
+     render were one irreversible press with nothing recorded. It renders here,
+     above the draft it is asking about, and on the Overview page. */
+  const { progress, mutate: mutateProgress } = useProjectProgress(projectId);
+  const draftGate = progress?.gates?.draft;
+  const draftGateOpen =
+    (progress?.steps ?? []).some(
+      (st) => st.gate === "draft" && st.status === "gated",
+    ) && draftGate !== undefined;
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -77,6 +93,17 @@ export default function DraftPreviewPage(): React.ReactElement {
 
   return (
     <div className="space-y-6">
+      {draftGateOpen && draftGate && (
+        <GateReviewPanel
+          projectId={projectId}
+          gate="draft"
+          state={draftGate}
+          canDecide={user?.role === "admin" || user?.role === "operator"}
+          onDecided={() => {
+            void mutateProgress();
+          }}
+        />
+      )}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">

@@ -10,7 +10,8 @@ import PipelineTracker from "@/components/PipelineTracker";
 import PipelineGateButton from "@/components/PipelineGateButton";
 import PresetApplyPanel from "@/components/project/PresetApplyPanel";
 import DeleteProjectDialog from "@/components/project/DeleteProjectDialog";
-import { PROJECT_TABS, tabHref } from "@/lib/project-tabs";
+import GateReviewPanel from "@/components/project/GateReviewPanel";
+import { useProjectProgress } from "@/hooks/useProjectProgress";
 
 /**
  * §8.1.3 Project Detail — the Overview tab.
@@ -32,6 +33,11 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
   const { user } = useAuth();
   const projectId = params.id as string;
   const { project, triggerPipeline } = useProjects(projectId);
+
+  /* WP-62 Tasks 2(d) and 3. The SAME computation the stepper reads. An open
+     gate is the reason nothing is moving, so it is the primary action on this
+     page while it is open. */
+  const { progress, mutate: mutateProgress } = useProjectProgress(projectId);
 
   /**
    * WP-40 Task 3b. Operator or admin only -- `POST /projects/{id}/trigger`
@@ -96,8 +102,41 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
     ? project.target_languages
     : [];
 
+  /* Steps carry the gate NAME; the gate's state lives in `progress.gates`.
+     Pairing them here rather than in the panel keeps the panel a pure
+     renderer, and drops any step whose gate the payload does not describe
+     instead of rendering a panel with nothing in it. */
+  const openGates = (progress?.steps ?? [])
+    .filter((s) => s.status === "gated" && s.gate)
+    .map((s) => ({ name: s.gate as string, state: progress?.gates?.[s.gate as string] }))
+    .filter((g): g is { name: string; state: NonNullable<typeof g.state> } =>
+      g.state !== undefined
+    );
+
   return (
     <div className="space-y-8">
+      {/* ── An open review gate is the primary action ──────────────────
+          WP-62 Task 2(d), RULED. Above the trigger button, above the
+          progress panel, above everything: while a blocking gate is open
+          nothing else on this page can be acted on usefully, and the artefact
+          under review renders beside the decision so nobody has to navigate
+          away to see what they are approving and navigate back to approve it.
+
+          The draft gate's home on the STEPPER is stage 9, Review. This is its
+          home on the page. */}
+      {openGates.map((gate) => (
+        <GateReviewPanel
+          key={gate.name}
+          projectId={projectId}
+          gate={gate.name}
+          state={gate.state}
+          canDecide={canManage}
+          onDecided={() => {
+            void mutateProgress();
+          }}
+        />
+      ))}
+
       {/* ── Actions ──────────────────────────────────────────────────── */}
       {(canTrigger || project.state === "COMPLETE" || canDelete) && (
         <div className="flex flex-wrap items-center gap-2">
@@ -222,25 +261,26 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
       {/* ── Preset application — AD-09.5 / AD-09.15 criterion 1 ──────── */}
       <PresetApplyPanel projectId={projectId} canApply={canManage} />
 
-      {/* ── Quick access ─────────────────────────────────────────────── */}
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Quick Access
-        </h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {PROJECT_TABS.filter((t) => t.segment).map((tab) => (
-            <Link
-              key={tab.id}
-              href={tabHref(projectId, tab)}
-              className="rounded-lg border border-gray-300 bg-gray-100 p-4 text-left transition-colors hover:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:hover:border-gray-600"
-            >
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {tab.label}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* WP-62 Task 4, RULED. QUICK ACCESS IS REMOVED.
+
+          It rendered a card per tab - Transcripts, Storyboard, Media Assets,
+          Audio, Talking Head, Draft Preview, Final Renders, Prompts, Jobs,
+          Languages - as a grid of links to the same ten destinations the tab
+          bar lists an inch above it. Ten affordances, zero added information:
+          no counts, no status, no "3 scenes need review". The cards were
+          bigger, so on a short viewport they were the more prominent of the
+          two navigations, and a reader had to work out that the two lists were
+          the same list.
+
+          WP-43 Task 1 is the reason it survived this long. Before that package
+          the tab bar lived INSIDE this page, so Quick Access was a second
+          navigation on the one page that had a first. WP-43 moved the tab bar
+          into the shell and put it on all eleven tabs; the duplicate below it
+          was left behind and nobody looked at the two together.
+
+          The stepper (status) and the tab bar (navigation) both stay. They
+          look similar and are not: one says where the work is, the other says
+          where you are. */}
     </div>
   );
 }

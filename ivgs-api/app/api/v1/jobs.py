@@ -229,16 +229,63 @@ async def update_job_status(
     # retries this call) must not walk the project back to DRAFT a second time
     # after somebody has deliberately moved it on.
     if payload.status in FAILED_STATUSES and previous_status not in TERMINAL_STATUSES:
-        from app.services.project_service import ProjectService
+        from app.services.project_service import ProjectService, active_job
 
-        previous_project_state = await ProjectService(db).reset_after_terminal_failure(
-            job.project_id,
-            reason=f"job {job_id} failed: {payload.error_message or payload.status}",
-        )
-        if previous_project_state:
+        # WP-62 Task 3. THE RESET NOW REQUIRES THIS TO HAVE BEEN THE LAST LIVE
+        # WORK ON THE PROJECT, AND THAT IS THE WHOLE FIX FOR THE FROZEN STEPPER.
+        #
+        # MEASURED, on the live fleet, project 64207933 on 2026-08-26:
+        #
+        #   09:07:47.255Z  "Storyboard approved ... prev_state=STORYBOARD_
+        #                   GENERATION"  -> projects.state = MEDIA_GENERATION
+        #   09:07:47.645Z  projects.updated_at moves; state is DRAFT
+        #   09:07:49.184Z  PATCH .../state MANIFEST_GENERATION -> 409
+        #                   "Invalid state transition: DRAFT -> MANIFEST_
+        #                    GENERATION. Valid: [TRANSCRIPT_REFINEMENT, ERROR]"
+        #   09:07:53.017Z  AUDIO_GENERATION      -> 409, same reason
+        #   09:08:24.332Z  TALKING_HEAD_RENDER   -> 409, same reason
+        #
+        # Four hundred milliseconds after a human released the storyboard, a
+        # STALE job's failure callback walked the project back to DRAFT. The
+        # run carried on -- stages 4, 5 and 6 all executed and all reported --
+        # and every report was refused, because the project was now three hops
+        # behind the pipeline running inside it. The stepper sat at step 1
+        # while the render completed.
+        #
+        # So a writer existed (WP-45 built it and it works: the STORYBOARD_
+        # GENERATION hop at 09:00:36 was accepted), the choke point is here,
+        # and c12fa967 is the same story with an older timestamp -- reset to
+        # DRAFT at 15:31:10 by a failed image_generation job, then a
+        # final_render that SUCCEEDED at 15:39:57 whose COMPLETE hop had
+        # nowhere legal to go from DRAFT.
+        #
+        # THE RESET ITSELF IS NOT WRONG AND IS NOT REMOVED. P1.4q exists
+        # because a project stuck in an in-progress state answers 409 forever
+        # and the operator's documented recourse was an UPDATE statement. What
+        # was wrong is that it fired on the failure of ANY job of the project,
+        # including one that had already been superseded. `active_job` is the
+        # same "is a run in flight" question the WP-61 guard asks; if the
+        # answer is yes, this failure was not the end of the project's work and
+        # resetting would abandon a live run.
+        still_running = await active_job(db, job.project_id)
+        if still_running is not None:
             logger.info(
-                "P1.4q: project %s returned to DRAFT from %s after job %s failed",
-                job.project_id, previous_project_state, job_id,
+                "P1.4q reset SKIPPED: job %s failed but project %s still has a "
+                "%s %s run (job %s). Resetting to DRAFT here would strand the "
+                "live run - every subsequent stage hop would be refused as an "
+                "illegal transition out of DRAFT.",
+                job_id, job.project_id, still_running.status,
+                still_running.job_type, still_running.id,
             )
+        else:
+            previous_project_state = await ProjectService(db).reset_after_terminal_failure(
+                job.project_id,
+                reason=f"job {job_id} failed: {payload.error_message or payload.status}",
+            )
+            if previous_project_state:
+                logger.info(
+                    "P1.4q: project %s returned to DRAFT from %s after job %s failed",
+                    job.project_id, previous_project_state, job_id,
+                )
 
     return JobResponse.model_validate(job)

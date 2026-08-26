@@ -16,6 +16,23 @@
  *
  * The strip now moves into the shared project shell (so it is visible from
  * every tab) and is drawn against the real FSM.
+ *
+ * WP-62 Task 3. `PROJECT_STATE_SEQUENCE` and `stateStepStatuses` NO LONGER
+ * DRAW THE STRIP, and they are kept rather than deleted for two reasons that
+ * are not sentiment.
+ *
+ * The strip is now computed on the SERVER (`GET /projects/{id}/progress`,
+ * `app/services/project_progress.py`) because `project.state` alone could not
+ * produce a true answer: it was frozen fleet-wide by the P1.4q reset firing on
+ * stale jobs, so a project with a completed final render read DRAFT. The
+ * server's step list is the same eleven states in the same order, and
+ * `ui-nav.test.mjs` pins THIS list — so it is the client-side statement of the
+ * order the server must also hold, and a divergence would show up as a failing
+ * test rather than as a strip that quietly renumbered itself.
+ *
+ * `projectStateProgress` IS still used by the shell, for the off-sequence
+ * caption: ERROR and LOCALISATION have no position on the linear path and
+ * saying so is still the right answer.
  */
 
 /** The linear path through the FSM, in order. */
