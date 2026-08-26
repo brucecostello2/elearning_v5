@@ -1,0 +1,13 @@
+[Unit]
+Description=IVGS: cap node-04 GPU at 450W (thermal ruling 2026-08-26)
+After=multi-user.target
+Wants=multi-user.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/nvidia-smi -pm 1
+ExecStart=/usr/bin/nvidia-smi -pl 450
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target
