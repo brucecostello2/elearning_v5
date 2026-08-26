@@ -140,8 +140,8 @@ brackets through PuTTY is forbidden (dev/CLAUDE.md §5).
   # the WP-61 shas would refuse the corrected files, which is the gate working
   # - and it would refuse them without saying why, so it is updated here rather
   # than left to fire.
-  WANT_COMPOSE=__WANT_COMPOSE__
-  WANT_ENVEX=__WANT_ENVEX__
+  WANT_COMPOSE=95cece53b15eab8fe1bc60fb4711f9df8a314905a95c88d8d3a70bbe2c627cdf
+  WANT_ENVEX=bf8940bda12f3a052125c889e7d50f204ca52ad8ecbad2855b294e6abc8102d6
   GOT_COMPOSE=$(sha256sum ivgs-infra/docker-compose.llm.node05.yml | cut -d' ' -f1)
   GOT_ENVEX=$(sha256sum ivgs-infra/.env.node05.example | cut -d' ' -f1)
   echo "compose  want=$WANT_COMPOSE"
