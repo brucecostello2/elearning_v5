@@ -11,6 +11,7 @@ import { useCallback } from "react";
 import useSWR from "swr";
 import { apiClient } from "@/lib/api-client";
 import type {
+  FetchWeightsResult,
   ModelApprovePayload,
   ModelRegisterPayload,
   ModelUpdatePayload,
@@ -34,6 +35,10 @@ export interface UseModelsResult {
   approveModel: (id: string, payload: ModelApprovePayload) => Promise<StoreModel>;
   deprecateModel: (id: string) => Promise<StoreModel>;
   retireModel: (id: string) => Promise<StoreModel>;
+  /** WP-65. Admin-only, GUI-only. Resolves with the outcome even when the
+   *  fetch was REFUSED — a refusal is an answer, not an exception, and the
+   *  page renders which of the several refusals it was. */
+  fetchWeights: (id: string) => Promise<FetchWeightsResult>;
 }
 
 export function useModels(): UseModelsResult {
@@ -41,6 +46,18 @@ export function useModels(): UseModelsResult {
     LIST_URL,
     fetcher,
     { refreshInterval: 30_000, revalidateOnFocus: true },
+  );
+
+  const fetchWeights = useCallback(
+    async (id: string): Promise<FetchWeightsResult> => {
+      // 202 in every case, including the refusals — see the route docstring.
+      const res = await apiClient.post<FetchWeightsResult>(
+        `${LIST_URL}/${id}/fetch-weights`,
+      );
+      await mutate();
+      return res.data;
+    },
+    [mutate],
   );
 
   const registerModel = useCallback(
@@ -101,5 +118,6 @@ export function useModels(): UseModelsResult {
     approveModel,
     deprecateModel,
     retireModel,
+    fetchWeights,
   };
 }

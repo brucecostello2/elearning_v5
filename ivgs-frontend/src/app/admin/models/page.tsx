@@ -13,6 +13,7 @@ import type {
   ModelState,
   ModelUpdatePayload,
   StoreModel,
+  WeightState,
 } from "@/types/models";
 import { MODEL_ENGINES, MODEL_STAGES, MODEL_TIERS } from "@/types/models";
 
@@ -37,6 +38,58 @@ const STATE_BADGE: Record<ModelState, string> = {
   deprecated: "bg-orange-900/50 text-orange-300 border border-orange-800",
   retired: "bg-gray-700/50 text-gray-300 border border-gray-600",
 };
+
+/**
+ * WP-65 — the weight states, and the ACTION each one implies.
+ *
+ * Before WP-65 this column was `node_availability.filter(status ===
+ * "available").length`, rendered as "N available" or the bare word "none".
+ * Those rows are a projection of the GPU scheduler's Redis LRU of models a JOB
+ * once loaded (no TTL, so it never expires), which means "none" was standing
+ * in for at least four different facts that need four different actions. It
+ * also meant the one model the store called available was attributed to the
+ * wrong node: measured 2026-08-26, `wan2.2-animate` showed node-04 while its
+ * bytes are on node-03.
+ *
+ * Nothing here fabricates a zero. A model with no measurement says so in
+ * words (WP-57/60).
+ */
+const WEIGHT_BADGE: Record<WeightState, string> = {
+  available: "bg-green-900/50 text-green-300 border border-green-800",
+  not_fetched: "bg-blue-900/50 text-blue-300 border border-blue-800",
+  engine_only: "bg-purple-900/50 text-purple-300 border border-purple-800",
+  no_host: "bg-orange-900/50 text-orange-300 border border-orange-800",
+  no_reference: "bg-gray-700/50 text-gray-300 border border-gray-600",
+  unknown_reference: "bg-red-900/50 text-red-300 border border-red-800",
+  fetching: "bg-yellow-900/50 text-yellow-300 border border-yellow-800",
+  failed: "bg-red-900/50 text-red-300 border border-red-800",
+};
+
+/** What an admin should DO about each state. Shown under the badge. */
+const WEIGHT_ACTION: Record<WeightState, string> = {
+  available: "",
+  not_fetched:
+    "IVGS has no record of a fetch for this model. That is a fact about IVGS's records, not proof the node is empty - weights placed by hand before this record existed do not appear here. Fetch weights verifies and records them; an already-present, hash-matching bundle is a no-op that says so.",
+  engine_only:
+    "MBCP certified the engine image, not a weight bundle. Making this runnable means deploying that image to a node — there is nothing to fetch.",
+  no_host:
+    "No container on this fleet serves this engine. A host has to exist before weights have anywhere to go.",
+  no_reference:
+    "This row was registered by hand, not ingested from MBCP, so IVGS has no reference to fetch from.",
+  unknown_reference:
+    "The stored weights_ref is in a form IVGS cannot parse. Refused rather than guessed at.",
+  fetching: "A fetch is running.",
+  failed: "The last fetch failed. The reason is recorded on the row.",
+};
+
+/** Bytes, or the honest absence of a measurement. Never "0 B" for unknown. */
+function formatBytes(n: number | null): string {
+  if (n === null || n === undefined) return "not measured";
+  if (n === 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
+  return `${(n / 1024 ** i).toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
 
 const inputCls =
   "w-full rounded-md border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-gray-100 placeholder-gray-500 focus:border-blue-500 focus:outline-none";
@@ -162,6 +215,7 @@ export default function ModelStorePage(): React.ReactElement | null {
     approveModel,
     deprecateModel,
     retireModel,
+    fetchWeights,
   } = useModels();
 
   /* ── filters ─────────────────────────────────────────────────────── */
@@ -410,6 +464,61 @@ export default function ModelStorePage(): React.ReactElement | null {
     }
   };
 
+  /**
+   * WP-65 Task 4 — Fetch weights. Admin-only, GUI-only (the standing IVGS
+   * rule: admin functionality has no CLI).
+   *
+   * A REFUSAL IS NOT AN ERROR. The route answers 202 for every outcome and
+   * says which one it was, so "this model's engine has no host" is reported as
+   * the durable fact it is rather than as a failed request. That distinction
+   * is the whole point of the action: three of the states this can return mean
+   * "do something else entirely", not "try again".
+   */
+  const doFetchWeights = async (m: StoreModel): Promise<void> => {
+    const st = m.weight_status;
+    if (st && !st.can_fetch) {
+      flashErr(
+        new Error(st.detail ?? st.label),
+        `Cannot fetch weights for "${m.display_name}".`,
+      );
+      return;
+    }
+    if (st && !st.credentials_present) {
+      flashErr(
+        new Error(
+          "The MBCP serving token is not present on the API host. An operator supplies it as an environment variable on node-01; IVGS never stores it.",
+        ),
+        `Cannot fetch weights for "${m.display_name}".`,
+      );
+      return;
+    }
+    if (
+      !window.confirm(
+        `Fetch weights for "${m.display_name}"?\n\n` +
+          `Destination: ${st?.target_dir ?? "(resolved at fetch time)"}\n` +
+          `Node: ${st?.target_node ?? "(resolved at fetch time)"}\n` +
+          `Container: ${st?.target_container ?? "(resolved at fetch time)"}\n\n` +
+          `Bytes are staged and every checksum verified before anything is moved into place.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      setBusyId(m.id);
+      const result = await fetchWeights(m.id);
+      if (result.accepted) {
+        flashOk(`${m.display_name}: ${result.message}`);
+      } else {
+        // Recorded, not lost: the placement row carries the reason.
+        flashErr(new Error(result.message), `Weights not fetched (${result.reason}).`);
+      }
+    } catch (e) {
+      flashErr(e, "Fetch weights failed.");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const doDeprecate = async (m: StoreModel): Promise<void> => {
     if (
       !window.confirm(
@@ -576,7 +685,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                       "Tier",
                       "State",
                       "VRAM",
-                      "Nodes",
+                      "Weights",
                       "Flags",
                       "Actions",
                     ].map((h) => (
@@ -603,9 +712,15 @@ export default function ModelStorePage(): React.ReactElement | null {
                   )}
                   {filtered.map((m) => {
                     const busy = busyId === m.id;
-                    const availableNodes = m.node_availability.filter(
+                    // WP-65. `node_availability` is still read — it is a real
+                    // signal about the SCHEDULER — but it no longer decides
+                    // what this row says about weights. `weight_status` does,
+                    // and it is computed server-side so the page cannot infer
+                    // availability from a row count the way it used to.
+                    const loadedOnNodes = m.node_availability.filter(
                       (a) => a.status === "available",
                     ).length;
+                    const ws = m.weight_status;
                     return (
                       <React.Fragment key={m.id}>
                         <tr
@@ -630,16 +745,51 @@ export default function ModelStorePage(): React.ReactElement | null {
                               {m.state}
                             </span>
                           </td>
+                          {/* VRAM. `models.vram_gb` is a number typed into
+                              the registration form, not a measurement — so it
+                              is labelled as declared, and the REAL on-disk
+                              size sits beneath it when one has been measured. */}
                           <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                            {m.vram_gb !== null ? `${m.vram_gb} GB` : "—"}
-                          </td>
-                          <td className="px-4 py-3 text-gray-700 dark:text-gray-300">
-                            {availableNodes > 0 ? (
-                              <span className="text-green-600 dark:text-green-400">
-                                {availableNodes} available
+                            {m.vram_gb !== null ? (
+                              <span title="Declared at registration, not measured">
+                                {m.vram_gb} GB
                               </span>
                             ) : (
-                              <span className="text-gray-500 dark:text-gray-400">none</span>
+                              <span className="text-gray-500 dark:text-gray-400">
+                                not declared
+                              </span>
+                            )}
+                            {ws && ws.state === "available" && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {formatBytes(ws.bytes_on_disk)} on disk
+                              </div>
+                            )}
+                          </td>
+                          {/* Weights. Was "N available" / "none"; now the
+                              state and the node, which are different facts. */}
+                          <td className="px-4 py-3">
+                            {ws ? (
+                              <>
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${WEIGHT_BADGE[ws.state]}`}
+                                  title={ws.detail ?? ws.label}
+                                >
+                                  {ws.label}
+                                </span>
+                                {loadedOnNodes > 0 && ws.state !== "available" && (
+                                  <div
+                                    className="mt-1 text-xs text-gray-500 dark:text-gray-400"
+                                    title="The GPU scheduler has this model name in its per-node LRU, which records that a job loaded it once. That is not evidence that bytes are on disk."
+                                  >
+                                    scheduler: loaded on {loadedOnNodes} node
+                                    {loadedOnNodes === 1 ? "" : "s"}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">
+                                unknown (API predates v5.24.0-weights)
+                              </span>
                             )}
                           </td>
                           <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400">
@@ -716,6 +866,36 @@ export default function ModelStorePage(): React.ReactElement | null {
                                     Retire
                                   </button>
                                 )}
+                                {/* WP-65. Present for every model, DISABLED
+                                    where it cannot work, with the reason on
+                                    the tooltip — a model whose engine has no
+                                    host must be visible and explained, not
+                                    silently absent. */}
+                                <button
+                                  type="button"
+                                  disabled={
+                                    busy ||
+                                    ws?.state === "fetching" ||
+                                    (ws !== null && !ws.can_fetch)
+                                  }
+                                  title={
+                                    ws && !ws.can_fetch
+                                      ? `${ws.label} — ${WEIGHT_ACTION[ws.state]}`
+                                      : ws && !ws.credentials_present
+                                        ? "The MBCP serving token is not present on the API host."
+                                        : ws?.target_dir
+                                          ? `Fetch to ${ws.target_node}:${ws.target_dir}`
+                                          : "Fetch this model's certified weights"
+                                  }
+                                  className="rounded border border-blue-200 dark:border-blue-700 px-2 py-1 text-xs text-blue-800 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/30 disabled:opacity-50"
+                                  onClick={() => void doFetchWeights(m)}
+                                >
+                                  {ws?.state === "fetching"
+                                    ? "Fetching…"
+                                    : ws?.state === "available"
+                                      ? "Re-verify weights"
+                                      : "Fetch weights"}
+                                </button>
                               </div>
                             ) : (
                               <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -742,7 +922,62 @@ export default function ModelStorePage(): React.ReactElement | null {
                                 </div>
                                 <div>
                                   <div className="mb-1 font-semibold text-gray-800 dark:text-gray-200">
-                                    Node availability
+                                    Weights on disk
+                                  </div>
+                                  {ws && (
+                                    <>
+                                      <div>{ws.label}</div>
+                                      {ws.detail && (
+                                        <div className="mt-1 italic">{ws.detail}</div>
+                                      )}
+                                      {WEIGHT_ACTION[ws.state] && (
+                                        <div className="mt-1">
+                                          {WEIGHT_ACTION[ws.state]}
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {m.weight_placements.length === 0 && (
+                                    <div className="text-gray-500 dark:text-gray-400">
+                                      no fetch has been attempted
+                                    </div>
+                                  )}
+                                  {m.weight_placements.map((wp) => (
+                                    <div key={wp.id} className="mt-1">
+                                      <div>
+                                        {wp.node_id}: {wp.status}
+                                        {wp.checksum_verified
+                                          ? " (checksums verified)"
+                                          : ""}
+                                        {wp.signature_verified
+                                          ? " (signature verified)"
+                                          : ""}
+                                      </div>
+                                      {wp.dest_dir && (
+                                        <div className="break-all">
+                                          dir: {wp.dest_dir}
+                                        </div>
+                                      )}
+                                      {wp.bytes_on_disk !== null && (
+                                        <div>
+                                          {formatBytes(wp.bytes_on_disk)} in{" "}
+                                          {wp.file_count ?? "?"} file(s)
+                                        </div>
+                                      )}
+                                      {wp.last_error && (
+                                        <div className="text-red-600 dark:text-red-400">
+                                          {wp.last_error_reason}: {wp.last_error}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div>
+                                  <div
+                                    className="mb-1 font-semibold text-gray-800 dark:text-gray-200"
+                                    title="A projection of the GPU scheduler's per-node LRU. It records that a job loaded this model name on a node at some point; the key has no expiry, so it is history, not residency, and it never inspects a disk."
+                                  >
+                                    Scheduler residency (not weights)
                                   </div>
                                   {m.node_availability.length === 0 && (
                                     <div className="text-gray-500 dark:text-gray-400">

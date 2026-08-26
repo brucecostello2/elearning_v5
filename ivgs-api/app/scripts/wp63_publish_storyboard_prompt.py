@@ -123,7 +123,34 @@ CHANGE_NOTE = (
     "stage2_storyboard._render_user_prompt (:127-137) fixes the template's "
     "variable list inside a body AD-05 section 8 freezes; the real fix is "
     "ledgered P2.66. "
-    "v3 stays readable, inactive."
+    "WP-65 Task 6 publishes this as v5, extending the same template with the "
+    "two defects the FIRST REAL v4 RUN exposed (project 92e30c7e, 13 scenes, "
+    "2026-08-26 - a clear improvement on v3: descriptions depicted the actual "
+    "step and three scenes were deliberately chosen as video_clip). "
+    "(a) DUPLICATES. Scenes 0/11, 5/9 and 6/10 carried byte-identical "
+    "visual_description text, and run through content-word similarity the "
+    "storyboard has SIX repeated pictures, not three: scene 8 is 100% "
+    "content-identical to scene 2, scene 7 is 94% of scene 1, scene 5 is 90% "
+    "of scene 3. The tail of the storyboard was repeating its head. v4 already "
+    "FORBADE repeats but gave no sanctioned way to picture a RECAP, so the "
+    "model copied; v5 says how to write a revisiting scene (the completed "
+    "working, never the working mid-step) and adds a closing self-check whose "
+    "operative invariant is that the working surface only ever GAINS. "
+    "(b) RULE 1 APPLIED INCONSISTENTLY. Scenes 3, 5 and 9 described structure "
+    "only - correct - while scenes 1, 2, 4, 7 and 8 named the operands (\"23 "
+    "on top and 14 underneath\"), which asks the image model for those exact "
+    "numerals just as surely as writing them on a board does. v4's RULE 1 "
+    "examples are all about text written ON a surface, so naming a number in "
+    "prose read as permitted. v5 names that failure, supplies the deletion "
+    "test (delete every digit - does the description still say what the scene "
+    "teaches?) and gives the vocabulary that replaces digits: position, count, "
+    "width, order and emptiness. "
+    "RULE 1 IS TIGHTENED, NOT TRADED, and every WP-63/WP-64 gate phrase "
+    "survives - pinned by tests/test_wp65_storyboard_v5.py. "
+    "THE OPERATOR'S IN-FLIGHT PROJECT IS UNAFFECTED: its scenes are stored "
+    "rows generated under v4 and were not regenerated, read-modified or "
+    "approved. Publishing changes only what the NEXT storyboard run produces. "
+    "v4 stays readable, inactive."
 )
 
 #: The binding contract, as phrases that must be present. A prompt missing
@@ -157,6 +184,17 @@ OUTCOMES_PHRASES = (
     "=== LEARNING OUTCOMES (authored by the course owner) ===",
     "=== END LEARNING OUTCOMES ===",
     "DO NOT invent outcomes",
+)
+
+#: WP-65 Task 6. The two v5 amendments, gated for the reason every phrase here
+#: is gated: a template that has lost them publishes cleanly, runs cleanly, and
+#: reproduces the exact defects the first v4 run produced.
+V5_PHRASES = (
+    "NAMING A NUMBER IN PROSE IS STILL ASKING FOR IT TO BE DRAWN",
+    "POSITION, COUNT, WIDTH, ORDER and EMPTINESS",
+    "A SCENE THAT REVISITS AN EARLIER STEP IS STILL A DIFFERENT SCENE",
+    "BEFORE YOU OUTPUT, RE-READ YOUR OWN DESCRIPTIONS AS A SET",
+    "THE WORKING SURFACE ONLY EVER GAINS",
 )
 
 #: RULE 1 must survive. It is the older rule and it is the one measured twice.
@@ -230,9 +268,19 @@ async def main() -> None:
             "measured twice on this pipeline and produced '2? x 23.14' and "
             "'12 + 44 = 67 + 5'."
         )
+    missing = [p for p in V5_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template has lost the WP-65 Task 6 amendments: missing "
+            f"{missing!r}. Both close a defect the FIRST REAL v4 run produced "
+            "(project 92e30c7e, 13 scenes, 2026-08-26): six of thirteen "
+            "pictures were repeats of an earlier scene's, and five of thirteen "
+            "named the operands in prose, which asks the image model for those "
+            "numerals as surely as writing them on a board does."
+        )
     print(
         "contract : OK (RULE 0, RULE 2, RULE 5, RULE 6 and RULE 7 present, "
-        "RULE 1 intact)"
+        "RULE 1 intact, WP-65 v5 amendments present)"
     )
     print()
 

@@ -54,6 +54,76 @@ export interface ModelAvailability {
   last_health_check: string | null;
 }
 
+export type WeightPlacementStatus =
+  | "fetching"
+  | "verified"
+  | "failed"
+  | "removed";
+
+export interface WeightPlacement {
+  id: string;
+  node_id: string;
+  status: WeightPlacementStatus;
+  dest_dir: string | null;
+  engine_container: string | null;
+  bundle_digest: string | null;
+  file_count: number | null;
+  bytes_on_disk: number | null;
+  checksum_verified: boolean;
+  signature_verified: boolean;
+  last_error_reason: string | null;
+  last_error: string | null;
+  fetched_at: string | null;
+  fetched_by: string | null;
+}
+
+/**
+ * WP-65. The states an admin has to tell apart, because each needs a different
+ * action. Before WP-65 the Nodes column rendered all of them as the word
+ * "none".
+ *
+ *  available          verified bytes on a node that hosts the engine
+ *  not_fetched        a real bundle exists at MBCP; nobody has fetched it
+ *  engine_only        MBCP certified the ENGINE IMAGE; no weights exist
+ *  no_host            nothing on this fleet serves the engine
+ *  no_reference       the row was never ingested from MBCP
+ *  unknown_reference  the weights_ref is in a form IVGS cannot speak
+ *  fetching / failed  a fetch is in flight, or the last one failed
+ */
+export type WeightState =
+  | "available"
+  | "not_fetched"
+  | "engine_only"
+  | "no_host"
+  | "no_reference"
+  | "unknown_reference"
+  | "fetching"
+  | "failed";
+
+export interface WeightStatus {
+  state: WeightState;
+  label: string;
+  detail: string | null;
+  verified_nodes: string[];
+  /** null means NOT MEASURED. It is never 0-for-unknown. */
+  bytes_on_disk: number | null;
+  can_fetch: boolean;
+  target_node: string | null;
+  target_dir: string | null;
+  target_container: string | null;
+  /** Presence of the MBCP serving token on the API host. Never the value. */
+  credentials_present: boolean;
+}
+
+export interface FetchWeightsResult {
+  accepted: boolean;
+  state: WeightState;
+  reason: string | null;
+  message: string;
+  placement: WeightPlacement | null;
+  status: WeightStatus;
+}
+
 export interface ModelApproval {
   id: string;
   attested_by: string;
@@ -87,6 +157,12 @@ export interface StoreModel {
   updated_at: string;
   capability_tags: CapabilityTag[];
   node_availability: ModelAvailability[];
+  /** WP-65: bytes on a node's disk. Distinct from node_availability, which
+   *  reports the GPU scheduler's LRU of models a job once loaded. */
+  weight_placements: WeightPlacement[];
+  /** WP-65: the computed answer to "what should an admin do about this
+   *  model's weights". Null only on an API older than v5.24.0-weights. */
+  weight_status: WeightStatus | null;
   approvals: ModelApproval[];
 }
 

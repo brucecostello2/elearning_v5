@@ -21,6 +21,7 @@ from app.schemas.model_store import (
     ApproveIn,
     AvailabilityIn,
     AvailabilityOut,
+    FetchWeightsOut,
     ManualSelectionIn,
     ModelOut,
     ModelRegisterIn,
@@ -28,8 +29,10 @@ from app.schemas.model_store import (
     PlanRequest,
     PlanResponse,
     SelectionOut,
+    WeightStatusOut,
 )
 from app.services import model_selection as planner
+from app.services import weight_placement as weights
 from app.services.model_selection import PlanningError
 from shared.database import get_session
 from shared.models.model_store import (
@@ -42,6 +45,7 @@ from shared.models.model_store import (
     ModelTier,
     ProjectModelSelection,
 )
+from shared.weights.service import fetch_model_weights
 
 models_router = APIRouter(prefix="/models", tags=["Model Store"])
 selections_router = APIRouter(
@@ -61,19 +65,35 @@ async def _get_model_or_404(db: AsyncSession, model_id: UUID) -> Model:
 # registry CRUD
 # --------------------------------------------------------------------------
 
+def _with_weight_status(model: Model) -> ModelOut:
+    """Serialise a model and attach WP-65's computed weight state.
+
+    ``weight_status`` is derived, not stored: it is the answer to "what should
+    an admin do about this model's weights", and it is computed from the
+    placement rows plus the offline part of the fetch plan. Attaching it here
+    rather than letting the frontend infer it is deliberate -- the frontend
+    inferring availability from a row count is precisely the defect WP-65 Task
+    1 measured (``page.tsx:606``).
+    """
+    out = ModelOut.model_validate(model)
+    out.weight_status = WeightStatusOut(**weights.compute_status(model).as_dict())
+    return out
+
+
 @models_router.get("", response_model=list[ModelOut])
 async def list_models(
     stage: ModelStage | None = None,
     state: ModelState | None = None,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_operator_or_admin),
-) -> list[Model]:
+) -> list[ModelOut]:
     stmt = select(Model).order_by(Model.stage, Model.name)
     if stage is not None:
         stmt = stmt.where(Model.stage == stage)
     if state is not None:
         stmt = stmt.where(Model.state == state)
-    return list((await db.execute(stmt)).scalars().unique().all())
+    rows = list((await db.execute(stmt)).scalars().unique().all())
+    return [_with_weight_status(m) for m in rows]
 
 
 @models_router.get("/{model_id}", response_model=ModelOut)
@@ -81,8 +101,8 @@ async def get_model(
     model_id: UUID,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_operator_or_admin),
-) -> Model:
-    return await _get_model_or_404(db, model_id)
+) -> ModelOut:
+    return _with_weight_status(await _get_model_or_404(db, model_id))
 
 
 @models_router.post(
@@ -260,6 +280,75 @@ async def upsert_availability(
     await db.commit()
     await db.refresh(row)
     return row
+
+
+# --------------------------------------------------------------------------
+# weights (WP-65)
+# --------------------------------------------------------------------------
+
+@models_router.get("/{model_id}/weight-status", response_model=WeightStatusOut)
+async def weight_status(
+    model_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_operator_or_admin),
+) -> WeightStatusOut:
+    """The honest state of one model's weights. No side effects.
+
+    Computable without credentials or network: every refusal short of the
+    transfer itself is decidable offline, which is what lets the admin page
+    label a model correctly before anyone clicks anything.
+    """
+    model = await _get_model_or_404(db, model_id)
+    return WeightStatusOut(**weights.compute_status(model).as_dict())
+
+
+@models_router.post(
+    "/{model_id}/fetch-weights",
+    response_model=FetchWeightsOut,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def fetch_weights(
+    model_id: UUID,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_admin),
+) -> FetchWeightsOut:
+    """Fetch a certified model's weights to the node that will run it.
+
+    ADMIN-ONLY AND GUI-ONLY -- the standing IVGS rule that admin functionality
+    has no CLI. The refusals are first-class results, not errors: a model whose
+    engine has no host, or whose certification is engine-only, gets a recorded
+    placement row saying exactly that, so "nobody has tried" and "this can
+    never work" stop looking the same.
+
+    The response is 202 in every case. A refusal is an ANSWER -- it is the
+    outcome of the action the admin asked for, and it is durable. The
+    ``accepted`` flag and ``state`` say which happened; the page does not have
+    to parse an error body to find out.
+    """
+    model = await _get_model_or_404(db, model_id)
+
+    outcome = fetch_model_weights(model)
+    row = await weights.record_outcome(
+        db, model, outcome, actor=current_user.username,
+    )
+    await db.commit()
+    await db.refresh(model)
+
+    status_now = weights.compute_status(model)
+    return FetchWeightsOut(
+        accepted=outcome.ok,
+        state=status_now.state,
+        reason=None if outcome.ok else (outcome.error.reason if outcome.error else None),
+        message=(
+            f"weights already present and verified on {row.node_id}"
+            if outcome.skipped_present
+            else f"fetched and verified {row.file_count or 0} file(s) to {row.node_id}"
+            if outcome.ok
+            else str(outcome.error)
+        ),
+        placement=row,
+        status=WeightStatusOut(**status_now.as_dict()),
+    )
 
 
 # --------------------------------------------------------------------------

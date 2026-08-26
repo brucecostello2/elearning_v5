@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1123** | **0** | 0 | 0 | 1061 (WP-63) |
+| `ivgs-api` | **1208** | **0** | 0 | 0 | 1123 (WP-64) |
 | `ivgs-workers` | **887** | 18 | 48 | 15 | 868 (WP-63) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2242** | **50** | **63** | **45** | 2133 / 50 (WP-63) |
+| **Total** | **2327** | **50** | **63** | **45** | 2242 / 50 (WP-64) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,39 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-65 added 85 tests (2026-08-26) and moved no failure row.** All 85 in
+`ivgs-api` (1123 -> 1208). `ivgs-workers` re-run in the same session and is
+byte-for-byte unchanged: **887 passed, 18 failed, 48 skipped, 15 errors** — the
+same four figures this document already carries, each the tail line of a run.
+`shared/models/model_store.py` gained a table that workers import, which is why
+that tree was re-run rather than assumed. This tree now needs migration **0039**.
+
+0039 adds ONE TABLE (`model_weight_placements`) and ONE ENUM TYPE
+(`weight_placement_status`) and alters nothing existing, so it carries no risk
+to a live row. **Its downgrade is complete and was exercised**, unlike the
+enum-label migrations either side of it: `upgrade 0038->0039` then
+`downgrade 0039->0038` then `upgrade` again on `ivgs_reconciliation_test`, with
+`to_regclass` and `pg_type` checked at each step — table and type both present,
+both gone, both back. A new type created by its own migration can be dropped
+cleanly because no pre-existing row carries it; that is why 0027, 0033, 0034 and
+0038 are deliberate no-ops and this one is not.
+
+**ONE EXISTING TEST FILE WAS STRENGTHENED AND NOT ONE ASSERTION WAS WEAKENED.**
+`ivgs-api/tests/test_wp63_storyboard_prompt.py` stays at **34 tests** — no count
+moved — while `check_visuals` gains near-duplicate detection on top of its
+existing byte-identity check. Everything it rejected before, it still rejects.
+Re-run against the operator's real v4 storyboard (project 92e30c7e, 13 scenes,
+read-only), the strengthened check finds **six** repeated pictures where the old
+one found three: scene 8 is 100% content-identical to scene 2, scene 7 is 94% of
+scene 1, scene 5 is 90% of scene 3. The threshold (0.85) is measured, not
+chosen: the six repeats score 90-100% and the highest non-repeat scores 60%.
+
+**AND ONE ASSERTION WP-65 WAS ASKED FOR WAS DELIBERATELY NOT MADE.** The brief
+asked the checker to "fail a description containing multi-digit numerals".
+`DIGITS` is `re.compile(r"\d")` and already fails on a SINGLE digit, so writing
+the requested assertion would have been a **relaxation**. It is recorded here
+rather than quietly skipped: better discrimination, never looser gates.
 
 **WP-64 added 109 tests (2026-08-26) and moved no failure row.** 62 in
 `ivgs-api` (1061 -> 1123), 19 in `ivgs-workers` (868 -> 887) and 28 in

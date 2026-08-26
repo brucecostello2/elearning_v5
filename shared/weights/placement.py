@@ -1,0 +1,274 @@
+"""WP-65 Task 3 -- where an engine's weights go, and which node hosts it.
+
+Placement is DATA. The alternative -- paths built inline in the fetch code --
+is how bytes end up somewhere no loader looks while the store records them as
+available, which is the defect this package exists to close.
+
+MEASURED 2026-08-26 from the committed compose files, not from AD-02's prose
+(AD-02 describes roles; the compose files say which engine actually has a
+container and which directory it mounts):
+
+``ivgs-infra/docker-compose.node04.yml:59-68``
+    ``comfyui`` / ``ivgs-comfyui-primary`` mounts ONE directory --
+    ``/data/models/comfyui/checkpoints`` -> ``models/checkpoints:ro``. Probed
+    live the same day: ``ckpt_name = ['flux1-schnell-fp8.safetensors']`` and
+    ``unet_name``, ``lora_name``, ``clip_name`` all ``[]``. It is a
+    FLUX-only ComfyUI.
+
+``ivgs-infra/docker-compose.node03.yml:191-207``
+    ``wan-animate-server`` / ``ivgs-wan-animate-server-node03`` mounts eight
+    directories under ``/opt/models/comfyui-wan/models/``. Probed live:
+    ``WanVideoModelLoader.model =
+    ['Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors']``.
+
+THE TWO ARE THE SAME IVGS ENGINE KEY. ``docker-compose.node03.yml:113-120``
+says so in as many words: both resolve through ``IVGS_COMFYUI_URL``, and they
+are told apart by the PER-WORKER value of that variable plus queue routing
+(node-03 consumes ``gpu_video,gpu_animation``; node-04 consumes
+``gpu_image,gpu_tts,gpu_talking_head``). So an IVGS engine key does NOT
+identify a host, and placement cannot be keyed on the engine enum alone -- it
+is keyed on the (engine, deployment) pair this module calls an ENGINE HOST.
+
+Directory layout under each host is transcribed from MBCP's own
+``ENGINE_MATERIALIZATION`` (``mbcp_core/weights/materialization.py:37-100``),
+which is the map the .51 materializer already writes node-03's tree with. IVGS
+follows it rather than inventing a second convention.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+from shared.weights.errors import NoHostForEngineError, NoPlacementRuleError
+
+#: Fallback destination when a bundle declares no family. ComfyUI loaders look
+#: in type-named subdirectories; ``diffusion_models`` is where a bare model
+#: bundle belongs for the Wan pack. Never used to invent a NEW directory --
+#: only ever one already mounted by the host.
+_DEFAULT_FAMILY_DEST = "diffusion_models"
+
+
+@dataclass(frozen=True)
+class EngineHost:
+    """One engine deployment: a node, a container, and a model root.
+
+    ``node_id`` is the fleet node name (``node-03``), NOT the GPU-suffixed
+    scheduler form (``node-03:gpu0``) -- weights live on a node, not on a GPU.
+    """
+
+    engine: str
+    node_id: str
+    container: str
+    #: Host-side root the container mounts its ``models/`` tree from.
+    model_root: str
+    #: Subdirectories the container actually mounts. A destination outside
+    #: this set is refused: writing there puts bytes where no loader looks.
+    mounted_dests: tuple[str, ...]
+    #: MBCP engine-image key, where one exists -- the key into
+    #: ``ENGINE_MATERIALIZATION``.
+    mbcp_engine_key: str | None = None
+    #: Which Celery queues route work here. Placement that ignores this
+    #: attributes a model to a node that never receives its stage's jobs.
+    queues: tuple[str, ...] = ()
+    notes: str = ""
+
+
+@dataclass(frozen=True)
+class PlacementRule:
+    """Where one bundle's files go under a host's model root."""
+
+    host: EngineHost
+    #: family -> destination subdirectory, from MBCP's materialization map.
+    dest_by_family: dict[str, str] = field(default_factory=dict)
+
+    def dest_for(self, family: str | None) -> str:
+        """Absolute host-side directory for ``family``.
+
+        :raises NoPlacementRuleError: the resolved destination is not one the
+            host container mounts.
+        """
+        sub = self.dest_by_family.get(family or "", _DEFAULT_FAMILY_DEST)
+        if sub not in self.host.mounted_dests:
+            raise NoPlacementRuleError(
+                f"engine host {self.host.container} on {self.host.node_id} does "
+                f"not mount a {sub!r} directory (it mounts "
+                f"{', '.join(self.host.mounted_dests)}), so weights for family "
+                f"{family!r} have nowhere a loader would find them"
+            )
+        return f"{self.host.model_root.rstrip('/')}/{sub}"
+
+
+# ---------------------------------------------------------------------------
+# The fleet, as measured. One row per ENGINE DEPLOYMENT, not per engine.
+# ---------------------------------------------------------------------------
+
+#: node-03's Wan pack. Directories transcribed from
+#: docker-compose.node03.yml:197-206.
+_WAN_DESTS = (
+    "diffusion_models",
+    "text_encoders",
+    "vae",
+    "clip_vision",
+    "detection",
+    "loras",
+    "sam2",
+    "onnx",
+)
+
+#: family -> dest, from mbcp_core/weights/materialization.py
+#: ENGINE_MATERIALIZATION["comfyui-wan"].
+_WAN_FAMILY_DESTS = {
+    "wan_animate": "diffusion_models",
+    "wan_vae": "vae",
+    "wan_textenc": "text_encoders",
+    "wan_clipvision": "clip_vision",
+    "wan_lora": "loras",
+    "wan_lora_distill": "loras",
+    "wan_t2v_high": "diffusion_models",
+    "wan_t2v_low": "diffusion_models",
+    "wan_t2v_lora_high": "loras",
+    "wan_t2v_lora_low": "loras",
+    "wan_preproc_sam": "sam2",
+    "wan_preproc_det": "detection",
+    "wan_preproc_pose": "onnx",
+}
+
+ENGINE_HOSTS: tuple[EngineHost, ...] = (
+    EngineHost(
+        engine="comfyui",
+        node_id="node-03",
+        container="ivgs-wan-animate-server-node03",
+        model_root="/opt/models/comfyui-wan/models",
+        mounted_dests=_WAN_DESTS,
+        mbcp_engine_key="comfyui-wan",
+        queues=("gpu_video", "gpu_animation"),
+        notes=(
+            "The animation host. docker-compose.node03.yml:191-207. Reached by "
+            "node-03's worker as IVGS_COMFYUI_URL=http://wan-animate-server:8188 "
+            "(:120) and cross-node on 192.168.1.92:8220 (:208)."
+        ),
+    ),
+    EngineHost(
+        engine="comfyui",
+        node_id="node-04",
+        container="ivgs-comfyui-primary",
+        model_root="/data/models/comfyui",
+        mounted_dests=("checkpoints",),
+        mbcp_engine_key=None,
+        queues=("gpu_image", "gpu_tts", "gpu_talking_head"),
+        notes=(
+            "The image host. docker-compose.node04.yml:59-68 mounts checkpoints "
+            "ONLY, read-only. Probed 2026-08-26: one checkpoint, "
+            "flux1-schnell-fp8.safetensors. It cannot host an animation bundle "
+            "-- there is no diffusion_models mount to put one in."
+        ),
+    ),
+    EngineHost(
+        engine="cogvideox",
+        node_id="node-03",
+        container="ivgs-cogvideox-server-node03",
+        model_root="/opt/models",
+        mounted_dests=("cogvideox-5b",),
+        mbcp_engine_key=None,
+        queues=("gpu_video",),
+        notes="docker-compose.node03.yml:150-161, MODEL_PATH=/opt/models/cogvideox-5b.",
+    ),
+    EngineHost(
+        engine="vllm",
+        node_id="node-02",
+        container="ivgs-vllm-primary",
+        model_root="/data/models",
+        mounted_dests=("hub",),
+        mbcp_engine_key=None,
+        queues=("gpu_llm",),
+        notes="docker-compose.node02.yml:57-70, HF_HOME=/data/models.",
+    ),
+)
+
+#: Engines IVGS knows by name but which NO node on this fleet hosts. Listed
+#: rather than left to fall through, so the refusal can say something true.
+#: ``animatediff`` is here because it is a stale IVGS-only engine key -- MBCP
+#: serves AnimateDiff on ComfyUI (see WP-65 Task 5); no container answers it.
+UNHOSTED_ENGINES: dict[str, str] = {
+    "animatediff": (
+        "no container on this fleet serves the 'animatediff' engine; MBCP "
+        "certifies AnimateDiff against 'comfyui' and IVGS's own ingest default "
+        "has agreed since WP-46 (ad01_ingest.py:70)"
+    ),
+    "remotion": (
+        "no Remotion container runs on node-02, node-03 or node-04 "
+        "(verified 2026-08-26)"
+    ),
+    "sadtalker": "no sadtalker container is deployed on this fleet",
+    "wan21": "no standalone wan21 server is deployed; Wan runs under comfyui on node-03",
+}
+
+
+def hosts_for_engine(engine: str) -> tuple[EngineHost, ...]:
+    """Every deployment of ``engine`` on this fleet, in placement order."""
+    return tuple(h for h in ENGINE_HOSTS if h.engine == engine)
+
+
+def placement_for(engine: str, *, node_id: str | None = None) -> PlacementRule:
+    """The placement rule for ``engine``, optionally pinned to one node.
+
+    :raises NoHostForEngineError: nothing on this fleet serves ``engine``, or
+        nothing on ``node_id`` does. **This is a correct outcome**, not a
+        fault: it is the state AnimateDiff-SD15 and MimicMotion are in.
+    """
+    candidates = hosts_for_engine(engine)
+    if node_id is not None:
+        candidates = tuple(h for h in candidates if h.node_id == node_id)
+
+    if not candidates:
+        known = UNHOSTED_ENGINES.get(engine)
+        where = f" on {node_id}" if node_id else ""
+        if known:
+            raise NoHostForEngineError(f"no node hosts engine {engine!r}{where}: {known}")
+        raise NoHostForEngineError(
+            f"no node hosts engine {engine!r}{where}; the fleet serves "
+            f"{', '.join(sorted({h.engine for h in ENGINE_HOSTS}))}"
+        )
+
+    host = candidates[0]
+    dest_by_family = dict(_WAN_FAMILY_DESTS) if host.mbcp_engine_key == "comfyui-wan" else {}
+    return PlacementRule(host=host, dest_by_family=dest_by_family)
+
+
+def host_for_model(engine: str, stage: str) -> EngineHost:
+    """The host that will actually RUN ``(engine, stage)`` on this fleet.
+
+    Disambiguates the two ``comfyui`` deployments the way the running system
+    does -- by which node's worker consumes the stage's queue -- instead of
+    taking whichever row comes first.
+
+    :raises NoHostForEngineError: no host serves that pair.
+    """
+    queue = _STAGE_QUEUE.get(stage)
+    candidates = hosts_for_engine(engine)
+    if not candidates:
+        return placement_for(engine).host  # raises with the right message
+    if queue is not None:
+        matched = tuple(h for h in candidates if queue in h.queues)
+        if matched:
+            return matched[0]
+        raise NoHostForEngineError(
+            f"engine {engine!r} is hosted on this fleet, but no host of it "
+            f"consumes queue {queue!r} (stage {stage!r}); "
+            + "; ".join(f"{h.container} serves {', '.join(h.queues)}" for h in candidates)
+        )
+    return candidates[0]
+
+
+#: stage -> Celery queue. Transcribed from the compose ``--queues`` lines
+#: measured 2026-08-26 and from ivgs-workers task routing.
+_STAGE_QUEUE: dict[str, str] = {
+    "image_generation": "gpu_image",
+    "video_generation": "gpu_video",
+    "animation_generation": "gpu_animation",
+    "voiceover_tts": "gpu_tts",
+    "talking_head": "gpu_talking_head",
+    "transcript_refinement": "gpu_llm",
+    "storyboard_generation": "gpu_llm",
+    "translation": "gpu_llm",
+    "composition": "composition",
+}

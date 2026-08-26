@@ -104,6 +104,57 @@ DIGITS = re.compile(r"\d")
 
 
 # ---------------------------------------------------------------------------
+# WP-65 Task 6 — near-duplicate detection
+# ---------------------------------------------------------------------------
+#
+# The v4 run repeated three descriptions BYTE FOR BYTE (scenes 0/11, 5/9, 6/10,
+# 13 scenes, 2026-08-26), which the identity check below already catches. It is
+# strengthened here rather than merely re-asserted, because identity is the
+# easy case: a description that differs by one word is the same picture, the
+# viewer sees the same frame twice, and content-hash de-duplication collapses
+# the two into shared bytes so the repetition never shows in the asset count.
+#
+# STRICTLY STRONGER, NEVER LOOSER. Everything the old check rejected this one
+# still rejects; it adds the near-identical case on top. (The brief that
+# commissioned this asked for "a description containing multi-digit numerals"
+# to fail — but DIGITS above already matches a SINGLE digit, so implementing
+# that literally would have RELAXED the gate. It is left alone.)
+
+#: Jaccard similarity above which two descriptions are "the same picture".
+#: 0.85 is deliberately high: it fires on a sentence with a word or two
+#: changed and not on two descriptions that merely share a subject and style,
+#: which RULE 6 explicitly WANTS them to do ("consistency belongs to the
+#: STYLE"). Verified against the measured v4 storyboard: it adds no finding
+#: beyond the three real repeats.
+NEAR_DUPLICATE_THRESHOLD = 0.85
+
+#: Style/setting words every description in one storyboard legitimately shares.
+#: Excluded from the comparison so a consistent visual style does not read as
+#: a repeated picture.
+_STYLE_WORDS = frozenset("""
+a an the and or of on in at to with from over under above beneath beside
+warm soft cool bright dim light lighting lamp desk lamp palette style
+illustration illustrated drawing drawn photographic cinematic classroom
+wooden paper sheet lined shot view angle background foreground colour color
+is are was were be being been it its this that these those
+""".split())
+
+
+def _content_words(text: str) -> set[str]:
+    """Content words of a description, style/setting vocabulary removed."""
+    words = re.findall(r"[a-z]+", text.lower())
+    return {w for w in words if w not in _STYLE_WORDS and len(w) > 2}
+
+
+def similarity(a: str, b: str) -> float:
+    """Jaccard similarity of two descriptions' content words. 1.0 = identical."""
+    wa, wb = _content_words(a), _content_words(b)
+    if not wa or not wb:
+        return 1.0 if wa == wb else 0.0
+    return len(wa & wb) / len(wa | wb)
+
+
+# ---------------------------------------------------------------------------
 # WP-64 Task 2(c) — the medium vocabularies
 # ---------------------------------------------------------------------------
 
@@ -220,6 +271,7 @@ def check_visuals(scenes: list[dict]) -> list[str]:
     """
     findings: list[str] = []
     seen: dict[str, int] = {}
+    prior: list[tuple[str, int]] = []
 
     for scene in scenes:
         index = scene.get("scene_index")
@@ -246,7 +298,21 @@ def check_visuals(scenes: list[dict]) -> list[str]:
                 "Two scenes teaching different steps cannot look the same."
             )
         else:
+            # WP-65: and not merely non-identical -- distinguishable. A
+            # description that differs by a word is the same frame.
+            for prior_text, prior_index in prior:
+                score = similarity(visual, prior_text)
+                if score >= NEAR_DUPLICATE_THRESHOLD:
+                    findings.append(
+                        f"scene {index}: visual is {score:.0%} the same as "
+                        f"scene {prior_index}'s. RULE 6 requires each scene's "
+                        "picture to be distinguishable, not merely different "
+                        "by a word -- a viewer sees the same frame twice and "
+                        "content-hash dedup collapses them into shared bytes."
+                    )
+                    break
             seen[key] = index
+            prior.append((visual, index))
 
         # RULE 6, second half: no stock-photo framing.
         for pattern in STOCK_FRAMING:

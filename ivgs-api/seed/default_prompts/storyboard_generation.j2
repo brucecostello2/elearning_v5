@@ -61,6 +61,34 @@ SHOWING ANY. See RULE 5: describe the board STATE and the STEP in words —
 still empty" — and let the overlay supply the digits. That is specific, and it
 contains no text for the model to misspell.
 
+NAMING A NUMBER IN PROSE IS STILL ASKING FOR IT TO BE DRAWN. This is the way
+RULE 1 was measured breaking on a real v4 run (13 scenes, 2026-08-26): five of
+thirteen descriptions named the operands — "23 on top and 14 underneath",
+"the 3 and the 4" — while three others correctly described structure only
+("the first partial-product row already written above a ruled horizontal
+line"). The five that named digits are asking the image model for those exact
+numerals just as surely as "a whiteboard with 23 x 14 written on it" does; the
+model does not distinguish a numeral you mentioned from a numeral you demanded,
+and it renders both as text-shaped marks.
+
+THE TEST, and apply it to every description before you write it down: if you
+delete every digit from your description, does it still say what this scene
+teaches? If deleting the digits empties it, you described the numbers. If it
+survives, you described the STRUCTURE, which is what the image must carry.
+
+  - WRONG: "23 on top and 14 underneath, the multiplication sign to the left"
+  - WRONG: "a column showing the 3 and the 4 being multiplied"
+  - WRONG: "the two-digit number 23 above the two-digit number 14"
+  - RIGHT: "a two-row column layout on lined paper, the upper row one digit
+    wider than the lower, a multiplication sign to the left of the lower row,
+    a ruled horizontal line beneath both and the answer row still empty"
+
+POSITION, COUNT, WIDTH, ORDER and EMPTINESS are all describable without a
+numeral: "the leftmost column", "a single carry mark above the second column
+from the right", "the first of two partial-product rows", "one digit wider".
+Use those. The composition overlay puts the actual numbers in, in a real font,
+in a later stage.
+
 RULE 2 — CHOOSE media_type DELIBERATELY, SCENE BY SCENE
 media_type is a DECISION you make for each scene against the criteria below.
 It is not a default you fall into. Measured on a real run of this pipeline
@@ -163,6 +191,41 @@ So:
   lighting and drawing style carry across scenes, while what is ON the working
   surface changes in every one.
 
+A SCENE THAT REVISITS AN EARLIER STEP IS STILL A DIFFERENT SCENE, AND THIS IS
+WHERE v4 BROKE. Measured on a real v4 run (13 scenes, 2026-08-26): scene 11
+carried scene 0's description byte for byte, scene 9 carried scene 5's, and
+scene 10 carried scene 6's — the whole tail of the storyboard repeating its
+head. A longer lesson recaps, summarises and checks its work, and v4 gave you
+no sanctioned way to picture a recap, so the descriptions were copied instead.
+Copying is never the answer:
+
+- A RECAP scene shows the COMPLETED working, not the working mid-step. The
+  page at the end of the lesson has more on it than the page at any earlier
+  moment, so a summary scene's description is the fullest one in the
+  storyboard, never a repeat of the emptiest.
+- A CHECKING scene shows the attention returning to a part already written —
+  "the pencil tip resting back at the head of the first partial-product row
+  while the completed answer row sits beneath the ruled line" — which is a
+  different picture from the scene that WROTE that row, because the page is no
+  longer in that state.
+- An OPENING and a CLOSING scene are not the same shot of the same desk. If the
+  lesson opens on a bare working surface it closes on a full one.
+
+BEFORE YOU OUTPUT, RE-READ YOUR OWN DESCRIPTIONS AS A SET. Lay them side by
+side and check three things:
+  1. NO TWO ARE THE SAME, and no two are the same sentence with a word
+     changed. Near-identical is identical: the viewer sees the same frame
+     twice, and content-hash de-duplication collapses them into shared bytes,
+     so the repetition never shows up in the asset count.
+  2. EACH ONE NAMES SOMETHING NO OTHER ONE NAMES — a row that is now written
+     and was not before, a carry mark that has appeared, an answer row that has
+     filled. That difference is what makes it this scene's picture.
+  3. THE WORKING SURFACE ONLY EVER GAINS. Read them in order: the page must
+     accumulate from the first to the last. If a later description shows LESS
+     on the page than an earlier one, it is a copy and you must rewrite it.
+If any check fails, rewrite the offending description before you output — do
+not output a storyboard you know repeats itself.
+
 RULE 7 — WRITE THE DESCRIPTION FOR THE MEDIUM YOU JUST CHOSE
 media_type and "visual_description" are ONE decision, not two. A description
 authored for a still and then labelled "video_clip" gives the video engine a
@@ -213,7 +276,9 @@ Visual guidelines:
 - Carry the language of the medium chosen for that scene (RULE 7): motion,
   camera and order for "video_clip"; the build, its order and the person for
   "animation"; one composed instant for "image"
-- Contain no text of any kind (RULE 1)
+- Contain no text of any kind, and name no numeral even in prose (RULE 1)
+- Be distinguishable from every other scene's, including any scene that
+  revisits an earlier step (RULE 6)
 
 TRANSCRIPT:
 {{ combined_transcript }}

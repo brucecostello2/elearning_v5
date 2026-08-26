@@ -14,6 +14,7 @@ from shared.models.model_store import (
     ModelTier,
     NodeAvailabilityStatus,
     SelectionSource,
+    WeightPlacementStatus,
 )
 
 # --- capability tags -------------------------------------------------------
@@ -264,6 +265,62 @@ class AvailabilityOut(BaseModel):
     last_health_check: datetime | None = None
 
 
+class WeightPlacementOut(BaseModel):
+    """WP-65 -- one model's BYTES on one node. Distinct from AvailabilityOut.
+
+    ``AvailabilityOut`` reports the GPU scheduler's LRU of models a job once
+    loaded; this reports bytes verified on a node's disk. See
+    ``ModelWeightPlacement``'s docstring for why they cannot be one row.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    node_id: str
+    status: WeightPlacementStatus
+    dest_dir: str | None = None
+    engine_container: str | None = None
+    bundle_digest: str | None = None
+    file_count: int | None = None
+    bytes_on_disk: int | None = None
+    checksum_verified: bool
+    signature_verified: bool
+    last_error_reason: str | None = None
+    last_error: str | None = None
+    fetched_at: datetime | None = None
+    fetched_by: str | None = None
+
+
+class WeightStatusOut(BaseModel):
+    """The one computed answer the admin surface renders.
+
+    ``state`` is the machine slug the UI switches on; ``label`` and ``detail``
+    are the words. ``bytes_on_disk`` is deliberately nullable -- ``None`` means
+    "not measured", which is NOT the same claim as ``0``.
+    """
+
+    state: str
+    label: str
+    detail: str | None = None
+    verified_nodes: list[str] = Field(default_factory=list)
+    bytes_on_disk: int | None = None
+    can_fetch: bool = False
+    target_node: str | None = None
+    target_dir: str | None = None
+    target_container: str | None = None
+    credentials_present: bool = False
+
+
+class FetchWeightsOut(BaseModel):
+    """The result of a Fetch weights action -- including the refusals."""
+
+    accepted: bool
+    state: str
+    reason: str | None = None
+    message: str
+    placement: WeightPlacementOut | None = None
+    status: WeightStatusOut
+
+
 class ModelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -291,6 +348,12 @@ class ModelOut(BaseModel):
     updated_at: datetime
     capability_tags: list[CapabilityTagOut] = Field(default_factory=list)
     node_availability: list[AvailabilityOut] = Field(default_factory=list)
+    # WP-65. Bytes on disk, and the computed state an admin acts on. Kept
+    # ALONGSIDE node_availability rather than replacing it: the two answer
+    # different questions and the store now shows both rather than letting one
+    # word stand for four different facts.
+    weight_placements: list[WeightPlacementOut] = Field(default_factory=list)
+    weight_status: WeightStatusOut | None = None
     approvals: list[ApprovalOut] = Field(default_factory=list)
 
 

@@ -8,6 +8,9 @@ migration ``0026_ad01_model_store`` exactly:
     models, model_capability_tags, model_node_availability,
     model_approvals, project_model_selections
 
+plus ``model_weight_placements`` (WP-65, migration 0039) -- see that class for
+why the byte record could not live in ``model_node_availability``.
+
 Lifecycle (AD-01.5.1): CANDIDATE -> APPROVED (attestation-gated, AD-01.7.2)
 -> DEPRECATED -> RETIRED. Only APPROVED models are *planner-selectable*;
 DEPRECATED models remain servable for selections that already exist.
@@ -26,6 +29,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
+    BigInteger,
     Boolean,
     DateTime,
     ForeignKey,
@@ -216,6 +220,12 @@ class Model(Base):
     node_availability: Mapped[list[ModelNodeAvailability]] = relationship(
         back_populates="model", cascade="all, delete-orphan", lazy="selectin",
     )
+    weight_placements: Mapped[list[ModelWeightPlacement]] = relationship(
+        "ModelWeightPlacement",
+        back_populates="model",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
     approvals: Mapped[list[ModelApproval]] = relationship(
         back_populates="model", cascade="all, delete-orphan", lazy="selectin",
     )
@@ -393,4 +403,131 @@ class ProjectModelSelection(Base):
             "ix_selections_scope",
             "project_id", "stage", "tier", "scene_id",
         ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# model_weight_placements  (WP-65, migration 0039)
+# ---------------------------------------------------------------------------
+
+class WeightPlacementStatus(str, enum.Enum):
+    """Lifecycle of one model's bytes on one node."""
+
+    #: A fetch is in flight. Bytes are in a staging tree, not yet loadable.
+    FETCHING = "fetching"
+    #: Every manifest file present under the engine's model root, each
+    #: SHA-256 verified against the signed manifest.
+    VERIFIED = "verified"
+    #: A fetch was attempted and refused or failed. ``last_error`` says which.
+    FAILED = "failed"
+    #: Bytes were verified once and have since been removed or superseded.
+    REMOVED = "removed"
+
+
+class ModelWeightPlacement(Base):
+    """WP-65 -- BYTES on a NODE. Fetch-owned, not poller-owned.
+
+    WHY THIS IS A NEW TABLE AND NOT COLUMNS ON ``model_node_availability``
+    ---------------------------------------------------------------------
+    The two record different facts and have different owners, and merging them
+    would make the fetch record self-erasing.
+
+    ``model_node_availability`` is a projection of the GPU scheduler's Redis
+    LRU set: ``ivgs-scheduler/scheduler.py:303`` records a model load when a
+    JOB runs, ``get_loaded_models`` reads it back
+    (``model_concurrency.py:307-320``), ``GET /fleet`` publishes it
+    (``ivgs-scheduler/main.py:787``), and
+    ``poll_model_node_availability`` reconciles it into PG
+    (``ivgs-workers/tasks/periodic_tasks.py:1017``). That poller runs **every
+    30 seconds** (``ivgs-workers/celery_app.py:380``) and its reconcile
+    unconditionally flips every AVAILABLE row not backed by the current fleet
+    snapshot to UNAVAILABLE (``periodic_tasks.py:996-1000``). A fetch result
+    written into that table would therefore be erased within half a minute,
+    because the poller has no idea bytes exist and would not put them in
+    ``desired``.
+
+    Their semantics differ too. Availability answers *"a job loaded this model
+    name on this node at some point"* -- the LRU key carries no TTL (measured
+    ``ttl=-1``, 2026-08-26) so it never expires, and stale container-hash node
+    ids from long-dead workers are still in it. Placement answers *"these
+    exact bytes are on this node's disk under the directory this engine loads
+    from, and their hashes were checked"*. Both are worth having; only one of
+    them is evidence.
+
+    They also disagree about what a node IS. Availability stores the
+    scheduler's GPU-scoped id (``node-04:gpu0``); weights live on a node's
+    filesystem, not on a GPU, so this table stores ``node-03``.
+
+    Measured on 2026-08-26, the two answers were different for the one model
+    the store called available: ``model_node_availability`` said
+    ``wan2.2-animate`` was on ``node-04:gpu0``, while the bytes were on
+    **node-03** -- ``ivgs-wan-animate-server-node03`` enumerated
+    ``Wan22Animate/Wan2_2-Animate-14B_fp8_e4m3fn_scaled_KJ.safetensors`` and
+    node-04's ComfyUI mounts only ``checkpoints`` and could not have held it.
+    """
+
+    __tablename__ = "model_weight_placements"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True,
+        server_default=text("uuid_generate_v4()"),
+        default=uuid.uuid4,
+    )
+    model_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("models.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    #: Fleet node name (``node-03``) -- NOT the scheduler's ``node-03:gpu0``.
+    node_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[WeightPlacementStatus] = mapped_column(
+        _sa_enum(WeightPlacementStatus, "weight_placement_status"),
+        nullable=False,
+        server_default=WeightPlacementStatus.FETCHING.value,
+    )
+    #: Host-side directory the bytes were placed in, so an operator can look.
+    dest_dir: Mapped[str | None] = mapped_column(String(512), nullable=True)
+    #: The engine container that mounts ``dest_dir``. Recorded because one
+    #: IVGS engine key can have two deployments with different model roots
+    #: (``comfyui`` -> node-03's Wan pack and node-04's FLUX ComfyUI).
+    engine_container: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    #: Bundle digest actually fetched and verified. NOT copied from
+    #: ``models.weights_checksum``: that column holds whatever MBCP put in
+    #: ``bundle_digest``, which for an engine-only certification is the ENGINE
+    #: IMAGE digest -- five live rows share one value for that reason.
+    bundle_digest: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    file_count: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    bytes_on_disk: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    #: Every file's SHA-256 matched the signed manifest.
+    checksum_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    #: The manifest HMAC verified. False means the signing key was not
+    #: supplied, so the bundle is self-consistent but not proven to be MBCP's.
+    signature_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default=text("false"),
+    )
+    #: The ``reason`` slug of the refusal, when status is FAILED. The admin
+    #: surface switches on this to say which of the several different absences
+    #: this is.
+    last_error_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    fetched_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True,
+    )
+    #: Who asked for the fetch. An admin username, or a task name.
+    fetched_by: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=text("now()"),
+    )
+
+    model: Mapped[Model] = relationship(back_populates="weight_placements")
+
+    __table_args__ = (
+        UniqueConstraint("model_id", "node_id", name="uq_placement_model_node"),
+        Index("ix_placement_node", "node_id"),
+        Index("ix_placement_status", "status"),
     )
