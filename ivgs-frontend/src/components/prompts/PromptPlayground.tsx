@@ -36,10 +36,26 @@ import type {
  *   - Llama 3.3 70B (node-02 + node-03)
  *   - Qwen2.5 72B (node-02 + node-03)
  *   - Mistral 24B (node-04)
- * Ollama:
- *   - Llama 3.2 8B (node-05)
- *   - Phi-3 Medium (node-05)
- *   - Gemma 2 9B (node-05)
+ *   - Qwen3.8 27B FP8 (node-05)   [WP-61: the one entry here that is measured]
+ *
+ * WP-61 Task 2. THE THREE OLLAMA ENTRIES ON node-05 ARE GONE, and they were
+ * not a typo: Llama 3.2 8B, Phi-3 Medium and Gemma 2 9B were listed as
+ * running on node-05 with 8 GB of VRAM each. node-05 has never run Ollama,
+ * has never held any of those three, and its card is a 48 GB RTX PRO 5000
+ * Blackwell, not an 8 GB anything. Selecting one of them sent a completion to
+ * `OLLAMA_URL` (node-05:11434), where nothing has ever listened. AD-02
+ * Draft 4 §1.2 records the same three services being asserted of this node in
+ * the specification, and says the same thing: "None of that has ever run on
+ * node-05."
+ *
+ * WHAT IS STILL DECLARED RATHER THAN MEASURED, and is deliberately left
+ * alone: `qwen2.5-72b` on node-02+node-03 is not in the Model Store and this
+ * package did not verify it, and the tensor-parallel pairing claimed for both
+ * node-02 entries is a §7.1 declaration. This list should be READ from
+ * `/api/v1/models` rather than transcribed from a spec section, which is a
+ * package of its own and is ledgered as such. Correcting only the node-05 rows
+ * is the scope of this task; rewriting the others silently would be a claim
+ * this package cannot support.
  *
  * @param onBack - Navigation callback to return to parent view
  */
@@ -74,31 +90,17 @@ const AVAILABLE_MODELS: PlaygroundModel[] = [
     description: "Mid-size LLM: image prompt generation, scene analysis",
   },
   {
-    id: "llama-3.2-8b",
-    name: "Llama 3.2 8B",
-    provider: "Ollama",
+    // WP-61. The served-model-name node-05's vLLM actually answers to
+    // (`--served-model-name qwen38-27b`), so a playground call reaches a real
+    // model rather than a 404 from a server that has never heard of it.
+    id: "qwen38-27b",
+    name: "Qwen3.8 27B FP8",
+    provider: "vLLM",
     node: "node-05",
-    vram: "8 GB",
-    context: "8K tokens",
-    description: "LLM fallback for development, low-priority tasks",
-  },
-  {
-    id: "phi-3-medium",
-    name: "Phi-3 Medium",
-    provider: "Ollama",
-    node: "node-05",
-    vram: "8 GB",
-    context: "8K tokens",
-    description: "Fast inference for utility tasks",
-  },
-  {
-    id: "gemma-2-9b",
-    name: "Gemma 2 9B",
-    provider: "Ollama",
-    node: "node-05",
-    vram: "8 GB",
-    context: "8K tokens",
-    description: "Fallback option",
+    vram: "48 GB card",
+    context: "128K tokens",
+    description:
+      "Translation. FP8 only - the BF16 base is ~56 GB and does not fit.",
   },
 ];
 

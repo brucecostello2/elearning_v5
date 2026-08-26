@@ -319,7 +319,14 @@ def node_health_notes() -> Dict[str, str]:
             "synonym for offline."
         ),
         "gpu": (
-            "null GPU fields mean not measured, never zero. As of 2026-08-23 no "
-            "node in the fleet runs a working GPU exporter (ledger P2.6a)."
+            "null GPU fields mean not measured, never zero. CORRECTED "
+            "2026-08-26 (WP-61 Task 8): this note used to end 'As of "
+            "2026-08-23 no node in the fleet runs a working GPU exporter "
+            "(ledger P2.6a)', which this module's own docstring had already "
+            "corrected two packages earlier. P2.6a was closed by WP-48 and "
+            "nodes do serve nvidia-gpu-exporter. A caveat that is itself "
+            "stale is worse than no caveat: it sends the reader after a fixed "
+            "bug. What is true is the sentence above it - null is 'not "
+            "measured', and the per-node `telemetry.reason` says why."
         ),
     }

@@ -114,9 +114,9 @@ export interface NodeStatus {
    * of ALL six nodes "GPU Nodes Online", silently promoting node-01 — CPU-only
    * infrastructure — into the GPU fleet. The scheduler's "3/3" counts something
    * different again: node-06 has a GPU and runs the CLIP scorer but no Celery
-   * worker; node-05 has a GPU and is out of service. Three defensible numbers,
-   * none of them labelled. A surface cannot say what it counts unless the
-   * payload says what each node is.
+   * worker; node-05 (WP-61) has a GPU serving Qwen and no Celery worker
+   * either. Three defensible numbers, none of them labelled. A surface cannot
+   * say what it counts unless the payload says what each node is.
    */
   has_gpu: boolean;
   runs_pipeline_worker: boolean;
@@ -542,6 +542,23 @@ export interface GpuNodeResponse {
   gpu_utilization_pct: number | null;
   temperature_c: number | null;
   power_draw_w: number | null;
+  /**
+   * WP-61 Task 8, RULED. WHERE the three readings above came from.
+   *
+   * They are Prometheus device telemetry (`prometheus:nvidia-gpu-exporter`),
+   * the same series Node Monitor reads — not scheduler-registry fields. The
+   * registry could never carry them: the heartbeat sender shells out to
+   * `nvidia-smi` inside the worker container and the workers image has no such
+   * binary (proven 2026-08-26). "Not reported" was true and permanent.
+   *
+   * `telemetry_source` is null when nothing was measured, and
+   * `telemetry_reason` says why in words. A card must render the reason, not a
+   * zero. Note that `used_vram_mb` / `reserved_vram_mb` are NOT covered by
+   * this label — they are reservation accounting and legitimately differ from
+   * the device.
+   */
+  telemetry_source: string | null;
+  telemetry_reason: string | null;
   power_tdp_w: number | null;
   compute_capability: string | null;
   status: GpuNodeStatus;

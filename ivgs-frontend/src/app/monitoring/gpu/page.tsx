@@ -343,10 +343,18 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                 {/* WP-60 Task 2(c) — WP-57 Task 4's ruling, applied on this
                     page. "NODES ONLINE 3/3" counted neither machines (6) nor
                     GPUs (5): it counts GPU WORKERS REGISTERED WITH THE
-                    SCHEDULER, which is 3 because node-01 is CPU-only, node-05
-                    is out of service and node-06 has a GPU but runs no Celery
-                    worker. Three defensible numbers on three surfaces; this
-                    one now names which it is. */}
+                    SCHEDULER, which is 3 because node-01 is CPU-only and
+                    node-05 and node-06 each have a GPU serving a model but run
+                    no Celery worker. Three defensible numbers on three
+                    surfaces; this one now names which it is.
+
+                    WP-61 Task 2: the COUNT is unchanged at 3 and the label
+                    still reads true; the REASON for node-05 changed. It read
+                    "node-05 is out of service", which was correct on
+                    2026-08-25 and is not correct now -- node-05 is back and
+                    serving Qwen on :8000. It stays outside this count because
+                    a vLLM server is not a Celery consumer, which is node-06's
+                    reason, not its old one. */}
                 Scheduler GPU workers
               </p>
               <p
@@ -381,7 +389,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                    here asserted an idle fleet on no evidence. */
                 <p
                   className="mt-1 text-sm text-gray-400 dark:text-gray-500 py-2"
-                  title="No node in the scheduler registry has reported a GPU utilisation reading. Utilisation reaches the registry on worker heartbeats, and only when nvidia-smi succeeds on the node."
+                  title="No node reported a GPU utilisation reading. WP-61 Task 8: this figure is Prometheus device telemetry (nvidia-gpu-exporter), not a scheduler-registry field - the registry could never carry it, because the heartbeat sender reads it with nvidia-smi and the workers image has no such binary. If this says 'not reported', check the exporter and the scrape, not the workers."
                 >
                   not reported
                 </p>

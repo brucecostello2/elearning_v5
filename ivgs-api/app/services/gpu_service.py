@@ -29,6 +29,7 @@ from app.schemas.gpu import (
     ActiveJobSummary,
     GpuUtilizationPoint,
 )
+from app.core.node_health import collect_fleet_health
 from app.services.scheduler_fleet import (
     SchedulerUnavailable,
     fetch_fleet,
@@ -51,10 +52,85 @@ class GpuService:
         self.db = db
 
     async def _fleet_views(self) -> List[dict]:
-        """The scheduler's fleet, mapped. Raises SchedulerUnavailable."""
+        """The scheduler's fleet, mapped, with device telemetry overlaid.
+
+        WP-61 Task 8, RULED. Temperature, utilisation and power now come from
+        the SAME Prometheus series Node Monitor reads, not from the scheduler
+        registry.
+
+        WHY THE REGISTRY CAN NEVER SUPPLY THEM ON THIS FLEET. Those three
+        fields reach the registry on a worker heartbeat, and the heartbeat
+        sender obtains them by shelling out to ``nvidia-smi`` inside the worker
+        container. Proven 2026-08-26: the workers image has no such binary --
+        ``exec: "nvidia-smi": executable file not found in $PATH``. So the
+        sender cannot produce a reading on any node, on any heartbeat, ever.
+        WP-60 made the card say "not reported" instead of "0 C", which was the
+        correct repair of a lie; this is the repair of the absence behind it.
+        "Not reported" was true, and permanent, and the numbers existed the
+        whole time one container over.
+
+        AND THE FIX IS NOT nvidia-smi IN THE WORKER IMAGE. That would give the
+        fleet two telemetry paths that can disagree, on a system whose recurring
+        defect is exactly surfaces disagreeing about the same number. One path.
+
+        WHAT IS *NOT* OVERLAID: ``used_vram_mb`` / ``reserved_vram_mb``. Those
+        are the scheduler's RESERVATION ACCOUNTING, per WP-60 Task 2(b) -- what
+        it has promised to admitted jobs, which is a different fact from what
+        the card is physically holding, and the two legitimately differ. The
+        Prometheus figure is the device reading and belongs on Node Monitor,
+        which is where the card already points the reader.
+        """
         payload = await fetch_fleet()
         self._last_fleet_payload = payload
-        return fleet_node_views(payload)
+        views = fleet_node_views(payload)
+        self._overlay_device_telemetry(views)
+        return views
+
+    @staticmethod
+    def _overlay_device_telemetry(views: List[dict]) -> None:
+        """Fill temperature / utilisation / power from Prometheus, in place.
+
+        Keyed by ``raw_hostname``, not by the display name: a node registered
+        without ``IVGS_NODE_NAME`` shows as ``unnamed (61c7c02b3a…)`` and its
+        Prometheus instance label is the real hostname. Matching on the pretty
+        string would silently drop telemetry for exactly the nodes that need
+        the most attention.
+
+        Never raises. ``collect_fleet_health`` is documented not to, and a
+        telemetry overlay that could take down the fleet page would be a worse
+        defect than a missing reading.
+        """
+        hostnames = sorted({v["raw_hostname"] for v in views if v.get("raw_hostname")})
+        if not hostnames:
+            return
+        try:
+            health = collect_fleet_health(hostnames)
+        except Exception as exc:  # defensive; collect_fleet_health swallows its own
+            logger.warning("gpu fleet telemetry overlay failed: %s", exc)
+            for view in views:
+                view["telemetry_source"] = None
+                view["telemetry_reason"] = f"telemetry probe failed: {exc}"
+            return
+
+        for view in views:
+            entry = health.get(view["raw_hostname"])
+            if entry is None:
+                view["telemetry_source"] = None
+                view["telemetry_reason"] = (
+                    "no Prometheus scrape target is configured for this host"
+                )
+                continue
+            metrics = entry["metrics"]
+            telemetry = entry["telemetry"]
+            # Only the three device readings. A None here stays None: the
+            # card renders "not reported" in words and must never draw a zero.
+            view["gpu_utilization_pct"] = metrics.get("gpu_utilization_pct")
+            view["temperature_c"] = metrics.get("temperature_c")
+            view["power_draw_w"] = metrics.get("power_draw_w")
+            view["telemetry_source"] = (
+                telemetry["source"] if telemetry["available"] else None
+            )
+            view["telemetry_reason"] = telemetry["reason"]
 
     async def _scheduler_node_response(self, view: dict) -> GpuNodeResponse:
         """One mapped fleet node as a GpuNodeResponse.
@@ -119,8 +195,18 @@ class GpuService:
             # A comment that describes the opposite of the code beneath it is
             # the same class of defect as the surfaces this package exists to
             # correct, one layer in.
+            # WP-61 Task 8: these three are now Prometheus device readings
+            # overlaid by `_overlay_device_telemetry`, NOT registry fields. The
+            # registry could never carry them -- the workers image has no
+            # nvidia-smi, so the heartbeat sender has nothing to send.
+            # `telemetry_source` says which they are, on the payload, so a
+            # surface cannot present a device reading and a reservation figure
+            # side by side without labelling either.
             temperature_c=view["temperature_c"],
             power_draw_w=view["power_draw_w"],
+            telemetry_source=view.get("telemetry_source"),
+            telemetry_reason=view.get("telemetry_reason"),
+            gpu_utilization_pct=view.get("gpu_utilization_pct"),
             power_tdp_w=None,
             compute_capability=None,
             status=view["status"],

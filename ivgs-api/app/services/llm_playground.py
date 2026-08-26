@@ -49,6 +49,23 @@ ENGINE_URL_ENV: Dict[str, tuple[str, ...]] = {
 # playground call aimed at ComfyUI or Coqui is a category error, not a timeout.
 CHAT_ENGINES = frozenset(ENGINE_URL_ENV)
 
+# WP-61 Task 2/3(b). Models that are NOT served by their engine's default
+# endpoint, keyed by the `--served-model-name` the server actually answers to.
+#
+# Three IVGS stages run on `vllm` and they no longer share one server: Qwen on
+# node-05 serves translation, Llama on node-02 serves storyboard and transcript.
+# `resolve_engine_endpoint("vllm")` returns node-02, so without this table a
+# playground call naming `qwen38-27b` reached node-02 and came back with the
+# server's own "model not found" -- an honest error about a routing mistake,
+# which is better than a wrong answer and still a defect.
+#
+# It is a table of NAMES, not a rule, for the reason the binding module gives:
+# a derived variable name means a typo silently resolves to the unscoped
+# default and moves the model without saying so.
+MODEL_URL_ENV: Dict[str, tuple[str, ...]] = {
+    "qwen38-27b": ("IVGS_VLLM_TRANSLATION_URL", "VLLM_TRANSLATION_URL"),
+}
+
 DEFAULT_ENGINE = "vllm"
 DEFAULT_MAX_TOKENS = 1024
 DEFAULT_TEMPERATURE = 0.7
@@ -66,8 +83,24 @@ class PlaygroundError(RuntimeError):
     """
 
 
-def resolve_engine_endpoint(engine: str) -> str:
-    """Base URL for ``engine``, from this container's own environment."""
+def resolve_engine_endpoint(engine: str, model_id: str | None = None) -> str:
+    """Base URL for ``engine``, from this container's own environment.
+
+    ``model_id`` wins when it names a model with its own endpoint
+    (``MODEL_URL_ENV``). Passing it is optional so every existing caller keeps
+    its behaviour exactly.
+    """
+    if model_id:
+        specific = MODEL_URL_ENV.get(model_id)
+        if specific is not None:
+            for var in specific:
+                value = os.environ.get(var, "").strip()
+                if value:
+                    return value.rstrip("/")
+            raise PlaygroundError(
+                f"model '{model_id}' has its own endpoint and none is "
+                f"configured. Set one of: {', '.join(specific)}"
+            )
     candidates = ENGINE_URL_ENV.get(engine)
     if candidates is None:
         raise PlaygroundError(
@@ -109,7 +142,7 @@ async def run_completion(
     reached, which is the whole point of this module.
     """
     params = dict(parameters or {})
-    endpoint = resolve_engine_endpoint(engine)
+    endpoint = resolve_engine_endpoint(engine, model_id)
 
     body: Dict[str, Any] = {
         "model": model_id,

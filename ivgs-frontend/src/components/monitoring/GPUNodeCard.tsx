@@ -112,6 +112,26 @@ export default function GPUNodeCard({
   const statusLabel =
     node.status.charAt(0).toUpperCase() + node.status.slice(1);
 
+  /**
+   * WP-61 Task 8. The three device readings below are Prometheus telemetry,
+   * and this card now says so rather than implying the scheduler measured them.
+   *
+   * The three tooltips it replaces each said a version of "the scheduler
+   * registry holds no reading; its heartbeats carry one only when nvidia-smi
+   * succeeds on the node". That was accurate about the mechanism and useless
+   * as guidance, because nvidia-smi can NEVER succeed there — the workers
+   * image does not contain it (proven 2026-08-26). A reader was being sent to
+   * check a condition that is structurally unreachable.
+   *
+   * The reason now comes from the API (`telemetry_reason`), which derives it
+   * per node from what is actually true of that node — no GPU at all, node
+   * offline, or reachable-but-not-scraped. One source, one wording, no
+   * hardcoded explanation to go stale on this page.
+   */
+  const telemetryTitle =
+    node.telemetry_reason ??
+    "No device telemetry for this node, and the API gave no reason.";
+
   /** First active job (UI displays one at a time per spec section 8.2.2) */
   const activeJob =
     node.active_jobs && node.active_jobs.length > 0
@@ -246,8 +266,13 @@ export default function GPUNodeCard({
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               GPU Utilization
             </span>
-            {/* WP-60 Task 2(a): null is "no heartbeat carried a reading",
-                which is not 0%. A bar drawn at zero asserts an idle GPU. */}
+            {/* WP-60 Task 2(a): null is "nothing measured", which is not 0%.
+                A bar drawn at zero asserts an idle GPU.
+                WP-61 Task 8: the reading itself now comes from Prometheus, and
+                this field was never populated on this route at all -- the fleet
+                response constructor simply omitted `gpu_utilization_pct`, so
+                the schema default supplied null and the card has said "not
+                reported" since WP-60 regardless of what the registry held. */}
             {typeof node.gpu_utilization_pct === "number" ? (
               <div className="flex items-center gap-2">
                 <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
@@ -265,7 +290,7 @@ export default function GPUNodeCard({
             ) : (
               <span
                 className="text-xs text-gray-400 dark:text-gray-500"
-                title="The scheduler registry holds no utilisation reading for this node. Its heartbeats carry one only when nvidia-smi succeeds on the node."
+                title={telemetryTitle}
               >
                 not reported
               </span>
@@ -280,12 +305,12 @@ export default function GPUNodeCard({
               Temperature
             </span>
             {/* WP-60 Task 2(a). "0 C" WAS NOT A COLD GPU, IT WAS A DEFAULT.
-                The API schema defaulted `temperature_c` to 0.0 and nothing on
-                this path ever set it -- because the worker reports
-                `gpu_temperature_celsius` and the registry read
-                `gpu_temperature_c`, one key name apart, so the reading was
-                dropped on arrival. Both halves are fixed; until a heartbeat
-                from a rebuilt worker lands, this says so. */}
+                WP-61 Task 8 supplies the reading the registry could never
+                carry: the heartbeat sender reads temperature by shelling out
+                to `nvidia-smi` inside the worker container, and the workers
+                image has no such binary. WP-60's closing line here -- "until a
+                heartbeat from a rebuilt worker lands" -- described a wait that
+                would never end. The number comes from Prometheus now. */}
             {typeof node.temperature_c === "number" ? (
               <div className="flex items-center gap-2">
                 <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
@@ -309,7 +334,7 @@ export default function GPUNodeCard({
             ) : (
               <span
                 className="text-xs text-gray-400 dark:text-gray-500"
-                title="No temperature has been reported through the scheduler registry for this node."
+                title={telemetryTitle}
               >
                 not reported
               </span>
@@ -322,7 +347,9 @@ export default function GPUNodeCard({
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Power</span>
             {/* WP-60 Task 2(a): same family as temperature -- the schema
-                default supplied "0 W" for a figure nothing measured. */}
+                default supplied "0 W" for a figure nothing measured. WP-61
+                Task 8: same source as temperature now,
+                `nvidia_smi_power_draw_watts` from Prometheus. */}
             {typeof node.power_draw_w === "number" ? (
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {node.power_tdp_w
@@ -332,12 +359,28 @@ export default function GPUNodeCard({
             ) : (
               <span
                 className="text-xs text-gray-400 dark:text-gray-500"
-                title="No power draw has been reported through the scheduler registry for this node."
+                title={telemetryTitle}
               >
                 not reported
               </span>
             )}
           </div>
+        )}
+
+        {/* WP-61 Task 8. WHICH SOURCE these three readings came from, printed
+            once rather than implied three times. The card carries two kinds of
+            number and they are not interchangeable: VRAM above is the
+            SCHEDULER'S RESERVATION ACCOUNTING (WP-60 Task 2b) and the three
+            readings above are the DEVICE, read from Prometheus. Node-02 showed
+            "0.0 GB / 95.6 GB" here while Node Monitor showed 86.4 GB on the
+            same machine at the same moment, and neither surface was lying —
+            neither said what it was counting. */}
+        {(node.total_vram_mb ?? 0) > 0 && (
+          <p className="pt-1 text-[10px] leading-tight text-gray-400 dark:text-gray-500">
+            {node.telemetry_source
+              ? `Utilisation, temperature and power: ${node.telemetry_source}. VRAM above is scheduler reservation, not a device reading.`
+              : "No device telemetry for this node. VRAM above is scheduler reservation, not a device reading."}
+          </p>
         )}
 
         {/* Active Job */}

@@ -96,6 +96,22 @@ class GpuNodeResponse(BaseModel):
     gpu_utilization_pct: Optional[float] = None
     temperature_c: Optional[float] = None
     power_draw_w: Optional[float] = None
+    # WP-61 Task 8, RULED. WHERE the three fields above came from, on the
+    # payload, so no surface has to assume.
+    #
+    # They are DEVICE TELEMETRY read from Prometheus (`nvidia-gpu-exporter`),
+    # the same series Node Monitor reads. They are not registry fields and can
+    # never be: the heartbeat sender obtains them by shelling out to
+    # `nvidia-smi` inside the worker container, and the workers image has no
+    # such binary -- proven 2026-08-26, `exec: "nvidia-smi": executable file
+    # not found in $PATH`. So "not reported" was true and PERMANENT while the
+    # numbers sat one container away.
+    #
+    # `used_vram_mb` / `reserved_vram_mb` deliberately do NOT get this label,
+    # because they are not telemetry: they are the scheduler's reservation
+    # accounting (WP-60 Task 2(b)) and legitimately differ from the device.
+    telemetry_source: Optional[str] = None
+    telemetry_reason: Optional[str] = None
     power_tdp_w: Optional[int] = None  # Spec C.4; added per Spec v1.1 amendment 4
     compute_capability: Optional[str] = None
     status: str

@@ -90,10 +90,31 @@ NODE_TOPOLOGY = {
                      "latentsync", "vllm-midsize", "celery-worker"],
     },
     "node-05": {
-        # WP-57 Task 4: OUT OF SERVICE: confirmed host memory fault, memtest test 8, 2026-08-25.
+        # WP-61 Task 2. BACK IN SERVICE, AND IT IS THE LLM NODE.
+        #
+        # This row read "OUT OF SERVICE: confirmed host memory fault, memtest
+        # test 8, 2026-08-25" with role "Quality services (earmarked)". Both
+        # halves are now wrong and each was wrong in a different way:
+        #
+        #   * The fault was real and is FIXED. The RAM was replaced and the
+        #     Proxmox host passed multiple full memtest cycles clean
+        #     (operator, 2026-08-26). The VM has 78 GB RAM and the card below.
+        #   * The quality-services earmark is SUPERSEDED by operator ruling,
+        #     2026-08-26. The CLIP scorer runs on node-06 and node-06 is its
+        #     sole host - verified `served_by: node-06`. node-05's old scorer
+        #     is stopped and removed. AD-02 Draft 4 proposed the earmark; see
+        #     that file's section 7 for the superseding record. History is not
+        #     rewritten there and it is not rewritten here.
+        #
+        # `runs_pipeline_worker` STAYS FALSE, and that is the whole point of
+        # the field. node-05 now has a GPU serving a model and NO Celery worker
+        # - exactly node-06's shape. It must not enter the scheduler's "3/3",
+        # because a vLLM server is not a Celery consumer, and AD-02's
+        # `dynamically_loadable=false` stands: its LLM capability is fixed at
+        # container start by `--model` and cannot be swapped at runtime.
         "runs_pipeline_worker": False,
         "hostname": "node-05",
-        "role": "Quality services (earmarked)",
+        "role": "GPU LLM (Qwen3.8-27B-FP8, translation)",
         # CORRECTED 2026-08-25 (WP-48). This read "NVIDIA RTX 5080" / 16384 MB
         # and the node was documented OFFLINE everywhere -- CLAUDE.md s2,
         # README, AD-02, the functional spec. All three claims were wrong.
@@ -105,9 +126,14 @@ NODE_TOPOLOGY = {
         "gpu_model": "NVIDIA RTX PRO 5000 Blackwell",
         "total_vram_mb": 48935,
         "topology_verified": True,
-        # Earmarked, not deployed. Listing services it does not run would put
-        # this row straight back into the state WP-24 removed.
-        "services": ["node-exporter", "nvidia-gpu-exporter", "node-logs"],
+        # WP-61: `vllm-qwen` is DECLARED here from the moment the compose file
+        # is tracked, and the honest reading of this list has always been
+        # "what this node's stack file defines", not "what answered a probe a
+        # second ago" - `status` and `telemetry` are the observations on this
+        # payload. The three telemetry entries are observed: node-05 has served
+        # node-exporter throughout and its GPU exporter was repaired by WP-48.
+        "services": ["vllm-qwen", "node-exporter", "nvidia-gpu-exporter",
+                     "node-logs"],
     },
     "node-06": {
         # WP-57 Task 4: Has a GPU and runs the CLIP scorer, but NO Celery worker - which is exactly why the scheduler's count is 3 and not 4.
@@ -172,7 +198,14 @@ def _node_payload(node_id, info, health, detail=False):
         # the SCHEDULER's fleet. This is the distinction that made "3/3" and
         # "5 online of 6" both defensible and both unlabelled: node-06 has a GPU
         # and runs the CLIP scorer but no Celery worker, so it is not one of the
-        # scheduler's three; node-05 has a GPU and is out of service.
+        # scheduler's three.
+        #
+        # UPDATED 2026-08-26 (WP-61 Task 2). The clause here read "node-05 has
+        # a GPU and is out of service", which was the reason on 2026-08-25 and
+        # is not the reason now: node-05 is back in service and serves Qwen on
+        # :8000. It is still not one of the scheduler's three, for node-06's
+        # reason rather than its own - a GPU serving a model, and no Celery
+        # worker. The count is unchanged at 3; what changed is why.
         "runs_pipeline_worker": info.get("runs_pipeline_worker", False),
         "total_vram_mb": info["total_vram_mb"],
         "topology_verified": info.get("topology_verified", False),
