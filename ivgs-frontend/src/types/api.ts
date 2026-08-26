@@ -559,6 +559,34 @@ export interface GpuNodeResponse {
    */
   telemetry_source: string | null;
   telemetry_reason: string | null;
+  /**
+   * WP-62 Task 1, RULED. THE PAGE SHOWS EVERY GPU-BEARING MACHINE.
+   *
+   * `GET /gpu/nodes` now returns node-02, 03, 04, 05 and 06 — every machine
+   * with a card — not just the three that registered a Celery worker with the
+   * scheduler. node-05 (vLLM/Qwen) and node-06 (CLIP scorer) run no Celery
+   * worker by design and could never enter that registry, which is why
+   * relabelling the count twice (WP-57 T4, WP-60 T2) left the page still
+   * missing two GPUs.
+   *
+   *   in_scheduler   — false for a GPU node the scheduler does not place work
+   *                    on. Such a node has NO reservation figure and NO Drain.
+   *   role           — what the node is for. The only thing a non-scheduler
+   *                    node has to say about itself; without it "no active
+   *                    jobs" reads as idle.
+   *   supports_drain — false means the control must not be rendered. The
+   *                    server answers 409 DRAIN_NOT_APPLICABLE if called.
+   *   device_*       — PHYSICAL VRAM from Prometheus. A DIFFERENT NUMBER from
+   *                    `reserved_vram_mb`, which is scheduler accounting: on
+   *                    2026-08-26 node-02 held 88494 MiB on the device with 0
+   *                    reserved. Both are on the payload so a card can label
+   *                    each rather than presenting one as "VRAM usage".
+   */
+  in_scheduler: boolean;
+  role: string | null;
+  supports_drain: boolean;
+  device_used_vram_mb: number | null;
+  device_total_vram_mb: number | null;
   power_tdp_w: number | null;
   compute_capability: string | null;
   status: GpuNodeStatus;

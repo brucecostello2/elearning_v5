@@ -32,7 +32,7 @@ from app.schemas.gpu import (
     GpuFleetSummary,
     GpuUtilizationHistoryResponse,
 )
-from app.services.gpu_service import GpuService
+from app.services.gpu_service import DrainNotApplicable, GpuService
 from app.services.scheduler_fleet import SchedulerUnavailable
 
 logger = logging.getLogger(__name__)
@@ -259,6 +259,19 @@ async def drain_gpu_node(
     service = GpuService(db)
     try:
         result = await service.drain_scheduler_node(node_id)
+    except DrainNotApplicable as exc:
+        # WP-62 Task 1. Not a 404: the node exists and the GPU Fleet page is
+        # drawing it. It is a GPU-bearing machine the scheduler does not
+        # schedule to, so the action does not apply to it.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {"code": "DRAIN_NOT_APPLICABLE", "message": str(exc)}
+            },
+        )
+    except SchedulerUnavailable as exc:
+        raise _scheduler_unavailable(exc)
+    try:
         if not result:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

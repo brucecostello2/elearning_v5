@@ -8,7 +8,7 @@ Actual GPU scheduling logic is in Phase 8 (GPU Scheduler microservice).
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple
-from uuid import UUID
+from uuid import UUID, uuid5
 
 from fastapi import HTTPException
 from sqlalchemy import select, func
@@ -30,7 +30,9 @@ from app.schemas.gpu import (
     GpuUtilizationPoint,
 )
 from app.core.node_health import collect_fleet_health
+from app.core.node_topology import NODE_TOPOLOGY, gpu_node_ids, topology_for
 from app.services.scheduler_fleet import (
+    NODE_ID_NAMESPACE,
     SchedulerUnavailable,
     fetch_fleet,
     fleet_node_views,
@@ -43,6 +45,18 @@ logger = logging.getLogger(__name__)
 # A 30d range at 30-second collection x 5 nodes ~ 432,000 rows - protects
 # against unbounded responses. Returns 413 rather than silent truncation.
 MAX_HISTORY_POINTS = 5000
+
+
+class DrainNotApplicable(RuntimeError):
+    """Drain was asked for on a GPU node the scheduler does not schedule to.
+
+    WP-62 Task 1. node-05 (vLLM) and node-06 (CLIP scorer) each carry a GPU and
+    run no Celery worker, so they are on the GPU Fleet page and are not in the
+    scheduler's fleet. "Node not found" would be the wrong answer -- the node
+    exists and the page is drawing it -- and silently succeeding would be
+    worse: an operator would believe they had stopped work reaching a node that
+    was never receiving any.
+    """
 
 
 class GpuService:
@@ -83,8 +97,92 @@ class GpuService:
         payload = await fetch_fleet()
         self._last_fleet_payload = payload
         views = fleet_node_views(payload)
+        for view in views:
+            info = topology_for(view.get("raw_hostname"))
+            view["in_scheduler"] = True
+            view["supports_drain"] = True
+            view["role"] = (info or {}).get("role")
+        views.extend(self._unregistered_gpu_views(views))
+        views.sort(key=lambda v: (v["node_hostname"], v["gpu_index"]))
         self._overlay_device_telemetry(views)
         return views
+
+    @staticmethod
+    def _unregistered_gpu_views(registered: List[dict]) -> List[dict]:
+        """Every GPU-bearing machine the scheduler does not know about.
+
+        WP-62 Task 1, RULED, and it is the third operator report of this defect.
+
+        THE REQUIREMENT, EXPLICIT: the GPU Fleet page displays every
+        GPU-bearing machine -- node-02, 03, 04, 05, 06 -- REGARDLESS OF
+        SCHEDULER REGISTRATION. WP-57 Task 4 and WP-60 Task 2 each "fixed" this
+        by relabelling the tile that counted the narrow source. The label was
+        the wrong answer both times, because the page was not mislabelled: it
+        was missing two GPUs.
+
+        WHY THEY WERE MISSING, precisely. ``GET /gpu/nodes`` reads through to
+        the scheduler's registry (WP-45 Task 4(b)), and a node enters that
+        registry by running a Celery worker that calls ``POST /register``.
+        node-05 runs vLLM and node-06 runs the CLIP scorer; neither runs a
+        Celery worker, deliberately, and neither ever will under AD-02. So the
+        one source the page read could not contain them by construction, and
+        no amount of relabelling was going to put them on it.
+
+        These rows are DECLARED, not observed -- they come from the fleet
+        topology, the same dictionary Node Monitor renders -- and the card says
+        so. Their live numbers come from the same place every other card's
+        do: Prometheus, overlaid below. A node with a card and no telemetry
+        renders "not reported" with the API's own reason, exactly like a
+        scheduler worker in the same position (node-03 is one today).
+
+        ``id`` is the same UUID5 derivation the scheduler nodes use, over the
+        synthetic ``"{hostname}:gpu0"`` key, so a fleet node that later DOES
+        register keeps the same id and the page does not appear to gain a node.
+        """
+        known = {v.get("raw_hostname") for v in registered}
+        extra: List[dict] = []
+        for node_id in gpu_node_ids():
+            if node_id in known:
+                continue
+            info = NODE_TOPOLOGY[node_id]
+            scheduler_key = f"{node_id}:gpu0"
+            extra.append(
+                {
+                    "id": uuid5(NODE_ID_NAMESPACE, scheduler_key),
+                    "scheduler_node_id": None,
+                    "node_hostname": node_id,
+                    "raw_hostname": node_id,
+                    "gpu_index": 0,
+                    "gpu_model": info.get("gpu_model"),
+                    "total_vram_mb": int(info.get("total_vram_mb") or 0),
+                    # NOT ZERO BECAUSE THE CARD IS IDLE -- zero because the
+                    # scheduler has reserved nothing on a node it does not
+                    # schedule to. The card says "n/a - not a scheduler
+                    # worker" rather than drawing a 0 MB reservation bar, for
+                    # the same reason WP-60 stopped drawing 0 C.
+                    "used_vram_mb": 0,
+                    "reserved_vram_mb": 0,
+                    "available_vram_mb": int(info.get("total_vram_mb") or 0),
+                    "gpu_utilization_pct": None,
+                    "temperature_c": None,
+                    "power_draw_w": None,
+                    # A non-scheduler node's status is its REACHABILITY, and it
+                    # is filled from the same Prometheus probe as its telemetry
+                    # in `_overlay_device_telemetry`. "unknown" until then --
+                    # never "online" by assumption, which is the stub WP-24
+                    # removed from /api/v1/nodes.
+                    "status": "unknown",
+                    "registered_at": None,
+                    "last_heartbeat_at": None,
+                    "current_jobs": [],
+                    "loaded_models": [],
+                    "circuit_breaker_state": "n/a",
+                    "in_scheduler": False,
+                    "supports_drain": False,
+                    "role": info.get("role"),
+                }
+            )
+        return extra
 
     @staticmethod
     def _overlay_device_telemetry(views: List[dict]) -> None:
@@ -131,6 +229,28 @@ class GpuService:
                 telemetry["source"] if telemetry["available"] else None
             )
             view["telemetry_reason"] = telemetry["reason"]
+
+            # WP-62 Task 1. THE CARD'S PHYSICAL VRAM, from the same
+            # `nvidia_smi_memory_used_bytes` series Node Monitor reads. It is a
+            # DIFFERENT NUMBER from `reserved_vram_mb` above and always was:
+            # measured 2026-08-26, node-02 holds 88494 MiB on the device while
+            # the scheduler has reserved 0. Presenting either one as "VRAM
+            # usage" without saying which is the defect WP-60 spent a task
+            # establishing; both are now on the payload, named.
+            raw_device_used = metrics.get("used_vram_mb")
+            view["device_used_vram_mb"] = (
+                int(round(raw_device_used)) if raw_device_used is not None else None
+            )
+            view["device_total_vram_mb"] = (
+                int(view["total_vram_mb"]) if view.get("total_vram_mb") else None
+            )
+
+            # A node the scheduler does not know about has no heartbeat, so its
+            # status can only be its reachability. Filled from the SAME probe
+            # rather than asserted: an unreachable node-05 must not render
+            # "online" because the topology declares it.
+            if not view.get("in_scheduler", True):
+                view["status"] = entry["status"]
 
     async def _scheduler_node_response(self, view: dict) -> GpuNodeResponse:
         """One mapped fleet node as a GpuNodeResponse.
@@ -207,6 +327,13 @@ class GpuService:
             telemetry_source=view.get("telemetry_source"),
             telemetry_reason=view.get("telemetry_reason"),
             gpu_utilization_pct=view.get("gpu_utilization_pct"),
+            # WP-62 Task 1. Which kind of node this is, and therefore which
+            # controls and which figures the card is entitled to draw.
+            in_scheduler=bool(view.get("in_scheduler", True)),
+            role=view.get("role"),
+            supports_drain=bool(view.get("supports_drain", True)),
+            device_used_vram_mb=view.get("device_used_vram_mb"),
+            device_total_vram_mb=view.get("device_total_vram_mb"),
             power_tdp_w=None,
             compute_capability=None,
             status=view["status"],
@@ -275,6 +402,21 @@ class GpuService:
         import httpx
 
         from app.services.scheduler_fleet import scheduler_base_url
+
+        # WP-62 Task 1. A GPU node that is NOT a scheduler worker is now on this
+        # page, and Drain must refuse it with the reason rather than 404 as if
+        # the node did not exist. Draining node-05 would be a control with
+        # nothing behind it: the scheduler places no work there, so there is no
+        # work to stop. The card does not render the button at all; this is the
+        # server saying the same thing to anything that calls it anyway.
+        for view in await self._fleet_views():
+            if view["id"] == node_id and not view.get("in_scheduler", True):
+                role = view.get("role") or "role not declared"
+                raise DrainNotApplicable(
+                    f"{view['node_hostname']} carries a GPU but is not a "
+                    f"scheduler worker ({role}). The scheduler places no work "
+                    f"on it, so there is nothing to drain."
+                )
 
         scheduler_node_id = await self.resolve_scheduler_node_id(node_id)
         if scheduler_node_id is None:
@@ -447,8 +589,25 @@ class GpuService:
         ``gpu_reservations`` table is a different mechanism - the scheduler holds
         its reservations in Redis, and this is the count that corresponds to what
         the fleet is actually doing rather than to rows nobody writes.
+
+        WP-62 Task 1. THIS SUMMARY STAYS THE SCHEDULER SUBSET, deliberately,
+        while ``list_nodes`` now returns every GPU-bearing machine. They answer
+        two different questions and merging them would make both wrong:
+
+          * ``/gpu/utilization`` is RESERVATION ACCOUNTING -- what the
+            scheduler has promised admitted jobs, out of the VRAM it can place
+            work in. node-05's 48 GB is not capacity this figure may spend, and
+            adding it would inflate the denominator of a number admission
+            control reasons about.
+          * ``/gpu/nodes`` is THE FLEET AS HARDWARE. Every card, whether or not
+            anything schedules to it.
+
+        The GPU Fleet page counts both off ``/gpu/nodes`` -- "5 GPUs, 3
+        scheduler workers" -- from the ``in_scheduler`` flag on each row, so the
+        subset relationship is stated on the page rather than inferred from two
+        endpoints that could drift.
         """
-        views = await self._fleet_views()
+        views = [v for v in await self._fleet_views() if v.get("in_scheduler", True)]
 
         total_vram = sum(v["total_vram_mb"] for v in views)
         used_vram = sum(v["used_vram_mb"] for v in views)

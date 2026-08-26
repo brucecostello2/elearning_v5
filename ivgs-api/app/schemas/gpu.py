@@ -112,6 +112,38 @@ class GpuNodeResponse(BaseModel):
     # accounting (WP-60 Task 2(b)) and legitimately differ from the device.
     telemetry_source: Optional[str] = None
     telemetry_reason: Optional[str] = None
+    # ---------------------------------------------------------------------
+    # WP-62 Task 1, RULED. THE PAGE SHOWS EVERY GPU-BEARING MACHINE.
+    #
+    # Twice "fixed" by relabelling the narrow source (WP-57 T4, WP-60 T2). The
+    # label was the wrong answer both times: the page is titled GPU Fleet
+    # Status and it drew the SCHEDULER'S REGISTRY, so node-05 (48 GB, serving
+    # Qwen) and node-06 (16 GB, serving the CLIP scorer) did not appear on it
+    # at all. Renaming the tile "Scheduler GPU workers" made the tile honest
+    # and left the page still missing two GPUs.
+    #
+    # Four fields carry the distinction the page needs so it never has to
+    # infer it again:
+    #
+    #   in_scheduler     - is this node in the scheduler's fleet? Only a node
+    #                      that is has a reservation figure or a Drain control.
+    #   role             - what the node is FOR, from the fleet topology. A
+    #                      non-scheduler GPU node has nothing else to say for
+    #                      itself, and "no active jobs" would read as idle.
+    #   supports_drain   - draining a node the scheduler does not schedule to
+    #                      is a control with nothing behind it.
+    #   device_*_vram_mb - what the CARD physically holds, from Prometheus.
+    #                      NOT `used_vram_mb`/`reserved_vram_mb`, which are the
+    #                      scheduler's reservation accounting (WP-60 Task 2(b))
+    #                      and are legitimately a different number. node-05 at
+    #                      42.7/47.8 GB device VRAM with 0 MB reserved is a
+    #                      healthy steady state, and the two figures must be
+    #                      separately labelled for that to be readable.
+    in_scheduler: bool = True
+    role: Optional[str] = None
+    supports_drain: bool = True
+    device_used_vram_mb: Optional[int] = None
+    device_total_vram_mb: Optional[int] = None
     power_tdp_w: Optional[int] = None  # Spec C.4; added per Spec v1.1 amendment 4
     compute_capability: Optional[str] = None
     status: str

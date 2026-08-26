@@ -101,6 +101,18 @@ export default function GPUNodeCard({
     return Math.round((node.used_vram_mb / node.total_vram_mb) * 100);
   }, [node.total_vram_mb, node.used_vram_mb]);
 
+  /**
+   * WP-62 Task 1. Physical VRAM as a percentage of the card, for the bar.
+   * Separate from `vramPercent`, which is the scheduler's reservation as a
+   * percentage of the same card. Two ratios of two different numerators over
+   * one denominator; collapsing them is the defect this card has carried.
+   */
+  const devicePercent = useMemo((): number => {
+    if (!node.total_vram_mb || node.total_vram_mb === 0) return 0;
+    if (typeof node.device_used_vram_mb !== "number") return 0;
+    return Math.round((node.device_used_vram_mb / node.total_vram_mb) * 100);
+  }, [node.total_vram_mb, node.device_used_vram_mb]);
+
   /** Power draw percentage vs TDP. 0 when either side is unknown; the caller
    *  only renders it when `power_draw_w` is a real reading (WP-60 Task 2a). */
   const powerPercent = useMemo((): number => {
@@ -176,6 +188,15 @@ export default function GPUNodeCard({
               {node.node_hostname}
             </h3>
             <p className="text-xs text-gray-500 dark:text-gray-400">{gpuLabel}</p>
+            {/* WP-62 Task 1. WHAT THIS NODE IS FOR. A non-scheduler GPU node
+                has no active jobs and no reservation, so without its role the
+                card is four readings and a blank space that reads as idle.
+                node-05 is not idle; it is holding 27B of FP8 weights. */}
+            {node.role && (
+              <p className="mt-0.5 text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+                {node.role}
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -188,8 +209,27 @@ export default function GPUNodeCard({
           >
             {statusLabel}
           </span>
-          {/* Drain toggle - admin only, only meaningful for nodes with a GPU */}
-          {isAdmin && (node.total_vram_mb ?? 0) > 0 && (
+          {/* WP-62 Task 1. NOT A SCHEDULER WORKER, said on the card.
+              node-05 and node-06 each carry a GPU and run no Celery worker, so
+              the scheduler places nothing on them and they hold no reservation.
+              Saying so is what stops "0.0 GB reserved / no active jobs" being
+              read as a node sitting doing nothing. */}
+          {!node.in_scheduler && (
+            <span
+              className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300"
+              title="This machine carries a GPU and is not in the scheduler's fleet: it runs no Celery worker, so the scheduler places no pipeline work on it and holds no VRAM reservation for it. Its readings below are device telemetry from Prometheus, the same source every other card here uses."
+            >
+              Not a scheduler worker
+            </span>
+          )}
+          {/* Drain toggle - admin only, and only where draining means anything.
+              WP-62 Task 1: `supports_drain` is false for a GPU node the
+              scheduler does not schedule to. Drawing the button there would be
+              a control with nothing behind it - an operator would believe they
+              had stopped work reaching a node that never received any. The
+              server refuses it too (409 DRAIN_NOT_APPLICABLE); this is so the
+              action is never offered. */}
+          {isAdmin && node.supports_drain && (node.total_vram_mb ?? 0) > 0 && (
             <button
               type="button"
               onClick={() => onDrainToggle(node.id)}
@@ -221,23 +261,96 @@ export default function GPUNodeCard({
 
       {/* ── Card Body ────────────────────────────────────────────── */}
       <div className="p-4 space-y-3">
-        {/* VRAM Usage */}
+        {/* ── Physical VRAM, from the device ───────────────────────
+            WP-62 Task 1, RULED. THE CARD LEADS WITH WHAT THE GPU HOLDS.
+
+            Until this package the only VRAM figure on this card was the
+            scheduler's reservation, and the operator's complaint about it was
+            the same complaint three times: the page called itself GPU Fleet
+            Status and showed a number no GPU had produced. WP-60 correctly
+            RELABELLED it; the number still was not a device reading, because
+            the source could not produce one.
+
+            The device figure comes from `nvidia_smi_memory_used_bytes` in
+            Prometheus — the identical series Node Monitor reads, which is why
+            the two pages now agree instead of showing 0.0 GB and 86.4 GB for
+            the same card at the same moment.
+
+            THE COLOUR RULE IS NOT THE SCHEDULER'S. A worker at 90% VRAM is
+            near its admission ceiling and amber/red says something useful. An
+            LLM node at 90% is a model resident in memory doing exactly what it
+            was started to do: node-05 idles at 42.7 GB of 47.8 because vLLM
+            pre-allocates its KV cache at `--gpu-memory-utilization 0.90`.
+            Painting that red would train the operator to ignore the colour. A
+            non-scheduler node's physical VRAM is drawn neutral and captioned
+            as a steady state. */}
         {(node.total_vram_mb ?? 0) > 0 && (
           <div>
-            {/* WP-60 Task 2(b). THE LABEL SAID "VRAM". THE NUMBER IS A
-                RESERVATION.
-                `used_vram_mb` is seeded to 0 at registration and moved only by
-                the scheduler's own acquire/release. Nothing has ever read it
-                off the card. That is why this page showed node-02 at
-                "0.0 GB / 95.6 GB" while Node Monitor -- which scrapes
-                Prometheus, i.e. the device -- showed 86.4 GB on the same
-                machine at the same moment. Neither surface was lying; neither
-                said what it was counting. This one now does, and points at the
-                page that has the physical figure. */}
             <div className="flex items-center justify-between mb-1">
               <span
                 className="text-xs font-medium text-gray-600 dark:text-gray-400"
-                title="VRAM reserved by the scheduler for admitted jobs. This is the scheduler's own accounting, not a reading from the GPU - for physical VRAM see Node Monitor, which scrapes the exporter on the node."
+                title="Physical VRAM in use on the card, read from nvidia-gpu-exporter via Prometheus - the same series Node Monitor reads. This is the device, not an allocation the scheduler is tracking."
+              >
+                VRAM on the device
+              </span>
+              {typeof node.device_used_vram_mb === "number" ? (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {formatVRAM(node.device_used_vram_mb)} /{" "}
+                  {formatVRAM(node.total_vram_mb!)}
+                </span>
+              ) : (
+                <span
+                  className="text-xs text-gray-400 dark:text-gray-500"
+                  title={telemetryTitle}
+                >
+                  not reported
+                </span>
+              )}
+            </div>
+            {typeof node.device_used_vram_mb === "number" && (
+              <>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      node.in_scheduler
+                        ? getVRAMColor(devicePercent)
+                        : "bg-slate-400 dark:bg-slate-500"
+                    }`}
+                    style={{ width: `${Math.min(devicePercent, 100)}%` }}
+                  />
+                </div>
+                <p className="mt-0.5 text-right text-xs text-gray-500 dark:text-gray-400">
+                  {devicePercent}%
+                  {!node.in_scheduler && devicePercent >= 70 && (
+                    <span
+                      className="ml-1 text-gray-400 dark:text-gray-500"
+                      title="A model server holds its weights and its KV cache resident for as long as it is serving. High VRAM here is the steady state, not pressure."
+                    >
+                      — resident model, steady state
+                    </span>
+                  )}
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ── Scheduler reservation — scheduler workers only ────────
+            WP-60 Task 2(b). THE LABEL SAID "VRAM". THE NUMBER IS A
+            RESERVATION. `used_vram_mb` is seeded to 0 at registration and
+            moved only by the scheduler's own acquire/release; nothing has ever
+            read it off the card.
+
+            WP-62 Task 1: it is now shown ONLY for nodes the scheduler places
+            work on. A "0.0 GB reserved" row on node-05 would be true and
+            meaningless — there is no reservation because there is no
+            scheduling, not because the node is free. */}
+        {node.in_scheduler && (node.total_vram_mb ?? 0) > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span
+                className="text-xs font-medium text-gray-600 dark:text-gray-400"
+                title="VRAM the scheduler has reserved for admitted jobs. Its own accounting, and legitimately a different number from the device reading above - measured 2026-08-26, node-02 held 88494 MiB on the card with 0 MB reserved."
               >
                 VRAM reserved by scheduler
               </span>
@@ -378,9 +491,25 @@ export default function GPUNodeCard({
         {(node.total_vram_mb ?? 0) > 0 && (
           <p className="pt-1 text-[10px] leading-tight text-gray-400 dark:text-gray-500">
             {node.telemetry_source
-              ? `Utilisation, temperature and power: ${node.telemetry_source}. VRAM above is scheduler reservation, not a device reading.`
-              : "No device telemetry for this node. VRAM above is scheduler reservation, not a device reading."}
+              ? `Device VRAM, utilisation, temperature and power: ${node.telemetry_source}.`
+              : "No device telemetry for this node."}
+            {node.in_scheduler
+              ? " The reservation figure is the scheduler's own accounting and is a different number."
+              : " This node is not in the scheduler's fleet, so it holds no reservation."}
           </p>
+        )}
+
+        {/* WP-62 Task 1. A non-scheduler GPU node has no active jobs to show
+            and never will. Saying that is not the same as showing nothing:
+            an empty Active Job section on a card beside three that have one
+            reads as "this node is free". */}
+        {!node.in_scheduler && (
+          <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+              No pipeline jobs are placed here. This machine serves its model
+              directly and takes no work from the GPU scheduler.
+            </p>
+          </div>
         )}
 
         {/* Active Job */}

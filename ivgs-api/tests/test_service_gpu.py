@@ -216,16 +216,37 @@ class TestListNodes:
     """WP-45: these read the scheduler's registry, not gpu_nodes."""
 
     async def test_list_all(self, db_session):
+        """UPDATED BY WP-62 Task 1, and it is strictly stronger.
+
+        This asserted `total == 1` -- the scheduler's one node -- which was a
+        faithful test of the old behaviour and of the defect in it: the GPU
+        Fleet page drew the scheduler's registry and called it the fleet, so
+        node-05 and node-06 were invisible on a page titled GPU Fleet Status.
+        The ruled behaviour is EVERY GPU-bearing machine, so the count is now
+        the five the topology declares.
+
+        The original assertion it was written to protect -- a `gpu_nodes` row
+        must NOT appear, because that table is not what the fleet is -- is
+        unchanged and still checked below.
+        """
         svc = GpuService(db_session)
-        # A row in gpu_nodes must NOT appear: it is not what the fleet is.
-        await _register_node(svc, hostname=f"list-{uuid.uuid4().hex[:6]}")
+        registered = f"list-{uuid.uuid4().hex[:6]}"
+        await _register_node(svc, hostname=registered)
         with patch(
             "app.services.gpu_service.fetch_fleet",
             AsyncMock(return_value=_scheduler_fleet()),
         ):
             nodes, total = await svc.list_nodes()
-        assert total == 1
-        assert nodes[0].node_hostname == "node-04"
+        names = [n.node_hostname for n in nodes]
+        assert total == 5
+        assert names == ["node-02", "node-03", "node-04", "node-05", "node-06"]
+        # The gpu_nodes row is still absent, which is the point of the original.
+        assert registered not in names
+        # The scheduler's node is marked as one; the topology-supplied ones are
+        # marked as not.
+        by_name = {n.node_hostname: n for n in nodes}
+        assert by_name["node-04"].in_scheduler is True
+        assert by_name["node-05"].in_scheduler is False
 
     async def test_list_with_status_filter(self, db_session):
         svc = GpuService(db_session)
@@ -242,6 +263,12 @@ class TestListNodes:
         assert all(n.status == "online" for n in nodes)
 
     async def test_list_pagination(self, db_session):
+        """WP-62 Task 1: the fleet is five, not the scheduler's four.
+
+        The fixture registers node-02..05; node-06 carries a GPU and no Celery
+        worker, so it joins the listing from the topology. Pagination is what
+        is being tested and it is unchanged.
+        """
         svc = GpuService(db_session)
         fleet = _scheduler_fleet(nodes=[
             _node(f"node-0{i}:gpu0") for i in range(2, 6)
@@ -250,7 +277,7 @@ class TestListNodes:
             "app.services.gpu_service.fetch_fleet", AsyncMock(return_value=fleet),
         ):
             nodes, total = await svc.list_nodes(page=1, per_page=2)
-        assert total == 4
+        assert total == 5
         assert len(nodes) == 2
 
     async def test_an_unreachable_scheduler_raises_rather_than_reporting_zero(

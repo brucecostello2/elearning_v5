@@ -243,7 +243,15 @@ class TestGpuNodeDrain:
                 "/api/v1/gpu/nodes",
                 headers={"Authorization": f"Bearer {admin_token}"},
             )
-            node_id = listing.json()["data"][0]["id"]
+            # WP-62 Task 1: the listing is now EVERY GPU-bearing machine, so
+            # `data[0]` is node-02 (topology-supplied) rather than the
+            # scheduler's node-04. Draining a node the scheduler does not
+            # schedule to is refused with DRAIN_NOT_APPLICABLE -- correctly --
+            # so this test names the node it means instead of taking the first.
+            node_id = [
+                n for n in listing.json()["data"]
+                if n["node_hostname"] == "node-04"
+            ][0]["id"]
 
             scheduler_response = MagicMock()
             scheduler_response.status_code = 200

@@ -46,44 +46,34 @@ import type {
  *   - viewer: no access (redirected)
  */
 
-/** Node IDs for the 6-node Proxmox cluster per §2.2 */
-const NODE_IDS = [
-  "node-01",
-  "node-02",
-  "node-03",
-  "node-04",
-  "node-05",
-  "node-06",
-] as const;
-
 /**
- * GPU capability labels.
+ * WP-62 Task 1. `NODE_IDS` and `GPU_LABELS` are GONE from this file.
  *
- * CORRECTED 2026-08-25 (WP-53). Every one of the five GPU rows was wrong, and
- * had been since the page was written: A6000 48 GB for node-02/03, RTX 4090
- * 24 GB for node-04/05, Intel Arc A770 16 GB for node-06. Not one of those
- * cards is in this fleet. The comment above them said "per S3.2", which is how
- * a set of invented labels acquired a citation.
+ * They were a hardcoded second statement of the fleet's hardware, and they
+ * were wrong twice: WP-53 found every one of the five GPU rows naming a card
+ * that is not in this fleet (A6000s, a 4090, an Intel Arc A770), under a
+ * comment citing "§3.2"; the corrected list then still carried node-04 at
+ * 96 GB against the API's own 48 GB and left the contradiction visible as
+ * WP-53 D-2.
  *
- * These are now MEASURED values, read the same day from
- * `nvidia_smi_gpu_info` / `nvidia_smi_memory_total_bytes` in the live
- * Prometheus for nodes 02-04, from WP-48's nvidia-smi run for node-05, and from
- * WP-28/WP-53's measurement for node-06.
- *
- * CAVEAT worth knowing before trusting any single number here: node-04's
- * measured 96 GB CONTRADICTS `NODE_TOPOLOGY` in the API, which declares 48 GB
- * for it. That gap is real and is NOT resolved by this change -- see WP-53 D-2.
- * It is left visible rather than papered over, because the API's figure is what
- * admission control would use and this page is only what a human reads.
+ * The API now sends `gpu_model` and `total_vram_mb` per node from the fleet
+ * topology - the same dictionary Node Monitor renders - so the label is
+ * DERIVED from the payload. A card the page cannot name is a card the topology
+ * does not declare, which is a fact worth seeing rather than a gap for a
+ * literal to fill. One source; a hardware correction lands in one place and
+ * reaches both pages.
  */
-const GPU_LABELS: Record<string, string> = {
-  "node-01": "Management (No GPU)",
-  "node-02": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
-  "node-03": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
-  "node-04": "NVIDIA RTX PRO 6000 Blackwell (96 GB)",
-  "node-05": "NVIDIA RTX PRO 5000 Blackwell (48 GB)",
-  "node-06": "NVIDIA GeForce RTX 5080 (16 GB)",
-};
+function gpuLabelFor(node: GPUNode): string {
+  const model = node.gpu_model?.trim();
+  const vramGb =
+    typeof node.total_vram_mb === "number" && node.total_vram_mb > 0
+      ? `${Math.round(node.total_vram_mb / 1024)} GB`
+      : null;
+  if (model && vramGb) return `${model} (${vramGb})`;
+  if (model) return model;
+  if (vramGb) return `GPU, ${vramGb} — model not declared`;
+  return "GPU model not declared by the fleet topology";
+}
 
 /** View mode for the page */
 type GPUViewMode = "cards" | "heatmap";
@@ -186,6 +176,12 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
   const fleetStats = useMemo(() => {
     if (!nodes || nodes.length === 0) {
       return {
+        gpuCount: 0,
+        schedulerCount: 0,
+        schedulerOnline: 0,
+        deviceUsedVRAM: 0,
+        deviceReportingVRAM: 0,
+        deviceReportingCount: 0,
         totalNodes: 0,
         onlineNodes: 0,
         offlineNodes: 0,
@@ -211,6 +207,17 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
     const gpuNodes = nodes.filter(
       (n: GPUNode) => (n.total_vram_mb ?? 0) > 0
     );
+    /* WP-62 Task 1, RULED. THE HEADER COUNTS GPUs, WITH THE SCHEDULER SUBSET
+       NAMED AS A SUBSET. "5 GPUs - 3 scheduler workers".
+
+       Three defensible numbers have been on three surfaces for three packages:
+       6 machines, 5 GPUs, 3 scheduler workers. WP-57 T4 and WP-60 T2 each made
+       one tile say which of the three it was. That was necessary and it was
+       not the requirement: the page was still DRAWING only the narrow one, so
+       two GPUs did not appear at all. Now the page draws all five and this
+       header states the relationship between the two counts in one line, so a
+       reader never has to reconcile two tiles. */
+    const schedulerNodes = gpuNodes.filter((n: GPUNode) => n.in_scheduler);
 
     /* WP-60 Task 2(a). AVERAGING OVER UNREPORTED NODES INVENTED A FLEET
        FIGURE. Summing `gpu_utilization_pct` across every GPU node treated a
@@ -242,7 +249,30 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
       (sum: number, n: GPUNode) => sum + n.active_jobs.length,
       0
     );
+    /* Device VRAM, summed over the nodes that REPORTED one. Summing across
+       non-reporting nodes as zero is the WP-60 Task 2(a) defect in the other
+       column: it would make a fleet look emptier than it is. */
+    const deviceReporting = gpuNodes.filter(
+      (n: GPUNode) => typeof n.device_used_vram_mb === "number"
+    );
+    const deviceUsedVRAM = deviceReporting.reduce(
+      (sum: number, n: GPUNode) => sum + (n.device_used_vram_mb as number),
+      0
+    );
+    const deviceReportingVRAM = deviceReporting.reduce(
+      (sum: number, n: GPUNode) => sum + (n.total_vram_mb ?? 0),
+      0
+    );
+
     return {
+      gpuCount: gpuNodes.length,
+      schedulerCount: schedulerNodes.length,
+      schedulerOnline: schedulerNodes.filter(
+        (n: GPUNode) => n.status === "online"
+      ).length,
+      deviceUsedVRAM,
+      deviceReportingVRAM,
+      deviceReportingCount: deviceReporting.length,
       totalNodes: nodes.length,
       onlineNodes,
       offlineNodes,
@@ -265,6 +295,18 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
     if (!modelResidency) return [];
     return modelResidency as ModelResidencyEntry[];
   }, [modelResidency]);
+
+  /* WP-62 Task 1. The heatmap's columns are the GPU nodes the API actually
+     returned, not a literal list. The old `NODE_IDS.filter(id => id !==
+     "node-01")` was a hand-maintained sixth statement of the topology; it also
+     silently disagreed with the cards above it whenever the two lists drifted. */
+  const gpuHostnames = useMemo(
+    () =>
+      (nodes ?? [])
+        .filter((n: GPUNode) => (n.total_vram_mb ?? 0) > 0)
+        .map((n: GPUNode) => n.node_hostname),
+    [nodes]
+  );
 
   // ── Render ──────────────────────────────────────────────────────────
 
@@ -340,30 +382,29 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                {/* WP-60 Task 2(c) — WP-57 Task 4's ruling, applied on this
-                    page. "NODES ONLINE 3/3" counted neither machines (6) nor
-                    GPUs (5): it counts GPU WORKERS REGISTERED WITH THE
-                    SCHEDULER, which is 3 because node-01 is CPU-only and
-                    node-05 and node-06 each have a GPU serving a model but run
-                    no Celery worker. Three defensible numbers on three
-                    surfaces; this one now names which it is.
+                {/* WP-62 Task 1, RULED, and the third operator report of the
+                    same defect. The two previous "fixes" (WP-57 T4, WP-60 T2)
+                    relabelled this tile. The tile was not the problem: the
+                    PAGE drew only the scheduler's registry, so node-05 and
+                    node-06 - each with a card, each serving a model - were
+                    absent from a page titled GPU Fleet Status.
 
-                    WP-61 Task 2: the COUNT is unchanged at 3 and the label
-                    still reads true; the REASON for node-05 changed. It read
-                    "node-05 is out of service", which was correct on
-                    2026-08-25 and is not correct now -- node-05 is back and
-                    serving Qwen on :8000. It stays outside this count because
-                    a vLLM server is not a Celery consumer, which is node-06's
-                    reason, not its old one. */}
-                Scheduler GPU workers
+                    The page now draws every GPU-bearing machine and this tile
+                    counts GPUs, naming the scheduler subset as a subset in the
+                    same line. Both numbers come from ONE payload
+                    (`GET /gpu/nodes`, `in_scheduler` per row), so they cannot
+                    drift apart the way two tiles reading two endpoints did. */}
+                GPUs in the fleet
               </p>
               <p
                 className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400"
-                title="Workers registered with the GPU scheduler and heartbeating. Not a count of machines (6) and not a count of GPUs in the fleet (5) - see Node Monitor for those."
+                title="Every GPU-bearing machine in the fleet (nodes 02-06). The scheduler subset are the ones running a Celery worker registered with the GPU scheduler; node-05 (vLLM/Qwen) and node-06 (CLIP scorer) run none by design and take no pipeline work. node-01 is CPU-only and is not counted here at all."
               >
-                {fleetStats.onlineNodes}
+                {fleetStats.gpuCount}
                 <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-                  /{fleetStats.totalNodes} registered
+                  {" "}
+                  GPUs — {fleetStats.schedulerCount} scheduler worker
+                  {fleetStats.schedulerCount === 1 ? "" : "s"}
                 </span>
               </p>
             </div>
@@ -397,14 +438,35 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
             </div>
             <div className="text-center">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                VRAM Usage
+                VRAM on the devices
               </p>
-              <p className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100">
-                {(fleetStats.usedVRAM / 1024).toFixed(1)}
-                <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-                  /{(fleetStats.totalVRAM / 1024).toFixed(0)} GB
-                </span>
-              </p>
+              {/* WP-62 Task 1. This tile summed the SCHEDULER'S RESERVATION
+                  across the fleet and called it "VRAM Usage", which is why it
+                  read 0.0 GB while three cards physically held ~120 GB. It is
+                  now the device figure from Prometheus, over the nodes that
+                  reported one - and it says how many that was, because a fleet
+                  total that silently treats a non-reporting card as empty is
+                  the WP-60 Task 2(a) defect in the other direction. */}
+              {fleetStats.deviceReportingCount > 0 ? (
+                <p
+                  className="mt-1 text-2xl font-bold text-gray-900 dark:text-gray-100"
+                  title={`Physical VRAM in use, summed over the ${fleetStats.deviceReportingCount} of ${fleetStats.gpuCount} GPU node(s) reporting a device reading. Scheduler reservation is a separate figure and is shown per card.`}
+                >
+                  {(fleetStats.deviceUsedVRAM / 1024).toFixed(1)}
+                  <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
+                    /{(fleetStats.deviceReportingVRAM / 1024).toFixed(0)} GB
+                    {fleetStats.deviceReportingCount < fleetStats.gpuCount &&
+                      ` (${fleetStats.deviceReportingCount}/${fleetStats.gpuCount} reporting)`}
+                  </span>
+                </p>
+              ) : (
+                <p
+                  className="mt-1 text-sm text-gray-400 dark:text-gray-500 py-2"
+                  title="No GPU node reported a device VRAM reading. Check the nvidia-gpu-exporter scrape targets in Prometheus."
+                >
+                  not reported
+                </p>
+              )}
             </div>
             <div className="text-center">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
@@ -460,7 +522,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                   <GPUNodeCard
                     key={node.id}
                     node={node}
-                    gpuLabel={GPU_LABELS[node.node_hostname] || node.node_hostname}
+                    gpuLabel={gpuLabelFor(node)}
                     isAdmin={user?.role === "admin"}
                     isDraining={drainingNodeId === node.id}
                     onDrainToggle={handleDrainToggle}
@@ -519,16 +581,14 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                         <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Model
                         </th>
-                        {NODE_IDS.filter((id) => id !== "node-01").map(
-                          (nodeId) => (
-                            <th
-                              key={nodeId}
-                              className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
-                            >
-                              {nodeId}
-                            </th>
-                          )
-                        )}
+                        {gpuHostnames.map((nodeId) => (
+                          <th
+                            key={nodeId}
+                            className="px-3 py-2 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase"
+                          >
+                            {nodeId}
+                          </th>
+                        ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
@@ -537,8 +597,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                           <td className="px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 whitespace-nowrap">
                             {entry.model_name}
                           </td>
-                          {NODE_IDS.filter((id) => id !== "node-01").map(
-                            (nodeId) => {
+                          {gpuHostnames.map((nodeId) => {
                               const allocation = entry.allocations?.find(
                                 (a) => a.node_id === nodeId
                               );
@@ -580,8 +639,7 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
                                   )}
                                 </td>
                               );
-                            }
-                          )}
+                          })}
                         </tr>
                       ))}
                     </tbody>
