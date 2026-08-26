@@ -100,6 +100,38 @@ class UpcomingMigration(BaseModel):
     file_size_bytes: int = 0
 
 
+class DedupSavings(BaseModel):
+    """WP-57 Task 2 — deduplication savings, DERIVED (was ledger P2.4).
+
+    P2.4 recorded that the figure was derivable and nothing derived it, so the
+    panel honestly said "not computed". WP-45 restored ``assets.content_hash``
+    and both columns this needs are populated on every row (measured: 159 of 159
+    assets carry a hash), so the honest answer is no longer "unknown" — it is a
+    number, and reporting it is the fix.
+
+    ``bytes_saved`` is what deduplication ACTUALLY avoided storing, not an
+    estimate of what compression might achieve. ``AssetService.upload_asset``
+    increments ``reference_count`` instead of writing the bytes a second time,
+    so every reference beyond the first is one copy not stored:
+
+        bytes_saved = SUM(file_size_bytes * (reference_count - 1))
+
+    ``duplicate_count`` is the number of avoided copies, not the number of rows
+    involved — an asset referenced three times avoided two copies.
+
+    A zero here now means "dedup ran and found nothing to save", which is a
+    measurement. That is only true because the fields are populated; if they ever
+    stop being, this must go back to saying it does not know.
+    """
+
+    bytes_saved: int = 0
+    duplicate_count: int = 0
+    percent: float = Field(
+        default=0.0,
+        description="bytes_saved as a percentage of what would have been stored without dedup",
+    )
+
+
 class RetentionReportResponse(BaseModel):
     """Retention report: asset distribution across tiers and upcoming migrations."""
 
@@ -108,3 +140,5 @@ class RetentionReportResponse(BaseModel):
     tier_distribution: List[TierDistribution] = []
     upcoming_migrations: List[UpcomingMigration] = []
     policy_name: str = ""
+    # None means "not derivable", which is a different answer from zero savings.
+    dedup_savings: Optional[DedupSavings] = None

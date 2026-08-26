@@ -91,7 +91,14 @@ export default function NodesPage(): React.ReactElement {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Node Monitor</h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-              {nodes?.length || 0} nodes — polling every 10s
+              {/* WP-57 Task 4. "6 nodes" and Operational Monitoring's "3"
+                  are both true and were both unlabelled, so they read as a
+                  contradiction. This page counts MACHINES in the fleet
+                  topology - including node-01, which is CPU-only
+                  infrastructure. Operational Monitoring counts GPU workers
+                  registered with the scheduler, which is a subset. */}
+              {nodes?.length || 0} machines in the fleet — including node-01
+              (CPU-only) — polling every 10s
             </p>
           </div>
           {/* WP-24: counts derive from real per-node checks. The old version

@@ -105,6 +105,21 @@ export interface NodeStatus {
   status_reason?: string;
   role: string;
   gpu_model: string | null;
+  /**
+   * WP-57 Task 4. Whether this node has a GPU, and whether it runs a Celery
+   * pipeline worker (i.e. whether it is in the SCHEDULER's fleet).
+   *
+   * They exist because two dashboards counted nodes from this same payload and
+   * neither could say what it counted. Operational Monitoring labelled a count
+   * of ALL six nodes "GPU Nodes Online", silently promoting node-01 — CPU-only
+   * infrastructure — into the GPU fleet. The scheduler's "3/3" counts something
+   * different again: node-06 has a GPU and runs the CLIP scorer but no Celery
+   * worker; node-05 has a GPU and is out of service. Three defensible numbers,
+   * none of them labelled. A surface cannot say what it counts unless the
+   * payload says what each node is.
+   */
+  has_gpu: boolean;
+  runs_pipeline_worker: boolean;
   /** DECLARED capacity from the topology table - not a reading. */
   total_vram_mb: number;
   /** Whether the declared hardware above has been verified on the box. */
@@ -240,6 +255,17 @@ export interface ProjectResponse {
   scene_count: number;
   total_duration_estimate_seconds?: number | null;
   hero_image_url?: string | null;
+  /**
+   * WP-57 Task 1. The asset whose thumbnail represents this project — a
+   * final render if one exists, else the newest generated image.
+   *
+   * An ID rather than a URL, because `/assets/{id}/thumbnail` is token-guarded
+   * and a browser will not attach a Bearer header to an `<img src>`; the card
+   * fetches it through `apiClient.blob()`. NULL is a real answer meaning "this
+   * project has no renderable asset yet", and the card must say that in words
+   * rather than show an icon indistinguishable from a broken image.
+   */
+  thumbnail_asset_id?: string | null;
   /** `LanguageVariantSummary` — {language_code, state} and nothing else. */
   language_variants?: LanguageVariantSummary[];
   active_job?: ActiveJobInfo | null;

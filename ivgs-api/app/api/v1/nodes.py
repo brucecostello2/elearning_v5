@@ -42,6 +42,8 @@ router = APIRouter(prefix="/nodes", tags=["Nodes"])
 # (node-02 LLM-only, node-03 video-only, node-06 = 2nd CUDA video + compositor + LLM failover)
 NODE_TOPOLOGY = {
     "node-01": {
+        # WP-57 Task 4: CPU-only infrastructure: Postgres, Redis, SeaweedFS, API, frontend. Its celery workers run orchestration, not GPU stages.
+        "runs_pipeline_worker": False,
         "hostname": "node-01",
         "role": "Infrastructure",
         "gpu_model": None,
@@ -50,6 +52,8 @@ NODE_TOPOLOGY = {
         "services": ["postgres", "redis", "seaweedfs", "ivgs-api", "ivgs-scheduler", "nginx"],
     },
     "node-02": {
+        # WP-57 Task 4: vLLM worker, in the scheduler fleet.
+        "runs_pipeline_worker": True,
         "hostname": "node-02",
         "role": "GPU LLM (fp8 Llama-3.3-70B)",
         # Measured 2026-08-23 (WP-24): nvidia-smi reports 97887 MiB, not 98304.
@@ -59,6 +63,8 @@ NODE_TOPOLOGY = {
         "services": ["vllm-primary", "celery-worker"],
     },
     "node-03": {
+        # WP-57 Task 4: cogvideox-worker (NOT celery-worker; that one is profiles:[standby] and is not running - WP-44 S6.3).
+        "runs_pipeline_worker": True,
         "hostname": "node-03",
         "role": "GPU Video (CogVideoX/Wan2.1)",
         # Measured 2026-08-23 (WP-24): nvidia-smi reports 97887 MiB, not 98304.
@@ -68,6 +74,8 @@ NODE_TOPOLOGY = {
         "services": ["cogvideox-server", "cogvideox-worker"],
     },
     "node-04": {
+        # WP-57 Task 4: celery-worker, in the scheduler fleet.
+        "runs_pipeline_worker": True,
         "hostname": "node-04",
         "role": "GPU Image + TTS + Talking Head",
         # CORRECTED 2026-08-23 (WP-24). This read "NVIDIA RTX 5000 Pro Blackwell"
@@ -82,6 +90,8 @@ NODE_TOPOLOGY = {
                      "latentsync", "vllm-midsize", "celery-worker"],
     },
     "node-05": {
+        # WP-57 Task 4: OUT OF SERVICE: confirmed host memory fault, memtest test 8, 2026-08-25.
+        "runs_pipeline_worker": False,
         "hostname": "node-05",
         "role": "Quality services (earmarked)",
         # CORRECTED 2026-08-25 (WP-48). This read "NVIDIA RTX 5080" / 16384 MB
@@ -100,6 +110,8 @@ NODE_TOPOLOGY = {
         "services": ["node-exporter", "nvidia-gpu-exporter", "node-logs"],
     },
     "node-06": {
+        # WP-57 Task 4: Has a GPU and runs the CLIP scorer, but NO Celery worker - which is exactly why the scheduler's count is 3 and not 4.
+        "runs_pipeline_worker": False,
         "hostname": "node-06",
         # DISPUTED, and left as-is on purpose. AD-02 gave node-06 an on-demand
         # fp8-70B LLM-failover leg, which was sized against the 96 GB this row
@@ -149,6 +161,19 @@ def _node_payload(node_id, info, health, detail=False):
         "status_reason": health["status_reason"],
         "role": info["role"],
         "gpu_model": info["gpu_model"],
+        # WP-57 Task 4. EXPLICIT rather than left to be inferred from
+        # `gpu_model != null`. Two dashboards counted nodes and neither said
+        # what it was counting: Operational Monitoring labelled a count of ALL
+        # six nodes "GPU Nodes Online", which silently promotes node-01 - CPU-only
+        # infrastructure - into the GPU fleet. A surface cannot state what it
+        # counts unless the payload says what each node is.
+        "has_gpu": info["gpu_model"] is not None,
+        # Whether this node runs a Celery pipeline worker, i.e. whether it is in
+        # the SCHEDULER's fleet. This is the distinction that made "3/3" and
+        # "5 online of 6" both defensible and both unlabelled: node-06 has a GPU
+        # and runs the CLIP scorer but no Celery worker, so it is not one of the
+        # scheduler's three; node-05 has a GPU and is out of service.
+        "runs_pipeline_worker": info.get("runs_pipeline_worker", False),
         "total_vram_mb": info["total_vram_mb"],
         "topology_verified": info.get("topology_verified", False),
         # Nullable observations. null == not measured.

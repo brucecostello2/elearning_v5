@@ -90,6 +90,13 @@ class ProjectResponse(BaseModel):
     max_runtime_seconds: Optional[int] = None
     state: str
     hero_image_url: Optional[str] = None
+    # WP-57 Task 1. An ASSET ID, not a URL, because the media routes are
+    # token-guarded and a browser cannot attach a Bearer header to an `<img
+    # src>`. The card fetches it through `apiClient.blob()` against
+    # `/assets/{id}/thumbnail?w=`. NULL means "this project has no renderable
+    # asset yet" — a real answer the card must render as words, not as an icon
+    # indistinguishable from a broken image.
+    thumbnail_asset_id: Optional[UUID] = None
     scene_count: int = 0
     total_duration_estimate_seconds: Optional[float] = None
     created_at: datetime

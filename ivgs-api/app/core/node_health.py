@@ -43,12 +43,23 @@ this API process runs ON node-01, so if it is answering the request, node-01 is 
 That is a tautology rather than a measurement, and it is labelled `self` in the
 payload so nobody mistakes it for one.
 
-GPU TELEMETRY is read from the same Prometheus, job `nvidia-gpu-exporter`. As of
-2026-08-23 that exporter runs on NO node in the fleet (P2.6a: utkuozdemir 1.2.1
-panics at startup on this driver -- `power_smoothing.window_multiplier [ms]` is not
-a valid Prometheus metric name; removed from node-04's compose, never started on
-node-02, Exited(2) on node-03 since 2026-06-02). So every GPU field is None today,
-carrying a reason. None means "not measured". It must never be rendered as 0.
+GPU TELEMETRY is read from the same Prometheus, job `nvidia-gpu-exporter`.
+
+**CORRECTED 2026-08-25 (WP-57 Task 4). The paragraph that stood here said the
+exporter "runs on NO node in the fleet" because P2.6a made it panic at startup.
+That was true on 2026-08-23 and is not true now.** WP-48 fixed P2.6a with an
+explicit `--query-field-names` list, and node-05 served telemetry through that
+exporter on 2026-08-25. Leaving the old sentence in place would send the next
+reader after a driver bug that has been fixed.
+
+What IS true: a node can have no GPU telemetry for several different reasons, and
+they are not interchangeable. node-05 is silent because **its host has a confirmed
+hardware memory fault** (memtest, test 8, multiple cores, 2026-08-25) and the
+machine is out of service — not because of an exporter defect. A node with no GPU
+at all (node-01) has no telemetry because there is nothing to measure.
+
+Every GPU field is None when unmeasured, carrying a reason. None means "not
+measured". It must never be rendered as 0.
 """
 import logging
 import os
@@ -56,6 +67,18 @@ from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 import httpx
+
+# WP-57 Task 4. Which nodes have a GPU at all, so a "no telemetry" reason can
+# tell the truth about WHY. node-01 is CPU-only infrastructure; every other node
+# in the fleet carries a card. Kept here rather than imported from
+# `api/v1/nodes.NODE_TOPOLOGY` because that module imports this one, and a
+# circular import to answer a yes/no question is a poor trade.
+_NODES_WITHOUT_GPU = frozenset({"node-01"})
+
+
+def _node_has_gpu(node_id: str) -> bool:
+    return node_id not in _NODES_WITHOUT_GPU
+
 
 logger = logging.getLogger(__name__)
 
@@ -234,11 +257,29 @@ def collect_fleet_health(node_ids) -> Dict[str, Dict[str, Any]]:
         elif probe_error:
             telemetry_reason = probe_error
         else:
-            telemetry_reason = (
-                "no GPU telemetry: nvidia-gpu-exporter is not running on this node "
-                "(ledger P2.6a - utkuozdemir/nvidia_gpu_exporter:1.2.1 panics at "
-                "startup on this driver)"
-            )
+            # WP-57 Task 4. This used to blame ledger P2.6a - the exporter
+            # panicking at startup - on EVERY node with no telemetry. WP-48
+            # closed P2.6a and node-05 served telemetry through the repaired
+            # exporter on 2026-08-25, so that explanation is now wrong wherever
+            # it appears, and a stale explanation sends the next reader after
+            # the wrong cause. The reason is now derived from what is actually
+            # true of the node.
+            if not _node_has_gpu(node_id):
+                telemetry_reason = (
+                    "no GPU telemetry: this node has no GPU"
+                )
+            elif status_value == "offline":
+                telemetry_reason = (
+                    "no GPU telemetry: the node is offline, so nothing is "
+                    "reporting. Check why the node is down before looking at "
+                    "the exporter."
+                )
+            else:
+                telemetry_reason = (
+                    "no GPU telemetry: Prometheus holds no nvidia-gpu-exporter "
+                    "series for this node. The node is reachable, so the "
+                    "exporter is not running or is not being scraped."
+                )
 
         out[node_id] = {
             "status": status_value,

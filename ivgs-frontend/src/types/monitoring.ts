@@ -306,7 +306,26 @@ export interface CompositionManifest {
 // Storage Analytics (§14.1)
 // ────────────────────────────────────────────────────────────────────────────
 
-export type StorageTier = "hot" | "warm" | "cold" | "archive" | "HOT" | "WARM" | "COLD" | "ARCHIVE";
+/**
+ * The `storage_tier` PostgreSQL ENUM, exactly.
+ *
+ * WP-57 Task 2 NARROWED THIS, and the narrowing is the fix rather than a
+ * tidy-up. It used to be the union of both cases —
+ * `"hot" | ... | "HOT" | ...` — which is how the Storage Analytics page came to
+ * key its four donuts on `"HOT"`, `"WARM"`, `"COLD"`, `"ARCHIVE"` while the API
+ * sends `"hot"`. `tierData.find(t => t.tier === tier.id)` was comparing
+ * `"hot" === "HOT"`, matching nothing, and every tier rendered 0% / "no assets"
+ * / 0 B directly beneath a populated total on the same page.
+ *
+ * The uppercase half of that union existed only to make the mismatch compile.
+ * A type widened to accommodate a bug stops being able to catch it — the same
+ * disease as WP-56's phantom `PaginatedResponse<T>`.
+ *
+ * Note `"archived"`, not `"archive"`: the ENUM is
+ * `hot | warm | cold | archived | deleted`, verified against pg_enum. The old
+ * type said `"archive"`, so lowercasing alone would still have missed that tier.
+ */
+export type StorageTier = "hot" | "warm" | "cold" | "archived" | "deleted";
 
 export interface StorageTierData {
   tier: StorageTier;
@@ -331,13 +350,36 @@ export interface QuotaEntry {
   has_quota: boolean;
 }
 
+/**
+ * One row of `GET /api/v1/retention/report`'s `upcoming_migrations`.
+ *
+ * WP-57 Task 3 — the phantom-field family, instance 14. CAPTURED FROM THE LIVE
+ * WIRE, not from what the table wanted to render. What the API actually sends is
+ * exactly these five keys; the interface previously declared
+ * `project_name`, `target_tier`, `size_bytes` and `scheduled_at`, none of which
+ * has ever been on the wire. Only `asset_id` and `current_tier` matched, which
+ * is precisely what the screenshot showed: two populated columns, two blanks,
+ * `NaN undefined`, and `Invalid Date`.
+ *
+ * The phantoms are DELETED rather than null-guarded — the WP-40/43 fix. Reading
+ * `m.size_bytes` is now a compile error, which is what stopped it silently
+ * reaching a formatter as `undefined`.
+ *
+ * Two renames worth naming, because they are not cosmetic:
+ *   `target_tier` -> `next_tier`         the API's own word, and clearer
+ *   `size_bytes`  -> `file_size_bytes`   ditto
+ *
+ * `scheduled_at` has no replacement ON PURPOSE. The API sends
+ * `days_until_migration`, which is what it can honestly compute; a timestamp
+ * would have to be invented. See the page for why "0 days" is rendered as
+ * "overdue" rather than "today".
+ */
 export interface TierMigration {
   asset_id: string;
-  project_name: string;
   current_tier: StorageTier;
-  target_tier: StorageTier;
-  size_bytes: number;
-  scheduled_at: string;
+  next_tier: StorageTier;
+  days_until_migration: number;
+  file_size_bytes: number;
 }
 
 export interface OrphanAsset {
@@ -397,18 +439,49 @@ export interface RollbackPoint {
 // Retention Policies (§10.4)
 // ────────────────────────────────────────────────────────────────────────────
 
+/**
+ * `GET /api/v1/retention/policies` — CAPTURED FROM THE LIVE WIRE.
+ *
+ * WP-57 Task 5 found this by sweep, not from a screenshot, and it was the worst
+ * of the set. The interface declared `source_tier`, `target_tier`,
+ * `threshold_days`, `auto_execute`, `last_run_at` and `assets_affected` — SIX
+ * fields, and the API sends NONE of them. The whole admin Retention Policies
+ * table rendered undefined in every column but `name`.
+ *
+ * And it was not only a display defect. The editor PUT
+ * `{threshold_days, auto_execute}` to an endpoint whose update schema
+ * (`RetentionPolicyUpdate`, ivgs-api/app/schemas/retention.py:52) declares
+ * neither, so FastAPI dropped both silently and the form returned 200 having
+ * saved nothing — a green surface over an empty action, on an admin settings
+ * form, which is the AD-09.3 family in the place it can do most harm.
+ *
+ * A retention policy is a set of PER-TIER DURATIONS, not a single threshold with
+ * an on/off switch. That is what the table now shows.
+ */
 export interface RetentionPolicy {
   id: string;
   name: string;
-  source_tier: StorageTier;
-  target_tier: StorageTier | "delete";
-  threshold_days: number;
-  auto_execute: boolean;
-  last_run_at: string | null;
-  assets_affected: number;
+  description: string | null;
+  hot_days: number | null;
+  warm_days: number | null;
+  cold_days: number | null;
+  archive_days: number | null;
+  delete_after_days: number | null;
+  applies_to: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
+/** Mirrors `RetentionPolicyUpdate` on the API, field for field. */
 export interface RetentionPolicyUpdate {
-  threshold_days?: number;
-  auto_execute?: boolean;
+  name?: string;
+  description?: string;
+  hot_days?: number;
+  warm_days?: number;
+  cold_days?: number;
+  archive_days?: number;
+  delete_after_days?: number;
+  applies_to?: string;
+  is_default?: boolean;
 }

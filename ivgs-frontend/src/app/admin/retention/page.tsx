@@ -5,8 +5,13 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRetentionPolicies, useRetentionReport } from "@/hooks/useRetention";
 import { api } from "@/lib/api";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { formatBytes } from "@/lib/media";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import type { RetentionPolicy, StorageTier } from "@/types/monitoring";
+import type {
+  RetentionPolicy,
+  RetentionPolicyUpdate,
+  StorageTier,
+} from "@/types/monitoring";
 
 /**
  * §10.4 Retention Policy Management
@@ -30,7 +35,7 @@ const TIER_LABELS: Partial<Record<StorageTier | "delete", string>> = {
   hot: "Hot (SSD)",
   warm: "Warm (HDD)",
   cold: "Cold (NAS)",
-  archive: "Archive (Compressed)",
+  archived: "Archive (Compressed)",
   delete: "Delete",
 };
 
@@ -38,7 +43,7 @@ const TIER_COLORS: Partial<Record<StorageTier | "delete", string>> = {
   hot: "text-red-400 bg-red-900/20",
   warm: "text-orange-400 bg-orange-900/20",
   cold: "text-blue-400 bg-blue-900/20",
-  archive: "text-purple-400 bg-purple-900/20",
+  archived: "text-purple-400 bg-purple-900/20",
   delete: "text-gray-400 bg-gray-800",
 };
 
@@ -46,7 +51,7 @@ const TIER_THRESHOLDS: { tier: StorageTier; days: string; description: string }[
   { tier: "hot", days: "0–30 days", description: "Fast SSD storage for active projects" },
   { tier: "warm", days: "31–90 days", description: "Standard HDD for recent projects" },
   { tier: "cold", days: "91–365 days", description: "Network attached storage for archival" },
-  { tier: "archive", days: "366+ days", description: "Compressed NAS for long-term retention" },
+  { tier: "archived", days: "366+ days", description: "Compressed NAS for long-term retention" },
 ];
 
 export default function RetentionPage(): React.ReactElement {
@@ -58,8 +63,13 @@ export default function RetentionPage(): React.ReactElement {
 
   /* ── Edit modal state ─────────────────────────────────────────────── */
   const [editingPolicy, setEditingPolicy] = useState<RetentionPolicy | null>(null);
-  const [editThreshold, setEditThreshold] = useState(0);
-  const [editAutoExecute, setEditAutoExecute] = useState(false);
+  /* WP-57 Task 5. Was `editThreshold` / `editAutoExecute`, PUT as
+     {threshold_days, auto_execute} to an endpoint whose update schema declares
+     NEITHER - so FastAPI dropped both and the form reported success having
+     saved nothing. These are the fields the API actually accepts. */
+  const [editHotDays, setEditHotDays] = useState<string>("");
+  const [editWarmDays, setEditWarmDays] = useState<string>("");
+  const [editColdDays, setEditColdDays] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [runningCleanup, setRunningCleanup] = useState(false);
 
@@ -69,8 +79,9 @@ export default function RetentionPage(): React.ReactElement {
   /* ── Actions ──────────────────────────────────────────────────────── */
   const openEdit = useCallback((policy: RetentionPolicy) => {
     setEditingPolicy(policy);
-    setEditThreshold(policy.threshold_days);
-    setEditAutoExecute(policy.auto_execute);
+    setEditHotDays(policy.hot_days != null ? String(policy.hot_days) : "");
+    setEditWarmDays(policy.warm_days != null ? String(policy.warm_days) : "");
+    setEditColdDays(policy.cold_days != null ? String(policy.cold_days) : "");
     setActionMessage(null);
   }, []);
 
@@ -79,10 +90,13 @@ export default function RetentionPage(): React.ReactElement {
     setSaving(true);
     setActionMessage(null);
     try {
-      await api.put(`/api/v1/retention/policies/${editingPolicy.id}`, {
-        threshold_days: editThreshold,
-        auto_execute: editAutoExecute,
-      });
+      /* Only send what the operator actually filled in: the API validates
+         each field's range, and sending an empty string would be a 422. */
+      const payload: RetentionPolicyUpdate = {};
+      if (editHotDays.trim()) payload.hot_days = Number(editHotDays);
+      if (editWarmDays.trim()) payload.warm_days = Number(editWarmDays);
+      if (editColdDays.trim()) payload.cold_days = Number(editColdDays);
+      await api.put(`/api/v1/retention/policies/${editingPolicy.id}`, payload);
       setActionMessage({ type: "success", text: `Policy "${editingPolicy.name}" updated successfully.` });
       setEditingPolicy(null);
       mutate();
@@ -94,7 +108,7 @@ export default function RetentionPage(): React.ReactElement {
     } finally {
       setSaving(false);
     }
-  }, [editingPolicy, editThreshold, editAutoExecute, mutate]);
+  }, [editingPolicy, editHotDays, editWarmDays, editColdDays, mutate]);
 
   const handleRunCleanup = useCallback(async () => {
     setRunningCleanup(true);
@@ -193,13 +207,19 @@ export default function RetentionPage(): React.ReactElement {
               <table className="w-full text-left text-sm">
                 <thead className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   <tr>
+                    {/* WP-57 Task 5. Every column but the first used to read a
+                        field the API has never sent - source_tier, target_tier,
+                        threshold_days, auto_execute, last_run_at,
+                        assets_affected. A retention policy on this API is a set
+                        of PER-TIER DURATIONS, so that is what is shown. */}
                     <th className="px-4 py-3">Policy Name</th>
-                    <th className="px-4 py-3">Source Tier</th>
-                    <th className="px-4 py-3">Target Tier</th>
-                    <th className="px-4 py-3">Threshold</th>
-                    <th className="px-4 py-3">Auto-Execute</th>
-                    <th className="px-4 py-3">Last Run</th>
-                    <th className="px-4 py-3">Assets</th>
+                    <th className="px-4 py-3">Applies To</th>
+                    <th className="px-4 py-3">Hot</th>
+                    <th className="px-4 py-3">Warm</th>
+                    <th className="px-4 py-3">Cold</th>
+                    <th className="px-4 py-3">Archive</th>
+                    <th className="px-4 py-3">Delete After</th>
+                    <th className="px-4 py-3">Default</th>
                     <th className="px-4 py-3">Actions</th>
                   </tr>
                 </thead>
@@ -209,40 +229,33 @@ export default function RetentionPage(): React.ReactElement {
                       <td className="whitespace-nowrap px-4 py-3 font-medium text-gray-800 dark:text-gray-200">
                         {policy.name}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TIER_COLORS[policy.source_tier]}`}>
-                          {TIER_LABELS[policy.source_tier]}
-                        </span>
+                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
+                        {policy.applies_to}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TIER_COLORS[policy.target_tier]}`}>
-                          {TIER_LABELS[policy.target_tier]}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-700 dark:text-gray-300">
-                        {policy.threshold_days} days
-                      </td>
+                      {/* WP-57 Task 5: null is "this policy does not define
+                          that stage", which is different from 0 days. */}
+                      {([
+                        policy.hot_days,
+                        policy.warm_days,
+                        policy.cold_days,
+                        policy.archive_days,
+                        policy.delete_after_days,
+                      ] as (number | null)[]).map((days, i) => (
+                        <td
+                          key={i}
+                          className="whitespace-nowrap px-4 py-3 text-gray-700 dark:text-gray-300"
+                        >
+                          {typeof days === "number" ? `${days} days` : "not set"}
+                        </td>
+                      ))}
                       <td className="whitespace-nowrap px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          policy.auto_execute
+                          policy.is_default
                             ? "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
                             : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                         }`}>
-                          {policy.auto_execute ? "Enabled" : "Disabled"}
+                          {policy.is_default ? "Default" : "—"}
                         </span>
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {policy.last_run_at
-                          ? new Date(policy.last_run_at).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
-                          : "Never"}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {policy.assets_affected}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3">
                         <button
@@ -275,11 +288,12 @@ export default function RetentionPage(): React.ReactElement {
                 <thead className="border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/50 text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400">
                   <tr>
                     <th className="px-4 py-3">Asset ID</th>
-                    <th className="px-4 py-3">Project</th>
+                    {/* WP-57 Task 3: dropped — the API has never sent a
+                        project name on this row, so it rendered blank. */}
                     <th className="px-4 py-3">Current Tier</th>
-                    <th className="px-4 py-3">Target Tier</th>
+                    <th className="px-4 py-3">Next Tier</th>
                     <th className="px-4 py-3">Size</th>
-                    <th className="px-4 py-3">Scheduled</th>
+                    <th className="px-4 py-3">Due</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-800">
@@ -288,22 +302,23 @@ export default function RetentionPage(): React.ReactElement {
                       <td className="px-4 py-3 font-mono text-xs text-gray-700 dark:text-gray-300">
                         {m.asset_id.substring(0, 12)}…
                       </td>
-                      <td className="px-4 py-3 text-gray-700 dark:text-gray-300">{m.project_name}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TIER_COLORS[m.current_tier]}`}>
                           {m.current_tier}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TIER_COLORS[m.target_tier]}`}>
-                          {m.target_tier}
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${TIER_COLORS[m.next_tier]}`}>
+                          {m.next_tier}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {(m.size_bytes / (1024 * 1024)).toFixed(1)} MB
+                        {formatBytes(m.file_size_bytes)}
                       </td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400">
-                        {new Date(m.scheduled_at).toLocaleDateString()}
+                        {m.days_until_migration <= 0
+                          ? "overdue"
+                          : `in ${m.days_until_migration} day${m.days_until_migration === 1 ? "" : "s"}`}
                       </td>
                     </tr>
                   ))}
@@ -357,36 +372,44 @@ export default function RetentionPage(): React.ReactElement {
                 Edit Policy: {editingPolicy.name}
               </h2>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                {TIER_LABELS[editingPolicy.source_tier]} → {TIER_LABELS[editingPolicy.target_tier]}
+                Applies to {editingPolicy.applies_to}. Days are how long an asset
+                stays in each tier before moving on.
               </p>
 
-              <div className="mt-4">
-                <label htmlFor="threshold" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Threshold (days)
-                </label>
-                <input
-                  id="threshold"
-                  type="number"
-                  min={1}
-                  max={3650}
-                  value={editThreshold}
-                  onChange={(e) => setEditThreshold(Number(e.target.value))}
-                  className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
-                />
-              </div>
+              {/* WP-57 Task 5. This modal used to offer a single "Threshold
+                  (days)" and an "Auto-execute transitions" checkbox. Neither
+                  exists on this API: the PUT dropped both silently and reported
+                  success. These three are the fields RetentionPolicyUpdate
+                  declares and validates. Blank means "leave unchanged". */}
+              {([
+                ["hot", "Hot (days)", editHotDays, setEditHotDays] as const,
+                ["warm", "Warm (days)", editWarmDays, setEditWarmDays] as const,
+                ["cold", "Cold (days)", editColdDays, setEditColdDays] as const,
+              ]).map(([key, label, value, setter]) => (
+                <div className="mt-4" key={key}>
+                  <label
+                    htmlFor={`policy-${key}`}
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    {label}
+                  </label>
+                  <input
+                    id={`policy-${key}`}
+                    type="number"
+                    min={1}
+                    max={3650}
+                    value={value}
+                    placeholder="leave blank to keep"
+                    onChange={(e) => setter(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-sm text-gray-800 dark:text-gray-200 focus:border-ivgs-500 focus:outline-none focus:ring-1 focus:ring-ivgs-500"
+                  />
+                </div>
+              ))}
 
-              <div className="mt-4 flex items-center gap-3">
-                <input
-                  id="auto-execute"
-                  type="checkbox"
-                  checked={editAutoExecute}
-                  onChange={(e) => setEditAutoExecute(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 text-ivgs-600 dark:text-ivgs-400 focus:ring-ivgs-500"
-                />
-                <label htmlFor="auto-execute" className="text-sm text-gray-700 dark:text-gray-300">
-                  Auto-execute transitions
-                </label>
-              </div>
+              <p className="mt-4 rounded-md border border-amber-500/60 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+                Saving updates the policy record. It does not move any asset:
+                nothing has ever migrated a tier on this system (WP-57 D-1).
+              </p>
 
               <div className="mt-6 flex justify-end gap-3">
                 <button

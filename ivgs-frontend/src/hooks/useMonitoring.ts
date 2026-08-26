@@ -777,16 +777,18 @@ export function useStorageAnalytics(): {
 
   return {
     tierData,
-    // Deduplication is not computed by any endpoint (ledger P2.4). The columns
-    // exist -- assets.content_hash and assets.reference_count are populated on
-    // every row -- but nothing aggregates them, so there is no figure to show.
-    // Reporting 0% saved would assert that dedup ran and found nothing.
-    dedupSavings: undefined,
-    dedupAvailable: false,
+    // WP-57 Task 2 — P2.4 CLOSED. The endpoint now derives this from
+    // assets.reference_count, which WP-45 made reliable: every reference beyond
+    // the first is a copy dedup avoided storing. A zero is now a MEASUREMENT
+    // ("dedup ran and saved nothing"), which is why it may be shown; before
+    // this it would have asserted a result nothing had computed.
+    // Still `undefined` when the API omits the block, so an older API keeps
+    // saying "not computed" rather than reporting a fabricated zero.
+    dedupSavings: data?.dedup_savings,
+    dedupAvailable: Boolean(data?.dedup_savings),
     dedupReason:
-      "Deduplication savings are not computed by any endpoint (ledger P2.4). " +
-      "assets.content_hash and assets.reference_count are populated, so the " +
-      "figure is derivable, but nothing derives it yet.",
+      "This API build does not compute deduplication savings; upgrade it to " +
+      "see the figure rather than a zero that asserts nothing was saved.",
     totalUsed: data?.total_size_bytes,
     totalAllocated: undefined,
     allocationAvailable: false,

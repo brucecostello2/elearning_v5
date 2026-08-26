@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useRef } from "react";
 import StateBadge from "@/components/StateBadge";
 import type { Project } from "@/types/api";
+import { useAssetObjectUrl, useInView } from "@/hooks/useAssetMedia";
 
 /**
  * §8.1.1 Video Gallery — Project Card
@@ -38,8 +39,31 @@ export default function ProjectCard({
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
+  /* WP-57 Task 1. THE BADGE WAS NOT A DURATION.
+     It rendered `max_runtime_seconds`, which is the CEILING the operator typed
+     at project creation, not the length of anything. Both populated cards read
+     "5:00" because both projects carry the default 300 - a configured target
+     presented in the position and format of a measured runtime.
+     `total_duration_estimate_seconds` is the honest number and the API already
+     sends it: the sum of the storyboard's scene durations. It is an ESTIMATE,
+     so the badge says "est" rather than letting it pass for a measurement, and
+     a project with no storyboard yet has no estimate to show. */
+  const estimate = project.total_duration_estimate_seconds;
+  const hasEstimate = typeof estimate === "number" && Number.isFinite(estimate);
+
+  /* Fetch only once the card is on screen: 17 cards must not fire 17 requests
+     for thumbnails nobody has scrolled to. */
+  const cardRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(cardRef);
+  const { url: thumbUrl, error: thumbError } = useAssetObjectUrl(
+    project.thumbnail_asset_id,
+    inView && Boolean(project.thumbnail_asset_id),
+    320,
+  );
+
   return (
     <div
+      ref={cardRef}
       onClick={() => onClick(project)}
       className="group bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl overflow-hidden cursor-pointer hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-lg hover:shadow-blue-900/10 transition-all duration-200"
       role="button"
@@ -53,34 +77,45 @@ export default function ProjectCard({
     >
       {/* Hero Image */}
       <div className="relative aspect-video bg-white dark:bg-gray-900 overflow-hidden">
-        {project.hero_image_url ? (
+        {thumbUrl ? (
           <img
-            src={project.hero_image_url}
-            alt={`${project.name} hero image`}
+            src={thumbUrl}
+            alt={`${project.name} preview`}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <svg
-              className="w-12 h-12 text-gray-700 dark:text-gray-300"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-              />
-            </svg>
+          /* WP-57 Task 1. THREE DISTINCT STATES, because they were one icon.
+             Every card showed the same film-strip glyph whether the project had
+             no assets, had one that failed to load, or was still fetching - and
+             an icon that means all three means none of them. */
+          <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-3 text-center">
+            {thumbError ? (
+              <span className="text-[11px] leading-tight text-amber-600 dark:text-amber-400">
+                Preview failed to load
+              </span>
+            ) : project.thumbnail_asset_id ? (
+              <span className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">
+                Loading preview…
+              </span>
+            ) : (
+              <span className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">
+                No render yet
+              </span>
+            )}
           </div>
         )}
 
         {/* Runtime Badge */}
-        <div className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs text-gray-900 dark:text-white font-mono">
-          {formatRuntime(project.max_runtime_seconds)}
+        <div
+          className="absolute bottom-2 right-2 px-2 py-0.5 bg-black/70 rounded text-xs text-white font-mono"
+          title={
+            hasEstimate
+              ? "Estimated runtime — the sum of this storyboard's scene durations"
+              : "No storyboard yet, so there is no runtime to estimate"
+          }
+        >
+          {hasEstimate ? `est ${formatRuntime(estimate)}` : "no estimate"}
         </div>
 
         {/* State Badge (top-left) */}

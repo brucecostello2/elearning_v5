@@ -18,6 +18,7 @@ from app.schemas.retention import (
     RetentionPolicyCreate,
     RetentionPolicyUpdate,
     RetentionPolicyResponse,
+    DedupSavings,
     RetentionReportResponse,
     TierDistribution,
     UpcomingMigration,
@@ -215,10 +216,54 @@ class RetentionService:
                         )
                     )
 
+        # WP-57 Task 2 — deduplication savings, derived rather than declared
+        # unknown. Ledger P2.4 said the figure was derivable and nothing derived
+        # it; both columns are populated on every row, so it is now computed.
+        #
+        # Only rows that were actually re-referenced contribute. `reference_count`
+        # defaults to 1, so `reference_count - 1` is the number of copies dedup
+        # avoided writing for that asset, and multiplying by its size is the
+        # bytes not stored. Guarded on `> 1` so the sum is over avoided copies
+        # rather than over every asset.
+        dedup_row = (
+            await self.db.execute(
+                select(
+                    func.coalesce(
+                        func.sum(
+                            Asset.file_size_bytes * (Asset.reference_count - 1)
+                        ),
+                        0,
+                    ),
+                    func.coalesce(func.sum(Asset.reference_count - 1), 0),
+                )
+                .where(
+                    Asset.storage_tier != "deleted",
+                    Asset.reference_count > 1,
+                    Asset.file_size_bytes.isnot(None),
+                )
+            )
+        ).one()
+        bytes_saved = int(dedup_row[0] or 0)
+        duplicate_count = int(dedup_row[1] or 0)
+        # Denominator is what storage WOULD have been without dedup.
+        # int() is load-bearing: SUM() over a BigInteger column comes back as
+        # decimal.Decimal, and `100.0 * int / Decimal` raises TypeError rather
+        # than coercing. `total_size` is the same shape, so both are normalised
+        # here instead of at the point of division.
+        would_have_stored = int(total_size or 0) + bytes_saved
+        dedup_savings = DedupSavings(
+            bytes_saved=bytes_saved,
+            duplicate_count=duplicate_count,
+            percent=round(100.0 * bytes_saved / would_have_stored, 2)
+            if would_have_stored
+            else 0.0,
+        )
+
         return RetentionReportResponse(
             total_assets=total_assets,
             total_size_bytes=total_size,
             tier_distribution=tier_distribution,
             upcoming_migrations=upcoming_migrations,
             policy_name=policy_name,
+            dedup_savings=dedup_savings,
         )

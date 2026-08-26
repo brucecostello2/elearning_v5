@@ -10,6 +10,7 @@ import {
 } from "@/hooks/useMonitoring";
 import StorageTierChart from "@/components/monitoring/StorageTierChart";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { formatBytes as sharedFormatBytes } from "@/lib/media";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import type {
   StorageTier,
@@ -43,27 +44,33 @@ import type {
  */
 
 /** Storage tier definitions per §10 Digital Asset Management */
+/* WP-57 Task 2. These ids used to be UPPERCASE while the API sends the
+   PostgreSQL ENUM values in lowercase, so every `tierData.find(t => t.tier ===
+   tier.id)` matched nothing and all four donuts rendered 0% / "no assets" / 0 B
+   directly under a populated total on the same page. `StorageTier` had been
+   widened to include both cases, which is what let it compile. "archive" is also
+   corrected to "archived" - the ENUM's actual value. */
 const STORAGE_TIERS: { id: StorageTier; label: string; color: string; description: string }[] = [
   {
-    id: "HOT",
+    id: "hot",
     label: "Hot",
     color: "#EF4444",
     description: "Active projects — fast SSD access",
   },
   {
-    id: "WARM",
+    id: "warm",
     label: "Warm",
     color: "#F59E0B",
     description: "Recent projects — HDD, 30–90 days old",
   },
   {
-    id: "COLD",
+    id: "cold",
     label: "Cold",
     color: "#3B82F6",
     description: "Archived — NAS, 90–365 days old",
   },
   {
-    id: "ARCHIVE",
+    id: "archived",
     label: "Archive",
     color: "#6B7280",
     description: "Long-term — compressed NAS, 365+ days",
@@ -130,12 +137,18 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
   /**
    * Format bytes to human-readable string.
    */
-  const formatBytes = useCallback((bytes: number): string => {
-    if (bytes === 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
-  }, []);
+  /* WP-57 Task 3. The formatter that lived here produced the screenshot's
+     "NaN undefined": Math.log(undefined) is NaN, so the index is NaN and
+     units[NaN] is undefined. It was typed `(bytes: number)` and should have been
+     impossible to call with undefined - except the phantom `size_bytes` field
+     asserted a number the wire never sent, so the type system lied on its
+     behalf. Replaced with the shared formatter from lib/media.ts, which has
+     taken `number | null | undefined` and returned "—" since WP-40. There was
+     never a reason for two of these. */
+  const formatBytes = useCallback(
+    (bytes: number | null | undefined): string => sharedFormatBytes(bytes),
+    [],
+  );
 
   /**
    * Usage percentage for total storage, or null when there is no denominator.
@@ -609,8 +622,37 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
             <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
               <div className="px-4 py-3 bg-gray-50 dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800">
                 <h2 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                  Upcoming Tier Migrations — Next 7 Days
+                  Tier Migrations — Due or Overdue
                 </h2>
+              {/* WP-57 Task 3. The hard question the package asked: is a
+                  migration scheduler running, or is this table listing every
+                  overdue asset as "upcoming"? MEASURED: the latter. Celery beat
+                  has dispatched retention-migration daily at 04:00 since the
+                  schedule was written, the task IS registered on the live
+                  worker, and `assets.tier_transition_at` is NULL on all 158
+                  rows - not one asset has ever changed tier, with the oldest
+                  created 2026-06-01. The cause is in
+                  services/retention_migration.py, whose scan selects a column
+                  named `storage_path`; the assets table has `seaweedfs_path`
+                  and no `storage_path`, so the query raises UndefinedColumn on
+                  every run and a per-tier try/except reports a clean migration
+                  that moved nothing.
+                  This banner exists because a list headed "Upcoming" implies a
+                  mechanism that acts. Repairing that mechanism would start
+                  moving 158 live assets between tiers, which is an operator
+                  decision, not a dashboard fix - see WP-57 D-1. */}
+              <div className="mb-4 rounded-md border border-amber-500/60 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40">
+                <p className="font-medium text-amber-700 dark:text-amber-300">
+                  Nothing is migrating these assets.
+                </p>
+                <p className="mt-1 text-amber-800 dark:text-amber-200">
+                  No asset has ever changed tier: <code>tier_transition_at</code>{" "}
+                  is unset on every row. The nightly retention job runs and
+                  reports success without moving anything (WP-57 D-1). The rows
+                  below are assets that have <em>passed</em> their retention
+                  window, not work that is scheduled to happen.
+                </p>
+              </div>
               </div>
               {retentionLoading ? (
                 <div className="flex justify-center py-8">
@@ -624,20 +666,23 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Asset
                         </th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Project
-                        </th>
+                        {/* WP-57 Task 3. The PROJECT column is gone: the API
+                            has never sent a project name here, so it rendered
+                            blank on every row. Restoring it means the endpoint
+                            resolving asset -> project, which is a real API
+                            change and is a recorded decision rather than done
+                            here. An absent column is honest; a blank one is not. */}
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Current Tier
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Target Tier
+                          Next Tier
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
                           Size
                         </th>
                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Scheduled
+                          Due
                         </th>
                       </tr>
                     </thead>
@@ -646,9 +691,6 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                         <tr key={m.asset_id}>
                           <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-100 font-mono">
                             {m.asset_id.slice(0, 12)}…
-                          </td>
-                          <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">
-                            {m.project_name}
                           </td>
                           <td className="px-4 py-2">
                             <span
@@ -675,22 +717,31 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                               style={{
                                 backgroundColor:
                                   STORAGE_TIERS.find(
-                                    (t) => t.id === m.target_tier
+                                    (t) => t.id === m.next_tier
                                   )?.color + "20",
                                 color:
                                   STORAGE_TIERS.find(
-                                    (t) => t.id === m.target_tier
+                                    (t) => t.id === m.next_tier
                                   )?.color,
                               }}
                             >
-                              {m.target_tier}
+                              {m.next_tier}
                             </span>
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400 font-mono">
-                            {formatBytes(m.size_bytes)}
+                            {formatBytes(m.file_size_bytes)}
                           </td>
                           <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(m.scheduled_at).toLocaleDateString()}
+                            {/* WP-57 Task 3. Was `new Date(m.scheduled_at)` on
+                                a field the API has never sent, so every row read
+                                "Invalid Date". The API sends DAYS, not a
+                                timestamp. 0 means the asset is past its
+                                retention window: that is OVERDUE, not "today" -
+                                saying "today" would imply something is about to
+                                happen, and nothing is (see the banner above). */}
+                            {m.days_until_migration <= 0
+                              ? "overdue"
+                              : `in ${m.days_until_migration} day${m.days_until_migration === 1 ? "" : "s"}`}
                           </td>
                         </tr>
                       ))}

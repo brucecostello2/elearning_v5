@@ -12,9 +12,11 @@ from datetime import datetime, timezone
 from typing import List, Optional, Tuple
 from uuid import UUID
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func, and_, or_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.models.asset import Asset
 
 from app.models.project import Project
 from app.models.render_job import RenderJob
@@ -579,6 +581,49 @@ class ProjectService:
         if project.hero_image_asset_id:
             hero_image_url = f"/api/v1/assets/{project.hero_image_asset_id}/download"
 
+        # WP-57 Task 1 — the gallery card thumbnail.
+        #
+        # THE CARD HAD NO PICTURE TO SHOW AND NEVER COULD. `hero_image_asset_id`
+        # is NULL on all 17 projects and nothing in the system ever sets it, so
+        # `hero_image_url` was always null and every card fell to a placeholder
+        # icon. Worse, had it been set, the URL points at `/download`, which sits
+        # behind `Depends(get_service_or_user)` — and a browser will not attach a
+        # Bearer token to an `<img src>`, so it would have rendered as a broken
+        # image (measured: that route answers 403 unauthenticated). WP-40 built
+        # `apiClient.blob()` for exactly this and the card did not use it.
+        #
+        # An ASSET ID, not a URL. The frontend fetches it through the authorised
+        # blob path at `GET /assets/{id}/thumbnail?w=` — the route WP-45 Task 6(b)
+        # built so cards stop pulling full-size originals.
+        #
+        # PREFERENCE ORDER, and it is deliberate: the finished render represents
+        # the project, a generated still is the next best thing, and nothing else
+        # is a picture of the course. `talking_head` is excluded on purpose — a
+        # presenter plate is a picture of the ACTOR, not of this project, and
+        # every project sharing an actor would show the same card.
+        #
+        # NULL is a real answer here and the card must render it as one: a
+        # project with no renderable asset yet has nothing to show, which is a
+        # different fact from a thumbnail that failed to load.
+        thumbnail_asset_id = None
+        thumb_result = await self.db.execute(
+            select(Asset.id)
+            .where(
+                and_(
+                    Asset.project_id == project.id,
+                    Asset.asset_type.in_(["final_render", "image"]),
+                    Asset.storage_tier != "deleted",
+                )
+            )
+            .order_by(
+                # final_render first, then newest.
+                case((Asset.asset_type == "final_render", 0), else_=1),
+                Asset.created_at.desc(),
+            )
+            .limit(1)
+        )
+        thumbnail_asset_id = thumb_result.scalar_one_or_none()
+
         # Get active job
         active_job = None
         job_result = await self.db.execute(
@@ -619,6 +664,7 @@ class ProjectService:
             max_runtime_seconds=project.max_runtime_seconds,
             state=project.state,
             hero_image_url=hero_image_url,
+            thumbnail_asset_id=thumbnail_asset_id,
             scene_count=scene_count,
             total_duration_estimate_seconds=total_duration,
             created_at=project.created_at,
