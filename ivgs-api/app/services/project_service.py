@@ -44,6 +44,42 @@ logger = logging.getLogger(__name__)
 DEFAULT_RENDER_TIER = "prototype"
 VALID_RENDER_TIERS = ("prototype", "production")
 
+# WP-61 Task 5 (WP-60 D-3, RULED). The statuses a render job can be in while it
+# is still, in any sense, running.
+#
+# THE `job_status` ENUM HAS FOUR LABELS AND EXACTLY TWO ARE TERMINAL. Read off
+# the live type on 2026-08-26: `pending, running, success, failed`. So
+# "non-terminal" is the complement of {success, failed}, and it is written that
+# way below rather than as a literal {pending, running}: a future label added to
+# the enum -- `cancelling`, say -- is non-terminal by default and the guard
+# covers it the day it appears. The inverse spelling would silently let a new
+# state through.
+TERMINAL_JOB_STATUSES = frozenset({"success", "failed"})
+NON_TERMINAL_JOB_STATUSES = frozenset({"pending", "running"})
+
+
+class PipelineAlreadyRunningError(ValueError):
+    """A pipeline run for this project is already in flight.
+
+    WP-61 Task 5, WP-60 D-3. **This is not hypothetical.** Six triggers from one
+    browser inside 50 seconds each dispatched a full run on project 52d52867 --
+    five concurrent pipelines, six talking-head renders, about 3.5 hours of GPU
+    time. WP-60 Task 11 was asked to investigate a "loop"; there was no loop.
+    There was an unguarded button and a person pressing it.
+
+    A ValueError SUBCLASS deliberately, so that any existing caller that catches
+    ValueError around `trigger_pipeline` keeps behaving. The route catches this
+    first and answers 409 with its own code, because "you already have a run" is
+    a different fact from "you cannot trigger from this state" and an operator
+    needs to be able to tell them apart.
+    """
+
+    def __init__(self, message: str, *, job_id, job_type: str, status: str):
+        super().__init__(message)
+        self.job_id = job_id
+        self.job_type = job_type
+        self.status = status
+
 
 def _validate_tier(tier: Optional[str]) -> str:
     """Return a known tier, or raise. Never silently coerce to prototype."""
@@ -242,6 +278,27 @@ class ProjectService:
         )
         return await self._to_response(project)
 
+    async def _active_job(self, project_id: UUID) -> Optional[RenderJob]:
+        """The newest NON-TERMINAL render job for this project, or None.
+
+        WP-61 Task 5. ONE definition of "a run is in flight", used by the
+        trigger guard and by the project payload the button reads. Written as
+        `NOT IN (terminal)` rather than `IN ('pending','running')` so a label
+        added to `job_status` later is treated as non-terminal until somebody
+        decides otherwise -- the safe direction for a guard.
+        """
+        return await self.db.scalar(
+            select(RenderJob)
+            .where(
+                and_(
+                    RenderJob.project_id == project_id,
+                    RenderJob.status.not_in(sorted(TERMINAL_JOB_STATUSES)),
+                )
+            )
+            .order_by(RenderJob.created_at.desc())
+            .limit(1)
+        )
+
     async def trigger_pipeline(
         self,
         project_id: UUID,
@@ -260,6 +317,36 @@ class ProjectService:
         project = await self._get_project_or_none(project_id, current_user)
         if project is None:
             return None
+
+        # WP-61 Task 5 (WP-60 D-3, RULED). THE IN-FLIGHT GUARD, AND IT IS FIRST.
+        #
+        # It runs BEFORE the state check, before the transcript check, before
+        # the state write and before the job row -- because everything after it
+        # has a side effect and the whole point is that the second press
+        # changes nothing at all. A guard placed after the state write would
+        # still leave a project moved and a row inserted for a run that never
+        # happened.
+        #
+        # WHY THE PROJECT'S OWN STATE WAS NOT ALREADY A GUARD. It looks like it
+        # should have been: DRAFT and USER_REVIEW are the only triggerable
+        # states, and a dispatch moves the project out of DRAFT immediately. It
+        # is not one, for two measured reasons. The state write and the
+        # dispatch are in the same request, so two requests arriving inside one
+        # another's window both read DRAFT. And a run that fails part-way leaves
+        # the project back in a triggerable state with its jobs still
+        # non-terminal. The job table is the thing that knows whether work is
+        # outstanding.
+        active = await self._active_job(project.id)
+        if active is not None:
+            raise PipelineAlreadyRunningError(
+                f"Project {project_id} already has a {active.status} "
+                f"{active.job_type} run (job {active.id}). Wait for it to "
+                f"finish, or cancel it, before triggering another. Each "
+                f"trigger dispatches a full pipeline and consumes GPU time.",
+                job_id=active.id,
+                job_type=active.job_type,
+                status=active.status,
+            )
 
         current_state = ProjectState(project.state)
 
@@ -676,20 +763,14 @@ class ProjectService:
             else:
                 thumbnail_unavailable_reason = "No render yet."
 
-        # Get active job
+        # Get active job.
+        #
+        # WP-61 Task 5: through the SAME helper the trigger guard uses. Two
+        # copies of "what counts as an active run" is how the button and the
+        # server come to disagree about whether one is in flight -- and the
+        # button's whole job here is to reflect the server's answer.
         active_job = None
-        job_result = await self.db.execute(
-            select(RenderJob)
-            .where(
-                and_(
-                    RenderJob.project_id == project.id,
-                    RenderJob.status.in_(["pending", "running"]),
-                )
-            )
-            .order_by(RenderJob.created_at.desc())
-            .limit(1)
-        )
-        active_job_model = job_result.scalar_one_or_none()
+        active_job_model = await self._active_job(project.id)
         if active_job_model:
             active_job = ActiveJobInfo(
                 id=active_job_model.id,

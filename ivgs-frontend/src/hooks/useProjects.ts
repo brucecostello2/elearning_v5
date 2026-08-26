@@ -55,6 +55,29 @@ export function canTriggerPipeline(state: string | null | undefined): boolean {
   );
 }
 
+/**
+ * WP-61 Task 5 (WP-60 D-3, RULED). Is a run for this project already in flight?
+ *
+ * Six triggers from one browser inside 50 seconds each dispatched a full run on
+ * project 52d52867: five concurrent pipelines, six talking-head renders, about
+ * 3.5 hours of GPU time. WP-60 Task 11 was asked to investigate a "loop". There
+ * was no loop. There was an unguarded button.
+ *
+ * This reads `active_job`, which the API populates from the SAME helper its
+ * trigger guard uses (`ProjectService._active_job`) — the newest render job
+ * that is not in a terminal status. Two definitions of "in flight" is how a
+ * button and a server come to disagree about whether one is.
+ *
+ * The server refuses regardless (409 PIPELINE_ALREADY_RUNNING). This function
+ * is not the guard; it is what stops an operator being offered an action that
+ * will be refused.
+ */
+export function activeRun(
+  project: { active_job?: { id: string; job_type: string; status: string } | null } | null | undefined
+): { id: string; job_type: string; status: string } | null {
+  return project?.active_job ?? null;
+}
+
 const projectsFetcher = async (url: string): Promise<Project[]> => {
   const response = await apiClient.get<{ data: Project[]; total: number; page: number; per_page: number; pages: number; has_more: boolean }>(url);
   // API returns { data: [...], total, page, ... } — unwrap the array.
@@ -226,8 +249,9 @@ export function useProjects(projectId?: string): UseProjectsReturn {
    * starting a run meant a curl block.
    *
    * A 409 arrives as an ApiRequestError carrying the server's own reason --
-   * "Cannot trigger pipeline from state 'X'. Triggerable states: [...]" or
-   * "Cannot trigger pipeline: no transcripts uploaded". Callers show that
+   * "Cannot trigger pipeline from state 'X'. Triggerable states: [...]",
+   * "Cannot trigger pipeline: no transcripts uploaded", or (WP-61 Task 5)
+   * "Project ... already has a running ... run (job ...)". Callers show that
    * text; there is nothing this side can add to it that would be truer.
    */
   const triggerPipeline = async (

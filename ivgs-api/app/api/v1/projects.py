@@ -32,7 +32,11 @@ from app.core.rbac import (
 from app.models.user import User
 from app.schemas.base import PaginatedResponse
 from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
-from app.services.project_service import DEFAULT_RENDER_TIER, ProjectService
+from app.services.project_service import (
+    DEFAULT_RENDER_TIER,
+    PipelineAlreadyRunningError,
+    ProjectService,
+)
 from app.services.asset_service import AssetService
 from app.services.project_deletion import (
     AlreadyDeletedError,
@@ -331,6 +335,28 @@ async def trigger_pipeline(
     service = ProjectService(db)
     try:
         result = await service.trigger_pipeline(project_id, current_user, tier=tier)
+    except PipelineAlreadyRunningError as e:
+        # WP-61 Task 5 (WP-60 D-3, RULED). 409, NAMING THE ACTIVE RUN.
+        #
+        # Caught before the generic ValueError branch below, and given its own
+        # code, because "a run is already going" and "you cannot trigger from
+        # this state" are different facts with different remedies. The active
+        # job's id is in the payload so the GUI can link to it rather than
+        # telling the operator to go and look.
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "PIPELINE_ALREADY_RUNNING",
+                    "message": str(e),
+                    "active_job": {
+                        "id": str(e.job_id),
+                        "job_type": e.job_type,
+                        "status": e.status,
+                    },
+                }
+            },
+        )
     except ValueError as e:
         # IVGS-0.3: an unknown tier is a bad request, not a state conflict.
         if "render tier" in str(e):

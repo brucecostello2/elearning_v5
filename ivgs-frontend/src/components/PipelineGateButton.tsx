@@ -47,6 +47,16 @@ interface PipelineGateButtonProps {
   /** Tailwind classes for the trigger button. */
   className?: string;
   disabled?: boolean;
+  /**
+   * WP-61 Task 5. WHY the button is disabled, in the operator's words.
+   *
+   * A greyed-out button with no explanation is only a marginal improvement on
+   * a button that dispatches a sixth concurrent render: the operator still does
+   * not know what is happening, and their next move is to reload the page and
+   * try again. When this is set the reason is shown beside the button and as
+   * its tooltip, so "nothing happened when I clicked" is never the experience.
+   */
+  disabledReason?: string;
 }
 
 const TIERS: { id: RenderTier; label: string; note: string }[] = [
@@ -71,6 +81,7 @@ export default function PipelineGateButton({
   successMessage,
   className,
   disabled = false,
+  disabledReason,
 }: PipelineGateButtonProps): React.ReactElement {
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [tier, setTier] = useState<RenderTier>("prototype");
@@ -114,13 +125,21 @@ export default function PipelineGateButton({
           setIsOpen(true);
         }}
         disabled={disabled}
+        title={disabled ? disabledReason : undefined}
         className={
           className ??
-          "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm font-medium"
+          "px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
         }
       >
         {label}
       </button>
+
+      {/* WP-61 Task 5. The reason, visible without hovering. */}
+      {disabled && disabledReason && (
+        <span className="ml-3 text-sm text-amber-700 dark:text-amber-400">
+          {disabledReason}
+        </span>
+      )}
 
       {success && (
         <span className="ml-3 text-sm text-green-600 dark:text-green-400">

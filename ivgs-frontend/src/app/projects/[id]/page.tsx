@@ -4,7 +4,7 @@ import React, { useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { canTriggerPipeline, useProjects } from "@/hooks/useProjects";
+import { activeRun, canTriggerPipeline, useProjects } from "@/hooks/useProjects";
 import { useAuth } from "@/hooks/useAuth";
 import PipelineTracker from "@/components/PipelineTracker";
 import PipelineGateButton from "@/components/PipelineGateButton";
@@ -41,6 +41,16 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
   const canTrigger =
     (user?.role === "admin" || user?.role === "operator") &&
     canTriggerPipeline(project?.state);
+
+  /**
+   * WP-61 Task 5 (WP-60 D-3, RULED). The in-flight run, if there is one.
+   *
+   * The button stays MOUNTED and goes disabled rather than disappearing. A
+   * control that vanishes reads as a rendering fault and invites a reload; a
+   * disabled control that names the run reads as "this is already happening",
+   * which is the fact.
+   */
+  const running = activeRun(project);
 
   /* `POST /projects/{id}/apply-preset` is behind `require_operator_or_admin`,
      so a viewer must not see the control rather than press it into a 403 —
@@ -119,6 +129,19 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
               }
               successMessage="Pipeline triggered."
               onConfirm={(tier) => triggerPipeline(tier)}
+              /* WP-61 Task 5. The server refuses this with 409
+                 PIPELINE_ALREADY_RUNNING regardless -- that is the guard, and
+                 it is asserted by proving the second dispatch never reaches
+                 the broker, not by checking a status code. This is only so an
+                 operator is never offered an action that will be refused, and
+                 is never left pressing a button that does nothing visible.
+                 Six presses in 50 seconds is what happened without it. */
+              disabled={running !== null}
+              disabledReason={
+                running
+                  ? `A ${running.job_type} run is ${running.status} (job ${running.id.slice(0, 8)}…). Wait for it to finish or cancel it.`
+                  : undefined
+              }
             />
           )}
           {project.state === "COMPLETE" && (
