@@ -68,7 +68,22 @@ TRANSIENT_EXCEPTION_TYPES: frozenset[str] = frozenset({
     "requests.exceptions.Timeout",
 })
 
+# WP-57 Task 7 additions are marked. Each was written against a message that is
+# ACTUALLY IN `render_jobs.error_message` on this system (WP-58 report S6), not
+# against an imagined one - which is why the previous set matched almost nothing:
+# it was written for exception strings, and what reaches this classifier is the
+# orchestrator's own summary text.
 TRANSIENT_MESSAGE_PATTERNS: list[re.Pattern[str]] = [
+    # WP-57 Task 7 — real message: "tts_audio checkpoint write returned 429
+    # (pipeline rate-limited itself; fixed in v5.11.0-apibatch)".
+    re.compile(r"\b429\b", re.IGNORECASE),
+    re.compile(r"rate[\s_-]?limit", re.IGNORECASE),
+    # WP-57 Task 7 — real message: "media-generation join stranded (worker
+    # crash); no dispatch context available to advance". A lost worker is the
+    # definition of transient: the work is re-runnable, nothing is misconfigured.
+    re.compile(r"worker\s+crash", re.IGNORECASE),
+    re.compile(r"\bstranded\b", re.IGNORECASE),
+    re.compile(r"worker\s+lost", re.IGNORECASE),
     re.compile(r"timeout", re.IGNORECASE),
     re.compile(r"connection\s+(refused|reset|aborted)", re.IGNORECASE),
     re.compile(r"temporarily\s+unavailable", re.IGNORECASE),
@@ -99,6 +114,20 @@ CONFIG_EXCEPTION_TYPES: frozenset[str] = frozenset({
 })
 
 CONFIG_MESSAGE_PATTERNS: list[re.Pattern[str]] = [
+    # WP-57 Task 7 — real message: "Stage3Input validation - dispatch_pipeline
+    # had no media branch; fixed in this build". A schema/dispatch defect is a
+    # config fault: retrying it changes nothing, which is exactly the distinction
+    # `transient` vs `config` is for.
+    re.compile(r"\bvalidation\b", re.IGNORECASE),
+    re.compile(r"no\s+media\s+branch", re.IGNORECASE),
+    # WP-57 Task 7 — real message, NINE rows: "Cancelled by WP-45 sweep: this row
+    # was created by the pre-WP-45 scene-regenerate endpoint, which inserted a job
+    # and dispatched no Celery task". These are administrative cancellations of
+    # rows that were never renders. Classifying them `transient` invites a retry
+    # of something that never ran; `config` says the fault is in how the job was
+    # created, which is true.
+    re.compile(r"cancelled\s+by", re.IGNORECASE),
+    re.compile(r"dispatched\s+no\s+celery\s+task", re.IGNORECASE),
     re.compile(r"invalid\s+(api[_ ]?key|token|credential)", re.IGNORECASE),
     re.compile(r"model\s+not\s+found", re.IGNORECASE),
     re.compile(r"invalid\s+model\s+name", re.IGNORECASE),
@@ -139,7 +168,17 @@ EXTERNAL_MESSAGE_PATTERNS: list[re.Pattern[str]] = [
     re.compile(r"quality\s+score\s+below", re.IGNORECASE),
     re.compile(r"safety\s+check\s+failed", re.IGNORECASE),
     re.compile(r"content\s+policy\s+violation", re.IGNORECASE),
-    re.compile(r"generation\s+failed", re.IGNORECASE),
+    # WP-57 Task 7. Was r"generation\s+failed", which also matched
+    # "Stage storyboard_generation failed" and "Stage image_generation failed" -
+    # the orchestrator's CONTENT-FREE summary for any stage whose name ends in
+    # "_generation". All three storyboard failures in the live table were
+    # classified `external`, i.e. "the model produced bad output", on no evidence
+    # at all. A confident wrong class is worse than the honest default, because
+    # it sends the reader to the model instead of to the stage.
+    # The lookbehind excludes a preceding underscore or word character, so
+    # "All animation generations failed" still matches and
+    # "storyboard_generation failed" no longer does.
+    re.compile(r"(?<![_\w])generations?\s+failed", re.IGNORECASE),
     re.compile(r"inference\s+error", re.IGNORECASE),
     re.compile(r"model\s+output\s+invalid", re.IGNORECASE),
     re.compile(r"corrupt(ed)?\s+output", re.IGNORECASE),

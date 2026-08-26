@@ -144,6 +144,11 @@ async def blacklist_all_user_tokens(user_id: str) -> None:
     logger.info("All tokens invalidated for user_id=%s", user_id)
 
 
+#: The value shipped in shared/config.py. Named here so the check below is
+#: explicit rather than a string literal buried in a comparison.
+_INSECURE_DEFAULT_SERVICE_TOKEN = "dev-service-token"
+
+
 async def get_service_or_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_session),
@@ -156,6 +161,46 @@ async def get_service_or_user(
     calls; user-facing endpoints keep get_current_user.
     """
     token = credentials.credentials
+
+    # WP-57 Task 8. `IVGS_SERVICE_TOKEN` has been unset fleet-wide since WP-44
+    # D-5 flagged it, resolving to the shipped default "dev-service-token" - a
+    # value that is in the repository, guarding a route the quality gate depends
+    # on. Three packages carried it forward.
+    #
+    # THE ROUTE MUST NOT ACCEPT BOTH. Once a real token is configured, the
+    # shipped default has to stop working - otherwise setting a strong value
+    # changes nothing, because the published one still opens the door. The
+    # comparison below is a single constant-time compare, so that already holds;
+    # this guard makes it EXPLICIT and testable rather than incidental, and
+    # states the property in the place someone would go to weaken it.
+    #
+    # It deliberately does NOT fail closed while the default is still in place.
+    # Refusing service auth outright would stop the live fleet the moment this
+    # deploys, before the operator has run the block that sets the value. The
+    # default is refused only once a real one exists; until then its use is
+    # logged loudly at every acceptance so the gap is visible rather than quiet.
+    if token == _INSECURE_DEFAULT_SERVICE_TOKEN:
+        if settings.IVGS_SERVICE_TOKEN != _INSECURE_DEFAULT_SERVICE_TOKEN:
+            logger.warning(
+                "service_token_rejected_shipped_default: a caller presented the "
+                "shipped default token while a real IVGS_SERVICE_TOKEN is "
+                "configured. Refused. Update that caller's environment."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "error": {
+                        "code": "INVALID_SERVICE_TOKEN",
+                        "message": "The shipped default service token is not accepted.",
+                    }
+                },
+            )
+        logger.warning(
+            "service_token_is_the_shipped_default: IVGS_SERVICE_TOKEN is unset, "
+            "so internal service auth is guarded by a value published in the "
+            "repository (WP-44 D-5 / WP-57 Task 8). Set it on every node."
+        )
+
     if hmac.compare_digest(token, settings.IVGS_SERVICE_TOKEN):
         result = await db.execute(select(User).where(User.username == "svc-pipeline"))
         service_user = result.scalar_one_or_none()
