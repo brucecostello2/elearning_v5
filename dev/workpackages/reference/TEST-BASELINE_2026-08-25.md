@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1061** | **0** | 0 | 0 | 1026 (WP-62) |
-| `ivgs-workers` | **868** | 18 | 48 | 15 | 838 (WP-62) |
+| `ivgs-api` | **1123** | **0** | 0 | 0 | 1061 (WP-63) |
+| `ivgs-workers` | **887** | 18 | 48 | 15 | 868 (WP-63) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | **165** | 12 | 15 | 30 | 150 (WP-62) |
-| **Total** | **2133** | **50** | **63** | **45** | 2053 / 50 (WP-62) |
+| `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
+| **Total** | **2242** | **50** | **63** | **45** | 2133 / 50 (WP-63) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,33 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-64 added 109 tests (2026-08-26) and moved no failure row.** 62 in
+`ivgs-api` (1061 -> 1123), 19 in `ivgs-workers` (868 -> 887) and 28 in
+`tests_system` (165 -> 193). Failures, skips and errors are unchanged in every
+tree: 50 / 63 / 45, each figure the tail line of a run. This tree now needs
+migrations **0037** and **0038**; both downgrade paths were exercised
+(`alembic downgrade 0037` then `0036`, then `upgrade head`, round-tripping
+clean on `ivgs_reconciliation_test`). 0037 adds one nullable TEXT column
+(`projects.learning_outcomes`) and its `downgrade()` DROPS it — unlike the enum
+migrations either side of it, a column can be removed cleanly. 0038 adds one
+ENUM label (`prompt_type.scene_media_adaptation`) and its `downgrade()` is a
+deliberate no-op, the same treatment as 0027, 0033 and 0034. **A tree at 0036
+fails every project read** with `column projects.learning_outcomes does not
+exist`, because the ORM declares it.
+
+**ONE OF WP-64's 62 API TESTS IS NOT ITS OWN.** `test_api_prompts.py::
+TestPromptTypes::test_every_type_is_individually_addressable` is parametrized
+over `PromptType`, so the eleventh label adds one case to a test WP-64 did not
+write. Counted here because the number is a count of what ran, not of what was
+authored.
+
+**TWO EXISTING TESTS WERE UPDATED BY WP-64 AND NEITHER WAS WEAKENED:**
+
+| Test | Why it moved, and why it is not a relaxation |
+|---|---|
+| `ivgs-api/tests/test_wp63_storyboard_prompt.py` (13 -> 34) | The deterministic visual checker gains the MEDIUM (Task 2(c)) and the learning outcomes (Task 6(e)). Nothing was removed: every WP-63 assertion still runs, and `check_visuals` gained per-`media_type` branches plus `outcome_findings`. One vocabulary entry was DROPPED during authoring and that is recorded in the source — a first draft matched `seconds?`, which fired on "a **second** ruled line" in four of the compliant fixtures. It was the ordinary word, not the unit; elapsed time in an image description is still caught by RULE 1's digit rule. |
+| `ivgs-workers/tests/test_wp_ivgs_0_seed_template_contract.py` (8 -> 10) | Its `CONSUMERS` map must list every seed template, and WP-64 added `scene_media_adaptation.j2`. `test_the_unconsumed_templates_are_recorded` moves 8-of-10 to 9-of-11. That is a count following a file, not a relaxation — and TWO NEW TESTS make it strictly stronger: the new template is the first seeded one whose reader is **not a worker** (`ivgs-api`'s `AdaptationService`), so `None` in that column now means "no worker", not "nobody", and `test_the_api_only_template_is_not_recorded_as_unread` says so rather than letting a live template sit filed under write-only. |
 
 **WP-63 added 80 tests (2026-08-26) and moved no failure row.** 35 in
 `ivgs-api` (1026 -> 1061), 30 in `ivgs-workers` (838 -> 868) and 15 in
@@ -566,6 +593,16 @@ that module now pass. 35 → 39 passed, 16 → 12 failed.
 
 ## 7. Provenance
 
+* Re-measured 2026-08-26 on node-01 (192.168.1.90) by **WP-64** against the
+  running stack: `ivgs-api:v5.23.0-media`, `ivgs-frontend:v5.23.0-media`,
+  `ivgs-workers:v5.23.0-media`, `ivgs-scheduler:v5.19.0-surfaces2`,
+  `ivgs-backup-worker:v5.19.0-surfaces2`, `postgres:17.2`, `redis:7.4`.
+  Test database at migration **0038**. Every tree was run with the §1
+  environment block exported; the `ivgs-workers` tree in particular reports
+  **52** skips rather than 48 when `TEST_DATABASE_URL` is unset, because
+  `test_wp60_orphan_guard.py` skips four tests by name on that variable. That
+  is an invocation difference, not a change in the suite, and it is recorded
+  here so the next package does not read it as one.
 * Re-measured 2026-08-26 on node-01 (192.168.1.90) by WP-62 against the running
   stack: `ivgs-api:v5.21.0-gates`, `ivgs-frontend:v5.21.0-gates`,
   `ivgs-workers:v5.20.0-qwen` (unchanged — WP-62 touched no worker code),
