@@ -9,10 +9,10 @@ Endpoints:
 """
 import logging
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +24,9 @@ from app.schemas.storyboard import SceneResponse, SceneUpdate, SceneReorderReque
 from app.schemas.render_job import JobResponse
 from app.services.storyboard_service import StoryboardService
 from app.services.regeneration import RegenerationError
+from app.api.v1._dispatch_guards import already_running, gate_blocked
+from app.services.gate_service import GateBlocked
+from app.services.project_service import PipelineAlreadyRunningError
 from app.services.project_service import ProjectService
 
 logger = logging.getLogger(__name__)
@@ -211,6 +214,17 @@ async def regenerate_scene(
     service = StoryboardService(db)
     try:
         job = await service.regenerate_scene(project_id, scene_id)
+    except PipelineAlreadyRunningError as e:
+        # WP-62 Task 6 (WP-61 D-1, RULED: extend). THIS IS THE ROUTE THE
+        # MEASURED INCIDENT USED. WP-60's six dispatches on project 52d52867
+        # were `video_generation` and `animation_generation` job types, which
+        # `trigger_pipeline` does not produce - they came through here, and
+        # WP-61's guard did not reach it.
+        raise already_running(e)
+    except GateBlocked as e:
+        # WP-62 Task 2(c). A regeneration dispatches media generation, so it is
+        # behind the storyboard gate like every other path that does.
+        raise gate_blocked(e)
     except RegenerationError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -226,11 +240,11 @@ async def regenerate_scene(
 
 @router.post(
     "/approve",
-    response_model=ProjectResponse,
     summary="Approve storyboard -> start media generation (P1.5 item 2)",
 )
 async def approve_storyboard(
     project_id: UUID,
+    request: Request,
     tier: str = Query(
         default="prototype",
         description=(
@@ -238,25 +252,39 @@ async def approve_storyboard(
             "prototype or production. Defaults to prototype."
         ),
     ),
+    note: Optional[str] = Query(
+        default=None,
+        max_length=4000,
+        description="Recorded with the gate decision and in audit_log.",
+    ),
     current_user: User = Depends(require_operator_or_admin),
     db: AsyncSession = Depends(get_session),
 ):
-    """Approve the storyboard and resume the pipeline into media generation."""
-    from app.services.project_service import ProjectService
+    """Approve the storyboard and resume the pipeline into media generation.
 
-    service = ProjectService(db)
-    try:
-        result = await service.approve_storyboard(
-            project_id, current_user, tier=tier,
-        )
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail={"error": {"code": "INVALID_STATE_TRANSITION", "message": str(e)}},
-        )
-    if result is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Project {project_id} not found"}},
-        )
-    return result
+    WP-62 Task 2(a). THE SURFACE IS UNCHANGED AND THE BEHAVIOUR IS NOT.
+
+    This is the endpoint the "Approve storyboard" button has posted to since
+    P1.5. Measured 2026-08-26, all it did was set `projects.state` and dispatch
+    `dispatch_media_generation`: no record of the decision, no reader, and
+    therefore nothing anywhere that could refuse for want of an approval.
+
+    It now RECORDS the decision first, against the exact storyboard version on
+    screen, and releases second. The enforcement was built behind the existing
+    surface rather than beside it, deliberately: a second Approve button would
+    have left this one as a working bypass of the gate it was supposed to be.
+
+    `POST /projects/{id}/gates/storyboard` is the contract-shaped equivalent
+    (WP-62 Task 2(b)) and runs the identical service call.
+    """
+    from app.api.v1.projects import GateDecisionRequest, _gate_decision
+    from app.models.project_gate import DECISION_APPROVE, GATE_STORYBOARD
+
+    return await _gate_decision(
+        project_id,
+        GATE_STORYBOARD,
+        GateDecisionRequest(decision=DECISION_APPROVE, note=note),
+        request,
+        current_user,
+        db,
+    )

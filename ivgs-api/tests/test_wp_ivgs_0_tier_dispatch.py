@@ -101,6 +101,15 @@ class TestTierDispatch:
         )
         await db_session.commit()
 
+        # WP-62 Task 2(c). `approve_storyboard` is the RELEASE half now; the
+        # decision is recorded first (by the gate route, or here by the shared
+        # helper) and the release refuses without a current one. Before this
+        # package the method WAS the gate, which is why nothing could ask
+        # whether an approval existed and nothing refused for want of one.
+        from tests.conftest import record_storyboard_approval
+
+        await record_storyboard_approval(db_session, proj.id, user.id)
+
         await svc.approve_storyboard(proj.id, user, tier="production")
 
         payload = recorder.calls[0]["kwargs"]["dispatch_input"]

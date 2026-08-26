@@ -93,6 +93,34 @@ def _validate_tier(tier: Optional[str]) -> str:
     return tier
 
 
+async def active_job(db: AsyncSession, project_id: UUID) -> Optional[RenderJob]:
+    """The newest NON-TERMINAL render job for a project, or None.
+
+    WP-61 Task 5 defined this as ``ProjectService._active_job`` for the trigger
+    guard. WP-62 Task 6 (WP-61 D-1, RULED: extend) needs the identical question
+    answered from ``app.services.regeneration``, which has a session and no
+    ProjectService, so the definition moved out here and the method below
+    delegates to it. ONE definition of "a run is in flight" -- the whole value
+    of the guard is that every dispatch-capable path asks the same question and
+    gets the same answer.
+
+    Written as ``NOT IN (terminal)`` rather than ``IN ('pending','running')``
+    so a label added to ``job_status`` later is treated as non-terminal until
+    somebody decides otherwise. That is the safe direction for a guard.
+    """
+    return await db.scalar(
+        select(RenderJob)
+        .where(
+            and_(
+                RenderJob.project_id == project_id,
+                RenderJob.status.not_in(sorted(TERMINAL_JOB_STATUSES)),
+            )
+        )
+        .order_by(RenderJob.created_at.desc())
+        .limit(1)
+    )
+
+
 class ProjectService:
     """Business logic for project management."""
 
@@ -287,17 +315,7 @@ class ProjectService:
         added to `job_status` later is treated as non-terminal until somebody
         decides otherwise -- the safe direction for a guard.
         """
-        return await self.db.scalar(
-            select(RenderJob)
-            .where(
-                and_(
-                    RenderJob.project_id == project_id,
-                    RenderJob.status.not_in(sorted(TERMINAL_JOB_STATUSES)),
-                )
-            )
-            .order_by(RenderJob.created_at.desc())
-            .limit(1)
-        )
+        return await active_job(self.db, project_id)
 
     async def trigger_pipeline(
         self,
@@ -373,6 +391,24 @@ class ProjectService:
             )
             if not transcript_count:
                 raise ValueError("Cannot trigger pipeline: no transcripts uploaded")
+
+        # WP-62 Task 2(c). THE DRAFT GATE, AND "TRIGGER PIPELINE" CANNOT
+        # BYPASS IT.
+        #
+        # From USER_REVIEW this button IS the final render. Spec v5.1 §6.1 puts
+        # a blocking human gate between the prototype draft and Stage 8, and
+        # until this package nothing enforced it: the draft gate had a state
+        # (USER_REVIEW) and no decision record, so there was nothing to consult
+        # and the render started on a draft nobody had approved.
+        #
+        # It runs AFTER the in-flight guard and BEFORE the state write, for the
+        # same reason the in-flight guard runs first: everything below has a
+        # side effect, and a refused trigger must leave the project exactly as
+        # it found it.
+        if current_state == ProjectState.USER_REVIEW:
+            from app.services.gate_service import GateService
+
+            await GateService(self.db).require_draft_approval(project_id)
 
         new_state = triggerable_states[current_state]
         project.state = new_state.value
@@ -536,6 +572,23 @@ class ProjectService:
         project = await self._get_project_or_none(project_id, current_user)
         if project is None:
             return None
+
+        # WP-62 Task 2(c). THE RELEASE REQUIRES A RECORDED, CURRENT APPROVAL.
+        #
+        # This method used to BE the gate: pressing the button dispatched media
+        # generation and left no record, so "was this approved?" had no answer
+        # and nothing downstream could refuse. It is now the RELEASE half only.
+        # `GateService.decide` writes the decision, then calls this; a direct
+        # call to `POST /scenes/approve` goes through the same service, so the
+        # decision always exists before the dispatch does.
+        #
+        # The check is not ceremonial. An approval that names an earlier
+        # storyboard fails it: re-running Stage 2 moves the artifact
+        # fingerprint, so a stale approval cannot release scenes the human
+        # never saw.
+        from app.services.gate_service import GateService
+
+        await GateService(self.db).require_storyboard_approval(project_id)
 
         current_state = ProjectState(project.state)
 

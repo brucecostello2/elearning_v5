@@ -38,6 +38,10 @@ from app.services.project_service import (
     ProjectService,
 )
 from app.services.asset_service import AssetService
+from app.models.project_gate import DECISIONS, GATE_DRAFT, GATE_STORYBOARD
+from app.api.v1._dispatch_guards import gate_blocked
+from app.services.gate_service import GateBlocked, GateError, GateService
+from app.services.project_progress import ProjectProgressService
 from app.services.project_deletion import (
     AlreadyDeletedError,
     ConfirmationMismatchError,
@@ -55,6 +59,45 @@ from shared.models.enums import ProjectState
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Projects"])
+
+
+# NOTE ON ROUTE ORDER, and it is load-bearing rather than tidiness.
+# FastAPI matches in REGISTRATION order, and this module registers
+# `GET /{project_id}` below. A literal path that starts with a segment which
+# could be a project id must therefore be declared BEFORE it, or
+# `/projects/deletions/audit` is matched as `project_id="deletions"` and
+# answers 422 on a UUID parse. Declared here, first.
+@router.get(
+    "/deletions/audit",
+    summary="Every recorded project deletion, classified (admin only)",
+)
+async def deletion_audit(
+    limit: int = Query(default=200, ge=1, le=1000),
+    current_user: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """WP-62 Task 5. THE READ PATH FOR THE DELETION LEDGER.
+
+    The closure the ledger asked for already existed: `_record_completion`
+    UPDATEs the ORIGINATING audit row, setting `after_payload.purge_state` and
+    flipping `action_type` to PROJECT_DELETE_COMPLETED. Measured 2026-08-26,
+    all fourteen recorded deletions are COMPLETED with purge_state 'complete'.
+
+    What did not exist was a way to READ it. `before_payload.purge_state` says
+    "pending" on every row forever -- it is deliberately a record of the moment
+    before destruction and is never rewritten -- so an operator querying the
+    obvious field got "pending" on fourteen finished deletions. This route
+    classifies each row once: completed / completed_partial / died_mid_purge /
+    in_flight, and says which are resumable.
+
+    The ten 2026-08-26 deletions are historical test data and are NOT modified
+    by this package. They appear here as `completed`, which is what they are.
+    """
+    service = ProjectDeletionService(db)
+    try:
+        return {"deletions": await service.deletion_audit_status(limit=limit)}
+    finally:
+        await service.close()
 
 
 @router.get(
@@ -357,6 +400,13 @@ async def trigger_pipeline(
                 }
             },
         )
+    except GateBlocked as e:
+        # WP-62 Task 2(c). "Trigger pipeline" CANNOT BYPASS THE DRAFT GATE.
+        # From USER_REVIEW this button IS the final render, and §6.1 puts a
+        # blocking human gate in front of it. 409 with its own code, because
+        # "the draft is not approved" is a different fact with a different
+        # remedy from "you cannot trigger from this state".
+        raise gate_blocked(e)
     except ValueError as e:
         # IVGS-0.3: an unknown tier is a bad request, not a state conflict.
         if "render tier" in str(e):
@@ -541,3 +591,286 @@ async def upload_talking_head(
         "seaweedfs_path": asset.seaweedfs_path,
         "file_size_bytes": asset.file_size_bytes,
     }
+
+
+# ---------------------------------------------------------------------------
+# The two human review gates (WP-62 Task 2)
+# ---------------------------------------------------------------------------
+
+
+class GateDecisionRequest(BaseModel):
+    """Body for both gate endpoints. ONE contract, deliberately.
+
+    Spec v5.1 §6.4 gives both gates the same three signals, so they get the
+    same body and the same response. Two endpoints with two shapes would be two
+    things to keep in step at M3.3 cutover, when each becomes a Temporal signal
+    send against `gate_storyboard` / `gate_draft`.
+    """
+
+    decision: str = Field(
+        description=(
+            "approved, rejected or regenerate. §6.4: 'Gates additionally "
+            "accept reject / regenerate signals.'"
+        ),
+    )
+    note: Optional[str] = Field(
+        default=None,
+        max_length=4000,
+        description=(
+            "Free text recorded with the decision and in audit_log. A "
+            "rejection without a reason is a decision nobody can act on."
+        ),
+    )
+
+
+async def _gate_decision(
+    project_id: UUID,
+    gate: str,
+    payload: GateDecisionRequest,
+    request: Request,
+    current_user: User,
+    db: AsyncSession,
+) -> dict:
+    """Both gate endpoints, once.
+
+    RBAC is `require_operator_or_admin`, matching every other pipeline-moving
+    control. A viewer must not be offered a decision they would be refused.
+    """
+    if payload.decision not in DECISIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": {
+                    "code": "VALIDATION_ERROR",
+                    "message": (
+                        f"Unknown decision '{payload.decision}'. The gate "
+                        f"accepts {list(DECISIONS)}."
+                    ),
+                }
+            },
+        )
+
+    project_service = ProjectService(db)
+    if await project_service.get_project(project_id, current_user) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Project {project_id} not found",
+                }
+            },
+        )
+
+    service = GateService(db)
+    try:
+        row = await service.decide(
+            project_id,
+            gate,
+            payload.decision,
+            actor=current_user,
+            note=payload.note,
+            client_ip=request.client.host if request.client else None,
+        )
+    except GateError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "GATE_ARTIFACT_ABSENT", "message": str(exc)}},
+        )
+
+    released: Optional[dict] = None
+    if payload.decision == "approved" and gate == GATE_STORYBOARD:
+        # Approval RELEASES the pipeline. This is the same dispatch the
+        # existing "Approve storyboard" button has always made; what is new is
+        # that the decision is recorded FIRST, so the dispatch happens because
+        # of an approval that exists rather than beside one that does not.
+        try:
+            result = await project_service.approve_storyboard(
+                project_id, current_user,
+            )
+            released = {
+                "dispatched": result is not None,
+                "state": result.state if result is not None else None,
+            }
+        except PipelineAlreadyRunningError as exc:
+            # The decision STANDS - a human approved this storyboard and that
+            # is recorded. Only the release is refused, and the operator is
+            # told which run is holding it up. Rolling the approval back
+            # because a dispatch could not happen would lose the human's
+            # decision to a scheduling condition.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "PIPELINE_ALREADY_RUNNING",
+                        "message": (
+                            f"{exc} The approval WAS recorded "
+                            f"(decision {row.id}); only the dispatch was "
+                            "refused. Nothing needs re-approving."
+                        ),
+                        "active_job": {
+                            "id": str(exc.job_id),
+                            "job_type": exc.job_type,
+                            "status": exc.status,
+                        },
+                    }
+                },
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "INVALID_STATE_TRANSITION",
+                        "message": (
+                            f"{exc} The approval WAS recorded (decision "
+                            f"{row.id}); only the dispatch was refused."
+                        ),
+                    }
+                },
+            )
+
+    statuses = await service.all_statuses(project_id)
+    return {
+        "decision_id": str(row.id),
+        "gate": gate,
+        "decision": row.decision,
+        "artifact_version": row.artifact_version,
+        # The M3.3 signal this decision corresponds to, on the response, so a
+        # caller written today against this API is already written against the
+        # Temporal contract.
+        "signal": {"name": f"gate_{gate}", "payload": row.signal_payload()},
+        "released": released,
+        "gates": {name: st.as_dict() for name, st in statuses.items()},
+    }
+
+
+@router.post(
+    "/{project_id}/gates/storyboard",
+    summary="Storyboard review gate: approve / reject / regenerate",
+)
+async def decide_storyboard_gate(
+    project_id: UUID,
+    payload: GateDecisionRequest,
+    request: Request,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Record a decision at the storyboard gate, and release on approval.
+
+    WP-62 Task 2(b). The API contract, stated once and shared with the draft
+    gate below. `POST /projects/{id}/scenes/approve` remains and now runs
+    through the same service, so the existing surface keeps working and the
+    two cannot diverge.
+    """
+    return await _gate_decision(
+        project_id, GATE_STORYBOARD, payload, request, current_user, db,
+    )
+
+
+@router.post(
+    "/{project_id}/gates/draft",
+    summary="Draft review gate: approve / reject / regenerate",
+)
+async def decide_draft_gate(
+    project_id: UUID,
+    payload: GateDecisionRequest,
+    request: Request,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Record a decision at the draft gate.
+
+    Approval does NOT dispatch. §6.1 puts the final render behind an explicit
+    "Start final render" action after this gate, and collapsing the two would
+    mean an approval silently consumed full-resolution GPU time. The render
+    trigger refuses until this gate is approved (WP-62 Task 2(c)).
+    """
+    return await _gate_decision(
+        project_id, GATE_DRAFT, payload, request, current_user, db,
+    )
+
+
+@router.get(
+    "/{project_id}/gates",
+    summary="State of both human review gates",
+)
+async def get_project_gates(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """Both gates, recomputed against the artifacts as they stand now.
+
+    Read by the stepper (stage 9 Review is the draft gate's home), by the
+    Storyboard tab and by the Draft Preview tab. ONE computation; three
+    surfaces cannot disagree about whether a gate is open.
+    """
+    service = GateService(db)
+    if await ProjectService(db).get_project(project_id, current_user) is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Project {project_id} not found",
+                }
+            },
+        )
+    statuses = await service.all_statuses(project_id)
+    history = await service.history(project_id)
+    return {
+        "gates": {name: st.as_dict() for name, st in statuses.items()},
+        "history": [
+            {
+                "id": str(h.id),
+                "gate": h.gate,
+                "decision": h.decision,
+                "artifact_version": h.artifact_version,
+                "note": h.note,
+                "decided_by_name": h.decided_by_name,
+                "decided_at": h.decided_at.isoformat() if h.decided_at else None,
+            }
+            for h in history
+        ],
+    }
+
+
+@router.get(
+    "/{project_id}/progress",
+    summary="Where this project is: the 11-step stepper, the tabs and the gates",
+)
+async def get_project_progress(
+    project_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """WP-62 Task 3, RULED. ONE computation, three consumers.
+
+    The top stepper, the per-tab indicators and the Overview run panel's
+    heading all read this. They used to derive their own answers from three
+    different fields and could therefore disagree - and did: the stepper was
+    frozen at DRAFT on a project whose Jobs tab listed a successful final
+    render.
+
+    Polled by the client. It is a read of three tables and a gate recompute;
+    nothing here writes, and in particular NOTHING HERE REPAIRS
+    `projects.state`. `stored_state` and `derived_state` are both on the
+    payload, and `stored_state_matches` says whether they agree, because the
+    gap is a fact about the project that an operator needs to see rather than
+    something to silently paper over.
+    """
+    service = ProjectService(db)
+    project = await service.get_project_model(project_id, current_user)
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Project {project_id} not found",
+                }
+            },
+        )
+    return await ProjectProgressService(db).compute(project)
+

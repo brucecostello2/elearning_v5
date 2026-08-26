@@ -111,6 +111,14 @@ async def scene_project(db_session, operator_token):
     db_session.add(scene)
     await db_session.flush()
     await db_session.commit()
+
+    # WP-62 Task 2(c). Media generation is now blocking on a recorded, CURRENT
+    # storyboard approval, and a regeneration IS media generation. This fixture
+    # always implied an approved storyboard -- the project is in
+    # MEDIA_GENERATION -- and there was nowhere to record one until now.
+    from tests.conftest import record_storyboard_approval
+
+    await record_storyboard_approval(db_session, project.id, owner)
     return {"project_id": str(project.id), "scene_id": str(scene.id)}
 
 

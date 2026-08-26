@@ -55,6 +55,8 @@ from app.models.fallback_policy import FallbackPolicy  # noqa: F401
 from app.models.library_asset import LibraryAsset  # noqa: F401
 from app.models.actor import Actor  # noqa: F401
 from app.models.preset import Preset  # noqa: F401
+# Human review gates (WP-62 Task 2)
+from app.models.project_gate import ProjectGateDecision  # noqa: F401
 
 __all__ = [
     # Core domain
@@ -92,4 +94,6 @@ __all__ = [
     "LibraryAsset",
     "Actor",
     "Preset",
+    # Human review gates
+    "ProjectGateDecision",
 ]

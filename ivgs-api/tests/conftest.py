@@ -686,6 +686,11 @@ async def scene_fixture(db_session, operator_token) -> dict:
     await db_session.flush()
     await db_session.commit()
 
+    # WP-62 Task 2(c). A regeneration IS media generation and is now blocking
+    # on a recorded, CURRENT storyboard approval. The fixture records one, the
+    # way a project whose scenes are being re-rendered always implied.
+    await record_storyboard_approval(db_session, project.id, _operator_user_id)
+
     return {
         "id": str(scene.id),
         "project_id": str(project.id),
@@ -1598,3 +1603,92 @@ def stub_llm_playground(monkeypatch):
         "app.services.prompt_service.run_completion", _completion, raising=False
     )
     return _completion
+
+
+# ---------------------------------------------------------------------------
+# WP-62 Task 2 — the storyboard gate, for fixtures that dispatch media work
+# ---------------------------------------------------------------------------
+
+
+async def record_storyboard_approval(db_session, project_id, actor_id=None):
+    """Record a CURRENT storyboard approval for a project.
+
+    WP-62 Task 2 made media generation blocking on a recorded, current
+    storyboard approval, so every fixture that dispatches media work has to
+    establish one. That is not test scaffolding around an inconvenience -- it
+    is the fixtures becoming honest about a precondition they always implied.
+    `test_wp45_dedup_and_gate.py`'s reviewed-draft fixture literally described
+    its project as "a draft the operator has approved" while recording no
+    approval anywhere, because before this package there was nowhere to record
+    one.
+
+    The approval names the CURRENT artifact fingerprint, computed by the same
+    service the enforcement uses. A hardcoded version string here would pass
+    the fixture and fail the enforcement, which is the wrong way round.
+    """
+    import uuid as _uuid
+
+    from app.models.project_gate import ProjectGateDecision
+    from app.services.gate_service import GateService
+
+    version = await GateService(db_session).storyboard_version(project_id)
+    db_session.add(
+        ProjectGateDecision(
+            id=_uuid.uuid4(),
+            project_id=project_id,
+            gate="storyboard",
+            decision="approved",
+            artifact_version=version,
+            decided_by=actor_id,
+            decided_by_name="test-operator",
+        )
+    )
+    await db_session.commit()
+    return version
+
+
+async def record_draft_approval(db_session, project_id, actor_id=None):
+    """Record a CURRENT draft approval, and the checkpoint it names.
+
+    The draft gate is anchored to the newest `prototype_draft` checkpoint --
+    the artefact Stage 7 produced -- deliberately NOT to `projects.state`,
+    which is a position rather than a thing to review and has been
+    demonstrably wrong on this fleet.
+    """
+    import uuid as _uuid
+    from datetime import datetime as _dt, timezone as _tz
+
+    from app.models.checkpoint import PipelineCheckpoint
+    from app.models.project_gate import ProjectGateDecision
+    from app.models.render_job import RenderJob
+    from app.services.gate_service import GateService
+
+    now = _dt.now(_tz.utc)
+    job = RenderJob(
+        id=_uuid.uuid4(), project_id=project_id, job_type="prototype_draft",
+        status="success", created_at=now, completed_at=now,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    db_session.add(
+        PipelineCheckpoint(
+            id=_uuid.uuid4(), job_id=job.id, stage_name="prototype_draft",
+            stage_index=7, status="complete", created_at=now,
+        )
+    )
+    await db_session.commit()
+
+    service = GateService(db_session)
+    db_session.add(
+        ProjectGateDecision(
+            id=_uuid.uuid4(),
+            project_id=project_id,
+            gate="draft",
+            decision="approved",
+            artifact_version=await service.draft_version(project_id),
+            upstream_version=await service.storyboard_version(project_id),
+            decided_by=actor_id,
+            decided_by_name="test-operator",
+        )
+    )
+    await db_session.commit()

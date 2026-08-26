@@ -511,6 +511,18 @@ class TestTask2Stage8IsDispatched:
         )
         db_session.add(project)
         await db_session.commit()
+
+        # WP-62 Task 2(c). THE FIXTURE NOW RECORDS WHAT ITS OWN NAME CLAIMED.
+        # It described this project as "a draft the operator has approved" and
+        # recorded no approval anywhere, because before WP-62 there was nowhere
+        # to record one -- `POST /trigger` from USER_REVIEW WAS the approval.
+        # The final render is now blocking on a recorded, current draft
+        # approval, so the fixture establishes one.
+        from tests.conftest import record_draft_approval
+
+        await record_draft_approval(
+            db_session, project.id, uuid.UUID(decode_token(token)["sub"]),
+        )
         return project
 
     async def test_triggering_from_user_review_produces_a_broker_message(
@@ -1276,7 +1288,29 @@ class TestTask4GpuReadThrough:
                 headers={"Authorization": f"Bearer {operator_token}"},
             )
         assert resp.status_code == 200
-        assert resp.json()["total"] == 3
+        # WP-62 Task 1, RULED: the page shows EVERY GPU-bearing machine, so the
+        # listing is the topology's five and not the scheduler's three. The
+        # property this test was written for -- that the fleet comes from the
+        # scheduler and not from the always-empty `gpu_nodes` table -- is
+        # unchanged and is checked by the scheduler nodes being present and
+        # marked as scheduler workers.
+        body = resp.json()
+        # SIX, and the sixth is the point of this fixture. The scheduler
+        # publishes node-02, node-03 and an UNNAMED worker (`61c7c02b3a8a`, a
+        # container started without IVGS_NODE_NAME -- 21 of those on the real
+        # fleet). The topology adds node-04, node-05 and node-06. A node the
+        # fleet is USING and cannot name must not be dropped just because the
+        # topology does not declare it; WP-45 Task 4(a) exists because those
+        # nodes are exactly the ones needing attention.
+        assert body["total"] == 6
+        scheduler = sorted(
+            n["node_hostname"] for n in body["data"] if n["in_scheduler"]
+        )
+        assert scheduler == ["node-02", "node-03", "unnamed (61c7c02b3a8a)"]
+        declared = sorted(
+            n["node_hostname"] for n in body["data"] if not n["in_scheduler"]
+        )
+        assert declared == ["node-04", "node-05", "node-06"]
 
     async def test_utilization_reports_real_vram(
         self, client: AsyncClient, operator_token,
