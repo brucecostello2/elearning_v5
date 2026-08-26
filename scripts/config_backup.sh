@@ -56,8 +56,34 @@ readonly TIMESTAMP="$(date +%Y-%m-%d)"
 # `fs.protected_regular=2` forbids exactly that, so the design's one mechanism
 # is the one the kernel disables. See scripts/lib/logfile.sh for the measurement
 # and the reasoning. Read these with a glob: /var/log/ivgs/config_backup.*.log
-# shellcheck source=lib/logfile.sh
-. "$(dirname "${BASH_SOURCE[0]}")/lib/logfile.sh"
+#
+# The helper directory is resolved by SEARCH, not by `dirname $BASH_SOURCE`.
+# BASH_SOURCE is `/dev/fd/63` when a script is sourced through a process
+# substitution -- which is exactly how tests_system/test_wp58_retention.py
+# loads these files to read their variable resolution -- and `dirname` of that
+# is `/dev/fd`, so a hardcoded relative source aborts the script under `set -e`
+# before a single line of it runs.
+for __ivgs_dir in \
+    "${SCRIPT_DIR:-}" \
+    "$(dirname "${BASH_SOURCE[0]:-$0}")" \
+    "$(dirname "$0")" \
+    /scripts \
+    /opt/ivgs/scripts
+do
+    if [ -n "${__ivgs_dir}" ] && [ -r "${__ivgs_dir}/lib/logfile.sh" ]; then
+        # shellcheck source=lib/logfile.sh
+        . "${__ivgs_dir}/lib/logfile.sh"
+        break
+    fi
+done
+unset __ivgs_dir
+# A logging helper must never be the reason a backup does not run.
+if ! command -v ivgs_log_file >/dev/null 2>&1; then
+    ivgs_log_file() {
+        printf '%s\n' \
+            "${LOG_DIR:-/var/log/ivgs}/${1}.$(id -un 2>/dev/null || id -u).log"
+    }
+fi
 LOG_FILE="$(ivgs_log_file config_backup)"
 readonly LOG_FILE
 readonly LOG_DIR="/var/log/ivgs"

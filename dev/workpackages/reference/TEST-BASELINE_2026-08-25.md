@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **904** | **0** | 0 | 0 | 880 (WP-57) |
+| `ivgs-api` | **910** | **0** | 0 | 0 | 904 (WP-59) |
 | `ivgs-workers` | **815** | 18 | 48 | 15 | 809 (WP-59) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 22 / 21 (WP-59) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **100** | 12 | 15 | 30 | 73 (WP-59) |
-| **Total** | **1863** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
+| **Total** | **1864** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -64,13 +64,19 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 904 passed, 0 failed
+## 2. `ivgs-api` — 910 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
 Runtime 4m33s. **No remaining failures.**
+
+WP-60 added 6 tests (2026-08-26): `test_wp60_surfaces.py`. Every one of them
+pins an ABSENCE — a null telemetry reading, a null thumbnail reason — because a
+default always satisfies a test that only asserts "some number", which is how
+`temperature_c: float = 0.0` survived on a route whose sibling had the same
+defect removed by WP-24. 904 → 910.
 
 WP-59 added 24 tests (2026-08-26): `test_wp59_deletion.py` (22 — the project
 deletion service) and three more in `test_projects.py`. 880 → 904. **This tree
@@ -137,7 +143,23 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 809 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 815 passed, 18 failed, 48 skipped, 15 errors
+
+WP-60 added 6 tests (2026-08-26): `test_wp60_orphan_guard.py` — the four
+constructed proofs WP-59 D-2's ruling requires, against REAL rows in this
+database rather than a mock that agrees with the code (a library reference and
+a cross-project shared object survive the sweep; a genuine orphan is detected
+and carries an audit trail), plus two on the guard failing CLOSED. 809 → 815.
+
+**One WP-59 test was UPDATED, and it is strictly stronger, not a relaxation.**
+`test_wp59_retention.py::TestTaskWiring` asserted the tier-migration beat entry
+stayed COMMENTED OUT. WP-59 §7.6 step 3 has since been ruled and its
+preconditions met, and WP-60 Task 8 enables it — so the assertion inverts. What
+the old test really protected was "no unattended tier migration", and that is
+now guaranteed by something better than a comment: the task defaults `dry_run`
+to True and the entry passes NO kwargs. The test pins THAT — an entry acquiring
+`"kwargs": {"dry_run": False}` now fails it. A second test was added asserting
+the orphan schedule is off AND not merely pointed at the stub.
 
 ```bash
 .venv/bin/python -m pytest ivgs-workers/tests
@@ -259,7 +281,23 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 73 passed, 12 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 100 passed, 12 failed, 15 skipped, 30 errors
+
+WP-60 added 27 tests (2026-08-26): `test_wp60_scripts.py` (25 — Task 12, driving
+the REAL scripts: that a dry run cannot reach a destructive prompt, that the
+PITR branch cannot fall through into the logical-restore sequence, that the
+base-backup pre-flight opens an actual replication connection, that no script
+still chmods a shared log, and that no shipped `docker exec` heredoc omits
+`-i`), and 2 in `test_wp58_retention.py` for the 7 → 10 WAL window. 73 → 100.
+
+**A note worth keeping, because it cost a full-suite run.** The nine
+`test_wp58_retention.py` tests passed alone and failed in the suite after
+WP-60's logging change. `_source_and_run` loads these scripts through a PROCESS
+SUBSTITUTION, so `BASH_SOURCE[0]` is `/dev/fd/63` and `dirname` of it is
+`/dev/fd` — a `. "$(dirname "${BASH_SOURCE[0]}")/lib/..."` aborted every script
+under `set -e` before a line of it ran. The scripts now SEARCH for their helper
+directory and fall back to an inline definition, because a logging helper must
+never be the reason a backup does not run.
 
 ```bash
 .venv/bin/python -m pytest --timeout=120 tests_system

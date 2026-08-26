@@ -247,46 +247,91 @@ class TestDryRun:
 
 
 class TestTaskWiring:
-    def test_the_scheduled_entry_is_disabled_and_names_the_real_task(self):
-        """WP-59 Task 7: shipped disabled, and pointing at the real task.
+    def test_the_scheduled_entry_is_live_names_the_real_task_and_is_a_dry_run(self):
+        """UPDATED BY WP-60 Task 8, AND STRICTLY STRONGER THAN BEFORE.
 
-        The live beat entry used to name
-        `tasks.pipeline_orchestrator.run_retention_migration`, a Phase-5 stub
-        that returns `{'status': 'ok', 'message': 'Retention migration - stub
-        (Phase 8)'}` -- and that exact string is in celery_taskmeta under this
-        schedule's 04:00 dispatches. So the real service had never executed.
+        WP-59 shipped this entry commented out and this test asserted it stayed
+        that way, because moving 158 live assets for the first time is an
+        attended operator event. Both of WP-59 §7.6's preconditions have since
+        been met by the operator: a dry run scanning 161 with would_move 44 and
+        zero errors, then a capped live pass moving exactly 5 with all 5 fids
+        still serving HTTP 200. Step 3 -- enable the schedule -- was ruled, and
+        WP-60 Task 8 executes it.
+
+        So the assertion INVERTS, and this is not a relaxation. What the
+        previous version really protected was "no unattended tier migration",
+        and that property is now guaranteed by something better than a comment:
+        `run_retention_migration` defaults `dry_run` to the service default
+        (True), and this entry passes NO kwargs. The nightly job REPORTS; it
+        does not move an asset.
+
+        The test therefore pins the property rather than the comment, and the
+        third assertion below is the one that matters -- an entry that acquires
+        `"kwargs": {"dry_run": False}` turns a nightly report into a nightly
+        migration, and that must never happen by accident.
         """
         src = (Path(__file__).resolve().parents[1] / "celery_app.py").read_text()
 
-        # Asserted against LIVE lines only. A substring search would match the
-        # commented-out block and pass whether it was commented or not, which
-        # is the opposite of what this test is for.
         live = [
             line for line in src.splitlines()
             if line.strip() and not line.strip().startswith("#")
         ]
-        assert not any('"retention-migration"' in line for line in live), (
-            "the tier-migration schedule is ENABLED. Moving 158 live assets "
-            "for the first time is an attended operator event; the entry ships "
-            "commented out and the operator uncomments it after a dry run and "
-            "a capped live pass have both behaved."
+
+        entry_idx = next(
+            (i for i, line in enumerate(live)
+             if '"retention-migration"' in line),
+            None,
+        )
+        assert entry_idx is not None, (
+            "the tier-migration schedule is not enabled. WP-59 §7.6 step 3 was "
+            "ruled and its preconditions were met; the nightly DRY RUN is the "
+            "visibility that stops this mechanism going quiet again."
         )
 
-        commented = [
-            line for line in src.splitlines() if line.strip().startswith("#")
-        ]
-        assert any('"retention-migration"' in line for line in commented), (
-            "the commented schedule entry has been deleted rather than left "
-            "for the operator to enable"
-        )
-        assert any(
-            "ivgs_workers.tasks.periodic_tasks.run_retention_migration" in line
-            for line in commented
-        ), (
-            "the commented entry must name the REAL task. It used to name "
+        block = "\n".join(live[entry_idx:entry_idx + 5])
+        assert "ivgs_workers.tasks.periodic_tasks.run_retention_migration" in block, (
+            "the entry must name the REAL task. It used to name "
             "tasks.pipeline_orchestrator.run_retention_migration, which is a "
             "stub that returns ok and does nothing."
         )
+
+        # THE SAFETY PROPERTY. No kwargs at all -> the task's own default
+        # (dry_run=True) governs. Turning live migration on is a separate,
+        # deliberate edit and a future ruling.
+        assert "dry_run" not in block, (
+            "the scheduled entry passes a dry_run kwarg. The nightly job must "
+            "inherit the task default (True). Turning off dry-run on a "
+            "schedule is a FUTURE ruling, not this one."
+        )
+        assert "kwargs" not in block, (
+            "the scheduled entry passes kwargs. It must pass none, so the "
+            "dry-run default cannot be overridden here by accident."
+        )
+
+    def test_the_orphan_schedule_is_off_and_not_merely_pointed_at_a_stub(self):
+        """WP-60 Task 10 (WP-59 D-2). "Off" must mean nothing runs.
+
+        The orphan-cleanup entry was not off: it dispatched
+        `tasks.pipeline_orchestrator.run_orphan_cleanup` nightly at 03:00, a
+        Phase-5 stub that logs one line and returns {'status': 'ok'} --
+        recorded in celery_taskmeta under SUCCESS as recently as
+        2026-08-26 03:00:00. A schedule running a stub that reports health it
+        does not have is the defect, not the safeguard.
+        """
+        src = (Path(__file__).resolve().parents[1] / "celery_app.py").read_text()
+        live = [
+            line for line in src.splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        assert not any('"orphan-cleanup"' in line for line in live), (
+            "the orphan-cleanup schedule is enabled. The ruling is that it "
+            "stays off until a future one turns it on - and it must not be "
+            "left pointing at the stub either, which is what 'off' used to mean"
+        )
+        assert not any(
+            "tasks.pipeline_orchestrator.run_orphan_cleanup" in line
+            for line in live
+        ), "the stub is still on a live schedule"
 
         # And the STUB must not be on the live schedule either.
         assert not any(
