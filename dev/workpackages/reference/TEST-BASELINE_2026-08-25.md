@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **880** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
-| `ivgs-workers` | 799 | 18 | 48 | 15 | 27 failed (WP-45) |
+| `ivgs-api` | **904** | **0** | 0 | 0 | 880 (WP-57) |
+| `ivgs-workers` | 809 | 18 | 48 | 15 | 799 (WP-57) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | 56 | 12 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1761** | **47** | **63** | **45** | |
+| `tests_system` | 73 | 12 | 15 | 30 | 56 (WP-58) |
+| **Total** | **1812** | **47** | **63** | **45** | |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -64,13 +64,32 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 880 passed, 0 failed
+## 2. `ivgs-api` — 904 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m24s. **No remaining failures.**
+Runtime 4m33s. **No remaining failures.**
+
+WP-59 added 24 tests (2026-08-26): `test_wp59_deletion.py` (22 — the project
+deletion service) and three more in `test_projects.py`. 880 → 904. **This tree
+now needs migration 0033.**
+
+The one worth naming is
+`test_wp59_deletion.py::TestCategoryMap::test_every_project_fk_table_is_in_the_map`.
+It reads `pg_constraint` from the live test schema, walks the `ON DELETE
+CASCADE` closure outward from `projects`, and fails by name if any table it
+reaches is missing from the deletion's category map. It found one on its first
+run — `prompt_tag_associations`, reachable through `prompts` — which the map
+had missed, so a deletion would have destroyed those links without the dialog
+ever mentioning them. That table is now a category. This test is the thing that
+stops the map going stale as the schema grows.
+
+`test_service_project.py::TestDeleteProject` no longer exercises
+`ProjectService.delete_project`, because WP-59 REMOVED it. It now asserts the
+method stays gone: a cascade-only shortcut reintroduced for convenience is the
+"second, weaker door" WP-59 Task 6 forbids.
 
 WP-57 added 5 tests (2026-08-26): `test_wp57_service_token.py`, pinning that the
 shipped default `dev-service-token` stops being accepted once a real
@@ -118,13 +137,28 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 799 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 809 passed, 18 failed, 48 skipped, 15 errors
 
 ```bash
 .venv/bin/python -m pytest ivgs-workers/tests
 ```
 
 Runtime 20s.
+
+WP-59 added 10 tests (2026-08-26): `test_wp59_retention.py`, pinning the tier
+migration's repairs — the enum labels are the DATABASE's (`archived`/`deleted`,
+not `archive`/`delete`), the scan reads `seaweedfs_path`, no UPDATE names
+`updated_at` or `status` (the `assets` table has neither), a failed tier pass
+sets `status = "failed"` instead of being swallowed, and the schedule ships
+DISABLED pointing at the real task rather than the Phase-5 stub. 799 → 809.
+
+**One existing test was CORRECTED, not relaxed.**
+`test_retention.py::TestTierConfiguration::test_storage_tier_enum_values`
+asserted `StorageTier.ARCHIVE.value == "archive"` and passed — because it
+checked the Python enum against itself rather than against the schema it has to
+write into. The live `storage_tier` type is `hot, warm, cold, archived,
+deleted`. The assertion is now the database's labels, which is strictly
+stronger: the old one could not have caught the defect it was sitting on.
 
 WP-57 added 12 tests (2026-08-26): `test_wp57_error_classification.py`, pinning
 each real `render_jobs.error_message` to its class. It also pins the two things
@@ -217,11 +251,21 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 56 passed, 12 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 73 passed, 12 failed, 15 skipped, 30 errors
 
 ```bash
 .venv/bin/python -m pytest --timeout=120 tests_system
 ```
+
+WP-59 added `test_wp59_nfs_guard.py` here (17 tests, 2026-08-26). It lives in
+this tree for the same reason WP-58's retention tests do: it drives the REAL
+`scripts/lib/nfs_guard.sh` as a subprocess and asserts what it does to a
+filesystem. It is gated BOTH ways — it must refuse a local `tmp_path` and it
+must accept the real NFS mount, because a guard that refused everything would
+be trivially "safe" and would stop every backup on the node. The NFS-positive
+case is skipped when `/mnt/backup/ivgs` is not an nfs4 mount. **Nothing in it
+writes under /mnt/backup**; the positive case calls `stat -f` and nothing else.
+56 → 73; failures, skips and errors unchanged.
 
 WP-58 added `test_wp58_retention.py` here (17 tests, 2026-08-25). It lives in
 this tree because it drives the REAL `scripts/*.sh` as subprocesses and asserts
@@ -250,7 +294,7 @@ All 30 are `admin_token` / `admin_headers` fixture setup.
 | 28 | `test_auth_integration` (7), `test_dlq_integration` (5), `test_pipeline_integration` (6), `test_projects_integration` (10) | The fixtures POST `{"email": ..., "password": ...}` to `/auth/login`. `LoginRequest` (`ivgs-api/app/schemas/auth.py:12`) takes **`username`**, and the `users` table has no `email` column at all — verified against the live schema. Result: `422 {"loc":["body","username"],"msg":"Field required"}`. After five such attempts the API's own 5/min login rate limit turns the rest into `429 RATE_LIMITED`, so the visible error changes partway down the run. Both are the same stale-contract defect; the 429 is its shadow. | **P2.57** |
 | 2 | `test_localization`, `test_project_lifecycle` (e2e) | Same login payload. The e2e modules stop at the login and never dispatch a pipeline — confirmed: zero rows added to `projects` or `render_jobs` during these runs. | **P2.57** |
 
-### 6.2 Failures (16)
+### 6.2 Failures (12)
 
 | Count | Tests | Cause | Ledger |
 |---|---|---|---|
@@ -285,9 +329,12 @@ that module now pass. 35 → 39 passed, 16 → 12 failed.
   `postgres:17.2`, `redis:7.4`.
 * Python 3.12.3, pytest 8.3.4, pytest-asyncio 0.24.0, pytest-timeout 2.3.1
   (installed by WP-52).
-* Test database `ivgs_reconciliation_test`, migration **0032** (0029 applied by
-  WP-53; 0030–0032 by WP-56, and their downgrade path was exercised —
-  `alembic downgrade 0029` then `upgrade head` round-trips clean).
+* Test database `ivgs_reconciliation_test`, migration **0033** (0029 applied by
+  WP-53; 0030–0032 by WP-56; **0033 by WP-59**, and its downgrade path was
+  exercised — `alembic downgrade 0032` then `upgrade head` round-trips clean.
+  0033 adds two ENUM labels and its `downgrade()` is a deliberate no-op:
+  PostgreSQL cannot remove an enum value without rebuilding the type, which
+  would destroy any row already carrying it. Same treatment as 0027.).
 * Every count in §0 is the tail line of a real run. No number here was carried
   forward from an earlier package without being re-measured.
 
