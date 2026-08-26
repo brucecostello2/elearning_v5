@@ -332,6 +332,16 @@ def supervise_heartbeats(self: Any) -> dict[str, Any]:
 # Orphan Cleanup Task
 # ---------------------------------------------------------------------------
 
+class OrphanCleanupError(RuntimeError):
+    """An orphan cleanup run did not do what it was asked.
+
+    WP-60 Task 10. Same treatment as RetentionMigrationError below and as
+    WP-00 gave the backup tasks: the task RAISES, so a broken scan is a failure
+    in the result backend and the DLQ rather than a green row above an unread
+    list of errors.
+    """
+
+
 @shared_task(
     name="ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
     bind=True,
@@ -341,15 +351,37 @@ def supervise_heartbeats(self: Any) -> dict[str, Any]:
     time_limit=3600,
     soft_time_limit=3300,
 )
-def run_orphan_cleanup(self: Any) -> dict[str, Any]:
+def run_orphan_cleanup(
+    self: Any,
+    dry_run: bool | None = None,
+) -> dict[str, Any]:
     """
-    Orphan cleanup — runs daily at 02:00 UTC per §10.6.
+    Orphan cleanup per §10.6. WP-60 Task 10 (WP-59 D-2).
 
-    Executes OrphanCleanupService.run_cleanup() which performs
-    3 scan types, quarantine, and permanent deletion.
+    THE SCHEDULE IS OFF, AND STAYS OFF UNTIL A FUTURE RULING. This package
+    makes the mechanism real and safe; it does not make it automatic.
+
+    What it was before: `celery beat` dispatched
+    ``tasks.pipeline_orchestrator.run_orphan_cleanup``, a stub logging
+    "Orphan cleanup — stub (Phase 8)", while THIS task -- the real one -- was
+    not wired. And the service behind it was inert three times over: two of its
+    three scans named ``assets.storage_path``, which does not exist; the
+    marking wrote ``assets.status``, which does not exist either; and its
+    Type-1 scan reads a filer namespace that is empty.
+
+    ``dry_run`` defaults to TRUE. Passing False is deliberately explicit:
+    this service QUARANTINES and then PERMANENTLY DELETES binaries, and there
+    must be no way to destroy an object by omitting an argument.
+
+    Args:
+        dry_run: None uses the service default (True).
 
     Returns:
         CleanupReport as dict.
+
+    Raises:
+        OrphanCleanupError: when any scan failed. The report's ``status`` is no
+            longer swallowed into a success.
     """
     task_log = logger.bind(
         task_name="run_orphan_cleanup",
@@ -369,6 +401,7 @@ def run_orphan_cleanup(self: Any) -> dict[str, Any]:
 
             service = OrphanCleanupService(
                 db_session_factory=async_session_factory,
+                dry_run=True if dry_run is None else bool(dry_run),
             )
 
             report = loop.run_until_complete(service.run_cleanup())
@@ -378,13 +411,28 @@ def run_orphan_cleanup(self: Any) -> dict[str, Any]:
 
             task_log.info(
                 "orphan_cleanup_completed",
+                dry_run=report.dry_run,
+                status=report.status,
                 type1=report.type1_seaweedfs_without_db,
                 type2=report.type2_db_without_seaweedfs,
                 type3=report.type3_zero_reference_count,
                 quarantined=report.newly_quarantined,
                 deleted=report.permanently_deleted,
+                preserved=report.preserved,
+                coverage=report.coverage,
+                errors=report.errors,
                 duration_seconds=report.duration_seconds,
             )
+
+            # WP-60 Task 10 / swallow-register entry 29 CLOSED. `report.errors`
+            # was appended to and nothing read it: the task returned the report
+            # as a success whatever happened, which is how three broken scans
+            # recorded SUCCESS nightly.
+            if report.status != "ok":
+                raise OrphanCleanupError(
+                    f"orphan cleanup finished with status={report.status}; "
+                    f"errors={report.errors}"
+                )
 
             return result
 

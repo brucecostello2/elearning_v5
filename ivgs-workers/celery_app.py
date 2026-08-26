@@ -221,11 +221,32 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
     # would let it delete a library asset's bytes out from under every project
     # referencing them (WP-59 Task 4 is exactly that guard). Recorded as a
     # decision in the WP-59 report rather than switched on here.
-    "orphan-cleanup": {
-        "task": "tasks.pipeline_orchestrator.run_orphan_cleanup",
-        "schedule": crontab(hour=3, minute=0),
-        "options": {"queue": "default", "priority": 2},
-    },
+    # WP-60 Task 10 (WP-59 D-2, RULED) — OFF, AND NOW ACTUALLY OFF.
+    #
+    # This entry dispatched `tasks.pipeline_orchestrator.run_orphan_cleanup`
+    # nightly at 03:00. That task is a Phase-5 STUB: it logs one line and
+    # returns {'status': 'ok'}, and `celery_taskmeta` holds it saying
+    # "Orphan cleanup - stub (Phase 8)" under SUCCESS, most recently
+    # 2026-08-26 03:00:00. So the schedule was not off - it was running
+    # something that reported health it did not have, every night, which is
+    # precisely the family of defect this package exists to close.
+    #
+    # The RULING is that the schedule stays off until a future one turns it on.
+    # "Off" has to mean nothing runs, not "a stub runs and says ok". So the
+    # entry is commented out rather than left pointing at the stub.
+    #
+    # WP-60 repaired the real service behind it and gave it the shared-object
+    # guard WP-59 D-2 made a precondition (services/orphan_cleanup.py,
+    # SharedObjectGuard). It is exercisable today via
+    # `ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup`, which DEFAULTS TO
+    # DRY RUN. Turning this on is two deliberate edits - uncommenting here and
+    # passing dry_run=False - and neither is this package's to make.
+    #
+    # "orphan-cleanup": {
+    #     "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
+    #     "schedule": crontab(hour=3, minute=0),
+    #     "options": {"queue": "default", "priority": 2},
+    # },
     # WP-59 Task 7 — SHIPPED DISABLED, AND POINTED AT THE REAL TASK.
     #
     # This entry used to name `tasks.pipeline_orchestrator.run_retention_migration`,

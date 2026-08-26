@@ -28,6 +28,7 @@ SeaweedFS directories scanned per §10.2:
 
 from __future__ import annotations
 
+import json
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -98,6 +99,186 @@ class CleanupReport(BaseModel):
     errors: list[str] = Field(default_factory=list)
     duration_seconds: float = 0.0
 
+    # WP-60 Task 10. Swallow-register entry 29: `errors` was appended to and
+    # NOTHING READ IT -- the task returned the report as a success either way.
+    # `status` is derived from errors and is what the task raises on.
+    status: str = "ok"
+
+    # Did this run actually change anything? Defaults TRUE, like the retention
+    # service, so an accidental dispatch reports instead of acting.
+    dry_run: bool = True
+
+    # Objects the guard held back, by reason. This is the number that proves
+    # the guard is doing something, and a run where it is empty on a fleet with
+    # a populated library is a run to distrust.
+    preserved: dict[str, int] = Field(default_factory=dict)
+
+    # WP-60 Task 10: what this run could NOT see. Type 1 scans the filer
+    # namespace, which on this fleet is EMPTY -- every object is stored by fid
+    # through the master. A scan with zero coverage that reports zero orphans
+    # is indistinguishable from a clean fleet, which is the whole family of
+    # defect this package exists to close.
+    coverage: dict[str, str] = Field(default_factory=dict)
+
+
+
+
+# ---------------------------------------------------------------------------
+# The shared-object guard  —  WP-60 Task 10 (WP-59 D-2)
+# ---------------------------------------------------------------------------
+
+class SharedObjectGuard:
+    """Is anything still pointing at this object?
+
+    THIS CLASS IS THE PRECONDITION FOR THE SERVICE EXISTING AT ALL.
+
+    ``OrphanCleanupService`` QUARANTINES and then PERMANENTLY DELETES binaries.
+    Before WP-60 it had no concept of a library reference or of a deduped
+    object shared between projects, and WP-59 D-2 ruled that it must inherit
+    ``ProjectDeletionService.binary_manifest``'s guard rather than grow a
+    second copy — because two copies of a safety rule drift, and the one that
+    drifts is the one that deletes library bytes out from under every
+    referencing project.
+
+    The rules are the same two, in the same order, checked against the same two
+    handles, and they are ported here verbatim in intent:
+
+    * ``library_asset_id IS NOT NULL`` on any row naming this object.
+      ``LibraryService.reference_into_project`` copies the library row's fid and
+      path onto the project row verbatim (library_service.py:370-371), so the
+      project asset and the library asset are the SAME BYTES. Deleting it
+      because one project's copy looks unreferenced destroys the library entry
+      and every other project's reference with it.
+    * any live row outside the candidate naming the same fid **or** the same
+      path — another ``assets`` row, or a ``library_assets`` row.
+
+    Checked against fid AND path because the two are independent handles on
+    this fleet: ``upload_asset`` stores bytes by fid via the master
+    (asset_service.py:341) and records a filer-style path the filer namespace
+    does not actually contain, while library and referenced rows carry both.
+
+    ``preserve_flag`` is a third rule this guard adds and the deletion service
+    does not need: deletion is a deliberate operator act on one named project,
+    while this sweep runs unattended over everything. An operator who set
+    preserve_flag has said "not this one", and an automatic sweep is exactly
+    the thing that flag exists to stop.
+
+    A guard that cannot reach the database returns "unknown", and an unknown is
+    treated as KEEP by every caller. Failing closed is the only safe direction:
+    the cost of a wrong keep is a wasted object, the cost of a wrong delete is
+    unrecoverable.
+    """
+
+    def __init__(self, db_session_factory: Any) -> None:
+        self._db_session_factory = db_session_factory
+
+    async def keep_reason(
+        self,
+        fid: str,
+        path: str,
+        exclude_asset_id: str | None = None,
+    ) -> str:
+        """Why this object must be kept, or "" if nothing references it.
+
+        Args:
+            fid: SeaweedFS file id, may be empty.
+            path: SeaweedFS path, may be empty.
+            exclude_asset_id: The candidate's own row, excluded so that an
+                asset is not held back by itself.
+
+        Returns:
+            A reason string, or "" when the object is genuinely unreferenced.
+            Never raises: an unreachable database yields
+            ``guard_unavailable``, which callers must treat as keep.
+        """
+        from sqlalchemy import text
+
+        if not fid and not path:
+            # Nothing to check against. An object we cannot identify is an
+            # object we must not delete.
+            return "no_handle"
+
+        params = {
+            "fid": fid or "\x00-no-fid",
+            "path": path or "\x00-no-path",
+            "exclude": exclude_asset_id,
+        }
+
+        try:
+            async with self._db_session_factory() as session:
+                # Rule 1 — the library. Checked first and separately because a
+                # library-backed row is shared even when it is the ONLY row.
+                library_backed = await session.execute(
+                    text(
+                        "SELECT count(*) FROM assets "
+                        "WHERE (seaweedfs_fid = :fid OR seaweedfs_path = :path) "
+                        "AND library_asset_id IS NOT NULL"
+                    ),
+                    {"fid": params["fid"], "path": params["path"]},
+                )
+                if (library_backed.scalar() or 0) > 0:
+                    return "library_asset"
+
+                in_library = await session.execute(
+                    text(
+                        "SELECT count(*) FROM library_assets "
+                        "WHERE seaweedfs_fid = :fid OR seaweedfs_path = :path"
+                    ),
+                    {"fid": params["fid"], "path": params["path"]},
+                )
+                if (in_library.scalar() or 0) > 0:
+                    return "library_asset"
+
+                # Rule 2 — any other live row, in any project.
+                if exclude_asset_id:
+                    other = await session.execute(
+                        text(
+                            "SELECT count(*) FROM assets "
+                            "WHERE (seaweedfs_fid = :fid OR seaweedfs_path = :path) "
+                            "AND id <> CAST(:exclude AS uuid)"
+                        ),
+                        params,
+                    )
+                else:
+                    other = await session.execute(
+                        text(
+                            "SELECT count(*) FROM assets "
+                            "WHERE seaweedfs_fid = :fid OR seaweedfs_path = :path"
+                        ),
+                        {"fid": params["fid"], "path": params["path"]},
+                    )
+                if (other.scalar() or 0) > 0:
+                    return "referenced_by_another_asset"
+
+                # Rule 3 — the operator's own veto.
+                if exclude_asset_id:
+                    preserved = await session.execute(
+                        text(
+                            "SELECT count(*) FROM assets "
+                            "WHERE id = CAST(:exclude AS uuid) "
+                            "AND preserve_flag IS TRUE"
+                        ),
+                        {"exclude": exclude_asset_id},
+                    )
+                    if (preserved.scalar() or 0) > 0:
+                        return "preserve_flag"
+
+        except Exception as exc:  # noqa: BLE001 - deliberate, see docstring
+            logger.error(
+                "shared_object_guard_unavailable",
+                fid=fid,
+                path=path,
+                error=str(exc),
+                detail=(
+                    "the guard could not reach the database. Treated as KEEP: "
+                    "an unverifiable object must never be quarantined or "
+                    "deleted."
+                ),
+            )
+            return "guard_unavailable"
+
+        return ""
+
 
 # ---------------------------------------------------------------------------
 # Orphan Cleanup Service
@@ -136,6 +317,7 @@ class OrphanCleanupService:
         db_session_factory: Any,
         seaweedfs_base_url: str = "http://node-01:9333",
         seaweedfs_filer_url: str = "http://node-01:8888",
+        dry_run: bool = True,
     ) -> None:
         """
         Initialize orphan cleanup service.
@@ -144,12 +326,57 @@ class OrphanCleanupService:
             db_session_factory: Async SQLAlchemy session factory.
             seaweedfs_base_url: SeaweedFS master server URL.
             seaweedfs_filer_url: SeaweedFS filer URL for file operations.
+            dry_run: DEFAULTS TO TRUE. When true every decision is made and
+                reported and nothing is moved, marked or deleted. Passing False
+                is deliberately explicit: there is no way to destroy an object
+                by omitting an argument.
         """
         self._db_session_factory = db_session_factory
         self._seaweedfs_base_url = seaweedfs_base_url
         self._seaweedfs_filer_url = seaweedfs_filer_url
         self._http_client: httpx.AsyncClient | None = None
         self._log = logger.bind(service="orphan_cleanup")
+        # WP-60 Task 10 (WP-59 D-2). The guard is not optional and is not a
+        # parameter: there is no configuration in which this service may
+        # quarantine or delete without consulting it.
+        self._guard = SharedObjectGuard(db_session_factory)
+        # DEFAULTS TO DRY RUN. This service has never executed; its first real
+        # pass is an attended operator event, and the SCHEDULE STAYS OFF until
+        # a future ruling. `dry_run` is what makes the mechanism exercisable —
+        # and provable — without it acting.
+        self._dry_run = bool(dry_run)
+
+    async def _may_act_on(
+        self,
+        report: CleanupReport,
+        *,
+        fid: str,
+        path: str,
+        asset_id: str | None,
+        scan_type: str,
+    ) -> bool:
+        """The single gate every destructive path goes through.
+
+        WP-60 Task 10. There is exactly one of these on purpose: a second place
+        that decides "is this safe to delete" is a second place that can be
+        wrong, and the two will not be wrong in the same way.
+        """
+        reason = await self._guard.keep_reason(
+            fid=fid, path=path, exclude_asset_id=asset_id,
+        )
+        if not reason:
+            return True
+
+        report.preserved[reason] = report.preserved.get(reason, 0) + 1
+        self._log.info(
+            "orphan_candidate_preserved",
+            scan_type=scan_type,
+            asset_id=asset_id,
+            fid=fid,
+            path=path,
+            keep_reason=reason,
+        )
+        return False
 
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client for SeaweedFS operations."""
@@ -175,34 +402,63 @@ class OrphanCleanupService:
         Returns:
             CleanupReport: Summary of the cleanup run.
         """
-        report = CleanupReport()
+        report = CleanupReport(dry_run=self._dry_run)
 
-        self._log.info("orphan_cleanup_started", run_id=report.run_id)
+        self._log.info(
+            "orphan_cleanup_started",
+            run_id=report.run_id,
+            dry_run=self._dry_run,
+        )
+
+        # WP-60 Task 10 — EACH SCAN IN ITS OWN try.
+        #
+        # These four used to sit inside ONE try. The `SELECT` in
+        # `_scan_type2_db_without_seaweedfs` was outside any local handler, so
+        # its `UndefinedColumn` on `assets.storage_path` aborted `run_cleanup`
+        # at scan 2 and scans 2, 3 AND the quarantine expiry never ran at all.
+        # One broken query silently removed three quarters of the mechanism,
+        # and the task still returned the report as a success.
+        scans = (
+            ("type1", self._scan_type1_seaweedfs_without_db),
+            ("type2", self._scan_type2_db_without_seaweedfs),
+            ("type3", self._scan_type3_zero_reference),
+        )
+        results: dict[str, int] = {}
+        for name, scan in scans:
+            try:
+                results[name] = await scan(report)
+            except Exception as exc:
+                results[name] = 0
+                report.errors.append(f"{name} scan failed: {exc}")
+                report.coverage[name] = f"scan failed: {exc}"
+                self._log.error(
+                    "orphan_scan_failed",
+                    run_id=report.run_id,
+                    scan=name,
+                    error=str(exc),
+                    error_type=type(exc).__name__,
+                )
+
+        report.type1_seaweedfs_without_db = results.get("type1", 0)
+        report.type2_db_without_seaweedfs = results.get("type2", 0)
+        report.type3_zero_reference_count = results.get("type3", 0)
 
         try:
-            # Scan Type 1: SeaweedFS objects without DB records
-            type1_count = await self._scan_type1_seaweedfs_without_db(report)
-            report.type1_seaweedfs_without_db = type1_count
-
-            # Scan Type 2: DB records without SeaweedFS files
-            type2_count = await self._scan_type2_db_without_seaweedfs(report)
-            report.type2_db_without_seaweedfs = type2_count
-
-            # Scan Type 3: Zero-reference count assets
-            type3_count = await self._scan_type3_zero_reference(report)
-            report.type3_zero_reference_count = type3_count
-
-            # Process quarantine expirations
-            deleted_count = await self._process_quarantine_expirations(report)
-            report.permanently_deleted = deleted_count
-
+            report.permanently_deleted = (
+                await self._process_quarantine_expirations(report)
+            )
         except Exception as exc:
-            report.errors.append(f"Cleanup run error: {exc}")
+            report.errors.append(f"quarantine expiry failed: {exc}")
             self._log.error(
-                "orphan_cleanup_error",
+                "quarantine_expiry_failed",
                 run_id=report.run_id,
                 error=str(exc),
             )
+
+        # Swallow-register entry 29 CLOSED: errors now reach a field the caller
+        # acts on, instead of an unread list beneath a returned success.
+        if report.errors:
+            report.status = "error"
 
         now = datetime.now(timezone.utc)
         report.completed_at = now
@@ -216,6 +472,10 @@ class OrphanCleanupService:
             type3=report.type3_zero_reference_count,
             quarantined=report.newly_quarantined,
             deleted=report.permanently_deleted,
+            preserved=report.preserved,
+            coverage=report.coverage,
+            status=report.status,
+            dry_run=report.dry_run,
             errors=len(report.errors),
             duration_seconds=report.duration_seconds,
         )
@@ -230,30 +490,46 @@ class OrphanCleanupService:
         self,
         report: CleanupReport,
     ) -> int:
-        """
-        Scan for SeaweedFS objects without corresponding database records.
+        """Objects in storage that no database row claims.
 
-        Lists all objects in each scan directory via SeaweedFS filer API
-        and cross-references against the assets table storage_path column.
+        WP-60 Task 10 — THIS SCAN HAS ZERO COVERAGE ON THIS FLEET, AND NOW
+        SAYS SO INSTEAD OF REPORTING ZERO ORPHANS.
 
-        Args:
-            report: Running cleanup report to append errors to.
+        It lists the filer namespace and cross-references each entry against
+        `assets`. The filer namespace is EMPTY -- measured directly:
+
+            GET http://<filer>:8888/?limit=20
+            {"Path":"","Entries":null,"EmptyFolder":true}
+
+        because `AssetService.upload_asset` stores bytes BY FID through the
+        master (asset_service.py:341) and records a filer-style path the filer
+        does not actually contain. So this scan walks nine directories that do
+        not exist, finds nothing, and reports zero orphans -- which reads
+        exactly like a clean fleet.
+
+        Enumerating the fid namespace instead is not possible with the HTTP
+        APIs available: SeaweedFS volume servers expose counts, not a needle
+        listing, and `weed shell`'s `volume.list` would mean running a sibling
+        binary from inside this worker. That is a design decision, not a line
+        of code, so the honest thing here is to state the coverage rather than
+        to invent a number. Type 2 and Type 3 -- the scans that can actually
+        find something on this fleet -- are unaffected and do run.
 
         Returns:
-            Count of orphans found.
+            Count of orphans found. Zero, with `report.coverage["type1"]`
+            explaining why zero means "did not look" rather than "found none".
         """
         orphan_count = 0
         client = await self._get_client()
+        namespace_populated = False
 
         for directory in SEAWEEDFS_SCAN_DIRECTORIES:
             try:
-                # List directory contents via SeaweedFS filer
                 response = await client.get(
                     f"{self._seaweedfs_filer_url}{directory}",
                     params={"limit": 10000},
                     headers={"Accept": "application/json"},
                 )
-
                 if response.status_code != 200:
                     self._log.warning(
                         "seaweedfs_directory_list_failed",
@@ -262,31 +538,54 @@ class OrphanCleanupService:
                     )
                     continue
 
-                data = response.json()
-                entries = data.get("Entries", []) or []
+                entries = (response.json() or {}).get("Entries") or []
+                if entries:
+                    namespace_populated = True
 
                 for entry in entries:
-                    full_path = f"{directory}{entry.get('FullPath', {}).get('Name', entry.get('name', ''))}"
+                    name = (
+                        entry.get("FullPath", {}).get("Name")
+                        if isinstance(entry.get("FullPath"), dict)
+                        else None
+                    ) or entry.get("name", "")
+                    full_path = f"{directory}{name}"
 
-                    # Check if path exists in assets table
-                    exists_in_db = await self._check_path_in_db(full_path)
+                    if await self._check_path_in_db(full_path):
+                        continue
 
-                    if not exists_in_db:
-                        orphan_count += 1
-                        await self._quarantine_seaweedfs_object(
-                            full_path, report
-                        )
+                    # THE GUARD, before anything is touched. A filer object
+                    # with no `assets` row may still be a library object, and
+                    # the library row carries the same path.
+                    if not await self._may_act_on(
+                        report, fid="", path=full_path,
+                        asset_id=None, scan_type="type1",
+                    ):
+                        continue
+
+                    orphan_count += 1
+                    await self._quarantine_seaweedfs_object(full_path, report)
 
             except Exception as exc:
-                error_msg = (
-                    f"Type 1 scan error for {directory}: {exc}"
-                )
-                report.errors.append(error_msg)
+                report.errors.append(f"Type 1 scan error for {directory}: {exc}")
                 self._log.error(
-                    "type1_scan_error",
-                    directory=directory,
-                    error=str(exc),
+                    "type1_scan_error", directory=directory, error=str(exc),
                 )
+
+        if not namespace_populated:
+            report.coverage["type1"] = (
+                "ZERO COVERAGE: the SeaweedFS filer namespace is empty, so "
+                "this scan examined nothing. Assets on this fleet are stored "
+                "by fid through the master, not through the filer, and the fid "
+                "namespace is not enumerable over HTTP. A zero here means 'did "
+                "not look', NOT 'no orphans exist'."
+            )
+            self._log.warning(
+                "type1_scan_no_coverage",
+                directories=len(SEAWEEDFS_SCAN_DIRECTORIES),
+                detail=report.coverage["type1"],
+            )
+        else:
+            report.coverage["type1"] = "filer namespace listed"
 
         return orphan_count
 
@@ -298,17 +597,26 @@ class OrphanCleanupService:
         self,
         report: CleanupReport,
     ) -> int:
-        """
-        Scan for database records referencing non-existent SeaweedFS files.
+        """Database rows whose stored object is gone.
 
-        Queries all assets with a storage_path and verifies file existence
-        via HEAD requests to the SeaweedFS filer.
+        WP-60 Task 10. THE QUERY NAMED A COLUMN THAT DOES NOT EXIST.
 
-        Args:
-            report: Running cleanup report.
+            SELECT id, storage_path FROM assets ...
+            ERROR:  column "storage_path" does not exist
 
-        Returns:
-            Count of orphans found.
+        `assets` has `seaweedfs_path` and `seaweedfs_fid`. Verified against the
+        live schema 2026-08-26. Worse than the wrong name: this `SELECT` sat
+        OUTSIDE any local try, so the `UndefinedColumn` propagated out of the
+        scan and aborted `run_cleanup` -- scans 2, 3 and the quarantine expiry
+        never ran on any night this task was dispatched.
+
+        The existence check now uses the FID through the volume master, which
+        is how these objects are actually stored, and falls back to the filer
+        path only when a row has a path and no fid.
+
+        This scan does not quarantine or delete: a missing object with a live
+        row is a DATABASE problem, not a storage one, and the row is the only
+        remaining record that the object ever existed. It is recorded.
         """
         orphan_count = 0
 
@@ -317,45 +625,83 @@ class OrphanCleanupService:
 
             result = await session.execute(
                 text(
-                    "SELECT id, storage_path FROM assets "
-                    "WHERE storage_path IS NOT NULL "
-                    "AND storage_path != '' "
+                    "SELECT id, coalesce(seaweedfs_fid, ''), "
+                    "       coalesce(seaweedfs_path, '') "
+                    "FROM assets "
+                    "WHERE (seaweedfs_fid IS NOT NULL AND seaweedfs_fid <> '') "
+                    "   OR (seaweedfs_path IS NOT NULL AND seaweedfs_path <> '') "
                     "ORDER BY created_at ASC "
                     "LIMIT 10000"
                 )
             )
             rows = result.fetchall()
 
+        report.coverage["type2"] = f"{len(rows)} asset rows checked"
         client = await self._get_client()
 
         for row in rows:
             asset_id = str(row[0])
-            storage_path = str(row[1])
+            fid = str(row[1] or "")
+            path = str(row[2] or "")
 
             try:
-                response = await client.head(
-                    f"{self._seaweedfs_filer_url}{storage_path}"
-                )
+                missing = await self._object_is_missing(client, fid, path)
+                if not missing:
+                    continue
 
-                if response.status_code == 404:
-                    orphan_count += 1
-                    await self._mark_db_record_orphaned(
-                        asset_id, storage_path, report
-                    )
+                orphan_count += 1
+                await self._mark_db_record_orphaned(
+                    asset_id, fid or path, report,
+                )
 
             except Exception as exc:
-                error_msg = (
+                report.errors.append(
                     f"Type 2 scan error for asset {asset_id}: {exc}"
                 )
-                report.errors.append(error_msg)
                 self._log.error(
                     "type2_scan_error",
-                    asset_id=asset_id,
-                    storage_path=storage_path,
-                    error=str(exc),
+                    asset_id=asset_id, fid=fid, path=path, error=str(exc),
                 )
 
         return orphan_count
+
+    async def _object_is_missing(
+        self, client: httpx.AsyncClient, fid: str, path: str,
+    ) -> bool:
+        """True only when storage positively says the object is not there.
+
+        A network error, a timeout or a 5xx is NOT an answer. Treating one as
+        "missing" would let a transient volume-server hiccup mark every asset
+        on the fleet as an orphan in a single nightly pass, so anything other
+        than a definite 404 means "present as far as we can tell".
+        """
+        if fid:
+            try:
+                response = await client.get(
+                    f"{self._seaweedfs_base_url}/dir/lookup",
+                    params={"volumeId": fid.split(",", 1)[0]},
+                )
+                if response.status_code == 404:
+                    return True
+                if response.status_code != 200:
+                    return False
+                locations = (response.json() or {}).get("locations") or []
+                if not locations:
+                    return True
+                url = locations[0].get("publicUrl") or locations[0].get("url")
+                if not url:
+                    return False
+                head = await client.head(f"http://{url}/{fid}")
+                return head.status_code == 404
+            except Exception:
+                # Unreachable storage is not evidence of absence.
+                return False
+
+        try:
+            head = await client.head(f"{self._seaweedfs_filer_url}{path}")
+            return head.status_code == 404
+        except Exception:
+            return False
 
     # ------------------------------------------------------------------
     # Scan Type 3: Zero-reference count
@@ -365,17 +711,30 @@ class OrphanCleanupService:
         self,
         report: CleanupReport,
     ) -> int:
-        """
-        Scan for assets with reference_count = 0 for > 7 days per §10.6.
+        """Assets nothing has referenced for longer than the threshold.
 
-        Assets whose reference_count has been 0 for longer than
-        ZERO_REF_THRESHOLD_DAYS are quarantined.
+        WP-60 Task 10. THIS IS THE SCAN THAT CAN DESTROY THE LIBRARY, and it
+        is why WP-59 D-2 ruled the guard a precondition rather than a
+        follow-up.
 
-        Args:
-            report: Running cleanup report.
+        Two column defects, both verified against the live schema:
+          * `storage_path` does not exist -> `seaweedfs_path` / `seaweedfs_fid`
+          * `updated_at` does not exist on `assets` at all. The age of a
+            zero-reference row is taken from `last_accessed_at`, falling back
+            to `created_at` -- which is the conservative direction, because a
+            row that has never been accessed is aged from creation and a
+            recently-touched one is protected.
 
-        Returns:
-            Count of orphans found.
+        AND THE REAL DANGER: `LibraryService.reference_into_project` copies the
+        library row's fid and path onto the project row VERBATIM, so a library
+        object shared into three projects is four rows over ONE set of bytes.
+        Decrement the project rows and `reference_count` on some of them
+        reaches 0 while the bytes are still in active use by the library and by
+        every other project. Before the guard, this scan would have quarantined
+        and then permanently deleted them.
+
+        Every candidate goes through `_may_act_on` first. No exceptions, no
+        configuration that skips it.
         """
         orphan_count = 0
         threshold_date = datetime.now(timezone.utc) - timedelta(
@@ -387,35 +746,47 @@ class OrphanCleanupService:
 
             result = await session.execute(
                 text(
-                    "SELECT id, storage_path FROM assets "
-                    "WHERE reference_count = 0 "
-                    "AND updated_at < :threshold "
-                    "AND storage_path IS NOT NULL "
-                    "ORDER BY updated_at ASC "
+                    "SELECT id, coalesce(seaweedfs_fid, ''), "
+                    "       coalesce(seaweedfs_path, '') "
+                    "FROM assets "
+                    "WHERE reference_count <= 0 "
+                    "AND coalesce(last_accessed_at, created_at) < :threshold "
+                    "AND ((seaweedfs_fid IS NOT NULL AND seaweedfs_fid <> '') "
+                    "  OR (seaweedfs_path IS NOT NULL AND seaweedfs_path <> '')) "
+                    "ORDER BY coalesce(last_accessed_at, created_at) ASC "
                     "LIMIT 5000"
                 ),
                 {"threshold": threshold_date},
             )
             rows = result.fetchall()
 
+        report.coverage["type3"] = (
+            f"{len(rows)} zero-reference rows older than "
+            f"{ZERO_REF_THRESHOLD_DAYS}d considered"
+        )
+
         for row in rows:
             asset_id = str(row[0])
-            storage_path = str(row[1])
+            fid = str(row[1] or "")
+            path = str(row[2] or "")
 
             try:
+                if not await self._may_act_on(
+                    report, fid=fid, path=path,
+                    asset_id=asset_id, scan_type="type3",
+                ):
+                    continue
+
                 await self._quarantine_asset(
-                    asset_id, storage_path, "zero_reference", report
+                    asset_id, fid, path, "zero_reference", report,
                 )
                 orphan_count += 1
             except Exception as exc:
-                error_msg = (
+                report.errors.append(
                     f"Type 3 quarantine error for asset {asset_id}: {exc}"
                 )
-                report.errors.append(error_msg)
                 self._log.error(
-                    "type3_quarantine_error",
-                    asset_id=asset_id,
-                    error=str(exc),
+                    "type3_quarantine_error", asset_id=asset_id, error=str(exc),
                 )
 
         return orphan_count
@@ -440,6 +811,27 @@ class OrphanCleanupService:
             report: Running cleanup report.
         """
         quarantine_dest = f"{QUARANTINE_PATH}{storage_path}"
+
+        if self._dry_run:
+            report.newly_quarantined += 1
+            self._log.info(
+                "orphan_would_be_quarantined",
+                dry_run=True,
+                original_path=storage_path,
+                quarantine_path=quarantine_dest,
+            )
+            await self._log_audit(
+                action_type="QUARANTINE_DRY_RUN",
+                resource_type="seaweedfs_object",
+                resource_id=storage_path,
+                details={
+                    "dry_run": True,
+                    "original_path": storage_path,
+                    "quarantine_path": quarantine_dest,
+                },
+            )
+            return
+
         client = await self._get_client()
 
         try:
@@ -503,18 +895,37 @@ class OrphanCleanupService:
             storage_path: The missing SeaweedFS path.
             report: Running cleanup report.
         """
-        async with self._db_session_factory() as session:
-            async with session.begin():
-                from sqlalchemy import text
+        # WP-60 Task 10. `assets` HAS NO `status` COLUMN, AND NO `updated_at`.
+        # Verified against the live schema 2026-08-26. This UPDATE could never
+        # have run; it would have raised UndefinedColumn on the first row --
+        # except that the SELECT feeding it raised first, so this line has
+        # never executed at all.
+        #
+        # The finding is recorded in `generation_metadata` (jsonb, exists) so
+        # it is queryable, and in `audit_log` so it is attributable. Neither is
+        # destructive: a row whose object is missing is the ONLY remaining
+        # record that the object existed, and marking is not deleting.
+        if not self._dry_run:
+            async with self._db_session_factory() as session:
+                async with session.begin():
+                    from sqlalchemy import text
 
-                await session.execute(
-                    text(
-                        "UPDATE assets SET status = 'orphaned', "
-                        "updated_at = NOW() "
-                        "WHERE id = :asset_id"
-                    ),
-                    {"asset_id": asset_id},
-                )
+                    await session.execute(
+                        text(
+                            "UPDATE assets SET generation_metadata = "
+                            "  coalesce(generation_metadata, '{}'::jsonb) "
+                            "  || jsonb_build_object("
+                            "       'orphan_state', 'object_missing', "
+                            "       'orphan_detected_at', :detected_at, "
+                            "       'orphan_handle', :handle) "
+                            "WHERE id = CAST(:asset_id AS uuid)"
+                        ),
+                        {
+                            "asset_id": asset_id,
+                            "handle": storage_path,
+                            "detected_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    )
 
         report.newly_quarantined += 1
 
@@ -538,46 +949,73 @@ class OrphanCleanupService:
     async def _quarantine_asset(
         self,
         asset_id: str,
-        storage_path: str,
+        fid: str,
+        path: str,
         reason: str,
         report: CleanupReport,
     ) -> None:
-        """
-        Quarantine an asset (move file + update DB status).
+        """Quarantine an asset: move the bytes, mark the row, leave a trail.
 
-        Args:
-            asset_id: Database asset UUID.
-            storage_path: SeaweedFS file path.
-            reason: Reason for quarantine.
-            report: Running cleanup report.
-        """
-        # Move file to quarantine
-        await self._quarantine_seaweedfs_object(storage_path, report)
+        THE CALLER HAS ALREADY PASSED `_may_act_on`. This function does not
+        re-check, and it must never be called from a path that has not.
 
-        # Update DB record
+        `assets` has no `status` column (verified 2026-08-26), so the mark goes
+        into `generation_metadata` and the attribution into `audit_log`.
+        Quarantine is reversible for QUARANTINE_DAYS by design; the audit row
+        is what makes reversing it possible, which is why it is written whether
+        or not the byte move succeeds.
+        """
+        handle = path or fid
+
+        await self._log_audit(
+            action_type="QUARANTINE_DRY_RUN" if self._dry_run else "QUARANTINE",
+            resource_type="asset",
+            resource_id=asset_id,
+            details={
+                "scan_type": "type3_zero_reference",
+                "dry_run": self._dry_run,
+                "seaweedfs_fid": fid,
+                "seaweedfs_path": path,
+                "quarantine_path": f"{QUARANTINE_PATH}{handle}",
+                "reason": reason,
+                "guard": "passed - no library row, no other asset row, no preserve_flag",
+            },
+        )
+
+        if self._dry_run:
+            report.newly_quarantined += 1
+            self._log.info(
+                "asset_would_be_quarantined",
+                dry_run=True, asset_id=asset_id, fid=fid, path=path,
+                reason=reason,
+            )
+            return
+
+        if path:
+            await self._quarantine_seaweedfs_object(path, report)
+        else:
+            report.newly_quarantined += 1
+
         async with self._db_session_factory() as session:
             async with session.begin():
                 from sqlalchemy import text
 
                 await session.execute(
                     text(
-                        "UPDATE assets SET status = 'quarantined', "
-                        "updated_at = NOW() "
-                        "WHERE id = :asset_id"
+                        "UPDATE assets SET generation_metadata = "
+                        "  coalesce(generation_metadata, '{}'::jsonb) "
+                        "  || jsonb_build_object("
+                        "       'orphan_state', 'quarantined', "
+                        "       'orphan_reason', :reason, "
+                        "       'orphan_detected_at', :detected_at) "
+                        "WHERE id = CAST(:asset_id AS uuid)"
                     ),
-                    {"asset_id": asset_id},
+                    {
+                        "asset_id": asset_id,
+                        "reason": reason,
+                        "detected_at": datetime.now(timezone.utc).isoformat(),
+                    },
                 )
-
-        await self._log_audit(
-            action_type="QUARANTINE",
-            resource_type="asset",
-            resource_id=asset_id,
-            details={
-                "scan_type": "type3_zero_reference",
-                "storage_path": storage_path,
-                "reason": reason,
-            },
-        )
 
     async def _process_quarantine_expirations(
         self,
@@ -633,6 +1071,31 @@ class OrphanCleanupService:
                         "Name", entry.get("name", "")
                     )
                     full_path = f"{QUARANTINE_PATH}/{entry_name}"
+
+                    # WP-60 Task 10 — THE LAST GATE, AND THE ONLY IRREVERSIBLE
+                    # STEP IN THE SERVICE.
+                    #
+                    # The guard is applied AGAIN here, against the object's
+                    # ORIGINAL path, and not because the quarantine-time check
+                    # was insufficient. Quarantine lasts QUARANTINE_DAYS, and
+                    # in that week a library reference or a cross-project
+                    # dedup CAN come into existence over the same handle. A
+                    # decision taken seven days ago is not evidence about
+                    # today, and this is the step with no way back.
+                    original_path = full_path[len(QUARANTINE_PATH):] or full_path
+                    if not await self._may_act_on(
+                        report, fid="", path=original_path,
+                        asset_id=None, scan_type="quarantine_expiry",
+                    ):
+                        continue
+
+                    if self._dry_run:
+                        deleted_count += 1
+                        self._log.info(
+                            "quarantined_object_would_be_deleted",
+                            dry_run=True, path=full_path, quarantined_at=mtime,
+                        )
+                        continue
 
                     try:
                         delete_response = await client.delete(
@@ -692,10 +1155,15 @@ class OrphanCleanupService:
         async with self._db_session_factory() as session:
             from sqlalchemy import text
 
+            # WP-60 Task 10: `storage_path` does not exist. The real column is
+            # `seaweedfs_path`, and `library_assets` carries the same handle --
+            # a filer object claimed only by a library row is NOT an orphan.
             result = await session.execute(
                 text(
-                    "SELECT 1 FROM assets "
-                    "WHERE storage_path = :path LIMIT 1"
+                    "SELECT 1 FROM assets WHERE seaweedfs_path = :path "
+                    "UNION ALL "
+                    "SELECT 1 FROM library_assets WHERE seaweedfs_path = :path "
+                    "LIMIT 1"
                 ),
                 {"path": storage_path},
             )
@@ -741,13 +1209,36 @@ class OrphanCleanupService:
                             "action_type": action_type,
                             "resource_type": resource_type,
                             "resource_id": resource_id,
-                            "after_payload": str(details),
+                            # WP-60 Task 10. THIS WAS `str(details)`.
+                            #
+                            # `audit_log.after_payload` is JSONB and
+                            # `str(dict)` is a Python repr -- single quotes,
+                            # `True` not `true` -- which asqlpg rejects with
+                            # InvalidTextRepresentation. So EVERY audit row
+                            # this service tried to write failed, and failed
+                            # into the `except` below, which logs and returns.
+                            # The audit trail that makes a quarantine
+                            # reversible has never been written once.
+                            #
+                            # It was invisible because the scans raised before
+                            # reaching here: three defects deep, each hidden by
+                            # the one in front of it.
+                            "after_payload": json.dumps(details, default=str),
                         },
                     )
         except Exception as exc:
+            # Deliberately not re-raised: losing the audit row must not abort a
+            # sweep mid-way. But it is an ERROR, not a warning, and it names
+            # the consequence -- a quarantine without its audit row cannot be
+            # reversed, which is the only thing that makes quarantine safer
+            # than deletion.
             self._log.error(
                 "audit_log_write_failed",
                 action_type=action_type,
                 resource_id=resource_id,
                 error=str(exc),
+                detail=(
+                    "the action proceeded but is NOT recorded. A quarantine "
+                    "with no audit row cannot be reversed."
+                ),
             )

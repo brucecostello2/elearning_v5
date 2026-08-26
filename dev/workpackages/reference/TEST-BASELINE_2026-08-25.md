@@ -16,11 +16,11 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **904** | **0** | 0 | 0 | 880 (WP-57) |
-| `ivgs-workers` | 809 | 18 | 48 | 15 | 799 (WP-57) |
+| `ivgs-workers` | **815** | 18 | 48 | 15 | 809 (WP-59) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 22 / 21 (WP-59) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **100** | 12 | 15 | 30 | 73 (WP-59) |
-| **Total** | **1857** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
+| **Total** | **1863** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
