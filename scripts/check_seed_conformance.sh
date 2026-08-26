@@ -31,21 +31,47 @@
 # `sha256sum` themselves. Introducing a third normalisation here would be the
 # original defect again.
 #
+# WP-64 EXTENDS IT TO THE WORKERS' STAGE TEMPLATES, and the reason is the
+# reason this file exists. WP-64 Task 4(b) amends
+# `ivgs-workers/prompts/stage3_system.j2`, which is versioned data exactly as a
+# seed prompt is — and NOTHING COMPARED IT TO ANYTHING. It is a different
+# artefact from the seed prompts in two ways that matter, and both are stated
+# here because the brief assumed otherwise:
+#
+#   * it ships in the WORKERS image (`/app/prompts`), not the api image, so
+#     amending it needs a workers rebuild and a redeploy of every worker;
+#   * it never reaches the `prompts` table at all. `stage3_images._load_system_prompt`
+#     reads it off disk (`stage3_images.py:177-184`); the `image_generation` row
+#     in `prompts` is not what Stage 3 renders.
+#
+# So a stale baked copy of it would have shipped as silently as a stale seed
+# prompt would have, with one fewer place to notice. Same comparison, same two
+# directions, second directory.
+#
 # USAGE
-#   scripts/check_seed_conformance.sh [IMAGE]
-#     IMAGE defaults to the image the running ivgs-fastapi container was
-#     created from, read with `docker inspect` — never from a *_TAG variable
-#     inside the container, which dev/CLAUDE.md §6 records as always stale.
+#   scripts/check_seed_conformance.sh [API_IMAGE] [WORKERS_IMAGE]
+#     API_IMAGE defaults to the image the running ivgs-fastapi container was
+#     created from and WORKERS_IMAGE to the running ivgs-celery-default's, both
+#     read with `docker inspect` — never from a *_TAG variable inside the
+#     container, which dev/CLAUDE.md §6 records as always stale.
+#
+#     A directory absent from the tree, or an image that cannot be resolved, is
+#     reported as SKIPPED by name and does not fail the run. It also does not
+#     pass it: silence is what this script exists to remove.
 #
 # EXIT
-#   0  every tracked seed template matches the baked one
+#   0  every tracked template checked matches the baked one
 #   1  at least one differs, or is missing on one side (each named)
-#   2  the image could not be read at all
+#   2  no directory could be checked at all
 # =============================================================================
 set -uo pipefail
 
 SEED_DIR_REL="ivgs-api/seed/default_prompts"
 SEED_DIR_IMG="/app/seed/default_prompts"
+
+# WP-64. The workers' stage templates: same kind of artefact, different image.
+WORKER_DIR_REL="ivgs-workers/prompts"
+WORKER_DIR_IMG="/app/prompts"
 
 # Find the repo root from this script's location, tolerating a process
 # substitution (`. <(...)`) where BASH_SOURCE is /dev/fd/NN — the trap WP-60
@@ -61,64 +87,94 @@ IMAGE="${1:-}"
 if [ -z "$IMAGE" ]; then
   IMAGE="$(docker inspect ivgs-fastapi --format '{{.Config.Image}}' 2>/dev/null)"
 fi
-if [ -z "$IMAGE" ]; then
-  echo "ABORT: no image given and ivgs-fastapi is not running."
-  echo "       usage: scripts/check_seed_conformance.sh <image>"
-  exit 2
-fi
-
-if [ ! -d "$REPO/$SEED_DIR_REL" ]; then
-  echo "ABORT: $REPO/$SEED_DIR_REL does not exist."
-  exit 2
-fi
-
-echo "image : $IMAGE"
-echo "tree  : $REPO/$SEED_DIR_REL"
-echo
-
-BAKED="$(docker run --rm --entrypoint sh "$IMAGE" -c \
-          "cd $SEED_DIR_IMG 2>/dev/null && sha256sum *.j2" 2>/dev/null)"
-if [ -z "$BAKED" ]; then
-  echo "ABORT: could not read $SEED_DIR_IMG from $IMAGE."
-  echo "       Either the image has no seed directory or it could not be run."
-  exit 2
+WORKER_IMAGE="${2:-}"
+if [ -z "$WORKER_IMAGE" ]; then
+  WORKER_IMAGE="$(docker inspect ivgs-celery-default --format '{{.Config.Image}}' 2>/dev/null)"
 fi
 
 rc=0
-for path in "$REPO/$SEED_DIR_REL"/*.j2; do
-  name="$(basename "$path")"
-  tracked="$(sha256sum "$path" | cut -d' ' -f1)"
-  baked="$(printf '%s\n' "$BAKED" | awk -v n="$name" '$2 == n {print $1}')"
-  if [ -z "$baked" ]; then
-    echo "MISSING IN IMAGE  $name"
-    echo "                  tracked $tracked"
-    rc=1
-  elif [ "$tracked" != "$baked" ]; then
-    echo "DIVERGED          $name"
-    echo "                  tracked $tracked"
-    echo "                  baked   $baked"
-    rc=1
-  else
-    echo "ok                $name  $tracked"
-  fi
-done
+checked=0
 
-# The other direction. A template deleted from the tree but still baked in is
-# also a divergence, and it is the one that survives a one-way check.
-while read -r baked name; do
-  [ -n "$name" ] || continue
-  if [ ! -f "$REPO/$SEED_DIR_REL/$name" ]; then
-    echo "EXTRA IN IMAGE    $name  $baked"
-    echo "                  present in the image, absent from the tree"
-    rc=1
-  fi
-done <<< "$BAKED"
+# ---------------------------------------------------------------------------
+# One directory, both directions. Bytes on both sides — `sha256sum` is what a
+# human would run themselves, and introducing a third normalisation here would
+# be the original defect again.
+# ---------------------------------------------------------------------------
+check_dir() {
+  local label="$1" img="$2" rel="$3" imgdir="$4"
 
-echo
+  echo "--- $label ---"
+  if [ -z "$img" ]; then
+    echo "SKIPPED: no image given for $label and its container is not running."
+    echo
+    return 0
+  fi
+  if [ ! -d "$REPO/$rel" ]; then
+    echo "SKIPPED: $REPO/$rel does not exist in this tree."
+    echo
+    return 0
+  fi
+
+  echo "image : $img"
+  echo "tree  : $REPO/$rel"
+  echo
+
+  local baked_all
+  baked_all="$(docker run --rm --entrypoint sh "$img" -c \
+                "cd $imgdir 2>/dev/null && sha256sum *.j2" 2>/dev/null)"
+  if [ -z "$baked_all" ]; then
+    echo "SKIPPED: could not read $imgdir from $img."
+    echo "         Either the image has no such directory or it could not be run."
+    echo
+    return 0
+  fi
+
+  checked=$((checked + 1))
+
+  local path name tracked baked
+  for path in "$REPO/$rel"/*.j2; do
+    name="$(basename "$path")"
+    tracked="$(sha256sum "$path" | cut -d' ' -f1)"
+    baked="$(printf '%s\n' "$baked_all" | awk -v n="$name" '$2 == n {print $1}')"
+    if [ -z "$baked" ]; then
+      echo "MISSING IN IMAGE  $name"
+      echo "                  tracked $tracked"
+      rc=1
+    elif [ "$tracked" != "$baked" ]; then
+      echo "DIVERGED          $name"
+      echo "                  tracked $tracked"
+      echo "                  baked   $baked"
+      rc=1
+    else
+      echo "ok                $name  $tracked"
+    fi
+  done
+
+  # The other direction. A template deleted from the tree but still baked in is
+  # also a divergence, and it is the one that survives a one-way check.
+  while read -r baked name; do
+    [ -n "$name" ] || continue
+    if [ ! -f "$REPO/$rel/$name" ]; then
+      echo "EXTRA IN IMAGE    $name  $baked"
+      echo "                  present in the image, absent from the tree"
+      rc=1
+    fi
+  done <<< "$baked_all"
+  echo
+}
+
+check_dir "api seed prompts" "$IMAGE" "$SEED_DIR_REL" "$SEED_DIR_IMG"
+check_dir "workers stage prompts" "$WORKER_IMAGE" "$WORKER_DIR_REL" "$WORKER_DIR_IMG"
+
+if [ "$checked" -eq 0 ]; then
+  echo "ABORT: no directory could be checked. Nothing was compared."
+  exit 2
+fi
+
 if [ $rc -eq 0 ]; then
-  echo "PASS: every baked seed template is byte-identical to the tracked one."
+  echo "PASS: every baked template checked is byte-identical to the tracked one."
 else
-  echo "FAIL: the image's seed templates are not the tracked ones."
+  echo "FAIL: the image's templates are not the tracked ones."
   echo "      Rebuild before deploying. A prompt published from a stale"
   echo "      template is a contract change nobody made."
 fi

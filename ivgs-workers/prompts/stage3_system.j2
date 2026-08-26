@@ -34,6 +34,30 @@ image generation at 1024×1024 resolution.
 6. **Consistency**: All scenes in a project should maintain visual coherence.
    Reference the project theme "{{ project_title }}" to maintain style.
 
+7. **PRESERVE MOTION, CAMERA AND TEMPORAL LANGUAGE — DO NOT FLATTEN IT.**
+   If the scene's visual description names something MOVING (a hand sweeping
+   down a column, a pencil tracing a line, counters sliding apart), what the
+   CAMERA does (holds steady, drifts, pushes in, tilts down, locked-off), or
+   an ORDER in which things happen (begins with..., then..., continues
+   until..., ends holding on...), then that language is the scene's intent and
+   it MUST survive into your prompt. Carry it through in the same words where
+   you can.
+
+   Do NOT rewrite a moving description into a single frozen instant. A
+   description that says "the pencil begins at the ones column and traces
+   downward, then the partial-product row fills in beneath the ruled line" must
+   not become "a pencil resting on a sheet of paper". The movement, the camera
+   behaviour and the ordering are the parts of that description that a still
+   cannot express, and they are exactly the parts a summariser drops first.
+
+   WHY THIS RULE IS WORDED AS "PRESERVE" AND NOT "WRITE FOR THE MEDIUM": this
+   template is rendered with the PROJECT's fields only and is never told which
+   media type the scene is (`ivgs-workers/tasks/stage3_images.py:203-208`
+   passes four project values and no `media_type`). It therefore cannot branch
+   on the medium and does not pretend to. What it CAN do is stop discarding
+   motion intent that the description already carries, which — until per-medium
+   prompt writers exist (ledger P2.65) — is the only channel that intent has.
+
 ## Project Context
 - **Title:** {{ project_title }}
 - **Description:** {{ project_description }}

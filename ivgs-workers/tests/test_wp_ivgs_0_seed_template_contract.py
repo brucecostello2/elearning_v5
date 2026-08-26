@@ -34,10 +34,22 @@ SEED_DIR = (
 )
 
 # Every seed template, and the pipeline stage that fetches it from the API.
-# None = no worker consumes it today. Stages 3 and 5 load their own templates
-# from ivgs-workers/prompts/ and never call the prompts endpoint, so eight of
-# the ten seeded types are currently write-only. That is recorded, not hidden:
-# wiring one up without adding its bind context here will fail this module.
+# None = NO WORKER consumes it today. Stages 3 and 5 load their own templates
+# from ivgs-workers/prompts/ and never call the prompts endpoint, so nine of
+# the eleven seeded types are unread by any worker. That is recorded, not
+# hidden: wiring one up without adding its bind context here will fail this
+# module.
+#
+# WP-64 added `scene_media_adaptation.j2` and it is the FIRST seeded template
+# with a reader that is not a worker stage: `ivgs-api`'s `AdaptationService`
+# renders it synchronously for the Edit Scene modal's "Adapt description"
+# action. It is `None` here because that is what this column means -- no
+# worker -- and it is emphatically NOT write-only, which is why
+# `test_the_api_only_template_is_not_recorded_as_unread` says so separately.
+# Its bind contract is gated on the API side, by
+# `app.scripts.wp64_publish_adaptation_prompt.REQUIRED_VARIABLES` and
+# `tests_system/test_wp64_media.py`, because the function that renders it
+# lives there.
 CONSUMERS = {
     "transcript_refinement.j2": "stage1",
     "storyboard_generation.j2": "stage2",
@@ -49,6 +61,12 @@ CONSUMERS = {
     "talking_head.j2": None,
     "composition.j2": None,
     "translation.j2": None,
+    "scene_media_adaptation.j2": None,
+}
+
+#: Seed templates read by something OTHER than a worker stage. WP-64.
+NON_WORKER_CONSUMERS = {
+    "scene_media_adaptation.j2": "ivgs-api AdaptationService",
 }
 
 # One unmistakable sentinel per Jinja variable the workers bind.
@@ -206,6 +224,28 @@ class TestTheConsumerMapIsHonest:
         )
 
     def test_the_unconsumed_templates_are_recorded(self):
-        """Eight of ten seeded types have no reader. Stated, not hidden."""
-        assert len(UNCONSUMED) == 8
+        """Nine of eleven seeded types have no WORKER reader. Stated, not
+        hidden. (Was eight of ten until WP-64 added the eleventh.)"""
+        assert len(UNCONSUMED) == 9
         assert "translation.j2" in UNCONSUMED
+
+    def test_the_api_only_template_is_not_recorded_as_unread(self):
+        """WP-64. `None` in CONSUMERS means "no worker", NOT "nobody".
+
+        `scene_media_adaptation.j2` is rendered by `ivgs-api`'s
+        `AdaptationService` for the Edit Scene modal. Letting it sit in
+        UNCONSUMED with no further comment would file a live template under
+        "write-only", which is the kind of quiet mis-record this module exists
+        to prevent.
+        """
+        for filename, reader in NON_WORKER_CONSUMERS.items():
+            assert filename in UNCONSUMED, filename
+            assert CONSUMERS[filename] is None, filename
+            assert reader, filename
+            assert (SEED_DIR / filename).exists(), filename
+
+    def test_no_template_claims_two_kinds_of_consumer(self):
+        """A file with a worker stage AND a non-worker reader would need its
+        bind context asserted in two places; nothing is in that state today."""
+        for filename in NON_WORKER_CONSUMERS:
+            assert filename not in CONSUMED
