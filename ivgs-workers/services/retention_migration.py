@@ -81,16 +81,40 @@ TIER_ORDER: list[StorageTier] = [
 # ---------------------------------------------------------------------------
 
 class RetentionPolicy(BaseModel):
-    """Retention policy from Table 20 (retention_policies)."""
+    """Retention policy from Table 20 (retention_policies).
+
+    ``archive_days`` and ``delete_after_days`` ARE NULLABLE, and correcting
+    that is a WP-59 Task 7 finding of its own.
+
+    The live `retention_policies` table holds three rows -- `standard`,
+    `long-term`, `compliance` -- and in every one of them BOTH columns are
+    NULL. This model declared them as required ints, so constructing a policy
+    from any of those rows raised ValidationError, `load_policies`' bare
+    `except Exception` caught it, and the service silently fell back to the
+    hardcoded DEFAULT_RETENTION_POLICIES below. **The operator's configured
+    retention policy has therefore never governed anything.** Same shape as
+    WP-58's four `BACKUP_RETENTION_*` variables and WP-57's rate limits: a
+    setting that looks live and is decorative, and is invisible until someone
+    tries to change a value.
+
+    NULL means "this policy does not progress past the previous tier" -- not
+    zero, and not infinity. `get_tier_duration_days` returns None for it and
+    the scan skips the hop, recording it, rather than treating an unset
+    duration as "eligible immediately", which would archive or DELETE the
+    fleet's assets on the first run.
+    """
 
     name: str
     hot_days: int = Field(..., description="Days in hot tier")
     warm_days: int = Field(..., description="Days in warm tier")
     cold_days: int = Field(..., description="Days in cold tier")
-    archive_days: int = Field(..., description="Days in archive tier")
-    delete_after_days: int = Field(
-        ...,
-        description="Total days before permanent deletion",
+    archive_days: int | None = Field(
+        default=None,
+        description="Days in archive tier; NULL = never progress past cold",
+    )
+    delete_after_days: int | None = Field(
+        default=None,
+        description="Days before permanent deletion; NULL = never delete",
     )
     applies_to: str = Field(
         ...,
@@ -101,24 +125,25 @@ class RetentionPolicy(BaseModel):
         description="Whether this is the default policy",
     )
 
-    def get_tier_duration_days(self, tier: StorageTier) -> int:
+    def get_tier_duration_days(self, tier: StorageTier) -> int | None:
         """
         Get the duration in days for a specific tier.
 
-        Args:
-            tier: Storage tier to query.
-
-        Returns:
-            Number of days an asset should remain in this tier.
+        Returns None when this policy does not configure a duration for the
+        tier, which the caller must treat as "do not progress", NOT as zero.
+        The old signature returned 0 for a missing value via
+        ``mapping.get(tier, 0)``, and 0 compares as "time_in_tier >= duration"
+        for every asset ever created -- so an unconfigured archive_days would
+        have archived the entire fleet on the first run that reached it.
         """
-        mapping = {
+        mapping: dict[StorageTier, int | None] = {
             StorageTier.HOT: self.hot_days,
             StorageTier.WARM: self.warm_days,
             StorageTier.COLD: self.cold_days,
             StorageTier.ARCHIVE: self.archive_days,
             StorageTier.DELETE: 0,
         }
-        return mapping.get(tier, 0)
+        return mapping.get(tier)
 
 
 class TierTransitionRecord(BaseModel):
@@ -162,6 +187,27 @@ class MigrationReport(BaseModel):
     capped: bool = Field(
         default=False,
         description="True when max_transitions stopped the run short.",
+    )
+    policy_source: str = Field(
+        default="unknown",
+        description=(
+            "'database' or 'hardcoded_defaults'. The three rows in the live "
+            "retention_policies table could not be loaded at all until WP-59 "
+            "(both terminal columns are NULL and the model required them), so "
+            "the service silently used the hardcoded defaults. Which set "
+            "governed is now reported rather than assumed."
+        ),
+    )
+    policy_load_error: str | None = Field(
+        default=None,
+        description="Why the database policies could not be used, if they could not.",
+    )
+    policy_gaps: dict[str, int] = Field(
+        default_factory=dict,
+        description=(
+            "Per tier hop, how many assets were skipped because the governing "
+            "policy configures no duration for that tier."
+        ),
     )
     would_move: dict[str, dict[str, int]] = Field(
         default_factory=dict,
@@ -281,6 +327,8 @@ class RetentionService:
         self._seaweedfs_filer_url = seaweedfs_filer_url
         self._policies_cache: dict[str, RetentionPolicy] = {}
         self._default_policy: RetentionPolicy | None = None
+        self._policy_source: str = "unknown"
+        self._policy_load_error: str | None = None
         self._http_client: httpx.AsyncClient | None = None
         self._log = logger.bind(service="retention_service")
 
@@ -329,16 +377,28 @@ class RetentionService:
                         if row.is_default and self._default_policy is None:
                             self._default_policy = policy
 
+                    self._policy_source = "database"
                     self._log.info(
                         "retention_policies_loaded_from_db",
                         count=len(self._policies_cache),
+                        policies=sorted(self._policies_cache),
                     )
                     return
 
         except Exception as exc:
-            self._log.warning(
+            # NOT a warning-and-carry-on any more. Falling back to hardcoded
+            # defaults means the operator's configured retention policy is
+            # being ignored, and until WP-59 that happened on EVERY run and was
+            # invisible: the three rows in retention_policies have NULL in both
+            # terminal columns, which the old required-int model rejected.
+            self._policy_load_error = f"{type(exc).__name__}: {exc}"
+            self._log.error(
                 "retention_policies_db_load_failed",
                 error=str(exc),
+                consequence=(
+                    "the configured retention_policies rows are NOT governing; "
+                    "hardcoded DEFAULT_RETENTION_POLICIES are being used instead"
+                ),
             )
 
         # Fall back to defaults
@@ -347,9 +407,11 @@ class RetentionService:
             if policy.is_default and self._default_policy is None:
                 self._default_policy = policy
 
+        self._policy_source = "hardcoded_defaults"
         self._log.info(
             "retention_policies_loaded_defaults",
             count=len(self._policies_cache),
+            reason=self._policy_load_error or "retention_policies table is empty",
         )
 
     def get_policy_for_asset_type(self, asset_type: str) -> RetentionPolicy:
@@ -392,6 +454,8 @@ class RetentionService:
 
         # Load/refresh policies
         await self.load_policies()
+        report.policy_source = self._policy_source
+        report.policy_load_error = self._policy_load_error
 
         now = datetime.now(timezone.utc)
 
@@ -447,6 +511,8 @@ class RetentionService:
             run_id=report.run_id,
             dry_run=report.dry_run,
             status=report.status,
+            policy_source=report.policy_source,
+            policy_gaps=report.policy_gaps,
             scanned=report.assets_scanned,
             transitions=report.transitions_performed,
             deleted=report.assets_deleted,
@@ -484,6 +550,7 @@ class RetentionService:
             Count of transitions performed.
         """
         transition_count = 0
+        unconfigured = 0
 
         async with self._db_session_factory() as session:
             from sqlalchemy import text
@@ -530,6 +597,13 @@ class RetentionService:
 
             # Check if asset has exceeded tier duration
             if tier_transition_at is None:
+                continue
+
+            if tier_duration_days is None:
+                # This policy does not configure a duration for this tier, so
+                # it does not progress past it. Recorded once per tier rather
+                # than per asset -- see the counter below.
+                unconfigured += 1
                 continue
 
             time_in_tier = (now - tier_transition_at).days
@@ -603,6 +677,19 @@ class RetentionService:
                     to_tier=next_tier.value,
                     error=str(exc),
                 )
+
+        if unconfigured:
+            self._log.info(
+                "tier_hop_not_configured",
+                from_tier=current_tier.value,
+                to_tier=next_tier.value,
+                assets=unconfigured,
+                consequence=(
+                    "the governing retention policy sets no duration for this "
+                    "tier, so nothing progresses past it"
+                ),
+            )
+            report.policy_gaps[f"{current_tier.value}->{next_tier.value}"] = unconfigured
 
         return transition_count
 

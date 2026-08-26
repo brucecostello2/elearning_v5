@@ -204,6 +204,33 @@ class TestDryRun:
         assert report.errors, "a failed tier pass recorded no error"
         assert any("storage_path" in e for e in report.errors)
 
+    async def test_null_terminal_days_load_and_do_not_progress(self):
+        """The live retention_policies rows must LOAD, and must not delete.
+
+        All three rows in the live table have NULL `archive_days` and NULL
+        `delete_after_days`. The model required them as ints, so every load
+        raised ValidationError into a bare `except` and the service silently
+        used the hardcoded defaults instead -- the operator's configured
+        policy has never governed anything.
+
+        Both halves are pinned here, and the second is the dangerous one: NULL
+        must mean "do not progress past this tier", never zero. The old
+        `mapping.get(tier, 0)` returned 0 for a missing value, and 0 satisfies
+        `time_in_tier >= duration` for every asset that has ever existed -- so
+        an unconfigured `delete_after_days` would have DELETED the fleet on the
+        first run that reached it.
+        """
+        from services.retention_migration import RetentionPolicy
+
+        p = RetentionPolicy(
+            name="standard", hot_days=30, warm_days=90, cold_days=365,
+            archive_days=None, delete_after_days=None,
+            applies_to="all", is_default=True,
+        )
+        assert p.get_tier_duration_days(StorageTier.HOT) == 30
+        assert p.get_tier_duration_days(StorageTier.ARCHIVE) is None
+        assert p.get_tier_duration_days(StorageTier.COLD) == 365
+
     async def test_report_defaults_are_honest(self):
         """A fresh report claims a dry run and no failure, not the reverse."""
         r = MigrationReport()
@@ -211,6 +238,12 @@ class TestDryRun:
         assert r.status == "ok"
         assert r.capped is False
         assert r.would_move == {}
+        # Which policy set governed is REPORTED, not assumed. It was neither
+        # reported nor assumed before: the fallback to hardcoded defaults was a
+        # warning nobody read.
+        assert r.policy_source == "unknown"
+        assert r.policy_load_error is None
+        assert r.policy_gaps == {}
 
 
 class TestTaskWiring:
