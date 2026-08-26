@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **875** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
-| `ivgs-workers` | 787 | 18 | 48 | 15 | 27 failed (WP-45) |
+| `ivgs-api` | **880** | **0** | 0 | 0 | 2 failed / 831 passed (WP-45) |
+| `ivgs-workers` | 799 | 18 | 48 | 15 | 27 failed (WP-45) |
 | `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | 56 | 12 | 15 | 30 | 15 passed / 31 failed / 28 errors |
-| **Total** | **1744** | **47** | **63** | **45** | |
+| **Total** | **1761** | **47** | **63** | **45** | |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -64,13 +64,19 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 
 ---
 
-## 2. `ivgs-api` — 875 passed, 0 failed
+## 2. `ivgs-api` — 880 passed, 0 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m27s. **No remaining failures.**
+Runtime 4m24s. **No remaining failures.**
+
+WP-57 added 5 tests (2026-08-26): `test_wp57_service_token.py`, pinning that the
+shipped default `dev-service-token` stops being accepted once a real
+`IVGS_SERVICE_TOKEN` is configured — the route must not accept both — while
+still accepting it until one is set, so the change is safe to deploy ahead of
+the operator's rotation block. 875 → 880.
 
 WP-56 added 25 tests (2026-08-25): `test_wp56_library.py`, covering the AD-09.4
 asset library and actors and the AD-09.5 presets — dedup within scope, the
@@ -112,13 +118,19 @@ name is used.
 
 ---
 
-## 3. `ivgs-workers` — 787 passed, 18 failed, 48 skipped, 15 errors
+## 3. `ivgs-workers` — 799 passed, 18 failed, 48 skipped, 15 errors
 
 ```bash
 .venv/bin/python -m pytest ivgs-workers/tests
 ```
 
 Runtime 20s.
+
+WP-57 added 12 tests (2026-08-26): `test_wp57_error_classification.py`, pinning
+each real `render_jobs.error_message` to its class. It also pins the two things
+that must NOT change: a content-free summary still falls through to the default,
+and a stage whose name ends `_generation` is no longer misread as a model
+failure. 787 → 799.
 
 WP-58 added 21 tests (2026-08-25): `test_wp58_storyboard_budget.py` (8) pinning
 the scene-count-scaled Stage-2 output budget and the `finish_reason == "length"`
