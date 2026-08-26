@@ -55,6 +55,18 @@ The rules this module now enforces:
     ``metadata["clip_score"]`` is the float when scored and the literal string
     ``"unavailable"`` otherwise — never a bare ``None`` that reads as a zero or
     as a score.
+
+WP-63 — the blank/solid-colour check rejected three correct frames
+------------------------------------------------------------------
+
+A full-defaults 9-scene run lost scenes 0, 2 and 7 to "Image appears blank or
+solid color" on 2026-08-26. All three were real teaching frames. The check was
+measuring ``distinct colours / total pixels``, and Stage 3's own letterbox
+padding put 43.75% of the frame into that denominator. It now measures spatial
+STRUCTURE, over the frame's non-uniform region, and it is a better
+discriminator rather than a looser one: the constructed blanks it must catch
+score exactly 0.0 and the frames it wrongly rejected score 0.57 to 0.72. See
+``measure_blankness``.
 """
 
 from __future__ import annotations
@@ -108,8 +120,15 @@ class ImageQualityThresholds:
     max_file_size_bytes: int = 52428800    # 50MB
     clip_score_approved: float = 0.25
     clip_score_flagged: float = 0.18
-    blank_pixel_threshold: float = 0.95
     noise_std_threshold: float = 5.0
+
+    # WP-63 Task 1. The blank/solid-colour check's parameters. See
+    # ``measure_blankness`` for what they mean and why the old
+    # ``blank_pixel_threshold`` (distinct colours per pixel) was deleted rather
+    # than loosened.
+    blank_tile_grid: int = 16
+    blank_tile_std: float = 3.0
+    blank_structured_tile_fraction: float = 0.02
 
 
 #: Scoring weights. A check that does not run is removed from BOTH the
@@ -123,6 +142,187 @@ CHECK_WEIGHTS: Dict[str, float] = {
     "noise_check_ok": 0.05,
     "clip_ok": 0.15,
 }
+
+# ---------------------------------------------------------------------------
+# Blank / solid-colour discrimination — WP-63 Task 1
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class BlanknessMeasurement:
+    """What the blank/solid-colour check measured, and its verdict.
+
+    Every field is recorded in ``metadata`` so a rejection can be argued with
+    from the record rather than re-run.
+    """
+
+    is_blank: bool
+    #: Fraction of tiles of the CONTENT REGION carrying real luminance
+    #: variation. 0.0 for anything uniform; the discriminating statistic.
+    structured_tile_fraction: float
+    #: Fraction of the frame occupied by its single most common exact RGB
+    #: colour. Diagnostic only — a whiteboard scores high on this and is not
+    #: blank, which is the whole point.
+    dominant_color_share: float
+    #: Distinct colours per pixel. THE OLD VERDICT, kept as a recorded number
+    #: so the before/after of this change is readable in the quality record.
+    unique_color_ratio: float
+    #: (top, bottom, left, right) of the non-uniform region, or None when the
+    #: frame has no non-uniform region at all.
+    content_box: Optional[Tuple[int, int, int, int]]
+
+
+def _content_box(gray: "Any") -> Optional[Tuple[int, int, int, int]]:
+    """The smallest box outside which every row and column is one flat colour.
+
+    This is the letterbox strip-off, stated as a property rather than as a
+    special case: IVGS pads every non-16:9 frame onto a 1920x1080 canvas
+    (``media_converter.resize_to_target``), and those bars are IVGS's own
+    pixels, not the generator's. Rows and columns are examined independently,
+    so it removes bars on any side.
+
+    ``None`` means EVERY row or EVERY column is uniform, which is what a solid
+    colour looks like — with or without bars of a second solid colour around
+    it.
+    """
+    import numpy as np
+
+    rows_vary = ~np.all(gray == gray[:, :1], axis=1)
+    cols_vary = ~np.all(gray == gray[:1, :], axis=0)
+    if not rows_vary.any() or not cols_vary.any():
+        return None
+    rows = np.flatnonzero(rows_vary)
+    cols = np.flatnonzero(cols_vary)
+    return int(rows[0]), int(rows[-1]) + 1, int(cols[0]), int(cols[-1]) + 1
+
+
+def measure_blankness(
+    img_rgb: "Any", thresholds: ImageQualityThresholds,
+) -> BlanknessMeasurement:
+    """Decide whether a frame is blank/solid-colour, by measuring STRUCTURE.
+
+    WP-63 Task 1. Operator-measured 2026-08-26: a full-defaults 9-scene run
+    lost scenes 0, 2 and 7 to "Image appears blank or solid color". The three
+    rejected frames were recovered from ComfyUI, verified by eye, and are
+    people at whiteboards and a hand with a pencil over paper — correct,
+    usable teaching frames. They are banked at
+    ``/mnt/ivgs-shared/wp63-rejects/`` and three of the five files this check
+    is now pinned against.
+
+    WHAT THE OLD CHECK MEASURED, AND WHY IT COULD NOT WORK.
+
+    It computed ``distinct colours / total pixels`` and demanded more than
+    0.05. That is not a measure of blankness; it is a measure of colour
+    density, and its denominator is the pixel count. Measured on the three
+    banked frames:
+
+        as generated, 1024x1024      ratio 0.0876 / 0.0766 / 0.0809  -> pass
+        after stage 3's resize       ratio 0.0485 / 0.0427 / 0.0447  -> REJECT
+
+    Nothing about the pictures changed between those two rows. Stage 3 fits
+    each square frame inside 1920x1080 and pads it with black
+    (``stage3_images.py`` step 3), which adds 907,200 identical pixels —
+    43.75% of the frame — to the DENOMINATOR while adding one colour to the
+    numerator. The pipeline's own letterboxing is what pushed these three
+    under the floor, and at this resolution the metric sat so close to it that
+    six of nine scenes fell the other way by accident.
+
+    WHAT THE NEW CHECK MEASURES.
+
+    A blank or solid-colour frame is one with NO SPATIAL STRUCTURE. So:
+
+      1. Strip the uniform border (``_content_box``) — the letterbox bars, if
+         any. A frame with no non-uniform region at all is solid: verdict
+         blank, immediately, and that is also the verdict for a solid frame
+         inside bars of a different solid colour.
+      2. Divide what is left into a ``blank_tile_grid`` x ``blank_tile_grid``
+         grid and count the tiles whose luminance standard deviation reaches
+         ``blank_tile_std``. A tile clears that bar when it contains an edge,
+         a stroke, a face, a shadow — anything but a flat wash.
+      3. Blank iff fewer than ``blank_structured_tile_fraction`` of the tiles
+         are structured.
+
+    WHY A WHITEBOARD PASSES AND A WHITE SQUARE FAILS. Both are overwhelmingly
+    white, so every statistic of *how much white there is* — the old ratio,
+    the dominant-colour share, the mean — flags the whiteboard too. What
+    separates them is that the whiteboard has writing, a marker, a person and
+    the board's own edges: those live in particular tiles and give those tiles
+    real variation. The white square has no such tile anywhere. Measured on
+    the five pinned files, post-resize, at these settings:
+
+        ivgs_flux_00087 (whiteboard)          structured_tile_fraction 0.6406
+        ivgs_flux_00089 (whiteboard)                                   0.5664
+        ivgs_flux_00094 (hand, pencil, paper)                          0.7227
+        constructed pure white                                         0.0000
+        constructed solid colour                                       0.0000
+
+    The floor is 0.02 — a factor of 28 below the lowest legitimate frame and
+    above the highest blank one, which is exactly zero. It is a separation,
+    not a setting tuned until the complaint stopped: no value of it can make
+    those two groups overlap.
+
+    Both statistics are scale-invariant, so neither the resize nor the
+    letterboxing that broke the old check can move this one.
+    """
+    import numpy as np
+
+    arr = np.asarray(img_rgb)
+    pixels = arr.reshape(-1, 3)
+
+    # Distinct colours and the dominant share, over a packed 24-bit code. This
+    # is the same count the old ``np.unique(pixels, axis=0)`` produced and is
+    # cheaper: a sort of N uint32 rather than of N rows of 3.
+    codes = (
+        (pixels[:, 0].astype(np.uint32) << 16)
+        | (pixels[:, 1].astype(np.uint32) << 8)
+        | pixels[:, 2].astype(np.uint32)
+    )
+    _uniq, counts = np.unique(codes, return_counts=True)
+    total = max(len(codes), 1)
+    unique_color_ratio = len(_uniq) / total
+    dominant_color_share = float(counts.max()) / total
+
+    # Luminance, ITU-R BT.601 as PIL's "L" uses.
+    gray = (
+        0.299 * arr[:, :, 0] + 0.587 * arr[:, :, 1] + 0.114 * arr[:, :, 2]
+    ).astype(np.float32)
+
+    box = _content_box(gray)
+    if box is None:
+        return BlanknessMeasurement(
+            is_blank=True,
+            structured_tile_fraction=0.0,
+            dominant_color_share=dominant_color_share,
+            unique_color_ratio=unique_color_ratio,
+            content_box=None,
+        )
+
+    top, bottom, left, right = box
+    content = gray[top:bottom, left:right]
+    n = max(int(thresholds.blank_tile_grid), 1)
+    ys = np.linspace(0, content.shape[0], n + 1).astype(int)
+    xs = np.linspace(0, content.shape[1], n + 1).astype(int)
+
+    structured = 0
+    tiles = 0
+    for i in range(n):
+        for j in range(n):
+            tile = content[ys[i]:ys[i + 1], xs[j]:xs[j + 1]]
+            if tile.size == 0:
+                continue
+            tiles += 1
+            if float(tile.std()) >= thresholds.blank_tile_std:
+                structured += 1
+
+    fraction = structured / tiles if tiles else 0.0
+    return BlanknessMeasurement(
+        is_blank=fraction < thresholds.blank_structured_tile_fraction,
+        structured_tile_fraction=fraction,
+        dominant_color_share=dominant_color_share,
+        unique_color_ratio=unique_color_ratio,
+        content_box=box,
+    )
+
 
 @dataclass
 class ImageValidationResult:
@@ -333,15 +533,32 @@ class ImageValidator:
             try:
                 import numpy as np
                 img_array = np.array(img.convert("RGB"))
-                pixels = img_array.reshape(-1, 3)
 
-                # Check for solid color
-                unique_ratio = len(np.unique(pixels, axis=0)) / max(len(pixels), 1)
-                blank_ok = unique_ratio > (1 - self._thresholds.blank_pixel_threshold)
+                # --- Blank / solid colour, WP-63 Task 1 ---
+                # STRUCTURE, not colour density. `measure_blankness` carries
+                # the measurement that motivated the change and the numbers it
+                # was decided on. Every statistic it computed is recorded, the
+                # old verdict's ratio included, so a rejection can be argued
+                # with from the quality record rather than re-run.
+                blankness = measure_blankness(img_array, self._thresholds)
+                blank_ok = not blankness.is_blank
                 checks["blank_check_ok"] = blank_ok
                 if not blank_ok:
                     errors.append("Image appears blank or solid color")
-                metadata["unique_color_ratio"] = round(unique_ratio, 4)
+                metadata["unique_color_ratio"] = round(
+                    blankness.unique_color_ratio, 4
+                )
+                metadata["structured_tile_fraction"] = round(
+                    blankness.structured_tile_fraction, 4
+                )
+                metadata["dominant_color_share"] = round(
+                    blankness.dominant_color_share, 4
+                )
+                metadata["content_box"] = (
+                    list(blankness.content_box)
+                    if blankness.content_box is not None
+                    else None
+                )
 
                 # Check for excessive noise (very low std might indicate solid)
                 pixel_std = float(np.std(img_array))
