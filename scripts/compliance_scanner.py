@@ -14,6 +14,12 @@
 #      api.d-id.com
 #   4. Import patterns: import openai, from openai, import anthropic, etc.
 #
+# Exemptions (WP-63 Task 10): a flagged line may carry an inline pragma
+#   `# compliance-exempt: F.2-R1 - <reason>` (or the `//` form). It is honoured
+#   only when the rule id names the rule that flagged THAT line and a reason
+#   follows it, and every applied exemption is printed in the report. See the
+#   block above RULE_IDS for the full rationale.
+#
 # Exit codes:
 #   0 — No violations found
 #   1 — Violations detected (build should fail)
@@ -39,9 +45,27 @@ class Violation:
 
 
 @dataclass
+class Exemption:
+    """One line that matched a rule and carried a valid pragma for THAT rule.
+
+    WP-63 Task 10. Every one of these is printed in the report. An exemption
+    that is not reported is indistinguishable from a rule that is not enforced,
+    and the whole value of this scanner is that its verdict can be trusted.
+    """
+    rule_id: str
+    reason: str
+    category: str
+    file_path: str
+    line_number: int
+    line_content: str
+
+
+@dataclass
 class ScanResult:
     """Aggregated scan results."""
     violations: list[Violation] = field(default_factory=list)
+    exemptions: list[Exemption] = field(default_factory=list)
+    skipped_files: list[str] = field(default_factory=list)
     files_scanned: int = 0
     directories_scanned: int = 0
 
@@ -103,6 +127,81 @@ SKIP_DIRS = {
 SKIP_FILES = {"compliance_scanner.py", "test_compliance_scanner.py", "v4_to_v5_migration.py", "compliance-check.yml"}
 
 
+# ---------------------------------------------------------------------------
+# Rule ids, and the inline exemption pragma — WP-63 Task 10
+# ---------------------------------------------------------------------------
+#
+# THE PROBLEM THIS SOLVES, measured. CI runs #262 (6a3b074) and #263 (8f64692)
+# both failed at compliance-scan on ONE line:
+#
+#     tests_system/test_wp61_node05.py:251
+#     for banned in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY"):
+#
+# That is the WP-61 test which ASSERTS THOSE VARIABLES ARE ABSENT from node-05's
+# environment. The scanner matches the literal names and cannot tell
+# referencing-to-forbid from use. Downstream jobs cancel on the failed gate, so
+# CI has been fully red since the WP-61 push.
+#
+# THE FIX IS TO THE SCANNER, NOT THE TEST. Renaming the test's literals,
+# building them with `"OPENAI" + "_API_KEY"`, or deleting the assertion would
+# each turn a working compliance test into a decoration to get past a
+# compliance scanner. The test's honesty is the point of the test.
+#
+# THE MECHANISM. A line may carry, in a comment ON THAT LINE:
+#
+#     # compliance-exempt: F.2-R1 - asserts these names are ABSENT
+#
+# It is honoured only when ALL THREE of these hold:
+#
+#   1. the rule id is present and NAMES THE RULE THAT FLAGGED THIS LINE. A
+#      pragma for F.2-R4 does not silence an F.2-R1 finding, so an exemption
+#      cannot widen itself when a second rule starts matching the same line;
+#   2. a reason follows the rule id, non-empty. "Because" has to be written
+#      down;
+#   3. the pragma is on the flagged line itself, not on a neighbouring line or
+#      at the top of the file, so it cannot drift away from what it excuses.
+#
+# A BARE `# compliance-exempt` IS NOT HONOURED. Neither is one with a rule id
+# and no reason. Both fail closed, as a violation.
+#
+# AND EVERY APPLIED EXEMPTION IS PRINTED. `print_report` lists each one with its
+# rule, file, line and reason, on clean runs as well as failing ones. An
+# exemption nobody can see is a rule nobody is enforcing.
+
+RULE_IDS = {
+    "Prohibited env vars (§F.2 Rule 1)": "F.2-R1",
+    "Prohibited pip packages (§F.2 Rule 2)": "F.2-R2",
+    "Prohibited API endpoints (§F.2 Rule 3)": "F.2-R3",
+    "Prohibited imports (§F.2 Rule 4)": "F.2-R4",
+}
+
+#: `# compliance-exempt: <ids> <separator> <reason>` or the `//` equivalent.
+#: ``<ids>`` is one or more rule ids, comma-separated. The separator before the
+#: reason may be ``-``, an en/em dash, or ``:``.
+EXEMPT_PRAGMA = re.compile(
+    r"(?:#|//)\s*compliance-exempt\s*:\s*"
+    r"(?P<ids>[A-Za-z0-9.\-]+(?:\s*,\s*[A-Za-z0-9.\-]+)*)"
+    r"\s*(?:-|\u2013|\u2014|:)\s*"
+    r"(?P<reason>\S.*?)\s*$"
+)
+
+
+def parse_exemption(line: str) -> Optional[tuple[set[str], str]]:
+    """The rule ids and reason a line's pragma carries, or None.
+
+    Returns None for a line with no pragma, for a bare ``# compliance-exempt``,
+    and for one with a rule id but no reason — all three fail closed.
+    """
+    match = EXEMPT_PRAGMA.search(line)
+    if match is None:
+        return None
+    ids = {part.strip() for part in match.group("ids").split(",") if part.strip()}
+    reason = match.group("reason").strip()
+    if not ids or not reason:
+        return None
+    return ids, reason
+
+
 def match_glob(filename: str, globs: set[str]) -> bool:
     """Check if filename matches any of the glob patterns.
 
@@ -133,14 +232,20 @@ def scan_file(
     category: str,
     pattern: re.Pattern,
     file_globs: set[str],
-) -> list[Violation]:
-    """Scan a single file for violations."""
-    if not match_glob(file_path.name, file_globs):
-        return []
-    if file_path.name in SKIP_FILES:
-        return []
+) -> tuple[list[Violation], list[Exemption]]:
+    """Scan a single file, returning its violations AND the exemptions applied.
 
-    violations = []
+    The two are returned together on purpose: a caller cannot take the verdict
+    without also receiving what was excused from it.
+    """
+    if not match_glob(file_path.name, file_globs):
+        return [], []
+    if file_path.name in SKIP_FILES:
+        return [], []
+
+    rule_id = RULE_IDS.get(category, category)
+    violations: list[Violation] = []
+    exemptions: list[Exemption] = []
     try:
         content = file_path.read_text(encoding="utf-8", errors="ignore")
         for i, line in enumerate(content.splitlines(), start=1):
@@ -151,17 +256,31 @@ def scan_file(
             if stripped.startswith("//") and ("PROHIBITED" in stripped or "NEVER" in stripped):
                 continue
 
-            if pattern.search(line):
-                violations.append(Violation(
+            if not pattern.search(line):
+                continue
+
+            parsed = parse_exemption(line)
+            if parsed is not None and rule_id in parsed[0]:
+                exemptions.append(Exemption(
+                    rule_id=rule_id,
+                    reason=parsed[1],
                     category=category,
-                    pattern=pattern.pattern[:60],
                     file_path=str(file_path),
                     line_number=i,
-                    line_content=line.strip()[:120],
+                    line_content=stripped[:120],
                 ))
+                continue
+
+            violations.append(Violation(
+                category=category,
+                pattern=pattern.pattern[:60],
+                file_path=str(file_path),
+                line_number=i,
+                line_content=stripped[:120],
+            ))
     except (OSError, UnicodeDecodeError):
         pass
-    return violations
+    return violations, exemptions
 
 
 def scan_directory(root: Path) -> ScanResult:
@@ -184,9 +303,19 @@ def scan_directory(root: Path) -> ScanResult:
             file_path = Path(dirpath) / filename
             result.files_scanned += 1
 
+            if filename in SKIP_FILES:
+                # WP-63 Task 10. Reported, not silent. These four are excused
+                # WHOLESALE and always have been; until now nothing said so in
+                # the output, which is the same defect the pragma mechanism
+                # exists to prevent — one file at a time instead of one line.
+                result.skipped_files.append(str(file_path))
+
             for category, pattern, globs in scan_configs:
-                violations = scan_file(file_path, category, pattern, globs)
+                violations, exemptions = scan_file(
+                    file_path, category, pattern, globs,
+                )
                 result.violations.extend(violations)
+                result.exemptions.extend(exemptions)
 
     return result
 
@@ -200,11 +329,39 @@ def print_report(result: ScanResult) -> None:
     print(f"Files scanned:       {result.files_scanned}")
     print(f"Directories scanned: {result.directories_scanned}")
     print(f"Violations found:    {len(result.violations)}")
+    print(f"Exemptions applied:  {len(result.exemptions)}")
+    print(f"Files skipped whole: {len(result.skipped_files)}")
     print("-" * 72)
+
+    # WP-63 Task 10. EXEMPTIONS ARE PRINTED FIRST AND ALWAYS, on a clean run as
+    # well as a failing one. A scanner that reports "0 violations" while
+    # silently excusing lines is worse than one that reports nothing.
+    if result.exemptions:
+        print("  [Exemptions applied - each honoured because its pragma names")
+        print("   the rule that flagged the line, and gives a reason]")
+        for ex in sorted(
+            result.exemptions, key=lambda e: (e.file_path, e.line_number)
+        ):
+            print(f"    {ex.file_path}:{ex.line_number}  [{ex.rule_id}]")
+            print(f"      -> {ex.line_content}")
+            print(f"      reason: {ex.reason}")
+        print()
+
+    if result.skipped_files:
+        print("  [Files skipped wholesale - not scanned by any rule]")
+        for path in sorted(set(result.skipped_files)):
+            print(f"    {path}")
+        print()
 
     if result.is_clean:
         print("✓ No prohibited dependencies found")
-        print("✓ Compliance check PASSED")
+        if result.exemptions:
+            print(
+                f"✓ Compliance check PASSED "
+                f"({len(result.exemptions)} exemption(s) applied, listed above)"
+            )
+        else:
+            print("✓ Compliance check PASSED")
     else:
         print("✗ COMPLIANCE CHECK FAILED")
         print()

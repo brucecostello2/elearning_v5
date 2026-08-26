@@ -247,8 +247,18 @@ class TestTheIdentityBlock:
         assert "IVGS_WORKERS_TAG" not in env
 
     def test_the_prohibited_key_block_is_kept(self, env_text):
-        """Read from the raw text: this block is deliberately COMMENTS."""
-        for banned in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY"):
+        """Read from the raw text: this block is deliberately COMMENTS.
+
+        WP-63 Task 10. The loop below is what failed CI runs #262 and #263 at
+        Appendix F.2 Rule 1: the scanner matched the three literal names and
+        could not tell REFERENCING-TO-FORBID from use. The scanner was fixed,
+        not this test — renaming the literals or assembling them from fragments
+        would leave an assertion that no longer names what it is guarding
+        against, and this test's honesty is the whole point of it. The pragma
+        below is the scanner's visible exemption mechanism; it names the rule it
+        answers to and its reason, and the scanner prints it in every report.
+        """
+        for banned in ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "ELEVENLABS_API_KEY"):  # compliance-exempt: F.2-R1 - asserts these names are ABSENT from node-05
             assert f"# {banned} - NEVER" in env_text
 
     def test_no_real_secret_is_in_the_tracked_example(self, env):

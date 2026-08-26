@@ -13,6 +13,34 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "18"
 
+# WP-63 Task 10(c). Action majors bumped 2026-08-26 to clear the Node.js 20
+# deprecation annotations: checkout v4 -> v7, setup-python v5 -> v7,
+# setup-node v4 -> v7. What the changelogs declare, and what it means here:
+#
+#   checkout v5      node24 runtime; MINIMUM RUNNER v2.327.1.
+#   checkout v6      credentials persisted to a separate file.
+#   checkout v7      REFUSES to check out a fork PR under `pull_request_target`
+#                    or `workflow_run`. Inert here: no workflow in this repo
+#                    uses either trigger.
+#   setup-python v6  node24 runtime; same v2.327.1 minimum.
+#   setup-python v7  the `pip-install` input is REMOVED. Not used here.
+#   setup-node   v5  node24; and automatic caching when package.json carries a
+#                    `packageManager` field. `ivgs-frontend/package.json` does
+#                    not, so nothing starts caching that was not caching before.
+#   setup-node   v6  automatic caching narrowed to npm.
+#   setup-node   v7  adds cache-primary-key / cache-matched-key outputs.
+#
+# Every job in THIS file runs on `ubuntu-latest`, so the v2.327.1 runner
+# minimum is met by construction.
+#
+# `.github/workflows/cd-deploy.yml` IS DELIBERATELY NOT BUMPED. Its three jobs
+# run on `[self-hosted, linux, x64, ivgs-infra]`, and that runner has been dead
+# since 2026-05-26 (see compliance-check.yml's own note). Its agent version
+# cannot be read, so whether it meets v2.327.1 is unknown - and a checkout that
+# refuses to run is a worse outcome than a deprecation warning on a workflow
+# that is only invoked by hand. Bump it when the runner is back and its version
+# is known. WP-63 report, Task 10(c).
+
 jobs:
   # ================================================================
   # Job 1: Python Linting & Type Checking
@@ -21,9 +49,9 @@ jobs:
     if: false  # Disabled — repo doesn't conform to Black; re-enable after wholesale formatting pass
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -69,9 +97,9 @@ jobs:
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -156,9 +184,9 @@ jobs:
       run:
         working-directory: ivgs-frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
 
@@ -177,9 +205,9 @@ jobs:
   compliance-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -196,7 +224,7 @@ jobs:
       matrix:
         service: [ivgs-api, ivgs-workers, ivgs-scheduler, ivgs-frontend]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build Docker image
         run: |
@@ -210,7 +238,7 @@ jobs:
     needs: docker-build
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
