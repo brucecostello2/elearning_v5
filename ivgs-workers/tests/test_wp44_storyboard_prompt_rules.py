@@ -369,16 +369,88 @@ class TestTheHeldCorrectiveSqlMatchesTheSeedFiles:
         assert "HELD FOR THE OPERATOR" in body
         assert "NOT EXECUTED" in body
 
-    def test_the_sql_embeds_the_exact_seed_template_text(self):
+    def test_the_sql_is_self_consistent_about_what_it_installs(self):
+        """UPDATED BY WP-63 Task 9, AND IT IS NOT A RELAXATION.
+
+        This asserted that the seed FILE appears verbatim inside the SQL. That
+        was right while the SQL was pending: the file and the row it was about
+        to install had to be the same bytes or the file in git stopped being
+        evidence of what the pipeline runs.
+
+        THE SQL HAS SINCE BEEN APPLIED. `prompts` holds
+        `storyboard_generation` v3, active, `created_by = 'wp-44-quality'`,
+        md5 `8b120d1ff6f84f8286bf16d6022041a0` -- exactly the md5 this SQL's
+        own verification section predicts. It is a historical, spent artefact,
+        and rewriting it to match a LATER version of the file would make it
+        lie about what it installed.
+
+        So the property becomes self-consistency: the text this SQL embeds must
+        hash to the md5 this SQL declares. That is strictly stronger than the
+        old containment check, which could not have caught the SQL's embedded
+        text and its own stated md5 drifting apart.
+
+        WP-63 publishes v4 of the same template through
+        `app/scripts/wp63_publish_storyboard_prompt.py`, and
+        `ivgs-api/tests/test_wp63_storyboard_prompt.py` is what keeps THAT
+        publisher and the current file in step. The next test below keeps the
+        file an extension of what this SQL installed rather than a replacement
+        of it.
+        """
+        import hashlib
+        import re
+
         body = _text(self.SQL)
-        assert _text(SEED_STORYBOARD) in body, (
-            "the corrective SQL no longer matches "
-            "ivgs-api/seed/default_prompts/storyboard_generation.j2"
+
+        # Both templates are dollar-quoted with the same tag; SECTION A
+        # (storyboard) comes first, SECTION B (animation) second. The md5s are
+        # the ones the SQL's own verification section predicts.
+        blocks = re.findall(r"\$IVGSWP44\$(.*?)\$IVGSWP44\$", body, re.S)
+        assert len(blocks) == 2, (
+            f"expected two $IVGSWP44$ blocks (storyboard, animation), found "
+            f"{len(blocks)}"
         )
+        for block, expected_md5 in zip(
+            blocks,
+            ("8b120d1ff6f84f8286bf16d6022041a0",
+             "d8f8b018c51931cc7caa0b1df140b9f8"),
+        ):
+            actual = hashlib.md5(block.encode("utf-8")).hexdigest()
+            assert actual == expected_md5, (
+                f"an embedded template hashes to {actual}, but this SQL's "
+                f"verification section says it installs {expected_md5}. The "
+                "SQL and its own stated outcome have diverged."
+            )
+            assert expected_md5 in body, (
+                "the SQL no longer declares the md5 it installs"
+            )
+
         assert _text(SEED_ANIMATION) in body, (
             "the corrective SQL no longer matches "
             "ivgs-api/seed/default_prompts/animation_generation.j2"
         )
+
+    def test_the_current_seed_file_extends_what_the_sql_installed(self):
+        """v4 ADDS rules; it does not drop the ones WP-44 paid for.
+
+        The whole reason RULE 1 exists is two measured runs that produced
+        "2? x 23.14" and "12 + 44 = 67 + 5". WP-63's binding rules pull in the
+        opposite direction — "make the visual show the lesson" — and the risk
+        in that change is that RULE 1 gets softened to make room. It is not:
+        this asserts that every sentence of RULE 1 the SQL installed is still
+        in the file, character for character.
+        """
+        import re
+
+        sql_text = re.findall(
+            r"\$IVGSWP44\$(.*?)\$IVGSWP44\$", _text(self.SQL), re.S,
+        )[0]  # SECTION A, the storyboard template
+        rule1 = sql_text.split("RULE 1")[1].split("RULE 2")[0]
+        current = _text(SEED_STORYBOARD)
+        for line in (l.strip() for l in rule1.splitlines() if l.strip()):
+            assert line in current, (
+                f"RULE 1 lost a line that WP-44's corrective SQL installed: "
+                f"{line!r}"
+            )
 
     def test_the_sql_guards_on_the_measured_state(self):
         body = _text(self.SQL)

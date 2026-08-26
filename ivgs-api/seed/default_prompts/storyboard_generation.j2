@@ -26,6 +26,12 @@ overlay, and leave clear space where the overlay will go.
   - RIGHT: "a teacher beside a clean, empty whiteboard, gesturing to its blank
     left-hand side, warm classroom light"
 
+RULE 1 BOUNDS HOW A VISUAL MAY SHOW CONTENT. IT DOES NOT EXCUSE A VISUAL FROM
+SHOWING ANY. See RULE 5: describe the board STATE and the STEP in words —
+"two partial-product rows already written above a ruled line, the answer row
+still empty" — and let the overlay supply the digits. That is specific, and it
+contains no text for the model to misspell.
+
 RULE 2 — media_type
 - "image": the default. Static concepts, diagrams, portraits, backgrounds that
   will carry an overlay, summaries, establishing shots.
@@ -58,10 +64,64 @@ approximately {{ max_duration_seconds | default(1800) }} seconds, within 10%.
 Adjust the scene count or the per-scene lengths until they do. Pace narration
 at ~150 words per minute so each scene's duration matches its own narration.
 
+RULE 5 — EVERY VISUAL MUST DEPICT ITS OWN SCENE'S STEP
+A scene's "visual_description" is a picture of THE THING THIS SCENE TEACHES, at
+the moment this scene teaches it. It is not decoration and it is not a mood.
+Before writing each one, answer these three questions from that scene's
+narration, and put all three answers in the description:
+
+  1. WHAT OPERATION is happening in this scene? (setting the problem up,
+     multiplying by the ones digit, placing the placeholder zero, adding the
+     partial products, checking the answer, summarising...)
+  2. WHAT DOES THE WORKING SURFACE LOOK LIKE at this moment? How many rows are
+     already written, is there a ruled line yet, is the answer row still empty,
+     is there a carry mark above a column, is the placeholder zero in place?
+     Describe the LAYOUT, never the digits (RULE 1).
+  3. WHERE IS THE ATTENTION? What is the hand, the pointer or the person doing
+     to the specific part of the working that this scene is about?
+
+  - WRONG: "a hand holding a pencil, poised over a blank sheet of paper"
+  - WRONG: "a hand moving a pencil across a blank sheet of paper"
+  - RIGHT, for a scene that adds two partial products: "over-the-shoulder view
+    of a hand resting a pencil tip at the foot of a two-row column addition on
+    lined paper; both partial-product rows are already written above a ruled
+    horizontal line and the answer row beneath it is still empty; warm desk
+    lamp from the left, upper right third of the sheet kept clear for the
+    overlay"
+
+A blank sheet is only correct for a scene whose narration is about a blank
+sheet. Every later scene has MORE on the page than the one before it: the
+working accumulates, and the pictures must show it accumulating.
+
+RULE 6 — NO TWO SCENES MAY SHARE A VISUAL, AND NONE MAY BE STOCK PHOTOGRAPHY
+Measured on a real run of this pipeline (project 14f71729, 2026-08-26,
+"double digit multiplication", 9 scenes): scenes 2 and 3 were given the
+IDENTICAL description, word for word, though one places a placeholder zero and
+the other multiplies by the tens digit; two more scenes shared "a teacher
+standing in front of a clean, empty whiteboard"; and the scene that teaches
+92 + 230 = 322 was given "a hand holding a pencil, looking at a blank sheet of
+paper". Six of nine visuals said nothing about their own lesson, and the
+generated images were correspondingly content-free.
+
+So:
+- Two scenes must NEVER receive the same or a near-identical
+  "visual_description". If two of yours come out alike, you have described the
+  setting instead of the step; go back to RULE 5's three questions.
+- Do not write stock-photo framing. "A smiling teacher gesturing", "a student
+  looking thoughtful at a desk", "a hand poised over paper", "a clean modern
+  classroom" and anything else that would fit ANY lesson on ANY subject is
+  forbidden. If the description you have written would still make sense for a
+  lesson about photosynthesis, it is not a description of this scene.
+- Consistency belongs to the STYLE, not to the content: the same desk, palette,
+  lighting and drawing style carry across scenes, while what is ON the working
+  surface changes in every one.
+
 Visual guidelines:
 - Visual descriptions should be detailed enough for AI image generation
-- Maintain visual consistency across scenes (style, color palette)
+- Maintain visual consistency across scenes (style, color palette) while the
+  working surface changes scene by scene (RULE 6)
 - Name subject, setting, style, composition, palette and key details
+- Name the step and the state of the working (RULE 5)
 - Contain no text of any kind (RULE 1)
 
 TRANSCRIPT:
