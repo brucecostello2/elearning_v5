@@ -5,6 +5,8 @@ Endpoints:
 - GET    /api/v1/projects/{id}/languages               — List variants
 - POST   /api/v1/projects/{id}/languages               — Add localization target
 - POST   /api/v1/projects/{id}/languages/{lid}/retry   — Retry failed localization
+- POST   /api/v1/projects/{id}/languages/{lid}/translate — Translate the source
+                                                           narration (WP-61)
 """
 import logging
 from typing import List
@@ -20,6 +22,11 @@ from app.models.user import User
 from app.schemas.language_variant import LanguageVariantCreate, LanguageVariantResponse
 from app.schemas.render_job import JobResponse
 from app.services.language_service import LanguageService, LocalisationDispatchError
+from app.services.translation_service import (
+    TranslationContractError,
+    TranslationError,
+    TranslationService,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -123,3 +130,70 @@ async def retry_variant(
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Language variant {variant_id} not found"}},
         )
     return JobResponse.model_validate(job)
+
+
+@router.post(
+    "/{variant_id}/translate",
+    response_model=LanguageVariantResponse,
+    summary="Translate the source narration into this variant's language",
+)
+async def translate_variant(
+    project_id: UUID,
+    variant_id: UUID,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Translate every scene of this project into the variant's language.
+
+    WP-61 Task 3. **This is the first translation path IVGS has ever had.**
+    Before it, `prompts.prompt_type='translation'` held one row that nothing
+    rendered, `language_variants` held 16 rows all `pending`, and
+    `/retry` re-rendered the SOURCE narration with the target language's voice
+    and said so in its own docstring.
+
+    **It is deliberately NOT a pipeline stage.** Task 3(a) rules that where the
+    executing body is absent, no new stage body is written pre-cutover. This is
+    a synchronous API-side call — the same shape as the CLIP scorer proxy — and
+    it registers no Celery task and appears in no `STAGE_TASK_MAP`. After the
+    M3.3 Temporal cutover the translation activity calls
+    `TranslationService.translate_variant`; it does not reimplement it.
+
+    **The contract is fail-and-flag** (Task 3(c), ruled). The model is
+    instructed to translate faithfully and never to correct the source, and to
+    emit one `IVGS-TRANSLATION-FLAG:` line if it believes the source is wrong.
+    That line is stripped from the deliverable and the variant goes to
+    `flagged` instead of `complete`. The route answers 409 rather than
+    translating at all if the active prompt does not carry that contract:
+    under the old prompt the model corrected the source silently and inline, in
+    all four languages, and this path would have recorded the corrected text as
+    `complete`.
+    """
+    service = TranslationService(db)
+    try:
+        variant = await service.translate_variant(project_id, variant_id)
+    except TranslationContractError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "error": {
+                    "code": "TRANSLATION_CONTRACT_MISSING",
+                    "message": str(e),
+                }
+            },
+        )
+    except TranslationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "TRANSLATION_FAILED", "message": str(e)}},
+        )
+    if variant is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Language variant {variant_id} not found",
+                }
+            },
+        )
+    return LanguageVariantResponse.model_validate(variant)

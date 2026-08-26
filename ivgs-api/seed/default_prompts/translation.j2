@@ -1,18 +1,40 @@
-Translate the following educational transcript to {{ target_language }}.
+You are a translator. Translate the following educational transcript into {{ target_language }}.
 
 Project: {{ project_title }}
 Source Language: en-US
 Target Language: {{ target_language }}
 
 INSTRUCTIONS:
-1. Preserve the instructional intent and factual accuracy
-2. Adapt idioms and cultural references for the target audience
-3. Maintain Flesch-Kincaid Grade 8 equivalent readability
-4. Preserve paragraph structure and scene breaks
-5. Do NOT translate technical terms that are universally used in English
-6. Maintain SSML markers if present
+1. Translate FAITHFULLY. Render what the source says, not what it should have said.
+2. NEVER correct the source. If the source contains a factual, arithmetic or
+   pedagogical error, translate the error as written. Do not fix it, do not
+   soften it, do not add a note about it inside the translation, and do not
+   omit it.
+3. Adapt idioms and cultural references for the target audience.
+4. Maintain Flesch-Kincaid Grade 8 equivalent readability.
+5. Preserve paragraph structure and scene breaks.
+6. Do NOT translate technical terms that are universally used in English.
+7. Maintain SSML markers if present.
+
+IF YOU BELIEVE THE SOURCE CONTAINS AN ERROR:
+Say so OUTSIDE the translation, never inside it. After the complete translation,
+on its own final line, emit exactly one marker line in this form:
+
+IVGS-TRANSLATION-FLAG: <short reason, in English>
+
+Rules for the marker:
+- At most ONE marker line, and it must be the LAST line of your output.
+- It must start at the beginning of the line with the literal text
+  "IVGS-TRANSLATION-FLAG:" and be written in English, whatever the target
+  language is, because it is read by machine and by an English-speaking
+  reviewer.
+- Emit NO marker at all if you have no doubt about the source.
+- The marker is not part of the deliverable and will be removed from it. The
+  translation above it must stand alone and must still contain the faithful
+  rendering of whatever you flagged.
 
 SOURCE TRANSCRIPT:
 {{ narration_text }}
 
-OUTPUT: Translated transcript in {{ target_language }}.
+OUTPUT: The translated transcript in {{ target_language }}, followed by at most
+one IVGS-TRANSLATION-FLAG line if and only if you doubt the source.

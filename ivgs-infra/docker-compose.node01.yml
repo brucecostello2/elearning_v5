@@ -54,6 +54,21 @@ x-gpu-service-urls: &gpu-service-urls
   VLLM_PRIMARY_URL: "http://${NODE_02_IP}:${VLLM_PORT}"
   VLLM_SECONDARY_URL: "http://${NODE_03_IP}:${VLLM_PORT}"
   VLLM_MIDSIZE_URL: "http://${NODE_04_IP}:${VLLM_PORT}"
+  # WP-61 Task 3(b). node-05's Qwen, and ONLY translation resolves to it.
+  #
+  # Both names are set on purpose and they are not redundant.
+  # `IVGS_VLLM_TRANSLATION_URL` is the variable
+  # `shared/providers/binding.py` reads for the (vllm, translation) pair, so a
+  # worker-side binding resolves here too once translation has a stage.
+  # `VLLM_TRANSLATION_URL` is the fallback `translation_service.py` reads
+  # second, matching the VLLM_*_URL family the API container already has.
+  #
+  # It is deliberately NOT `IVGS_VLLM_URL`: three stages run on vllm, and
+  # pointing the unscoped variable at node-05 would move storyboard and
+  # transcript off Llama too. They do not move in this package - the Temporal
+  # conformance baseline is diffed against them.
+  IVGS_VLLM_TRANSLATION_URL: "http://${NODE_05_IP}:${VLLM_PORT}"
+  VLLM_TRANSLATION_URL: "http://${NODE_05_IP}:${VLLM_PORT}"
   IVGS_VLLM_API_KEY: "${VLLM_API_KEY:-ivgs-internal}"
   OLLAMA_URL: "http://${NODE_05_IP}:${OLLAMA_PORT}"
   COMFYUI_PRIMARY_URL: "http://${NODE_04_IP}:${COMFYUI_PORT}"
@@ -297,14 +312,20 @@ services:
       NODE_05_IP: ${NODE_05_IP}
       NODE_06_IP: ${NODE_06_IP}
       <<: *gpu-service-urls
-      # WP-44-QUALITY. The CLIP scoring service on node-05, behind
+      # WP-44-QUALITY. The CLIP scoring service, behind
       # `POST /api/v1/clip/score`. Set HERE and not in *gpu-service-urls: the
       # API is the only client. Workers reach the scorer through the API's
       # proxy route — the URL stage 3 has always built — so exactly one place
-      # on the fleet holds node-05's address and there is no per-node env to
+      # on the fleet holds the scorer's address and there is no per-node env to
       # drift out of step. Unset, the route answers 503 and the validator
       # records `clip_score: "unavailable"`; there is no path by which an
       # absent scorer yields a number.
+      #
+      # CORRECTED 2026-08-26 (WP-61 Task 2). These six lines said "on node-05"
+      # while the value beneath them read ${NODE_06_IP}. The scorer moved to
+      # node-06 and node-06 is now its sole host (verified served_by node-06);
+      # node-05 is the Qwen LLM node. A comment describing a different node
+      # from the code under it is the WP-60 §21.1 defect, one file over.
       IVGS_CLIP_SERVICE_URL: "http://${NODE_06_IP}:${IVGS_CLIP_PORT:-8300}"
       UVICORN_WORKERS: "4"
       UVICORN_HOST: "0.0.0.0"

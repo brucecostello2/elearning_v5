@@ -2,7 +2,7 @@
 Language variant Pydantic schemas per §5.1.8.
 """
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, List, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -62,6 +62,13 @@ class LanguageVariantResponse(BaseModel):
     completed_stages: Optional[int] = None
     total_stages: Optional[int] = None
     progress_source: Optional[str] = None
+    # WP-61 Task 3. The deliverable and the markers, served together, because a
+    # `flagged` badge with no way to read WHY is the same shape of surface this
+    # series of packages exists to remove. Both are null until a translation has
+    # run -- which, on this fleet, is every row (all 16 are `pending`,
+    # measured 2026-08-26).
+    translation: Optional[Dict[str, Any]] = None
+    translation_flags: Optional[List[Dict[str, Any]]] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

@@ -33,13 +33,62 @@ _ENGINE_ENDPOINTS: dict[str, tuple[str, str]] = {
 }
 
 
-def resolve_endpoint(engine: str, node_id: str | None = None) -> str:
-    """Return the serving base URL for ``engine``.
+# (engine, stage) -> (env var, default URL). WP-61 Task 3(b).
+#
+# WHY A SECOND MAP EXISTS, AND WHY IT IS NOT A GENERALISATION.
+#
+# Three IVGS stages run on `vllm`: transcript_refinement, storyboard_generation
+# and translation. Until WP-61 they all resolved through the single
+# ``IVGS_VLLM_URL``, which is correct only while they share one server. The
+# WP-61 ruling routes TRANSLATION to Qwen on node-05 and holds storyboard and
+# transcript on Llama until after M3.3 -- precisely so the Temporal conformance
+# baseline (reference-run-2026-08-23) is not re-scored against a different
+# model while the orchestration migration is being diffed. One env var cannot
+# express that; setting ``IVGS_VLLM_URL`` to node-05 would move all three.
+#
+# So the override is scoped to the PAIR, and it is deliberately a short,
+# explicit table rather than a computed ``IVGS_VLLM_TRANSLATION_URL``-style
+# name derived from the arguments. A derived name means any typo in a stage
+# string silently produces a variable nobody set, which resolves to the
+# unscoped default and moves the model without saying so. This table can only
+# be extended by editing it.
+_STAGE_ENGINE_ENDPOINTS: dict[tuple[str, str], tuple[str, str]] = {
+    ("vllm", "translation"): (
+        "IVGS_VLLM_TRANSLATION_URL",
+        "http://node-05:8000",
+    ),
+}
 
-    Order: ``IVGS_<ENGINE>_URL`` env override -> shipped default. ``node_id``
-    is accepted for forward-compat (per-node endpoint maps are an AD-01.9
-    scheduler-integration follow-on) but does not alter resolution today.
+
+def resolve_endpoint(
+    engine: str,
+    node_id: str | None = None,
+    *,
+    stage: str | None = None,
+) -> str:
+    """Return the serving base URL for ``engine``, optionally scoped to ``stage``.
+
+    Order: ``IVGS_<ENGINE>_<STAGE>_URL`` (only for the pairs listed in
+    ``_STAGE_ENGINE_ENDPOINTS``) -> ``IVGS_<ENGINE>_URL`` -> shipped default.
+    ``node_id`` is accepted for forward-compat (per-node endpoint maps are an
+    AD-01.9 scheduler-integration follow-on) but does not alter resolution today.
+
+    A stage that is not in the pair table resolves EXACTLY as it did before this
+    parameter existed. That is the property that keeps storyboard and transcript
+    on Llama while translation moves to Qwen, and it is asserted by test.
     """
+    if stage is not None:
+        scoped = _STAGE_ENGINE_ENDPOINTS.get((engine, stage))
+        if scoped is not None:
+            env_var, default = scoped
+            url = os.environ.get(env_var, "").strip() or default
+            if not url:
+                raise EndpointResolutionError(
+                    f"engine {engine!r} stage {stage!r} resolved to an empty "
+                    f"endpoint ({env_var})"
+                )
+            return url
+
     entry = _ENGINE_ENDPOINTS.get(engine)
     if entry is None:
         raise EndpointResolutionError(f"no endpoint mapping for engine {engine!r}")

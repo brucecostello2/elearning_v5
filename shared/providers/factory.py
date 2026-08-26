@@ -93,7 +93,13 @@ def _binding_from_model(
         stage=model_row.stage.value,
         engine=model_row.engine.value,
         tier=tier,
-        endpoint=resolve_endpoint(model_row.engine.value, node_id),
+        # WP-61 Task 3(b). The stage is passed so a (engine, stage) pair with
+        # its own endpoint -- today only (vllm, translation) -> node-05's Qwen
+        # -- resolves there, while every other stage on the same engine keeps
+        # resolving exactly as it did. Storyboard and transcript stay on Llama.
+        endpoint=resolve_endpoint(
+            model_row.engine.value, node_id, stage=model_row.stage.value,
+        ),
         node_id=node_id,
         vram_requirement_mb=vram_mb,
         dynamically_loadable=model_row.dynamically_loadable,
