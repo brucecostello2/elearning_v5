@@ -1686,7 +1686,12 @@ async def record_draft_approval(db_session, project_id, actor_id=None):
             gate="draft",
             decision="approved",
             artifact_version=await service.draft_version(project_id),
-            upstream_version=await service.storyboard_version(project_id),
+            # WP-63 Task 7(b). The draft's upstream is the storyboard AND the
+            # scene media, so a regeneration invalidates a draft approval the
+            # same way an upstream re-run does. Computed by the service the
+            # enforcement uses, for the reason stated in the sibling helper: a
+            # hardcoded version here would pass the fixture and fail the gate.
+            upstream_version=await service.draft_upstream_version(project_id),
             decided_by=actor_id,
             decided_by_name="test-operator",
         )

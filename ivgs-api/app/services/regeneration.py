@@ -130,7 +130,33 @@ async def dispatch_scene_media_regeneration(
     reason: str,
     tier: str = "prototype",
 ) -> RenderJob:
-    """Create a job row and dispatch that one scene's media generation.
+    """One scene, through the multi-scene choke point below.
+
+    Kept as the name three routes already call. It is a wrapper, not a second
+    implementation: WP-45's whole point was that the three surfaces share one
+    dispatch, and WP-63 adds a fourth (the batch route) without splitting it.
+    """
+    return await dispatch_scene_media_regenerations(
+        db, [scene], reason=reason, tier=tier,
+    )
+
+
+async def dispatch_scene_media_regenerations(
+    db: AsyncSession,
+    scenes: List[StoryboardScene],
+    reason: str,
+    tier: str = "prototype",
+) -> RenderJob:
+    """Create ONE job row and dispatch these scenes' media generation.
+
+    WP-63 Task 7. ONE JOB FOR N SCENES, AND THAT IS FORCED BY THE GUARD RATHER
+    THAN CONVENIENT. The in-flight refusal below is armed the moment the first
+    job row goes `running`, so regenerating three scenes as three calls fails on
+    the second — which is exactly what an operator recovering the three rejected
+    scenes of the 2026-08-26 incident has to do. The media join is armed once,
+    for however many stages this dispatch produces, so N scenes in one dispatch
+    drain correctly and flow on into a fresh composition manifest; N separate
+    dispatches would arm N joins against one job and strand all but the first.
 
     The job row is committed **before** the broker message so the message can
     carry a real ``job_id``, and the celery task id is written back afterwards.
@@ -166,12 +192,27 @@ async def dispatch_scene_media_regeneration(
     from app.services.gate_service import GateService
     from app.services.project_service import PipelineAlreadyRunningError, active_job
 
-    await GateService(db).require_storyboard_approval(scene.project_id)
+    if not scenes:
+        raise RegenerationError(
+            "A regeneration was requested for no scenes at all. Nothing was "
+            "dispatched and no job row was created."
+        )
 
-    running = await active_job(db, scene.project_id)
+    project_ids = {s.project_id for s in scenes}
+    if len(project_ids) != 1:
+        raise RegenerationError(
+            "A regeneration must name scenes of ONE project; these span "
+            f"{len(project_ids)}. One job row cannot belong to two projects, "
+            "and the media join is keyed on the job."
+        )
+    project_id = scenes[0].project_id
+
+    await GateService(db).require_storyboard_approval(project_id)
+
+    running = await active_job(db, project_id)
     if running is not None:
         raise PipelineAlreadyRunningError(
-            f"Project {scene.project_id} already has a {running.status} "
+            f"Project {project_id} already has a {running.status} "
             f"{running.job_type} run (job {running.id}). Regenerating a scene "
             "while a run is in flight dispatches media work into a pipeline "
             "that is already producing it, and the join counter that pairs "
@@ -181,13 +222,17 @@ async def dispatch_scene_media_regeneration(
             status=running.status,
         )
 
-    project = await db.scalar(select(Project).where(Project.id == scene.project_id))
+    project = await db.scalar(select(Project).where(Project.id == project_id))
 
-    media_type = scene.media_type or "image"
-    job_type = MEDIA_TYPE_JOB_TYPE.get(media_type, "image_generation")
+    media_types = [s.media_type or "image" for s in scenes]
+    # The job row's type names the work. With a mixed batch there is no single
+    # true answer, so it names the branch of the FIRST scene and the log below
+    # carries the full list -- an honest approximation beats defaulting a video
+    # regeneration to `image_generation`, which is what the pre-WP-45 row did.
+    job_type = MEDIA_TYPE_JOB_TYPE.get(media_types[0], "image_generation")
 
     job = RenderJob(
-        project_id=scene.project_id,
+        project_id=project_id,
         job_type=job_type,
         status="pending",
     )
@@ -197,9 +242,9 @@ async def dispatch_scene_media_regeneration(
 
     dispatch_input: Dict[str, Any] = {
         "job_id": str(job.id),
-        "project_id": str(scene.project_id),
+        "project_id": str(project_id),
         **project_facts(project, tier=tier),
-        "scenes": [scene_payload(scene)],
+        "scenes": [scene_payload(s) for s in scenes],
     }
 
     from app.services.celery_producer import celery_app as pipeline_celery
@@ -216,11 +261,12 @@ async def dispatch_scene_media_regeneration(
         job.completed_at = datetime.now(timezone.utc)
         await db.commit()
         logger.error(
-            "Scene regeneration dispatch FAILED: scene=%s job=%s error=%s",
-            scene.id, job.id, exc,
+            "Scene regeneration dispatch FAILED: scenes=%s job=%s error=%s",
+            [str(s.id) for s in scenes], job.id, exc,
         )
         raise RegenerationError(
-            f"Could not dispatch regeneration for scene {scene.id}: {exc}"
+            "Could not dispatch regeneration for scene(s) "
+            f"{', '.join(str(s.id) for s in scenes)}: {exc}"
         ) from exc
 
     job.celery_task_id = dispatch.id
@@ -230,9 +276,10 @@ async def dispatch_scene_media_regeneration(
     await db.refresh(job)
 
     logger.info(
-        "Scene regeneration dispatched: scene=%s media_type=%s job=%s "
-        "celery_task=%s reason=%s",
-        scene.id, media_type, job.id, dispatch.id, reason,
+        "Scene regeneration dispatched: scenes=%s indexes=%s media_types=%s "
+        "job=%s celery_task=%s reason=%s",
+        [str(s.id) for s in scenes], [s.scene_index for s in scenes],
+        media_types, job.id, dispatch.id, reason,
     )
     return job
 
@@ -256,3 +303,149 @@ async def scene_for_asset(
             "longer exists."
         )
     return scene
+
+
+# ---------------------------------------------------------------------------
+# Gate `regenerate` — WP-63 Task 8
+# ---------------------------------------------------------------------------
+#
+# WHAT THE DECISION DID, MEASURED. Project 14f71729, 2026-08-26:
+#
+#   15:17:25.362931Z  gate_decision ... gate=storyboard decision=regenerate
+#                     version=sb-9-dba2b2244a87ac6f... by=admin   -> 200 OK
+#   15:17:29.616325Z  the same line again, because nothing had happened and the
+#                     operator pressed it a second time                -> 200 OK
+#
+# Two rows in `project_gate_decisions`, two audit entries, zero broker
+# messages. §6.4 says the gates "additionally accept reject / regenerate
+# signals"; the decision was recorded faithfully and released nothing, so the
+# button was a note-taking device.
+#
+# RULED SEMANTICS (WP-63 Task 8):
+#
+#   storyboard gate, regenerate  ->  re-run storyboard_generation for the
+#                                    project; the gate then re-opens on the new
+#                                    artifact version.
+#   draft gate, regenerate       ->  re-run the draft assembly (prototype_draft).
+#
+# BOTH GO THROUGH THE EXISTING TRIGGER LAYER, and neither is a full-pipeline
+# run. `dispatch_pipeline` has read `resume_from_stage` off the job context
+# since it was written, and `STAGE_TASK_MAP` resolves both stage names, so a
+# single stage is dispatchable standalone -- this is the identical mechanism
+# `CheckpointService.resume_from_checkpoint` uses, and it was proven live on
+# job b3df6eb6 (WP-45 report S4.6). Each stage reports to
+# `handle_stage_completion`, which finds no next stage after either of them and
+# pauses at the gate; so the re-run ends where it should, at a human.
+#
+# The job row is RUN-TYPED (`storyboard_generation` / `prototype_draft`) rather
+# than borrowing `final_render` as a sentinel the way the resume route does.
+# WP-60's six-dispatch storm was diagnosed off `job_type`, and a row that
+# misnames its own work is how a fleet-wide guard gets pointed at the wrong
+# thing.
+
+#: gate -> the stage its `regenerate` decision re-runs, and the job type that
+#: names that work honestly.
+GATE_REGENERATE_STAGE = {
+    "storyboard": ("storyboard_generation", "storyboard_generation"),
+    "draft": ("prototype_draft", "prototype_draft"),
+}
+
+
+async def dispatch_gate_regeneration(
+    db: AsyncSession,
+    project_id: UUID,
+    gate: str,
+    reason: str,
+    tier: str = "prototype",
+) -> RenderJob:
+    """Re-run the stage that produced the artifact this gate reviews.
+
+    Guarded exactly as every other dispatch on this fleet is: refuses while a
+    run holds the project, before any job row exists, so a refused decision
+    leaves no `pending` row to be counted, retried or resumed. The gate
+    decision itself has already been recorded by the caller and STANDS either
+    way -- a human's decision must not be rolled back because a scheduler
+    condition refused to act on it (the rule `_gate_decision` already applies
+    to an approval whose release is refused).
+
+    Deliberately NOT behind `require_storyboard_approval`: this IS the gate,
+    and a regeneration is the decision a reviewer takes when they do not want
+    to approve. Requiring an approval to ask for a re-generation would make the
+    decision unreachable in exactly the state it exists for.
+    """
+    from app.services.project_service import PipelineAlreadyRunningError, active_job
+
+    if gate not in GATE_REGENERATE_STAGE:
+        raise RegenerationError(
+            f"There is no regeneration defined for the {gate!r} gate. "
+            f"Known gates: {sorted(GATE_REGENERATE_STAGE)}."
+        )
+    stage, job_type = GATE_REGENERATE_STAGE[gate]
+
+    running = await active_job(db, project_id)
+    if running is not None:
+        raise PipelineAlreadyRunningError(
+            f"Project {project_id} already has a {running.status} "
+            f"{running.job_type} run (job {running.id}). Re-running "
+            f"{stage} now would put a second pipeline over the same project. "
+            "Wait for it to finish, or cancel it.",
+            job_id=running.id,
+            job_type=running.job_type,
+            status=running.status,
+        )
+
+    project = await db.scalar(select(Project).where(Project.id == project_id))
+
+    job = RenderJob(
+        project_id=project_id,
+        job_type=job_type,
+        resume_from_stage=stage,
+        status="pending",
+    )
+    db.add(job)
+    await db.commit()
+    await db.refresh(job)
+
+    job_context: Dict[str, Any] = {
+        "job_id": str(job.id),
+        "project_id": str(project_id),
+        **project_facts(project, tier=tier),
+        "current_stage": stage,
+        "resume_from_stage": stage,
+    }
+
+    from app.services.celery_producer import celery_app as pipeline_celery
+
+    try:
+        dispatch = pipeline_celery.send_task(
+            DISPATCH_PIPELINE_TASK,
+            kwargs={"job_context_dict": job_context},
+            queue=ORCHESTRATOR_QUEUE,
+        )
+    except Exception as exc:
+        job.status = "failed"
+        job.error_message = f"Gate regeneration dispatch failed: {exc}"
+        job.completed_at = datetime.now(timezone.utc)
+        await db.commit()
+        logger.error(
+            "Gate regeneration dispatch FAILED: project=%s gate=%s stage=%s "
+            "job=%s error=%s",
+            project_id, gate, stage, job.id, exc,
+        )
+        raise RegenerationError(
+            f"Could not dispatch the {gate} gate's regeneration "
+            f"(stage {stage}) for project {project_id}: {exc}"
+        ) from exc
+
+    job.celery_task_id = dispatch.id
+    job.status = "running"
+    job.started_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(job)
+
+    logger.info(
+        "Gate regeneration dispatched: project=%s gate=%s stage=%s job=%s "
+        "celery_task=%s reason=%s",
+        project_id, gate, stage, job.id, dispatch.id, reason,
+    )
+    return job

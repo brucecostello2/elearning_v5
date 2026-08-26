@@ -371,8 +371,20 @@ class AssetService:
             asset.preserve_flag = True
 
         self.db.add(asset)
+        await self.db.flush()
+
+        superseded = await self._supersede_previous_scene_asset(asset)
+
         await self.db.commit()
         await self.db.refresh(asset)
+
+        if superseded:
+            logger.info(
+                "Asset supersede: new=%s replaces=%s scene=%s type=%s "
+                "(the previous asset is RETAINED, marked superseded)",
+                asset.id, ", ".join(str(i) for i in superseded),
+                asset.scene_id, asset_type,
+            )
 
         logger.info(
             f"Asset uploaded: id={asset.id} type={asset_type} "
@@ -381,6 +393,64 @@ class AssetService:
             f"provenance_keys={sorted(generation_metadata) if generation_metadata else []}"
         )
         return asset, False
+
+    #: Scene-scoped media. An asset of one of these types, attached to a scene,
+    #: is THE media for that scene of that type — so a new one supersedes the
+    #: old one. Project-level types (reference_clip, document, final_render)
+    #: are deliberately absent: they are not per-scene and a second one is a
+    #: second artefact, not a replacement.
+    SUPERSEDING_SCENE_ASSET_TYPES = ("image", "video", "animation", "audio")
+
+    async def _supersede_previous_scene_asset(self, new_asset: Asset) -> List[UUID]:
+        """Mark this scene's previous asset of the same type as superseded.
+
+        WP-63 Task 7(c), the WP-45 supersede pattern. Returns the ids marked.
+
+        WHY IT IS HERE AND NOT IN THE REGENERATION SERVICE. This is the one
+        place a project asset is created, and the assets that need superseding
+        arrive from a Celery worker, not from the request that asked for the
+        regeneration — by the time Stage 3 uploads the new frame, the API call
+        that dispatched it returned minutes ago. Keying on the arrival of the
+        replacement is also what makes it correct for every route into media
+        generation, including a full pipeline re-run, rather than only the
+        regenerate button.
+
+        NOTHING IS DELETED. `superseded_by` points forward to the replacement;
+        the row, its bytes and its quality score all stay. That is the pattern
+        WP-56 set for the library and WP-45 named as the rule: replacing bytes
+        is a supersede, not an update.
+
+        A dedup hit never reaches here — `upload_asset` returns early on one —
+        which is right: identical bytes are the SAME asset, and an asset cannot
+        supersede itself.
+        """
+        if new_asset.scene_id is None:
+            return []
+        if new_asset.asset_type not in self.SUPERSEDING_SCENE_ASSET_TYPES:
+            return []
+
+        conditions = [
+            Asset.scene_id == new_asset.scene_id,
+            Asset.asset_type == new_asset.asset_type,
+            Asset.id != new_asset.id,
+            Asset.superseded_by.is_(None),
+        ]
+        # A per-scene asset is per LANGUAGE too: the es-ES voiceover of a scene
+        # does not replace its en-US one. Rows written before `language_code`
+        # was populated carry NULL and are matched only by a NULL.
+        if new_asset.language_code is None:
+            conditions.append(Asset.language_code.is_(None))
+        else:
+            conditions.append(Asset.language_code == new_asset.language_code)
+
+        previous = list(
+            (await self.db.scalars(select(Asset).where(and_(*conditions)))).all()
+        )
+        now = datetime.now(timezone.utc)
+        for old in previous:
+            old.superseded_by = new_asset.id
+            old.superseded_at = now
+        return [old.id for old in previous]
 
     async def download_asset(self, asset_id: UUID) -> Optional[Tuple[bytes, str, str]]:
         """

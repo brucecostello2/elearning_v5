@@ -161,6 +161,23 @@ class SceneUpdate(BaseModel):
         return v
 
 
+class SceneBatchRegenerateRequest(BaseModel):
+    """Body of POST /api/v1/projects/{id}/scenes/batch-regenerate.
+
+    WP-63 Task 7. THIS ROUTE DID NOT EXIST. `useStoryboard.regenerateScenes`
+    has POSTed to it since WP-38 -- it is what the "Regenerate Selected" button
+    on the Storyboard tab calls -- and every press answered 404. The single
+    scene route was built by WP-45 and works; its bulk sibling was never
+    written, and nothing said so, because the frontend swallows the failure.
+
+    `scene_ids` is a list rather than a count because the operator selects
+    particular scenes; the recovery this package exists for is three named
+    scene indexes out of nine, not "the first three".
+    """
+
+    scene_ids: List[UUID] = Field(min_length=1, max_length=200)
+
+
 class SceneResponse(BaseModel):
     """Response schema for a storyboard scene."""
 

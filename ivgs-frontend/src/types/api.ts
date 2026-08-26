@@ -385,6 +385,15 @@ export interface AssetResponse {
   preserve_flag: boolean;
   content_hash: string | null;
   reference_count: number;
+  /*
+   * WP-63 Task 7(c). NULL means this asset is the CURRENT one for its scene;
+   * otherwise it names the asset that replaced it. A regenerated scene leaves
+   * BOTH rows in the list -- the old one is retained, not deleted -- so a
+   * consumer that wants "the scene's image" and does not read this will show
+   * whichever the list happened to return first. `SceneThumbnail` did.
+   */
+  superseded_by: string | null;
+  superseded_at: string | null;
   created_at: string;
 
   /*

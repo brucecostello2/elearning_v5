@@ -217,6 +217,59 @@ class GateService:
         stamp = created.isoformat() if created else ""
         return f"dr-{str(job_id)[:8]}-{hashlib.sha256(f'{job_id}|{stamp}'.encode()).hexdigest()[:24]}"
 
+    async def scene_media_version(self, project_id: UUID) -> str:
+        """A fingerprint of the CURRENT scene media this project holds.
+
+        WP-63 Task 7(b). A regeneration does not touch a scene row, so it does
+        not move ``storyboard_version`` — and it must not, or the approval that
+        AUTHORISED the regeneration would be invalidated by its own effect and
+        the second regeneration would be refused by the gate that released the
+        first.
+
+        What a regeneration does change is the media a draft was assembled
+        from. So the DRAFT gate's upstream fingerprint covers the media as well
+        as the storyboard: regenerate a scene after the draft was approved and
+        that approval stops being current, because the draft on screen was
+        built from a frame that is no longer the scene's frame.
+
+        Over the CURRENT (non-superseded) scene-linked assets only. That is
+        what makes it move on a regeneration: the new asset joins the set and
+        the old one leaves it (migration 0036), so the digest changes even
+        though the count does not. Same mechanism as everything else in this
+        module — recomputed on read, no invalidation write, nothing to forget.
+        """
+        from app.models.asset import Asset
+
+        rows = (
+            await self.db.execute(
+                select(Asset.id, Asset.scene_id, Asset.asset_type)
+                .where(
+                    Asset.project_id == project_id,
+                    Asset.scene_id.isnot(None),
+                    Asset.superseded_by.is_(None),
+                )
+                .order_by(Asset.scene_id, Asset.asset_type, Asset.id)
+            )
+        ).all()
+        if not rows:
+            return "media-0"
+        digest = hashlib.sha256()
+        for asset_id, scene_id, asset_type in rows:
+            digest.update(f"{scene_id}|{asset_type}|{asset_id}\n".encode("utf-8"))
+        return f"media-{len(rows)}-{digest.hexdigest()[:24]}"
+
+    async def draft_upstream_version(self, project_id: UUID) -> str:
+        """Everything a draft is downstream OF: the storyboard and the media.
+
+        Recorded on a draft decision as ``upstream_version`` and recomputed on
+        read, so re-running Stage 2 OR regenerating one scene's media both
+        invalidate a draft approval.
+        """
+        return (
+            f"{await self.storyboard_version(project_id)}"
+            f"+{await self.scene_media_version(project_id)}"
+        )
+
     async def artifact_version(self, project_id: UUID, gate: str) -> str:
         if gate == GATE_STORYBOARD:
             return await self.storyboard_version(project_id)
@@ -243,7 +296,7 @@ class GateService:
         """One gate's current state, recomputed from the artifact every time."""
         current = await self.artifact_version(project_id, gate)
         upstream_now = (
-            await self.storyboard_version(project_id)
+            await self.draft_upstream_version(project_id)
             if gate == GATE_DRAFT
             else None
         )
@@ -309,9 +362,10 @@ class GateService:
                 decision=latest.decision, decided_at=latest.decided_at,
                 decided_by_name=latest.decided_by_name, note=latest.note,
                 reason=(
-                    "approved, but the STORYBOARD has been re-run since. The "
-                    "draft on screen was built from a storyboard that no "
-                    "longer exists."
+                    "approved, but what this draft was built FROM has changed "
+                    "since - the storyboard has been re-run, or a scene's "
+                    "media has been regenerated. The draft on screen was "
+                    "assembled from material that is no longer current."
                 ),
             )
 
@@ -365,7 +419,7 @@ class GateService:
             )
 
         upstream = (
-            await self.storyboard_version(project_id)
+            await self.draft_upstream_version(project_id)
             if gate == GATE_DRAFT
             else None
         )

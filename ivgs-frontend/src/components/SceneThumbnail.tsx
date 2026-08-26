@@ -54,10 +54,19 @@ export default function SceneThumbnail({
    */
   const image = useMemo<Asset | null>(() => {
     if (!Array.isArray(assets)) return null;
+    const mine = assets.filter(
+      (a: Asset) => a.scene_id === sceneId && assetMediaKind(a) === "image",
+    );
+    /* WP-63 Task 7(c). A regenerated scene keeps its old asset (the supersede
+       pattern: the bytes and their quality score are the evidence for why the
+       operator regenerated). So the list holds both, and `find` returned
+       whichever came back first — which, after a regeneration, is the frame
+       the operator just replaced. Prefer the current one, and fall back to the
+       newest only if every candidate has somehow been superseded. */
     return (
-      assets.find(
-        (a: Asset) => a.scene_id === sceneId && assetMediaKind(a) === "image",
-      ) ?? null
+      mine.find((a: Asset) => a.superseded_by === null) ??
+      [...mine].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))[0] ??
+      null
     );
   }, [assets, sceneId]);
 

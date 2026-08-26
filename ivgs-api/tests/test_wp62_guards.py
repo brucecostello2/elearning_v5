@@ -176,17 +176,48 @@ class TestRegenerateIsGuarded:
         assert broker.sent == []
 
     async def test_the_guard_is_at_the_choke_point_not_the_route(self):
-        """All three regenerate surfaces reach ONE dispatch function.
+        """Every regenerate surface reaches ONE guarded dispatch function.
 
-        Guarding the three callers instead would leave a fourth caller added
-        later reintroducing the hole. This pins that the guard lives where they
+        Guarding the callers instead would leave a caller added later
+        reintroducing the hole. This pins that the guard lives where they
         converge.
+
+        UPDATED BY WP-63 Task 7, AND IT IS STRICTLY STRONGER, NOT WEAKER. The
+        fourth caller this test warned about arrived: `POST
+        /projects/{id}/scenes/batch-regenerate`, which had been receiving
+        presses from the frontend and answering 404 since WP-38. Serving it
+        needed the dispatch to take N scenes in ONE job -- three sequential
+        single-scene calls fail on the second, at this very guard, and the
+        media join is armed once per job -- so the guarded body moved to
+        `dispatch_scene_media_regenerations` and the singular name became a
+        delegation to it.
+
+        The test follows the choke point AND now asserts the delegation, so it
+        protects one definition across four callers instead of three. That is
+        the same move WP-61's `active_job` test made and for the same reason: a
+        second copy of a guard is a guard that will drift.
         """
         import inspect
 
         from app.services import regeneration
 
-        src = inspect.getsource(regeneration.dispatch_scene_media_regeneration)
+        singular = inspect.getsource(
+            regeneration.dispatch_scene_media_regeneration
+        )
+        assert "dispatch_scene_media_regenerations" in singular, (
+            "the single-scene entry point must DELEGATE, not hold a second "
+            "copy of the guards"
+        )
+        for name in ("active_job", "PipelineAlreadyRunningError",
+                     "require_storyboard_approval"):
+            assert name not in singular, (
+                f"{name} appears in the singular wrapper: the guard has been "
+                "copied rather than shared"
+            )
+
+        src = inspect.getsource(
+            regeneration.dispatch_scene_media_regenerations
+        )
         assert "active_job" in src
         assert "PipelineAlreadyRunningError" in src
         assert "require_storyboard_approval" in src

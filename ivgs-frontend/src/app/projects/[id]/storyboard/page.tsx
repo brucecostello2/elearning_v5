@@ -11,6 +11,7 @@ import SceneTimeline from "@/components/storyboard/SceneTimeline";
 import GateReviewPanel from "@/components/project/GateReviewPanel";
 import { useProjectProgress } from "@/hooks/useProjectProgress";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import { apiError } from "@/lib/api-error";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import type { Scene, SceneStatus, StoryboardViewMode } from "@/types/storyboard";
 import type { MediaType } from "@/lib/scenes";
@@ -100,6 +101,16 @@ export default function StoryboardPage(): React.ReactElement {
   // ── Bulk Action Loading ───────────────────────────────────────────────
   const [isBulkActionLoading, setIsBulkActionLoading] =
     useState<boolean>(false);
+
+  /* ── The server's refusals, shown ────────────────────────────────────
+     WP-63 Task 7. Every regeneration path here awaited a promise and caught
+     nothing, so a 409 from the gate or the in-flight guard arrived, was
+     rolled back by SWR, and vanished. Measured: the operator's Regen press at
+     15:15:59Z on 2026-08-26 answered 409 Conflict with a message naming the
+     stale approval and what to do about it, and the screen did not change. */
+  const [actionError, setActionError] = useState<
+    { message: string; code?: string } | null
+  >(null);
 
   /**
    * Determine if the current user can edit this project.
@@ -274,8 +285,22 @@ export default function StoryboardPage(): React.ReactElement {
    */
   const handleRegenerateScene = useCallback(
     async (sceneId: string): Promise<void> => {
-      if (!canEdit) return;
-      await regenerateScene(sceneId);
+      if (!canEdit) {
+        /* Also a silent no-op before this package: an operator who does not own
+           the project got the button, pressed it, and no request was made. */
+        setActionError({
+          message:
+            "You can regenerate scenes on projects you own. Ask an " +
+            "administrator, or the project's owner, to run this one.",
+        });
+        return;
+      }
+      setActionError(null);
+      try {
+        await regenerateScene(sceneId);
+      } catch (err) {
+        setActionError(apiError(err));
+      }
     },
     [canEdit, regenerateScene]
   );
@@ -329,10 +354,13 @@ export default function StoryboardPage(): React.ReactElement {
     );
     if (!confirmed) return;
 
+    setActionError(null);
     setIsBulkActionLoading(true);
     try {
       await regenerateScenes(Array.from(selectedSceneIds));
       setSelectedSceneIds(new Set());
+    } catch (err) {
+      setActionError(apiError(err));
     } finally {
       setIsBulkActionLoading(false);
     }
@@ -423,6 +451,35 @@ export default function StoryboardPage(): React.ReactElement {
               void mutate();
             }}
           />
+        )}
+
+        {/* ── A refusal, in the server's own words ────────────────────
+            WP-63 Task 7. Not a generic "Regeneration failed": the API says
+            WHICH gate, over WHICH artefact version, and what to do next, and
+            no component here could reconstruct any of that. */}
+        {actionError && (
+          <div
+            role="alert"
+            className="flex items-start justify-between gap-4 rounded-xl border-2 border-red-400 bg-red-50 p-4 dark:border-red-700 dark:bg-red-950/40"
+          >
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-red-900 dark:text-red-200">
+                The request was refused
+                {actionError.code ? ` — ${actionError.code}` : ""}
+              </p>
+              <p className="mt-1 text-sm text-red-900/90 dark:text-red-200/90">
+                {actionError.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionError(null)}
+              aria-label="Dismiss"
+              className="shrink-0 rounded px-2 py-1 text-sm text-red-800 hover:bg-red-100 dark:text-red-300 dark:hover:bg-red-900/40"
+            >
+              ✕
+            </button>
+          </div>
         )}
 
         {/* ── Page Header ──────────────────────────────────────────── */}

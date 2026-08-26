@@ -20,7 +20,13 @@ from shared.database import get_session
 from app.core.auth import get_current_user, get_service_or_user
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
-from app.schemas.storyboard import SceneResponse, SceneUpdate, SceneReorderRequest, SceneCreate
+from app.schemas.storyboard import (
+    SceneBatchRegenerateRequest,
+    SceneCreate,
+    SceneReorderRequest,
+    SceneResponse,
+    SceneUpdate,
+)
 from app.schemas.render_job import JobResponse
 from app.services.storyboard_service import StoryboardService
 from app.services.regeneration import RegenerationError
@@ -234,6 +240,46 @@ async def regenerate_scene(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Scene {scene_id} not found"}},
+        )
+    return JobResponse.model_validate(job)
+
+
+@router.post(
+    "/batch-regenerate",
+    response_model=JobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Queue regeneration of several scenes in one dispatch",
+)
+async def batch_regenerate_scenes(
+    project_id: UUID,
+    data: SceneBatchRegenerateRequest,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Re-run these scenes' media generation, from their current fields.
+
+    WP-63 Task 7. THE ROUTE THE "REGENERATE SELECTED" BUTTON HAS BEEN POSTING
+    TO SINCE WP-38, AND IT DID NOT EXIST. `useStoryboard.regenerateScenes`
+    (ivgs-frontend/src/hooks/useStoryboard.ts) has always called
+    `POST /api/v1/projects/{id}/scenes/batch-regenerate`; every press answered
+    404 and the surface showed nothing, because the hook's `mutate` rolls the
+    optimistic state back on error and no caller catches.
+
+    ONE job row, ONE broker message, ONE armed media join, however many scenes.
+    Behind exactly the same two refusals as the single-scene route, because it
+    is the same choke point.
+    """
+    service = StoryboardService(db)
+    try:
+        job = await service.regenerate_scenes(project_id, data.scene_ids)
+    except PipelineAlreadyRunningError as e:
+        raise already_running(e)
+    except GateBlocked as e:
+        raise gate_blocked(e)
+    except RegenerationError as e:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {"code": "REGENERATION_UNAVAILABLE", "message": str(e)}},
         )
     return JobResponse.model_validate(job)
 

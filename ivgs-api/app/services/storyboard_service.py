@@ -5,7 +5,7 @@ Per §5.1.4 — scenes are ordered by scene_index within a project.
 """
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 from uuid import UUID
 
 from sqlalchemy import select
@@ -13,7 +13,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.storyboard_scene import StoryboardScene
 from app.models.render_job import RenderJob
-from app.services.regeneration import dispatch_scene_media_regeneration
+from app.services.regeneration import (
+    RegenerationError,
+    dispatch_scene_media_regeneration,
+    dispatch_scene_media_regenerations,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -59,19 +63,72 @@ class StoryboardService:
         timing_offset_ms: Optional[int] = None,
         generation_params: Optional[Dict[str, Any]] = None,
     ) -> StoryboardScene:
-        """Create a new storyboard scene (WP-43 D-2 fields included)."""
+        """Create or REPLACE the scene at this index (WP-43 D-2 fields included).
+
+        WP-63 Task 8. THIS INSERTED UNCONDITIONALLY, AND THAT MADE A STORYBOARD
+        RE-RUN IMPOSSIBLE. Stage 2 POSTs one of these per scene and its own code
+        says what it expected: *"Try POST to create; if scenes already exist,
+        try PATCH"*, with a branch on 409 (`stage2_storyboard.py:452`). No 409
+        was ever returned, so a second Stage-2 run over a 9-scene project left
+        18 rows -- two scenes at every index, the storyboard fingerprint
+        meaningless, and the media dispatch fanning out over both copies.
+
+        Nothing had noticed because nothing had ever re-run Stage 2 on a project
+        that already had scenes. WP-63 Task 8 makes the gate's `regenerate`
+        decision do exactly that, so it had to be true before that could ship.
+
+        THE ROW IS UPDATED IN PLACE, NOT DELETED AND RECREATED, and the id is
+        what matters: `assets.scene_id`, `asset_quality_scores` through them and
+        every language variant hang off it. Recreating would orphan the six good
+        images this package's recovery depends on. Updating also moves
+        `updated_at`, which moves the storyboard fingerprint, which re-opens the
+        review gate on the new artifact -- which is the behaviour Task 8 wants
+        and it comes for free from WP-62's mechanism.
+
+        A LIMITATION, STATED RATHER THAN HIDDEN: a re-run that produces FEWER
+        scenes than the project already has leaves the surplus rows behind. This
+        method sees one scene at a time and cannot know the new total. It is
+        logged (`scene_upsert`) so the count is visible in the run's log, and
+        the gate re-opens either way, so the operator reviews what is actually
+        there. Trimming needs the whole-storyboard write that Stage 2 does not
+        make; ledgered for the Temporal cutover.
+        """
+        existing = await self.db.scalar(
+            select(StoryboardScene).where(
+                StoryboardScene.project_id == project_id,
+                StoryboardScene.scene_index == scene_index,
+            )
+        )
+        fields = {
+            "narration_text": narration_text,
+            "visual_description": visual_description,
+            "media_type": media_type,
+            "duration_seconds": duration_seconds,
+            "camera_angle": camera_angle,
+            "transition_type": transition_type,
+            "effects": effects,
+            "timing_offset_ms": timing_offset_ms,
+            "generation_params": generation_params,
+        }
+
+        if existing is not None:
+            for name, value in fields.items():
+                setattr(existing, name, value)
+            existing.updated_at = datetime.now(timezone.utc)
+            await self.db.commit()
+            await self.db.refresh(existing)
+            logger.info(
+                "scene_upsert: REPLACED id=%s project=%s index=%s "
+                "(a storyboard re-run; the scene id is preserved so its assets "
+                "stay attached)",
+                existing.id, project_id, scene_index,
+            )
+            return existing
+
         scene = StoryboardScene(
             project_id=project_id,
             scene_index=scene_index,
-            narration_text=narration_text,
-            visual_description=visual_description,
-            media_type=media_type,
-            duration_seconds=duration_seconds,
-            camera_angle=camera_angle,
-            transition_type=transition_type,
-            effects=effects,
-            timing_offset_ms=timing_offset_ms,
-            generation_params=generation_params,
+            **fields,
         )
         self.db.add(scene)
         await self.db.commit()
@@ -211,4 +268,55 @@ class StoryboardService:
 
         return await dispatch_scene_media_regeneration(
             self.db, scene, reason=f"scene_regenerate:{scene_id}",
+        )
+
+    async def regenerate_scenes(
+        self,
+        project_id: UUID,
+        scene_ids: Sequence[UUID],
+    ) -> RenderJob:
+        """Re-run several scenes' media generation in ONE dispatch.
+
+        WP-63 Task 7. The bulk surface ("Regenerate Selected") has posted to a
+        route that did not exist since WP-38; this is its service half.
+
+        It is not a loop over ``regenerate_scene``, and that is not tidiness.
+        The first single-scene dispatch leaves a `running` job on the project,
+        so the second call would hit WP-62's in-flight guard and 409 -- and the
+        media join is armed once per job, so N jobs against one project is the
+        stranding shape WP-06 exists to prevent. One job, N scenes, one join.
+
+        Raises ``RegenerationError`` naming every id that is not a scene of
+        this project. A partial batch is refused rather than silently trimmed:
+        an operator who selected six scenes and got four regenerated has no way
+        to find out which two were dropped.
+        """
+        found = list(
+            (
+                await self.db.scalars(
+                    select(StoryboardScene).where(
+                        StoryboardScene.project_id == project_id,
+                        StoryboardScene.id.in_(list(scene_ids)),
+                    )
+                )
+            ).all()
+        )
+        missing = sorted(
+            {str(sid) for sid in scene_ids} - {str(s.id) for s in found}
+        )
+        if missing:
+            raise RegenerationError(
+                f"{len(missing)} of the {len(set(scene_ids))} requested scenes "
+                f"do not belong to project {project_id}: {', '.join(missing)}. "
+                "Nothing was dispatched."
+            )
+
+        found.sort(key=lambda s: s.scene_index)
+        return await dispatch_scene_media_regenerations(
+            self.db,
+            found,
+            reason=(
+                "scene_batch_regenerate:"
+                + ",".join(str(s.scene_index) for s in found)
+            ),
         )

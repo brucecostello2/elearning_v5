@@ -60,6 +60,12 @@ class AssetResponse(BaseModel):
     generation_metadata: Optional[Dict[str, Any]] = None
     # WP-56 / AD-09.4.2: the library origin, or null for pipeline-generated media.
     library_asset_id: Optional[UUID] = None
+    # WP-63 Task 7(c) / migration 0036. NULL means this is the CURRENT asset for
+    # its scene; otherwise it names the asset that replaced it. A superseded row
+    # is retained, not deleted, so every consumer that wants "the current image
+    # for this scene" must read this rather than sort by `created_at` and hope.
+    superseded_by: Optional[UUID] = None
+    superseded_at: Optional[datetime] = None
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

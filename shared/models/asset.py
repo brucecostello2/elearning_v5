@@ -135,6 +135,30 @@ class Asset(Base):
         ForeignKey("library_assets.id", ondelete="SET NULL"),
         nullable=True,
     )
+    # WP-63 Task 7 / migration 0036. THE SUPERSEDE PATTERN, for project assets.
+    #
+    # A regenerated scene asset does not replace its predecessor; it supersedes
+    # it. `superseded_by` names the asset that took over and NULL means "this
+    # is the current one" — which is what makes "the current image for scene X"
+    # a lookup rather than a sort by `created_at` and a hope.
+    #
+    # The superseded row is RETAINED. Its quality score is the evidence for why
+    # the operator regenerated, and a locked composition manifest may still
+    # name it. Retention removes it later, under a policy, with an audit trail.
+    #
+    # ORDERING NOTE FOR DEPLOYS, exactly as for `library_asset_id` above:
+    # migration 0036 must be applied BEFORE a worker image carrying this class
+    # is started, or `select(Asset)` raises UndefinedColumn against the old
+    # schema. No worker code reads either column.
+    superseded_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("assets.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    superseded_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
