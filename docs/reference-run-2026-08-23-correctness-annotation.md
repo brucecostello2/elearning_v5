@@ -35,6 +35,14 @@ does not move under the diff.**
 
 ## 3. What is wrong with the content
 
+**EXTENDED 2026-08-26 by WP-62 Task 9(a). The corruption is wider than scene 5,
+and wider than this document previously said.** The paragraph below is
+unchanged; what follows it is the second worked example, quoted in full,
+because "6, 11, 12 and 13 all carry the same confusion forward" understated it.
+The entire second worked example is self-arguing narration, and the scene that
+starts it is *correct* — which matters, because a false flag was raised against
+that scene and the flag contract has been narrowed as a result (§3.3).
+
 The project is `c12fa967-f989-4ed4-8e20-3ea62cb92e8f`, *"double digit
 multiplication"*, 18 scenes. `storyboard_scenes.scene_index` is **zero-based**,
 so the sixth scene is `scene_index = 5`. Read from the live database
@@ -45,11 +53,90 @@ so the sixth scene is `scene_index = 5`. Read from the live database
 > previous step, which is incorrect."
 
 Two digits are transposed and the narration then argues with itself about the
-transposition. It is not the only affected scene — 6, 11, 12 and 13 all carry
-the same confusion forward, and 11 contains "we wrote it as 640 in the previous
-step, which is incorrect" about a step that says no such thing.
+transposition.
 
 The pipeline produced a 720p draft of this, on time, with every stage green.
+
+### 3.1 The first worked example, 23 x 14 — scenes 5, 6, 7
+
+Scenes 0-4 set the problem up correctly. Then, verbatim from
+`storyboard_scenes` on 2026-08-26:
+
+> **5:** "Multiply 10 times 3, which equals 30, and 10 times 2, which equals
+> 20. Our second answer is 320, but we wrote it as 230 in the previous step,
+> which is incorrect."
+>
+> **6:** "Now, let's add the two answers together. We have 92 and 320, but
+> since we are adding the results of multiplying 23 by 4 and 23 by 10, we
+> should add 92 and 230, which was the result of multiplying 23 by 10, but that
+> was also incorrect."
+>
+> **7:** "The correct step is to multiply 23 by 10, which equals 230, and then
+> multiply 23 by 4, which equals 92. Now, let's add them: 92 + 230 equals 322."
+
+Scene 7 lands on the right answer (23 x 14 = 322). Scenes 5 and 6 are the
+lesson correcting a mistake it made two sentences earlier, out loud, to a
+learner who has no idea which number to write down.
+
+### 3.2 The second worked example, 32 x 21 — scenes 8 to 14, quoted in full
+
+This is the extension. **Six consecutive narrations, verbatim**, scenes 9 to
+14, following the setup at scene 8 ("Let's try another example: 32 times 21.
+Write 32 on top and 21 underneath."):
+
+> **9:** "Start with the ones digit, which is 1. Multiply 1 times 2, which
+> equals 2, and 1 times 3, which equals 3. Our first answer is 32."
+>
+> **10:** "Now, move to the tens digit, which is 20. Multiply 20 times 2, which
+> equals 40, and 20 times 3, which equals 60."
+>
+> **11:** "This gives us 200 + 60, which equals 260, but we wrote it as 640 in
+> the previous step, which is incorrect."
+>
+> **12:** "The correct calculation is 20 times 2 equals 40 and 20 times 3
+> equals 60, so our second answer is indeed 260, but since we are multiplying
+> 21, which is 20 + 1, we need to consider the correct placement of the
+> numbers."
+>
+> **13:** "Now, let's add 32 and 260, but since we are adding the results of
+> multiplying 32 by 1 and 32 by 20, we should add 32 and 640, but that was
+> incorrect."
+>
+> **14:** "The correct step is to multiply 32 by 1, which equals 32, and then
+> multiply 32 by 20, which equals 640. Now, let's add them: 32 + 640 equals
+> 672."
+
+Read as a sequence, the second example has the same disease as the first and a
+worse case of it. Scene 9 is CORRECT — 32 x 1 worked digit by digit gives 2 and
+3, and 32 is the right first partial product. Scene 10 is correct. Scene 11
+then invents a step: it says "we wrote it as 640 in the previous step", and no
+previous step says 640; and it asserts 200 + 60 = 260 out of operands (40 and
+60) that produce neither. Scene 12 restates the wrong partial product as "indeed
+260" and then hedges. Scene 13 says to add 32 and 260, then says to add 32 and
+640, then says that was incorrect. Scene 14 arrives at 672, which is right.
+
+**Four of the six are defective, two are correct, and the lesson never says
+which of the numbers it produced is the one to use.** 32 x 20 = 640, not 260;
+the narration contains both, asserts each in turn, and calls each of them
+incorrect at a different moment.
+
+### 3.3 What this changes about the baseline
+
+Nothing about its status: `reference-run-2026-08-23` remains the technical
+conformance standard for the AD-05 migration and must not be regenerated before
+M3.3 (§2, §5).
+
+What it changes is how far "matches the reference" is from "correct".
+This document previously named one bad scene and four that carried it forward.
+The measured position is that **both worked examples in an 18-scene lesson on
+double-digit multiplication are corrupted by self-arguing narration** — scenes
+5, 6 and 7 in the first, and 11, 12, 13 with 14 tidying up in the second. Nine
+scenes of eighteen. A run that reproduces this byte for byte has proved the
+orchestrator changed nothing, and has proved nothing whatever about the
+lesson.
+
+**"Matches the reference" is even less "correct" than this document previously
+recorded.**
 
 ## 4. How it was found: by a translator, not by a checker
 
@@ -95,3 +182,64 @@ nobody on the team can read.
 * WP-61-QWEN report, Task 4.
 * WP-41-TEMPORAL-PREP and WP-42-VOICE reports reference this run; neither is
   edited, because neither was wrong about what it said.
+
+---
+
+## 7. The flags this source actually produced, and the two that were wrong
+
+**Added 2026-08-26 by WP-62 Task 9. Operator-verified against the source.**
+
+The es-ES variant `3fccf815-f639-43c1-8a90-631336dc2d13` was translated on
+2026-08-26 under prompt v2 (`18c8919d`) and came back `flagged` with **seven**
+flags. Verified against the narrations quoted in §3:
+
+| Scene | Flag's stated reason (abridged) | Verdict |
+|---|---|---|
+| 5 | "Arithmetic inconsistency: 10*3 + 10*2 = 50, not 320 or 230." | **GENUINE** — the scene is erroneous. |
+| 6 | "23*10 is 230, not 320; 92+230 is 322, not 320" | **GENUINE** |
+| 9 | "1 * 32 is 32, but the described steps 1*2=2 and 1*3=3 imply a different number ... pedagogically confusing/incorrect" | **FALSE POSITIVE** — 32 x 1 worked digit by digit gives exactly 2 and 3, and 32 is the correct partial product. Correct standard algorithm, flagged on pedagogy. |
+| 11 | "Source contains a factual arithmetic error (200 + 60 = 260, not 640)" | **GENUINE SCENE, MISREAD REASON** — see below. |
+| 12 | "Arithmetic inconsistency: 20*2 + 20*3 equals 100, not 260." | **GENUINE** |
+| 13 | "32 * 20 is 640, not 260 ... and logical inconsistency" | **GENUINE** |
+| 15 | "'start the next line with a zero' is a non-standard or potentially incorrect pedagogical description" | **FALSE POSITIVE** — a pedagogy opinion about a correct convention. |
+
+**Scene 11 is worth stating precisely, because the flag and the scene are both
+defective and not in the same way.** The flag says "200 + 60 = 260, not 640",
+which misreads its own arithmetic — 200 + 60 IS 260, and the flag's complaint
+should be that neither figure follows from the operands the previous scene
+supplied (40 and 60), and that 32 x 20 is 640. **The scene is defective
+regardless**: it is self-referential ("we wrote it as 640 in the previous step"
+about a step that says no such thing) and it asserts a partial product that is
+wrong. A misread reason on a genuinely broken scene is still a flag that should
+have fired.
+
+### 7.1 The ruling, and what changed because of it
+
+**RULED: the flag contract covers FACTUAL AND ARITHMETIC ERRORS ONLY.
+Pedagogical style is out of scope and must not flag.**
+
+Scenes 9 and 15 are the argument. Both are correct arithmetic; both were
+flagged for how the lesson teaches. Long multiplication, division and fractions
+are taught differently in different countries and all of those methods are
+correct, so a translator's opinion about method is not a finding — and a false
+flag on a correct lesson trains the reviewer to ignore the flags, which costs
+more than the flag saves.
+
+Prompt **v3** (`ivgs-api/seed/default_prompts/translation.j2`) states the scope
+both ways: what to flag, what never to flag, and the test to apply — *could a
+competent teacher who uses a different method disagree with you? Then it is
+style.* It names scene 9's exact shape ("1 times 2 is 2, and 1 times 3 is 3, so
+the answer is 32 ... it is the STANDARD ALGORITHM ... do not flag it") because
+a rule stated abstractly did not stop this one. v2 is preserved inactive
+through the prompts table's own versioning; the fail-and-flag MECHANISM v2
+introduced is unchanged and correct.
+
+### 7.2 The variant stays flagged
+
+**RULED.** Under v3 the two false positives are expected to go and the five
+genuine flags to remain, so `3fccf815` stays `state = flagged` either way. The
+source is genuinely wrong and regeneration is post-M3.3 by the ruling in §2 and
+§5. A flagged deliverable that a human must look at is the correct end state
+for a faithful translation of a defective source — which is the whole point of
+the fail-and-flag contract.
+

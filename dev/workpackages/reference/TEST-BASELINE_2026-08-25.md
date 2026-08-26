@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **953** | **0** | 0 | 0 | 911 (WP-60) |
-| `ivgs-workers` | **838** | 18 | 48 | 15 | 823 (WP-60) |
+| `ivgs-api` | **1026** | **0** | 0 | 0 | 953 (WP-61) |
+| `ivgs-workers` | **838** | 18 | 48 | 15 | 838 (WP-61) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | **125** | 12 | 15 | 30 | 100 (WP-60) |
-| **Total** | **1955** | **50** | **63** | **45** | 1873 / 50 (WP-60) |
+| `tests_system` | **150** | 12 | 15 | 30 | 125 (WP-61) |
+| **Total** | **2053** | **50** | **63** | **45** | 1955 / 50 (WP-61) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,14 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-62 added 98 tests (2026-08-26) and moved no failure row.** 73 in
+`ivgs-api` (953 -> 1026) and 25 in `tests_system` (125 -> 150). Failures, skips
+and errors are unchanged in every tree. **Eighteen EXISTING api tests were
+updated, none weakened** — the accounting is in §2 below, and the reason is one
+behaviour change: WP-62 made both human review gates BLOCKING, so every fixture
+that dispatches media generation now has to establish the approval it always
+implied. This tree now needs migration **0035**.
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -80,9 +88,51 @@ every test. Point it at `ivgs` and it would destroy production. Do not weaken it
 .venv/bin/python -m pytest ivgs-api/tests
 ```
 
-Runtime 4m34s. **No remaining failures.**
+Runtime 4m50s. **No remaining failures.**
 
-WP-61 added 42 tests (2026-08-26). 911 → 953. **This tree now needs migration
+WP-62 added 73 tests (2026-08-26). 953 → 1026. **This tree now needs migration
+0035.**
+
+* `test_wp62_gates.py` (18) — the two human review gates. Every refusal is
+  asserted on the BROKER, not on a status code (WP-45 standard): the finding
+  this task started from is a button that answered 200, dispatched nine scenes
+  to GPU work, and left no record that anybody had approved anything (project
+  64207933, 2026-08-26T09:07:47.255Z). The two that matter are
+  `test_media_generation_never_reaches_the_broker_without_an_approval` and
+  `test_the_render_trigger_never_reaches_the_broker_unapproved`; both construct
+  the state the old code dispatched from and are RED without the enforcement.
+  `test_an_upstream_rerun_invalidates_the_approval` pins that invalidation
+  needs no invalidation write — the approval names an artifact fingerprint and
+  currency is recomputed on read.
+* `test_wp62_progress.py` (11) — the frozen stepper.
+  `test_a_stale_job_failing_mid_run_does_not_reset_the_project` reconstructs
+  the measured 64207933 sequence and was **verified red**: with the guard
+  replaced by `still_running = None`, it fails and its sibling passes.
+* `test_wp62_fleet.py` (12) — every GPU-bearing machine on `/gpu/nodes`.
+* `test_wp62_guards.py` (7) — the in-flight guard on the routes the WP-60
+  incident actually used, and on the three other dispatch-capable endpoints.
+* `test_wp62_translation_scope.py` (12) — the v3 flag scope, and the
+  reasoning-dump cap the acceptance run exposed.
+* `test_wp62_ledger.py` (13) — the deletion-audit classification and the
+  Model Store flag. The Model Store tests **drive the migration's own UPDATE**
+  against rows shaped like the measured live ones, because the test database is
+  TRUNCATEd between tests and holds no seeded `models` rows — an assertion over
+  its contents would have passed on an empty table.
+
+**EIGHTEEN EXISTING TESTS WERE UPDATED AND NONE WAS WEAKENED.** One behaviour
+change caused all of them: both review gates now BLOCK. The accounting, so a
+reader can check rather than take it on trust:
+
+| Count | Tests | What changed, and why it is not a relaxation |
+|---|---|---|
+| 8 | `test_wp45_dispatch.py` (7 across three regenerate sites) + `test_storyboard.py::TestSceneRegenerate::test_regenerate_scene` | Their fixtures now record a storyboard approval. A regeneration IS media generation, so it is behind the gate. The fixtures always *implied* an approved storyboard — `scene_project` sets the project to MEDIA_GENERATION — and there was nowhere to record one until migration 0035. Every original assertion is intact. |
+| 2 | `test_wp_ivgs_0_dispatch_context.py`, `test_wp_ivgs_0_tier_dispatch.py` | Same, for `approve_storyboard`, which is now the RELEASE half rather than the gate itself. |
+| 1 | `test_wp45_dedup_and_gate.py::test_triggering_from_user_review_produces_a_broker_message` | Its fixture described the project as *"a draft the operator has approved"* and recorded no approval. It records one now: **the fixture became honest about a claim in its own docstring.** |
+| 4 | `test_service_gpu.py::test_list_all`, `::test_list_pagination`, `test_gpu_api.py::test_drain_node`, `test_wp45_dedup_and_gate.py::test_the_fleet_comes_from_the_scheduler_not_the_empty_table` | The fleet listing is every GPU-bearing machine, so the counts move (1→5, 4→5, 3→6). The property each was written for is unchanged and still asserted: a `gpu_nodes` row must not appear, the scheduler is still the source for scheduler nodes, and the unnamed worker is still listed. `test_drain_node` now NAMES the node it means instead of taking `data[0]`. |
+| 1 | `test_wp61_trigger_guard.py::test_non_terminal_is_the_complement_of_terminal` | The `_active_job` query moved to a module-level `active_job` so `regeneration.py` could ask the identical question. The test follows it AND adds an assertion that the method is a delegation rather than a second copy — **strictly stronger**: it now protects one definition across five callers instead of one. |
+| 1 | `test_wp59_deletion.py::TestCategoryMap::test_every_project_fk_table_is_in_the_map` | Not edited at all. It FAILED BY NAME on `project_gate_decisions`, exactly as designed, and the fix was to add the category. This is the second table it has caught. |
+
+WP-61 added 42 tests (2026-08-26). 911 → 953. **This tree needed migration
 0034.**
 
 * `test_wp61_translation.py` (20) — the fail-and-flag contract. The assertions
@@ -182,6 +232,13 @@ name is used.
 ---
 
 ## 3. `ivgs-workers` — 838 passed, 18 failed, 48 skipped, 15 errors
+
+**WP-62 added nothing here and changed nothing here**, and that is a deliberate
+result rather than an omission: AD-05 §8 freezes the eight stage task bodies,
+and WP-62's gate enforcement lives entirely at the trigger layer.
+`test_wp62_gates.py::TestFrozenStageBodiesAreUntouched` is what keeps it true —
+it fails by name if any `stage*.py`, `video_generation_task.py` or
+`talking_head_task.py` ever imports the gate service.
 
 WP-61 added 15 tests (2026-08-26): `test_wp61_schedules.py` — the two schedules
 ruled ON (nightly tier migration LIVE and capped at 500; orphan sweep weekly,
@@ -344,7 +401,29 @@ ivgs-api/tests/test_health.py` still reports `configfile: pyproject.toml`.
 
 ---
 
-## 6. `tests_system` — 125 passed, 12 failed, 15 skipped, 30 errors
+## 6. `tests_system` — 150 passed, 12 failed, 15 skipped, 30 errors
+
+WP-62 added 25 tests (2026-08-26): `test_wp62_surfaces.py`. 125 → 150. It lives
+in this tree for this tree's reason: it drives the REAL tracked operator
+blocks, the REAL compose file, the REAL page sources and the REAL
+`scripts/check_seed_conformance.sh` as a subprocess.
+
+Two of them are worth naming.
+
+`TestSeedConformanceGate` is **gated both ways**. The positive case runs the
+script against the deployed image; the negative case copies the seed directory
+to a `tmp_path`, adds ONE BYTE to `translation.j2` there, and asserts the script
+exits 1 naming the file. A conformance check that could never fail would be
+trivially "safe" and would gate nothing — and this one caught a real divergence
+during the package, between the tree carrying prompt v3 and an image still
+carrying v2.
+
+`TestOperatorBlockCorrections` scans **the fenced code with its comment lines
+removed**, not the whole markdown. The corrections are recorded twice on purpose
+— once in the file's header table and once beside the line they fixed — and both
+quote the defective command verbatim so a reader knows what changed. A test over
+the whole document would fail on its own changelog, and, worse, would pass if
+somebody moved a defective command into a comment.
 
 WP-61 added 25 tests (2026-08-26): `test_wp61_node05.py`. 100 → 125. It drives
 the REAL `docker-compose.llm.node05.yml` and `.env.node05.example` as artefacts,
@@ -451,17 +530,28 @@ that module now pass. 35 → 39 passed, 16 → 12 failed.
 
 ## 7. Provenance
 
-* Re-measured 2026-08-26 on node-01 (192.168.1.90) by WP-61 against the running
-  stack: `ivgs-api:v5.20.0-qwen`, `ivgs-workers:v5.20.0-qwen`,
-  `ivgs-frontend:v5.20.0-qwen`, `ivgs-scheduler:v5.19.0-surfaces2`,
-  `ivgs-backup-worker:v5.19.0-surfaces2`, `postgres:17.2`, `redis:7.4`.
+* Re-measured 2026-08-26 on node-01 (192.168.1.90) by WP-62 against the running
+  stack: `ivgs-api:v5.21.0-gates`, `ivgs-frontend:v5.21.0-gates`,
+  `ivgs-workers:v5.20.0-qwen` (unchanged — WP-62 touched no worker code),
+  `ivgs-scheduler:v5.19.0-surfaces2`, `ivgs-backup-worker:v5.19.0-surfaces2`,
+  `postgres:17.2`, `redis:7.4`.
+* Previously measured 2026-08-26 by WP-61 against `ivgs-api:v5.20.0-qwen`,
+  `ivgs-workers:v5.20.0-qwen`, `ivgs-frontend:v5.20.0-qwen`,
+  `ivgs-scheduler:v5.19.0-surfaces2`, `ivgs-backup-worker:v5.19.0-surfaces2`.
 * Originally measured 2026-08-25 against `ivgs-api:v5.11.0-apibatch`,
   `ivgs-workers:v5.11.0-apibatch`, `ivgs-scheduler:latest`,
   `ivgs-backup-worker:v5.1.0-stream-b`.
 * Python 3.12.3, pytest 8.3.4, pytest-asyncio 0.24.0, pytest-timeout 2.3.1
   (installed by WP-52).
-* Test database `ivgs_reconciliation_test`, migration **0034** (**0034 by
-  WP-61**, and its downgrade path was exercised — `alembic downgrade 0033` then
+* Test database `ivgs_reconciliation_test`, migration **0035** (**0035 by
+  WP-62**, and its downgrade path was exercised — `alembic downgrade 0034` then
+  `upgrade head` round-trips clean. 0035 creates `project_gate_decisions` and
+  corrects `models.dynamically_loadable` for every vLLM row; `downgrade()`
+  restores the two measured rows BY NAME rather than by engine, because setting
+  every vLLM row true would "restore" a value two of them never held. **A tree
+  at 0034 fails `test_wp62_gates.py` at the first gate read**, because the gate
+  service selects from a table that does not exist there.); migration **0034**
+  (**0034 by WP-61**, and its downgrade path was exercised — `alembic downgrade 0033` then
   `upgrade head` round-trips clean. 0034 adds one ENUM label
   (`language_variant_state.flagged`) and two nullable JSONB columns on
   `language_variants`; the two columns drop cleanly and the enum label's

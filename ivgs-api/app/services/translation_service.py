@@ -207,6 +207,38 @@ def split_flag(raw: str) -> Tuple[str, Optional[str]]:
     return cleaned, "; ".join(reasons) if reasons else "(no reason given)"
 
 
+#: A flag reason is a SHORT LINE. The prompt has always said so ("<short
+#: reason, in English>"); nothing enforced it.
+#:
+#: WP-62 Task 9(b), FOUND BY THE ACCEPTANCE RUN. Under prompt v3 the model
+#: emitted, as scene 6's reason, roughly 200 words of its own deliberation --
+#: "23 * 10 is 230. That is correct. Let me re-read..." -- ending with "No
+#: factual or arithmetic error found." A flag whose reason concludes there is
+#: no error is not a flag, and a reviewer's list is unreadable with a
+#: paragraph in one row of it.
+#:
+#: The reason is CAPPED FOR DISPLAY AND KEPT IN FULL. Dropping the flag on a
+#: heuristic ("its text says no error") would risk dropping a real one; the
+#: full text stays on the row as `reason_full`, and `reason_suspect` says the
+#: contract was not honoured so a reviewer knows to read it rather than trust
+#: the summary.
+MAX_REASON_CHARS = 300
+
+
+def _classify_reason(reason: str) -> Dict[str, Any]:
+    """The reason as stored: capped, with the original kept when it was not."""
+    collapsed = " ".join(reason.split())
+    if len(collapsed) <= MAX_REASON_CHARS:
+        return {"reason": collapsed, "reason_suspect": False}
+    return {
+        "reason": collapsed[:MAX_REASON_CHARS].rstrip() + " [...]",
+        "reason_full": collapsed,
+        # A reasoning dump, not a finding. The flag is KEPT -- the scene may
+        # still be defective -- and marked so a reviewer reads the full text.
+        "reason_suspect": True,
+    }
+
+
 def _assert_prompt_carries_contract(prompt_text: str) -> None:
     """Refuse to translate under a prompt that does not ask for the marker."""
     if FLAG_MARKER not in prompt_text:
@@ -440,7 +472,7 @@ class TranslationService:
                         {
                             "scene_index": scene.scene_index,
                             "scene_id": str(scene.id),
-                            "reason": reason,
+                            **_classify_reason(reason),
                             "marker": FLAG_MARKER,
                         }
                     )

@@ -16,9 +16,47 @@ INSTRUCTIONS:
 6. Do NOT translate technical terms that are universally used in English.
 7. Maintain SSML markers if present.
 
-IF YOU BELIEVE THE SOURCE CONTAINS AN ERROR:
-Say so OUTSIDE the translation, never inside it. After the complete translation,
-on its own final line, emit exactly one marker line in this form:
+WHAT YOU MAY FLAG, AND WHAT YOU MUST NOT
+========================================
+The flag below reports FACTUAL AND ARITHMETIC ERRORS ONLY. Nothing else.
+
+IN SCOPE - flag these:
+- Arithmetic that is wrong. A stated result that does not follow from the
+  stated operands: "7 times 8 is 54", "200 plus 60 equals 640".
+- A stated fact that is false: a wrong date, a wrong unit, a wrong name for a
+  thing, a claim that contradicts itself within the same passage.
+- A passage that argues with itself about a number - for example one that
+  gives a result and then says a different number was written earlier - such
+  that a listener cannot tell which number the lesson is asserting.
+
+OUT OF SCOPE - DO NOT FLAG THESE, EVER:
+- Teaching method, notation, or the order in which steps are presented.
+- Whether a technique is the standard one, the best one, or the one you would
+  choose. Different countries teach long multiplication, division and
+  fractions differently, and all of them are correct arithmetic.
+- Writing a placeholder zero, shifting a partial product, naming a digit's
+  place value, or any other convention of layout.
+- Working digit by digit through a multiplier. "1 times 2 is 2, and 1 times 3
+  is 3, so the answer is 32" is the STANDARD ALGORITHM applied to 32 x 1, and
+  it is correct. Do not flag it.
+- Vocabulary, tone, pacing, level of detail, or how clear you find the
+  explanation.
+- Anything you would describe with the words "confusing", "unclear",
+  "non-standard", "unconventional", "could be better explained", or
+  "pedagogically".
+
+THE TEST TO APPLY: could a competent teacher who uses a different method
+disagree with you? If yes, it is style and you must NOT flag it. Flag only
+what is WRONG, not what is different from how you would do it.
+
+If you are unsure whether something is an error or a style choice, emit NO
+flag. A missed flag costs a review; a false flag on a correct lesson trains
+the reviewer to ignore the flags.
+
+HOW TO FLAG
+===========
+Say it OUTSIDE the translation, never inside it. After the complete
+translation, on its own final line, emit exactly one marker line in this form:
 
 IVGS-TRANSLATION-FLAG: <short reason, in English>
 
@@ -28,7 +66,10 @@ Rules for the marker:
   "IVGS-TRANSLATION-FLAG:" and be written in English, whatever the target
   language is, because it is read by machine and by an English-speaking
   reviewer.
-- Emit NO marker at all if you have no doubt about the source.
+- The reason must NAME THE ARITHMETIC OR THE FACT that is wrong, and nothing
+  else. Do not append a second, stylistic observation to a valid flag.
+- Emit NO marker at all if the source contains no factual or arithmetic error,
+  however you feel about how it is taught.
 - The marker is not part of the deliverable and will be removed from it. The
   translation above it must stand alone and must still contain the faithful
   rendering of whatever you flagged.
@@ -37,4 +78,5 @@ SOURCE TRANSCRIPT:
 {{ narration_text }}
 
 OUTPUT: The translated transcript in {{ target_language }}, followed by at most
-one IVGS-TRANSLATION-FLAG line if and only if you doubt the source.
+one IVGS-TRANSLATION-FLAG line if and only if the source contains a factual or
+arithmetic error.
