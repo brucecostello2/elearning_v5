@@ -32,6 +32,8 @@ from app.schemas.checkpoint import (
     CheckpointDetailResponse,
     ResumeResponse,
 )
+from app.api.v1._dispatch_guards import already_running
+from app.services.project_service import PipelineAlreadyRunningError
 from app.services.checkpoint_service import CheckpointService, ResumeDispatchError
 from shared.models.enums import UserRole
 
@@ -223,6 +225,13 @@ async def resume_pipeline(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={"error": {"code": "DISPATCH_FAILED", "message": str(e)}},
         )
+    except PipelineAlreadyRunningError as e:
+        # WP-62 Task 6. CAUGHT BEFORE ValueError DELIBERATELY.
+        # `PipelineAlreadyRunningError` is a ValueError subclass (WP-61 made it
+        # one so existing callers kept behaving), so without this clause the
+        # guard would answer INVALID_STATE_TRANSITION - the wrong code, and one
+        # an operator would try to fix by changing the project's state.
+        raise already_running(e)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

@@ -280,6 +280,30 @@ class LanguageService:
                 f"Only 'failed' variants can be retried."
             )
 
+        # WP-62 Task 6 (WP-61 D-1, RULED: extend). The fifth dispatch-capable
+        # endpoint. `retry_variant` dispatches `dispatch_pipeline` from the
+        # localisation start stage over the WHOLE project, so the same argument
+        # applies as at the trigger and the regenerate: the variant's own state
+        # says nothing about whether a run is already in flight over the
+        # project the variant belongs to.
+        from app.services.project_service import (
+            PipelineAlreadyRunningError,
+            active_job,
+        )
+
+        running = await active_job(self.db, project_id)
+        if running is not None:
+            raise PipelineAlreadyRunningError(
+                f"Project {project_id} already has a {running.status} "
+                f"{running.job_type} run (job {running.id}). Retrying the "
+                f"{variant.language_code} localisation now would dispatch a "
+                "second pipeline over the same project's assets. Wait for it "
+                "to finish, or cancel it.",
+                job_id=running.id,
+                job_type=running.job_type,
+                status=running.status,
+            )
+
         variant.state = "pending"
 
         job = RenderJob(

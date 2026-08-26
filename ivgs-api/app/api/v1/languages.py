@@ -21,6 +21,8 @@ from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.language_variant import LanguageVariantCreate, LanguageVariantResponse
 from app.schemas.render_job import JobResponse
+from app.api.v1._dispatch_guards import already_running
+from app.services.project_service import PipelineAlreadyRunningError
 from app.services.language_service import LanguageService, LocalisationDispatchError
 from app.services.translation_service import (
     TranslationContractError,
@@ -119,6 +121,9 @@ async def retry_variant(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail={"error": {"code": "DISPATCH_FAILED", "message": str(e)}},
         )
+    except PipelineAlreadyRunningError as e:
+        # WP-62 Task 6. Before ValueError: the guard is a ValueError subclass.
+        raise already_running(e)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

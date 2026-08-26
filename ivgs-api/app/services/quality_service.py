@@ -285,6 +285,8 @@ class QualityService:
                 dispatch_scene_media_regeneration,
                 scene_for_asset,
             )
+            from app.services.gate_service import GateBlocked
+            from app.services.project_service import PipelineAlreadyRunningError
 
             asset = await self.db.scalar(
                 select(Asset).where(Asset.id == score.asset_id)
@@ -310,7 +312,18 @@ class QualityService:
                         "asset=%s scene=%s job=%s",
                         score_id, asset.id, scene.id, job.id,
                     )
-                except RegenerationError as exc:
+                except (
+                    RegenerationError,
+                    PipelineAlreadyRunningError,
+                    GateBlocked,
+                ) as exc:
+                    # WP-62 Tasks 2(c) and 6. The two new refusals join the
+                    # existing one HERE rather than propagating, because this
+                    # path's contract (established by WP-45) is that the
+                    # REJECTION stands whether or not the fleet can act on it,
+                    # and the response says which happened. A 409 from here
+                    # would roll a reviewer's recorded verdict back because a
+                    # run was in flight.
                     regeneration_note = (
                         f"Rejection recorded, but regeneration was NOT "
                         f"dispatched: {exc}"

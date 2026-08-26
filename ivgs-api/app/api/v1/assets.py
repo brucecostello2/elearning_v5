@@ -33,6 +33,9 @@ from app.services.regeneration import (
     dispatch_scene_media_regeneration,
     scene_for_asset,
 )
+from app.api.v1._dispatch_guards import already_running, gate_blocked
+from app.services.gate_service import GateBlocked
+from app.services.project_service import PipelineAlreadyRunningError
 
 logger = logging.getLogger(__name__)
 
@@ -432,6 +435,12 @@ async def regenerate_asset(
         job = await dispatch_scene_media_regeneration(
             db, scene, reason=f"asset_regenerate:{asset_id}",
         )
+    except PipelineAlreadyRunningError as e:
+        # WP-62 Task 6. The asset Regen button reaches the same dispatch as the
+        # scene Regen button, so it inherits the same refusal.
+        raise already_running(e)
+    except GateBlocked as e:
+        raise gate_blocked(e)
     except RegenerationError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,

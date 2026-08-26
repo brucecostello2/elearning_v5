@@ -262,6 +262,33 @@ class CheckpointService:
                 f"Only 'failed' jobs can be resumed from checkpoints."
             )
 
+        # WP-62 Task 6 (WP-61 D-1, RULED: extend). ONE OF THE FIVE
+        # DISPATCH-CAPABLE ENDPOINTS, and a real hole rather than a
+        # completeness exercise.
+        #
+        # The check above asks about THIS job. It says nothing about the
+        # PROJECT, and resuming inserts a new job and dispatches a full
+        # pipeline from `resume_stage`. A project with one failed job and one
+        # running job -- which is precisely the shape a partially-failed run
+        # leaves behind, and precisely why WP-61 rejected `projects.state` as a
+        # guard -- passes the check above and starts a second concurrent run.
+        from app.services.project_service import (
+            PipelineAlreadyRunningError,
+            active_job,
+        )
+
+        running = await active_job(self.db, job.project_id)
+        if running is not None:
+            raise PipelineAlreadyRunningError(
+                f"Project {job.project_id} already has a {running.status} "
+                f"{running.job_type} run (job {running.id}). Resuming job "
+                f"{job_id} now would dispatch a second pipeline over the same "
+                "project. Wait for it to finish, or cancel it.",
+                job_id=running.id,
+                job_type=running.job_type,
+                status=running.status,
+            )
+
         # Find last successful checkpoint
         result = await self.db.execute(
             select(PipelineCheckpoint)

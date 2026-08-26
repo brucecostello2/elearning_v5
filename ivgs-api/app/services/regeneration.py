@@ -136,7 +136,51 @@ async def dispatch_scene_media_regeneration(
     carry a real ``job_id``, and the celery task id is written back afterwards.
     If the dispatch raises, the job row is marked failed with the reason rather
     than left at ``pending`` pretending to be queued.
+
+    TWO REFUSALS RUN FIRST, AND THEY RUN BEFORE THE JOB ROW.
+
+    WP-62 Task 6 (WP-61 D-1, RULED: extend). THE IN-FLIGHT GUARD REACHES HERE
+    NOW. WP-60's six-dispatch storm -- five concurrent pipelines, six
+    talking-head renders, about 3.5 hours of GPU time on project 52d52867 --
+    was `video_generation` and `animation_generation` job types, and
+    `trigger_pipeline` produces neither. Those six came through the scene
+    regenerate route. WP-61 guarded the trigger endpoint, which is what its
+    ruling named, and recorded in D-1 that the route the measured incident
+    ACTUALLY USED was still open. This is that route, and the two others that
+    reach the same dispatch: `POST /assets/{id}/regenerate` and
+    `POST /quality-scores/{id}/reject?regenerate=true`. Guarding the choke
+    point rather than the three callers means a fourth caller added later
+    inherits the guard instead of reintroducing the hole.
+
+    WP-62 Task 2(c). THE STORYBOARD GATE REACHES HERE TOO. A regeneration IS
+    media generation -- it dispatches `dispatch_media_generation` -- so a
+    project whose storyboard is not currently approved cannot start GPU work
+    through it. Without this the gate would have had a side door of exactly
+    the shape the gate exists to close.
+
+    Both refuse BEFORE the job row is inserted. WP-45's finding was that a
+    surface must never be told "queued" by something that queued nothing; the
+    mirror of it is that a refused request must not leave a `pending` row
+    behind to be counted, retried or resumed.
     """
+    from app.services.gate_service import GateService
+    from app.services.project_service import PipelineAlreadyRunningError, active_job
+
+    await GateService(db).require_storyboard_approval(scene.project_id)
+
+    running = await active_job(db, scene.project_id)
+    if running is not None:
+        raise PipelineAlreadyRunningError(
+            f"Project {scene.project_id} already has a {running.status} "
+            f"{running.job_type} run (job {running.id}). Regenerating a scene "
+            "while a run is in flight dispatches media work into a pipeline "
+            "that is already producing it, and the join counter that pairs "
+            "them is armed once. Wait for it to finish, or cancel it.",
+            job_id=running.id,
+            job_type=running.job_type,
+            status=running.status,
+        )
+
     project = await db.scalar(select(Project).where(Project.id == scene.project_id))
 
     media_type = scene.media_type or "image"

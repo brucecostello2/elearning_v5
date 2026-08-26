@@ -300,9 +300,21 @@ class TestTheDefinitionOfInFlight:
         from app.services import project_service as ps
 
         assert ps.TERMINAL_JOB_STATUSES == {"success", "failed"}
-        src = inspect.getsource(ps.ProjectService._active_job)
+        # WP-62 Task 6 MOVED the query, and this assertion follows it rather
+        # than being relaxed. `ProjectService._active_job` used to hold the
+        # SELECT; the module-level `active_job` holds it now, because
+        # `app.services.regeneration` needs the identical question answered and
+        # has a session rather than a ProjectService. The method delegates, so
+        # there is still exactly ONE definition -- which is the property this
+        # test exists to protect, and it is now protected across five callers
+        # instead of one.
+        src = inspect.getsource(ps.active_job)
         assert "not_in" in src
         assert "TERMINAL_JOB_STATUSES" in src
+        # And the method really is a delegation, not a second copy.
+        method_src = inspect.getsource(ps.ProjectService._active_job)
+        assert "active_job(self.db, project_id)" in method_src
+        assert "select(RenderJob)" not in method_src
 
     def test_the_guard_and_the_payload_use_THE_SAME_helper(self):
         """One definition of "in flight".
