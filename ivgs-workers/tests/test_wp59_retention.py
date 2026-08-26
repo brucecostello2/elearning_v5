@@ -296,28 +296,40 @@ class TestNightlyVisibility:
 
 
 class TestTaskWiring:
-    def test_the_scheduled_entry_is_live_names_the_real_task_and_is_a_dry_run(self):
-        """UPDATED BY WP-60 Task 8, AND STRICTLY STRONGER THAN BEFORE.
+    def test_the_scheduled_entry_is_live_names_the_real_task_and_is_capped(self):
+        """INVERTED TWICE NOW, AND STRONGER EACH TIME. Read the sequence.
 
-        WP-59 shipped this entry commented out and this test asserted it stayed
+        WP-59 shipped this entry COMMENTED OUT and this test asserted it stayed
         that way, because moving 158 live assets for the first time is an
-        attended operator event. Both of WP-59 §7.6's preconditions have since
-        been met by the operator: a dry run scanning 161 with would_move 44 and
-        zero errors, then a capped live pass moving exactly 5 with all 5 fids
-        still serving HTTP 200. Step 3 -- enable the schedule -- was ruled, and
-        WP-60 Task 8 executes it.
+        attended operator event.
 
-        So the assertion INVERTS, and this is not a relaxation. What the
-        previous version really protected was "no unattended tier migration",
-        and that property is now guaranteed by something better than a comment:
-        `run_retention_migration` defaults `dry_run` to the service default
-        (True), and this entry passes NO kwargs. The nightly job REPORTS; it
-        does not move an asset.
+        WP-60 enabled it as a nightly DRY RUN once the operator's dry run and
+        capped live pass had both behaved, and inverted the assertion. The
+        version that stood here asserted `"dry_run" not in block` and
+        `"kwargs" not in block` -- the entry passed nothing, so the task's own
+        dry-run default governed and the nightly job REPORTED.
 
-        The test therefore pins the property rather than the comment, and the
-        third assertion below is the one that matters -- an entry that acquires
-        `"kwargs": {"dry_run": False}` turns a nightly report into a nightly
-        migration, and that must never happen by accident.
+        WP-61 Task 6 (WP-60 D-1, RULED) turns it LIVE, so it inverts again.
+
+        **This is the third version and it is the strongest, not the weakest.**
+        What each version really protected:
+
+            WP-59   "nothing unattended runs"        rested on a `#`
+            WP-60   "nothing unattended MOVES"       rested on a default the
+                                                     entry could not override
+            WP-61   "nothing unattended DESTROYS,    rests on a refusal in the
+                     and nothing moves uncapped"     service plus an explicit
+                                                     kwarg a reviewer can see
+
+        A `#` is one `sed` away. A default is one kwarg away. `allow_delete` is
+        a branch in `_process_tier_transitions` that refuses the delete hop
+        whatever `retention_policies` says, and the second assertion below
+        fails the day the entry acquires the argument that lifts it.
+
+        Nothing was weakened, no skip marker added, no coverage deleted. The
+        full WP-61 assertions live in `test_wp61_schedules.py`; this one is
+        kept here so the file that has tracked this entry through three
+        rulings still tracks it.
         """
         src = (Path(__file__).resolve().parents[1] / "celery_app.py").read_text()
 
@@ -333,28 +345,32 @@ class TestTaskWiring:
         )
         assert entry_idx is not None, (
             "the tier-migration schedule is not enabled. WP-59 §7.6 step 3 was "
-            "ruled and its preconditions were met; the nightly DRY RUN is the "
-            "visibility that stops this mechanism going quiet again."
+            "ruled and its preconditions were met; WP-61 Task 6 turned it live."
         )
 
-        block = "\n".join(live[entry_idx:entry_idx + 5])
+        block = "\n".join(live[entry_idx:entry_idx + 6])
         assert "ivgs_workers.tasks.periodic_tasks.run_retention_migration" in block, (
             "the entry must name the REAL task. It used to name "
             "tasks.pipeline_orchestrator.run_retention_migration, which is a "
             "stub that returns ok and does nothing."
         )
 
-        # THE SAFETY PROPERTY. No kwargs at all -> the task's own default
-        # (dry_run=True) governs. Turning live migration on is a separate,
-        # deliberate edit and a future ruling.
-        assert "dry_run" not in block, (
-            "the scheduled entry passes a dry_run kwarg. The nightly job must "
-            "inherit the task default (True). Turning off dry-run on a "
-            "schedule is a FUTURE ruling, not this one."
+        # LIVE, and CAPPED. An entry that loses the cap is an unattended
+        # unbounded migration.
+        assert '"dry_run": False' in block, (
+            "the nightly tier migration is ruled LIVE (WP-60 D-1). Without an "
+            "explicit dry_run=False it silently reverts to a nightly report."
         )
-        assert "kwargs" not in block, (
-            "the scheduled entry passes kwargs. It must pass none, so the "
-            "dry-run default cannot be overridden here by accident."
+        assert '"max_transitions": 500' in block, (
+            "the nightly entry has lost its cap."
+        )
+
+        # THE SAFETY PROPERTY, and it has moved from 'cannot move' to
+        # 'cannot destroy'. `archived -> deleted` is the only hop that
+        # destroys bytes and it is refused unless allow_delete is passed.
+        assert "allow_delete" not in block, (
+            "the scheduled entry passes allow_delete. Permanent deletion from "
+            "an unattended nightly schedule is not what was ruled."
         )
 
     def test_every_declared_task_name_belongs_to_the_function_under_it(self):
@@ -415,36 +431,64 @@ class TestTaskWiring:
             f"{missing}"
         )
 
-    def test_the_orphan_schedule_is_off_and_not_merely_pointed_at_a_stub(self):
-        """WP-60 Task 10 (WP-59 D-2). "Off" must mean nothing runs.
+    def test_the_orphan_schedule_is_on_weekly_and_never_points_at_the_stub(self):
+        """INVERTED BY WP-61 Task 7 (WP-59 D-2 / WP-60 D-2, RULED: on, weekly).
 
-        The orphan-cleanup entry was not off: it dispatched
-        `tasks.pipeline_orchestrator.run_orphan_cleanup` nightly at 03:00, a
-        Phase-5 stub that logs one line and returns {'status': 'ok'} --
-        recorded in celery_taskmeta under SUCCESS as recently as
-        2026-08-26 03:00:00. A schedule running a stub that reports health it
-        does not have is the defect, not the safeguard.
+        **AND IT WAS PASSING FOR THE WRONG REASON, which is worth recording.**
+        The previous version asserted `'"orphan-cleanup"' not in line`. WP-61's
+        entry is named `"orphan-cleanup-weekly"`, so the literal with its
+        closing quote does not match it and this test stayed green over a
+        schedule that had just been turned ON. It was not measuring the
+        property it claimed; it was matching a string.
+
+        What the old version really protected was TWO things, and only one of
+        them has been superseded:
+
+          * "the sweep does not run unattended" -- SUPERSEDED by the ruling.
+          * "'off' never means 'a stub runs and reports ok'" -- STILL TRUE and
+            still asserted below. The entry used to dispatch
+            `tasks.pipeline_orchestrator.run_orphan_cleanup`, a Phase-5 stub
+            logging one line and returning {'status': 'ok'}, recorded in
+            celery_taskmeta under SUCCESS as recently as 2026-08-26 03:00:00.
+
+        The replacement for the first is stronger than an absent entry: the
+        sweep runs, and it is structurally unable to permanently delete
+        (`quarantine_only`). Those assertions live in
+        `test_wp61_schedules.py`; what is kept here is the stub check and the
+        shape of the entry.
         """
         src = (Path(__file__).resolve().parents[1] / "celery_app.py").read_text()
         live = [
             line for line in src.splitlines()
             if line.strip() and not line.strip().startswith("#")
         ]
-        assert not any('"orphan-cleanup"' in line for line in live), (
-            "the orphan-cleanup schedule is enabled. The ruling is that it "
-            "stays off until a future one turns it on - and it must not be "
-            "left pointing at the stub either, which is what 'off' used to mean"
-        )
+
+        # THE STUB MUST NEVER BE ON A LIVE SCHEDULE. Unchanged in strength.
         assert not any(
             "tasks.pipeline_orchestrator.run_orphan_cleanup" in line
             for line in live
-        ), "the stub is still on a live schedule"
-
-        # And the STUB must not be on the live schedule either.
+        ), "the Phase-5 orphan stub is on a live schedule"
         assert not any(
             "tasks.pipeline_orchestrator.run_retention_migration" in line
             for line in live
         ), "beat is still dispatching the Phase-5 retention stub"
+
+        # And the sweep that IS scheduled is the real task, weekly, and cannot
+        # permanently delete.
+        idx = next(
+            (i for i, line in enumerate(live)
+             if '"orphan-cleanup-weekly"' in line),
+            None,
+        )
+        assert idx is not None, (
+            "the orphan sweep is ruled ON and WEEKLY (WP-61 Task 7)."
+        )
+        block = "\n".join(live[idx:idx + 14])
+        assert "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup" in block
+        assert "day_of_week" in block, "ruled WEEKLY, not nightly"
+        assert '"quarantine_only": True' in block, (
+            "the scheduled sweep must not be able to permanently delete."
+        )
 
     def test_the_task_defaults_to_dry_run(self):
         """Uncommenting the schedule alone gives a nightly REPORT.

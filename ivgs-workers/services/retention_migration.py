@@ -302,6 +302,7 @@ class RetentionService:
         *,
         dry_run: bool = True,
         max_transitions: int | None = None,
+        allow_delete: bool = False,
     ) -> None:
         """
         Initialize retention service.
@@ -320,9 +321,27 @@ class RetentionService:
                 The operator's first live pass is a CAPPED pass; leaving the
                 cap at None is the unbounded run and should follow a capped one
                 that behaved.
+            allow_delete: WP-61 Task 6. DEFAULTS TO FALSE, and the nightly
+                schedule does not set it.
+
+                The `archived -> deleted` hop is the only one that destroys
+                bytes, and today it is unreachable for a *configuration*
+                reason: all three rows in `retention_policies` have NULL
+                `delete_after_days` (read live 2026-08-26), and NULL means "do
+                not progress past this tier". That is true, and it is a
+                property of DATA. One `UPDATE retention_policies SET
+                delete_after_days = 365` and the nightly job starts deleting,
+                with no code change, no review and nothing in the diff.
+
+                This flag makes the property structural instead. The scheduled
+                path cannot delete, whatever the policy table says, and turning
+                that off is an explicit kwarg someone has to type -- which is
+                the same shape of protection `dry_run` gives the whole run and
+                `quarantine_only` gives the orphan sweep.
         """
         self._dry_run = dry_run
         self._max_transitions = max_transitions
+        self._allow_delete = bool(allow_delete)
         self._db_session_factory = db_session_factory
         self._seaweedfs_filer_url = seaweedfs_filer_url
         self._policies_cache: dict[str, RetentionPolicy] = {}
@@ -551,6 +570,7 @@ class RetentionService:
         """
         transition_count = 0
         unconfigured = 0
+        blocked = 0
 
         async with self._db_session_factory() as session:
             from sqlalchemy import text
@@ -595,6 +615,7 @@ class RetentionService:
             policy = self.get_policy_for_asset_type(asset_type)
             tier_duration_days = policy.get_tier_duration_days(current_tier)
 
+
             # Check if asset has exceeded tier duration
             if tier_transition_at is None:
                 continue
@@ -609,6 +630,20 @@ class RetentionService:
             time_in_tier = (now - tier_transition_at).days
 
             if time_in_tier < tier_duration_days:
+                continue
+
+            # WP-61 Task 6. THE DELETE HOP IS REFUSED STRUCTURALLY, not because
+            # the policy happens to leave `delete_after_days` NULL.
+            #
+            # Placed HERE, after eligibility and before `would_move`, on
+            # purpose. After eligibility, so the count means "N assets were due
+            # for deletion and were not deleted" rather than "N assets are
+            # sitting in the archived tier" -- the first is the number an
+            # operator needs before ever setting allow_delete, the second is
+            # noise. Before `would_move`, because that mapping is a PREDICTION
+            # of what a live pass moves, and a live pass will not move these.
+            if next_tier == StorageTier.DELETE and not self._allow_delete:
+                blocked += 1
                 continue
 
             # This asset IS eligible. Record it in `would_move` before doing
@@ -677,6 +712,23 @@ class RetentionService:
                     to_tier=next_tier.value,
                     error=str(exc),
                 )
+
+        if blocked:
+            self._log.warning(
+                "tier_hop_refused_delete_not_allowed",
+                from_tier=current_tier.value,
+                to_tier=next_tier.value,
+                assets=blocked,
+                consequence=(
+                    "these assets are past their configured delete_after_days "
+                    "and were NOT deleted: this run was not given "
+                    "allow_delete=True. Nothing on the nightly schedule sets "
+                    "it. Deleting them is a deliberate, attended pass."
+                ),
+            )
+            report.policy_gaps[
+                f"{current_tier.value}->{next_tier.value} (refused: allow_delete=False)"
+            ] = blocked
 
         if unconfigured:
             self._log.info(

@@ -32,7 +32,7 @@ import json
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Iterable
 
 import httpx
 import structlog
@@ -319,6 +319,8 @@ class OrphanCleanupService:
         seaweedfs_base_url: str | None = None,
         seaweedfs_filer_url: str | None = None,
         dry_run: bool = True,
+        quarantine_only: bool = False,
+        exclude_scans: Iterable[str] | None = None,
     ) -> None:
         """
         Initialize orphan cleanup service.
@@ -331,6 +333,36 @@ class OrphanCleanupService:
                 reported and nothing is moved, marked or deleted. Passing False
                 is deliberately explicit: there is no way to destroy an object
                 by omitting an argument.
+            quarantine_only: WP-61 Task 7 (WP-59 D-2, RULED). When true the
+                quarantine EXPIRY pass -- the only path in this service that
+                permanently destroys bytes -- does not run at all.
+
+                This is what the weekly schedule sets, and it is the difference
+                between a sweep that is reversible and one that is not.
+                Quarantine is undoable for QUARANTINE_DAYS by design and the
+                audit row says where every object went; permanent deletion is
+                not undoable by anything. A scheduled job may do the first. A
+                human decides the second.
+
+                It is NOT a synonym for `dry_run`. A quarantine-only run
+                genuinely acts: it moves orphans out of the way. It simply
+                cannot reach the step that ends them.
+            exclude_scans: WP-61 Task 7. Scan names to skip, RECORDED in
+                `report.coverage` rather than silently omitted. The weekly
+                schedule passes `{"type1"}`.
+
+                TYPE 1 IS EXCLUDED AND THIS IS A LEDGERED DEBT, not a tidy-up.
+                It looks for objects in storage that no database row claims,
+                and to do that it lists the filer namespace -- which on this
+                fleet is EMPTY. Every object here is a volume object addressed
+                by fid, and there is no supported way to enumerate the fid
+                namespace. So Type 1 has ZERO COVERAGE, has always had zero
+                coverage, and cannot be given coverage without a design
+                decision about fid enumeration (WP-60 §12.2).
+                Running it costs a filer walk and returns 0 every time, which
+                is indistinguishable from "there are no such orphans" and is
+                the exact shape of false assurance this sweep exists to avoid.
+                Excluded, and `coverage["type1"]` says why on every run.
         """
         self._db_session_factory = db_session_factory
         # WP-60 Task 10 — THE DEFAULTS POINTED AT THE CONTAINER'S OWN LOOPBACK.
@@ -368,6 +400,12 @@ class OrphanCleanupService:
         # a future ruling. `dry_run` is what makes the mechanism exercisable —
         # and provable — without it acting.
         self._dry_run = bool(dry_run)
+        # WP-61 Task 7. Both default to the SAFE value, and both are set
+        # explicitly by the weekly beat entry rather than being defaults it
+        # relies on -- a schedule that depends on a default is one refactor
+        # away from meaning something else.
+        self._quarantine_only = bool(quarantine_only)
+        self._exclude_scans = frozenset(exclude_scans or ())
 
     async def _may_act_on(
         self,
@@ -451,6 +489,28 @@ class OrphanCleanupService:
         )
         results: dict[str, int] = {}
         for name, scan in scans:
+            if name in self._exclude_scans:
+                # WP-61 Task 7. EXCLUDED, AND IT SAYS SO. A scan that is
+                # skipped without a coverage line reads, one report later, as a
+                # scan that found nothing.
+                results[name] = 0
+                report.coverage[name] = (
+                    "EXCLUDED from this run. Type 1 lists the filer namespace, "
+                    "which is empty on this fleet -- every object is a volume "
+                    "object addressed by fid and there is no supported way to "
+                    "enumerate the fid namespace. It has zero coverage and "
+                    "returns 0 whether or not such orphans exist. A design "
+                    "decision about fid enumeration is owed (WP-60 S12.2)."
+                    if name == "type1"
+                    else "EXCLUDED from this run by the caller."
+                )
+                self._log.info(
+                    "orphan_scan_excluded",
+                    run_id=report.run_id,
+                    scan=name,
+                    detail=report.coverage[name],
+                )
+                continue
             try:
                 results[name] = await scan(report)
             except Exception as exc:
@@ -469,17 +529,32 @@ class OrphanCleanupService:
         report.type2_db_without_seaweedfs = results.get("type2", 0)
         report.type3_zero_reference_count = results.get("type3", 0)
 
-        try:
-            report.permanently_deleted = (
-                await self._process_quarantine_expirations(report)
+        if self._quarantine_only:
+            # WP-61 Task 7. The scheduled path stops here. `permanently_deleted`
+            # stays 0 and the report says WHY it is 0, so a reader cannot
+            # mistake "not allowed to" for "nothing was due".
+            report.coverage["quarantine_expiry"] = (
+                "NOT RUN: quarantine_only. Permanent deletion is not reachable "
+                "from the scheduled path. Objects past QUARANTINE_DAYS stay in "
+                "quarantine until an attended run removes them."
             )
-        except Exception as exc:
-            report.errors.append(f"quarantine expiry failed: {exc}")
-            self._log.error(
-                "quarantine_expiry_failed",
+            self._log.info(
+                "quarantine_expiry_skipped",
                 run_id=report.run_id,
-                error=str(exc),
+                reason="quarantine_only",
             )
+        else:
+            try:
+                report.permanently_deleted = (
+                    await self._process_quarantine_expirations(report)
+                )
+            except Exception as exc:
+                report.errors.append(f"quarantine expiry failed: {exc}")
+                self._log.error(
+                    "quarantine_expiry_failed",
+                    run_id=report.run_id,
+                    error=str(exc),
+                )
 
         # Swallow-register entry 29 CLOSED: errors now reach a field the caller
         # acts on, instead of an unread list beneath a returned success.

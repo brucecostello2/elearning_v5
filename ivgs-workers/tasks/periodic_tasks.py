@@ -31,25 +31,11 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Tuple
+from typing import Any
 
 import structlog
 from celery import shared_task
-from celery.schedules import crontab
 
-
-def _parse_retention_cron(cron_expr: str) -> Tuple[int, int]:
-    """
-    Parse a standard 5-field cron expression into (minute, hour) for crontab().
-
-    Only minute and hour are extracted; day/month/weekday default to '*'.
-    Format: "minute hour day month weekday"
-    Example: "0 2 * * *" → (0, 2)
-    """
-    parts = cron_expr.strip().split()
-    minute = int(parts[0]) if len(parts) > 0 and parts[0] != "*" else 0
-    hour = int(parts[1]) if len(parts) > 1 and parts[1] != "*" else 0
-    return minute, hour
 
 logger = structlog.get_logger(__name__)
 
@@ -59,74 +45,40 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 def get_beat_schedule() -> dict[str, dict[str, Any]]:
-    """
-    Return the Celery Beat schedule configuration per §6.4.
+    """The live Celery Beat schedule. WP-61 Task 7.
 
-    This is registered in the Celery app configuration:
-        app.conf.beat_schedule = get_beat_schedule()
+    **THIS FUNCTION USED TO BE A SECOND, DRIFTING COPY OF THE SCHEDULE, AND IT
+    IS EXACTLY THE DEFECT THIS PACKAGE'S TASKS 6 AND 7 ARE ABOUT.**
 
-    Returns:
-        Dict of task schedules keyed by task name.
+    It returned a hand-written dict of six entries. Nothing called it -- the
+    real schedule is ``celery_app.CELERY_BEAT_SCHEDULE``, assigned at
+    ``celery_app.py`` under ``app.conf.beat_schedule`` -- and being uncalled is
+    the only reason it never did any harm. What it contained, read on
+    2026-08-26:
+
+        "orphan-cleanup-daily"     -> run_orphan_cleanup, DAILY at 02:00,
+                                      with NO kwargs
+        "retention-migration-daily"-> run_retention_migration, NO kwargs,
+                                      hour driven by a RETENTION_JOB_CRON env
+                                      var nothing sets
+
+    Both rulings this package implements live in kwargs. An orphan entry with
+    no kwargs is a nightly sweep that can reach permanent deletion and that
+    runs the zero-coverage Type-1 scan; a retention entry with no kwargs is an
+    uncapped dry run. So one `app.conf.beat_schedule = get_beat_schedule()` --
+    the very line this docstring used to suggest -- would have silently
+    replaced both rulings with their opposites, and every test that reads
+    `celery_app.py` would still have passed.
+
+    It now returns the one real schedule. There is no second statement of what
+    somebody believed the schedule was.
+
+    The import is function-level because ``celery_app`` imports this module's
+    tasks; a module-level import would be circular.
     """
-    return {
-        # DLQ processing — every 5 minutes
-        "dlq-processing-every-5-minutes": {
-            "task": "ivgs_workers.tasks.periodic_tasks.process_dlq",
-            "schedule": 300.0,  # 5 minutes in seconds
-            "options": {
-                "queue": "default",
-                "expires": 280,  # expire before next run
-            },
-        },
-        # Heartbeat supervision — every 30 seconds
-        "heartbeat-supervision-every-30-seconds": {
-            "task": "ivgs_workers.tasks.periodic_tasks.supervise_heartbeats",
-            "schedule": 30.0,
-            "options": {
-                "queue": "default",
-                "expires": 25,
-            },
-        },
-        # M2-3: project scheduler fleet residency -> model_node_availability
-        "model-availability-poll-every-30-seconds": {
-            "task": "ivgs_workers.tasks.periodic_tasks.poll_model_node_availability",
-            "schedule": 30.0,
-            "options": {
-                "queue": "default",
-                "expires": 25,
-            },
-        },
-        # Orphan cleanup — daily at 02:00 UTC
-        "orphan-cleanup-daily": {
-            "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
-            "schedule": crontab(hour=2, minute=0),
-            "options": {
-                "queue": "default",
-                "expires": 3600,  # 1 hour to complete
-            },
-        },
-        # Retention migration — configurable via RETENTION_JOB_CRON env (default: daily 02:00 UTC)
-        "retention-migration-daily": {
-            "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
-            "schedule": crontab(
-                minute=_parse_retention_cron(os.environ.get("RETENTION_JOB_CRON", "0 2 * * *"))[0],
-                hour=_parse_retention_cron(os.environ.get("RETENTION_JOB_CRON", "0 2 * * *"))[1],
-            ),
-            "options": {
-                "queue": "default",
-                "expires": 3600,
-            },
-        },
-        # Backup verification — daily at 04:00 UTC
-        "backup-verification-daily": {
-            "task": "ivgs_workers.tasks.periodic_tasks.verify_latest_backup",
-            "schedule": crontab(hour=4, minute=0),
-            "options": {
-                "queue": "default",
-                "expires": 3600,
-            },
-        },
-    }
+    from celery_app import CELERY_BEAT_SCHEDULE
+
+    return CELERY_BEAT_SCHEDULE
 
 
 # ---------------------------------------------------------------------------
@@ -342,6 +294,45 @@ class OrphanCleanupError(RuntimeError):
     """
 
 
+def _report_orphan_cleanup_metrics(report: Any, task_log: Any) -> None:
+    """One greppable line for the weekly sweep. WP-61 Task 7.
+
+    Same treatment WP-60 gave the nightly tier migration, and for the same
+    reason: a scheduled job whose only trace is a structured log line among
+    thousands is a job nobody can tell has stopped working. Three months of
+    `run_orphan_cleanup` reporting SUCCESS from a stub is what that looks like.
+
+    NEVER RAISES, and it is defined ABOVE the decorator that follows rather
+    than between a decorator and its function -- WP-60 S21.2 records inserting
+    a helper into exactly that gap, which handed the `@shared_task` to the
+    helper and left the task unregistered.
+    """
+    try:
+        task_log.info(
+            "orphan_cleanup_weekly_result",
+            dry_run=report.dry_run,
+            status=report.status,
+            type1=report.type1_seaweedfs_without_db,
+            type2=report.type2_db_without_seaweedfs,
+            type3=report.type3_zero_reference_count,
+            quarantined=report.newly_quarantined,
+            permanently_deleted=report.permanently_deleted,
+            preserved=report.preserved,
+            coverage=report.coverage,
+            errors=report.errors,
+            summary=(
+                f"dry_run={report.dry_run} "
+                f"type2={report.type2_db_without_seaweedfs} "
+                f"type3={report.type3_zero_reference_count} "
+                f"quarantined={report.newly_quarantined} "
+                f"deleted={report.permanently_deleted} "
+                f"preserved={report.preserved} status={report.status}"
+            ),
+        )
+    except Exception as exc:  # pragma: no cover - reporting must not break the run
+        logger.warning("orphan_cleanup_result_line_failed", error=str(exc))
+
+
 @shared_task(
     name="ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
     bind=True,
@@ -354,12 +345,24 @@ class OrphanCleanupError(RuntimeError):
 def run_orphan_cleanup(
     self: Any,
     dry_run: bool | None = None,
+    quarantine_only: bool = False,
+    exclude_scans: list[str] | None = None,
 ) -> dict[str, Any]:
     """
-    Orphan cleanup per §10.6. WP-60 Task 10 (WP-59 D-2).
+    Orphan cleanup per §10.6. WP-60 Task 10 (WP-59 D-2), WP-61 Task 7.
 
-    THE SCHEDULE IS OFF, AND STAYS OFF UNTIL A FUTURE RULING. This package
-    makes the mechanism real and safe; it does not make it automatic.
+    THE SCHEDULE IS ON, WEEKLY, AND IT CANNOT DELETE. WP-60 left this off with
+    the mechanism repaired, guarded and proven on constructed cases; WP-61's
+    ruling turns it on under three constraints, all set explicitly by the beat
+    entry rather than inherited from a default:
+
+        dry_run=False        it genuinely acts
+        quarantine_only=True the permanent-deletion pass does not run
+        exclude_scans=[type1] zero-coverage scan skipped, and SAID so
+
+    Quarantine is reversible for QUARANTINE_DAYS and every move is audited.
+    Permanent deletion is not reversible by anything, so it is not reachable
+    from a schedule.
 
     What it was before: `celery beat` dispatched
     ``tasks.pipeline_orchestrator.run_orphan_cleanup``, a stub logging
@@ -375,6 +378,15 @@ def run_orphan_cleanup(
 
     Args:
         dry_run: None uses the service default (True).
+        quarantine_only: WP-61 Task 7. Skip the quarantine-expiry pass, which
+            is the only path here that permanently destroys bytes. The weekly
+            schedule sets True.
+        exclude_scans: WP-61 Task 7. Scan names to skip; each is RECORDED in
+            `report.coverage` rather than silently omitted. The weekly schedule
+            passes ["type1"] -- it has zero coverage on this fleet (the filer
+            namespace is empty; every object is a fid) and returns 0 whether or
+            not such orphans exist, which is false assurance. A design decision
+            about fid enumeration is owed (WP-60 S12.2).
 
     Returns:
         CleanupReport as dict.
@@ -387,7 +399,12 @@ def run_orphan_cleanup(
         task_name="run_orphan_cleanup",
         celery_task_id=self.request.id,
     )
-    task_log.info("orphan_cleanup_started")
+    task_log.info(
+        "orphan_cleanup_started",
+        dry_run=dry_run,
+        quarantine_only=quarantine_only,
+        exclude_scans=list(exclude_scans or []),
+    )
 
     try:
         loop = asyncio.new_event_loop()
@@ -402,6 +419,8 @@ def run_orphan_cleanup(
             service = OrphanCleanupService(
                 db_session_factory=async_session_factory,
                 dry_run=True if dry_run is None else bool(dry_run),
+                quarantine_only=bool(quarantine_only),
+                exclude_scans=exclude_scans or (),
             )
 
             report = loop.run_until_complete(service.run_cleanup())
@@ -409,9 +428,16 @@ def run_orphan_cleanup(
 
             result = report.model_dump(mode="json")
 
+            # WP-61 Task 7. ONE GREPPABLE LINE CARRYING THE NUMBERS, the same
+            # treatment WP-60 gave the nightly tier migration. A weekly job
+            # whose only trace is a structured log among thousands is a job
+            # nobody can tell has stopped working.
+            _report_orphan_cleanup_metrics(report, task_log)
+
             task_log.info(
                 "orphan_cleanup_completed",
                 dry_run=report.dry_run,
+                quarantine_only=bool(quarantine_only),
                 status=report.status,
                 type1=report.type1_seaweedfs_without_db,
                 type2=report.type2_db_without_seaweedfs,
@@ -592,9 +618,17 @@ def run_retention_migration(
     self: Any,
     dry_run: bool | None = None,
     max_transitions: int | None = None,
+    allow_delete: bool = False,
 ) -> dict[str, Any]:
     """
     Retention tier migration per §10.3. WP-59 Task 7.
+
+    WP-61 TASK 6: THE NIGHTLY RUN IS NOW LIVE, CAPPED AT 500, AND CANNOT
+    DELETE. The operator's attended runs met every precondition -- a dry run
+    reporting 44 would-move and 0 delete, then a capped live pass moving
+    exactly 5 with the bytes untouched and all 5 fids still serving HTTP 200.
+    The beat entry therefore passes `dry_run=False, max_transitions=500` and
+    does NOT pass `allow_delete`, so the destructive hop stays closed.
 
     THE REAL ONE. There are two tasks with this name on this fleet and until
     this package the SCHEDULED one was the other: Celery beat dispatched
@@ -607,17 +641,25 @@ def run_retention_migration(
     swallowed ``UndefinedColumn``, and the column defect is real and is fixed,
     but it was never reached. Both had to be repaired for one to matter.
 
-    DEFAULTS TO DRY RUN, AND THE SCHEDULE SHIPS DISABLED. Nothing has ever
-    migrated a tier here; the first real pass moves 158 live assets and is an
-    attended operator event. ``dry_run`` defaults to the service default
-    (True) so an accidental dispatch reports rather than acts, and
-    ``max_transitions`` is the cap for the operator's first live pass.
+    THE TASK STILL DEFAULTS TO DRY RUN. That has not changed and must not:
+    an accidental bare dispatch must report rather than act. What changed in
+    WP-61 is that the SCHEDULE now passes `dry_run=False` explicitly, which is
+    a visible, reviewable edit in the beat entry rather than a default anyone
+    could acquire by omission.
 
     Args:
         dry_run: None uses the service default (True). Pass False for a real
             pass -- deliberately explicit; there is no way to move an asset by
             omitting an argument.
-        max_transitions: Hard ceiling for a capped live pass.
+        max_transitions: Hard ceiling for a capped live pass, and the standing
+            cap on the nightly LIVE run (WP-61 Task 6: 500).
+        allow_delete: WP-61 Task 6. DEFAULTS TO FALSE and the schedule does not
+            set it. The `archived -> deleted` hop is the only one that destroys
+            bytes; without this it is refused whatever `retention_policies`
+            says. Today all three policy rows have NULL `delete_after_days`, so
+            deletion is also unreachable by configuration -- but that is a
+            property of DATA, one UPDATE away from changing, with nothing in
+            any diff. This makes it a property of CODE.
 
     Returns:
         MigrationReport as dict.
@@ -634,6 +676,7 @@ def run_retention_migration(
         "retention_migration_started",
         dry_run=dry_run,
         max_transitions=max_transitions,
+        allow_delete=allow_delete,
     )
 
     try:
@@ -650,6 +693,7 @@ def run_retention_migration(
                 db_session_factory=async_session_factory,
                 dry_run=True if dry_run is None else bool(dry_run),
                 max_transitions=max_transitions,
+                allow_delete=bool(allow_delete),
             )
 
             report = loop.run_until_complete(service.run_migration())

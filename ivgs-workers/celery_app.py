@@ -237,16 +237,59 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
     #
     # WP-60 repaired the real service behind it and gave it the shared-object
     # guard WP-59 D-2 made a precondition (services/orphan_cleanup.py,
-    # SharedObjectGuard). It is exercisable today via
-    # `ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup`, which DEFAULTS TO
-    # DRY RUN. Turning this on is two deliberate edits - uncommenting here and
-    # passing dry_run=False - and neither is this package's to make.
+    # SharedObjectGuard).
     #
-    # "orphan-cleanup": {
-    #     "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
-    #     "schedule": crontab(hour=3, minute=0),
-    #     "options": {"queue": "default", "priority": 2},
-    # },
+    # WP-61 Task 7 (WP-59 D-2 / WP-60 D-2, RULED): ON, WEEKLY, AND IT CANNOT
+    # DELETE.
+    #
+    # Read the three kwargs below as one sentence, because they are the whole
+    # ruling and every one of them is passed EXPLICITLY rather than inherited
+    # from a default. A schedule that relies on a default is one refactor away
+    # from meaning something else, and this particular default governs whether
+    # binaries are destroyed.
+    #
+    #   dry_run=False          It genuinely acts. A weekly dry run would report
+    #                          the same numbers forever and quarantine nothing,
+    #                          which is the "mechanism reporting health it does
+    #                          not have" pattern this series exists to end.
+    #
+    #   quarantine_only=True   The permanent-deletion pass does NOT run. This
+    #                          is the difference between reversible and not:
+    #                          quarantine is undoable for QUARANTINE_DAYS and
+    #                          every move is audited; permanent deletion is
+    #                          undoable by nothing. A schedule may do the
+    #                          first. A human decides the second.
+    #
+    #   exclude_scans=["type1"] LEDGERED DEBT, NOT TIDYING. Type 1 looks for
+    #                          storage objects no database row claims, by
+    #                          listing the filer namespace -- which is EMPTY on
+    #                          this fleet. Every object here is a volume object
+    #                          addressed by fid and there is no supported way
+    #                          to enumerate the fid namespace, so Type 1 has
+    #                          ZERO COVERAGE and returns 0 whether or not such
+    #                          orphans exist (WP-60 S12.2). Running it produces
+    #                          false assurance; the service records the reason
+    #                          in `report.coverage["type1"]` on every run. A
+    #                          design decision about fid enumeration is OWED,
+    #                          and until it is made this sweep is a Type-2 and
+    #                          Type-3 backstop and must not be described as a
+    #                          complete one.
+    #
+    # WEEKLY, not nightly. Monday 03:30 UTC. The sweep is a backstop, not a
+    # control loop: the paths that create orphans are deletion and failed
+    # renders, both of which are individually audited. Seven days of drift is
+    # the exposure, and a weekly cadence keeps each run's output small enough
+    # that a human actually reads it.
+    "orphan-cleanup-weekly": {
+        "task": "ivgs_workers.tasks.periodic_tasks.run_orphan_cleanup",
+        "schedule": crontab(day_of_week=1, hour=3, minute=30),
+        "kwargs": {
+            "dry_run": False,
+            "quarantine_only": True,
+            "exclude_scans": ["type1"],
+        },
+        "options": {"queue": "default", "priority": 2},
+    },
     # WP-59 Task 7 — SHIPPED DISABLED, AND POINTED AT THE REAL TASK.
     #
     # This entry used to name `tasks.pipeline_orchestrator.run_retention_migration`,
@@ -275,14 +318,50 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
     # policy_source=database and zero errors, and the capped live pass then
     # moved exactly 5 (capped=True, 0 deleted, all 5 fids still HTTP 200).
     #
-    # `run_retention_migration` defaults `dry_run` to the service default,
-    # which is True, and NO kwargs are passed here. That is deliberate and is
-    # the whole safety property: turning nightly migration on is a separate,
-    # explicit edit, and there is no way to move an asset by omitting an
-    # argument. A future ruling turns it live; this package does not.
+    # WP-61 Task 6 (WP-60 D-1, RULED). THE NIGHTLY RUN IS NOW LIVE.
+    #
+    # WP-60 left this entry passing NO kwargs so the task's own dry-run default
+    # governed, and said a future ruling would turn it live. This is that
+    # ruling, and its preconditions were met by the operator's attended runs:
+    # the dry run was honest (161 scanned, 44 would-move hot->warm,
+    # 109,966,042 bytes, policy_source=database, 0 errors) and the capped live
+    # pass was exact (5 moved, 0 deleted, bytes untouched, all 5 fids still
+    # serving HTTP 200).
+    #
+    # THREE THINGS ARE TRUE OF THE KWARGS BELOW AND EACH IS DELIBERATE.
+    #
+    #   dry_run=False        Explicit. The task still DEFAULTS to dry run, so
+    #                        an accidental bare dispatch still only reports;
+    #                        what turns the nightly job live is this visible
+    #                        line, not a default anyone could acquire by
+    #                        omission.
+    #
+    #   max_transitions=500  A standing cap, not a first-pass cap. The nightly
+    #                        job has no operator watching it, and the sane
+    #                        failure mode for a migration that suddenly finds
+    #                        thousands eligible -- a policy edit, a clock skew,
+    #                        a backfill -- is to move 500 and set `capped=True`
+    #                        in a report someone reads, rather than to move
+    #                        everything and be discovered afterwards.
+    #
+    #   allow_delete IS ABSENT, and that is the load-bearing omission.
+    #                        `archived -> deleted` is the only hop that
+    #                        destroys bytes. It is refused structurally when
+    #                        `allow_delete` is not set, whatever
+    #                        `retention_policies` says -- so the property does
+    #                        not rest on all three policy rows happening to
+    #                        have NULL `delete_after_days` today. That is data;
+    #                        one UPDATE changes it and nothing appears in any
+    #                        diff. This is code.
+    #
+    # Visibility is `_report_retention_migration_metrics` (WP-60 Task 8): one
+    # greppable `retention_migration_nightly_result` line carrying transitions
+    # and errors, plus the `ivgs_retention_migration_last_*` gauge pair the
+    # backup jobs' staleness alerting already covers.
     "retention-migration": {
         "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
         "schedule": crontab(hour=4, minute=0),
+        "kwargs": {"dry_run": False, "max_transitions": 500},
         "options": {"queue": "default", "priority": 2},
     },
     "backup-verification": {
