@@ -67,13 +67,35 @@ services:
   # of weights and does not fit a 48 GB card. There is no fallback branch here:
   # a wrong VLLM_MODEL_NAME must fail to start, loudly, rather than half-load.
   #
-  # THE ENGINE IS THE NIGHTLY IMAGE, PINNED BY TAG AND RECORDED BY DIGEST in the
-  # operator block. vLLM v0.19.2rc1.dev134+ resolves the `qwen3_5` architecture;
-  # earlier builds may not. `cu130-nightly` is a moving tag, which is exactly
-  # why the block records the digest it actually pulled.
+  # THE ENGINE IS PINNED BY DIGEST, NOT BY TAG. WP-62 Task 8(d).
+  #
+  # It was `vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}` and the comment
+  # here said the tag was "PINNED BY TAG AND RECORDED BY DIGEST in the operator
+  # block". Recording a digest in a block is not a pin, and the tag MOVED
+  # DURING WP-61: the operator pulled `cu130-nightly` twice and got two
+  # different images reporting the SAME version string (v0.19.2rc1.dev134),
+  # the second being sha256:3dbe092e... That is the worst shape a drift can
+  # take -- the field that would have shown it, the version string, did not
+  # move -- and it is the discipline every other image on this fleet already
+  # follows (dev/CLAUDE.md section 6: never read a tag out of a container and
+  # believe it).
+  #
+  # THERE IS NO `:-` DEFAULT ON THIS ONE, DELIBERATELY. Every other ${VAR} in
+  # this file has one, because a missing .env.node05 should still produce a
+  # container that fails loudly on the model name rather than an unintended
+  # one. The image is the opposite case: falling back to a floating tag is
+  # precisely the failure being closed, and it would fail SILENTLY -- the
+  # container would start and serve. Without VLLM_IMAGE_DIGEST, compose refuses
+  # to render this file at all, which is the correct outcome.
+  #
+  # VLLM_IMAGE_TAG is retained in .env.node05.example as documentation of which
+  # tag the digest was pulled from; nothing interpolates it here any more.
+  #
+  # vLLM v0.19.2rc1.dev134+ resolves the `qwen3_5` architecture; earlier builds
+  # may not.
   # ---------------------------------------------------------------------------
   vllm-qwen:
-    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
+    image: vllm/vllm-openai@${VLLM_IMAGE_DIGEST}
     container_name: ivgs-vllm-qwen-node05
     restart: unless-stopped
     env_file:

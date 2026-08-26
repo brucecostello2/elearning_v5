@@ -1,4 +1,13 @@
-"""Publish the amended translation prompt as version 2. WP-61 Task 3(c).
+"""Publish the tracked translation template as the next prompt version.
+
+WP-61 Task 3(c) published v2 through this script. WP-62 Task 9(b) publishes v3
+through THE SAME script, deliberately: the requirement is "publish v3 through
+the same versioning path (v2 preserved inactive)", and a second publisher would
+be a second set of refusals to keep in step. The module name is historical --
+it is the translation prompt's versioning path, not WP-61's.
+
+It was already version-agnostic (`next_version = max(...) + 1`); what WP-62
+adds is a gate on the SCOPE half of the contract, below.
 
 RUN INSIDE `ivgs-fastapi`:
 
@@ -44,16 +53,31 @@ MARKER = "IVGS-TRANSLATION-FLAG:"
 TEMPLATE = Path(__file__).resolve().parents[2] / "seed" / "default_prompts" / "translation.j2"
 
 CHANGE_NOTE = (
-    "WP-61 Task 3(c), RULED FAIL-AND-FLAG. Translate faithfully; never correct "
-    "the source; if the translator believes the source contains a factual "
-    "error, append exactly one machine-readable "
-    f"'{MARKER} <reason>' line AFTER the translation. The consuming path strips "
-    "the marker from the deliverable and sets the variant to 'flagged' rather "
-    "than 'completed'. Supersedes v1, under which Qwen appended a correction "
-    "in ALL FOUR target languages on 2026-08-25 because the reference "
-    "project's scene 5 narration genuinely teaches 10x3=30, 10x2=20 => '320' "
-    "written as 230 - a divergence that would exist only in languages the team "
-    "cannot read."
+    "WP-62 Task 9(b), RULED SCOPE. v3 narrows the fail-and-flag contract to "
+    "FACTUAL AND ARITHMETIC ERRORS ONLY. Pedagogical style is out of scope and "
+    "must not flag: teaching method, notation, step order, placeholder zeros, "
+    "digit-by-digit working and 'this could be clearer' are all correct "
+    "arithmetic taught differently. Supersedes v2 (which stays readable, "
+    "inactive, with its own note); v2 kept the fail-and-flag mechanism, which "
+    "is unchanged and correct. WHY: the 2026-08-26 es-ES run of the reference "
+    "project produced SEVEN flags, and operator verification against the "
+    "source found TWO FALSE POSITIVES - scene 9 ('1 times 2 is 2, and 1 times "
+    "3 is 3 ... our first answer is 32' is the standard algorithm applied to "
+    "32 x 1, and correct) and scene 15 ('start the next line with a zero', a "
+    "pedagogy opinion). Five flags are genuine: scenes 5, 6, 12 and 13 carry "
+    "real arithmetic errors and scene 11 is genuinely garbled. A false flag on "
+    "a correct lesson trains the reviewer to ignore the flags, which costs "
+    "more than the flag saves."
+)
+
+# The two halves of the contract this script refuses to publish without. The
+# marker gate has existed since v2; the SCOPE gate is WP-62 Task 9(b). A
+# template that carries the marker but not the scope would publish cleanly, run
+# cleanly, and reproduce the two false positives - which is exactly the shape
+# of failure this series exists to stop: a green path over an unstated rule.
+SCOPE_PHRASES = (
+    "FACTUAL AND ARITHMETIC ERRORS ONLY",
+    "OUT OF SCOPE",
 )
 
 
@@ -67,11 +91,33 @@ async def main() -> None:
     if not TEMPLATE.exists():
         _fail(f"template not found in the image at {TEMPLATE}")
 
-    text = TEMPLATE.read_text(encoding="utf-8").strip()
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    print(f"template : {TEMPLATE}")
-    print(f"sha256   : {digest}")
-    print(f"bytes    : {len(text)}")
+    raw = TEMPLATE.read_text(encoding="utf-8")
+    text = raw.strip()
+
+    # WP-62 Task 8(e). TWO DIGESTS, EACH NAMED FOR WHAT IT COVERS.
+    #
+    # This printed ONE value labelled `sha256`, computed over the STRIPPED
+    # text, five lines below an operator block that printed
+    # `sha256sum ivgs-api/seed/default_prompts/translation.j2` - the FILE,
+    # trailing newline included. Two digests of two different byte strings
+    # under one word.
+    #
+    # They differ by exactly one byte and the divergence was reported as an
+    # image/tree mismatch: container `205ddaba...` against tracked
+    # `67be5991...`. Measured 2026-08-26, there is no mismatch - the baked
+    # template in `ivgs-api:v5.20.0-qwen` is byte-identical to the tracked file
+    # (both `67be5991ad4819...`), and `205ddaba...` is what THIS function
+    # computes because of the `.strip()` above.
+    #
+    # The `.strip()` is kept: what goes into `prompts.prompt_text` should not
+    # carry a trailing newline, and normalising it here is right. What was
+    # wrong is printing its digest under a label that reads as the file's.
+    file_digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+    row_digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    print(f"template      : {TEMPLATE}")
+    print(f"file sha256   : {file_digest}   <- matches `sha256sum` on the file")
+    print(f"stored sha256 : {row_digest}   <- of the stripped text that becomes prompts.prompt_text")
+    print(f"file bytes    : {len(raw)}   stored chars: {len(text)}")
 
     if MARKER not in text:
         _fail(
@@ -84,7 +130,16 @@ async def main() -> None:
             "the template does not forbid correcting the source. The marker "
             "alone is not the contract."
         )
-    print(f"contract : OK ({MARKER} present, correction forbidden)")
+    missing = [phrase for phrase in SCOPE_PHRASES if phrase not in text]
+    if missing:
+        _fail(
+            "the template does not state the WP-62 Task 9(b) flag SCOPE: "
+            f"missing {missing!r}. A prompt that asks for flags without "
+            "bounding them to factual and arithmetic errors reproduces the two "
+            "false positives measured on 2026-08-26 (scenes 9 and 15 of the "
+            "reference project, both correct, both flagged on pedagogy)."
+        )
+    print(f"contract : OK ({MARKER} present, correction forbidden, scope stated)")
     print()
 
     async with async_session_factory() as db:

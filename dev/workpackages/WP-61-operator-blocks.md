@@ -13,8 +13,47 @@ measurement, not as a claim made here.
 
 **NODE-06 IS OUT OF BOUNDS.** Nothing here touches it.
 
-Order matters. A05 → A06 → A07 (the long one) → A08 → A09 → A10, then N01-A and
-N01-B on node-01.
+Order matters. A05 → A06 → A06B → A07 (the long one) → A08 → A09 → A10, then
+N01-A and N01-B on node-01.
+
+---
+
+## CORRECTED 2026-08-26 BY WP-62 TASK 8 — five field defects, all measured
+
+**This file is tracked, it was executed, and it was wrong in five places the
+operator had to fix live.** The corrections are made IN PLACE below, each
+marked, because a corrections appendix at the bottom of a file of paste blocks
+is a corrections appendix nobody reads before pasting.
+
+| | What was wrong | Where |
+|---|---|---|
+| (a) | `--entrypoint huggingface-cli`. The binary is REMOVED from the current nightly and its shim exits 1. `--local-dir-use-symlinks` is rejected by the newer hub. | A07 |
+| (b) | `find ... -type f` hashed NOTHING. hf's cache exposes `*.safetensors` only as snapshot SYMLINKS, so a 29 GB cache manifested as "safetensors files: 0". | A07, both places |
+| (c) | The ufw rules were APPENDED. node-05 carries `Anywhere ALLOW from 192.168.1.0/24`, so the appended deny sat below it and was inert. | A08 |
+| (d) | The engine floated on `cu130-nightly` and THE TAG MOVED MID-PACKAGE — same version string, new digest. | A09, and the compose/env |
+| (e) | Two shas of the same template were printed under the same label. Nothing had diverged. | N01-A |
+
+**(e) is the one worth reading, because the conclusion is the opposite of the
+report.** WP-62 was told the image's baked seed template differed from the tree
+at the same commit — container `205ddaba…` against tracked `67be5991…`.
+**Measured 2026-08-26 on the running stack: it does not.**
+`sha256sum /app/seed/default_prompts/translation.j2` inside `ivgs-fastapi`
+(`ivgs-api:v5.20.0-qwen`) returns `67be5991ad4819…`, byte-identical to the
+tracked file. No divergence, no `.dockerignore` gap, no stale layer.
+
+`205ddaba…` is the sha256 of the **same bytes with the trailing newline
+stripped** — proven: `printf '%s' "$(cat translation.j2)" | sha256sum` gives
+`205ddabad3673a5939316e622ee23a79a7b1aaa272f803d6b1ed09ccc6747a1f` exactly.
+It is what `app/scripts/wp61_publish_prompt.py:70` computes, because it does
+`.read_text().strip()` before hashing, and what line 73 prints under the label
+`sha256`. N01-A step 1 prints `sha256sum ivgs-api/seed/default_prompts/…`
+directly above it. **Two digests, of two different byte strings, one label,
+five lines apart in one package.**
+
+The defect was real and it was a MEASUREMENT defect, not a build defect. Both
+halves are closed: the publish script now prints both digests each named for
+what it covers, and `scripts/check_seed_conformance.sh` gates baked-equals-
+tracked so a genuinely divergent seed cannot ship silently.
 
 ---
 
@@ -96,8 +135,13 @@ brackets through PuTTY is forbidden (dev/CLAUDE.md §5).
   echo "== AFTER =="; git log --oneline -1
 
   # --- THE SHA GATE. These are the exact bytes this package was tested against.
-  WANT_COMPOSE=c4f97159199a121470662a576819e115049abeabbc9c19ad6cd0a613a120eccf
-  WANT_ENVEX=0c40c3487253bf44714249786119e68af383e3d4704aa197b58c81027d0fa969
+  # WP-62 Task 8(d): BOTH VALUES CHANGED. The compose file now pins the engine
+  # by digest and .env.node05.example carries VLLM_IMAGE_DIGEST. A gate holding
+  # the WP-61 shas would refuse the corrected files, which is the gate working
+  # - and it would refuse them without saying why, so it is updated here rather
+  # than left to fire.
+  WANT_COMPOSE=__WANT_COMPOSE__
+  WANT_ENVEX=__WANT_ENVEX__
   GOT_COMPOSE=$(sha256sum ivgs-infra/docker-compose.llm.node05.yml | cut -d' ' -f1)
   GOT_ENVEX=$(sha256sum ivgs-infra/.env.node05.example | cut -d' ' -f1)
   echo "compose  want=$WANT_COMPOSE"
@@ -121,6 +165,12 @@ brackets through PuTTY is forbidden (dev/CLAUDE.md §5).
     cp ivgs-infra/.env.node05.example ivgs-infra/.env.node05
     chmod 600 ivgs-infra/.env.node05
     echo "wrote ivgs-infra/.env.node05 (mode 600)"
+    echo
+    echo ">>> WP-62 Task 8(d): VLLM_IMAGE_DIGEST in the copied file is the"
+    echo ">>> RECORDED PREFIX ONLY and is not a valid digest. RUN A06B NEXT."
+    echo ">>> Compose will refuse to render this file until it is filled in,"
+    echo ">>> which is the intended behaviour - the previous version silently"
+    echo ">>> fell back to a floating tag that had already moved once."
   fi
   ls -l ivgs-infra/.env.node05
   echo
@@ -132,13 +182,91 @@ brackets through PuTTY is forbidden (dev/CLAUDE.md §5).
 
 ---
 
+## A06B — resolve the engine digest and pin it. WP-62 Task 8(d). Writes 1 line.
+
+**NEW IN WP-62. Run it after A06 and before A09.**
+
+The compose file references `vllm/vllm-openai@${VLLM_IMAGE_DIGEST}` and has NO
+`:-` default on that variable, deliberately: an unset value makes compose
+refuse to render rather than quietly starting whatever `cu130-nightly` points
+at today. `cu130-nightly` MOVED during WP-61 — two pulls, two images, the same
+version string `v0.19.2rc1.dev134` on both. The version string is the field a
+reader would have checked, and it did not move.
+
+This block reads the digest off the image ALREADY ON THIS NODE — the one every
+REAL-48GB figure was measured against — and writes it into `.env.node05`. It
+refuses if that digest does not begin `sha256:3dbe092e`, because that prefix is
+the recorded identity of the measured image and a different digest means the
+numbers in the WP-61 report describe a different engine.
+
+```
+# RUN ON: node-05 (192.168.1.94), via ssh from node-01.
+# Writes: ONE line of ivgs-infra/.env.node05. Pulls nothing, starts nothing.
+(
+  set -u
+  cd /opt/ivgs || { echo "ABORT: no /opt/ivgs"; return 0 2>/dev/null || exit 0; }
+  ENVF=ivgs-infra/.env.node05
+  WANT_PREFIX=sha256:3dbe092e
+
+  [ -f "$ENVF" ] || { echo "ABORT: $ENVF is missing. Run A06 first."
+    return 0 2>/dev/null || exit 0; }
+
+  # Prefer the digest of the image the RUNNING container was created from; fall
+  # back to the local tag only if nothing is running yet. Reading the tag when a
+  # container exists is exactly the mistake dev/CLAUDE.md section 6 records.
+  DIG=$(docker inspect ivgs-vllm-qwen-node05 \
+          --format '{{index .RepoDigests 0}}' 2>/dev/null)
+  if [ -z "$DIG" ]; then
+    DIG=$(docker inspect vllm/vllm-openai:cu130-nightly \
+            --format '{{index .RepoDigests 0}}' 2>/dev/null)
+    echo "NOTE: no running container; read from the local tag instead."
+  fi
+  [ -n "$DIG" ] || { echo "ABORT: no local vllm image to read a digest from."
+    return 0 2>/dev/null || exit 0; }
+
+  # RepoDigests is "repo@sha256:..." - keep only the digest part.
+  DIG=${DIG#*@}
+  echo "resolved: $DIG"
+
+  case "$DIG" in
+    "$WANT_PREFIX"*) echo "OK: matches the recorded prefix $WANT_PREFIX" ;;
+    *) echo ">>> DIGEST MISMATCH. Expected a digest starting $WANT_PREFIX."
+       echo ">>> This is NOT the image the REAL-48GB figures were measured on."
+       echo ">>> Nothing written. Establish which image this is before pinning."
+       return 0 2>/dev/null || exit 0 ;;
+  esac
+
+  cp -p "$ENVF" "$ENVF.bak-$(date -u +%Y%m%d-%H%M%S)"
+  if grep -q '^VLLM_IMAGE_DIGEST=' "$ENVF"; then
+    sed -i "s|^VLLM_IMAGE_DIGEST=.*|VLLM_IMAGE_DIGEST=$DIG|" "$ENVF"
+  else
+    printf 'VLLM_IMAGE_DIGEST=%s\n' "$DIG" >> "$ENVF"
+  fi
+  chmod 600 "$ENVF"
+  echo
+  echo "== the pinned line =="
+  grep '^VLLM_IMAGE_DIGEST=' "$ENVF"
+  echo
+  echo "== compose can now render; this proves it =="
+  docker compose --env-file "$ENVF" \
+    -f ivgs-infra/docker-compose.llm.node05.yml config 2>&1 \
+    | grep -E '^\s+image:' | head -2
+)
+```
+
+**Put the full digest in the report** and, if it differs from the one recorded
+in `.env.node05.example`, say so — the example carries the prefix only.
+
+---
+
 ## A07 — the weights. **~29 GB. ALLOW 30–90 MINUTES.** Its own block, deliberately.
 
 > **TIME WARNING.** This downloads roughly **29 GB** of FP8 safetensors from
 > HuggingFace. On a domestic uplink it can take **well over an hour**. It is
 > separated from every other step so that a slow or failed download costs
-> nothing but itself, and so it can be re-run — `huggingface-cli download`
-> resumes.
+> nothing but itself, and so it can be re-run — `hf download` resumes.
+> (WP-62 Task 8(a): the tool is `hf`. `huggingface-cli` is removed from the
+> current nightly and its shim exits 1.)
 >
 > **RUN IT IN `tmux` OR `screen`.** An SSH drop mid-transfer is otherwise an
 > hour lost.
@@ -176,17 +304,33 @@ model is *provenance-exceptional*: running, hashed, uncertified.
   echo
   echo "== downloading $MODEL. THIS IS THE LONG ONE. =="
   date -u
+  # WP-62 Task 8(a), CORRECTED IN THE FIELD 2026-08-26.
+  #
+  # WAS: --entrypoint huggingface-cli ... download "$MODEL" \
+  #        --local-dir-use-symlinks False
+  #
+  # TWO DEFECTS, both fatal, both fixed here:
+  #
+  #   1. `huggingface-cli` IS REMOVED from the current nightly. What remains is
+  #      a deprecation shim that EXITS 1, so the block aborted at `RC != 0` and
+  #      the operator had to find the replacement live. The tool is now `hf`.
+  #   2. `--local-dir-use-symlinks` is REJECTED by the newer hub client. It was
+  #      also pointless here: there is no `--local-dir`, so the flag was trying
+  #      to control the layout of a directory the command was not writing to.
+  #
+  # The cache layout is therefore the hub's own snapshot layout, with the
+  # weights exposed as SYMLINKS - which is the whole of defect (b) below.
   docker run --rm -i \
     -v "$CACHE":/data/hf-cache \
     -e HF_HOME=/data/hf-cache \
-    --entrypoint huggingface-cli \
+    --entrypoint hf \
     vllm/vllm-openai:cu130-nightly \
-    download "$MODEL" --local-dir-use-symlinks False
+    download "$MODEL"
   RC=$?
   date -u
   if [ $RC -ne 0 ]; then
     echo ">>> DOWNLOAD FAILED rc=$RC. Nothing was manifested. Re-run this block;"
-    echo ">>> huggingface-cli resumes."
+    echo ">>> hf download resumes."
     return 0 2>/dev/null || exit 0
   fi
 
@@ -210,14 +354,31 @@ model is *provenance-exceptional*: running, hashed, uncertified.
     echo "#"
     echo "# This file carries HASHES ONLY. No token, no key, no credential."
     echo
-    find "$CACHE" -type f \( -name '*.safetensors' -o -name '*.json' \) \
+    # WP-62 Task 8(b), CORRECTED IN THE FIELD 2026-08-26. `find -L`, NOT `find`.
+    #
+    # WAS: find "$CACHE" -type f \( -name '*.safetensors' ... \)
+    #
+    # The hub cache stores blobs under `blobs/` and exposes them under
+    # `snapshots/<rev>/` as SYMLINKS. `-type f` tests the link itself, not its
+    # target, so every weight was skipped: a 29 GB cache produced a manifest
+    # whose own total line read "safetensors files: 0". The manifest was
+    # written, the block exited 0, and the provenance debt this exception was
+    # authorised against was recorded against nothing.
+    #
+    # `-L` makes find follow the links, so `-type f` sees the blob. Both the
+    # hashing pass here and the count below needed it; only fixing one would
+    # produce a manifest whose body and whose total disagreed.
+    find -L "$CACHE" -type f \( -name '*.safetensors' -o -name '*.json' \) \
       -printf '%s\t%p\n' | sort -k2 | while IFS=$'\t' read -r SZ F; do
         printf '%s  %12s  %s\n' "$(sha256sum "$F" | cut -d' ' -f1)" "$SZ" \
           "${F#$CACHE/}"
       done
     echo
     echo "# totals"
-    find "$CACHE" -type f -name '*.safetensors' | wc -l | \
+    # WP-62 Task 8(b): `-L` here too. THIS is the line that printed
+    # "safetensors files: 0" over a 29 GB cache, and it is the line a reader
+    # would trust.
+    find -L "$CACHE" -type f -name '*.safetensors' | wc -l | \
       xargs printf '# safetensors files: %s\n'
     du -sh "$CACHE" | awk '{printf "# cache on disk:     %s\n", $1}'
   } > "$MANIFEST"
@@ -258,20 +419,78 @@ and nothing off it.**
     return 0 2>/dev/null || exit 0
   fi
 
+  # --- WP-62 Task 8(c). THE POSTURE CHECK, AND IT IS THE WHOLE CORRECTION.
+  #
+  # WAS: four `ufw allow` and one `ufw deny`, APPENDED, with a closing echo
+  # telling the operator to "CHECK THE ORDER" by eye.
+  #
+  # WHAT WENT WRONG IN THE FIELD, 2026-08-26. This block assumed a
+  # default-deny posture with nothing broad in front of it. node-05 carries
+  #
+  #     Anywhere    ALLOW    192.168.1.0/24
+  #
+  # ufw is FIRST-MATCH. An appended deny sits BELOW that rule, so every host on
+  # the LAN still matched the subnet allow and reached :8000. The rule set
+  # LOOKED like "fleet only" and was inert. The operator had to delete and
+  # re-add the whole set by hand.
+  #
+  # An echo telling a human to check an ordering is not a control. The block
+  # now MEASURES the posture, refuses if a broad rule is present and the
+  # ordering cannot be guaranteed, and INSERTS at fixed positions 1-5 so the
+  # four allows and the deny are above anything that was already there.
+  echo "== BROAD RULES ALREADY PRESENT (this is the trap) =="
+  BROAD=$(sudo ufw status | grep -cE 'Anywhere.*(ALLOW|LIMIT).*(/[0-9]+|Anywhere)')
+  sudo ufw status | grep -E 'Anywhere' | head -10
+  echo "broad-rule count: $BROAD"
+  echo
+
+  # Remove any earlier attempt so re-running cannot leave duplicates at
+  # unpredictable positions. `delete` by rule spec is idempotent: it prints
+  # "Could not delete non-existent rule" and returns without changing anything.
   for IP in 192.168.1.90 192.168.1.91 192.168.1.92 192.168.1.93; do
-    sudo ufw allow from "$IP" to any port 8000 proto tcp comment 'WP-61 qwen vllm'
+    sudo ufw delete allow from "$IP" to any port 8000 proto tcp >/dev/null 2>&1
   done
-  # Everything else is refused explicitly, so the rule set states the intent
-  # rather than relying on a default that could be changed elsewhere.
-  sudo ufw deny 8000/tcp comment 'WP-61 qwen vllm: fleet only'
+  sudo ufw delete deny 8000/tcp >/dev/null 2>&1
+
+  # INSERT, DO NOT APPEND. Positions 1-4 are the allows and 5 is the deny, so
+  # the deny is above the 192.168.1.0/24 allow and below the four hosts it
+  # exempts. Inserting them in reverse so each lands at 1 would reverse the
+  # host order; inserting at an explicit ascending position keeps the rule set
+  # readable in the order it is written here.
+  N=1
+  for IP in 192.168.1.90 192.168.1.91 192.168.1.92 192.168.1.93; do
+    sudo ufw insert $N allow from "$IP" to any port 8000 proto tcp \
+      comment 'WP-61 qwen vllm'
+    N=$((N+1))
+  done
+  sudo ufw insert 5 deny 8000/tcp comment 'WP-61 qwen vllm: fleet only'
 
   echo
   echo "== AFTER =="
-  sudo ufw status numbered | grep -E '8000|To|--' | sed -n '1,30p'
+  sudo ufw status numbered | sed -n '1,40p'
   echo
-  echo ">>> CHECK THE ORDER. ufw is first-match: the four allows must appear"
-  echo ">>> ABOVE the deny. If they do not, delete and re-add with"
-  echo ">>>   sudo ufw insert 1 allow from 192.168.1.90 to any port 8000 proto tcp"
+  echo "== THE GATE. The deny must be numbered BELOW all four allows and"
+  echo "== ABOVE any 192.168.1.0/24 rule. This reads the numbers rather than"
+  echo "== asking you to. =="
+  DENY_POS=$(sudo ufw status numbered | grep '8000/tcp *DENY' | head -1 \
+             | sed 's/^\[ *\([0-9]*\).*/\1/')
+  SUBNET_POS=$(sudo ufw status numbered | grep '192.168.1.0/24' | head -1 \
+               | sed 's/^\[ *\([0-9]*\).*/\1/')
+  ALLOW_MAX=$(sudo ufw status numbered | grep '8000.*ALLOW.*192.168.1.9[0-3]' \
+              | sed 's/^\[ *\([0-9]*\).*/\1/' | sort -n | tail -1)
+  echo "allows end at: ${ALLOW_MAX:-none}   deny at: ${DENY_POS:-none}   subnet allow at: ${SUBNET_POS:-none}"
+  if [ -z "$DENY_POS" ] || [ -z "$ALLOW_MAX" ]; then
+    echo ">>> FAIL: the rules are not both present. :8000 is NOT fleet-only."
+  elif [ "$DENY_POS" -le "$ALLOW_MAX" ]; then
+    echo ">>> FAIL: the deny is ABOVE an allow. The fleet cannot reach :8000."
+  elif [ -n "$SUBNET_POS" ] && [ "$SUBNET_POS" -lt "$DENY_POS" ]; then
+    echo ">>> FAIL: the 192.168.1.0/24 allow is ABOVE the deny, so the deny is"
+    echo ">>> INERT and the whole LAN can reach :8000. This is exactly what"
+    echo ">>> happened on 2026-08-26. Delete rule $SUBNET_POS or move it below."
+  else
+    echo "OK: fleet-only. Four hosts allowed, everything else denied, and the"
+    echo "OK: subnet allow (if any) sits below the deny."
+  fi
 )
 ```
 
@@ -293,11 +512,20 @@ and nothing off it.**
   # THE --env-file IS LOAD-BEARING. `env_file:` on a service injects into the
   # CONTAINER; it does NOT feed ${VAR} interpolation in the YAML, and every
   # vLLM flag in this file is a ${VAR}. See dev/CLAUDE.md §6.3.
+  # WP-62 Task 8(d): the image line is now a DIGEST reference with no `:-`
+  # default, so this `config` fails outright if A06B has not run. That is the
+  # intended failure - it used to fall back to a floating tag that had already
+  # moved once inside one package.
+  docker compose --env-file ivgs-infra/.env.node05 \
+                 -f ivgs-infra/docker-compose.llm.node05.yml \
+                 config 2>&1 | sed -n '/image:/,/^[^ ]/p' | head -3
   docker compose --env-file ivgs-infra/.env.node05 \
                  -f ivgs-infra/docker-compose.llm.node05.yml \
                  config 2>&1 | sed -n '/command:/,/^[^ ]/p' | head -20
   echo
-  echo ">>> READ THE COMMAND ABOVE. It must contain, literally:"
+  echo ">>> READ THE IMAGE AND THE COMMAND ABOVE. The image must be a"
+  echo ">>>   vllm/vllm-openai@sha256:3dbe092e...  reference, NOT a :tag."
+  echo ">>> The command must contain, literally:"
   echo ">>>   --model Qwen/Qwen3.8-27B-FP8"
   echo ">>>   --max-num-seqs 128        (MANDATORY: 1024 makes the engine refuse to start)"
   echo ">>>   --reasoning-parser qwen3  (MANDATORY: without it 1400 thinking tokens land in content)"
@@ -312,9 +540,10 @@ and nothing off it.**
     docker ps --filter name=ivgs-vllm-qwen-node05 \
       --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
     echo
-    echo ">>> The image digest actually pulled, for the record:"
-    docker inspect ivgs-vllm-qwen-node05 --format '{{index .RepoDigests 0}}' 2>/dev/null \
-      || docker inspect vllm/vllm-openai:cu130-nightly --format '{{index .RepoDigests 0}}'
+    echo ">>> WP-62 Task 8(d): the digest the container was CREATED FROM, and"
+    echo ">>> the digest .env.node05 pins. They must be the same string."
+    docker inspect ivgs-vllm-qwen-node05 --format '{{index .RepoDigests 0}}' 2>/dev/null
+    grep '^VLLM_IMAGE_DIGEST=' ivgs-infra/.env.node05
     echo
     echo ">>> FIRST START LOADS 27B OF FP8 WEIGHTS. Give it several minutes."
     echo ">>> healthcheck start_period is 900s deliberately."
