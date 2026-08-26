@@ -233,18 +233,52 @@ class TestOperatorBlockCorrections:
         compose = _uncommented(COMPOSE.read_text(encoding="utf-8"))
         assert "${VLLM_IMAGE_DIGEST:-" not in compose
 
+    #: The digest the operator READ OFF THE RUNNING CONTAINER
+    #: (`docker inspect ... RepoDigests`, node-05, 2026-08-26) and committed in
+    #: a6a4f8e. It is the one value that is allowed to be a complete digest
+    #: here, because it is the one value that was measured.
+    MEASURED_NODE05_DIGEST = (
+        "sha256:3dbe092ec5b2cef63b6104d33fa75d6ce53a7870962529ada69f78bbbc38e776"
+    )
+
     def test_d_the_env_example_records_the_pin_and_does_not_invent_it(self):
-        """The example carries the RECORDED PREFIX only. A tracked file that
-        ships a plausible but wrong 64-character digest is how a fleet gets
-        pinned to an image nobody ran."""
+        """The example carries a MEASURED digest, or a prefix, and never a guess.
+
+        UPDATED BY WP-63, AND IT IS A BETTER DISCRIMINATION, NOT A LOOSER GATE.
+
+        This asserted `not re.fullmatch(r"sha256:[0-9a-f]{64}", value)` — no
+        complete digest, ever. The property it was protecting is *"a tracked
+        file must not ship a plausible but wrong 64-character digest"*, and
+        while the real one was unknown, "no complete digest" was the only
+        available way to say that.
+
+        The operator then MEASURED it, off the running container, and committed
+        it (a6a4f8e, "the full engine digest, closing WP-62 D-1 / WP62-L8").
+        The old assertion turned red on the arrival of the very fact it was
+        waiting for — a rule that could not distinguish a measured value from
+        an invented one, and so rejected both.
+
+        It now names the measured value. An invented 64-character digest still
+        fails, and it fails BY NAME rather than by category; so does a
+        truncation to a different prefix. This is strictly stronger: the old
+        form would have accepted `sha256:3dbe092e-WHATEVER-I-LIKE`.
+        """
         env = ENV_EXAMPLE.read_text(encoding="utf-8")
         assert "VLLM_IMAGE_DIGEST=" in env
         value = re.search(r"^VLLM_IMAGE_DIGEST=(.*)$", env, re.M).group(1)
         assert value.startswith("sha256:3dbe092e")
-        assert not re.fullmatch(r"sha256:[0-9a-f]{64}", value), (
-            "the example now looks like a real digest; it is a prefix only and "
-            "must not be mistaken for one"
-        )
+        if re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+            assert value == self.MEASURED_NODE05_DIGEST, (
+                "the example ships a complete 64-character digest that is NOT "
+                "the one measured on node-05. A plausible wrong digest is how "
+                "a fleet gets pinned to an image nobody ran."
+            )
+        else:
+            # Still a placeholder. It must be obviously one, not a near-miss.
+            assert not re.fullmatch(r"sha256:[0-9a-f]{9,}", value), (
+                "the value is neither the measured digest nor an obvious "
+                "placeholder; it reads as a real digest and is not one"
+            )
 
     def test_d_there_is_a_block_that_fills_the_digest_in(self, blocks):
         whole = BLOCKS.read_text(encoding="utf-8")

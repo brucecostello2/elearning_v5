@@ -135,6 +135,26 @@ async def main() -> int:
         help="persist each verdict via POST /api/v1/quality-scores "
              "(INSERTs; deletes nothing). Default is a dry run.",
     )
+    # WP-63 Task 2. The tag that says WHICH pass wrote a row.
+    #
+    # This script is append-only by design and has now been run three times
+    # against the same project (2026-08-25 10:33, 2026-08-26 08:10, and this
+    # package's pass). Every row carried `rescored_by: "WP-44-QUALITY"`,
+    # hardcoded, so the passes are distinguishable only by timestamp -- which
+    # works until two run on one day. The default is unchanged so the existing
+    # rows keep meaning what they meant.
+    ap.add_argument(
+        "--rescored-by",
+        default="WP-44-QUALITY",
+        help="value written to scoring_details.rescored_by, so a reader can "
+             "tell which pass produced a row.",
+    )
+    ap.add_argument(
+        "--note",
+        default=None,
+        help="free text written to scoring_details.rescore_note, for the "
+             "reason this pass was run.",
+    )
     args = ap.parse_args()
 
     cfg = WorkerConfig()
@@ -149,6 +169,7 @@ async def main() -> int:
 
     print(f"project      : {args.project}")
     print(f"assets       : {len(assets)}")
+    print(f"rescored_by  : {args.rescored_by}")
     print(f"mode         : {'WRITE (persisting)' if args.write else 'DRY RUN (writes nothing)'}")
     print()
     header = "%-38s %-6s %-4s %-9s %8s %6s %9s  %s" % (
@@ -195,11 +216,13 @@ async def main() -> int:
 
         if args.write:
             details = result.scoring_details()
-            details["rescored_by"] = "WP-44-QUALITY"
+            details["rescored_by"] = args.rescored_by
             details["supersedes"] = (
                 "the first e2e run's verdict, which was POSTed to a route that "
                 "did not exist and never reached asset_quality_scores"
             )
+            if args.note:
+                details["rescore_note"] = args.note
             ok = await submit_quality_score(
                 asset_id=asset["id"],
                 quality_score=result.quality_score,
