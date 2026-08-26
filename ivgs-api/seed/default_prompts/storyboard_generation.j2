@@ -11,6 +11,35 @@ Generate a JSON array of scene objects from the transcript. Each scene must incl
 - "media_type": One of "image", "video_clip", or "animation"
 - "duration_seconds": Duration for this scene
 
+{% if project_description %}
+PROJECT BRIEF:
+{{ project_description }}
+
+RULE 0 — IF THE BRIEF ABOVE CONTAINS A BLOCK DELIMITED BY THE LINES
+"=== LEARNING OUTCOMES (authored by the course owner) ===" AND
+"=== END LEARNING OUTCOMES ===", ITS CONTENTS ARE THE STATED LEARNING OUTCOMES
+OF THIS COURSE, AND EVERY RULE BELOW IS JUDGED AGAINST THEM.
+Learning outcomes say what the viewer must be able to DO afterwards, which is a
+stronger constraint than what the video is ABOUT. Read them before you choose a
+single scene, and apply them in two specific places:
+
+  * TO RULE 2, the media_type of each scene. An outcome phrased as following,
+    performing, carrying out or watching something HAPPEN is an outcome a still
+    frame cannot serve; the scene that teaches it is a "video_clip" (or an
+    "animation" if RULE 2's person condition is met), and choosing "image"
+    there has failed the outcome. An outcome phrased as recognising, naming,
+    recalling or comparing is served by a still, and reaching for motion there
+    spends GPU time on nothing.
+  * TO RULES 5, 6 AND 7, the content of each visual. The step a scene depicts
+    is the step the outcome names. A storyboard whose visuals never show the
+    action an outcome requires has not covered the course, however handsome the
+    pictures are.
+
+If there is no such block, the outcomes were not stated. Proceed on the brief
+and the transcript alone under the rules below, and DO NOT invent outcomes,
+mention their absence, or write anything about this rule into a scene.
+{% endif %}
+
 RULE 1 — NO TEXT IN THE VISUAL. Absolute.
 "visual_description" must NEVER request on-screen text, numbers, equations,
 labels, captions, titles, handwriting or writing of any kind. Image models
@@ -32,20 +61,38 @@ SHOWING ANY. See RULE 5: describe the board STATE and the STEP in words —
 still empty" — and let the overlay supply the digits. That is specific, and it
 contains no text for the model to misspell.
 
-RULE 2 — media_type
-- "image": the default. Static concepts, diagrams, portraits, backgrounds that
-  will carry an overlay, summaries, establishing shots.
-- "video_clip": real-world action, process, demonstration, movement.
-- "animation": ONLY for a scene whose visual contains a character or person to
-  animate. The animation branch is pose reenactment (Wan2.2-Animate): it
-  transfers a driving video's motion onto the subject of the scene's still. A
-  still with no person in it does not produce a moving diagram — the model
-  invents a human body, and the pipeline now refuses the scene by name
-  ("reference image contains no person to animate"). Motion of equations,
-  charts, flowcharts or "steps appearing on screen" is therefore NOT
-  "animation": map those scenes to "image". There is no motion-graphics
-  pathway in this pipeline yet; until there is, that motion belongs to the
-  composition overlay on top of a still.
+RULE 2 — CHOOSE media_type DELIBERATELY, SCENE BY SCENE
+media_type is a DECISION you make for each scene against the criteria below.
+It is not a default you fall into. Measured on a real run of this pipeline
+(project 14f71729, 2026-08-26, 9 scenes): every scene came back "image",
+because nothing in this prompt ever asked for the choice to be made. Answer
+these in order, for every scene, and let the answer decide - and where RULE 0's
+learning outcomes are stated, judge each answer against them first:
+
+  1. IS THE MOTION INHERENT TO THE STEP? Is the thing this scene teaches only
+     legible while it MOVES - a hand sweeping down a column, a quantity being
+     poured, a mechanism turning, a demonstration performed in real time - so
+     that a single frozen frame would lose the point? Then "video_clip".
+  2. IS THE STEP A TRANSFORMATION OR A BUILD-UP CARRIED BY A PERSON WHO IS IN
+     THE FRAME? Something that accumulates, assembles or changes state while a
+     visible human demonstrates it? Then "animation" - but ONLY if a person is
+     genuinely in that scene's visual. See the hard constraint below.
+  3. OTHERWISE "image". Static concepts, diagrams, portraits, establishing
+     shots, summaries, and any surface that will carry the composition overlay.
+
+Most scenes in most lessons are honestly images, and choosing "image" after
+asking the three questions is a correct answer. Choosing it for all of them
+without asking is not.
+
+THE HARD CONSTRAINT ON "animation", AND IT IS ENFORCED IN CODE. The animation
+branch is pose reenactment (Wan2.2-Animate): it transfers a driving video's
+motion onto the SUBJECT of the scene's still. A still with no person in it does
+not produce a moving diagram - the model invents a human body, and the pipeline
+now refuses the scene by name ("reference image contains no person to
+animate"). So motion of equations, charts, flowcharts or "steps appearing on
+screen" is NOT "animation": map those scenes to "image", and let the
+composition overlay supply the motion on top of the still. There is no
+motion-graphics pathway in this pipeline yet.
 
 RULE 3 — narration must be self-consistent
 The narration is spoken aloud in order as one continuous script.
@@ -116,12 +163,56 @@ So:
   lighting and drawing style carry across scenes, while what is ON the working
   surface changes in every one.
 
+RULE 7 — WRITE THE DESCRIPTION FOR THE MEDIUM YOU JUST CHOSE
+media_type and "visual_description" are ONE decision, not two. A description
+authored for a still and then labelled "video_clip" gives the video engine a
+frozen frame to render for five seconds, and nothing downstream ever rewrites
+it: the description you write here is the ONLY motion instruction that reaches
+the engine. So write it for the medium:
+
+  "image"      — COMPOSITIONAL. One frozen instant. Subject, framing, the state
+                 of the working surface, light, palette, and the clear space the
+                 overlay will occupy. No camera moves, no "then", no elapsed
+                 time: a still has none of those and asking for them wastes the
+                 words that should have described the frame.
+
+  "video_clip" — MOTION, CAMERA AND TIME, all three, in words:
+                   * WHAT MOVES, as a verb — the hand sweeps down the column,
+                     the pencil traces the ruled line, the counters slide into
+                     two groups;
+                   * WHAT THE CAMERA DOES — holds steady, drifts slowly right,
+                     pushes in on the working surface, tilts down from face to
+                     page. "Static locked-off camera" is a legitimate answer and
+                     counts, but SAY it;
+                   * WHAT HAPPENS IN WHAT ORDER — begins with…, then…,
+                     continues until…, ends holding on…. The clip has a start
+                     and an end and the description must say which is which.
+                 A "video_clip" description that would read equally well as a
+                 photograph caption is wrong, and is the defect this rule exists
+                 to stop.
+
+  "animation"  — THE BUILD OR THE TRANSFORM, and the PERSON performing it. Say
+                 what accumulates, assembles, grows or changes state, and say in
+                 what order it does so; and name the visible human whose pose
+                 drives it (RULE 2's hard constraint — the branch needs a
+                 subject to animate). "The presenter's hand builds the second
+                 row beneath the first, one column at a time, shoulders and head
+                 turning towards each new column as it is added."
+
+RULE 1 IS UNCHANGED BY THIS AND STILL WINS. Motion, camera and time are all
+describable without a single digit, letter or caption. "The hand sweeps down
+the ones column and the answer row fills from the right" names movement, order
+and place, and contains nothing for the model to misspell.
+
 Visual guidelines:
 - Visual descriptions should be detailed enough for AI image generation
 - Maintain visual consistency across scenes (style, color palette) while the
   working surface changes scene by scene (RULE 6)
 - Name subject, setting, style, composition, palette and key details
 - Name the step and the state of the working (RULE 5)
+- Carry the language of the medium chosen for that scene (RULE 7): motion,
+  camera and order for "video_clip"; the build, its order and the person for
+  "animation"; one composed instant for "image"
 - Contain no text of any kind (RULE 1)
 
 TRANSCRIPT:

@@ -2,6 +2,14 @@
 
 WP-63 Task 9, RULED: prompt work now, THE MODEL DOES NOT MOVE off Llama.
 
+WP-64 Task 2 EXTENDS THE CONTRACT THIS SCRIPT GATES, and the script keeps its
+name because it is the same one publish. **v4 was committed by WP-63 and never
+published** - WP-63 D-2 held it behind an acceptance sequence that was voided
+when project 14f71729 was deleted. It therefore has no history to preserve, and
+WP-64 extended it IN PLACE with RULE 2 (a deliberate per-scene media_type
+choice) and RULE 7 (a description authored FOR that medium) before its first
+publish. What this script inserts is v4: one version, carrying both packages.
+
 This is the same versioning path `wp61_publish_prompt.py` uses for the
 translation prompt — current version preserved inactive, next version inserted
 active, change note recorded on the row — pointed at
@@ -32,6 +40,11 @@ WHAT IT REFUSES TO DO:
     RULE 5 and RULE 1 pull against each other and RULE 1 wins on the digits:
     a prompt that asks for the numbers to be DRAWN gets "2? x 23.14", measured
     twice on this pipeline. The binding is to the board STATE and the STEP.
+  * It refuses if the template does not ask for the media_type to be CHOSEN and
+    the description to be written FOR it (WP-64). Without RULE 7 the storyboard
+    still authors every description for a still, and switching a scene to
+    video_clip or animation dispatches the right engine into a frozen idea -
+    there is no later stage that adds the motion back.
   * It refuses if there is not exactly ONE active global storyboard prompt to
     supersede.
   * It refuses if an identical version is already published, so a second run is
@@ -77,7 +90,40 @@ CHANGE_NOTE = (
     "is not a description of this scene). RULE 1 IS UNCHANGED AND STILL WINS "
     "ON THE DIGITS: the binding is to board STATE and STEP in words, never to "
     "text for the model to draw, because a prompt that asks for the numbers "
-    "gets '2? x 23.14'. v3 stays readable, inactive."
+    "gets '2? x 23.14'. "
+    "WP-64 Task 2, in the SAME v4 (v4 was committed by WP-63 and never "
+    "published, so this extends it in place rather than rewriting history). "
+    "MEASURED in the tree 2026-08-26: a scene's visual_description is authored "
+    "once for whatever media_type Stage 2 chose - overwhelmingly image, "
+    "because nothing in v3 asked for the choice to be made - and NO layer "
+    "below ever rewrites it for a different medium. update_scene "
+    "(ivgs-api/app/api/v1/storyboard.py:143) persists a media_type change with "
+    "no rewrite; video_generation_task.py:245 interpolates the same still "
+    "description into the cinematographer prompt; "
+    "animation_generation_task.py:389 hands it to Wan2.2-Animate verbatim. So "
+    "v4 adds RULE 2 (media_type is a deliberate per-scene decision with stated "
+    "criteria: motion inherent to the step earns video_clip; a "
+    "transformation or build-up carried by a person in the frame earns "
+    "animation; image otherwise - and the person requirement is not stylistic, "
+    "animation_generation_task.py:481 refuses a personless reference by name) "
+    "and RULE 7 (the description must be authored FOR the chosen medium: "
+    "motion, camera and order for video_clip; the build, its order and the "
+    "performer for animation; one composed instant for image). RULE 1 IS "
+    "UNCHANGED BY THAT TOO - motion, camera and time are all describable "
+    "without a digit. "
+    "WP-64 Task 6, also in this v4. The storyboard model could not reason from "
+    "the course's learning outcomes because the project never carried them: "
+    "migration 0037 adds projects.learning_outcomes (nullable TEXT, "
+    "operator-authored, not retroactive) and v4 gains RULE 0, which conditions "
+    "the RULE 2 media_type criteria and the RULE 5/6/7 visual authoring on the "
+    "stated outcomes when present and degrades silently when absent. The "
+    "outcomes reach Stage 2 inside project_description between two explicit "
+    "delimiter lines, composed by pipeline_orchestrator_v2 for the storyboard "
+    "branch only - NOT because that is the right shape but because "
+    "stage2_storyboard._render_user_prompt (:127-137) fixes the template's "
+    "variable list inside a body AD-05 section 8 freezes; the real fix is "
+    "ledgered P2.66. "
+    "v3 stays readable, inactive."
 )
 
 #: The binding contract, as phrases that must be present. A prompt missing
@@ -87,6 +133,30 @@ BINDING_PHRASES = (
     "EVERY VISUAL MUST DEPICT ITS OWN SCENE'S STEP",
     "NO TWO SCENES MAY SHARE A VISUAL",
     "stock-photo framing",
+)
+
+#: WP-64 Task 2. The medium contract, gated for the same reason: a template
+#: that has lost these publishes cleanly, runs cleanly, and authors every
+#: description for a still while the operator switches scenes to video.
+MEDIUM_PHRASES = (
+    "CHOOSE media_type DELIBERATELY, SCENE BY SCENE",
+    "WRITE THE DESCRIPTION FOR THE MEDIUM YOU JUST CHOSE",
+    "WHAT MOVES, as a verb",
+    "WHAT HAPPENS IN WHAT ORDER",
+)
+
+#: WP-64 Task 6(d). RULE 0, and the DELIMITER IT READS. The delimiter is not
+#: decoration: the orchestrator writes the outcomes into the storyboard stage's
+#: `project_description` between exactly these two lines
+#: (`ivgs-workers/tasks/pipeline_orchestrator_v2.py:1122`), because the frozen
+#: stage body cannot be given a template variable of its own. If the two copies
+#: drift, the model is handed a block it was never told to look for, and the
+#: outcomes are silently ignored while everything still runs green.
+OUTCOMES_PHRASES = (
+    "RULE 0 —",
+    "=== LEARNING OUTCOMES (authored by the course owner) ===",
+    "=== END LEARNING OUTCOMES ===",
+    "DO NOT invent outcomes",
 )
 
 #: RULE 1 must survive. It is the older rule and it is the one measured twice.
@@ -132,6 +202,25 @@ async def main() -> None:
             "visuals unbound to their narration, which is the defect this "
             "version exists to close."
         )
+    missing = [p for p in MEDIUM_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template does not state the WP-64 Task 2 medium contract: "
+            f"missing {missing!r}. Without it Stage 2 authors every "
+            "visual_description for a still, and nothing below rewrites one "
+            "when the medium changes - the description IS the motion "
+            "instruction that reaches CogVideoX and Wan2.2-Animate."
+        )
+    missing = [p for p in OUTCOMES_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template does not state the WP-64 Task 6 learning-outcomes "
+            f"contract: missing {missing!r}. The delimiter lines in particular "
+            "must match the orchestrator's byte for byte "
+            "(pipeline_orchestrator_v2.OUTCOMES_OPEN / OUTCOMES_CLOSE); a "
+            "template that does not name them is handed the block and never "
+            "looks for it, and the outcomes are ignored with everything green."
+        )
     missing = [p for p in NO_TEXT_PHRASES if p not in text]
     if missing:
         _fail(
@@ -141,7 +230,10 @@ async def main() -> None:
             "measured twice on this pipeline and produced '2? x 23.14' and "
             "'12 + 44 = 67 + 5'."
         )
-    print("contract : OK (RULE 5 and RULE 6 present, RULE 1 intact)")
+    print(
+        "contract : OK (RULE 0, RULE 2, RULE 5, RULE 6 and RULE 7 present, "
+        "RULE 1 intact)"
+    )
     print()
 
     async with async_session_factory() as db:
@@ -188,7 +280,7 @@ async def main() -> None:
             is_active=True,
             project_id=None,
             scene_id=None,
-            created_by="wp-63-validator",
+            created_by="wp-63-validator+wp-64-media",
             change_note=CHANGE_NOTE,
         )
         db.add(published)
