@@ -2,7 +2,11 @@
 
 import React, { useState, useCallback, useRef, useMemo, useEffect } from "react";
 import type { Scene, SceneStatus } from "@/types/storyboard";
-import { mediaTypeLabel } from "@/lib/scenes";
+import {
+  mediaTypeLabel,
+  sceneBadge,
+  sceneTitle,
+} from "@/lib/scenes";
 
 /**
  * §8.2.5 Composition Timeline Editor (applied to Storyboard context)
@@ -259,7 +263,7 @@ export default function SceneTimeline({
                 onMouseMove={(e) => handleMouseMove(e, scene.id)}
                 onMouseLeave={handleMouseLeave}
                 role="button"
-                aria-label={`Scene ${scene.scene_index + 1}: ${
+                aria-label={`Scene ${sceneTitle(scene.scene_index)}: ${
                   typeof scene.duration_seconds === "number"
                     ? formatTime(scene.duration_seconds)
                     : "duration not recorded"
@@ -267,8 +271,11 @@ export default function SceneTimeline({
               >
                 {/* Scene number & duration label */}
                 <div className="flex flex-col items-center gap-0.5 px-1">
-                  <span className="text-xs font-bold text-gray-900 dark:text-white drop-shadow">
-                    {scene.scene_index + 1}
+                  <span
+                    title={sceneTitle(scene.scene_index)}
+                    className="text-xs font-bold text-gray-900 dark:text-white drop-shadow"
+                  >
+                    {sceneBadge(scene.scene_index)}
                   </span>
                   {widthPercent > 3 && (
                     <span className="text-[9px] text-gray-900 dark:text-white truncate max-w-full px-1">
@@ -317,7 +324,7 @@ export default function SceneTimeline({
           }}
         >
           <div className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-            Scene {hoveredTiming.scene.scene_index + 1}
+            Scene {sceneBadge(hoveredTiming.scene.scene_index)}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
             <div>

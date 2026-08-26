@@ -2,7 +2,12 @@
 
 import React, { useState, useCallback } from "react";
 import SceneThumbnail from "@/components/SceneThumbnail";
-import { mediaTypeIcon, mediaTypeLabel } from "@/lib/scenes";
+import {
+  mediaTypeIcon,
+  mediaTypeLabel,
+  sceneBadge,
+  sceneTitle,
+} from "@/lib/scenes";
 import type { Scene, SceneStatus } from "@/types/storyboard";
 import type { DraggableProvidedDragHandleProps } from "react-beautiful-dnd";
 
@@ -171,7 +176,7 @@ export default function SceneCard({
       } ${canEdit ? "cursor-pointer" : "cursor-default"}`}
       onClick={handleCardClick}
       role="article"
-      aria-label={`Scene ${scene.scene_index + 1}: ${truncateText(
+      aria-label={`Scene ${sceneTitle(scene.scene_index)}: ${truncateText(
         scene.narration_text,
         50
       )}`}
@@ -187,14 +192,14 @@ export default function SceneCard({
               onToggleSelect();
             }}
             className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-blue-500 dark:text-blue-400 focus:ring-blue-500 focus:ring-offset-gray-800"
-            aria-label={`Select scene ${scene.scene_index + 1}`}
+            aria-label={`Select ${sceneTitle(scene.scene_index)}`}
           />
         )}
         {canEdit && dragHandleProps && (
           <div
             {...dragHandleProps}
             className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors cursor-grab active:cursor-grabbing"
-            aria-label={`Drag to reorder scene ${scene.scene_index + 1}`}
+            aria-label={`Drag to reorder ${sceneTitle(scene.scene_index)}`}
             onClick={(e) => e.stopPropagation()}
           >
             <svg
@@ -215,9 +220,14 @@ export default function SceneCard({
       </div>
 
       {/* ── Scene Index Badge ────────────────────────────────────── */}
+      {/* WP-63 Task 5: the ZERO-BASED index, because that is the number every
+          flag, log and checkpoint uses. The tooltip carries both. */}
       <div className="absolute top-2 right-2 z-10">
-        <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white dark:bg-gray-900/80 text-xs font-bold text-gray-900 dark:text-white">
-          {scene.scene_index + 1}
+        <span
+          title={sceneTitle(scene.scene_index)}
+          className="inline-flex items-center justify-center min-w-7 h-7 px-1.5 rounded-full bg-white dark:bg-gray-900/80 text-xs font-bold text-gray-900 dark:text-white"
+        >
+          {sceneBadge(scene.scene_index)}
         </span>
       </div>
 
@@ -336,7 +346,7 @@ export default function SceneCard({
                 onEdit();
               }}
               className="flex-1 px-2 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/20 rounded hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
-              aria-label={`Edit scene ${scene.scene_index + 1}`}
+              aria-label={`Edit ${sceneTitle(scene.scene_index)}`}
             >
               Edit
             </button>
@@ -348,7 +358,7 @@ export default function SceneCard({
                 scene.status === "REGENERATING"
               }
               className="flex-1 px-2 py-1.5 text-xs font-medium text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/20 rounded hover:bg-yellow-100 dark:hover:bg-yellow-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label={`Regenerate scene ${scene.scene_index + 1}`}
+              aria-label={`Regenerate ${sceneTitle(scene.scene_index)}`}
             >
               {isRegenerating ? "…" : "Regen"}
             </button>
@@ -356,7 +366,7 @@ export default function SceneCard({
               onClick={handleDelete}
               disabled={isDeleting}
               className="px-2 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-900/20 rounded hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label={`Delete scene ${scene.scene_index + 1}`}
+              aria-label={`Delete ${sceneTitle(scene.scene_index)}`}
             >
               {isDeleting ? "…" : "✕"}
             </button>

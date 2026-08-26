@@ -2,12 +2,14 @@
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import { apiClient } from "@/lib/api-client";
 import { useAssets } from "@/hooks/useAssets";
 import { useStoryboard } from "@/hooks/useStoryboard";
 import { useAssetObjectUrl } from "@/hooks/useAssetMedia";
 import { assetRenderKind } from "@/lib/media";
+import { sceneBadge, sceneTitle } from "@/lib/scenes";
 import type { Asset } from "@/types/api";
 import type { GateState } from "@/hooks/useProjectProgress";
 
@@ -47,8 +49,17 @@ const DECISION_HELP: Record<Decision, string> = {
   rejected:
     "Records that this artefact is not acceptable. Nothing is dispatched and the gate stays open.",
   regenerate:
-    "Records that this artefact should be produced again. Nothing is dispatched here; re-run the stage that produced it.",
+    "Re-runs the stage that produced this artefact, and the gate re-opens on what comes back. This consumes GPU time.",
 };
+
+/*
+ * WP-63 Task 8. The `regenerate` help text used to end "Nothing is dispatched
+ * here; re-run the stage that produced it", and it was accurate: the decision
+ * was recorded and released nothing. Measured on project 14f71729, 2026-08-26
+ * — two decisions four seconds apart (15:17:25.362Z and 15:17:29.616Z, the
+ * second because nothing had happened), two audit rows, zero broker messages.
+ * It dispatches now, so the tooltip says so, and says what it costs.
+ */
 
 export default function GateReviewPanel({
   projectId,
@@ -200,6 +211,40 @@ export default function GateReviewPanel({
   );
 }
 
+/**
+ * A link that is not rendered when it points at the page you are on.
+ *
+ * WP-63 Task 5. "Open editor →" was operator-measured as navigating nowhere,
+ * TWICE, and the reason is that it was right both times: this panel renders on
+ * three pages — the project overview, `/projects/[id]/storyboard` and
+ * `/projects/[id]/draft` — and each preview's link targets the very page two of
+ * them are already on. Next's router coalesces a navigation to the current URL
+ * into nothing, so the click did nothing, visibly, forever.
+ *
+ * The href was never wrong; both routes exist. What was wrong was offering the
+ * affordance at all in the one place it cannot do anything. A dead control
+ * teaches an operator to stop trusting live ones, so it is removed where it is
+ * dead rather than left in place with a tooltip.
+ */
+function ElsewhereLink({
+  href,
+  children,
+}: {
+  href: string;
+  children: React.ReactNode;
+}): React.ReactElement | null {
+  const pathname = usePathname();
+  if (pathname === href) return null;
+  return (
+    <Link
+      href={href}
+      className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
+    >
+      {children}
+    </Link>
+  );
+}
+
 /** The first scenes, so a reviewer sees what they are approving. */
 function StoryboardPreview({
   projectId,
@@ -214,12 +259,9 @@ function StoryboardPreview({
         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Storyboard under review
         </h3>
-        <Link
-          href={`/projects/${projectId}/storyboard`}
-          className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
+        <ElsewhereLink href={`/projects/${projectId}/storyboard`}>
           Open editor →
-        </Link>
+        </ElsewhereLink>
       </div>
       {isLoading ? (
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading…</p>
@@ -236,8 +278,14 @@ function StoryboardPreview({
           <ol className="mt-2 space-y-2">
             {shown.map((s) => (
               <li key={s.id} className="text-xs text-gray-700 dark:text-gray-300">
-                <span className="font-mono text-gray-400">
-                  {s.scene_index}
+                {/* WP-63 Task 5: the same badge the cards now show, so the
+                    gate panel and the storyboard grid name a scene the same
+                    way — and the same way the rejection messages do. */}
+                <span
+                  title={sceneTitle(s.scene_index)}
+                  className="font-mono text-gray-400"
+                >
+                  {sceneBadge(s.scene_index)}
                 </span>{" "}
                 {s.narration_text ?? "(no narration)"}
               </li>
@@ -270,12 +318,9 @@ function DraftPreview({ projectId }: { projectId: string }): React.ReactElement 
         <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
           Draft under review
         </h3>
-        <Link
-          href={`/projects/${projectId}/draft`}
-          className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400"
-        >
+        <ElsewhereLink href={`/projects/${projectId}/draft`}>
           Open full preview →
-        </Link>
+        </ElsewhereLink>
       </div>
       {isLoading ? (
         <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">Loading…</p>

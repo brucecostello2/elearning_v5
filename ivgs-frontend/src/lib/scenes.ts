@@ -258,3 +258,55 @@ export function durationError(seconds: unknown): string | null {
   }
   return null;
 }
+
+/* ---------------------------------------------------------------------------
+ * Scene numbering — WP-63 Task 5
+ * -------------------------------------------------------------------------*/
+
+/**
+ * WHAT AN OPERATOR SEES ON A CARD, AND WHAT EVERYTHING ELSE CALLS THE SAME SCENE.
+ *
+ * The storyboard cards, the timeline and the edit modal all rendered
+ * `scene_index + 1` — scenes 1 to 9. Every other surface in the system speaks
+ * `scene_index`, zero-based: the storyboard rows, the checkpoint data, the
+ * worker logs, the translation flags, and the rejection this package started
+ * from ("scene indexes 0, 2 and 7"). So an operator told that scene 0 failed
+ * had to do arithmetic, in their head, in the wrong direction, to find the
+ * card — and the two conventions collide in the middle of the range, where
+ * "scene 5" names two different scenes depending on who said it.
+ *
+ * That is not hypothetical. The incident report for this package says *"scene 5
+ * teaches 92 + 230 = 322 and its visual is a hand holding a pencil"*. In the
+ * database that is `scene_index = 4`; `scene_index = 5` is "Let's try another
+ * one: 32 times 21", a different scene entirely.
+ *
+ * BOTH ARE SHOWN, and the zero-based one leads, because it is the one that
+ * appears in every message an operator has to act on. `sceneBadge` is what
+ * goes in the small round badge; `sceneTitle` is the tooltip and accessible
+ * name that spells the pairing out.
+ */
+
+/** The badge text: the index the rest of the system speaks. */
+export function sceneBadge(sceneIndex: number): string {
+  return `#${sceneIndex}`;
+}
+
+/** The long form, for `title` and `aria-label`: both numbers, once. */
+export function sceneTitle(sceneIndex: number): string {
+  return `scene_index ${sceneIndex} (the ${ordinal(sceneIndex + 1)} scene)`;
+}
+
+function ordinal(n: number): string {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}

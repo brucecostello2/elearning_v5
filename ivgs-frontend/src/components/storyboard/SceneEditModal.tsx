@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import SceneThumbnail from "@/components/SceneThumbnail";
+import { apiErrorMessage } from "@/lib/api-error";
 import type {
   Scene,
   SceneStatus,
@@ -15,6 +16,8 @@ import {
   durationError,
   mediaTypeLabel,
   normalizeMediaType,
+  sceneBadge,
+  sceneTitle,
   sceneUpdatePayload,
   timingOffsetError,
 } from "@/lib/scenes";
@@ -403,8 +406,28 @@ export default function SceneEditModal({
    */
   const handleRegenerate = useCallback(async (): Promise<void> => {
     if (!canEdit || isRegenerating) return;
+
+    /* WP-63 Task 7(a). A REGENERATION RUNS THE SCENE AS IT IS STORED.
+       `dispatch_scene_media_regeneration` reads the scene row -- deliberately,
+       as WP-45 ruled, because an operator pressing Regen has usually just
+       edited the scene and replaying the ORIGINAL task arguments would
+       regenerate exactly what they were trying to change. The corollary is
+       that unsaved edits are not part of it. This modal offered Save and
+       Regenerate side by side and said nothing about the order, so "switch the
+       media type to video and press Regenerate" produced another image and
+       looked like the media-type change had been ignored. */
+    if (hasChanges) {
+      setSaveError(
+        "Save your changes first. A regeneration runs this scene as it is " +
+          "STORED, so anything still unsaved here — the media type included — " +
+          "would not be part of it."
+      );
+      return;
+    }
+
     const confirmed = window.confirm(
-      "Regenerate this scene? Existing generated assets will be replaced."
+      "Regenerate this scene? A new asset is produced and becomes the " +
+        "current one; the existing asset is kept, marked superseded."
     );
     if (!confirmed) return;
 
@@ -413,13 +436,11 @@ export default function SceneEditModal({
       await onRegenerate(scene.id);
       onClose();
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Regeneration failed";
-      setSaveError(message);
+      setSaveError(apiErrorMessage(err));
     } finally {
       setIsRegenerating(false);
     }
-  }, [canEdit, isRegenerating, onRegenerate, scene.id, onClose]);
+  }, [canEdit, isRegenerating, hasChanges, onRegenerate, scene.id, onClose]);
 
   /**
    * Format a timestamp to a human-readable string.
@@ -444,8 +465,11 @@ export default function SceneEditModal({
         {/* ── Header ─────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-300 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-sm font-bold text-white">
-              {scene.scene_index + 1}
+            <span
+              title={sceneTitle(scene.scene_index)}
+              className="inline-flex items-center justify-center min-w-8 h-8 px-2 rounded-full bg-blue-600 text-sm font-bold text-white"
+            >
+              {sceneBadge(scene.scene_index)}
             </span>
             <h2
               id="scene-edit-title"
