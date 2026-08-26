@@ -43,7 +43,25 @@ readonly WAL_ARCHIVE_DIR="${WAL_ARCHIVE_DIR:-/mnt/backup/ivgs/wal}"
 # this script with the container environment, and that variable is still set
 # there; the compose files now interpolate it from the same .env value so the two
 # cannot drift.
-readonly WAL_RETENTION_DAYS="${BACKUP_RETENTION_WAL_DAYS:-${WAL_RETENTION_DAYS:-7}}"
+# WP-60 Task 9 (WP-59 D-1, RULED: yes). 7 -> 10.
+#
+# THE PITR WINDOW IS THE WAL WINDOW. With a weekly base and 7-day WAL the two
+# meet with ZERO margin: at the worst point in the cycle -- just before a new
+# base -- the newest base is 7 days old and the archive reaches back exactly 7.
+# One missed base opens an unrecoverable hole immediately: the newest base
+# becomes 14 days old while the WAL still reaches back 7, so days 8-14 are
+# unrecoverable EVEN THOUGH a base and an archive both exist. Nothing looks
+# wrong while that is true, which is the shape this project keeps finding.
+#
+# 10 days buys three days of slack over the weekly cadence, for about 1.4 GB on
+# a NAS 1% full of 20 T. `BaseBackupStale` at 8 days is the tripwire that fires
+# inside the new margin rather than after it has closed.
+#
+# The 10 here is the FALLBACK. ivgs-infra/.env's BACKUP_RETENTION_WAL_DAYS is
+# the governing value and the compose files interpolate it into both names
+# (WP-58 Task 2) - the fallbacks are aligned so an unset variable cannot
+# silently reinstate the zero-margin window.
+readonly WAL_RETENTION_DAYS="${BACKUP_RETENTION_WAL_DAYS:-${WAL_RETENTION_DAYS:-10}}"
 readonly LOG_FILE="/var/log/ivgs/wal_archive.log"
 readonly LOG_DIR="/var/log/ivgs"
 

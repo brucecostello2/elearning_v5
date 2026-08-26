@@ -74,31 +74,39 @@ base is unusable — there is nothing to bridge days 8 through 30.
 |---|---|---|
 | Base backup cadence | weekly, Sunday 01:00 UTC | `ivgs-backup-worker/celery_app.py` |
 | Base backup retention | **35 days** | `BACKUP_RETENTION_BASEBACKUP_DAYS`, default in `scripts/basebackup.sh` |
-| WAL retention | **7 days** | `BACKUP_RETENTION_WAL_DAYS`, `ivgs-infra/.env` |
+| WAL retention | **10 days** | `BACKUP_RETENTION_WAL_DAYS`, `ivgs-infra/.env` (raised from 7 by WP-60 Task 9; the fallbacks in `scripts/wal_archive.sh` and `docker-compose.override.node01.yml` match, so an unset variable cannot reinstate 7) |
 | Logical dump retention | 30 days | `BACKUP_RETENTION_DB_DAYS` |
 
 ### What that actually promises
 
-**The PITR window is 7 days, not 35.** WAL retention is the binding
+**The PITR window is 10 days, not 35.** WAL retention is the binding
 constraint, and it should be read that way rather than being quietly assumed to
 be the base retention.
 
-Working it through: a weekly base and 7-day WAL means that at the *worst* point
-in the cycle — the moment just before a new base is taken — the newest base is
-7 days old and the archive reaches back exactly 7 days. The two just meet.
-There is no margin, and a base backup that is skipped for any reason opens a
-hole immediately: the newest base becomes 14 days old while the WAL still only
-reaches back 7, and days 8–14 become unrecoverable *even though a base and an
-archive both exist*. That is why `BaseBackupStale` pages at 8 days — the alert
-is not about tidiness, it is the tripwire on this exact gap.
+Working it through at the OLD setting, because it is why the number moved: a
+weekly base and 7-day WAL meant that at the *worst* point in the cycle — the
+moment just before a new base is taken — the newest base was 7 days old and the
+archive reached back exactly 7 days. The two just met. There was no margin, and
+a base backup skipped for any reason opened a hole immediately: the newest base
+becomes 14 days old while the WAL still only reaches back 7, and days 8–14
+become unrecoverable *even though a base and an archive both exist*. Nothing
+looks wrong while that is true — the archive keeps filling, the nightly dump
+keeps succeeding, every dashboard stays green — and it is discovered during an
+incident. `BaseBackupStale` pages at 8 days because it is the tripwire on
+exactly this gap.
 
-**Recommendation, for the operator's decision (WP-59 D-2):** raise
-`BACKUP_RETENTION_WAL_DAYS` from 7 to **10**. That gives three days of slack
-over the weekly cadence, so one missed base does not open a hole, and the cost
-is trivial: the archive currently holds 207 segments at 16 MB each — about 3.3
-GB for 7 days — on a NAS that is 1% full of 20 T. It is not raised here because
-retention is a policy number and this package's remit was to argue it, not to
-change it unasked.
+**Raised to 10 days by WP-60 Task 9** (WP-59 D-1, ruled yes). Three days of
+slack over the weekly cadence, so one missed base no longer opens a hole and
+`BaseBackupStale` fires *inside* the margin rather than after it has closed.
+The cost is about 1.4 GB — the archive holds 16 MB segments — on a NAS that is
+1% full of 20 T.
+
+The value lives in `ivgs-infra/.env` and the compose files interpolate it into
+both `BACKUP_RETENTION_WAL_DAYS` and `WAL_RETENTION_DAYS` (WP-58 Task 2), so
+the two names cannot drift. The fallback literals in `scripts/wal_archive.sh`
+and `docker-compose.override.node01.yml` were raised to 10 in the same change:
+leaving them at 7 would have let an unset variable silently reinstate the
+zero-margin window, which is the failure mode WP-58 existed to close.
 
 **Why base retention is 35 and not 7.** It is deliberately much longer than the
 WAL window. A base older than the WAL window cannot be used for PITR, but it is

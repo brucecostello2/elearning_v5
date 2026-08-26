@@ -247,11 +247,23 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
     # task defaults to dry-run, so uncommenting this alone gives a nightly
     # REPORT, not a nightly migration. Turning off dry-run is a second,
     # separate, deliberate edit.
-    # "retention-migration": {
-    #     "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
-    #     "schedule": crontab(hour=4, minute=0),
-    #     "options": {"queue": "default", "priority": 2},
-    # },
+    # WP-60 Task 8. ENABLED, and it is a nightly DRY RUN.
+    #
+    # WP-59 §7.6 step 3, executed here after its preconditions were met: the
+    # operator's dry run scanned 161 and reported would_move 44 hot->warm with
+    # policy_source=database and zero errors, and the capped live pass then
+    # moved exactly 5 (capped=True, 0 deleted, all 5 fids still HTTP 200).
+    #
+    # `run_retention_migration` defaults `dry_run` to the service default,
+    # which is True, and NO kwargs are passed here. That is deliberate and is
+    # the whole safety property: turning nightly migration on is a separate,
+    # explicit edit, and there is no way to move an asset by omitting an
+    # argument. A future ruling turns it live; this package does not.
+    "retention-migration": {
+        "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
+        "schedule": crontab(hour=4, minute=0),
+        "options": {"queue": "default", "priority": 2},
+    },
     "backup-verification": {
         "task": "tasks.pipeline_orchestrator.run_backup_verification",
         "schedule": crontab(hour=5, minute=0),

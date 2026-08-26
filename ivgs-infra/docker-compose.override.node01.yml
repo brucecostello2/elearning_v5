@@ -14,9 +14,12 @@ services:
       # BACKUP_RETENTION_WAL_DAYS governed nothing and this literal governed
       # everything. Interpolated from the same .env value the other three
       # retention classes use, so the two names cannot drift apart again. The
-      # `:-7` keeps the previous behaviour if the variable is ever unset.
-      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
-      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
+      # `:-10` keeps the governing value if the variable is ever unset.
+      # WP-60 Task 9 raised it from 7: with a weekly base, a 7-day WAL window
+      # meets the base window with zero margin, so one missed base opens an
+      # unrecoverable 7-day hole while a base and an archive both still exist.
+      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-10}
+      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-10}
 
   fastapi-backend:
     volumes:
@@ -71,8 +74,8 @@ services:
       PROMETHEUS_PUSHGATEWAY: http://pushgateway:9091
       WAL_ARCHIVE_DIR: /mnt/backup/ivgs/wal
       # WP-58 Task 2 - see the postgres service above.
-      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
-      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-7}
+      BACKUP_RETENTION_WAL_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-10}
+      WAL_RETENTION_DAYS: ${BACKUP_RETENTION_WAL_DAYS:-10}
       # GPG keyring location matches the volume mount
       GNUPGHOME: /home/ivgs/.gnupg
     volumes:

@@ -17,6 +17,7 @@ exists to prevent.
 """
 import os
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -96,6 +97,69 @@ def test_wal_archive_reads_the_configured_wal_variable():
         args="/tmp/wp58-probe-wal /tmp/wp58-probe-wal",
     )
     assert out == "5"
+
+
+def test_wal_archive_falls_back_to_ten_not_seven():
+    """WP-60 Task 9. THE FALLBACK IS PART OF THE POLICY.
+
+    The governing value lives in `ivgs-infra/.env`, which is gitignored, so the
+    only thing a commit can pin is the fallback. Leaving it at 7 while the .env
+    said 10 would mean any container started without that variable silently ran
+    the zero-margin window -- a value that is right in one place and wrong in
+    another, which is the WP-58 defect wearing a different hat.
+
+    Both `BACKUP_RETENTION_WAL_DAYS` and `WAL_RETENTION_DAYS` are cleared here,
+    so this asserts the literal in the script.
+    """
+    out = _source_and_run(
+        "wal_archive.sh", 'echo "${WAL_RETENTION_DAYS}"',
+        {"BACKUP_RETENTION_WAL_DAYS": "", "WAL_RETENTION_DAYS": ""},
+        args="/tmp/wp60-probe-wal /tmp/wp60-probe-wal",
+    )
+    assert out == "10", (
+        f"wal_archive.sh fell back to {out!r}. With a weekly base, a 7-day WAL "
+        "window meets the base window with zero margin: one missed base makes "
+        "days 8-14 unrecoverable while a base and an archive both still exist."
+    )
+
+
+def test_the_wal_prune_keeps_the_three_extra_days(tmp_path):
+    """Not the resolution -- the ACT, on the predicate wal_archive.sh:148 uses.
+
+    Segments aged 8, 9 and 10 days are exactly the slack WP-60 Task 9 bought.
+    At 7 they were deleted; at 10 they survive.
+    """
+    archive = tmp_path / "wal"
+    archive.mkdir()
+    ages = [5, 8, 9, 10, 12, 15]
+    for age in ages:
+        seg = archive / f"0000000100000001000000{age:02X}"
+        seg.write_bytes(b"")
+        stamp = time.time() - age * 86400
+        os.utime(seg, (stamp, stamp))
+
+    def survivors(days: int) -> set:
+        doomed = subprocess.run(
+            ["find", str(archive), "-maxdepth", "1", "-type", "f",
+             "-mtime", f"+{days}"],
+            capture_output=True, text=True, check=True,
+        ).stdout.split()
+        return {p.name for p in archive.iterdir()} - {
+            Path(d).name for d in doomed
+        }
+
+    at_seven = survivors(7)
+    at_ten = survivors(10)
+
+    def _ages(names: set) -> set:
+        return {int(n[-2:], 16) for n in names}
+
+    # `-mtime +N` is "strictly more than N whole 24h periods", so a segment
+    # exactly N days old survives at N.
+    assert _ages(at_seven) == {5}, _ages(at_seven)
+    assert _ages(at_ten) == {5, 8, 9, 10}, _ages(at_ten)
+    # The claim that matters: exactly the three days of slack, and nothing else.
+    assert _ages(at_ten) - _ages(at_seven) == {8, 9, 10}
 
 
 def test_one_class_cannot_govern_another():

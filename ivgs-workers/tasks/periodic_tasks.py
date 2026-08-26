@@ -421,6 +421,89 @@ class RetentionMigrationError(RuntimeError):
     time_limit=3600,
     soft_time_limit=3300,
 )
+def _report_retention_migration_metrics(report: Any, task_log: Any) -> None:
+    """One greppable line and two gauges, per WP-60 Task 8.
+
+    Never raises. A metrics push that fails must not fail the migration, but it
+    must also not be silent -- the whole point of this function is that a
+    nightly run which stops working stops being invisible, and a swallowed
+    exception here would recreate that in the reporting layer itself.
+    """
+    try:
+        # The line. Deliberately one event name, deliberately flat, so
+        # `grep retention_migration_nightly_result` over the worker log is the
+        # whole answer to "has the nightly dry run been working?".
+        task_log.info(
+            "retention_migration_nightly_result",
+            dry_run=report.dry_run,
+            status=report.status,
+            policy_source=getattr(report, "policy_source", None),
+            policy_load_error=getattr(report, "policy_load_error", None),
+            assets_scanned=report.assets_scanned,
+            would_move=getattr(report, "would_move", None),
+            transitions_performed=report.transitions_performed,
+            assets_deleted=report.assets_deleted,
+            errors=report.errors,
+            summary=(
+                f"dry_run={report.dry_run} scanned={report.assets_scanned} "
+                f"would_move={getattr(report, 'would_move', None)} "
+                f"moved={report.transitions_performed} "
+                f"deleted={report.assets_deleted} status={report.status}"
+            ),
+        )
+    except Exception as exc:  # pragma: no cover - reporting must not break the run
+        logger.warning(
+            "retention_migration_result_line_failed", error=str(exc)
+        )
+
+    # The gauges. Same names, same shape and the same pushgateway job as the
+    # four backup writers (scripts/backup.sh:193), so the existing staleness
+    # alerting can reach this without a new mechanism.
+    try:
+        import time as _time
+        import urllib.request
+
+        gateway = os.getenv(
+            "PROMETHEUS_PUSHGATEWAY", "http://pushgateway:9091"
+        ).rstrip("/")
+        status_value = 1 if report.status == "ok" else 0
+        lines = [
+            "# TYPE ivgs_retention_migration_last_status gauge",
+            (
+                "ivgs_retention_migration_last_status"
+                f'{{dry_run="{str(report.dry_run).lower()}"}} '
+                f"{status_value}"
+            ),
+            "# TYPE ivgs_retention_migration_last_timestamp gauge",
+            f"ivgs_retention_migration_last_timestamp {int(_time.time())}",
+            "# TYPE ivgs_retention_migration_assets_scanned gauge",
+            f"ivgs_retention_migration_assets_scanned "
+            f"{int(report.assets_scanned or 0)}",
+            "# TYPE ivgs_retention_migration_would_move gauge",
+            f"ivgs_retention_migration_would_move "
+            f"{int(getattr(report, 'would_move', 0) or 0)}",
+        ]
+        body = ("\n".join(lines) + "\n").encode()
+
+        request = urllib.request.Request(
+            f"{gateway}/metrics/job/ivgs_retention/instance/node-01",
+            data=body,
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=10) as response:
+            if response.status >= 300:
+                raise RuntimeError(f"pushgateway HTTP {response.status}")
+    except Exception as exc:
+        # Logged at WARNING, not swallowed: if this line appears every night
+        # the gauges are stale and the alert family is blind, which is worth
+        # knowing before the migration itself needs watching.
+        logger.warning(
+            "retention_migration_metrics_push_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
+
+
 def run_retention_migration(
     self: Any,
     dry_run: bool | None = None,
@@ -502,6 +585,23 @@ def run_retention_migration(
                 would_move=report.would_move,
                 duration_seconds=report.duration_seconds,
             )
+
+            # WP-60 Task 8 — THE NIGHTLY DRY RUN HAS TO BE VISIBLE.
+            #
+            # WP-59 §7.6 step 3 was a `sed` that uncommented the beat entry and
+            # nothing else. That would have put a nightly task on the schedule
+            # whose only trace is a structured log line among thousands -- and
+            # a dry run that quietly stops scanning looks exactly like a dry
+            # run that found nothing to move. That is the WP-57 D-1 hole in
+            # miniature: three months of a mechanism reporting health it did
+            # not have, because nobody could see it not working.
+            #
+            # Two things close it. One greppable line carrying the numbers that
+            # matter, and the same `ivgs_*_last_*` gauge pair the four backup
+            # jobs already push -- so `ivgs_retention_migration_last_timestamp`
+            # going stale is visible to the alert family that already exists,
+            # rather than needing a new one nobody has wired.
+            _report_retention_migration_metrics(report, task_log)
 
             # WP-59 Task 7: a failed tier pass must RECORD failure, not silence.
             # The report is returned in the exception's payload as well as
