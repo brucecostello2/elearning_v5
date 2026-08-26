@@ -382,7 +382,7 @@ def run_full_database_backup(self, backup_id: Optional[str] = None) -> Dict:
         if result["kv"].get("record_write") == "failed":
             raise BackupTaskError(
                 f"backup {effective_id}: dump succeeded but backup.sh could not "
-                f"write its backup_records row; see /var/log/ivgs/backup.log"
+                f"write its backup_records row; see /var/log/ivgs/backup.*.log"
             )
 
         logger.info("run_full_database_backup OK", extra={
@@ -537,7 +537,7 @@ def run_base_backup(
         raise BackupTaskError(
             f"base backup {effective_id}: pg_basebackup succeeded but "
             f"basebackup.sh could not write its backup_records row; see "
-            f"/var/log/ivgs/basebackup.log"
+            f"/var/log/ivgs/basebackup.*.log"
         )
 
     logger.info("run_base_backup OK", extra={

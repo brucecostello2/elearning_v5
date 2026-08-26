@@ -62,7 +62,18 @@ readonly WAL_ARCHIVE_DIR="${WAL_ARCHIVE_DIR:-/mnt/backup/ivgs/wal}"
 # (WP-58 Task 2) - the fallbacks are aligned so an unset variable cannot
 # silently reinstate the zero-margin window.
 readonly WAL_RETENTION_DAYS="${BACKUP_RETENTION_WAL_DAYS:-${WAL_RETENTION_DAYS:-10}}"
-readonly LOG_FILE="/var/log/ivgs/wal_archive.log"
+# WP-60 Task 12(c). PER-WRITER LOG FILE.
+#
+# This was `readonly LOG_FILE="/var/log/ivgs/wal_archive.log"` -- one shared file that
+# cron (root), the backup-worker container (uid 999) and `dev` all appended to,
+# kept writable by `chmod 666` in a 1777 directory. Ubuntu's default
+# `fs.protected_regular=2` forbids exactly that, so the design's one mechanism
+# is the one the kernel disables. See scripts/lib/logfile.sh for the measurement
+# and the reasoning. Read these with a glob: /var/log/ivgs/wal_archive.*.log
+# shellcheck source=lib/logfile.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/logfile.sh"
+LOG_FILE="$(ivgs_log_file wal_archive)"
+readonly LOG_FILE
 readonly LOG_DIR="/var/log/ivgs"
 
 readonly DEST_PATH="${WAL_ARCHIVE_DIR}/${WAL_FILENAME}"

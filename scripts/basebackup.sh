@@ -92,7 +92,18 @@ readonly SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 readonly TIMESTAMP="$(date +%Y-%m-%d)"
 readonly DATETIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 readonly LOCK_FILE="/var/run/ivgs/basebackup.lock"
-readonly LOG_FILE="/var/log/ivgs/basebackup.log"
+# WP-60 Task 12(c). PER-WRITER LOG FILE.
+#
+# This was `readonly LOG_FILE="/var/log/ivgs/basebackup.log"` -- one shared file that
+# cron (root), the backup-worker container (uid 999) and `dev` all appended to,
+# kept writable by `chmod 666` in a 1777 directory. Ubuntu's default
+# `fs.protected_regular=2` forbids exactly that, so the design's one mechanism
+# is the one the kernel disables. See scripts/lib/logfile.sh for the measurement
+# and the reasoning. Read these with a glob: /var/log/ivgs/basebackup.*.log
+# shellcheck source=lib/logfile.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/logfile.sh"
+LOG_FILE="$(ivgs_log_file basebackup)"
+readonly LOG_FILE
 readonly LOG_DIR="/var/log/ivgs"
 
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
@@ -289,6 +300,39 @@ preflight() {
             "{\"fix\":\"set max_wal_senders >= 2 and restart postgres\"}"
         exit 8
     fi
+
+    # --- WP-60 Task 12(b) — ACTUALLY OPEN A REPLICATION CONNECTION.
+    #
+    # THE DRY RUN USED TO PASS WHILE THE REAL RUN COULD NOT CONNECT.
+    #
+    # The two checks above test the ROLE's `rolreplication` attribute and the
+    # server's `max_wal_senders`. Both were true. What was missing was an HBA
+    # row permitting a REPLICATION connection from the compose network, and
+    # nothing here ever attempted one -- so the pre-flight validated strictly
+    # fewer preconditions than the path it is supposed to gate, and reported
+    # success right up to the moment `pg_basebackup` failed. That is the WP-54
+    # pattern: a check that measures an adjacent thing.
+    #
+    # `IDENTIFY_SYSTEM` is the cheapest possible real exercise of the chain.
+    # It runs on the replication protocol (`replication=database`), so it needs
+    # the same HBA row, the same role attribute and the same walsender slot the
+    # real backup needs -- and it transfers ZERO bytes of cluster data and
+    # holds the slot for milliseconds. Dry run and real run now fail and
+    # succeed for the same reasons.
+    local identify_out identify_rc
+    identify_out="$(PGPASSWORD="${POSTGRES_PASSWORD}" psql \
+        "host=${POSTGRES_HOST} port=${POSTGRES_PORT} user=${POSTGRES_USER} dbname=${POSTGRES_DB} replication=database" \
+        -tAc "IDENTIFY_SYSTEM" 2>&1)"
+    identify_rc=$?
+    if [ "${identify_rc}" -ne 0 ]; then
+        log_error "Replication handshake FAILED - pg_basebackup cannot connect" \
+            "{\"host\":\"${POSTGRES_HOST}\",\"port\":\"${POSTGRES_PORT}\",\"user\":\"${POSTGRES_USER}\",\"detail\":\"$(printf '%s' "${identify_out}" | tr -d '\n\r"' | cut -c1-300)\"}"
+        log_error "Most likely cause: pg_hba.conf has no 'host replication ${POSTGRES_USER} <this network> scram-sha-256' row."
+        log_error "That row is provisioned in configs/postgres/pg_hba.conf and selected with -c hba_file=; if it is missing, postgres is not running with that file."
+        exit 8
+    fi
+    log_info "Replication handshake OK (IDENTIFY_SYSTEM, zero bytes transferred)" \
+        "{\"timeline\":\"$(printf '%s' "${identify_out}" | cut -d'|' -f2)\"}"
 
     log_info "Pre-flight checks passed" \
         "{\"available_mb\":${available_mb},\"max_wal_senders\":${max_wal_senders}}"

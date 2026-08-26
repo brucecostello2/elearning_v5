@@ -184,7 +184,7 @@ groups:
             The last {{ $labels.backup_type }} backup completed with a failure
             status. Backup target: {{ $labels.target_path }}. This is a critical
             data protection issue that must be investigated immediately.
-            Check backup logs at /var/log/ivgs/backup.log for details.
+            Check backup logs at /var/log/ivgs/backup.*.log for details.
           action: "Investigate backup failure. Check disk space, GPG keys, and network connectivity to NAS."
           runbook: "docs/runbooks/backup-failed.md"
 
@@ -270,7 +270,7 @@ groups:
             replay onto, so the recoverable window stops moving forward while
             everything else stays green. Check the `physical-base-backup` entry
             in ivgs-backup-worker/celery_app.py and
-            /var/log/ivgs/basebackup.log.
+            /var/log/ivgs/basebackup.*.log.
           action: "Run scripts/basebackup.sh --dry-run first; it names the precondition that failed (NFS destination, replication privilege, wal senders, space)."
           runbook: "docs/runbooks/point-in-time-recovery.md"
 

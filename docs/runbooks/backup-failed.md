@@ -79,7 +79,7 @@ pg_isready -h 192.168.1.90 -p 5432
 ## BackupFailed — a backup ran and failed
 
 ```
-sudo tail -40 /var/log/ivgs/backup.log
+sudo tail -40 /var/log/ivgs/backup.*.log
 docker logs ivgs-backup-worker --since 24h | grep -A5 BackupTaskError
 ```
 

@@ -141,6 +141,7 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ivgs} -d ${POSTGRES_DB:-ivgs}"]
     command: >
       postgres
+        -c hba_file=/etc/postgresql/pg_hba.conf
         -c wal_level=replica
         -c archive_mode=on
         -c archive_command='/scripts/wal_archive.sh %p %f'

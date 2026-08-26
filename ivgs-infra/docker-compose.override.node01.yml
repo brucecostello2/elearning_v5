@@ -5,9 +5,28 @@ services:
   # Also set WAL_ARCHIVE_DIR so the script writes to the wal-archive mount
   # rather than its default /mnt/backup/ivgs/wal path.
   postgres:
+    # WP-60 Task 12(b). THE REPLICATION HBA LINE IS PROVISIONING NOW.
+    #
+    # `initdb` generates pg_hba.conf into the data volume, so the operator's
+    # 2026-08-26 hand-edit (`host replication ivgs 172.20.0.0/16
+    # scram-sha-256`, added so pg_basebackup could connect at all) lived only
+    # in that volume and a data-directory rebuild would silently lose it --
+    # taking the weekly physical base backup, and with it PITR, down quietly.
+    # An initdb.d script would only have covered a FRESH cluster, leaving a
+    # rebuilt volume and an existing one on different rules.
+    #
+    # `-c hba_file=` makes the committed file govern from the first second of
+    # every start, fresh volume or not. See configs/postgres/pg_hba.conf.
+    #
+    # The FLAG lives on the base file's `command:` list, NOT here. Compose does
+    # not merge `command` -- an override REPLACES it outright -- so setting it
+    # in this file would have silently dropped the base's entire `-c` list,
+    # including `archive_mode=on` and `archive_command`, and WAL archiving
+    # would have stopped without an error. Only the mount belongs here.
     volumes:
       - /opt/ivgs/scripts:/scripts:ro
       - /var/log/ivgs:/var/log/ivgs
+      - /opt/ivgs/configs/postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
     environment:
       WAL_ARCHIVE_DIR: /mnt/wal-archive
       # WP-58 Task 2. Was a hardcoded `7`, which meant ivgs-infra/.env's

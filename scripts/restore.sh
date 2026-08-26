@@ -34,7 +34,18 @@ set -euo pipefail
 # Configuration
 # ---------------------------------------------------------------------------
 readonly SCRIPT_NAME="$(basename "$0")"
-readonly LOG_FILE="/var/log/ivgs/restore.log"
+# WP-60 Task 12(c). PER-WRITER LOG FILE.
+#
+# This was `readonly LOG_FILE="/var/log/ivgs/restore.log"` -- one shared file that
+# cron (root), the backup-worker container (uid 999) and `dev` all appended to,
+# kept writable by `chmod 666` in a 1777 directory. Ubuntu's default
+# `fs.protected_regular=2` forbids exactly that, so the design's one mechanism
+# is the one the kernel disables. See scripts/lib/logfile.sh for the measurement
+# and the reasoning. Read these with a glob: /var/log/ivgs/restore.*.log
+# shellcheck source=lib/logfile.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/logfile.sh"
+LOG_FILE="$(ivgs_log_file restore)"
+readonly LOG_FILE
 readonly LOG_DIR="/var/log/ivgs"
 
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
@@ -71,11 +82,6 @@ log_json() {
     local timestamp
     timestamp="$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)"
     mkdir -p "${LOG_DIR}"
-    # Self-permissive log file: created world-writable so that
-    # both cron (root) and the backup-worker container (UID 999)
-    # can append. Idempotent via the chmod-after-touch.
-    touch "${LOG_FILE}" 2>/dev/null || true
-    chmod 666 "${LOG_FILE}" 2>/dev/null || true
     local entry="{\"timestamp\":\"${timestamp}\",\"level\":\"${level}\",\"service\":\"restore\",\"script\":\"${SCRIPT_NAME}\",\"message\":\"${message}\",\"extra\":${extra}}"
     echo "${entry}" >> "${LOG_FILE}"
     if [ "${level}" = "ERROR" ]; then
@@ -165,28 +171,51 @@ parse_args() {
 # Safety confirmation
 # ---------------------------------------------------------------------------
 confirm_restore() {
+    # WP-60 Task 12(a) — A DRY RUN MUST NOT BE ABLE TO PROCEED.
+    #
+    # `main()` called this unconditionally and it gated only on
+    # SKIP_CONFIRMATION, so `--dry-run` walked into the interactive
+    # "Type 'RESTORE'" prompt under a banner announcing it was about to
+    # DESTROY the live database. The operator Ctrl-C'd there, correctly, and
+    # WP-59 §8.7 step 4 was never executed.
+    #
+    # This is first, before anything is printed. A dry run has nothing to
+    # confirm because it does nothing, so there is no input that could carry it
+    # forward: the prompt is not skipped, it does not exist. The destructive
+    # steps each carry their own DRY_RUN guard as well -- two independent
+    # gates, because one is a single edit away from being none.
+    if [ "${DRY_RUN}" = true ]; then
+        log_info "Dry run: no confirmation prompt, and nothing to confirm."
+        return 0
+    fi
+
+    # PITR does not address the live database at all, so the destructive
+    # banner would be false. `restore_pitr_only()` prints its own.
+    if [ -n "${PIT_TARGET}" ]; then
+        return 0
+    fi
+
     if [ "${SKIP_CONFIRMATION}" = true ]; then
         log_warn "Safety confirmation skipped (--skip-confirmation)"
         return 0
     fi
 
     echo ""
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║              ⚠  DATABASE RESTORE WARNING  ⚠               ║"
-    echo "╠══════════════════════════════════════════════════════════════╣"
-    echo "║  This will DESTROY the current database and replace it     ║"
-    echo "║  with the backup from: ${RESTORE_DATE}                      ║"
-    echo "║                                                            ║"
-    echo "║  Database: ${POSTGRES_DB} on ${POSTGRES_HOST}:${POSTGRES_PORT}              ║"
-    echo "║                                                            ║"
-    echo "║  This action is IRREVERSIBLE.                              ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo "+============================================================+"
+    echo "|              **  DATABASE RESTORE WARNING  **              |"
+    echo "+============================================================+"
+    echo "|  This will DESTROY the database named below and replace    |"
+    echo "|  it with the logical dump from: ${RESTORE_DATE}"
+    echo "|                                                            |"
+    echo "|  TARGET: ${POSTGRES_DB} on ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    echo "|                                                            |"
+    echo "|  Note: the dump begins DROP DATABASE IF EXISTS ivgs and    |"
+    echo "|  carries its own \\connect, so it restores into ivgs on     |"
+    echo "|  this host regardless of what -d says (WP-59 s0).          |"
+    echo "|                                                            |"
+    echo "|  This action is IRREVERSIBLE.                              |"
+    echo "+============================================================+"
     echo ""
-
-    if [ -n "${PIT_TARGET}" ]; then
-        echo "  Point-in-time recovery target: ${PIT_TARGET}"
-        echo ""
-    fi
 
     read -rp "Type 'RESTORE' to confirm: " confirmation
     if [ "${confirmation}" != "RESTORE" ]; then
@@ -756,13 +785,56 @@ main() {
         log_info "*** DRY RUN MODE — No changes will be made ***"
     fi
 
+    # State the true target up front, on every path, before any work. The old
+    # script only ever named a target inside the destructive banner, which the
+    # PITR path reached while not being about that database at all.
+    if [ -n "${PIT_TARGET}" ]; then
+        log_info "Mode: POINT-IN-TIME RECOVERY into a STAGED cluster." \
+            "{\"target_time\":\"${PIT_TARGET}\",\"live_database\":\"${POSTGRES_DB}@${POSTGRES_HOST}:${POSTGRES_PORT}\",\"live_database_touched\":false}"
+        log_info "The live database above is NOT read, written, stopped or dropped on this path."
+    else
+        log_info "Mode: LOGICAL RESTORE. This REPLACES the live database." \
+            "{\"target_database\":\"${POSTGRES_DB}@${POSTGRES_HOST}:${POSTGRES_PORT}\",\"live_database_touched\":true}"
+    fi
+
     preflight_checks
     confirm_restore
+
+    # WP-60 Task 12(a) — THE BANNER WAS NOT STALE. IT WAS A TARGETING DEFECT.
+    #
+    # The brief asked whether naming the LIVE database in the --pit warning was
+    # a stale banner or a real targeting problem. It was real, and the banner
+    # was the only honest thing on that path.
+    #
+    # `--pit` used to fall straight through this sequence: stop_services,
+    # decrypt_and_decompress, drop_and_recreate, restore_database, and only
+    # THEN apply_wal_logs (which is the part that stages a separate cluster).
+    # So a real `--pit` run would have dropped and recreated `ivgs` on
+    # localhost:5432 and replayed a logical dump into it BEFORE doing any
+    # point-in-time work -- destroying production to rehearse a recovery.
+    # `--dry-run` hid it, because every one of those four steps short-circuits
+    # on DRY_RUN and prints "[DRY RUN] Would ...".
+    #
+    # WP-59 §8.4's claim that PITR "stages a separate cluster and never touches
+    # the live one" is true of `apply_wal_logs` READ ON ITS OWN, and false of
+    # the script as invoked. That gap is exactly the kind this project keeps
+    # finding: a component that is correct, reached through a path that is not.
+    #
+    # PITR is now its own mode and returns. It never enters the logical-restore
+    # sequence, so there is no ordering left to get wrong.
+    if [ -n "${PIT_TARGET}" ]; then
+        apply_wal_logs
+        local pit_end
+        pit_end="$(date +%s)"
+        log_info "=== IVGS v5 Point-In-Time Recovery Completed ===" \
+            "{\"duration_seconds\":$(( pit_end - start_time )),\"dry_run\":${DRY_RUN}}"
+        return 0
+    fi
+
     stop_services
     decrypt_and_decompress
     drop_and_recreate
     restore_database
-    apply_wal_logs
     verify_row_counts
     restart_services
 
@@ -774,11 +846,9 @@ main() {
         "{\"duration_seconds\":${duration}}"
 
     echo ""
-    echo "✅ Restore completed successfully in ${duration} seconds."
+    echo "Restore completed successfully in ${duration} seconds."
     echo "   Backup date: ${RESTORE_DATE}"
-    if [ -n "${PIT_TARGET}" ]; then
-        echo "   Point-in-time: ${PIT_TARGET}"
-    fi
+    echo "   Target     : ${POSTGRES_DB} on ${POSTGRES_HOST}:${POSTGRES_PORT} (REPLACED)"
     echo "   Please verify application functionality."
 }
 

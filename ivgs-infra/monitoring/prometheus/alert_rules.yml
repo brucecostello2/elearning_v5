@@ -159,7 +159,7 @@ groups:
             The last {{ $labels.backup_type }} backup completed with a failure
             status. Backup target: {{ $labels.target_path }}. This is a critical
             data protection issue that must be investigated immediately.
-            Check backup logs at /var/log/ivgs/backup.log for details.
+            Check backup logs at /var/log/ivgs/backup.*.log for details.
           action: "Investigate backup failure. Check disk space, GPG keys, and network connectivity to NAS."
           runbook: "docs/runbooks/backup-failed.md"
 
