@@ -247,6 +247,16 @@ export interface ProjectResponse {
   id: string;
   name: string;
   description?: string | null;
+  /**
+   * WP-64 Task 6. What the viewer should be able to DO afterwards, as the
+   * project's author wrote it. Read by the storyboard model as RULE 0.
+   *
+   * NOT RETROACTIVE: editing it changes what the NEXT storyboard run plans and
+   * does not rewrite scenes an earlier run already authored. The Overview panel
+   * says so where it is edited rather than leaving an operator to discover it
+   * from an unchanged storyboard.
+   */
+  learning_outcomes?: string | null;
   state: ProjectState;
   max_runtime_seconds?: number | null;
   created_by?: string | null;
@@ -819,6 +829,13 @@ export interface VideoQuality {
 export interface ProjectCreatePayload {
   name: string;
   description?: string;
+  /**
+   * WP-64 Task 6. What the viewer should be able to DO afterwards. It is an
+   * INPUT to storyboard generation, not a display field: RULE 0 of the
+   * storyboard prompt judges the scene mix and each scene's visual against it.
+   * Optional — a project without it degrades to the medium criteria alone.
+   */
+  learning_outcomes?: string;
   max_runtime_seconds?: number;
   target_languages?: string[];
 }

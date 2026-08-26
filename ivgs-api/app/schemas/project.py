@@ -33,6 +33,17 @@ class ProjectCreate(BaseModel):
         default=None,
         description="List of BCP-47 language codes for localization",
     )
+    # WP-64 Task 6(a). Longer than `description` on purpose: `description` is a
+    # dashboard blurb capped at 1000 and this is several outcome statements the
+    # model reasons from. Capped so a paste of an entire syllabus fails at the
+    # API with a message rather than silently consuming the prompt budget.
+    learning_outcomes: Optional[str] = Field(
+        default=None,
+        max_length=4000,
+        description=(
+            "What the viewer should be able to DO after watching. Free text, one statement or several. Fed to storyboard generation as RULE 0: the scene mix and each scene's visual are judged against it. Editing it after a storyboard exists feeds the NEXT run and does not rewrite existing scenes."
+        ),
+    )
 
     @field_validator("target_languages")
     @classmethod
@@ -54,6 +65,15 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=1000)
     max_runtime_seconds: Optional[int] = Field(default=None, ge=60, le=7200)
+    # WP-64 Task 6(b): editable after creation. Not retroactive -- see the
+    # column docstring and the notice the Overview panel renders beside it.
+    learning_outcomes: Optional[str] = Field(
+        default=None,
+        max_length=4000,
+        description=(
+            "What the viewer should be able to DO after watching. Free text, one statement or several. Fed to storyboard generation as RULE 0: the scene mix and each scene's visual are judged against it. Editing it after a storyboard exists feeds the NEXT run and does not rewrite existing scenes."
+        ),
+    )
 
 
 class ActiveJobInfo(BaseModel):
@@ -87,6 +107,9 @@ class ProjectResponse(BaseModel):
     id: UUID
     name: str
     description: Optional[str] = None
+    # WP-64 Task 6. Returned so the Overview panel can show it and the editor
+    # can seed its textarea from the same value the storyboard run will read.
+    learning_outcomes: Optional[str] = None
     max_runtime_seconds: Optional[int] = None
     state: str
     hero_image_url: Optional[str] = None

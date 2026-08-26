@@ -58,6 +58,18 @@ class Project(Base):
     target_audience: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True,
     )
+    # ── WP-64 Task 6, migration 0037 ──
+    # What the viewer should be able to DO after watching. Operator-authored
+    # free text, one statement or several. It is an INPUT to storyboard
+    # generation (RULE 0 of the storyboard prompt), not a display field: the
+    # scene mix and each scene's visual are judged against it.
+    #
+    # NOT RETROACTIVE. Editing it after a storyboard has been generated does
+    # not rewrite scenes that already exist; it feeds the NEXT run. The GUI
+    # says so where the field is edited.
+    learning_outcomes: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+    )
     # ── AD-09.5 preset provenance; WP-56 Task 4, migration 0032 ──
     # PROVENANCE ONLY. Applying a preset writes concrete values into the
     # project's own columns; nothing re-reads the preset at render time, so

@@ -78,6 +78,10 @@ export default function NewProjectPage(): React.ReactElement {
   // ── Form Fields ─────────────────────────────────────────────────────
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  /* WP-64 Task 6(b). Authored here because this is when the author knows what
+     the course is FOR. It is not decoration: the storyboard model reads it as
+     RULE 0 and judges every scene's media_type and visual against it. */
+  const [learningOutcomes, setLearningOutcomes] = useState<string>("");
   const [runtimeMinutes, setRuntimeMinutes] = useState<number>(5);
   const [runtimeSeconds, setRuntimeSeconds] = useState<number>(0);
   const [talkingHeadFile, setTalkingHeadFile] = useState<File | null>(null);
@@ -231,6 +235,9 @@ export default function NewProjectPage(): React.ReactElement {
         if (description.trim()) {
           payload.description = description.trim();
         }
+        if (learningOutcomes.trim()) {
+          payload.learning_outcomes = learningOutcomes.trim();
+        }
         if (selectedLanguages.length > 0) {
           payload.target_languages = selectedLanguages;
         }
@@ -283,6 +290,7 @@ export default function NewProjectPage(): React.ReactElement {
       validateForm,
       name,
       description,
+      learningOutcomes,
       runtimeMinutes,
       runtimeSeconds,
       talkingHeadFile,
@@ -371,6 +379,39 @@ export default function NewProjectPage(): React.ReactElement {
             className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
           />
           <span className="text-gray-500 dark:text-gray-400 text-xs">{description.length}/1000</span>
+        </div>
+
+        {/* ── Learning outcomes — WP-64 Task 6(b) ───────────────────── */}
+        <div>
+          <label
+            htmlFor="project-learning-outcomes"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+          >
+            Learning outcomes — what the viewer should be able to do afterwards
+          </label>
+          <textarea
+            id="project-learning-outcomes"
+            value={learningOutcomes}
+            onChange={(e) => setLearningOutcomes(e.target.value)}
+            maxLength={4000}
+            rows={4}
+            placeholder={
+              "Optional. One statement per line, e.g.\n" +
+              "By the end, the viewer can follow the carrying step as it happens.\n" +
+              "By the end, the viewer can name the place value of each column."
+            }
+            className="w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+          />
+          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            Read by the storyboard model when it plans the scenes. An outcome
+            about following or performing something is one a still frame cannot
+            serve, and the scene that teaches it becomes a video clip rather
+            than an image. Left empty, the storyboard is planned from the
+            transcript alone.
+          </p>
+          <span className="text-gray-500 dark:text-gray-400 text-xs">
+            {learningOutcomes.length}/4000
+          </span>
         </div>
 
         {/* ── Maximum Runtime * ─────────────────────────────────────── */}

@@ -11,6 +11,7 @@ import PipelineGateButton from "@/components/PipelineGateButton";
 import PresetApplyPanel from "@/components/project/PresetApplyPanel";
 import DeleteProjectDialog from "@/components/project/DeleteProjectDialog";
 import GateReviewPanel from "@/components/project/GateReviewPanel";
+import LearningOutcomesPanel from "@/components/project/LearningOutcomesPanel";
 import { useProjectProgress } from "@/hooks/useProjectProgress";
 
 /**
@@ -257,6 +258,13 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
           />
         </div>
       </section>
+
+      {/* ── Learning outcomes — WP-64 Task 6(b) ─────────────────────── */}
+      <LearningOutcomesPanel
+        projectId={projectId}
+        value={project.learning_outcomes}
+        canEdit={canManage}
+      />
 
       {/* ── Preset application — AD-09.5 / AD-09.15 criterion 1 ──────── */}
       <PresetApplyPanel projectId={projectId} canApply={canManage} />

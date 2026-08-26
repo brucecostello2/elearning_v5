@@ -210,6 +210,11 @@ class ProjectService:
         project = Project(
             name=data.name,
             description=data.description,
+            # WP-64 Task 6(a). Authored at creation because that is when the
+            # author knows what the course is FOR; it is the input the
+            # storyboard model judges the scene mix against, and no wording of
+            # the prompt can substitute for it not being there.
+            learning_outcomes=data.learning_outcomes,
             max_runtime_seconds=data.max_runtime_seconds,
             state=ProjectState.DRAFT.value,
             created_by=current_user.id,
@@ -238,7 +243,14 @@ class ProjectService:
         data: ProjectUpdate,
         current_user: User,
     ) -> Optional[ProjectResponse]:
-        """Update project metadata (name, description, max_runtime_seconds)."""
+        """Update project metadata (name, description, runtime, outcomes).
+
+        WP-64 Task 6(b): ``learning_outcomes`` is editable here and the write is
+        NOT retroactive. Scenes are rows a completed run authored; changing this
+        field changes what the NEXT storyboard generation reads. The Overview
+        panel says so beside the field rather than leaving the operator to find
+        out from an unchanged storyboard.
+        """
         project = await self._get_project_or_none(project_id, current_user)
         if project is None:
             return None
@@ -459,12 +471,22 @@ class ProjectService:
             "project_id": str(project.id),
             "project_name": getattr(project, "name", "") or "",
             "project_description": getattr(project, "description", "") or "",
+            # WP-64 Task 6(c). Carried as its OWN key from here to the
+            # orchestrator, which folds it into the storyboard stage's
+            # project_description under an explicit delimiter. It is separate
+            # here so that the one place that merges them is the one place that
+            # has to be unpicked when the frozen stage body can take a template
+            # variable of its own (P2.66). Omitted when the project has none, so
+            # a project without outcomes carries no empty key to reason about.
             "target_audience": getattr(project, "target_audience", "") or "",
             "language_code": getattr(project, "language_code", "en-US") or "en-US",
             "priority": "normal",
             "tier": tier,
             "current_stage": _start_stage,
         }
+        _outcomes = (getattr(project, "learning_outcomes", None) or "").strip()
+        if _outcomes:
+            job_context["learning_outcomes"] = _outcomes
         # IVGS-0.1: the project's real runtime budget must reach the stage
         # prompts. Omitted (not defaulted here) when the project genuinely
         # has no value, so PipelineJobContext's 600s default is the ONLY
@@ -847,6 +869,7 @@ class ProjectService:
             id=project.id,
             name=project.name,
             description=project.description,
+            learning_outcomes=project.learning_outcomes,
             max_runtime_seconds=project.max_runtime_seconds,
             state=project.state,
             hero_image_url=hero_image_url,

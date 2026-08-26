@@ -1056,7 +1056,14 @@ def _build_stage_input(
 
     elif stage == PipelineStage.STORYBOARD_GENERATION.value:
         refined = (previous_output or {}).get("refined_transcripts", [])
-        return {**base_input, "refined_transcripts": refined}
+        return {
+            **base_input,
+            "project_description": _description_with_outcomes(
+                base_input["project_description"],
+                context.get("learning_outcomes", ""),
+            ),
+            "refined_transcripts": refined,
+        }
 
     elif stage == PipelineStage.COMPOSITION_MANIFEST.value:
         return base_input
@@ -1105,6 +1112,50 @@ def _build_stage_input(
         }
 
     return base_input
+
+
+#: WP-64 Task 6(c). The delimiter the storyboard prompt's RULE 0 looks for.
+#: The template quotes these two lines VERBATIM, and
+#: `tests/test_wp64_learning_outcomes.py` asserts the two copies are identical
+#: -- a delimiter that drifts between the writer and the reader is a block the
+#: model never notices, which is worse than no block at all.
+OUTCOMES_OPEN = "=== LEARNING OUTCOMES (authored by the course owner) ==="
+OUTCOMES_CLOSE = "=== END LEARNING OUTCOMES ==="
+
+
+def _description_with_outcomes(description: str, outcomes: str) -> str:
+    """Fold the project's learning outcomes into the STORYBOARD stage's
+    ``project_description``, under an explicit delimiter.
+
+    WP-64 Task 6(c), AND IT IS A MEASURED FALLBACK, NOT THE DESIGN.
+
+    The right shape is `learning_outcomes` as its own Jinja variable. It cannot
+    be done here: the variable list the storyboard template is rendered with is
+    fixed inside `stage2_storyboard._render_user_prompt`
+    (`ivgs-workers/tasks/stage2_storyboard.py:127-137`), which is one of the
+    eight stage task bodies AD-05 section 8 freezes. Nine names go in and
+    `learning_outcomes` is not among them, so a tenth cannot be added without
+    editing a frozen body. Ledgered as P2.66 with those file:line facts.
+
+    `project_description` IS in that list (`stage2_storyboard.py:130`), it is
+    already the project's own prose, and this orchestrator module is NOT a stage
+    body -- so this is the least-bad carrier and this is the honest place to
+    compose it. It is done ONLY for the storyboard branch: every other stage
+    receives `project_description` exactly as the project wrote it, so the FLUX
+    prompt writer's system template (`stage3_system.j2`) does not silently gain
+    a block of pedagogy it has no use for.
+
+    An empty or absent `outcomes` returns the description UNCHANGED -- no
+    delimiter, no heading, no placeholder. Task 6(d) requires the degradation to
+    be invisible, and a prompt that reads "LEARNING OUTCOMES: (none)" invites
+    the model to reason about the absence.
+    """
+    outcomes = (outcomes or "").strip()
+    if not outcomes:
+        return description or ""
+    base = (description or "").strip()
+    block = f"{OUTCOMES_OPEN}\n{outcomes}\n{OUTCOMES_CLOSE}"
+    return f"{base}\n\n{block}" if base else block
 
 
 def _extract_context(output: Optional[Dict[str, Any]]) -> Dict[str, Any]:

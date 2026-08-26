@@ -121,6 +121,13 @@ def project_facts(project: Optional[Project], tier: str = "prototype") -> Dict[s
     max_runtime = getattr(project, "max_runtime_seconds", None)
     if max_runtime is not None:
         facts["max_runtime_seconds"] = int(max_runtime)
+    # WP-64 Task 6(c). The storyboard gate's `regenerate` decision dispatches
+    # `dispatch_pipeline` with `resume_from_stage=storyboard_generation` through
+    # THIS builder, so a re-run must see the outcomes the first run saw.
+    # Omitted when absent rather than sent empty.
+    outcomes = (getattr(project, "learning_outcomes", None) or "").strip()
+    if outcomes:
+        facts["learning_outcomes"] = outcomes
     return facts
 
 
