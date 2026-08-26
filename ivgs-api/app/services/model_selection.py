@@ -405,6 +405,16 @@ async def manual_override(
     refusal = _availability_refusal(model)
     if refusal is not None:
         raise refusal
+    # WP-67 Task 5. The third bar, and the most absolute: IVGS has no code that
+    # knows how to call this model's family. Checked AFTER the others so the
+    # cheaper, more common refusals win the message.
+    from app.services.weight_placement import CLIENT_AVAILABLE, compute_client_status
+
+    client = compute_client_status(model)
+    if client.state != CLIENT_AVAILABLE:
+        raise SelectionRefused(
+            client.detail or client.label, reason=client.state,
+        )
     return await _replace_selection(
         session,
         project_id=project_id,

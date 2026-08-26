@@ -38,7 +38,11 @@ from app.schemas.model_store import (
     StageBindingOut,
 )
 from app.services.model_selection import SelectionRefused, _availability_refusal
-from app.services.weight_placement import compute_status
+from app.services.weight_placement import (
+    CLIENT_AVAILABLE,
+    compute_client_status,
+    compute_status,
+)
 from shared.models.model_store import (
     Model,
     ModelStage,
@@ -150,6 +154,19 @@ async def _candidates_for(
                 candidate.selectable = False
                 candidate.refusal_reason = refusal.reason
                 candidate.refusal_message = str(refusal)
+            else:
+                # WP-67 Task 5. A model with no client is a THIRD kind of
+                # unusable, and it is the most absolute of the three: no admin
+                # action and no operator action can make it runnable, because
+                # what is missing is code. It bars a selection for the same
+                # reason `no_host` does -- a render bound to it has nowhere to
+                # go -- but it says something different, because it needs a
+                # different person.
+                client = compute_client_status(model)
+                if client.state != CLIENT_AVAILABLE:
+                    candidate.selectable = False
+                    candidate.refusal_reason = client.state
+                    candidate.refusal_message = client.detail or client.label
 
         out.append(candidate)
     return out

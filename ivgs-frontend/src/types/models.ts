@@ -115,6 +115,33 @@ export interface WeightStatus {
   credentials_present: boolean;
 }
 
+/**
+ * WP-67 Task 5 — whether IVGS can RUN this model, as opposed to whether it has
+ * its bytes. THREE STATES, KEPT DISTINCT, because each needs a different person
+ * to do a different thing:
+ *
+ *   no client       IVGS has no code for this family  -> a DEVELOPER
+ *   no host         nothing serves the engine          -> an OPERATOR   (weight_status)
+ *   not fetched     certified, bytes not here yet      -> an ADMIN      (weight_status)
+ *
+ * Conflating them is how an operator ends up selecting something that cannot
+ * run and cannot be made to run by anything they are able to do.
+ */
+export type ClientState =
+  | "client_available"
+  | "no_client"
+  | "family_unknown";
+
+export interface ClientStatus {
+  state: ClientState;
+  label: string;
+  detail: string | null;
+  family: string | null;
+  /** What the client declares it needs from a scene. */
+  requires: string[];
+  client_path: string | null;
+}
+
 export interface FetchWeightsResult {
   accepted: boolean;
   state: WeightState;
@@ -163,6 +190,8 @@ export interface StoreModel {
   /** WP-65: the computed answer to "what should an admin do about this
    *  model's weights". Null only on an API older than v5.24.0-weights. */
   weight_status: WeightStatus | null;
+  /** WP-67: can IVGS run it, as opposed to does it have its bytes. */
+  client_status: ClientStatus | null;
   approvals: ModelApproval[];
 }
 

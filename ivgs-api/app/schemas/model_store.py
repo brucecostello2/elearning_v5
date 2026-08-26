@@ -321,6 +321,24 @@ class FetchWeightsOut(BaseModel):
     status: WeightStatusOut
 
 
+class ClientStatusOut(BaseModel):
+    """WP-67 Task 5 — whether IVGS can RUN this model.
+
+    The second half of the truth WP-65 started. "Has weights on a node" is
+    necessary and not sufficient: a model can be certified, fetched, approved
+    and selected and still have no code in IVGS that knows how to call it.
+    """
+
+    state: str
+    label: str
+    detail: str | None = None
+    family: str | None = None
+    #: What the client declares it needs from a scene, so a user can see why
+    #: two models for the same stage are not interchangeable.
+    requires: list[str] = Field(default_factory=list)
+    client_path: str | None = None
+
+
 class ModelOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -354,6 +372,10 @@ class ModelOut(BaseModel):
     # word stand for four different facts.
     weight_placements: list[WeightPlacementOut] = Field(default_factory=list)
     weight_status: WeightStatusOut | None = None
+    # WP-67. Kept SEPARATE from weight_status, not merged into it: "no bytes
+    # here yet" and "no code for this family" need different people to do
+    # different things, and one field cannot say both.
+    client_status: ClientStatusOut | None = None
     approvals: list[ApprovalOut] = Field(default_factory=list)
 
 

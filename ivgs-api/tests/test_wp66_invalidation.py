@@ -115,6 +115,9 @@ class TestSelectionInvalidatesTheDraftGateOnly:
             stage=ModelStage.IMAGE_GENERATION, engine=ModelEngine.COMFYUI,
             tier=ModelTier.BOTH, state=ModelState.APPROVED,
             weights_ref=_FETCHABLE.format(uuid.uuid4()),
+            # WP-67: a model with no family resolves to no client and is
+            # refused. A real ingested row carries one; so does this.
+            default_params={"family": "flux"},
         )
         db_session.add(row)
         await db_session.flush()

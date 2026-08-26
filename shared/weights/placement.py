@@ -167,6 +167,30 @@ _WAN_FAMILY_DESTS = {
     "wan_preproc_pose": "onnx",
 }
 
+#: node-04's FLUX ComfyUI. It mounts `checkpoints` and nothing else, so every
+#: family it can host lands there. Declared rather than left empty: WP-67's
+#: client registry gave models a real family for the first time, and a host with
+#: no family map refuses every NAMED family by design (see `dest_for`). Before
+#: this, `flux` on node-04 was refused with "declares no family conventions at
+#: all" -- correct given the rule, and wrong about the fleet.
+_FLUX_FAMILY_DESTS = {
+    "flux": "checkpoints",
+    "sd15": "checkpoints",
+    "sdxl": "checkpoints",
+    "sd35": "checkpoints",
+    # AnimateDiff-SD15 renders from an SD-1.5 CHECKPOINT plus a motion module;
+    # the checkpoint is what a bundle would carry, and it goes where every other
+    # checkpoint goes. (The motion module ships in the engine image -- MBCP's
+    # certified graph names `mm_sd_v15_v2.ckpt` as a literal, not a slot.)
+    "animatediff": "checkpoints",
+}
+
+#: The cogvideox server mounts one model directory, named for the model.
+_COGVIDEOX_FAMILY_DESTS = {"cogvideox": "cogvideox-5b"}
+
+#: vLLM reads an HF cache; every family lands in the same hub directory.
+_VLLM_FAMILY_DESTS = {"vllm_chat": "hub"}
+
 ENGINE_HOSTS: tuple[EngineHost, ...] = (
     EngineHost(
         engine="comfyui",
@@ -221,6 +245,16 @@ ENGINE_HOSTS: tuple[EngineHost, ...] = (
     ),
 )
 
+#: (engine, node) -> family placement map. One table rather than a conditional,
+#: so adding a host means adding a row here and nothing else.
+_FAMILY_DESTS_BY_HOST: dict[tuple[str, str], dict[str, str]] = {
+    ("comfyui", "node-03"): _WAN_FAMILY_DESTS,
+    ("comfyui", "node-04"): _FLUX_FAMILY_DESTS,
+    ("cogvideox", "node-03"): _COGVIDEOX_FAMILY_DESTS,
+    ("vllm", "node-02"): _VLLM_FAMILY_DESTS,
+}
+
+
 #: Engines IVGS knows by name but which NO node on this fleet hosts. Listed
 #: rather than left to fall through, so the refusal can say something true.
 #: ``animatediff`` is here because it is a stale IVGS-only engine key -- MBCP
@@ -267,8 +301,9 @@ def placement_for(engine: str, *, node_id: str | None = None) -> PlacementRule:
         )
 
     host = candidates[0]
-    dest_by_family = dict(_WAN_FAMILY_DESTS) if host.mbcp_engine_key == "comfyui-wan" else {}
-    return PlacementRule(host=host, dest_by_family=dest_by_family)
+    return PlacementRule(host=host, dest_by_family=dict(_FAMILY_DESTS_BY_HOST.get(
+        (host.engine, host.node_id), {}
+    )))
 
 
 def host_for_model(engine: str, stage: str) -> EngineHost:

@@ -42,14 +42,29 @@ from shared.models.model_store import (
 )
 
 
+#: Family per stage, so a test model resolves to a registered client the way an
+#: MBCP-ingested row would. WP-67 made "IVGS has no client for this family" a
+#: bar on selection, and a test model with an invented name has no family at
+#: all -- which is correct behaviour and not what these tests are about.
+_STAGE_FAMILY = {
+    ModelStage.IMAGE_GENERATION: "flux",
+    ModelStage.ANIMATION_GENERATION: "wan_animate",
+    ModelStage.VIDEO_GENERATION: "cogvideox",
+    ModelStage.TALKING_HEAD: "latentsync",
+    ModelStage.VOICEOVER_TTS: "kokoro",
+}
+
+
 async def _model(db, *, name, stage=ModelStage.IMAGE_GENERATION,
                 state=ModelState.APPROVED, engine=ModelEngine.COMFYUI,
                 is_default=False, enabled=True, weights_ref=None,
-                tier=ModelTier.BOTH):
+                tier=ModelTier.BOTH, family=None):
+    fam = family if family is not None else _STAGE_FAMILY.get(stage, "flux")
     row = Model(
         id=uuid.uuid4(), name=name, display_name=name, stage=stage,
         engine=engine, tier=tier, state=state, is_default=is_default,
         enabled=enabled, weights_ref=weights_ref,
+        default_params={"family": fam} if fam else None,
     )
     db.add(row)
     await db.flush()
@@ -176,7 +191,7 @@ class TestSelectionRefusals:
         a = await _model(db_session, name="wp66-a", state=ModelState.CANDIDATE)
         b = await _model(
             db_session, name="wp66-b", engine=ModelEngine.REMOTION,
-            weights_ref=_FETCHABLE.format(uuid.uuid4()),
+            weights_ref=_FETCHABLE.format(uuid.uuid4()), family="flux",
         )
         reasons = set()
         for m in (a, b):
@@ -194,7 +209,7 @@ class TestSelectionRefusals:
     ):
         m = await _model(
             db_session, name="wp66-nohost", engine=ModelEngine.REMOTION,
-            weights_ref=_FETCHABLE.format(uuid.uuid4()),
+            weights_ref=_FETCHABLE.format(uuid.uuid4()), family="flux",
         )
         with pytest.raises(SelectionRefused) as exc:
             await planner.manual_override(
@@ -247,7 +262,7 @@ class TestSelectionRefusals:
                      weights_ref=_FETCHABLE.format(uuid.uuid4()))
         await _model(db_session, name="wp66-cand", state=ModelState.CANDIDATE)
         await _model(db_session, name="wp66-eo", engine=ModelEngine.REMOTION,
-                     weights_ref=_FETCHABLE.format(uuid.uuid4()))
+                     weights_ref=_FETCHABLE.format(uuid.uuid4()), family="flux")
         await db_session.commit()
 
         cands = await selection_panel._candidates_for(

@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1252** | **0** | 0 | 0 | 1208 (WP-65) |
-| `ivgs-workers` | **887** | 18 | 48 | 15 | 868 (WP-63) |
+| `ivgs-api` | **1286** | **0** | 0 | 0 | 1252 (WP-66) |
+| `ivgs-workers` | **903** | 18 | 48 | 15 | 887 (WP-64) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2371** | **50** | **63** | **45** | 2327 / 50 (WP-65) |
+| **Total** | **2421** | **50** | **63** | **45** | 2371 / 50 (WP-66) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,22 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-67 added 50 tests (2026-08-26) and moved no failure row.** 34 in `ivgs-api`
+(1252 -> 1286) and 16 in `ivgs-workers` (887 -> 903) — **the first package in
+this run to add a worker-tree test**, because it added a client and clients live
+there. Failures, skips and errors are unchanged in both trees: 18 / 48 / 15.
+**No migration.** WP-67 adds no table, no column and no enum label; the registry
+is code and the family is derived from `default_params` and name patterns
+precisely so that no data migration is needed.
+
+**ONE ASSERTION IN WP-67's OWN NEW TESTS WAS WRONG AND IS RECORDED HERE**, because
+a test that cannot fail is worse than no test. A first draft of
+`test_every_slot_is_resolved` checked `"{" not in json.dumps(graph)` to prove no
+graph slot was left unfilled — but a JSON document is full of braces, so the
+assertion could never pass and therefore never meant anything. It now asks
+`_unresolved_slots`, the walker the Wan client already uses. Caught before the
+package's first full run, not after.
 
 **WP-66 added 44 tests (2026-08-26) and moved no failure row.** All 44 in
 `ivgs-api` (1208 -> 1252). `ivgs-workers` re-run in the same session and is

@@ -23,6 +23,7 @@ from app.schemas.model_store import (
     AvailabilityOut,
     ClearSelectionIn,
     ClearSelectionOut,
+    ClientStatusOut,
     FetchWeightsOut,
     ManualSelectionIn,
     ModelOut,
@@ -83,6 +84,13 @@ def _with_weight_status(model: Model) -> ModelOut:
     """
     out = ModelOut.model_validate(model)
     out.weight_status = WeightStatusOut(**weights.compute_status(model).as_dict())
+    # WP-67 Task 5. Computed here for the same reason weight_status is: the
+    # frontend inferring runnability from what it can see is the defect, and
+    # there is nothing on a Model row from which "IVGS has a client for this"
+    # could be inferred at all.
+    out.client_status = ClientStatusOut(
+        **weights.compute_client_status(model).as_dict()
+    )
     return out
 
 

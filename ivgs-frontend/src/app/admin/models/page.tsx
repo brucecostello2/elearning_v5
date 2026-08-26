@@ -12,6 +12,7 @@ import type {
   ModelRegisterPayload,
   ModelState,
   ModelUpdatePayload,
+  ClientState,
   StoreModel,
   WeightState,
 } from "@/types/models";
@@ -80,6 +81,30 @@ const WEIGHT_ACTION: Record<WeightState, string> = {
     "The stored weights_ref is in a form IVGS cannot parse. Refused rather than guessed at.",
   fetching: "A fetch is running.",
   failed: "The last fetch failed. The reason is recorded on the row.",
+};
+
+/**
+ * WP-67 Task 5 — the SECOND absence, kept visibly separate from the first.
+ *
+ * WP-65's Weights column answers "are the bytes here". This answers "does IVGS
+ * have code that knows how to call this model". They are independent: the two
+ * MBCP animation candidates have neither, `wan2.2-animate` has a client and no
+ * recorded fetch, and a model could in principle have bytes and no client.
+ * Merging them into one column would put an operator back where WP-65 found
+ * them -- one word standing for several different jobs.
+ */
+const CLIENT_BADGE: Record<ClientState, string> = {
+  client_available: "bg-green-900/50 text-green-300 border border-green-800",
+  no_client: "bg-red-900/50 text-red-300 border border-red-800",
+  family_unknown: "bg-gray-700/50 text-gray-300 border border-gray-600",
+};
+
+const CLIENT_ACTION: Record<ClientState, string> = {
+  client_available: "",
+  no_client:
+    "IVGS has no client for this model's family. Fetching weights will not help and neither will deploying an engine: this needs code. It is certified, it may be fetchable, and this system cannot call it.",
+  family_unknown:
+    "The model's family could not be determined, so no client can be chosen for it. An ingest that carried a family, or a registered name pattern, would resolve it.",
 };
 
 /** Bytes, or the honest absence of a measurement. Never "0 B" for unknown. */
@@ -686,6 +711,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                       "State",
                       "VRAM",
                       "Weights",
+                      "Client",
                       "Flags",
                       "Actions",
                     ].map((h) => (
@@ -702,7 +728,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                   {filtered.length === 0 && (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={10}
                         className="px-4 py-8 text-center text-gray-500 dark:text-gray-400"
                       >
                         No models match. MBCP-certified models arrive here as
@@ -721,6 +747,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                       (a) => a.status === "available",
                     ).length;
                     const ws = m.weight_status;
+                    const cs = m.client_status;
                     return (
                       <React.Fragment key={m.id}>
                         <tr
@@ -789,6 +816,21 @@ export default function ModelStorePage(): React.ReactElement | null {
                             ) : (
                               <span className="text-gray-500 dark:text-gray-400">
                                 unknown (API predates v5.24.0-weights)
+                              </span>
+                            )}
+                          </td>
+                          {/* WP-67 — can IVGS RUN it. Independent of the bytes. */}
+                          <td className="px-4 py-3">
+                            {cs ? (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-xs font-medium ${CLIENT_BADGE[cs.state]}`}
+                                title={cs.detail ?? CLIENT_ACTION[cs.state] ?? cs.label}
+                              >
+                                {cs.label}
+                              </span>
+                            ) : (
+                              <span className="text-gray-500 dark:text-gray-400">
+                                unknown (API predates v5.26.0-clients)
                               </span>
                             )}
                           </td>
@@ -906,7 +948,7 @@ export default function ModelStorePage(): React.ReactElement | null {
                         </tr>
                         {expanded === m.id && (
                           <tr className="bg-gray-100 dark:bg-gray-800/40">
-                            <td colSpan={9} className="px-6 py-4">
+                            <td colSpan={10} className="px-6 py-4">
                               <div className="grid grid-cols-1 gap-4 text-xs text-gray-500 dark:text-gray-400 md:grid-cols-3">
                                 <div>
                                   <div className="mb-1 font-semibold text-gray-800 dark:text-gray-200">
@@ -971,6 +1013,35 @@ export default function ModelStorePage(): React.ReactElement | null {
                                       )}
                                     </div>
                                   ))}
+                                </div>
+                                <div>
+                                  <div className="mb-1 font-semibold text-gray-800 dark:text-gray-200">
+                                    Client
+                                  </div>
+                                  {cs ? (
+                                    <>
+                                      <div>{cs.label}</div>
+                                      {cs.family && <div>family: {cs.family}</div>}
+                                      {cs.requires.length > 0 && (
+                                        <div>
+                                          needs from a scene:{" "}
+                                          {cs.requires.join(", ")}
+                                        </div>
+                                      )}
+                                      {cs.detail && (
+                                        <div className="mt-1 italic">{cs.detail}</div>
+                                      )}
+                                      {CLIENT_ACTION[cs.state] && (
+                                        <div className="mt-1">
+                                          {CLIENT_ACTION[cs.state]}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className="text-gray-500 dark:text-gray-400">
+                                      not reported by this API
+                                    </div>
+                                  )}
                                 </div>
                                 <div>
                                   <div

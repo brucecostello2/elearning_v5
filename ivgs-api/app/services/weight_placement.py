@@ -213,6 +213,97 @@ def compute_status(
     )
 
 
+# ---------------------------------------------------------------------------
+# WP-67 Task 5 — the SECOND half of the truth
+# ---------------------------------------------------------------------------
+#
+# WP-65 made "has weights on a node" visible. That is necessary and not
+# sufficient: a model can be certified, fetchable, placed, approved and
+# selected, and STILL have nothing in IVGS that knows how to call it. Before
+# WP-67, selecting AnimateDiff-SD15 resolved its endpoint and then ran
+# WanAnimateClient against it -- the model blindfolded in a new way.
+#
+# THE THREE STATES MUST STAY DISTINCT because they need three different people
+# to do three different things, and conflating them is how an operator ends up
+# selecting something that cannot run:
+#
+#   no client        IVGS has no code for this family      -> a DEVELOPER
+#   no host          nothing on the fleet serves the engine -> an OPERATOR
+#   not fetched      certified, bytes not here yet          -> an ADMIN
+
+#: A family IVGS has code for.
+CLIENT_AVAILABLE = "client_available"
+#: Certified, fetchable, and unrunnable by this system today.
+CLIENT_MISSING = "no_client"
+#: The family could not be determined at all.
+CLIENT_FAMILY_UNKNOWN = "family_unknown"
+
+
+@dataclass
+class ClientStatus:
+    """Whether IVGS can RUN this model, as opposed to whether it has its bytes."""
+
+    state: str
+    label: str
+    detail: str | None = None
+    family: str | None = None
+    #: What the client declares it needs from a scene. Rendered so a user can
+    #: see WHY two models for the same stage are not interchangeable.
+    requires: list[str] | None = None
+    client_path: str | None = None
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "state": self.state,
+            "label": self.label,
+            "detail": self.detail,
+            "family": self.family,
+            "requires": self.requires or [],
+            "client_path": self.client_path,
+        }
+
+
+def compute_client_status(model: Model) -> ClientStatus:
+    """Can IVGS run this model? Pure; no IO.
+
+    Answered from the registry alone, so an admin page can label a model
+    correctly without a worker, a node, or a network.
+    """
+    from shared.providers.client_registry import (
+        AmbiguousFamilyError,
+        ClientResolutionError,
+        family_of,
+        resolve_client,
+    )
+
+    # The registry reads the same fields a real binding carries, so a Model row
+    # can be asked the question directly -- no need to manufacture a binding
+    # just to find out whether a client exists.
+    try:
+        spec = resolve_client(model)
+    except AmbiguousFamilyError as exc:
+        return ClientStatus(
+            state=CLIENT_FAMILY_UNKNOWN,
+            label="model family could not be determined",
+            detail=str(exc),
+        )
+    except ClientResolutionError as exc:
+        return ClientStatus(
+            state=CLIENT_MISSING,
+            label="no client — IVGS cannot run this model",
+            detail=str(exc),
+            family=family_of(model),
+        )
+    return ClientStatus(
+        state=CLIENT_AVAILABLE,
+        label=f"client: {spec.contract.display_name}",
+        detail=spec.contract.notes or None,
+        family=spec.family,
+        requires=sorted(r.value for r in spec.contract.requires),
+        client_path=spec.client_path,
+    )
+
+
 async def _upsert_placement(
     db: AsyncSession, model_id: Any, node_id: str
 ) -> ModelWeightPlacement:
