@@ -30,7 +30,7 @@ expired reservations are automatically released.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 import redis.asyncio as aioredis
 import structlog
@@ -106,6 +106,9 @@ class AdmissionController:
 
     # Redis key prefixes
     RESERVATION_KEY_PREFIX = "sched:reservation:"
+    # WP-60 Task 3: the never-expiring twin written by
+    # `GpuScheduler._create_reservation`. See that constant for why it exists.
+    RESERVATION_LEDGER_PREFIX = "sched:reservation_ledger:"
     RESERVATION_INDEX_KEY = "sched:reservations:index"
     NODE_RESERVATIONS_PREFIX = "sched:node_reservations:"
     JOB_STATE_PREFIX = "sched:job_state:"
@@ -342,12 +345,55 @@ class AdmissionController:
         """
         assert self._redis is not None
         res_key = f"{self.RESERVATION_KEY_PREFIX}{reservation_id}"
+        ledger_key = f"{self.RESERVATION_LEDGER_PREFIX}{reservation_id}"
         data = await self._redis.hgetall(res_key)
+
+        # WP-60 Task 3 — THE LEAK, AND WHY IT COULD NOT BE SWEPT UP.
+        #
+        # This used to raise the moment `res_key` was gone. `res_key` carries a
+        # 300s TTL while the jobs it covers run for up to 3900s, so for every
+        # long render the release arrived AFTER the record it needed and could
+        # only fail. `used_vram_mb` -- a counter with no TTL -- stayed up.
+        #
+        # Measured on the live fleet, 2026-08-26 01:37 UTC:
+        #   gpu:node:node-03:gpu0  used_vram_mb=16384
+        #                          current_job_id=""      (no job running)
+        #   sched:reservation:*    NO KEYS EXIST ANYWHERE (all expired)
+        # A registration an hour old already 16 GB short, and nothing left in
+        # Redis that could say who owed it. Admission control computes headroom
+        # as total minus used (`_check_vram_availability`), so node-03 was
+        # silently 16 GB smaller than it is.
+        #
+        # It is a one-way ratchet: every reservation on a job longer than the
+        # TTL leaks, permanently, and only a re-registration ever clears it.
+        # (One did, at 02:46 -- which is why the counter reads 0 today. That is
+        # accidental recovery, not a fix.)
+        #
+        # The ledger is consulted when the TTL'd record is gone, so a late
+        # release still knows what to give back.
+        recovered_from_ledger = False
+        if not data:
+            data = await self._redis.hgetall(ledger_key)
+            recovered_from_ledger = bool(data)
 
         if not data:
             from main import ReservationNotFoundError
             raise ReservationNotFoundError(
                 f"Reservation '{reservation_id}' not found or expired"
+            )
+
+        if recovered_from_ledger:
+            logger.warning(
+                "reservation_released_after_expiry",
+                reservation_id=reservation_id,
+                node_id=data.get("node_id"),
+                vram_mb=data.get("vram_mb"),
+                detail=(
+                    "the TTL'd reservation record was already gone; released "
+                    "from the durable ledger. A job outliving its reservation "
+                    "TTL is expected for long renders and is not an error - "
+                    "but before WP-60 this path leaked the VRAM instead."
+                ),
             )
 
         node_id = data["node_id"]
@@ -373,6 +419,7 @@ class AdmissionController:
         # Clean up Redis keys
         pipe = self._redis.pipeline()
         pipe.delete(res_key)
+        pipe.delete(ledger_key)
         pipe.srem(self.RESERVATION_INDEX_KEY, reservation_id)
         pipe.srem(f"{self.NODE_RESERVATIONS_PREFIX}{node_id}", reservation_id)
         if job_id:
@@ -440,38 +487,151 @@ class AdmissionController:
 
     async def cleanup_expired_reservations(self) -> int:
         """
-        Clean up expired VRAM reservations.
+        Release VRAM held by expired reservations, and tidy the index.
 
-        Scans all tracked reservations and removes those whose Redis keys
-        have expired (TTL elapsed). Returns the number cleaned up.
+        WP-60 Task 3 — THIS FUNCTION WAS THE LEAK'S ALIBI.
+
+        It was the only thing in the system that noticed an expired
+        reservation, and its own comment recorded why it could do nothing
+        about it:
+
+            # Reservation key expired - clean up index entries
+            # We don't know the node_id anymore, so scan all node sets
+
+        It did not know the node_id because the expired hash WAS the only
+        record of it. So it removed the bookkeeping that said VRAM was
+        outstanding while leaving the VRAM outstanding -- turning a visible
+        leak into an invisible one, on a five-minute timer. It reported the
+        count it cleaned as if that were a recovery.
+
+        `release_node_reservations` had the same hole from the other side: it
+        called `release_reservation`, which raised for anything expired, and
+        swallowed that into a warning.
+
+        With the durable ledger in place this now performs a real release for
+        every expired reservation it finds, and the two counts are reported
+        separately so "swept" can never again be mistaken for "recovered".
 
         Returns:
-            Number of expired reservations cleaned up.
+            Number of expired reservations whose VRAM was actually released.
         """
         assert self._redis is not None
         all_ids = await self._redis.smembers(self.RESERVATION_INDEX_KEY)
 
-        expired_count = 0
+        released_count = 0
+        orphaned_count = 0
         for res_id in all_ids:
             res_key = f"{self.RESERVATION_KEY_PREFIX}{res_id}"
-            exists = await self._redis.exists(res_key)
-            if not exists:
-                # Reservation key expired — clean up index entries
-                pipe = self._redis.pipeline()
-                pipe.srem(self.RESERVATION_INDEX_KEY, res_id)
+            if await self._redis.exists(res_key):
+                continue  # still live; nothing to do
 
-                # We don't know the node_id anymore, so scan all node sets
-                # This is acceptable because cleanup runs infrequently
-                all_node_ids = await self._redis.smembers("gpu:nodes:all")
-                for node_id in all_node_ids:
-                    pipe.srem(
-                        f"{self.NODE_RESERVATIONS_PREFIX}{node_id}", res_id
-                    )
+            try:
+                await self.release_reservation(res_id)
+                released_count += 1
+                continue
+            except Exception:
+                # No ledger entry either -- a reservation from before this
+                # change, or one whose ledger row was removed by hand. The
+                # VRAM it holds is NOT recoverable from here, and saying so is
+                # the whole point: the operator has `POST /reconcile/{node_id}`
+                # for exactly this.
+                orphaned_count += 1
 
-                await pipe.execute()
-                expired_count += 1
+            pipe = self._redis.pipeline()
+            pipe.srem(self.RESERVATION_INDEX_KEY, res_id)
+            all_node_ids = await self._redis.smembers("gpu:nodes:all")
+            for node_id in all_node_ids:
+                pipe.srem(f"{self.NODE_RESERVATIONS_PREFIX}{node_id}", res_id)
+            await pipe.execute()
 
-        return expired_count
+        if orphaned_count:
+            logger.error(
+                "expired_reservations_without_ledger",
+                count=orphaned_count,
+                detail=(
+                    "these reservations expired with no durable ledger row, so "
+                    "the VRAM they reserved cannot be attributed to a node and "
+                    "remains counted against it. Run POST /reconcile/{node_id} "
+                    "to recompute used_vram_mb from live reservations."
+                ),
+            )
+
+        return released_count
+
+    async def reconcile_node_vram(self, node_id: str) -> Dict[str, Any]:
+        """
+        Recompute a node's ``used_vram_mb`` from the reservations that exist.
+
+        WP-60 Task 3. The operator's release path, and the reconciler
+        registration now calls instead of blindly reseeding.
+
+        ``used_vram_mb`` is a free-running counter: `add_vram_usage` does
+        `HINCRBY`, `release_vram_usage` does a read-modify-write, and nothing
+        has ever checked the total against the reservations that justify it.
+        A counter with no derivation cannot self-correct, so any lost release
+        is permanent. This derives the truth and states the drift rather than
+        silently overwriting -- a silent overwrite is how the accidental
+        recovery at re-registration hid the defect for as long as it did.
+
+        Returns a dict describing what it found and what it changed. Safe to
+        run at any time: it never invents a reservation, and a node genuinely
+        holding 16 GB of live reservations keeps its 16 GB.
+        """
+        assert self._redis is not None
+
+        node_res_key = f"{self.NODE_RESERVATIONS_PREFIX}{node_id}"
+        reservation_ids = await self._redis.smembers(node_res_key)
+
+        derived_mb = 0
+        counted: List[str] = []
+        for res_id in reservation_ids:
+            data = await self._redis.hgetall(
+                f"{self.RESERVATION_KEY_PREFIX}{res_id}"
+            )
+            if not data:
+                data = await self._redis.hgetall(
+                    f"{self.RESERVATION_LEDGER_PREFIX}{res_id}"
+                )
+            if not data:
+                continue
+            try:
+                derived_mb += int(data.get("vram_mb", 0))
+            except (TypeError, ValueError):
+                continue
+            counted.append(res_id)
+
+        node_key = f"gpu:node:{node_id}"
+        raw = await self._redis.hget(node_key, "used_vram_mb")
+        try:
+            current_mb = int(raw or 0)
+        except (TypeError, ValueError):
+            current_mb = 0
+
+        drift_mb = current_mb - derived_mb
+        if drift_mb != 0:
+            await self._redis.hset(node_key, "used_vram_mb", str(derived_mb))
+            logger.warning(
+                "node_vram_reconciled",
+                node_id=node_id,
+                previous_used_vram_mb=current_mb,
+                derived_used_vram_mb=derived_mb,
+                drift_mb=drift_mb,
+                live_reservations=len(counted),
+                detail=(
+                    "used_vram_mb did not match the reservations backing it. "
+                    "A positive drift is leaked reservation - VRAM counted "
+                    "against the node that no live reservation justifies."
+                ),
+            )
+
+        return {
+            "node_id": node_id,
+            "previous_used_vram_mb": current_mb,
+            "used_vram_mb": derived_mb,
+            "drift_mb": drift_mb,
+            "live_reservations": len(counted),
+            "reconciled": drift_mb != 0,
+        }
 
     async def update_job_state(
         self, project_id: str, stage: int

@@ -30,6 +30,42 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 
+def normalise_model_name(model_name: str) -> str:
+    """One canonical spelling for a model, applied at every write.
+
+    WP-60 Task 3(a) — CASE-DUPLICATED MODEL ACCOUNTING, MEASURED LIVE.
+
+    Redis db1 held both spellings of the same model, with different contents::
+
+        gpu:model_fleet:wan2.2-animate  ->  {"node-04:gpu0"}    <- current
+        gpu:model_fleet:Wan2.2-Animate  ->  {"c326eab3def1:gpu0"}  <- dead
+        gpu:model_concurrent:wan2.2-animate  = 0
+        gpu:model_concurrent:Wan2.2-Animate  = 0
+
+    Both entered through THIS class -- ``record_model_load`` is the only writer
+    of all four families -- because ``model_name`` arrives from the caller and
+    nothing ever canonicalised it. The two spellings have distinct sources:
+
+      * ``wan2.2-animate`` is what the dispatch path writes today. It comes
+        from ``binding.name``, the AD-01 certified binding.
+      * ``Wan2.2-Animate`` is the hardcoded fallback at
+        ``animation_generation_task.py:713``, used when no binding resolves.
+
+    So the SAME task writes either spelling depending on whether a binding is
+    found, and the concurrency limit -- the whole point of these keys -- is
+    then enforced per spelling. Two jobs of the same model could each see a
+    count of 0 and both be admitted onto a GPU sized for one.
+
+    (The capitalised set also still names ``c326eab3def1:gpu0``, a container
+    hex id from before WP-45 gave nodes stable names, which is how we know
+    which spelling is current: the lowercase one holds the real node.)
+
+    Casefold rather than lower: it is the Unicode-correct form and it is
+    idempotent, so a name already canonical is unchanged.
+    """
+    return model_name.strip().casefold() if model_name else model_name
+
+
 # ---------------------------------------------------------------------------
 # Data Models
 # ---------------------------------------------------------------------------
@@ -67,6 +103,8 @@ class ModelConcurrencyManager:
 
     # Redis key prefixes
     NODE_MODELS_PREFIX = "gpu:models:"
+    #: WP-60 Task 3(a). See ``normalise_model_name``.
+
     MODEL_LOADS_PREFIX = "gpu:model_loads:"
     FLEET_MODEL_PREFIX = "gpu:model_fleet:"
     LRU_PREFIX = "gpu:model_lru:"
@@ -105,6 +143,7 @@ class ModelConcurrencyManager:
         Returns:
             True if the GPU can accept the model load.
         """
+        model_name = normalise_model_name(model_name)
         # Check 1: Fleet-wide concurrent load limit
         concurrent_key = f"{self.CONCURRENT_PREFIX}{model_name}"
         concurrent_count = int(await self._redis.get(concurrent_key) or "0")
@@ -163,6 +202,7 @@ class ModelConcurrencyManager:
             model_name: Model being loaded.
             job_id: Job ID triggering the load.
         """
+        model_name = normalise_model_name(model_name)
         now = time.time()
         log = logger.bind(
             node_id=node_id,
@@ -230,6 +270,7 @@ class ModelConcurrencyManager:
             model_name: Model being released.
             job_id: Job ID completing.
         """
+        model_name = normalise_model_name(model_name)
         log = logger.bind(
             node_id=node_id,
             gpu_index=gpu_index,
@@ -291,6 +332,7 @@ class ModelConcurrencyManager:
         Returns:
             List of node IDs with the model loaded.
         """
+        model_name = normalise_model_name(model_name)
         fleet_key = f"{self.FLEET_MODEL_PREFIX}{model_name}"
         return list(await self._redis.smembers(fleet_key))
 
@@ -304,6 +346,7 @@ class ModelConcurrencyManager:
         Returns:
             Number of concurrent loads.
         """
+        model_name = normalise_model_name(model_name)
         concurrent_key = f"{self.CONCURRENT_PREFIX}{model_name}"
         return int(await self._redis.get(concurrent_key) or "0")
 
@@ -311,6 +354,7 @@ class ModelConcurrencyManager:
         self, node_id: str, model_name: str
     ) -> bool:
         """Check if a model is already loaded on a node."""
+        model_name = normalise_model_name(model_name)
         node_models_key = f"{self.NODE_MODELS_PREFIX}{node_id}"
         return bool(await self._redis.sismember(node_models_key, model_name))
 

@@ -91,6 +91,20 @@ logger = structlog.get_logger("ivgs.animation_generation")
 #: The store row's ``vram_gb`` overrides this once the operator fills it in.
 CERTIFIED_VRAM_MB = 45458  # ceil(44.392578125 * 1024)
 
+# WP-60 Task 3(a). ONE SPELLING, BECAUSE TWO BECAME TWO SETS OF COUNTERS.
+#
+# The scheduler keys model accounting -- concurrency limits, fleet residency,
+# LRU -- on the model name it is handed. This site used to pass the literal
+# "Wan2.2-Animate" whenever no AD-01 binding resolved, while a resolved binding
+# supplies "wan2.2-animate". Redis db1 ended up holding BOTH, with different
+# members, so the per-model concurrency limit was enforced twice over and
+# neither count saw the other's loads.
+#
+# `ModelConcurrencyManager` now casefolds at every write, which makes the two
+# converge regardless. This constant closes the other half: the fallback and
+# the binding should not have disagreed in the first place.
+FALLBACK_MODEL_NAME = "wan2.2-animate"
+
 #: The node classes the certified graph needs. A stock ComfyUI answers ``{}``
 #: for every one of them, so checking first turns "opaque /prompt validation
 #: error" into "you reached the image engine, not the Wan engine".
@@ -710,7 +724,9 @@ def generate_scene_animations(
         try:
             reservation = acquire_gpu_reservation(
                 job_id=job_id,
-                model_name=binding.name if binding is not None else "Wan2.2-Animate",
+                model_name=(
+                    binding.name if binding is not None else FALLBACK_MODEL_NAME
+                ),
                 vram_requirement_mb=vram_mb,
                 estimated_duration_s=len(task_input.scenes) * 300,
             )
@@ -719,7 +735,9 @@ def generate_scene_animations(
             log.warning(
                 "gpu_reservation_unavailable",
                 stage=PipelineStage.ANIMATION_GENERATION.value,
-                model=binding.name if binding is not None else "Wan2.2-Animate",
+                model=(
+                    binding.name if binding is not None else FALLBACK_MODEL_NAME
+                ),
                 vram_mb=vram_mb,
                 error_type=type(e).__name__,
                 error=str(e),

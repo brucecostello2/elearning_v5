@@ -840,6 +840,70 @@ async def get_fleet_status() -> FleetResponse:
         raise HTTPException(status_code=500, detail=f"Fleet status error: {exc}")
 
 
+class ReconcileResponse(BaseModel):
+    """POST /reconcile/{node_id} response body. WP-60 Task 3."""
+
+    node_id: str
+    previous_used_vram_mb: int
+    used_vram_mb: int
+    drift_mb: int
+    live_reservations: int
+    reconciled: bool
+
+
+@app.post(
+    "/reconcile/{node_id}", response_model=ReconcileResponse, status_code=200
+)
+async def reconcile_node(node_id: str) -> ReconcileResponse:
+    """
+    Recompute a node's reserved VRAM from the reservations that justify it.
+
+    WP-60 Task 3 — THE OPERATOR'S RELEASE PATH.
+
+    ``used_vram_mb`` is a free-running counter that only ever moved by
+    increment and decrement, with nothing checking it against the reservations
+    it is supposed to represent. A release that never landed is therefore
+    permanent: the node is silently smaller than it is, for good, because
+    admission control computes headroom as total minus used. Measured live on
+    2026-08-26: ``gpu:node:node-03:gpu0`` held ``used_vram_mb=16384`` with an
+    empty ``current_job_id`` and no ``sched:reservation:*`` key anywhere in
+    Redis.
+
+    This route derives the honest figure and reports the drift. It is
+    deliberately an API call rather than a hand-edit of Redis: a hand-edit
+    leaves no record, cannot be rate-limited or audited, and is exactly the
+    kind of undocumented intervention that made the original defect invisible.
+
+    Safe at any time. It never invents a reservation, so a node genuinely
+    holding live reservations keeps every megabyte of them.
+    """
+    log = logger.bind(node_id=node_id)
+    log.info("reconcile_request_received")
+
+    try:
+        assert app_state.admission is not None
+        assert app_state.registry is not None
+        result = await app_state.admission.reconcile_node_vram(node_id)
+
+        if app_state.metrics is not None:
+            try:
+                gpu_index = int(node_id.rsplit(":gpu", 1)[-1])
+            except (ValueError, IndexError):
+                gpu_index = 0
+            app_state.metrics.set_vram_used(
+                node_id, gpu_index, result["used_vram_mb"]
+            )
+
+        log.info("reconcile_complete", **result)
+        return ReconcileResponse(**result)
+
+    except Exception as exc:
+        logger.exception("reconcile_error")
+        raise HTTPException(
+            status_code=500, detail=f"Reconcile error: {exc}"
+        )
+
+
 @app.post("/drain/{node_id}", response_model=DrainResponse, status_code=200)
 async def drain_node(node_id: str) -> DrainResponse:
     """

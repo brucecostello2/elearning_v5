@@ -17,10 +17,10 @@ output is quoted.
 |---|---|---|---|---|---|
 | `ivgs-api` | **904** | **0** | 0 | 0 | 880 (WP-57) |
 | `ivgs-workers` | 809 | 18 | 48 | 15 | 799 (WP-57) |
-| `ivgs-scheduler` | 22 | 21 | 0 | 0 | 9 passed / 2 failed / 32 errors |
+| `ivgs-scheduler` | **35** | **20** | 0 | 0 | 22 / 21 (WP-59) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | 73 | 12 | 15 | 30 | 56 (WP-58) |
-| **Total** | **1812** | **47** | **63** | **45** | |
+| **Total** | **1830** | **46** | **63** | **45** | 1812 / 47 (WP-59) |
 
 `ivgs-api` and `ivgs-backup-worker` are GREEN. The other three are red for 7
 distinct causes, all named below. (11 at WP-52; WP-53 closed P2.50, P2.54 and
@@ -202,11 +202,19 @@ WP-53 also added 12 tests across those two files, which is the rest of the
 
 ---
 
-## 4. `ivgs-scheduler` — 22 passed, 21 failed
+## 4. `ivgs-scheduler` — 35 passed, 20 failed
 
 ```bash
 .venv/bin/python -m pytest ivgs-scheduler/tests
 ```
+
+WP-60 added 12 tests (2026-08-26): `test_wp60_reservation_leak.py`, constructing
+the acquire/release imbalance rather than waiting for it — a reservation whose
+TTL'd record expires while the job it covers is still running, which is EVERY
+long render (TTL 300s, longest hard `time_limit` 3900s). 22 → 35, of which +1 is
+`test_reservation_extension` passing now that the Redis double stops rejecting
+`hset(name, key, value)`. **Zero newly-failing tests**, verified by diffing the
+`FAILED` list against a stash of the working tree with the new file moved aside.
 
 Runtime 1.2s. WP-52 added `ivgs-scheduler/tests/conftest.py`, which puts this
 suite's own directory on `sys.path` so `from test_scheduler import FakeRedis`
@@ -220,7 +228,7 @@ passes and 19 diagnosed failures.
 | 8 | `test_circuit_breaker.py` — 8 of its 9 failures; the exception is `test_zero_requests_returns_zero_rate`, the row below | `AttributeError: 'FakePipeline' object has no attribute 'zremrangebyscore'`. The fake has not kept up with the production sliding-window sorted sets. | **P2.52** |
 | 1 | `test_circuit_breaker.py::test_zero_requests_returns_zero_rate` | `AttributeError: 'FakeRedis' object has no attribute 'zcount'`. Same drift. | **P2.52** |
 | 4 | `test_load_balancer.py` — `test_idle_gpu_has_max_weight`, `test_busy_gpu_has_low_weight`, `test_candidates_sorted_by_weight_desc`, `test_balanced_fleet_no_warning` | Same missing `zremrangebyscore`. | **P2.52** |
-| 1 | `test_scheduler.py::test_reservation_extension` | `TypeError: FakePipeline.hset() takes from 2 to 3 positional arguments but 4 were given` — the fake models only the `mapping=` form. | **P2.52** |
+| ~~1~~ | ~~`test_scheduler.py::test_reservation_extension`~~ | ~~`TypeError: FakePipeline.hset() takes from 2 to 3 positional arguments but 4 were given` — the fake models only the `mapping=` form.~~ **P2.52 CLOSED by WP-60.** The double now implements redis-py's real `hset(name, key, value, mapping=None)`, plus `incr`/`decr`/`zrangebyscore`, and `smembers` returns a COPY (production iterates it while removing members). A double that rejects a legal call cannot exercise the code that makes it — this was masking, not measuring. | **P2.52 — CLOSED** |
 
 ---
 

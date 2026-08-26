@@ -41,9 +41,29 @@ class FakeRedis:
     def pipeline(self):
         return FakePipeline(self)
 
-    async def hset(self, key: str, mapping: Optional[Dict] = None, **kwargs):
+    async def hset(
+        self,
+        key: str,
+        field: Optional[str] = None,
+        value: Optional[Any] = None,
+        mapping: Optional[Dict] = None,
+        **kwargs,
+    ):
+        """redis-py's real signature: ``hset(name, key, value, mapping=None)``.
+
+        WP-60. This double accepted ONLY the ``mapping=`` form, so every
+        production call written as ``hset(key, field, value)`` -- which is the
+        documented redis-py call and what `release_vram_usage`,
+        `drain_node`, `undrain_node` and `record_model_load` all use --
+        raised TypeError inside the test suite while working perfectly against
+        real Redis. A test double that rejects a legal call cannot exercise the
+        code that makes it; several of the scheduler suite's standing failures
+        are this, not the code under test.
+        """
         if key not in self._data:
             self._data[key] = {}
+        if field is not None:
+            self._data[key][field] = value
         if mapping:
             self._data[key].update(mapping)
         self._data[key].update(kwargs)
@@ -69,6 +89,16 @@ class FakeRedis:
             return None
         return val
 
+    async def incr(self, key: str) -> int:
+        current = int(self._data.get(key) or 0) + 1
+        self._data[key] = str(current)
+        return current
+
+    async def decr(self, key: str) -> int:
+        current = int(self._data.get(key) or 0) - 1
+        self._data[key] = str(current)
+        return current
+
     async def exists(self, key: str) -> bool:
         return key in self._data
 
@@ -85,7 +115,14 @@ class FakeRedis:
             self._sets[key] -= set(members)
 
     async def smembers(self, key: str) -> set:
-        return self._sets.get(key, set())
+        """A COPY, as real redis-py returns.
+
+        WP-60: this handed back the live set object, so any caller that
+        iterated the result while removing members -- which
+        `cleanup_expired_reservations` and `release_node_reservations` both do
+        -- got "Set changed size during iteration" in the suite and correct
+        behaviour in production."""
+        return set(self._sets.get(key, set()))
 
     async def scard(self, key: str) -> int:
         return len(self._sets.get(key, set()))
@@ -97,6 +134,24 @@ class FakeRedis:
         if key not in self._sorted_sets:
             self._sorted_sets[key] = {}
         self._sorted_sets[key].update(mapping)
+
+    async def zrangebyscore(self, key: str, min_score, max_score, **kwargs):
+        """Members whose score falls in [min, max]. Used by
+        `GpuRegistry.get_alive_nodes` to find nodes heartbeating since the
+        stale cutoff."""
+        def _bound(v, default):
+            if v in ("-inf", "+inf", "inf"):
+                return default
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return default
+
+        lo = _bound(min_score, float("-inf"))
+        hi = _bound(max_score, float("inf"))
+        ss = self._sorted_sets.get(key, {})
+        return [m for m, score in sorted(ss.items(), key=lambda kv: kv[1])
+                if lo <= score <= hi]
 
     async def zrange(self, key: str, start: int, stop: int, **kwargs):
         ss = self._sorted_sets.get(key, {})
@@ -122,8 +177,9 @@ class FakePipeline:
         self._redis = redis
         self._commands: List = []
 
-    def hset(self, key, mapping=None, **kwargs):
-        self._commands.append(("hset", key, mapping, kwargs))
+    def hset(self, key, field=None, value=None, mapping=None, **kwargs):
+        """Mirrors redis-py's ``hset(name, key, value, mapping=None)``."""
+        self._commands.append(("hset", key, field, value, mapping, kwargs))
         return self
 
     def expire(self, key, seconds):
@@ -142,6 +198,14 @@ class FakePipeline:
         self._commands.append(("set", key, value, ex))
         return self
 
+    def incr(self, key):
+        self._commands.append(("incr", key))
+        return self
+
+    def decr(self, key):
+        self._commands.append(("decr", key))
+        return self
+
     def delete(self, key):
         self._commands.append(("delete", key))
         return self
@@ -154,7 +218,13 @@ class FakePipeline:
         for cmd in self._commands:
             op = cmd[0]
             if op == "hset":
-                await self._redis.hset(cmd[1], mapping=cmd[2])
+                await self._redis.hset(
+                    cmd[1], field=cmd[2], value=cmd[3], mapping=cmd[4], **cmd[5]
+                )
+            elif op == "incr":
+                await self._redis.incr(cmd[1])
+            elif op == "decr":
+                await self._redis.decr(cmd[1])
             elif op == "expire":
                 await self._redis.expire(cmd[1], cmd[2])
             elif op == "sadd":

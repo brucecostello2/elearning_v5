@@ -109,6 +109,19 @@ class GpuScheduler:
 
     # Redis key prefixes
     RESERVATION_KEY_PREFIX = "sched:reservation:"
+    # WP-60 Task 3. THE DURABLE HALF OF A RESERVATION.
+    #
+    # `sched:reservation:{id}` carries a 300s TTL. `used_vram_mb` on
+    # `gpu:node:{id}` is a plain counter with NO TTL. When the reservation key
+    # expires, the only record of (node_id, vram_mb) evaporates with it -- and
+    # the counter it incremented stays up forever. That is the leak, and both
+    # sweeps that exist are structurally unable to close it (see
+    # `cleanup_expired_reservations`).
+    #
+    # This ledger entry holds exactly the fields a release needs, never
+    # expires, and is deleted only by an actual release. It is what makes an
+    # expired reservation releasable instead of merely forgettable.
+    RESERVATION_LEDGER_PREFIX = "sched:reservation_ledger:"
     RESERVATION_INDEX_KEY = "sched:reservations:index"
     NODE_RESERVATIONS_PREFIX = "sched:node_reservations:"
     JOB_RESERVATION_PREFIX = "sched:job_reservation:"
@@ -123,6 +136,7 @@ class GpuScheduler:
         circuit_breaker,
         redis: aioredis.Redis,
         metrics,
+        reservation_ttl_s: int = 300,
     ) -> None:
         self._registry = registry
         self._admission = admission
@@ -132,6 +146,9 @@ class GpuScheduler:
         self._circuit_breaker = circuit_breaker
         self._redis = redis
         self._metrics = metrics
+        # §12.2's 5-minute figure, kept configurable so a test can construct
+        # the expiry condition without waiting five minutes (WP-60 Task 3).
+        self._reservation_ttl_s = reservation_ttl_s
 
     async def schedule_job(
         self,
@@ -347,7 +364,16 @@ class GpuScheduler:
         """
         reservation_id = f"res-{uuid.uuid4().hex[:16]}"
         now = datetime.now(timezone.utc)
-        ttl_s = 300  # 5-minute TTL per §12.2
+        # WP-60 Task 3. THE TTL IS SHORTER THAN THE JOBS IT COVERS.
+        #
+        # 300s is the §12.2 figure, and the longest hard task time_limit in
+        # this system is 3900s (talking_head, video_generation). Every long
+        # render therefore outlives its own reservation record by an hour, at
+        # which point `release_reservation` can only raise
+        # ReservationNotFoundError. The TTL is honoured as configured -- it is
+        # a spec number -- but it is now a SAFETY NET over the ledger below
+        # rather than the sole record, so its expiry no longer strands VRAM.
+        ttl_s = self._reservation_ttl_s
         expires_at = datetime.fromtimestamp(
             now.timestamp() + ttl_s, tz=timezone.utc
         )
@@ -383,6 +409,21 @@ class GpuScheduler:
         # Store reservation hash
         pipe.hset(reservation_key, mapping=reservation_data)
         pipe.expire(reservation_key, ttl_s)
+
+        # WP-60 Task 3: the durable twin. Same facts, no TTL, so the expiry of
+        # the record above can never take the release information with it.
+        pipe.hset(
+            f"{self.RESERVATION_LEDGER_PREFIX}{reservation_id}",
+            mapping={
+                "reservation_id": reservation_id,
+                "job_id": job_id,
+                "node_id": node_id,
+                "gpu_index": str(gpu_index),
+                "model_name": model_name,
+                "vram_mb": str(vram_mb),
+                "created_at": reservation.created_at,
+            },
+        )
 
         # Add to reservation index (for listing/cleanup)
         pipe.sadd(self.RESERVATION_INDEX_KEY, reservation_id)

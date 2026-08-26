@@ -165,13 +165,51 @@ class GpuRegistry:
         now = time.time()
         now_iso = datetime.fromtimestamp(now, tz=timezone.utc).isoformat()
 
+        # WP-60 Task 3 — RESEED-OR-RECONCILE, SAID OUT LOUD.
+        #
+        # This function has always written `used_vram_mb: "0"` unconditionally,
+        # and that silent zeroing cut both ways:
+        #
+        #   * It HID the leak. The live 16 GB phantom reservation on
+        #     node-03:gpu0 (2026-08-26 01:37, current_job_id empty, no
+        #     sched:reservation:* keys anywhere) vanished at 02:46 when the
+        #     worker re-registered. Nothing was fixed; the evidence was
+        #     overwritten. A defect that erases itself on restart is the
+        #     hardest kind to see.
+        #
+        #   * It CREATES a leak in the other direction. A worker that
+        #     re-registers while its own long render is still on the GPU has
+        #     its live reservation zeroed, so admission control then believes
+        #     the whole card is free and over-admits onto a busy GPU.
+        #
+        # Registration is not entitled to an opinion about how much VRAM is
+        # reserved: the reservations are. What was previously reseeded by
+        # accident is now DERIVED, and any difference is logged rather than
+        # swallowed -- which is what makes the leak visible instead of
+        # self-erasing. The seed of 0 remains correct for a node registering
+        # for the first time, because it then has no reservations to derive
+        # from and the derivation returns 0 on its own.
+        previously_registered = bool(
+            await self._redis.exists(self._node_key(node_id))
+        )
+        previous_used_mb = 0
+        if previously_registered:
+            _raw_prev = await self._redis.hget(
+                self._node_key(node_id), "used_vram_mb"
+            )
+            try:
+                previous_used_mb = int(_raw_prev or 0)
+            except (TypeError, ValueError):
+                previous_used_mb = 0
+        derived_used_mb = await self._derive_reserved_vram_mb(node_id)
+
         node_data = {
             "node_id": node_id,
             "node_hostname": node_hostname,
             "gpu_index": str(gpu_index),
             "gpu_model": gpu_model,
             "total_vram_mb": str(total_vram_mb),
-            "used_vram_mb": "0",
+            "used_vram_mb": str(derived_used_mb),
             "compute_capability": compute_capability,
             "last_heartbeat_epoch": str(now),
             "last_heartbeat_iso": now_iso,
@@ -194,17 +232,70 @@ class GpuRegistry:
         await pipe.execute()
 
         if self._metrics:
-            self._metrics.set_vram_used(node_id, gpu_index, 0)
-            self._metrics.set_gpu_utilization(node_id, gpu_index, 0.0)
+            self._metrics.set_vram_used(node_id, gpu_index, derived_used_mb)
 
         logger.info(
             "node_registered",
             node_id=node_id,
             gpu_model=gpu_model,
             total_vram_mb=total_vram_mb,
+            reserved_vram_mb=derived_used_mb,
+            reregistration=previously_registered,
         )
 
+        if previously_registered and previous_used_mb != derived_used_mb:
+            # The number the registry HELD versus the number its reservations
+            # JUSTIFY. Before WP-60 this difference was silently discarded on
+            # every re-registration; it is the leak's fingerprint.
+            logger.warning(
+                "registration_corrected_reserved_vram",
+                node_id=node_id,
+                held_used_vram_mb=previous_used_mb,
+                derived_used_vram_mb=derived_used_mb,
+                drift_mb=previous_used_mb - derived_used_mb,
+                detail=(
+                    "re-registration found used_vram_mb out of step with the "
+                    "reservations backing it. A positive drift is VRAM leaked "
+                    "by a release that never landed; re-registration used to "
+                    "erase this silently."
+                ),
+            )
+
         return node_id
+
+    async def _derive_reserved_vram_mb(self, node_id: str) -> int:
+        """Reserved VRAM implied by this node's live reservations.
+
+        WP-60 Task 3. Reads the per-node reservation set and sums the VRAM of
+        each reservation that still exists -- preferring the TTL'd record and
+        falling back to the durable ledger written by
+        ``GpuScheduler._create_reservation``.
+
+        Returns 0 for a node with no reservations, which is exactly the value
+        a first-time registration wants, so this replaces the old hardcoded
+        seed without changing first-registration behaviour.
+        """
+        total = 0
+        try:
+            res_ids = await self._redis.smembers(
+                f"sched:node_reservations:{node_id}"
+            )
+        except Exception:
+            return 0
+
+        for res_id in res_ids or []:
+            for prefix in ("sched:reservation:", "sched:reservation_ledger:"):
+                try:
+                    raw = await self._redis.hget(f"{prefix}{res_id}", "vram_mb")
+                except Exception:
+                    raw = None
+                if raw:
+                    try:
+                        total += int(raw)
+                    except (TypeError, ValueError):
+                        pass
+                    break
+        return total
 
     async def update_heartbeat(
         self,
