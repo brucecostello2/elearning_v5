@@ -98,7 +98,11 @@ export type WeightState =
   | "no_reference"
   | "unknown_reference"
   | "fetching"
-  | "failed";
+  | "failed"
+  /** WP-68: this engine has no weights BY NATURE — a template renderer draws,
+   *  it does not load. Not "not yet": never. Reporting it as un-fetched would
+   *  be an absence invented about something never going to be present. */
+  | "weightless";
 
 export interface WeightStatus {
   state: WeightState;

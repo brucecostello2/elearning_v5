@@ -247,9 +247,18 @@ STILL_INCOMPATIBLE = CAMERA_VOCABULARY + (
     re.compile(r"\belapsed\b", re.I),
 )
 
-#: The three values `SceneUpdate.validate_media_type` accepts. A scene with no
+#: The values `SceneUpdate.validate_media_type` accepts. A scene with no
 #: media_type at all is an image, which is what the API's own default says.
-MEDIA_TYPES = ("image", "video_clip", "animation")
+#: WP-68 added `motion_graphics` (migration 0041).
+MEDIA_TYPES = ("image", "video_clip", "animation", "motion_graphics")
+
+#: WP-68 RULE 8. The templates that EXIST, and the parameters each takes.
+#: Read from the template module rather than retyped, so a template added or
+#: renamed there cannot leave this checker validating a name nobody serves.
+def _motion_templates() -> dict:
+    from shared.motion.templates import template_names, template_spec
+
+    return {n: set(template_spec(n)["params"]) for n in template_names()}
 
 
 def check_visuals(scenes: list[dict]) -> list[str]:
@@ -339,6 +348,10 @@ def check_visuals(scenes: list[dict]) -> list[str]:
 
         # RULE 7 (WP-64): the description must be written FOR its medium.
         findings.extend(_medium_findings(index, media_type, visual))
+
+        # RULE 8 (WP-68): a motion_graphics scene carries STRUCTURED DATA.
+        if media_type == "motion_graphics":
+            findings.extend(_motion_findings(index, scene))
 
     return findings
 
@@ -899,3 +912,68 @@ class TestTheTemplateCarriesTheContract:
         ).read_text(encoding="utf-8")
         assert f'OUTCOMES_OPEN = "{open_line}"' in source
         assert f'OUTCOMES_CLOSE = "{close_line}"' in source
+
+
+# ---------------------------------------------------------------------------
+# WP-68 RULE 8 — motion_graphics scenes carry structured data
+# ---------------------------------------------------------------------------
+
+def _motion_findings(index, scene: dict) -> list[str]:
+    """A motion_graphics scene must name a real template with real parameters.
+
+    Why this is checkable and worth checking: the renderer does not read prose.
+    It takes `{"template": ..., ...}` and draws. A scene that names a template
+    which does not exist cannot be rendered at all, and a scene whose numbers
+    are not the lesson's numbers renders a confident, legible, WRONG picture --
+    which is the one failure class this pipeline has no way to catch, because
+    every quality gate here measures output against input (CLAUDE.md's trap
+    table records exactly that, on the reference run's scene 5).
+    """
+    out: list[str] = []
+    params = scene.get("generation_params")
+
+    if not isinstance(params, dict) or not params:
+        out.append(
+            f"scene {index}: media_type is motion_graphics but the scene "
+            "carries no generation_params. The renderer reads a template name "
+            "and its parameters, not the description; without them there is "
+            "nothing to draw."
+        )
+        return out
+
+    known = _motion_templates()
+    name = params.get("template")
+    if not name:
+        out.append(
+            f"scene {index}: generation_params names no 'template'. "
+            f"Known templates: {', '.join(sorted(known))}."
+        )
+        return out
+    if name not in known:
+        out.append(
+            f"scene {index}: template {name!r} does not exist. A template this "
+            f"system does not serve cannot be rendered. "
+            f"Known: {', '.join(sorted(known))}."
+        )
+        return out
+
+    supplied = {k for k in params if k != "template"}
+    unknown = supplied - known[name]
+    if unknown:
+        out.append(
+            f"scene {index}: template {name!r} does not take "
+            f"{', '.join(sorted(unknown))}. It takes "
+            f"{', '.join(sorted(known[name]))}."
+        )
+
+    # Every parameter that names a number must BE a number. A string "23"
+    # reaches the renderer as text and is drawn as one, which is the whole
+    # failure this media type exists to avoid.
+    for key in ("number", "top", "bottom", "step", "column"):
+        if key in params and not isinstance(params[key], int):
+            out.append(
+                f"scene {index}: generation_params[{key!r}] is "
+                f"{type(params[key]).__name__}, not an integer. The renderer "
+                "draws these; a string is drawn as a string."
+            )
+    return out

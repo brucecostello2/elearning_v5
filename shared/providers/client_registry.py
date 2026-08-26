@@ -408,6 +408,44 @@ def register_builtin_clients() -> None:
         name_patterns=(r"ffmpeg",),
     )
 
+    # --- motion graphics (WP-68 Task 2) ----------------------------------
+    #
+    # Registered under `animation_generation`, not a new stage: the orchestrator
+    # routes media types to three stages and nothing else
+    # (`pipeline_orchestrator_v2.py:653-655`), and a fourth stage would need a
+    # queue, a worker and a task. The family distinguishes it from Wan inside
+    # the stage it already has.
+    #
+    # ITS INPUTS ARE STRUCTURED SCENE DATA, NOT A STILL. That is the whole
+    # difference: Wan needs a person in a picture, AnimateDiff needs a prompt,
+    # and this needs {"template": "place_value_split", "number": 23}. A
+    # renderer that draws digits cannot misspell them, which is the failure
+    # RULE 1 exists to route around.
+    register_client(
+        ClientSpec(
+            contract=ClientContract(
+                family="maths_motion",
+                display_name="Maths motion graphics",
+                stage="animation_generation",
+                engine="motion_graphics",
+                requires=frozenset({SceneInput.STRUCTURED_SCENE_DATA}),
+                accepts_params=frozenset({
+                    "template", "number", "top", "bottom", "step", "column",
+                    "label",
+                }),
+                produces="video/mp4",
+                notes=(
+                    "Template-driven. No weights by nature, and no renderer is "
+                    "deployed on this fleet -- the templates are proven against "
+                    "a local rasteriser and the stand-up is an operator action."
+                ),
+            ),
+            client_path="clients.motion_graphics_client.MotionGraphicsClient",
+            graph=None,
+        ),
+        name_patterns=(r"maths.?motion", r"motion.?graphics"),
+    )
+
     # --- talking_head ----------------------------------------------------
     register_client(
         ClientSpec(

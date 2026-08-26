@@ -150,7 +150,50 @@ CHANGE_NOTE = (
     "THE OPERATOR'S IN-FLIGHT PROJECT IS UNAFFECTED: its scenes are stored "
     "rows generated under v4 and were not regenerated, read-modified or "
     "approved. Publishing changes only what the NEXT storyboard run produces. "
-    "v4 stays readable, inactive."
+    "WP-68 Task 4 publishes this as v6. MEASURED 2026-08-26: the operator's "
+    "project asked in its own description for 'fun animations' and one of its "
+    "stated learning outcomes is 'understand the difference between 10's and "
+    "unit numbers' - a concept that is inherently animated - and the system "
+    "produced ZERO animations across thirteen scenes and could not have "
+    "produced any. animation_generation is bound to Wan2.2-Animate, which is "
+    "pose reenactment: it needs a person in the still and a driving clip, so "
+    "WP-64's D-2 criterion is correct for the engine and STRUCTURALLY EXCLUDES "
+    "THE MATHEMATICS. "
+    "AND THE CHEAP PATH DOES NOT EXIST. `drawtext` appears NOWHERE in this "
+    "repository: the compositor overlays PRE-RENDERED layers at a fixed x:y "
+    "(ffmpeg_client.py:480-517) and burns bottom-aligned SRT captions "
+    "(:524-531). It cannot place a digit at a position, let alone move one "
+    "between columns. So RULE 1's standing promise - that 'every equation, "
+    "number, label and caption is rendered by the COMPOSITION OVERLAY in a "
+    "later stage, with a real font' - has had one half missing since v3. "
+    "v6 adds a FOURTH media type, `motion_graphics` (migration 0041), with a "
+    "criterion naming exactly what earns it: a numeric or structural "
+    "transformation the viewer must SEE HAPPEN. WP-64's D-2 person-in-frame "
+    "criterion STAYS for `animation`, because Wan is still Wan, and v6 states "
+    "in as many words that the two are not interchangeable - a person "
+    "demonstrating earns `animation`, numbers changing earn "
+    "`motion_graphics`, and a scene with no person can never be the former "
+    "however much it moves. "
+    "RULE 8 is the new rule and the unusual one: a motion_graphics scene is "
+    "NOT described in prose. It emits `generation_params` carrying a template "
+    "name and that template's parameters - {\"template\": "
+    "\"place_value_split\", \"number\": 23} - into a JSONB column that has "
+    "existed since the table was created, so this needs no schema fight. Four "
+    "templates are offered and all four are served by "
+    "shared/motion/templates.py; this publisher REFUSES a template naming one "
+    "that is not. RULE 1 is SCOPED rather than contradicted: the parameters "
+    "are digits and they are DRAWN, not generated, which is the path that "
+    "makes RULE 1 unnecessary rather than merely enforced - a renderer that "
+    "puts '23' on screen in a real font cannot produce '2? x 23.14'. The "
+    "scene's visual_description is still written, still short, and still "
+    "digit-free, because it is a caption and a record, not an instruction. "
+    "WHAT THIS DOES NOT DO, and the prompt does not pretend otherwise: no "
+    "renderer is deployed for the motion_graphics engine, so a scene chosen "
+    "this way is HELD BY NAME by the orchestrator rather than dispatched or "
+    "silently rendered as an image, and the Media Type dropdown deliberately "
+    "does not offer this value - WP-64 removed one advertising a pathway that "
+    "did not exist and adding it back early would be the same defect. "
+    "v5 stays readable, inactive."
 )
 
 #: The binding contract, as phrases that must be present. A prompt missing
@@ -195,6 +238,17 @@ V5_PHRASES = (
     "A SCENE THAT REVISITS AN EARLIER STEP IS STILL A DIFFERENT SCENE",
     "BEFORE YOU OUTPUT, RE-READ YOUR OWN DESCRIPTIONS AS A SET",
     "THE WORKING SURFACE ONLY EVER GAINS",
+)
+
+#: WP-68 Task 4. RULE 8 and the fourth media type. Gated for the same reason:
+#: a template that has lost them publishes cleanly, runs cleanly, and quietly
+#: goes back to having no motion-graphics pathway while the renderer, the
+#: templates and the checker all still exist.
+V6_PHRASES = (
+    "NUMERIC OR STRUCTURAL TRANSFORMATION THE VIEWER MUST SEE",
+    'RULE 8 — A "motion_graphics" SCENE IS STRUCTURED DATA',
+    '"animation" AND "motion_graphics" ARE NOT INTERCHANGEABLE',
+    "MUST be the numbers this lesson actually uses",
 )
 
 #: RULE 1 must survive. It is the older rule and it is the one measured twice.
@@ -278,9 +332,40 @@ async def main() -> None:
             "named the operands in prose, which asks the image model for those "
             "numerals as surely as writing them on a board does."
         )
+    missing = [p for p in V6_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template has lost the WP-68 Task 4 amendments: missing "
+            f"{missing!r}. RULE 8 is the only place the prompt is told that a "
+            "motion_graphics scene is emitted as a template name and its "
+            "parameters rather than as prose; without it the fourth media type "
+            "is a value the model can choose and never populate."
+        )
+
+    # A prompt that offers a template the renderer does not serve produces a
+    # scene that cannot be rendered at all -- checked against the module rather
+    # than against a list in this script, so the two cannot drift.
+    import re as _re
+
+    from shared.motion.templates import template_names as _template_names
+
+    offered = set(_re.findall(r'"template": "([a-z_]+)"', text))
+    unknown = offered - set(_template_names())
+    if unknown:
+        _fail(
+            f"the template offers motion templates that do not exist: "
+            f"{sorted(unknown)}. Known: {', '.join(_template_names())}."
+        )
+    if not offered:
+        _fail(
+            "the template names no motion templates at all, so RULE 8 asks for "
+            "structured data the model has no vocabulary for."
+        )
+
     print(
-        "contract : OK (RULE 0, RULE 2, RULE 5, RULE 6 and RULE 7 present, "
-        "RULE 1 intact, WP-65 v5 amendments present)"
+        "contract : OK (RULE 0, RULE 2, RULE 5, RULE 6, RULE 7 and RULE 8 "
+        "present, RULE 1 intact, WP-65 v5 and WP-68 v6 amendments present, "
+        f"{len(offered)} motion templates all served)"
     )
     print()
 

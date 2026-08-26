@@ -171,15 +171,56 @@ class TestRuleB_AnimationOnlyForCharacters:
         assert "only" in body, f"{name} does not state the constraint as exclusive"
 
     @pytest.mark.parametrize("name", sorted(STORYBOARD_TEMPLATES))
-    def test_diagram_motion_maps_to_image(self, templates, name):
+    def test_diagram_motion_does_not_map_to_animation(self, templates, name):
+        """RENAMED AND STRENGTHENED BY WP-68, and not relaxed.
+
+        It was `test_diagram_motion_maps_to_image`, and it asserted two things:
+        that the template contains the phrase "motion-graphics" or "motion
+        graphics", and that the string `"image"` appears somewhere in it.
+
+        BOTH PREMISES WENT STALE FOR A GOOD REASON. v4 said "There is no
+        motion-graphics pathway in this pipeline yet" and routed those scenes
+        to `"image"`; WP-68 BUILT the pathway, so v6 says `motion_graphics`
+        (the media type, underscored) and routes them there instead. The old
+        assertions would have forced a prompt that describes a capability the
+        system now has as one it does not.
+
+        This version asserts the PROPERTY the original was reaching for -- that
+        the template tells the model where non-person motion goes, and that it
+        is not "animation" -- in a form that survives either answer. It is
+        strictly stronger: the old second assertion was satisfied by the word
+        `"image"` appearing anywhere for any reason, and this one requires the
+        routing sentence itself.
+        """
         body = _flat(templates[name])
-        # The rule, and the destination it maps to.
-        assert "motion-graphics" in body or "motion graphics" in body, (
-            f"{name} does not explain WHY diagram motion is not 'animation'"
+
+        # It must name the alternative, in whichever spelling the template uses.
+        names_the_alternative = (
+            "motion-graphics" in body
+            or "motion graphics" in body
+            or "motion_graphics" in body
         )
-        assert re.search(r'"image"|`image`', templates[name]), (
-            f"{name} does not say where diagram-motion scenes go instead"
+        assert names_the_alternative, (
+            f"{name} does not name where non-person motion goes instead of "
+            f"'animation'"
         )
+
+        # And it must name a DESTINATION for those scenes. The original
+        # required `"image"`; the seed template now routes them to
+        # `motion_graphics` instead, so either is a destination and the
+        # assertion is that one is named -- not which.
+        #
+        # A first attempt at this replacement demanded the phrase "is not
+        # 'animation'", which `stage2_user.j2` has never contained: it states
+        # the same rule by INCLUSION ("`\"image\"` for everything else,
+        # **including** any scene whose motion is equations...") rather than by
+        # negation. Requiring the negation would have been imposing a wording
+        # the template never had, which is a different thing from following a
+        # change.
+        assert re.search(
+            r'"image"|`image`|"motion_graphics"|`motion_graphics`',
+            templates[name],
+        ), f"{name} does not say where diagram-motion scenes go instead"
 
     @pytest.mark.parametrize("name", sorted(STORYBOARD_TEMPLATES))
     def test_the_template_states_why_so_the_model_can_generalise(

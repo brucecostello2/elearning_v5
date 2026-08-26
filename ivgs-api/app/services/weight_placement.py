@@ -60,6 +60,10 @@ STATE_NO_REFERENCE = "no_reference"
 STATE_FAILED = "failed"
 #: A fetch is in flight.
 STATE_FETCHING = "fetching"
+#: WP-68. This engine has no weights BY NATURE. Not "not yet" -- never, and
+#: reporting it as un-fetched would be an absence invented about a thing that
+#: was never going to be present.
+STATE_WEIGHTLESS = "weightless"
 #: The reference is in a form this system cannot speak.
 STATE_UNKNOWN_REFERENCE = "unknown_reference"
 
@@ -94,6 +98,7 @@ _STATE_LABEL: dict[str, str] = {
     STATE_NO_REFERENCE: "no weight reference - not ingested from MBCP",
     STATE_FAILED: "last fetch failed",
     STATE_FETCHING: "fetch in progress",
+    STATE_WEIGHTLESS: "no weights needed",
     STATE_UNKNOWN_REFERENCE: "weight reference not understood",
 }
 
@@ -144,6 +149,22 @@ def compute_status(
 
     ``placements`` defaults to the relationship, which is ``selectin``-loaded.
     """
+    # WP-68 Task 2, checked FIRST. An engine with no weights by nature has no
+    # weight state to compute, and every branch below would give it a wrong
+    # one: `not_fetched` implies bytes are coming, `engine_only` implies a
+    # bundle was declined. Neither is true of a renderer that draws.
+    from shared.weights.placement import WEIGHTLESS_ENGINES
+
+    engine = getattr(model.engine, "value", model.engine)
+    weightless = WEIGHTLESS_ENGINES.get(str(engine))
+    if weightless is not None:
+        return WeightStatus(
+            state=STATE_WEIGHTLESS,
+            label=_STATE_LABEL[STATE_WEIGHTLESS],
+            detail=weightless,
+            credentials_present=credentials_present(),
+        )
+
     # The relationship is `selectin`, so a model loaded by a query carries it --
     # but `session.get()` can return an identity-map instance with it unloaded,
     # and touching it then triggers sync IO inside an async session
@@ -154,12 +175,19 @@ def compute_status(
         rows = list(placements)
     else:
         from sqlalchemy import inspect as sa_inspect
+        from sqlalchemy.exc import NoInspectionAvailable
 
-        state = sa_inspect(model)
-        if "weight_placements" in state.unloaded:
-            rows = []
-        else:
-            rows = list(model.weight_placements or [])
+        try:
+            state = sa_inspect(model)
+            unloaded = "weight_placements" in state.unloaded
+        except NoInspectionAvailable:
+            # Not a mapped instance. Callers pass duck-typed rows (the fetch
+            # service's ModelRowLike, and tests), and a STATUS computation that
+            # raises is worse than one that answers conservatively: this
+            # function's whole job is to say what is known, and "no placements
+            # are known" is a true answer here.
+            unloaded = True
+        rows = [] if unloaded else list(model.weight_placements or [])
     verified = [r for r in rows if r.status is WeightPlacementStatus.VERIFIED]
 
     if verified:

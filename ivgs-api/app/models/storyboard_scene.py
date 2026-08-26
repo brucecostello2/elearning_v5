@@ -9,6 +9,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from shared.models.enums import MEDIA_TYPES
 from sqlalchemy import String, Integer, Float, Text, DateTime, ForeignKey, text, Index
 from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -35,10 +36,16 @@ class StoryboardScene(Base):
         Text, nullable=True,
     )
     media_type: Mapped[Optional[str]] = mapped_column(
-        PG_ENUM("image", "video_clip", "animation",
-                name="media_type", create_type=False),
+        # WP-68: `motion_graphics` (migration 0041). THIS LIST IS LOAD-BEARING
+        # ON READ, not only on write. Adding the label to the PostgreSQL type
+        # alone let an INSERT succeed and made every subsequent SELECT raise
+        # `LookupError: 'motion_graphics' is not among the defined enum
+        # values` -- the row was written and could not be read back. Caught by
+        # the acceptance run, not by a test, which is why the values are now
+        # taken from ONE list rather than typed here.
+        PG_ENUM(*MEDIA_TYPES, name="media_type", create_type=False),
         nullable=True,
-        doc="PostgreSQL ENUM media_type: image, video_clip, animation",
+        doc=f"PostgreSQL ENUM media_type: {', '.join(MEDIA_TYPES)}",
     )
     duration_seconds: Mapped[Optional[float]] = mapped_column(
         Float, nullable=True,

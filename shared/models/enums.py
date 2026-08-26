@@ -178,6 +178,22 @@ class MediaType(str, enum.Enum):
     IMAGE = "image"
     VIDEO_CLIP = "video_clip"
     ANIMATION = "animation"
+    #: WP-68 (migration 0041). A numeric or structural transformation the
+    #: viewer must see happen, rendered from a template and its parameters
+    #: rather than generated from a description.
+    MOTION_GRAPHICS = "motion_graphics"
+
+
+#: THE one list of media_type values, in PostgreSQL enum order.
+#:
+#: It exists because WP-68 added a fourth value in the migration and in two
+#: validators, and MISSED the ORM column's own literal list -- so an INSERT
+#: succeeded against the PostgreSQL type while every SELECT afterwards raised
+#: `LookupError: 'motion_graphics' is not among the defined enum values`. The
+#: row was written and could not be read back. One list, read by the model and
+#: by the API schema, is the fix that makes that impossible rather than
+#: unlikely.
+MEDIA_TYPES: tuple[str, ...] = tuple(m.value for m in MediaType)
 
 
 # ── §4.1 Table 7: job_status ─────────────────────────────────────────

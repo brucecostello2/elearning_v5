@@ -73,6 +73,13 @@ PROMPT_TYPE = "scene_media_adaptation"
 #: The three values `SceneUpdate.validate_media_type` accepts, and the only
 #: three the orchestrator's dispatch plan knows. Anything else would be grouped
 #: into the image branch without a word (`pipeline_orchestrator_v2.py:616`).
+#: WP-64's ADAPTATION targets, and DELIBERATELY NOT the same list as
+#: `schemas/storyboard.MEDIA_TYPES`, which WP-68 extended with
+#: `motion_graphics`. Adapt rewrites a PROSE description for a medium; a motion
+#: graphic does not take prose, it takes structured parameters
+#: (`{"template": "place_value_split", "number": 23}` in
+#: `storyboard_scenes.generation_params`). Offering it here would ask the model
+#: to write a description for a renderer that never reads one.
 MEDIA_TYPES: Tuple[str, ...] = ("image", "video_clip", "animation")
 
 #: The stage whose AD-01 binding writes storyboards, and therefore the binding

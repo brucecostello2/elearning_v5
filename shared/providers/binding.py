@@ -30,6 +30,19 @@ _ENGINE_ENDPOINTS: dict[str, tuple[str, str]] = {
     "kokoro": ("IVGS_KOKORO_URL", "http://node-05:8021"),
     "animatediff": ("IVGS_ANIMATEDIFF_URL", "http://node-04:8188"),
     "remotion": ("IVGS_REMOTION_URL", "http://node-06:8400"),
+    # WP-68 Task 2. The motion-graphics engine, declared with **NO DEFAULT**.
+    #
+    # Every other row here carries one, and for a hosted engine that is right.
+    # For an engine with no host it is actively harmful: `animatediff` defaults
+    # to `http://node-04:8188`, which is node-04's FLUX ComfyUI, so a model on
+    # an unhosted engine resolves silently to a live instance that cannot run
+    # it and answers HTTP 400 -- a failure WP-65 Task 1 measured as
+    # indistinguishable from a malformed graph.
+    #
+    # An empty default makes `resolve_endpoint` raise `EndpointResolutionError`
+    # by name instead. That is the honest outcome until an operator deploys a
+    # renderer and sets IVGS_MOTION_GRAPHICS_URL.
+    "motion_graphics": ("IVGS_MOTION_GRAPHICS_URL", ""),
 }
 
 

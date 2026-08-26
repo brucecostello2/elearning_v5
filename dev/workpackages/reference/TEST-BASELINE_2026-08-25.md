@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1286** | **0** | 0 | 0 | 1252 (WP-66) |
+| `ivgs-api` | **1359** | **0** | 0 | 0 | 1286 (WP-67) |
 | `ivgs-workers` | **903** | 18 | 48 | 15 | 887 (WP-64) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2421** | **50** | **63** | **45** | 2371 / 50 (WP-66) |
+| **Total** | **2494** | **50** | **63** | **45** | 2421 / 50 (WP-67) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,49 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-68 added 73 tests (2026-08-26) and moved no failure row** — after moving
+one and putting it back, which is recorded below rather than smoothed over.
+All 73 in `ivgs-api` (1286 -> 1359). `ivgs-workers` finishes at **903 passed,
+18 failed, 48 skipped, 15 errors** — identical to the row above. This tree now
+needs migration **0041** (one enum label, `media_type.motion_graphics`;
+downgrade a deliberate no-op, as for 0027/0033/0034/0038/0040).
+
+**ONE FAILURE WAS INTRODUCED AND FIXED WITHIN THE PACKAGE.** The first WP-68
+worker run showed **19 failed / 902 passed**:
+`test_wp44_storyboard_prompt_rules.py::TestRuleB_AnimationOnlyForCharacters::
+test_diagram_motion_maps_to_image[seed/storyboard_generation.j2]`. It asserted
+that the storyboard template contains the phrase "motion-graphics" or "motion
+graphics" — a phrase that was only ever there inside v4's sentence *"There is no
+motion-graphics pathway in this pipeline yet"*. **WP-68 built the pathway**, so
+v6 says `motion_graphics` (the media type) and routes those scenes to it, and
+the old assertion would have required the prompt to describe a capability the
+system now has as one it does not.
+
+Renamed to `test_diagram_motion_does_not_map_to_animation` and **strengthened,
+not relaxed**: it accepts any of the three spellings for the alternative and
+still requires a destination to be named, where the destination may now be
+`image` OR `motion_graphics`. The rule it guards — that non-person motion is
+never `animation` — is untouched, and the three templates it covers all pass.
+
+**A FIRST ATTEMPT AT THAT REPLACEMENT WAS ITSELF WRONG AND IS RECORDED.** It
+demanded the phrase "is not 'animation'", which `stage2_user.j2` has never
+contained: that template states the same rule by INCLUSION (*"`\"image\"` for
+everything else, **including** any scene whose motion is equations…"*) rather
+than by negation. Requiring the negation would have been imposing a wording the
+template never had, which is a different thing from following a change. Two
+worker templates went red, and the assertion was corrected rather than the
+templates.
+
+**TWO WORKER TEMPLATES WERE CORRECTED ON A POINT OF FACT.**
+`prompts/stage2_system.j2` and `prompts/stage2_user.j2` both stated *"there is
+no motion-graphics pathway in this pipeline"*, which WP-68 made false, and
+`stage2_user.j2` added that such motion *"belongs to the composition overlay on
+top of a still"* — which WP-68 Task 1 measured as impossible: the compositor
+overlays pre-rendered layers and burns captions, and **nothing in this pipeline
+draws a number**. Both now say a pathway exists, that no renderer is deployed
+for it, and that these scenes therefore stay `"image"` for now. The routing they
+teach is unchanged.
 
 **WP-67 added 50 tests (2026-08-26) and moved no failure row.** 34 in `ivgs-api`
 (1252 -> 1286) and 16 in `ivgs-workers` (887 -> 903) — **the first package in

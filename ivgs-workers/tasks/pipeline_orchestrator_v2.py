@@ -604,6 +604,20 @@ def dispatch_media_generation(
     video_scenes: List[Dict[str, Any]] = []
     animation_scenes: List[Dict[str, Any]] = []
 
+    # WP-68. A media type this build does not dispatch is HELD AND NAMED, not
+    # absorbed into the image branch.
+    #
+    # The `else` below used to swallow every unrecognised value silently, so a
+    # scene the storyboard deliberately chose as something else became a still
+    # with nothing anywhere saying so. `motion_graphics` (migration 0041) is
+    # the first value that is legitimately chooseable and not yet renderable:
+    # no renderer is deployed on this fleet, and `animation_generation_task` is
+    # frozen under AD-05 §8 and would run Wan2.2-Animate's client against it --
+    # which needs a person in a reference still that a motion graphic does not
+    # have. Dispatching it would fail deep in a worker; absorbing it into image
+    # would fail silently and look fine. Holding it says the true thing.
+    held_scenes: List[Dict[str, Any]] = []
+
     for scene in scenes:
         media_type = scene.get("media_type", "image")
         if media_type == "image":
@@ -612,8 +626,32 @@ def dispatch_media_generation(
             video_scenes.append(scene)
         elif media_type == "animation":
             animation_scenes.append(scene)
+        elif media_type == "motion_graphics":
+            held_scenes.append(scene)
         else:
+            logger.warning(
+                "scene_media_type_unrecognised_defaulted_to_image",
+                job_id=job_id,
+                scene_id=scene.get("scene_id"),
+                media_type=media_type,
+            )
             image_scenes.append(scene)  # Default to image
+
+    if held_scenes:
+        logger.warning(
+            "scene_media_type_held_no_renderer",
+            job_id=job_id,
+            media_type="motion_graphics",
+            scene_count=len(held_scenes),
+            scene_ids=[s.get("scene_id") for s in held_scenes],
+            reason=(
+                "motion_graphics scenes were chosen by the storyboard but no "
+                "renderer is deployed for the motion_graphics engine "
+                "(IVGS_MOTION_GRAPHICS_URL is unset and resolves to no "
+                "endpoint by design). These scenes are NOT dispatched and NOT "
+                "silently rendered as images. WP-68 ledger L-1."
+            ),
+        )
 
     dispatched: List[Dict[str, Any]] = []
 

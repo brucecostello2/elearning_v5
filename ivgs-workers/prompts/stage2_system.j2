@@ -75,8 +75,11 @@ CORRECT instead — describe the scene that will CARRY the overlay:
 
   **Motion of equations, diagrams, charts or process steps — "the steps appear
   on screen one by one", "the numbers animate into place", "the flowchart
-  builds up" — is NOT `animation`. Map those scenes to `"image"`.** There is no
-  motion-graphics pathway in this pipeline yet: no renderer exists that can
+  builds up" — is NOT `animation`. Map those scenes to `"image"`.** A
+  motion-graphics pathway now EXISTS as a media type and a template library
+  (WP-68), but no renderer is deployed for it, so a scene chosen that way is
+  held rather than rendered. Until one is, these scenes are `"image"`. The
+  reason `animation` is wrong for them is unchanged: no renderer here can
   animate type, figures or diagrams. Until one does, such a scene is a still
   image that the composition stage animates as an overlay. Asking for
   `animation` on a diagram scene does not produce a moving diagram; it produces

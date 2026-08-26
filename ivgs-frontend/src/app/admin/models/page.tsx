@@ -64,6 +64,7 @@ const WEIGHT_BADGE: Record<WeightState, string> = {
   unknown_reference: "bg-red-900/50 text-red-300 border border-red-800",
   fetching: "bg-yellow-900/50 text-yellow-300 border border-yellow-800",
   failed: "bg-red-900/50 text-red-300 border border-red-800",
+  weightless: "bg-slate-700/50 text-slate-300 border border-slate-600",
 };
 
 /** What an admin should DO about each state. Shown under the badge. */
@@ -81,6 +82,8 @@ const WEIGHT_ACTION: Record<WeightState, string> = {
     "The stored weights_ref is in a form IVGS cannot parse. Refused rather than guessed at.",
   fetching: "A fetch is running.",
   failed: "The last fetch failed. The reason is recorded on the row.",
+  weightless:
+    "This engine has no weights to fetch, by nature — a template renderer draws rather than loading. There is nothing an admin needs to do here.",
 };
 
 /**

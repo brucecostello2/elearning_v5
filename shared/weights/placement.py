@@ -255,6 +255,30 @@ _FAMILY_DESTS_BY_HOST: dict[tuple[str, str], dict[str, str]] = {
 }
 
 
+#: WP-68 Task 2. Engines that HAVE NO WEIGHTS TO FETCH, ever, by nature.
+#:
+#: WP-65's availability model had two answers for a model with no bytes on a
+#: node -- "not fetched yet" and "engine-only certification" -- and both imply
+#: bytes are a thing that could exist. A template-driven renderer has no
+#: weights at all: a motion graphic is code and parameters, and `ffmpeg` is a
+#: local binary. Reporting either as permanently un-fetched is the fabricated
+#: -absence defect WP-57/60 exists to stop, one level along.
+#:
+#: This is the extension the brief asked for ("WP-65's availability model must
+#: be able to express 'this engine needs no weights' rather than reporting it
+#: as permanently unfetched. If it cannot, extend it here").
+WEIGHTLESS_ENGINES: dict[str, str] = {
+    "motion_graphics": (
+        "a motion graphic is rendered from a template and its parameters; "
+        "there are no weights and there is nothing to fetch"
+    ),
+    "ffmpeg": (
+        "ffmpeg is a local binary invoked by the compositor, not a served "
+        "model; it has no weights and no endpoint"
+    ),
+}
+
+
 #: Engines IVGS knows by name but which NO node on this fleet hosts. Listed
 #: rather than left to fall through, so the refusal can say something true.
 #: ``animatediff`` is here because it is a stale IVGS-only engine key -- MBCP
@@ -268,6 +292,11 @@ UNHOSTED_ENGINES: dict[str, str] = {
     "remotion": (
         "no Remotion container runs on node-02, node-03 or node-04 "
         "(verified 2026-08-26)"
+    ),
+    "motion_graphics": (
+        "no motion-graphics renderer is deployed on this fleet. WP-68 built "
+        "the templates and proved them against a local rasteriser; standing a "
+        "renderer up is an operator action"
     ),
     "sadtalker": "no sadtalker container is deployed on this fleet",
     "wan21": "no standalone wan21 server is deployed; Wan runs under comfyui on node-03",
