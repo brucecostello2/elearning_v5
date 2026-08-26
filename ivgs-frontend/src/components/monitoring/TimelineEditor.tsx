@@ -288,7 +288,11 @@ export default function TimelineEditor({
                   rect.progress !== undefined
                     ? ` (${rect.progress}%)`
                     : ""
-                }\nDuration: ${formatTime(rect.duration_seconds || 0)}`}
+                }\nDuration: ${
+                  typeof rect.duration_seconds === "number"
+                    ? formatTime(rect.duration_seconds)
+                    : "not recorded"
+                }`}
               >
                 {/* Segment label (if wide enough) */}
                 {rect.width > 30 && (

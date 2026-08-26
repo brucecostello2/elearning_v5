@@ -77,11 +77,25 @@ class GpuNodeResponse(BaseModel):
     gpu_index: int
     gpu_model: Optional[str] = None
     total_vram_mb: Optional[int] = None
+    # WP-60 Task 2(b). Reservation accounting, not a device reading. Kept under
+    # its wire name; `reserved_vram_mb` is the same number correctly named and
+    # is what a surface must label.
     used_vram_mb: int = 0
+    reserved_vram_mb: int = 0
     available_vram_mb: int = 0
-    gpu_utilization_pct: float = 0.0
-    temperature_c: float = 0.0
-    power_draw_w: float = 0.0
+    # WP-60 Task 2(a). THESE THREE DEFAULTED TO 0.0 AND WERE NEVER SET.
+    #
+    # `scheduler_fleet.to_node_view` populates none of temperature or power, so
+    # the pydantic defaults supplied them, and the GPU Fleet card printed
+    # "0 C" and "0 W" for every node in the fleet -- the exact shape WP-24
+    # removed from `/api/v1/nodes` (see that module's docstring) reappearing on
+    # the route beside it. `gpu_utilization_pct` came through as
+    # `float(... or 0.0)`, which turns an absent reading into a measured idle.
+    #
+    # None now means "not measured". The frontend renders that in words.
+    gpu_utilization_pct: Optional[float] = None
+    temperature_c: Optional[float] = None
+    power_draw_w: Optional[float] = None
     power_tdp_w: Optional[int] = None  # Spec C.4; added per Spec v1.1 amendment 4
     compute_capability: Optional[str] = None
     status: str
@@ -102,6 +116,7 @@ class GpuNodeSummary(BaseModel):
     gpu_model: Optional[str] = None
     total_vram_mb: int = 0
     used_vram_mb: int = 0
+    reserved_vram_mb: int = 0
     available_vram_mb: int = 0
     status: str
     active_reservation_count: int = 0

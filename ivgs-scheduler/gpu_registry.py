@@ -39,6 +39,23 @@ logger = structlog.get_logger(__name__)
 # Data Models
 # ---------------------------------------------------------------------------
 
+def _optional_float(value: Any) -> Optional[float]:
+    """A float, or None when the value is absent or unparseable.
+
+    WP-60 Task 2(a). The point of this helper is that it has no default. Every
+    caller that used to write ``float(x or 0.0)`` was turning "nothing was
+    measured" into "zero was measured", and the two render identically on a
+    dashboard while meaning opposite things.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed == parsed else None  # NaN is not a reading
+
+
 @dataclass
 class GpuNodeInfo:
     """GPU node information stored in registry."""
@@ -54,7 +71,17 @@ class GpuNodeInfo:
     last_heartbeat_iso: str
     is_alive: bool
     is_draining: bool
-    gpu_utilization_pct: float
+    # WP-60 Task 2(a). THESE ARE NULLABLE BECAUSE THEY ARE OFTEN NOT MEASURED.
+    #
+    # `gpu_utilization_pct` was a plain `float` defaulting to 0.0, and
+    # `update_heartbeat` wrote `heartbeat_data.get("gpu_utilization_pct", 0.0)`
+    # unconditionally -- so a worker whose `nvidia-smi` call failed had a
+    # confident "0%" recorded for it, indistinguishable from a genuinely idle
+    # GPU. None means "this heartbeat carried no reading" and must never be
+    # rendered as a zero.
+    gpu_utilization_pct: Optional[float] = None
+    gpu_temperature_c: Optional[float] = None
+    gpu_power_draw_w: Optional[float] = None
     current_job_id: Optional[str] = None
     worker_id: Optional[str] = None
     heartbeat_data: Optional[Dict[str, Any]] = None
@@ -149,7 +176,11 @@ class GpuRegistry:
             "last_heartbeat_epoch": str(now),
             "last_heartbeat_iso": now_iso,
             "is_draining": "0",
-            "gpu_utilization_pct": "0.0",
+            # WP-60 Task 2(a): registration seeds NO utilisation reading. It
+            # used to seed "0.0", which the GPU Fleet page then rendered as a
+            # measured 0% for a node that had not yet reported anything.
+            # The first heartbeat carrying a real reading writes one.
+            "gpu_utilization_pct": "",
             "current_job_id": "",
             "worker_id": "",
             "registered_at": now_iso,
@@ -221,17 +252,41 @@ class GpuRegistry:
             "current_job_id": current_job_id or "",
         }
 
-        # Extract GPU utilization from heartbeat data
-        gpu_util = 0.0
+        # WP-60 Task 2(a) — TWO DEFECTS HERE, AND THEY POINT OPPOSITE WAYS.
+        #
+        # 1. THE TEMPERATURE KEY NEVER MATCHED. The worker sends
+        #    `gpu_temperature_celsius` and `gpu_power_draw_watts`
+        #    (`ivgs-workers/utils/gpu_utils.py:357,361`, straight out of
+        #    nvidia-smi). This read `gpu_temperature_c` -- a name nothing
+        #    sends -- so temperature was NEVER stored, on any node, ever, and
+        #    power draw was not looked at at all. The API then defaulted both
+        #    to 0.0 and the GPU Fleet page printed "0 C / 0 W" beside a
+        #    working GPU. Real telemetry was arriving and being dropped one
+        #    key-name away from the field that wanted it.
+        #
+        # 2. UTILISATION SUBSTITUTED A ZERO. `.get(..., 0.0)` meant a
+        #    heartbeat whose `nvidia-smi` call had failed -- which omits the
+        #    key entirely -- recorded a confident 0%. Absent is now absent.
+        #
+        # Both names are accepted for temperature so a worker on an older
+        # image keeps reporting through a rolling deploy.
+        gpu_util: Optional[float] = None
         if heartbeat_data:
-            gpu_util = float(heartbeat_data.get("gpu_utilization_pct", 0.0))
-            updates["gpu_utilization_pct"] = str(gpu_util)
+            gpu_util = _optional_float(heartbeat_data.get("gpu_utilization_pct"))
+            if gpu_util is not None:
+                updates["gpu_utilization_pct"] = str(gpu_util)
 
-            # Store temperature if provided
-            if "gpu_temperature_c" in heartbeat_data:
-                updates["gpu_temperature_c"] = str(
-                    heartbeat_data["gpu_temperature_c"]
-                )
+            temp = _optional_float(
+                heartbeat_data.get("gpu_temperature_celsius")
+                if "gpu_temperature_celsius" in heartbeat_data
+                else heartbeat_data.get("gpu_temperature_c")
+            )
+            if temp is not None:
+                updates["gpu_temperature_c"] = str(temp)
+
+            power = _optional_float(heartbeat_data.get("gpu_power_draw_watts"))
+            if power is not None:
+                updates["gpu_power_draw_w"] = str(power)
 
         pipe = self._redis.pipeline()
         pipe.hset(node_key, mapping=updates)
@@ -239,7 +294,7 @@ class GpuRegistry:
         pipe.set(f"{self.HEARTBEAT_PREFIX}{node_id}", str(now))
         await pipe.execute()
 
-        if self._metrics:
+        if self._metrics and gpu_util is not None:
             self._metrics.set_gpu_utilization(node_id, gpu_index, gpu_util)
 
         logger.debug(
@@ -360,7 +415,9 @@ class GpuRegistry:
             last_heartbeat_iso=data.get("last_heartbeat_iso", ""),
             is_alive=last_hb >= cutoff,
             is_draining=node_id in draining_ids,
-            gpu_utilization_pct=float(data.get("gpu_utilization_pct", "0.0")),
+            gpu_utilization_pct=_optional_float(data.get("gpu_utilization_pct")),
+            gpu_temperature_c=_optional_float(data.get("gpu_temperature_c")),
+            gpu_power_draw_w=_optional_float(data.get("gpu_power_draw_w")),
             current_job_id=data.get("current_job_id") or None,
             worker_id=data.get("worker_id") or None,
         )

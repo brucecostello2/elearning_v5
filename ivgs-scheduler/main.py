@@ -235,9 +235,28 @@ class FleetNodeStatus(BaseModel):
     gpu_index: int
     gpu_model: str
     total_vram_mb: int
+    # WP-60 Task 2(b). THIS IS RESERVATION ACCOUNTING, NOT PHYSICAL VRAM.
+    #
+    # It is seeded to 0 at registration and moved only by the scheduler's own
+    # acquire/release (`admission_control.py`). It has never at any point been
+    # a reading off the card. The GPU Fleet page labelled it "VRAM" and showed
+    # node-02 at "0.0 GB / 95.6 GB" while Node Monitor's Prometheus scrape --
+    # which IS physical -- showed 86.4 GB on the same machine. Both true, one
+    # of them mislabelled. The field keeps its name for wire compatibility;
+    # the alias below is what a surface should render.
     used_vram_mb: int
+    reserved_vram_mb: int = Field(
+        default=0,
+        description=(
+            "Alias of used_vram_mb under its true name: VRAM RESERVED BY THE "
+            "SCHEDULER, not measured on the device."
+        ),
+    )
     available_vram_mb: int
-    gpu_utilization_pct: float
+    # WP-60 Task 2(a): null means no heartbeat has carried a reading. Never 0.
+    gpu_utilization_pct: Optional[float] = None
+    gpu_temperature_c: Optional[float] = None
+    gpu_power_draw_w: Optional[float] = None
     current_jobs: List[str]
     last_heartbeat: str
     is_alive: bool
@@ -785,8 +804,11 @@ async def get_fleet_status() -> FleetResponse:
                     gpu_model=node.gpu_model,
                     total_vram_mb=node.total_vram_mb,
                     used_vram_mb=node.used_vram_mb,
+                    reserved_vram_mb=node.used_vram_mb,
                     available_vram_mb=node.total_vram_mb - node.used_vram_mb,
                     gpu_utilization_pct=node.gpu_utilization_pct,
+                    gpu_temperature_c=node.gpu_temperature_c,
+                    gpu_power_draw_w=node.gpu_power_draw_w,
                     current_jobs=current_jobs,
                     last_heartbeat=node.last_heartbeat_iso,
                     is_alive=node.is_alive,

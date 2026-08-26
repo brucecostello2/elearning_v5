@@ -290,6 +290,9 @@ export default function StorageAnalyticsPage(): React.ReactElement | null {
                       tiers={STORAGE_TIERS}
                       tierData={tierData}
                       formatBytes={formatBytes}
+                      /* WP-60 Task 1: the chart said "Allocated 1 B"; the table
+                         beside it said "not modelled". One sentence, both. */
+                      allocationReason={allocationReason}
                     />
                   )}
 

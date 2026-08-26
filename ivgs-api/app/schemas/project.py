@@ -97,6 +97,11 @@ class ProjectResponse(BaseModel):
     # asset yet" — a real answer the card must render as words, not as an icon
     # indistinguishable from a broken image.
     thumbnail_asset_id: Optional[UUID] = None
+    # WP-60 Task 4. Why there is no thumbnail, when there is none. The card
+    # rendered "Preview failed to load" for a video-only project, a project with
+    # nothing rendered, and a genuine transport failure alike — three different
+    # facts and one sentence. Null whenever `thumbnail_asset_id` is set.
+    thumbnail_unavailable_reason: Optional[str] = None
     scene_count: int = 0
     total_duration_estimate_seconds: Optional[float] = None
     created_at: datetime

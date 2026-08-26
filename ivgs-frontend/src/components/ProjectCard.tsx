@@ -90,6 +90,14 @@ export default function ProjectCard({
              no assets, had one that failed to load, or was still fetching - and
              an icon that means all three means none of them. */
           <div className="w-full h-full flex flex-col items-center justify-center gap-1 px-3 text-center">
+            {/* WP-60 Task 4. FOUR STATES, because "Preview failed to load"
+                was covering two unrelated facts.
+                Two cards showed it permanently — not because the loader
+                failed but because their only visual output is an mp4 and
+                `/assets/{id}/thumbnail` answers 415 for anything that is not
+                an image. That is a property of the project, not a transport
+                error, and the reader has no way to act on it while the card
+                blames the loader. The API now says which it is. */}
             {thumbError ? (
               <span className="text-[11px] leading-tight text-amber-600 dark:text-amber-400">
                 Preview failed to load
@@ -99,8 +107,11 @@ export default function ProjectCard({
                 Loading preview…
               </span>
             ) : (
-              <span className="text-[11px] leading-tight text-gray-500 dark:text-gray-400">
-                No render yet
+              <span
+                className="text-[11px] leading-tight text-gray-500 dark:text-gray-400"
+                title={project.thumbnail_unavailable_reason ?? undefined}
+              >
+                {project.thumbnail_unavailable_reason ?? "No render yet"}
               </span>
             )}
           </div>

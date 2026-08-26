@@ -122,21 +122,54 @@ export default function PipelineTracker({
 
   return (
     <div className="rounded-xl border border-gray-300 bg-gray-100 p-6 dark:border-gray-700 dark:bg-gray-800">
-      {/* Which run this is. Without it, "grey" is ambiguous. */}
+      {/* WP-60 Task 5 — MIXED PROVENANCE, PRESENTED AS ONE FACT.
+          This line read e.g. "Run 1e65b11d · final render · started 8:39:32"
+          above a strip showing Transcript Refinement and Storyboard Generation
+          as the stages that ran. Both halves are true of that run and they
+          come from different places:
+
+            "final render"        = render_jobs.job_type — WHAT WAS REQUESTED
+                                    when the run was triggered.
+            the completed stages  = pipeline_checkpoints for that job_id —
+                                    WHAT ACTUALLY EXECUTED.
+
+          Verified on the live row: job 1e65b11d-edec-48cf-afaf-9ddf4e448d0b
+          is job_type `final_render`, status success, and holds exactly two
+          checkpoints, `transcript_refinement` (stage 1) and
+          `storyboard_generation` (stage 2), both `complete`.
+
+          The trigger label is authoritative for INTENT; the checkpoints are
+          authoritative for EXECUTION. Neither is wrong and neither can stand
+          in for the other, so each is now named for what it measures. */}
       <div className="mb-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
         <span>
           Run{" "}
           <span className="font-mono text-gray-700 dark:text-gray-300">
             {run.jobId.slice(0, 8)}
           </span>
-          {run.jobType ? ` · ${run.jobType.replace(/_/g, " ")}` : ""}
+          {run.jobType
+            ? ` · requested as ${run.jobType.replace(/_/g, " ")}`
+            : ""}
           {run.createdAt
             ? ` · started ${new Date(run.createdAt).toLocaleString()}`
             : ""}
         </span>
-        <span>
-          {completed} of {PIPELINE_STAGES.length} stages complete
+        <span
+          title="Counted from this run's own pipeline_checkpoints rows - what executed, not what was requested."
+        >
+          {completed} of {PIPELINE_STAGES.length} stages recorded complete for
+          this run
         </span>
+        {/* The stepper below highlights the stage AFTER the last complete one.
+            "2 complete" and "the strip sits on stage 3" are the same fact read
+            two ways, and saying so is cheaper than making a reader work it
+            out. */}
+        {completed < PIPELINE_STAGES.length && (
+          <span title="The next stage this run would reach. It is not a stage that has run.">
+            next: stage {completed + 1} ·{" "}
+            {PIPELINE_STAGES[completed]?.label ?? "—"}
+          </span>
+        )}
         {run.newerWithoutCheckpoints > 0 && (
           <span>
             ({run.newerWithoutCheckpoints} newer job

@@ -133,6 +133,14 @@ export default function SceneTimeline({
   >(() => {
     let cumulativeTime = 0;
     return scenes.map((scene) => {
+      /* WP-60 Task 7. `?? 0` is CORRECT here and wrong three lines below.
+         This is GEOMETRY: a scene with no recorded duration occupies no width
+         on the strip and advances the cumulative clock by nothing, which is the
+         only coherent layout for an unknown length. It becomes a fabrication
+         only when the same substituted 0 is FORMATTED AND SHOWN as "0:00" —
+         a measured, zero-length scene. The display sites below say "no
+         duration" instead. All 58 live scenes carry one, so this is a latent
+         defect rather than a visible one, and it is ledgered as such. */
       const duration = scene.duration_seconds ?? 0;
       const startTime = cumulativeTime;
       cumulativeTime += duration;
@@ -251,9 +259,11 @@ export default function SceneTimeline({
                 onMouseMove={(e) => handleMouseMove(e, scene.id)}
                 onMouseLeave={handleMouseLeave}
                 role="button"
-                aria-label={`Scene ${scene.scene_index + 1}: ${formatTime(
-                  scene.duration_seconds ?? 0
-                )}`}
+                aria-label={`Scene ${scene.scene_index + 1}: ${
+                  typeof scene.duration_seconds === "number"
+                    ? formatTime(scene.duration_seconds)
+                    : "duration not recorded"
+                }`}
               >
                 {/* Scene number & duration label */}
                 <div className="flex flex-col items-center gap-0.5 px-1">
@@ -262,7 +272,9 @@ export default function SceneTimeline({
                   </span>
                   {widthPercent > 3 && (
                     <span className="text-[9px] text-gray-900 dark:text-white truncate max-w-full px-1">
-                      {formatTime(scene.duration_seconds ?? 0)}
+                      {typeof scene.duration_seconds === "number"
+                        ? formatTime(scene.duration_seconds)
+                        : "--:--"}
                     </span>
                   )}
                   {widthPercent > 8 && (
@@ -308,7 +320,12 @@ export default function SceneTimeline({
             Scene {hoveredTiming.scene.scene_index + 1}
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 space-y-0.5">
-            <div>Duration: {formatTime(hoveredTiming.scene.duration_seconds ?? 0)}</div>
+            <div>
+              Duration:{" "}
+              {typeof hoveredTiming.scene.duration_seconds === "number"
+                ? formatTime(hoveredTiming.scene.duration_seconds)
+                : "not recorded"}
+            </div>
             <div>
               Start: {formatTime(hoveredTiming.startTime)} — End:{" "}
               {formatTime(hoveredTiming.endTime)}

@@ -604,24 +604,77 @@ class ProjectService:
         # NULL is a real answer here and the card must render it as one: a
         # project with no renderable asset yet has nothing to show, which is a
         # different fact from a thumbnail that failed to load.
-        thumbnail_asset_id = None
+        # WP-60 Task 1(4) — THE PREFERENCE ORDER POINTED AT AN ASSET THE
+        # THUMBNAIL ROUTE CANNOT SERVE.
+        #
+        # This selected `final_render` FIRST. Every final render is an mp4, and
+        # `GET /assets/{id}/thumbnail` answers **415 THUMBNAIL_UNSUPPORTED** for
+        # anything that is not an `image` (`assets.py:354`, "the API image has
+        # no video decoder"). Measured on the live build:
+        #
+        #   72964509 (double digit multiplication, final_render) -> 415
+        #   d23ee9d8 (2B-scenes2-222906,          final_render) -> 415
+        #   097a7b72 (e2e-photosynthesis-verify,  image)        -> JPEG bytes
+        #
+        # Those are exactly the two cards that read "Preview failed to load".
+        # The loader was working; it was being handed an asset class the route
+        # refuses. So the card reported a transport failure for what is really a
+        # permanent property of the asset.
+        #
+        # The fix is to select what the route can actually render, and to say in
+        # words when there is nothing — rather than to hand the card an id that
+        # is guaranteed to 415. `talking_head` stays excluded (WP-57: a presenter
+        # plate is a picture of the ACTOR, so every project sharing one would
+        # show the same card).
         thumb_result = await self.db.execute(
             select(Asset.id)
             .where(
                 and_(
                     Asset.project_id == project.id,
-                    Asset.asset_type.in_(["final_render", "image"]),
+                    Asset.asset_type == "image",
                     Asset.storage_tier != "deleted",
                 )
             )
-            .order_by(
-                # final_render first, then newest.
-                case((Asset.asset_type == "final_render", 0), else_=1),
-                Asset.created_at.desc(),
-            )
+            .order_by(Asset.created_at.desc())
             .limit(1)
         )
         thumbnail_asset_id = thumb_result.scalar_one_or_none()
+
+        # When there is no still, the reason matters: a project that has never
+        # rendered anything and a finished project whose only output is video
+        # are different facts, and the card used to show the same sentence for
+        # both (and for a genuine network failure besides).
+        thumbnail_unavailable_reason: Optional[str] = None
+        if thumbnail_asset_id is None:
+            other_result = await self.db.execute(
+                select(Asset.asset_type)
+                .where(
+                    and_(
+                        Asset.project_id == project.id,
+                        Asset.asset_type != "image",
+                        Asset.storage_tier != "deleted",
+                    )
+                )
+                .order_by(
+                    case((Asset.asset_type == "final_render", 0), else_=1),
+                    Asset.created_at.desc(),
+                )
+                .limit(1)
+            )
+            other_type = other_result.scalar_one_or_none()
+            if other_type == "final_render":
+                thumbnail_unavailable_reason = (
+                    "This project's render is finished, but its only visual "
+                    "output is video and this API cannot decode video to make a "
+                    "still. Open the project to play it."
+                )
+            elif other_type is not None:
+                thumbnail_unavailable_reason = (
+                    f"This project has no still image yet; its newest asset is "
+                    f"{other_type}."
+                )
+            else:
+                thumbnail_unavailable_reason = "No render yet."
 
         # Get active job
         active_job = None
@@ -664,6 +717,7 @@ class ProjectService:
             state=project.state,
             hero_image_url=hero_image_url,
             thumbnail_asset_id=thumbnail_asset_id,
+            thumbnail_unavailable_reason=thumbnail_unavailable_reason,
             scene_count=scene_count,
             total_duration_estimate_seconds=total_duration,
             created_at=project.created_at,

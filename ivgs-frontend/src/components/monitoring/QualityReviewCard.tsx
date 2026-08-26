@@ -11,7 +11,8 @@ import type { FlaggedAsset, QualityMetricType } from "@/types/monitoring";
  * Displays a single flagged asset requiring human review:
  * - Thumbnail/preview: image src for images, video poster for video,
  *   waveform icon for audio
- * - Composite quality score: 0–100 with color coding
+ * - Composite quality score: 0.0–1.0 on the wire (schemas/quality.py:71),
+ *   shown as a percentage
  * - Safety score: content safety check result
  * - Per-metric breakdown table:
  *   - CLIP score (image similarity to prompt)
@@ -44,22 +45,44 @@ interface QualityReviewCardProps {
 }
 
 /**
- * Quality score color thresholds:
- * - Green: ≥80 (good quality)
- * - Amber: 60–79 (marginal, flagged for review)
- * - Red: <60 (poor quality, likely rejection candidate)
+ * Quality score color thresholds.
+ *
+ * WP-60 Task 6/7. THE SCALE WAS WRONG, AND IT COLOURED EVERY SCORE RED.
+ *
+ * `schemas/quality.py:71` pins both scores as `Field(ge=0.0, le=1.0)` — a
+ * FRACTION. These thresholds were 80/60, i.e. a 0–100 scale, taken from this
+ * file's own header comment ("composite quality score: 0–100"). So the live
+ * row's `quality_score` of 0.7222 — a decent 72% — was compared against 60,
+ * fell through to `text-red-600`, and was printed verbatim as "0.7222".
+ * A confident wrong colour on a review queue sends the reviewer to reject
+ * something the scorer passed.
+ *
+ * The thresholds are now expressed in the wire's own units and the value is
+ * rendered as a percentage. `null` never reaches here: see `scorePercent`.
  */
+const GOOD_SCORE = 0.8;
+const MARGINAL_SCORE = 0.6;
+
 const getScoreColor = (score: number): string => {
-  if (score >= 80) return "text-green-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-red-600";
+  if (score >= GOOD_SCORE) return "text-green-700 dark:text-green-400";
+  if (score >= MARGINAL_SCORE) return "text-amber-700 dark:text-amber-400";
+  return "text-red-700 dark:text-red-400";
 };
 
 const getScoreBgColor = (score: number): string => {
-  if (score >= 80) return "bg-green-100";
-  if (score >= 60) return "bg-amber-100";
-  return "bg-red-100";
+  if (score >= GOOD_SCORE) return "bg-green-100 dark:bg-green-900/50";
+  if (score >= MARGINAL_SCORE) return "bg-amber-100 dark:bg-amber-900/50";
+  return "bg-red-100 dark:bg-red-900/50";
 };
+
+/** A 0–1 score as a whole-number percentage, or null when absent. */
+const scorePercent = (score: number | null | undefined): number | null =>
+  typeof score === "number" && Number.isFinite(score)
+    ? Math.round(score * 100)
+    : null;
+
+/** The one styling class pair used when a score is absent. Never a colour. */
+const ABSENT_SCORE_CLASS = "text-gray-400 dark:text-gray-500";
 
 /**
  * Per-metric pass/fail determination.
@@ -68,7 +91,7 @@ const getScoreBgColor = (score: number): string => {
 const getMetricStatus = (
   metricType: QualityMetricType,
   value: number
-): "pass" | "warning" | "fail" => {
+): "pass" | "warning" | "fail" | "unscored" => {
   switch (metricType) {
     case "CLIP_SCORE":
       return value >= 0.25 ? "pass" : value >= 0.15 ? "warning" : "fail";
@@ -87,21 +110,46 @@ const getMetricStatus = (
     case "SAFETY_SCORE":
       return value >= 0.9 ? "pass" : value >= 0.7 ? "warning" : "fail";
     default:
-      return "pass";
+      /* WP-60 Task 6(b)/7. This used to `return "pass"`, painting a green
+         row for any key it did not recognise. On the live flagged row EVERY
+         numeric key is unrecognised — `scoring_details` carries
+         `actual_fps`, `frame_count`, `actual_width`, `actual_height`,
+         `check_coverage`, `actual_duration_seconds` — so the whole breakdown
+         rendered green "pass" while two of the recorded checks had in fact
+         FAILED (`resolution_ok: false`, `duration_ok: false`).
+         There is no threshold for these keys, so there is no verdict to give:
+         they are shown as measurements, in neutral grey. */
+      return "unscored";
   }
 };
 
+/**
+ * WP-60 Task 6(b). THE METRIC ROWS WERE UNREADABLE IN DARK MODE.
+ *
+ * The row background was a hardcoded light tint (`bg-green-50`) with NO dark
+ * variant, while the label beside it carried `dark:text-gray-300` and the
+ * value `text-green-600`. In dark mode that is pale grey on pale green and
+ * mid-green on pale green: both "ghosted", which is what the screenshot shows.
+ * The background never switched because it was never told to.
+ *
+ * Every row colour now has a dark counterpart, and the label uses a token that
+ * has contrast against BOTH tints rather than against the page.
+ */
 const METRIC_STATUS_COLORS: Record<string, string> = {
-  pass: "text-green-600",
-  warning: "text-amber-600",
-  fail: "text-red-600",
+  pass: "text-green-800 dark:text-green-300",
+  warning: "text-amber-800 dark:text-amber-300",
+  fail: "text-red-800 dark:text-red-300",
+  unscored: "text-gray-700 dark:text-gray-300",
 };
 
 const METRIC_STATUS_BG: Record<string, string> = {
-  pass: "bg-green-50",
-  warning: "bg-amber-50",
-  fail: "bg-red-50",
+  pass: "bg-green-50 dark:bg-green-950/60",
+  warning: "bg-amber-50 dark:bg-amber-950/60",
+  fail: "bg-red-50 dark:bg-red-950/60",
+  unscored: "bg-gray-50 dark:bg-gray-800/60",
 };
+
+const METRIC_LABEL_CLASS = "text-gray-800 dark:text-gray-200";
 
 /** Asset type icons */
 const ASSET_TYPE_ICONS: Record<string, string> = {
@@ -139,6 +187,47 @@ export default function QualityReviewCard({
   }, [asset.scoring_details]);
 
   /**
+   * WP-60 Task 6(c) — ORIENTATION, DERIVED FROM THE DIMENSIONS THAT ARE THERE.
+   *
+   * The live flagged row records `actual_width: 768, actual_height: 1408` on a
+   * landscape project, and a warning that reads "Resolution mismatch: expected
+   * 1920×1080, got 768×1408". Those numbers are NOT wrong and must not be
+   * "corrected": 768×1408 is Wan2.2-Animate's native 9:16 output (MBCP work
+   * order 1), and the mismatch is the finding.
+   *
+   * What the card was missing is that a reviewer had to do the arithmetic
+   * themselves to see it. Orientation is derived here — never invented: if the
+   * scorer did not record both dimensions, the badge is absent rather than
+   * guessing "landscape" from a project that happens to be one.
+   */
+  const orientation = useMemo<{
+    label: "portrait" | "landscape" | "square";
+    width: number;
+    height: number;
+  } | null>(() => {
+    const d = asset.scoring_details;
+    if (!d || typeof d !== "object" || Array.isArray(d)) return null;
+    const w = (d as Record<string, unknown>).actual_width;
+    const h = (d as Record<string, unknown>).actual_height;
+    if (
+      typeof w !== "number" || !Number.isFinite(w) || w <= 0 ||
+      typeof h !== "number" || !Number.isFinite(h) || h <= 0
+    ) {
+      return null;
+    }
+    return {
+      label: h > w ? "portrait" : w > h ? "landscape" : "square",
+      width: w,
+      height: h,
+    };
+  }, [asset.scoring_details]);
+
+  /* Both scores are 0–1 on the wire. `null` is a real answer — the live row has
+     `safety_score: null` — and it is NOT 1.0. See the render below. */
+  const qualityPct = scorePercent(asset.quality_score);
+  const safetyPct = scorePercent(asset.safety_score);
+
+  /**
    * Handle rejection with reason.
    */
   const handleReject = useCallback(() => {
@@ -156,24 +245,43 @@ export default function QualityReviewCard({
             proxy serves the real bytes. */}
         <FlaggedAssetPreview
           assetId={asset.asset_id}
-          fallback={
-            <span className="text-4xl">
-              {(asset.asset_type && ASSET_TYPE_ICONS[asset.asset_type]) || "📄"}
-            </span>
+          assetType={asset.asset_type}
+          fallbackIcon={
+            (asset.asset_type && ASSET_TYPE_ICONS[asset.asset_type.toUpperCase()]) ||
+            "📄"
           }
         />
         {/* Type badge overlay */}
-        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-gray-900 dark:text-white text-xs rounded">
+        <span className="absolute top-2 left-2 px-2 py-0.5 bg-black/60 text-white text-xs rounded">
           {asset.asset_type ?? "asset"}
         </span>
+        {/* Orientation badge — WP-60 Task 6(c). Absent when the scorer did not
+            record both dimensions; never guessed. */}
+        {orientation && (
+          <span
+            className={`absolute bottom-2 left-2 px-2 py-0.5 rounded text-[11px]
+              font-medium bg-black/70 text-white`}
+            title={`Recorded output ${orientation.width}×${orientation.height} — ${orientation.label}. This is the asset's real size, not a target.`}
+          >
+            {orientation.label} {orientation.width}×{orientation.height}
+          </span>
+        )}
         {/* Score badge overlay */}
         <div
-          className={`absolute top-2 right-2 px-2 py-0.5 rounded text-sm
-            font-bold ${getScoreBgColor(asset.quality_score ?? 0)} ${getScoreColor(
-            asset.quality_score ?? 0
-          )}`}
+          className={`absolute top-2 right-2 px-2 py-0.5 rounded text-sm font-bold ${
+            qualityPct !== null
+              ? `${getScoreBgColor(asset.quality_score!)} ${getScoreColor(
+                  asset.quality_score!
+                )}`
+              : `bg-gray-100 dark:bg-gray-800 ${ABSENT_SCORE_CLASS}`
+          }`}
+          title={
+            qualityPct !== null
+              ? "Composite quality score (0–100%)"
+              : "No composite quality score was recorded for this asset"
+          }
         >
-          {asset.quality_score ?? "—"}
+          {qualityPct !== null ? `${qualityPct}%` : "not scored"}
         </div>
       </div>
 
@@ -191,22 +299,39 @@ export default function QualityReviewCard({
         </div>
 
         {/* Scores summary */}
+        {/* WP-60 Task 7. THE SAFETY TILE INVENTED A PERFECT SCORE.
+            It read `((asset.safety_score ?? 1) * 100).toFixed(0)`, so an
+            absent safety score rendered as a green "100" — the single most
+            reassuring number this card can display, asserted on no evidence.
+            `safety_score` is null on the live flagged row and on every row the
+            CLIP scorer has not reached. Absent is now said in words. */}
         <div className="grid grid-cols-2 gap-2">
           <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
             <p className="text-xs text-gray-500 dark:text-gray-400">Quality</p>
-            <p className={`text-lg font-bold ${getScoreColor(asset.quality_score ?? 0)}`}>
-              {asset.quality_score ?? "—"}
-            </p>
+            {qualityPct !== null ? (
+              <p className={`text-lg font-bold ${getScoreColor(asset.quality_score!)}`}>
+                {qualityPct}%
+              </p>
+            ) : (
+              <p className={`text-xs leading-tight py-1 ${ABSENT_SCORE_CLASS}`}>
+                not scored
+              </p>
+            )}
           </div>
           <div className="text-center p-2 bg-gray-50 dark:bg-gray-950 rounded">
             <p className="text-xs text-gray-500 dark:text-gray-400">Safety</p>
-            <p
-              className={`text-lg font-bold ${getScoreColor(
-                (asset.safety_score ?? 1) * 100
-              )}`}
-            >
-              {((asset.safety_score ?? 1) * 100).toFixed(0)}
-            </p>
+            {safetyPct !== null ? (
+              <p className={`text-lg font-bold ${getScoreColor(asset.safety_score!)}`}>
+                {safetyPct}%
+              </p>
+            ) : (
+              <p
+                className={`text-xs leading-tight py-1 ${ABSENT_SCORE_CLASS}`}
+                title="No safety score was recorded for this asset. This is not the same as a safe result."
+              >
+                not scored
+              </p>
+            )}
           </div>
         </div>
 
@@ -228,7 +353,7 @@ export default function QualityReviewCard({
                   className={`flex items-center justify-between px-2 py-1
                     rounded text-xs ${METRIC_STATUS_BG[status]}`}
                 >
-                  <span className="text-gray-700 dark:text-gray-300">
+                  <span className={METRIC_LABEL_CLASS}>
                     {(metricLabels as Record<string, string>)[metric.type] || metric.type}
                   </span>
                   <span className={`font-mono font-medium ${METRIC_STATUS_COLORS[status]}`}>
@@ -321,34 +446,87 @@ export default function QualityReviewCard({
 }
 
 /**
- * Thumbnail for a flagged asset, fetched through the authenticated proxy.
+ * Preview for a flagged asset.
  *
- * There is no `thumbnail_url` on this API, but there is an `asset_id` and
- * `GET /api/v1/assets/{id}/download`. Only images are shown inline: a flagged
- * video would download in full to render one frame, and the queue is meant to
- * be skimmed.
+ * WP-60 Task 6(a) — WHY THE IMAGE WAS BROKEN, WHICH IS NOT WHAT WAS ASSUMED.
+ *
+ * The brief expected WP-57's gallery fix (a token-guarded route an `<img src>`
+ * cannot reach) to be missing here. It is not: this card has used
+ * `useAssetObjectUrl` — the same one mechanism — since WP-40, and the fetch
+ * succeeds. Measured on the live queue instead:
+ *
+ *     GET /api/v1/quality/flagged  ->  asset_type: "video", mime video/mp4
+ *
+ * The card fetched 6 MB of h264 and handed the blob to an `<img>`. An `<img>`
+ * cannot decode video, so the browser drew its broken-image glyph — and
+ * because the FETCH succeeded, `error` stayed null and the honest fallback
+ * never ran. A success path rendering a failure.
+ *
+ * This file's own docstring already said "Only images are shown inline: a
+ * flagged video would download in full to render one frame". The sentence was
+ * true of the intent and false of the code — nothing ever checked
+ * `asset_type`. It does now, and the check comes BEFORE the fetch, so a
+ * flagged video no longer pulls megabytes to fail with.
+ *
+ * Non-image assets show their type icon and say what they are. That is the
+ * whole honest answer available here: the API image has no video decoder
+ * (`/assets/{id}/thumbnail` answers 415 saying exactly that), so there is no
+ * frame to show and inventing one is not an option.
  */
+const INLINE_PREVIEW_TYPES = new Set(["image"]);
+
 function FlaggedAssetPreview({
   assetId,
-  fallback,
+  assetType,
+  fallbackIcon,
 }: {
   assetId: string;
-  fallback: React.ReactNode;
+  assetType: string | null;
+  fallbackIcon: React.ReactNode;
 }): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const inView = useInView(containerRef);
-  const { url, error } = useAssetObjectUrl(assetId, inView);
+
+  /* Decided before the request is made, not after it comes back. */
+  const canRenderInline =
+    typeof assetType === "string" &&
+    INLINE_PREVIEW_TYPES.has(assetType.toLowerCase());
+
+  const { url, error, isLoading } = useAssetObjectUrl(
+    assetId,
+    inView && canRenderInline,
+  );
 
   return (
-    <div ref={containerRef} className="w-full h-full flex items-center justify-center">
-      {url && !error ? (
+    <div
+      ref={containerRef}
+      className="w-full h-full flex flex-col items-center justify-center gap-1 px-2 text-center"
+    >
+      {canRenderInline && url && !error ? (
         <img
           src={url}
           alt={`Asset ${assetId.slice(0, 8)}`}
           className="w-full h-full object-cover"
         />
       ) : (
-        fallback
+        <>
+          <span className="text-4xl">{fallbackIcon}</span>
+          {/* Three distinct states in words, the WP-57 gallery rule applied
+              one level down: cannot be previewed / failed to load / loading. */}
+          {!canRenderInline ? (
+            <span className="text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+              no inline preview for {assetType ?? "this asset type"}
+            </span>
+          ) : error ? (
+            <span className="text-[10px] leading-tight text-amber-600 dark:text-amber-400">
+              preview failed to load
+            </span>
+          ) : isLoading ? (
+            <span className="text-[10px] leading-tight text-gray-500 dark:text-gray-400">
+              loading preview…
+            </span>
+          ) : null}
+        </>
       )}
     </div>
   );

@@ -190,7 +190,8 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
         onlineNodes: 0,
         offlineNodes: 0,
         drainingNodes: 0,
-        avgUtilization: 0,
+        avgUtilization: null as number | null,
+        utilizationReportingCount: 0,
         totalVRAM: 0,
         usedVRAM: 0,
         activeJobs: 0,
@@ -211,13 +212,23 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
       (n: GPUNode) => (n.total_vram_mb ?? 0) > 0
     );
 
-    const avgUtilization =
-      gpuNodes.length > 0
-        ? gpuNodes.reduce(
-            (sum: number, n: GPUNode) => sum + n.gpu_utilization_pct,
+    /* WP-60 Task 2(a). AVERAGING OVER UNREPORTED NODES INVENTED A FLEET
+       FIGURE. Summing `gpu_utilization_pct` across every GPU node treated a
+       node that reported nothing as a node reporting 0%, so one silent worker
+       dragged the fleet average down by a third and the tile still read as a
+       measurement. The average is now taken over the nodes that actually
+       reported, and is null when none did. */
+    const reporting = gpuNodes.filter(
+      (n: GPUNode) => typeof n.gpu_utilization_pct === "number"
+    );
+    const avgUtilization: number | null =
+      reporting.length > 0
+        ? reporting.reduce(
+            (sum: number, n: GPUNode) => sum + (n.gpu_utilization_pct as number),
             0
-          ) / gpuNodes.length
-        : 0;
+          ) / reporting.length
+        : null;
+    const utilizationReportingCount = reporting.length;
 
     const totalVRAM = gpuNodes.reduce(
       (sum: number, n: GPUNode) => sum + (n.total_vram_mb ?? 0),
@@ -236,7 +247,9 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
       onlineNodes,
       offlineNodes,
       drainingNodes,
-      avgUtilization: Math.round(avgUtilization),
+      avgUtilization:
+        avgUtilization === null ? null : Math.round(avgUtilization),
+      utilizationReportingCount,
       totalVRAM,
       usedVRAM,
       activeJobs,
@@ -327,12 +340,22 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="text-center">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                Nodes Online
+                {/* WP-60 Task 2(c) — WP-57 Task 4's ruling, applied on this
+                    page. "NODES ONLINE 3/3" counted neither machines (6) nor
+                    GPUs (5): it counts GPU WORKERS REGISTERED WITH THE
+                    SCHEDULER, which is 3 because node-01 is CPU-only, node-05
+                    is out of service and node-06 has a GPU but runs no Celery
+                    worker. Three defensible numbers on three surfaces; this
+                    one now names which it is. */}
+                Scheduler GPU workers
               </p>
-              <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">
+              <p
+                className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400"
+                title="Workers registered with the GPU scheduler and heartbeating. Not a count of machines (6) and not a count of GPUs in the fleet (5) - see Node Monitor for those."
+              >
                 {fleetStats.onlineNodes}
                 <span className="text-sm text-gray-500 dark:text-gray-400 font-normal">
-                  /{fleetStats.totalNodes}
+                  /{fleetStats.totalNodes} registered
                 </span>
               </p>
             </div>
@@ -340,17 +363,29 @@ export default function GPUFleetStatusPage(): React.ReactElement | null {
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">
                 Avg GPU Utilization
               </p>
-              <p
-                className={`mt-1 text-2xl font-bold ${
-                  fleetStats.avgUtilization > 85
-                    ? "text-red-600 dark:text-red-400"
-                    : fleetStats.avgUtilization > 60
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-green-600 dark:text-green-400"
-                }`}
-              >
-                {fleetStats.avgUtilization}%
-              </p>
+              {fleetStats.avgUtilization !== null ? (
+                <p
+                  className={`mt-1 text-2xl font-bold ${
+                    fleetStats.avgUtilization > 85
+                      ? "text-red-600 dark:text-red-400"
+                      : fleetStats.avgUtilization > 60
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-green-600 dark:text-green-400"
+                  }`}
+                  title={`Averaged over the ${fleetStats.utilizationReportingCount} node(s) that reported a utilisation reading.`}
+                >
+                  {fleetStats.avgUtilization}%
+                </p>
+              ) : (
+                /* WP-60 Task 2(a): no node reported a reading. A green "0%"
+                   here asserted an idle fleet on no evidence. */
+                <p
+                  className="mt-1 text-sm text-gray-400 dark:text-gray-500 py-2"
+                  title="No node in the scheduler registry has reported a GPU utilisation reading. Utilisation reaches the registry on worker heartbeats, and only when nvidia-smi succeeds on the node."
+                >
+                  not reported
+                </p>
+              )}
             </div>
             <div className="text-center">
               <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">

@@ -101,9 +101,11 @@ export default function GPUNodeCard({
     return Math.round((node.used_vram_mb / node.total_vram_mb) * 100);
   }, [node.total_vram_mb, node.used_vram_mb]);
 
-  /** Power draw percentage vs TDP (null-safe; 0 when TDP unknown) */
+  /** Power draw percentage vs TDP. 0 when either side is unknown; the caller
+   *  only renders it when `power_draw_w` is a real reading (WP-60 Task 2a). */
   const powerPercent = useMemo((): number => {
     if (!node.power_tdp_w || node.power_tdp_w === 0) return 0;
+    if (typeof node.power_draw_w !== "number") return 0;
     return Math.round((node.power_draw_w / node.power_tdp_w) * 100);
   }, [node.power_draw_w, node.power_tdp_w]);
 
@@ -202,10 +204,25 @@ export default function GPUNodeCard({
         {/* VRAM Usage */}
         {(node.total_vram_mb ?? 0) > 0 && (
           <div>
+            {/* WP-60 Task 2(b). THE LABEL SAID "VRAM". THE NUMBER IS A
+                RESERVATION.
+                `used_vram_mb` is seeded to 0 at registration and moved only by
+                the scheduler's own acquire/release. Nothing has ever read it
+                off the card. That is why this page showed node-02 at
+                "0.0 GB / 95.6 GB" while Node Monitor -- which scrapes
+                Prometheus, i.e. the device -- showed 86.4 GB on the same
+                machine at the same moment. Neither surface was lying; neither
+                said what it was counting. This one now does, and points at the
+                page that has the physical figure. */}
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-600 dark:text-gray-400">VRAM</span>
+              <span
+                className="text-xs font-medium text-gray-600 dark:text-gray-400"
+                title="VRAM reserved by the scheduler for admitted jobs. This is the scheduler's own accounting, not a reading from the GPU - for physical VRAM see Node Monitor, which scrapes the exporter on the node."
+              >
+                VRAM reserved by scheduler
+              </span>
               <span className="text-xs text-gray-500 dark:text-gray-400">
-                {formatVRAM(node.used_vram_mb)} /{" "}
+                {formatVRAM(node.reserved_vram_mb ?? node.used_vram_mb)} /{" "}
                 {formatVRAM(node.total_vram_mb!)}
               </span>
             </div>
@@ -229,19 +246,30 @@ export default function GPUNodeCard({
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               GPU Utilization
             </span>
-            <div className="flex items-center gap-2">
-              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                <div
-                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
-                  style={{
-                    width: `${Math.min(node.gpu_utilization_pct, 100)}%`,
-                  }}
-                />
+            {/* WP-60 Task 2(a): null is "no heartbeat carried a reading",
+                which is not 0%. A bar drawn at zero asserts an idle GPU. */}
+            {typeof node.gpu_utilization_pct === "number" ? (
+              <div className="flex items-center gap-2">
+                <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                  <div
+                    className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                    style={{
+                      width: `${Math.min(node.gpu_utilization_pct, 100)}%`,
+                    }}
+                  />
+                </div>
+                <span className="text-xs font-mono text-gray-700 dark:text-gray-300 w-10 text-right">
+                  {node.gpu_utilization_pct.toFixed(0)}%
+                </span>
               </div>
-              <span className="text-xs font-mono text-gray-700 dark:text-gray-300 w-10 text-right">
-                {node.gpu_utilization_pct.toFixed(0)}%
+            ) : (
+              <span
+                className="text-xs text-gray-400 dark:text-gray-500"
+                title="The scheduler registry holds no utilisation reading for this node. Its heartbeats carry one only when nvidia-smi succeeds on the node."
+              >
+                not reported
               </span>
-            </div>
+            )}
           </div>
         )}
 
@@ -251,25 +279,41 @@ export default function GPUNodeCard({
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
               Temperature
             </span>
-            <div className="flex items-center gap-2">
-              <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-300 ${getTemperatureBarColor(
+            {/* WP-60 Task 2(a). "0 C" WAS NOT A COLD GPU, IT WAS A DEFAULT.
+                The API schema defaulted `temperature_c` to 0.0 and nothing on
+                this path ever set it -- because the worker reports
+                `gpu_temperature_celsius` and the registry read
+                `gpu_temperature_c`, one key name apart, so the reading was
+                dropped on arrival. Both halves are fixed; until a heartbeat
+                from a rebuilt worker lands, this says so. */}
+            {typeof node.temperature_c === "number" ? (
+              <div className="flex items-center gap-2">
+                <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full transition-all duration-300 ${getTemperatureBarColor(
+                      node.temperature_c
+                    )}`}
+                    style={{
+                      width: `${Math.min(node.temperature_c, 100)}%`,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`text-xs font-mono w-12 text-right font-medium ${getTemperatureColor(
                     node.temperature_c
                   )}`}
-                  style={{
-                    width: `${Math.min((node.temperature_c / 100) * 100, 100)}%`,
-                  }}
-                />
+                >
+                  {node.temperature_c.toFixed(0)} C
+                </span>
               </div>
+            ) : (
               <span
-                className={`text-xs font-mono w-12 text-right font-medium ${getTemperatureColor(
-                  node.temperature_c
-                )}`}
+                className="text-xs text-gray-400 dark:text-gray-500"
+                title="No temperature has been reported through the scheduler registry for this node."
               >
-                {node.temperature_c.toFixed(0)} C
+                not reported
               </span>
-            </div>
+            )}
           </div>
         )}
 
@@ -277,11 +321,22 @@ export default function GPUNodeCard({
         {(node.total_vram_mb ?? 0) > 0 && (
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Power</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">
-              {node.power_tdp_w
-                ? `${node.power_draw_w.toFixed(0)}W / ${node.power_tdp_w}W TDP (${powerPercent}%)`
-                : `${node.power_draw_w.toFixed(0)}W`}
-            </span>
+            {/* WP-60 Task 2(a): same family as temperature -- the schema
+                default supplied "0 W" for a figure nothing measured. */}
+            {typeof node.power_draw_w === "number" ? (
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {node.power_tdp_w
+                  ? `${node.power_draw_w.toFixed(0)}W / ${node.power_tdp_w}W TDP (${powerPercent}%)`
+                  : `${node.power_draw_w.toFixed(0)}W`}
+              </span>
+            ) : (
+              <span
+                className="text-xs text-gray-400 dark:text-gray-500"
+                title="No power draw has been reported through the scheduler registry for this node."
+              >
+                not reported
+              </span>
+            )}
           </div>
         )}
 

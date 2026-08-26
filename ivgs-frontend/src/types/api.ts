@@ -266,6 +266,12 @@ export interface ProjectResponse {
    * rather than show an icon indistinguishable from a broken image.
    */
   thumbnail_asset_id?: string | null;
+  /**
+   * WP-60 Task 4. Why there is no thumbnail. Set only when
+   * `thumbnail_asset_id` is null, and rendered verbatim by the card so a
+   * video-only project stops being reported as a loader failure.
+   */
+  thumbnail_unavailable_reason?: string | null;
   /** `LanguageVariantSummary` — {language_code, state} and nothing else. */
   language_variants?: LanguageVariantSummary[];
   active_job?: ActiveJobInfo | null;
@@ -520,11 +526,22 @@ export interface GpuNodeResponse {
   gpu_index: number;
   gpu_model: string | null;
   total_vram_mb: number | null;
+  /**
+   * WP-60 Task 2(b): reservation accounting, not a device reading.
+   * `reserved_vram_mb` is the same number under its true name; render that.
+   */
   used_vram_mb: number;
+  reserved_vram_mb: number;
   available_vram_mb: number;
-  gpu_utilization_pct: number;
-  temperature_c: number;
-  power_draw_w: number;
+  /**
+   * WP-60 Task 2(a). NULLABLE, and narrowing them to `number` was what let the
+   * card print "0 C" / "0 W" / "0%" for readings nothing had taken. The API
+   * schema now sends null when the scheduler registry holds no reading; typing
+   * them as `number` here would put the fabrication straight back.
+   */
+  gpu_utilization_pct: number | null;
+  temperature_c: number | null;
+  power_draw_w: number | null;
   power_tdp_w: number | null;
   compute_capability: string | null;
   status: GpuNodeStatus;

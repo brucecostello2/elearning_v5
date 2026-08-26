@@ -136,6 +136,21 @@ async def fetch_fleet(timeout: float = FLEET_TIMEOUT_SECONDS) -> Dict[str, Any]:
     return payload
 
 
+def _optional_float(value: Any) -> Optional[float]:
+    """A float, or None when the scheduler published no reading.
+
+    Deliberately has no default: every ``float(x or 0.0)`` this replaces was
+    rendering an unmeasured field as a measurement.
+    """
+    if value is None or value == "":
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed == parsed else None
+
+
 def _parse_heartbeat(value: Any) -> Optional[datetime]:
     if not isinstance(value, str) or not value:
         return None
@@ -173,9 +188,17 @@ def to_node_view(node: Dict[str, Any]) -> Dict[str, Any]:
         "gpu_index": int(node.get("gpu_index", index_from_id) or 0),
         "gpu_model": node.get("gpu_model") or None,
         "total_vram_mb": total,
+        # WP-60 Task 2(b): the same integer under both names. `used_vram_mb`
+        # keeps the wire contract; `reserved_vram_mb` is what it actually is.
         "used_vram_mb": used,
+        "reserved_vram_mb": used,
         "available_vram_mb": max(0, total - used),
-        "gpu_utilization_pct": float(node.get("gpu_utilization_pct") or 0.0),
+        # WP-60 Task 2(a): `or 0.0` turned "the scheduler published nothing"
+        # into "the GPU measured zero". Absent stays absent all the way to the
+        # card, which says so in words.
+        "gpu_utilization_pct": _optional_float(node.get("gpu_utilization_pct")),
+        "temperature_c": _optional_float(node.get("gpu_temperature_c")),
+        "power_draw_w": _optional_float(node.get("gpu_power_draw_w")),
         "status": node_status(node),
         # The scheduler does not publish a registration time; the earliest thing
         # it does publish is the heartbeat. Reporting "now" would be an

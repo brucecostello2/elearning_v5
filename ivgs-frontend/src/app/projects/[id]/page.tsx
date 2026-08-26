@@ -165,9 +165,19 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
             value={formatRuntime(project.max_runtime_seconds)}
           />
           <MetadataCard label="Created" value={formatDate(project.created_at)} />
+          {/* WP-60 Task 5. "LAST UPDATED" MEASURED THE ROW, NOT THE PROJECT.
+              It renders `projects.updated_at`, which moves when the project
+              RECORD is edited and does not move when a run starts, a stage
+              completes or an asset lands. That is why the screenshot showed
+              "Last updated 8:31:10 AM" above a run that started at 8:39:32 AM
+              - not a clock problem and not a stale cache, just a column
+              measuring something narrower than its label implied. Verified on
+              the live row: projects.updated_at = 2026-08-25T15:31:10Z, and
+              render_jobs 1e65b11d started 2026-08-25T15:39:32Z. */}
           <MetadataCard
-            label="Last Updated"
+            label="Project Record Edited"
             value={formatDate(project.updated_at)}
+            title="When this project's own record was last changed (name, description, settings). Pipeline runs and generated assets do not move it - see Pipeline Progress above for run activity."
           />
           <MetadataCard
             label="Scenes"
@@ -216,13 +226,19 @@ export default function ProjectOverviewPage(): React.ReactElement | null {
 function MetadataCard({
   label,
   value,
+  /** What this figure measures, when the label alone cannot carry it. */
+  title,
 }: {
   label: string;
   value: string;
+  title?: string;
 }): React.ReactElement {
   return (
     <div className="rounded-lg border border-gray-300 bg-gray-100 p-4 dark:border-gray-700 dark:bg-gray-800">
-      <dt className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+      <dt
+        className="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400"
+        title={title}
+      >
         {label}
       </dt>
       <dd className="mt-1 text-sm text-gray-900 dark:text-white">{value}</dd>
