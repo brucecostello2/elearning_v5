@@ -9,7 +9,8 @@
 #   2. Decrypt backup: gpg --decrypt backup.sql.gz.gpg | gunzip > restore.sql
 #   3. Drop and recreate target database: dropdb ivgs; createdb ivgs
 #   4. Restore: psql ivgs < restore.sql
-#   5. Apply WAL logs if point-in-time recovery needed
+#   5. Point-in-time recovery — UNAVAILABLE, see WP-57 Task 6 and
+#      docs/runbooks/point-in-time-recovery.md. --pit now refuses with a reason.
 #   6. Verify row counts match backup record expectations
 #   7. Restart ivgs-api (runs Alembic migrations automatically)
 #   8. Restart ivgs-workers
@@ -22,7 +23,7 @@
 # Usage:
 #   ./restore.sh YYYY-MM-DD                      # Restore specific date
 #   ./restore.sh YYYY-MM-DD --dry-run             # Preview without executing
-#   ./restore.sh YYYY-MM-DD --pit YYYY-MM-DD-HH:MM  # Point-in-time recovery
+#   ./restore.sh YYYY-MM-DD --pit YYYY-MM-DD-HH:MM  # REFUSES: no physical base backup
 #   ./restore.sh YYYY-MM-DD --skip-confirmation   # Skip safety prompts
 # =============================================================================
 
@@ -99,7 +100,9 @@ Arguments:
 
 Options:
   --dry-run            Preview actions without executing
-  --pit TARGET         Point-in-time recovery target (YYYY-MM-DD-HH:MM)
+  --pit TARGET         UNAVAILABLE on this system - backups are logical
+                       (pg_dump), so archived WAL cannot be replayed. The flag
+                       is kept so it fails with a reason rather than silently.
   --skip-confirmation  Skip interactive safety prompts
   --help               Show this help message
 
@@ -385,12 +388,42 @@ apply_wal_logs() {
         return 0
     fi
 
-    log_info "Step 5: Applying WAL logs for point-in-time recovery to ${PIT_TARGET}"
-
-    if [ "${DRY_RUN}" = true ]; then
-        log_info "[DRY RUN] Would apply WAL logs from ${WAL_ARCHIVE_DIR} up to ${PIT_TARGET}"
-        return 0
-    fi
+    # =======================================================================
+    # WP-57 Task 6 — THIS CANNOT WORK, AND IT NOW SAYS SO INSTEAD OF TRYING.
+    # =======================================================================
+    # Establish by measurement, 2026-08-26:
+    #   * scripts/backup.sh takes `pg_dump --format=plain` (backup.sh:310-313) —
+    #     a LOGICAL dump. `pg_basebackup` appears NOWHERE in this repository.
+    #   * The WAL archive is real and current: 99 segments, 740 MB, and
+    #     pg_stat_archiver.last_archived_time was minutes old when checked.
+    #
+    # PostgreSQL cannot replay WAL onto a restored logical dump, and this is not
+    # a configuration gap that can be closed with a flag. WAL records physical
+    # block changes keyed to LSNs in a specific data directory. `pg_dump`
+    # produces SQL; restoring it builds a brand-new cluster with different block
+    # layout and an unrelated LSN timeline. There is no base to roll forward
+    # from, so `recovery_target_time` has nothing to seek within.
+    #
+    # What this function used to do was write a recovery.conf to /tmp and tell
+    # the operator to copy it into PGDATA and restart — instructions which, if
+    # followed during a real incident, put the cluster into recovery looking for
+    # a base backup that does not exist. That is worse than refusing: it burns
+    # the operator's time at the moment they have least of it, and it is the
+    # 75-day-backup-gap failure mode exactly — an artefact that manufactures
+    # confidence it cannot honour.
+    #
+    # THE ARCHIVE IS NOT USELESS — it is unusable *today*. If a physical base
+    # backup is introduced (WP-57 D-2), these segments become replayable and
+    # this function should be rewritten around `pg_basebackup`. Until then the
+    # honest recovery promise is checkpoint-only: restore the latest dump.
+    log_error "Point-in-time recovery is NOT AVAILABLE on this system."
+    log_error "  Reason: backups are LOGICAL (pg_dump). WAL replay requires a"
+    log_error "  PHYSICAL base backup (pg_basebackup), which this system does"
+    log_error "  not take. Archived WAL cannot be applied to a pg_dump restore."
+    log_error "  What you CAN do: re-run without --pit to restore the latest"
+    log_error "  dump. Recovery is to that dump's checkpoint, not to an instant."
+    log_error "  See docs/runbooks/point-in-time-recovery.md."
+    return 5
 
     # Configure PostgreSQL for WAL replay
     local pg_data_dir
