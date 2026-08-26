@@ -38,7 +38,16 @@ from app.services.project_service import (
     ProjectService,
 )
 from app.services.asset_service import AssetService
-from app.models.project_gate import DECISIONS, GATE_DRAFT, GATE_STORYBOARD
+from app.models.project_gate import (
+    DECISION_REGENERATE,
+    DECISIONS,
+    GATE_DRAFT,
+    GATE_STORYBOARD,
+)
+from app.services.regeneration import (
+    RegenerationError,
+    dispatch_gate_regeneration,
+)
 from app.api.v1._dispatch_guards import gate_blocked
 from app.services.gate_service import GateBlocked, GateError, GateService
 from app.services.project_progress import ProjectProgressService
@@ -725,6 +734,68 @@ async def _gate_decision(
                         "message": (
                             f"{exc} The approval WAS recorded (decision "
                             f"{row.id}); only the dispatch was refused."
+                        ),
+                    }
+                },
+            )
+
+    # WP-63 Task 8. THE `regenerate` DECISION NOW RELEASES SOMETHING.
+    #
+    # Measured before this change, project 14f71729 on 2026-08-26: two
+    # `regenerate` decisions four seconds apart (15:17:25.362Z and
+    # 15:17:29.616Z -- the operator pressed it again because nothing had
+    # happened), two audit rows, and zero broker messages.
+    #
+    # The decision row it already wrote is now the audit OF this dispatch,
+    # which is why the dispatch happens after `decide` rather than instead of
+    # it. `dispatch_gate_regeneration` carries the ruled semantics and the
+    # reason the trigger layer can serve them standalone.
+    if payload.decision == DECISION_REGENERATE:
+        try:
+            job = await dispatch_gate_regeneration(
+                db,
+                project_id,
+                gate,
+                reason=f"gate_regenerate:{gate}:{row.id}",
+            )
+            released = {
+                "dispatched": True,
+                "job_id": str(job.id),
+                "job_type": job.job_type,
+                "stage": job.resume_from_stage,
+            }
+        except PipelineAlreadyRunningError as exc:
+            # Same rule as an approval whose release is refused: THE DECISION
+            # STANDS. A reviewer asked for a regeneration and that is recorded;
+            # only the dispatch was refused, and the operator is told which run
+            # is holding it up.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "PIPELINE_ALREADY_RUNNING",
+                        "message": (
+                            f"{exc} The regenerate decision WAS recorded "
+                            f"(decision {row.id}); only the dispatch was "
+                            "refused. Nothing needs re-deciding."
+                        ),
+                        "active_job": {
+                            "id": str(exc.job_id),
+                            "job_type": exc.job_type,
+                            "status": exc.status,
+                        },
+                    }
+                },
+            )
+        except RegenerationError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "REGENERATION_UNAVAILABLE",
+                        "message": (
+                            f"{exc} The regenerate decision WAS recorded "
+                            f"(decision {row.id})."
                         ),
                     }
                 },
