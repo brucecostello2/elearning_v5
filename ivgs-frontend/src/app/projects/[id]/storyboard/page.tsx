@@ -712,6 +712,11 @@ export default function StoryboardPage(): React.ReactElement {
         {isEditModalOpen && editingScene && (
           <SceneEditModal
             scene={editingScene}
+            /* WP-66 Task 4. The scene model picker needs the project to resolve
+               a binding: a scene-scoped selection is keyed on
+               (project, scene, stage, tier), and dispatch falls back to the
+               project row when there is no scene row. */
+            projectId={projectId}
             canEdit={canEdit}
             onSave={handleSaveScene}
             /* WP-64 Task 3. Passed straight through: it returns a proposal and

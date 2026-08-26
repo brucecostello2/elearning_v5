@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import SceneThumbnail from "@/components/SceneThumbnail";
+import SceneModelPicker from "@/components/models/SceneModelPicker";
 import { apiErrorMessage } from "@/lib/api-error";
 import type {
   Scene,
@@ -161,6 +162,12 @@ const MEDIA_TYPES: { value: MediaType; label: string; description: string }[] = 
 interface SceneEditModalProps {
   /** Scene to edit */
   scene: Scene;
+  /**
+   * WP-66 Task 4. The project this scene belongs to. Optional so a caller that
+   * has not wired it simply does not show the per-scene model picker, rather
+   * than rendering one that cannot resolve a binding.
+   */
+  projectId?: string;
   /** Whether the user can edit (false = view-only) */
   canEdit: boolean;
   /** Save callback: receives scene ID and update payload */
@@ -182,6 +189,7 @@ interface SceneEditModalProps {
 
 export default function SceneEditModal({
   scene,
+  projectId,
   canEdit,
   onSave,
   onClose,
@@ -710,6 +718,25 @@ export default function SceneEditModal({
                   and nothing else.
                 </p>
               </div>
+
+              {/* ── Model for this scene — WP-66 Task 4 ──────────────────
+                  Beside Media Type, deliberately: the medium decides which
+                  stage renders this scene, and therefore which models are
+                  even candidates. The schema has supported a scene-scoped
+                  binding since the start and dispatch already honours it;
+                  nothing had ever written one. */}
+              {projectId && (
+                <SceneModelPicker
+                  projectId={projectId}
+                  sceneId={scene.id}
+                  mediaType={
+                    mediaType ||
+                    normalizeMediaType(scene.media_type) ||
+                    "image"
+                  }
+                  canEdit={canEdit}
+                />
+              )}
 
               {/* ── Adapt description for this medium — WP-64 Task 3 ──
                   The description above was authored for ONE medium and no

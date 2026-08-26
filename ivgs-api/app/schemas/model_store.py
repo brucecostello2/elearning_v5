@@ -392,6 +392,108 @@ class SelectionOut(BaseModel):
     selected_by: SelectionSource
     rationale: str
     created_at: datetime
+    # WP-66. The relationship is already `lazy="joined"`
+    # (`model_store.py:389`), so the row travelled with every response and the
+    # schema dropped it -- leaving a UI that knows a model_id and has to fetch
+    # the whole registry to render a name. Carried now, plus the two facts a
+    # picker has to show beside it.
+    model_name: str | None = None
+    model_display_name: str | None = None
+    model_engine: ModelEngine | None = None
+    model_state: ModelState | None = None
+
+    @classmethod
+    def from_row(cls, row) -> "SelectionOut":
+        out = cls.model_validate(row)
+        model = getattr(row, "model", None)
+        if model is not None:
+            out.model_name = model.name
+            out.model_display_name = model.display_name
+            out.model_engine = model.engine
+            out.model_state = model.state
+        return out
+
+
+class ClearSelectionIn(BaseModel):
+    """WP-66 Task 4 — "use the project default" for ONE scene.
+
+    Deletes the scene-scoped row so the project binding applies again. Never
+    writes a copy of the project row: a duplicate keeps pointing at the old
+    model after the project default changes, and dispatch reads scene-scoped
+    first (`factory.py:147-151`), so the scene would silently stop following it.
+    """
+
+    stage: ModelStage
+    tier: ModelTier
+    scene_id: UUID
+
+
+class ClearSelectionOut(BaseModel):
+    cleared: int
+    message: str
+
+
+class SelectionCandidateOut(BaseModel):
+    """One option in a model picker, with the reason it may be unusable.
+
+    Unavailable models are RETURNED, not filtered out: WP-66 Task 3 requires
+    them visible-but-disabled with the reason, because a user who cannot see
+    the model they expected has no way to find out why.
+    """
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    name: str
+    display_name: str
+    stage: ModelStage
+    engine: ModelEngine
+    tier: ModelTier
+    state: ModelState
+    is_default: bool
+    vram_gb: float | None = None
+    #: True when PUT /selections would accept this model.
+    selectable: bool = True
+    #: Machine slug of the refusal, when it would not.
+    refusal_reason: str | None = None
+    #: The sentence to show beside a disabled option.
+    refusal_message: str | None = None
+    #: WP-65's weight state, so the picker can warn without refusing.
+    weight_state: str | None = None
+    weight_label: str | None = None
+
+
+class StageBindingOut(BaseModel):
+    """What one (stage, tier) is bound to, and WHERE THAT CAME FROM.
+
+    The provenance field is not decoration. WP-60 Task 5 established that a
+    surface presenting mixed provenance as one fact is this codebase's recurring
+    defect, and a model binding has four possible origins that look identical
+    once resolved.
+    """
+
+    stage: ModelStage
+    tier: ModelTier
+    #: "selection" | "preset" | "auto" | "default" | "none"
+    provenance: str
+    provenance_label: str
+    selection: SelectionOut | None = None
+    model_id: UUID | None = None
+    model_name: str | None = None
+    model_display_name: str | None = None
+    #: A binding that resolved but is no longer valid (model deprecated,
+    #: retired, or now unrunnable). Surfaced as a warning, never silently
+    #: rewritten.
+    warning: str | None = None
+    candidates: list[SelectionCandidateOut] = Field(default_factory=list)
+
+
+class ProjectSelectionsOut(BaseModel):
+    """The Models panel's whole payload, in one request."""
+
+    project_id: UUID
+    tier: ModelTier
+    bindings: list[StageBindingOut]
 
 
 class PlanResponse(BaseModel):

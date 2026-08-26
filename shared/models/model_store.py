@@ -126,10 +126,23 @@ class NodeAvailabilityStatus(str, enum.Enum):
 
 
 class SelectionSource(str, enum.Enum):
-    """AD-01.5.2 ``project_model_selections.selected_by``."""
+    """AD-01.5.2 ``project_model_selections.selected_by`` — the PROVENANCE.
+
+    WP-66 added ``PRESET`` (migration 0040). Before it, a selection written by
+    applying a library preset (``preset_service.py:246``) was recorded as
+    ``MANUAL``, because it goes through ``manual_override`` — so the column that
+    exists to say where a binding came from could not distinguish a preset from
+    an operator's own choice, and the only trace was a free-text rationale.
+
+    Nothing at dispatch switches on this value (``factory.py`` passes it through
+    to the binding and never compares it), so it is purely a provenance record.
+    That is the point: WP-60 Task 5 established that a surface presenting mixed
+    provenance as one fact is this codebase's recurring defect.
+    """
 
     AUTO = "auto"
     MANUAL = "manual"
+    PRESET = "preset"
 
 
 def _sa_enum(py_enum: type[enum.Enum], name: str) -> SAEnum:

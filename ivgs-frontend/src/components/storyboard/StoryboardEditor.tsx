@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
+import useSWR from "swr";
 import {
   DragDropContext,
   Droppable,
@@ -10,7 +11,9 @@ import {
   DragUpdate,
 } from "react-beautiful-dnd";
 import SceneCard from "@/components/storyboard/SceneCard";
+import { apiClient } from "@/lib/api-client";
 import type { Scene } from "@/types/storyboard";
+import type { ModelSelection } from "@/types/models";
 
 /**
  * §8.1.3 Storyboard Editor — Drag-Drop Scene Grid
@@ -71,6 +74,25 @@ export default function StoryboardEditor({
   onDeleteScene,
   onReorder,
 }: StoryboardEditorProps): React.ReactElement {
+  /* WP-66 Task 4 — which scenes override the project's model binding.
+     Rendered on the grid so the exceptions are visible without opening every
+     card. Read-only and failure-tolerant: if this request fails the cards
+     simply carry no badge, because a missing badge is a smaller wrong than a
+     storyboard that will not render. */
+  const { data: selections } = useSWR<ModelSelection[]>(
+    projectId ? `/api/v1/projects/${projectId}/model-selections` : null,
+    async (u: string) => (await apiClient.get<ModelSelection[]>(u)).data,
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+  const sceneOverrides = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const sel of selections ?? []) {
+      if (!sel.scene_id) continue;
+      map.set(sel.scene_id, sel.model_display_name ?? sel.model_name ?? "custom");
+    }
+    return map;
+  }, [selections]);
+
   // ── Drag State ──────────────────────────────────────────────────────
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragSourceId, setDragSourceId] = useState<string | null>(null);
@@ -210,6 +232,10 @@ export default function StoryboardEditor({
                       onEdit={() => onEditScene(scene)}
                       onRegenerate={() => handleRegenerate(scene.id)}
                       onDelete={() => handleDelete(scene.id)}
+                      /* WP-66 Task 4. One request for the whole storyboard,
+                         not one per card: `GET /model-selections` already
+                         returns every row, scene-scoped included. */
+                      modelOverrideName={sceneOverrides.get(scene.id) ?? null}
                     />
                   </div>
                 )}

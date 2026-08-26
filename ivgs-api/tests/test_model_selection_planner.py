@@ -315,7 +315,12 @@ async def test_manual_override_validations(
 
     talking_head_store["sadtalker"].state = ModelState.RETIRED
     await db_session.commit()
-    with pytest.raises(ValueError, match="not servable"):
+    # WP-66 STRENGTHENED THIS, and did not relax it. The refusal is unchanged;
+    # what changed is that it now carries a machine slug the surface switches on
+    # (`SelectionRefused.reason`) and names the remedy. The old assertion could
+    # only see the prose. Both are checked below: the wording AND the slug, so a
+    # future reword cannot silently break the frontend's branch.
+    with pytest.raises(ValueError, match="not servable") as _retired:
         await manual_override(
             db_session,
             project_id=model_store_project.id,
@@ -325,6 +330,8 @@ async def test_manual_override_validations(
             model_id=talking_head_store["sadtalker"].id,
             rationale="x",
         )
+    assert _retired.value.reason == "not_approved"
+    assert "retired" in str(_retired.value)
 
     with pytest.raises(ValueError, match="serves stage"):
         await manual_override(

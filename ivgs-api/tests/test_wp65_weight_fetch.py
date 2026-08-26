@@ -269,14 +269,30 @@ class TestPlacementPolicy:
     def test_node_04s_comfyui_cannot_hold_an_animation_bundle(self):
         """It mounts ``checkpoints`` and nothing else
         (docker-compose.node04.yml:68). Probed live 2026-08-26: one checkpoint,
-        and empty unet/lora/clip lists. Placing a diffusion_models bundle there
-        would put bytes where no loader looks."""
+        and empty unet/lora/clip lists.
+
+        A NAMED family it has no convention for is refused rather than dropped
+        into its fallback -- writing a 14B Wan bundle into `checkpoints` would
+        put bytes where a checkpoint loader will try to read them, which is a
+        worse outcome than not placing them at all.
+        """
         from shared.weights.errors import NoPlacementRuleError
 
         rule = placement_for("comfyui", node_id="node-04")
         with pytest.raises(NoPlacementRuleError) as exc:
             rule.dest_for("wan_animate")
-        assert "does not mount" in str(exc.value)
+        assert "declares no placement for family 'wan_animate'" in str(exc.value)
+
+    def test_a_family_the_wan_host_does_not_know_is_also_refused(self):
+        """The same rule on the host that DOES have a family map: it names what
+        it knows, so the refusal is actionable."""
+        from shared.weights.errors import NoPlacementRuleError
+
+        rule = placement_for("comfyui", node_id="node-03")
+        with pytest.raises(NoPlacementRuleError) as exc:
+            rule.dest_for("stable_diffusion_xl")
+        assert "it knows" in str(exc.value)
+        assert "wan_animate" in str(exc.value)
 
     def test_wan_families_land_where_mbcps_materialization_map_says(self):
         """Transcribed from ``mbcp_core/weights/materialization.py:37-100``.
@@ -645,3 +661,36 @@ class TestTheSurfaceDoesNotOverclaimAbsence:
             "this label is rendered for a model whose bytes may well be on the "
             "node; it must not assert they are absent"
         )
+
+
+class TestTheFallbackDestinationBelongsToTheHost:
+    """Found by WP-66's tests, not by WP-65's own.
+
+    The fallback for a bundle that declares no family was a module-level
+    constant reading "diffusion_models" -- a WAN-PACK convention applied to
+    every host. On node-04's FLUX ComfyUI, which mounts `checkpoints` and
+    nothing else, that made every familyless image model look unplaceable, and
+    WP-66's selection refusal then rejected models that are perfectly fine.
+    """
+
+    def test_a_familyless_bundle_lands_in_checkpoints_on_node_04(self):
+        rule = placement_for("comfyui", node_id="node-04")
+        assert rule.dest_for(None) == "/data/models/comfyui/checkpoints"
+
+    def test_a_familyless_bundle_lands_in_diffusion_models_on_node_03(self):
+        rule = placement_for("comfyui", node_id="node-03")
+        assert rule.dest_for(None) == "/opt/models/comfyui-wan/models/diffusion_models"
+
+    def test_every_hosts_fallback_is_a_directory_it_actually_mounts(self):
+        """The property that makes adding a host safe: a fallback outside the
+        mounts is bytes where no loader looks."""
+        for host in ENGINE_HOSTS:
+            assert host.fallback_dest() in host.mounted_dests, host.container
+
+    def test_an_image_model_with_no_family_is_placeable(self):
+        """The end-to-end consequence, and the one WP-66 tripped over."""
+        row = _Row(name="flux1-schnell", engine="comfyui", stage="image_generation",
+                   weights_ref=_GOOD_REF)
+        plan = plan_fetch(row)
+        assert plan.can_fetch, plan.message
+        assert plan.host.node_id == "node-04"

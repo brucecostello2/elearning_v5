@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1208** | **0** | 0 | 0 | 1123 (WP-64) |
+| `ivgs-api` | **1252** | **0** | 0 | 0 | 1208 (WP-65) |
 | `ivgs-workers` | **887** | 18 | 48 | 15 | 868 (WP-63) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2327** | **50** | **63** | **45** | 2242 / 50 (WP-64) |
+| **Total** | **2371** | **50** | **63** | **45** | 2327 / 50 (WP-65) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,29 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-66 added 44 tests (2026-08-26) and moved no failure row.** All 44 in
+`ivgs-api` (1208 -> 1252). `ivgs-workers` re-run in the same session and is
+unchanged: **887 passed, 18 failed, 48 skipped, 15 errors**. This tree now needs
+migration **0040**, which adds ONE ENUM LABEL (`selection_source.preset`) and
+alters no row. Its `downgrade()` is a deliberate no-op — PostgreSQL cannot
+remove an enum value in place — the same treatment as 0027, 0033, 0034 and 0038.
+
+**ONE EXISTING TEST WAS STRENGTHENED AND NOT WEAKENED.**
+
+| Test | Why it moved, and why it is not a relaxation |
+|---|---|
+| `ivgs-api/tests/test_model_selection_planner.py::test_manual_override_validations` | Its `match="not servable"` assertion followed a message change: `manual_override`'s refusals now carry a machine slug (`SelectionRefused.reason`) and name the remedy, because the frontend has to branch on which refusal it was and could only read prose before. The refusal itself is UNCHANGED — a retired model is still rejected. The test now asserts the wording AND the slug, so a future reword cannot silently break the frontend's branch. Strictly more than it checked before. |
+
+**AND A REFUSAL WP-66 SHIPPED WAS REMOVED AGAIN, ON LIVE EVIDENCE.** `engine_only`
+was briefly a bar on selection. The live acceptance run showed three stages with
+ZERO selectable models — `video_generation`, `composition` and `translation` —
+and the models being refused were `CogVideoX-5b`, `FFmpeg-composition` and
+`Llama-3.3-70B-Instruct`: the `is_default` models those stages render with today.
+An engine-only certification means the model ships INSIDE its engine image, so
+where that image is deployed the model runs. It is now a warning, and
+`test_no_live_default_model_would_be_refused_by_this_gate` states the property so
+it cannot regress.
 
 **WP-65 added 85 tests (2026-08-26) and moved no failure row.** All 85 in
 `ivgs-api` (1123 -> 1208). `ivgs-workers` re-run in the same session and is

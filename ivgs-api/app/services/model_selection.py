@@ -267,6 +267,104 @@ async def plan_selections(
     return rows
 
 
+class SelectionRefused(ValueError):
+    """WP-66 Task 2 — a selection refused with a reason a user can act on.
+
+    A ``ValueError`` subclass so every existing caller keeps working (the route
+    already maps ``ValueError`` to 422), while carrying the machine slug the
+    frontend switches on to render the right next step.
+    """
+
+    def __init__(self, message: str, *, reason: str) -> None:
+        self.reason = reason
+        super().__init__(message)
+
+
+#: The ONE weight state that makes a model certainly unrunnable. Decidable
+#: offline from the model row plus the fleet topology, with no placement record.
+#:
+#: `engine_only` USED TO BE IN THIS TABLE AND WAS REMOVED, on evidence. Running
+#: the acceptance against live data showed THREE stages with zero selectable
+#: models -- video_generation, composition and translation -- and the models it
+#: was refusing were CogVideoX-5b, FFmpeg-composition and
+#: Llama-3.3-70B-Instruct: the `is_default` models those stages are bound to and
+#: running on today. The refusal would have rejected an explicit selection of a
+#: model the pipeline is already using.
+#:
+#: The reasoning was wrong in the same way WP-65 §7.4 was wrong before it was
+#: corrected. "MBCP has no weight bundle for this model" is a fact about MBCP's
+#: serving plane. "This model cannot run" is a fact about the fleet. An
+#: engine-only certification means the model ships INSIDE its engine image
+#: (`mbcp_api/api/v1/certifications.py:603-620`), so where that image is
+#: deployed the model runs -- which is exactly why eleven of eighteen live rows
+#: are engine-only and several of them are serving. It is a warning, not a bar.
+_CERTAINLY_UNRUNNABLE = {
+    "no_host": (
+        "no node on this fleet serves the engine {name!r} runs on "
+        "({engine}), so a render bound to it has nowhere to go. "
+        "{detail}"
+    ),
+}
+
+
+def _availability_refusal(model: Model) -> SelectionRefused | None:
+    """WP-66 Task 2 — refuse a model that CANNOT run, warn about the rest.
+
+    THE SCOPE HERE IS NARROWER THAN THE BRIEF ASKED FOR, DELIBERATELY, AND THIS
+    IS THE REASONING.
+
+    The brief asks ``PUT /selections`` to refuse a model with "no verified
+    weights on a node hosting its engine". Measured after WP-65 deployed:
+    ``model_weight_placements`` holds **zero** rows, because the live fetch
+    needs the operator's MBCP token and is held. Enforcing that literally would
+    refuse **every model in the store**, including ``wan2.2-animate``, which is
+    approved, is the animation default, and whose bytes are demonstrably on
+    node-03 — its engine enumerates them. A gate that refuses everything is
+    worse than no gate: it would be switched off within the day.
+
+    Worse, it would assert something IVGS cannot know. WP-65 §7.4 settled this
+    distinction and it holds here: *IVGS has no record of a fetch* is a fact
+    about IVGS's records; *there are no bytes on the node* is a fact about the
+    node. Refusing a selection on the first while claiming the second is
+    inventing an availability signal, which the brief forbids in the same
+    breath.
+
+    So this refuses only what is **certainly** unrunnable, on evidence that
+    needs no placement record:
+
+      * ``engine_only`` — MBCP has no bundle. Not "not yet"; not ever.
+      * ``no_host`` — nothing on the fleet serves the engine.
+
+    and returns ``None`` for ``not_fetched`` / ``unknown_reference``, which
+    become a WARNING on the surface instead (Task 2's last clause). The
+    verified-bytes half is STOPPED and ledgered as WP-66 L-1; it becomes
+    enforceable the moment one real fetch is recorded, and the code to turn it
+    on is one entry added to ``_CERTAINLY_UNRUNNABLE``.
+    """
+    from app.services.weight_placement import _REASON_TO_STATE
+    from shared.weights.service import plan_fetch
+
+    # `plan_fetch`, NOT `compute_status`: the two states this refuses are
+    # decidable from the model row plus the fleet topology alone, with no
+    # placement rows, no credentials and no IO. Reading the placement
+    # relationship here would also touch a lazy load inside an async session.
+    plan = plan_fetch(model)
+    if plan.can_fetch:
+        return None
+    state = _REASON_TO_STATE.get(plan.reason or "", "failed")
+    template = _CERTAINLY_UNRUNNABLE.get(state)
+    if template is None:
+        return None
+    return SelectionRefused(
+        template.format(
+            name=model.name,
+            engine=model.engine.value,
+            detail=plan.message or "",
+        ).strip(),
+        reason=state,
+    )
+
+
 async def manual_override(
     session: AsyncSession,
     *,
@@ -276,20 +374,37 @@ async def manual_override(
     tier: ModelTier,
     model_id: UUID,
     rationale: str,
+    selected_by: SelectionSource = SelectionSource.MANUAL,
 ) -> ProjectModelSelection:
-    """AD-01.8.4 — operator/admin override (selected_by='manual')."""
+    """AD-01.8.4 — operator/admin override.
+
+    ``selected_by`` defaults to MANUAL and is passed explicitly by the preset
+    path (WP-66 Task 6), so a preset-written selection is recorded as one
+    instead of being indistinguishable from an operator's own choice.
+    """
     model = await session.get(Model, model_id)
     if model is None:
-        raise ValueError(f"model {model_id} does not exist")
+        raise SelectionRefused(
+            f"model {model_id} does not exist", reason="model_missing",
+        )
     if model.state not in (ModelState.APPROVED, ModelState.DEPRECATED):
-        raise ValueError(
-            f"model {model.name!r} is {model.state.value} — not servable"
+        # This check PREDATES WP-66 and was already correct; what it lacked was
+        # a slug the surface could act on and a message a user could read.
+        raise SelectionRefused(
+            f"{model.name!r} is {model.state.value} and is not servable — only "
+            f"approved models can be bound to a project. An admin approves a "
+            f"candidate in Admin -> Models after reviewing its attestation.",
+            reason="not_approved",
         )
     if model.stage != stage:
-        raise ValueError(
+        raise SelectionRefused(
             f"model {model.name!r} serves stage {model.stage.value!r}, "
-            f"not {stage.value!r}"
+            f"not {stage.value!r}",
+            reason="wrong_stage",
         )
+    refusal = _availability_refusal(model)
+    if refusal is not None:
+        raise refusal
     return await _replace_selection(
         session,
         project_id=project_id,
@@ -297,9 +412,41 @@ async def manual_override(
         stage=stage,
         tier=tier,
         model_id=model_id,
-        selected_by=SelectionSource.MANUAL,
+        selected_by=selected_by,
         rationale=rationale,
     )
+
+
+async def clear_selection(
+    session: AsyncSession,
+    *,
+    project_id: UUID,
+    scene_id: UUID,
+    stage: ModelStage,
+    tier: ModelTier,
+) -> int:
+    """WP-66 Task 4 — drop a SCENE-scoped row so the project default applies.
+
+    "Use the project default" must DELETE the scene row, not write a copy of
+    the project one. The difference shows up later: a duplicate keeps pointing
+    at the old model after the project default changes, and the scene silently
+    stops following it — while dispatch reads scene-scoped first
+    (``factory.py:147-151``) and would never look at the project row again.
+
+    Scene-scoped only. ``scene_id`` is required and there is no project-scoped
+    variant: clearing a project selection is what the planner and the override
+    are for, and a project with no row at all falls back to ``is_default``,
+    which is a different decision from "the user cleared it".
+    """
+    result = await session.execute(
+        delete(ProjectModelSelection).where(
+            ProjectModelSelection.project_id == project_id,
+            ProjectModelSelection.scene_id == scene_id,
+            ProjectModelSelection.stage == stage,
+            ProjectModelSelection.tier == tier,
+        )
+    )
+    return int(result.rowcount or 0)
 
 
 async def set_default(

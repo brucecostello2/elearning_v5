@@ -43,7 +43,7 @@ from app.models.preset import Preset
 from app.models.project import Project
 from app.services import model_selection
 from app.services.library_service import LibraryError, LibraryService
-from shared.models.model_store import ModelStage, ModelTier
+from shared.models.model_store import ModelStage, ModelTier, SelectionSource
 
 logger = logging.getLogger(__name__)
 
@@ -251,6 +251,12 @@ class PresetService:
                 tier=tier,
                 model_id=UUID(str(sel["model_id"])),
                 rationale=f"preset {preset.name!r} v{preset.version}",
+                # WP-66 Task 6. This write was real all along -- the panel's
+                # claim is true -- but it recorded MANUAL, so the column that
+                # exists to say where a binding came from could not tell a
+                # preset from an operator's own choice, and the only trace was
+                # this rationale string. Migration 0040 adds the value.
+                selected_by=SelectionSource.PRESET,
             )
             applied.append(f"model_selection {stage.value}/{tier.value}")
 

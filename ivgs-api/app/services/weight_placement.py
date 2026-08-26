@@ -144,7 +144,22 @@ def compute_status(
 
     ``placements`` defaults to the relationship, which is ``selectin``-loaded.
     """
-    rows = list(placements if placements is not None else (model.weight_placements or []))
+    # The relationship is `selectin`, so a model loaded by a query carries it --
+    # but `session.get()` can return an identity-map instance with it unloaded,
+    # and touching it then triggers sync IO inside an async session
+    # (`MissingGreenlet`). Asked rather than assumed: an unloaded relationship
+    # means "we do not know of any placement", which is exactly what the
+    # `not_fetched` branch below is for, and is never a reason to raise.
+    if placements is not None:
+        rows = list(placements)
+    else:
+        from sqlalchemy import inspect as sa_inspect
+
+        state = sa_inspect(model)
+        if "weight_placements" in state.unloaded:
+            rows = []
+        else:
+            rows = list(model.weight_placements or [])
     verified = [r for r in rows if r.status is WeightPlacementStatus.VERIFIED]
 
     if verified:

@@ -60,6 +60,13 @@ interface SceneCardProps {
   onRegenerate: () => void;
   /** Delete scene callback */
   onDelete: () => void;
+  /**
+   * WP-66 Task 4. The model this scene overrides the project default with, if
+   * any. Shown on the card so an operator can see the exceptions without
+   * opening every one -- a per-scene override that is only visible inside a
+   * modal is an exception nobody finds.
+   */
+  modelOverrideName?: string | null;
 }
 
 /** Color mapping for scene status badges */
@@ -122,6 +129,7 @@ export default function SceneCard({
   onEdit,
   onRegenerate,
   onDelete,
+  modelOverrideName,
 }: SceneCardProps): React.ReactElement {
   // ── Local Loading States ──────────────────────────────────────────
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
@@ -303,6 +311,15 @@ export default function SceneCard({
           >
             {STATUS_LABELS[scene.status]}
           </span>
+          {/* WP-66 Task 4 — the exception, visible from the grid. */}
+          {modelOverrideName && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-xs font-medium text-purple-800 dark:text-purple-300"
+              title={`This scene overrides the project's model with ${modelOverrideName}`}
+            >
+              model: {modelOverrideName}
+            </span>
+          )}
         </div>
 
         {/* Narration Text */}

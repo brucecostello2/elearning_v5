@@ -65,6 +65,9 @@ export const PROJECT_TABS: readonly ProjectTab[] = [
   { id: "overview", label: "Overview", segment: "" },
   { id: "transcripts", label: "Transcripts", segment: "transcript" },
   { id: "storyboard", label: "Storyboard", segment: "storyboard" },
+  /* WP-66. Where a user chooses which model runs each stage. The invariant
+     above still holds: this points at a page that ships. */
+  { id: "models", label: "Models", segment: "models" },
   { id: "assets", label: "Media Assets", segment: "assets" },
   { id: "audio", label: "Audio", segment: "audio" },
   { id: "talking-head", label: "Talking Head", segment: "talking-head" },

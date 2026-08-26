@@ -75,6 +75,7 @@ from app.models.project_gate import (
 from app.models.render_job import RenderJob
 from app.models.storyboard_scene import StoryboardScene
 from app.models.user import User
+from shared.models.model_store import ProjectModelSelection
 
 logger = logging.getLogger(__name__)
 
@@ -258,16 +259,80 @@ class GateService:
             digest.update(f"{scene_id}|{asset_type}|{asset_id}\n".encode("utf-8"))
         return f"media-{len(rows)}-{digest.hexdigest()[:24]}"
 
-    async def draft_upstream_version(self, project_id: UUID) -> str:
-        """Everything a draft is downstream OF: the storyboard and the media.
+    async def model_selection_version(self, project_id: UUID) -> str:
+        """A fingerprint of the models this project is bound to.
 
-        Recorded on a draft decision as ``upstream_version`` and recomputed on
-        read, so re-running Stage 2 OR regenerating one scene's media both
-        invalidate a draft approval.
+        WP-66 Task 5, RULED: **a model selection change invalidates the DRAFT
+        gate only.** It does not invalidate the storyboard approval.
+
+        THE REASONING, because the asymmetry is the point. The storyboard
+        artifact is narration, visual descriptions and media types — a model
+        choice does not alter any of them, and invalidating that approval would
+        refuse the very regeneration the user is picking a model FOR. That is
+        the same asymmetry WP-63 D-1 resolved for regeneration, and the same one
+        ``scene_media_version`` exists to express. The draft, by contrast, IS
+        what the models produced: approving a draft and then changing the model
+        that made it must re-open that decision.
+
+        Implemented by composition rather than by a new invalidation path, so it
+        inherits every property this module already has. ``storyboard_version``
+        is untouched, therefore a storyboard approval cannot be affected by a
+        selection change — not "is not", CANNOT be, because the selection rows
+        are not among its inputs. And nothing writes an invalidation: the
+        fingerprint moves and the approval stops being current on the next read.
+
+        Over ``(scene_id, stage, tier, model_id)`` for every selection row,
+        ordered. Includes ``scene_id`` so a SCENE-scoped override moves it too —
+        overriding one scene's model changes what the next draft contains just
+        as surely as changing the project's. NOT over ``rationale`` or
+        ``created_at``: re-selecting the same model with different prose is not
+        a different draft, and re-approving over it would be noise.
+
+        Returns ``sel-0`` when there are no selections. A project with no rows
+        runs on ``is_default`` models, which is a real and stable binding — so
+        this is a version of "no explicit selections", not an absence, and it
+        must not read as ``ABSENT``.
+        """
+        rows = (
+            await self.db.execute(
+                select(
+                    ProjectModelSelection.scene_id,
+                    ProjectModelSelection.stage,
+                    ProjectModelSelection.tier,
+                    ProjectModelSelection.model_id,
+                )
+                .where(ProjectModelSelection.project_id == project_id)
+                .order_by(
+                    ProjectModelSelection.stage,
+                    ProjectModelSelection.tier,
+                    ProjectModelSelection.scene_id,
+                )
+            )
+        ).all()
+        if not rows:
+            return "sel-0"
+        digest = hashlib.sha256()
+        for scene_id, stage, tier, model_id in rows:
+            stage_v = getattr(stage, "value", stage)
+            tier_v = getattr(tier, "value", tier)
+            digest.update(
+                f"{scene_id or ''}|{stage_v}|{tier_v}|{model_id}\n".encode("utf-8")
+            )
+        return f"sel-{len(rows)}-{digest.hexdigest()[:24]}"
+
+    async def draft_upstream_version(self, project_id: UUID) -> str:
+        """Everything a draft is downstream OF.
+
+        The storyboard, the media, and — since WP-66 Task 5 — the model
+        selections. Recorded on a draft decision as ``upstream_version`` and
+        recomputed on read, so re-running Stage 2, regenerating one scene's
+        media, OR changing which model a stage or scene is bound to all
+        invalidate a draft approval, with nothing to remember to write.
         """
         return (
             f"{await self.storyboard_version(project_id)}"
             f"+{await self.scene_media_version(project_id)}"
+            f"+{await self.model_selection_version(project_id)}"
         )
 
     async def artifact_version(self, project_id: UUID, gate: str) -> str:
@@ -362,10 +427,15 @@ class GateService:
                 decision=latest.decision, decided_at=latest.decided_at,
                 decided_by_name=latest.decided_by_name, note=latest.note,
                 reason=(
+                    # WP-66 added a THIRD input to draft_upstream_version and
+                    # this sentence listed two. A reason that names the wrong
+                    # causes sends the reader to look in the wrong place, which
+                    # is worse than a vague one.
                     "approved, but what this draft was built FROM has changed "
-                    "since - the storyboard has been re-run, or a scene's "
-                    "media has been regenerated. The draft on screen was "
-                    "assembled from material that is no longer current."
+                    "since - the storyboard has been re-run, a scene's media "
+                    "has been regenerated, or a model selection has changed. "
+                    "The draft on screen was assembled from material that is "
+                    "no longer current."
                 ),
             )
 

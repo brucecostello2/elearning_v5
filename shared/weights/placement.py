@@ -40,11 +40,17 @@ from dataclasses import dataclass, field
 
 from shared.weights.errors import NoHostForEngineError, NoPlacementRuleError
 
-#: Fallback destination when a bundle declares no family. ComfyUI loaders look
-#: in type-named subdirectories; ``diffusion_models`` is where a bare model
-#: bundle belongs for the Wan pack. Never used to invent a NEW directory --
-#: only ever one already mounted by the host.
-_DEFAULT_FAMILY_DEST = "diffusion_models"
+# WP-66 found this as a global constant reading ``"diffusion_models"``, applied
+# to every host. It is a WAN-PACK convention, and applying it to node-04's
+# FLUX ComfyUI -- which mounts ``checkpoints`` and nothing else -- made every
+# familyless image model look unplaceable, which in turn made WP-66's selection
+# refusal reject models that are perfectly fine. The fallback belongs to the
+# HOST, because "where does a bundle go when it declares no family" is a
+# property of the engine deployment's layout, not of the fleet.
+#
+# ``EngineHost.default_dest`` carries it now, and it must be one of the
+# directories that host actually mounts -- asserted in the tests, so a new host
+# cannot be added with a destination no loader reads.
 
 
 @dataclass(frozen=True)
@@ -69,7 +75,14 @@ class EngineHost:
     #: Which Celery queues route work here. Placement that ignores this
     #: attributes a model to a node that never receives its stage's jobs.
     queues: tuple[str, ...] = ()
+    #: Where a bundle goes when it declares no family. MUST be in
+    #: ``mounted_dests``. Defaults to the first mount, which is the honest
+    #: choice for a host with only one.
+    default_dest: str = ""
     notes: str = ""
+
+    def fallback_dest(self) -> str:
+        return self.default_dest or self.mounted_dests[0]
 
 
 @dataclass(frozen=True)
@@ -83,10 +96,32 @@ class PlacementRule:
     def dest_for(self, family: str | None) -> str:
         """Absolute host-side directory for ``family``.
 
+        A bundle with no declared family lands in the HOST's fallback, not in a
+        fleet-wide constant -- see the note above ``EngineHost.default_dest``.
+
         :raises NoPlacementRuleError: the resolved destination is not one the
             host container mounts.
         """
-        sub = self.dest_by_family.get(family or "", _DEFAULT_FAMILY_DEST)
+        if not family:
+            # No declared family: the host's own fallback is the honest answer.
+            sub = self.host.fallback_dest()
+        elif family in self.dest_by_family:
+            sub = self.dest_by_family[family]
+        else:
+            # A NAMED family this host has no convention for. Refused rather
+            # than dropped into the fallback: "wan_animate" means something
+            # specific, and silently writing it to node-04's `checkpoints`
+            # would put a 14B video model where a checkpoint loader will try to
+            # read it. Only a familyless bundle may use the fallback.
+            raise NoPlacementRuleError(
+                f"engine host {self.host.container} on {self.host.node_id} "
+                f"declares no placement for family {family!r}"
+                + (
+                    f" (it knows {', '.join(sorted(self.dest_by_family))})"
+                    if self.dest_by_family
+                    else " (it declares no family conventions at all)"
+                )
+            )
         if sub not in self.host.mounted_dests:
             raise NoPlacementRuleError(
                 f"engine host {self.host.container} on {self.host.node_id} does "
@@ -141,6 +176,7 @@ ENGINE_HOSTS: tuple[EngineHost, ...] = (
         mounted_dests=_WAN_DESTS,
         mbcp_engine_key="comfyui-wan",
         queues=("gpu_video", "gpu_animation"),
+        default_dest="diffusion_models",
         notes=(
             "The animation host. docker-compose.node03.yml:191-207. Reached by "
             "node-03's worker as IVGS_COMFYUI_URL=http://wan-animate-server:8188 "
@@ -155,6 +191,7 @@ ENGINE_HOSTS: tuple[EngineHost, ...] = (
         mounted_dests=("checkpoints",),
         mbcp_engine_key=None,
         queues=("gpu_image", "gpu_tts", "gpu_talking_head"),
+        default_dest="checkpoints",
         notes=(
             "The image host. docker-compose.node04.yml:59-68 mounts checkpoints "
             "ONLY, read-only. Probed 2026-08-26: one checkpoint, "

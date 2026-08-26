@@ -236,3 +236,93 @@ export const CAPABILITY_DIMENSIONS: CapabilityDimension[] = [
   "language",
   "quality_bias",
 ];
+
+// ===========================================================================
+// WP-66 — model selection, per project and per scene
+// ===========================================================================
+
+export type SelectionSource = "auto" | "manual" | "preset";
+
+export interface ModelSelection {
+  id: string;
+  project_id: string;
+  /** Non-null on a SCENE-scoped override; null on the project binding. */
+  scene_id: string | null;
+  stage: ModelStage;
+  tier: ModelTier;
+  model_id: string;
+  selected_by: SelectionSource;
+  rationale: string;
+  created_at: string;
+  /** WP-66: carried so a picker does not have to fetch the whole registry. */
+  model_name: string | null;
+  model_display_name: string | null;
+  model_engine: ModelEngine | null;
+  model_state: ModelState | null;
+}
+
+/**
+ * WHERE a binding came from. Not decoration: WP-60 Task 5 established that a
+ * surface presenting mixed provenance as one fact is this codebase's recurring
+ * defect, and a resolved model binding has five possible origins that look
+ * identical once resolved.
+ *
+ *  scene      overridden for this scene
+ *  selection  chosen for this project by hand
+ *  preset     written by applying a library preset
+ *  auto       chosen by the planner (POST /plan PERSISTS; it is not a preview)
+ *  default    no row anywhere; the stage's is_default model
+ *  none       no model bound and no default exists
+ */
+export type SelectionProvenance =
+  | "scene"
+  | "selection"
+  | "preset"
+  | "auto"
+  | "default"
+  | "none";
+
+export interface SelectionCandidate {
+  id: string;
+  name: string;
+  display_name: string;
+  stage: ModelStage;
+  engine: ModelEngine;
+  tier: ModelTier;
+  state: ModelState;
+  is_default: boolean;
+  vram_gb: number | null;
+  /** Whether PUT /selections would accept it. Computed by the same function
+   *  the write uses, so the picker cannot offer what the write refuses. */
+  selectable: boolean;
+  refusal_reason: string | null;
+  refusal_message: string | null;
+  weight_state: WeightState | null;
+  weight_label: string | null;
+}
+
+export interface StageBinding {
+  stage: ModelStage;
+  tier: ModelTier;
+  provenance: SelectionProvenance;
+  provenance_label: string;
+  selection: ModelSelection | null;
+  model_id: string | null;
+  model_name: string | null;
+  model_display_name: string | null;
+  /** A binding that resolved but is no longer valid. Surfaced, never silently
+   *  rewritten: the user chose this model. */
+  warning: string | null;
+  candidates: SelectionCandidate[];
+}
+
+export interface ProjectSelections {
+  project_id: string;
+  tier: ModelTier;
+  bindings: StageBinding[];
+}
+
+export interface ClearSelectionResult {
+  cleared: number;
+  message: string;
+}

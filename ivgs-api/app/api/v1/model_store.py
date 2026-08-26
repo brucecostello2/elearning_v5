@@ -21,6 +21,8 @@ from app.schemas.model_store import (
     ApproveIn,
     AvailabilityIn,
     AvailabilityOut,
+    ClearSelectionIn,
+    ClearSelectionOut,
     FetchWeightsOut,
     ManualSelectionIn,
     ModelOut,
@@ -28,12 +30,15 @@ from app.schemas.model_store import (
     ModelUpdateIn,
     PlanRequest,
     PlanResponse,
+    ProjectSelectionsOut,
     SelectionOut,
+    StageBindingOut,
     WeightStatusOut,
 )
 from app.services import model_selection as planner
+from app.services import selection_panel
 from app.services import weight_placement as weights
-from app.services.model_selection import PlanningError
+from app.services.model_selection import PlanningError, SelectionRefused
 from shared.database import get_session
 from shared.models.model_store import (
     Model,
@@ -45,6 +50,7 @@ from shared.models.model_store import (
     ModelTier,
     ProjectModelSelection,
 )
+from app.models.audit_log import AuditLog
 from shared.weights.service import fetch_model_weights
 
 models_router = APIRouter(prefix="/models", tags=["Model Store"])
@@ -360,7 +366,13 @@ async def list_selections(
     project_id: UUID,
     db: AsyncSession = Depends(get_session),
     current_user: User = Depends(require_operator_or_admin),
-) -> list[ProjectModelSelection]:
+) -> list[SelectionOut]:
+    """Every selection row for a project, project- and scene-scoped alike.
+
+    Scene rows are distinguished by a non-null ``scene_id``; there is no filter
+    parameter and none is added, because a picker needs both scopes to show
+    which scenes override the project default.
+    """
     stmt = (
         select(ProjectModelSelection)
         .where(ProjectModelSelection.project_id == project_id)
@@ -370,7 +382,11 @@ async def list_selections(
             ProjectModelSelection.scene_id,
         )
     )
-    return list((await db.execute(stmt)).scalars().unique().all())
+    rows = list((await db.execute(stmt)).scalars().unique().all())
+    # WP-66: the model relationship is lazy="joined" and already travelled with
+    # every one of these rows; the schema simply dropped it, leaving callers to
+    # fetch the whole registry to render a name.
+    return [SelectionOut.from_row(r) for r in rows]
 
 
 @selections_router.post("/plan", response_model=PlanResponse)
@@ -420,6 +436,10 @@ async def override(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "override a concrete tier: prototype or production",
         )
+    previous = await selection_panel.resolve_binding(
+        db, project_id=project_id, stage=body.stage, tier=body.tier,
+        scene_id=body.scene_id,
+    )
     try:
         row = await planner.manual_override(
             db,
@@ -433,11 +453,149 @@ async def override(
                 f"{current_user.username})"
             ),
         )
+    except SelectionRefused as exc:
+        # WP-66 Task 2. A 4xx with a message the user can act on, and a machine
+        # slug beside it so the UI can offer the right next step -- "an admin
+        # can fetch them from Admin -> Models" is a different remedy from
+        # "an admin approves a candidate", and a generic validation error tells
+        # the user neither.
+        await db.rollback()
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": exc.reason.upper(), "message": str(exc)}},
+        ) from exc
     except ValueError as exc:
         await db.rollback()
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)
         ) from exc
+
+    # A model change alters what the pipeline will PRODUCE, so it is an audited
+    # event, not a preference.
+    db.add(
+        AuditLog(
+            user_id=current_user.id,
+            action_type="MODEL_SELECTION_SET",
+            resource_type="project",
+            resource_id=project_id,
+            before_payload={
+                "stage": body.stage.value,
+                "tier": body.tier.value,
+                "scene_id": str(body.scene_id) if body.scene_id else None,
+                "previous_model": previous.model.name if previous.model else None,
+                "previous_provenance": previous.provenance,
+            },
+            after_payload={
+                "model_id": str(body.model_id),
+                "selection_id": str(row.id),
+                "selected_by": row.selected_by.value,
+                "rationale": row.rationale,
+                "scope": "scene" if body.scene_id else "project",
+            },
+        )
+    )
     await db.commit()
     await db.refresh(row)
-    return row
+    return SelectionOut.from_row(row)
+
+
+# --------------------------------------------------------------------------
+# WP-66 — the selection UI's read and clear paths
+# --------------------------------------------------------------------------
+
+@selections_router.get("/panel", response_model=ProjectSelectionsOut)
+async def selection_panel_read(
+    project_id: UUID,
+    tier: ModelTier = ModelTier.PRODUCTION,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_operator_or_admin),
+) -> ProjectSelectionsOut:
+    """Every stage this project will run, its binding, and WHERE IT CAME FROM.
+
+    One request rather than nine, and provenance computed server-side beside the
+    model it describes -- a frontend that derives "is this a default?" from the
+    absence of a row is exactly the inference WP-60 Task 5 found being made
+    wrongly across this codebase.
+
+    ``tier`` defaults to PRODUCTION because that is what a finished render uses;
+    the panel presents it explicitly rather than hiding it, so a user choosing a
+    production-tier model knows that is what they chose.
+    """
+    return await selection_panel.project_panel(db, project_id=project_id, tier=tier)
+
+
+@selections_router.get("/scene/{scene_id}", response_model=StageBindingOut)
+async def scene_selection_read(
+    project_id: UUID,
+    scene_id: UUID,
+    media_type: str = "image",
+    tier: ModelTier = ModelTier.PRODUCTION,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_operator_or_admin),
+) -> StageBindingOut:
+    """One scene's binding, for the stage ITS media type dispatches to.
+
+    Changing Media Type changes the stage, which changes the candidate list --
+    an animation scene offers animation models. The mapping is data
+    (``selection_panel.MEDIA_TYPE_STAGE``), not a conditional in the component.
+    """
+    return await selection_panel.scene_panel(
+        db, project_id=project_id, scene_id=scene_id,
+        media_type=media_type, tier=tier,
+    )
+
+
+@selections_router.post("/clear", response_model=ClearSelectionOut)
+async def clear_scene_selection(
+    project_id: UUID,
+    body: ClearSelectionIn,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(require_operator_or_admin),
+) -> ClearSelectionOut:
+    """"Use the project default" for one scene — DELETES the scene row.
+
+    Not "write the project's model onto the scene". The difference only shows up
+    later, and then it is silent: a duplicated row keeps pointing at the old
+    model after the project default changes, while dispatch reads scene-scoped
+    first (``factory.py:147-151``) and never looks at the project row again. The
+    scene would stop following a default it appears to be following.
+    """
+    previous = await selection_panel.resolve_binding(
+        db, project_id=project_id, stage=body.stage, tier=body.tier,
+        scene_id=body.scene_id,
+    )
+    cleared = await planner.clear_selection(
+        db, project_id=project_id, scene_id=body.scene_id,
+        stage=body.stage, tier=body.tier,
+    )
+    if cleared:
+        db.add(
+            AuditLog(
+                user_id=current_user.id,
+                action_type="MODEL_SELECTION_CLEARED",
+                resource_type="project",
+                resource_id=project_id,
+                before_payload={
+                    "stage": body.stage.value,
+                    "tier": body.tier.value,
+                    "scene_id": str(body.scene_id),
+                    "previous_model": previous.model.name if previous.model else None,
+                },
+                after_payload={"scope": "scene", "cleared": cleared},
+            )
+        )
+    await db.commit()
+
+    now = await selection_panel.resolve_binding(
+        db, project_id=project_id, stage=body.stage, tier=body.tier,
+        scene_id=body.scene_id,
+    )
+    return ClearSelectionOut(
+        cleared=cleared,
+        message=(
+            f"scene override removed; this scene now uses "
+            f"{now.model_name_or_none()} ({now.label})"
+            if cleared
+            else "this scene had no override; nothing was cleared"
+        ),
+    )
