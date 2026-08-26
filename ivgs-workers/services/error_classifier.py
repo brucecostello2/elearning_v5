@@ -165,6 +165,31 @@ RESOURCE_MESSAGE_PATTERNS: list[re.Pattern[str]] = [
 
 # External error patterns — model/service quality issues
 EXTERNAL_MESSAGE_PATTERNS: list[re.Pattern[str]] = [
+    # WP-63 Task 3 — the validator's own rejection text, verbatim, and the
+    # attributed job-row message that carries it up.
+    #
+    # "Image appears blank or solid color" produced 6 of the 20 rejections in
+    # the 2026-08-26 reference-run rescore and killed 3 of 9 scenes in the
+    # incident this package closes. Nothing matched it before, so it landed on
+    # the `transient` default at the bottom of this file — and `transient`
+    # means "retry it". A VALIDATOR REJECTION IS NOT TRANSIENT. Nothing about
+    # the fleet was wrong; a frame was produced, measured and refused, and a
+    # retry re-measures it to the same verdict. §6.2's `external` is the class
+    # for model/service OUTPUT quality, which is exactly what this is.
+    #
+    # `colou?r` because the message is spelled "color" and a British spelling
+    # of the same finding must not slip past.
+    re.compile(r"appears\s+blank\s+or\s+solid\s+colou?r", re.IGNORECASE),
+    re.compile(r"rejected\s+by\s+the\s+(image|video)\s+validator", re.IGNORECASE),
+    # The clause `error_handler._attribute_failure` writes when a media stage
+    # failed PARTIALLY. KEYED ON THE EVIDENCE, NOT ON THE FAILURE: "N of M
+    # scenes produced no usable asset" is not by itself external — if M of M
+    # failed, the generator being unreachable fits it just as well. What makes
+    # it external is that the OTHERS SUCCEEDED, in one pass on one node against
+    # one model, which leaves only the content to differ. So the pattern is the
+    # sentence that states that, and a total failure — which does not contain
+    # it — falls through to WP-57's honest default.
+    re.compile(r"succeeded\s+in\s+the\s+same\s+pass", re.IGNORECASE),
     re.compile(r"quality\s+score\s+below", re.IGNORECASE),
     re.compile(r"safety\s+check\s+failed", re.IGNORECASE),
     re.compile(r"content\s+policy\s+violation", re.IGNORECASE),

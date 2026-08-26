@@ -8,7 +8,9 @@ Endpoints:
 - POST   /api/v1/jobs/{id}/resume                   — Resume from last checkpoint
 - DELETE /api/v1/jobs/{id}/checkpoints               — Clear all checkpoints
 
-RBAC: Owner + admin for write/resume/clear. All authenticated for read.
+RBAC: Owner + admin for resume/clear. The write and the two reads also accept
+the internal service token (the worker fleet writes the ledger and, since
+WP-63 Task 3, reads it back to attribute a failure). Viewers are denied.
 """
 import logging
 from uuid import UUID
@@ -18,7 +20,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from shared.database import get_session
-from app.core.auth import get_current_user
 from app.core.rbac import (
     require_operator_or_admin,
     require_service_or_privileged_user,
@@ -90,7 +91,19 @@ async def _verify_job_access(
 )
 async def list_checkpoints(
     job_id: UUID,
-    current_user: User = Depends(get_current_user),
+    # WP-63 Task 3. WIDENED TO THE SERVICE TOKEN, and only these two GETs.
+    #
+    # The choke point that writes `render_jobs.error_message`
+    # (`ivgs-workers/utils/error_handler.py::update_job_status`) now reads this
+    # ledger before it writes a terminal failure, so the job row can name the
+    # stage the STAGE ITSELF recorded rather than the stage that happened to
+    # report last. It cannot do that on a human JWT: it runs in a Celery worker
+    # holding `IVGS_SERVICE_TOKEN`.
+    #
+    # This is a read of rows the worker fleet wrote, through the gate that
+    # already guards the POST beside it, and viewers are still denied. `/resume`
+    # and DELETE stay human-facing: those ACT, and no worker calls them.
+    current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
     """List all stage checkpoints with status for a job."""
@@ -134,8 +147,10 @@ async def create_checkpoint(
     # viewers with 403. It is what PATCH /jobs/{job_id} already relies on via
     # get_service_or_user (jobs.py:110).
     #
-    # Deliberately NOT widened on the sibling routes: /resume, DELETE and the two
-    # GETs are human-facing and no worker calls them.
+    # Deliberately NOT widened on /resume or DELETE: those ACT, they are
+    # human-facing, and no worker calls them. WP-63 Task 3 did widen the two
+    # GETs, and amends this sentence rather than leaving it standing over a
+    # decision that has changed - see the note on `list_checkpoints`.
     current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
@@ -175,7 +190,10 @@ async def create_checkpoint(
 async def get_stage_checkpoint(
     job_id: UUID,
     stage_name: str,
-    current_user: User = Depends(get_current_user),
+    # WP-63 Task 3, same reason as the list route above: the failure
+    # attribution needs `checkpoint_data` (the per-stage counts) to say how
+    # much of a stage failed, and it reads it from a worker.
+    current_user: User = Depends(require_service_or_privileged_user),
     db: AsyncSession = Depends(get_session),
 ):
     """Get specific stage checkpoint data including checkpoint_data and output_refs."""

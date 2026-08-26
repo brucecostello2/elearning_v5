@@ -358,6 +358,159 @@ def _safe_serialize(obj: Any) -> Any:
 # status cannot be added without this line being considered.
 _TERMINAL_FAILURE_STATUSES = frozenset({"failed", "cancelled"})
 
+# WP-63 Task 3. The media-generation stages, whose checkpoint carries per-scene
+# counts. A PARTIAL failure of one of these is the only case in which this
+# module infers a failure CLASS from the ledger; see `_attribute_failure`.
+_MEDIA_LEDGER_STAGES = frozenset(
+    {"image_generation", "video_generation", "animation_generation",
+     "media_generation"}
+)
+
+
+def _stage_named_in(message: str) -> Optional[str]:
+    """The stage a "Stage <x> failed" summary names, if it is that shape."""
+    import re
+
+    match = re.match(r"\s*Stage\s+([A-Za-z0-9_]+)\s+failed", message or "")
+    return match.group(1) if match else None
+
+
+def _ledger_failure(job_id: str, config: Any) -> Optional[Dict[str, Any]]:
+    """The FIRST stage this job's own checkpoints record as failed.
+
+    Reads `GET /jobs/{id}/checkpoints`, and then that stage's detail for its
+    `checkpoint_data`. Returns None on any difficulty at all: an attribution
+    that cannot be made is not a reason to lose the status write.
+
+    "First" is by `stage_index`, then by `created_at`. A run that partial-
+    advances past a failed media stage and then dies downstream has two failed
+    checkpoints; the earlier one is the cause and the later one is the
+    consequence.
+    """
+    base = config.pipeline_api.full_base_url
+    headers = {
+        "Authorization": f"Bearer {config.pipeline_api.service_token}",
+    }
+    try:
+        with httpx.Client(
+            timeout=config.pipeline_api.timeout_seconds, headers=headers,
+        ) as client:
+            resp = client.get(f"{base}/jobs/{job_id}/checkpoints")
+            if resp.status_code != 200:
+                logger.info(
+                    "failure_attribution_ledger_unavailable",
+                    job_id=job_id, status_code=resp.status_code,
+                )
+                return None
+            rows = resp.json().get("checkpoints") or []
+            failed = [r for r in rows if (r.get("status") or "") == "failed"]
+            if not failed:
+                return None
+            failed.sort(
+                key=lambda r: (
+                    r.get("stage_index") if r.get("stage_index") is not None else 99,
+                    r.get("created_at") or "",
+                )
+            )
+            first = failed[0]
+            stage_name = first.get("stage_name") or ""
+            data: Dict[str, Any] = {}
+            detail = client.get(f"{base}/jobs/{job_id}/checkpoints/{stage_name}")
+            if detail.status_code == 200:
+                data = detail.json().get("checkpoint_data") or {}
+            return {"stage_name": stage_name, "checkpoint_data": data}
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.info(
+            "failure_attribution_ledger_error", job_id=job_id, error=str(exc),
+        )
+        return None
+
+
+def _attribute_failure(
+    job_id: str, error_message: str, config: Any,
+) -> tuple[str, Optional[str], Optional[str]]:
+    """Name the stage the CHECKPOINT recorded, not the one that reported last.
+
+    Returns ``(error_message, stage, failure_category_hint)``. Any of the three
+    may come back unchanged / None; this function never raises.
+
+    THE INCIDENT (operator-measured, 2026-08-26, project 14f71729, job
+    d4b41765). Three surfaces told three different stories about one failure:
+
+        render_jobs row      "Stage talking_head_render failed",
+                             failure_category = transient
+        checkpoint ledger    image_generation FAILED
+                             (failed_count 3, successful_count 6);
+                             tts_audio complete
+        stepper              Media
+
+    **The checkpoints were right.** Stage 3 rejected 3 of 9 scenes, the media
+    join drained and partial-advanced by design (a failed scene must not strand
+    the pipeline), stages 4 and 5 ran, and the run finally died at stage 6 with
+    3 of 9 scenes carrying no image. `handle_stage_completion` writes
+    ``f"Stage {completed_stage} failed"``
+    (`tasks/pipeline_orchestrator_v2.py:409`) for whichever stage reported the
+    terminal failure — and under partial-advance that is never the stage that
+    actually failed. The job row named the symptom.
+
+    So the attribution is taken from the ledger. The stage writes its own
+    checkpoint; the orchestrator's summary is a report from downstream.
+
+    THE ONE CLASS INFERENCE, and its limit. When the ledger's failed stage is a
+    MEDIA stage and the failure was PARTIAL — some scenes succeeded and some
+    did not, in the same pass, on the same node, against the same model — the
+    difference between them is the CONTENT, not the infrastructure. That is
+    `external` (§6.2: model/service quality), and it is emphatically not
+    `transient`: a rejected frame recurs on retry, because nothing about the
+    conditions that produced it has changed. When EVERY media task failed, no
+    such inference is available — that shape is equally consistent with the
+    generator being unreachable — and this function offers no category, leaving
+    WP-57's classifier and its honest default in charge. WP-57's rule stands:
+    a confident wrong class is worse than the honest default.
+    """
+    reported_stage = _stage_named_in(error_message)
+    ledger = _ledger_failure(job_id, config)
+    if ledger is None:
+        return error_message, None, None
+
+    ledger_stage = ledger["stage_name"]
+    if not ledger_stage or ledger_stage == reported_stage:
+        return error_message, ledger_stage or None, None
+
+    data = ledger["checkpoint_data"] or {}
+    failed_count = data.get("failed_count")
+    successful_count = data.get("successful_count")
+
+    parts = [f"Stage {ledger_stage} failed (the stage's own checkpoint)."]
+    category: Optional[str] = None
+
+    if (
+        ledger_stage in _MEDIA_LEDGER_STAGES
+        and isinstance(failed_count, int)
+        and isinstance(successful_count, int)
+        and failed_count > 0
+    ):
+        total = failed_count + successful_count
+        parts.append(
+            f"{failed_count} of {total} scenes produced no usable asset."
+        )
+        if successful_count > 0:
+            parts.append(
+                f"The other {successful_count} succeeded in the same pass, so "
+                "the difference is the generated content, not the fleet."
+            )
+            category = "external"
+
+    if reported_stage and reported_stage != ledger_stage:
+        parts.append(
+            f"The terminal failure was reported at stage {reported_stage}, "
+            "which ran after it under partial-advance; the checkpoint ledger "
+            "is authoritative for which stage failed."
+        )
+
+    return " ".join(parts), ledger_stage, category
+
+
 
 def update_job_status(
     job_id: str,
@@ -375,6 +528,12 @@ def update_job_status(
     no ``failure_category``, one is derived from ``error_message`` by
     ``ErrorClassifier``. See the inline note below for why the derivation lives
     here rather than at the 31 call sites.
+
+    WP-63 Task 3: a terminal failure is also ATTRIBUTED before it is written.
+    The job row names the stage this job's own checkpoint ledger records as
+    failed, not the stage that happened to report last — under partial-advance
+    those are routinely different, and the measured incident had them three
+    stages apart. ``_attribute_failure`` carries the evidence.
 
     HISTORICAL ROWS STAY NULL. No backfill is performed and none is in scope:
     the 19 existing failures were classified by nobody at the time, and writing
@@ -409,6 +568,33 @@ def update_job_status(
     # drift. A classification failure must not cost the status write, so it is
     # caught: the job status is the thing that matters and a missing category is
     # a worse report, not a worse outcome.
+    #
+    # WP-63 Task 3 EXTENDS THIS CHOKE POINT, IT DOES NOT FORK IT. The
+    # attribution runs FIRST, so the classification below sees the corrected
+    # message rather than the summary of a downstream symptom. Both run at the
+    # same single site and for the same reason: most terminal-failure calls
+    # live inside frozen stage bodies (AD-05 section 8), so anything that has
+    # to be true of every one of the 31 callers has to be true here.
+    if status in _TERMINAL_FAILURE_STATUSES and error_message and job_id:
+        try:
+            error_message, ledger_stage, hint = _attribute_failure(
+                job_id, error_message, config,
+            )
+            if ledger_stage and not stage:
+                # `stage` lands on `render_jobs.resume_from_stage`
+                # (`ivgs-api/app/api/v1/jobs.py`). A resume must restart at the
+                # stage that FAILED; the incident's row said
+                # `talking_head_render`, three stages past the real fault, so a
+                # resume would have skipped the work that needed redoing. An
+                # explicit `stage=` from the caller still wins.
+                stage = ledger_stage
+            if hint and not failure_category:
+                failure_category = hint
+        except Exception as exc:  # pragma: no cover - defensive
+            logger.warning(
+                "failure_attribution_failed", job_id=job_id, error=str(exc),
+            )
+
     if status in _TERMINAL_FAILURE_STATUSES and not failure_category and error_message:
         try:
             from services.error_classifier import ErrorClassifier
