@@ -116,6 +116,14 @@ htmlcov/
 # node-local env files (secrets) - never commit
 .env.node0*
 ivgs-infra/.env.node0*
+# ...but the TEMPLATES are the tracked statement of what each node's env must
+# contain, and they carry no secret. `.env.node02.example` has been tracked
+# since it was added; `ivgs-infra/.env.node05.example` (WP-61) matched the
+# pattern above and would have been silently excluded, so node-05 could never
+# have pulled it. Negated explicitly rather than force-added, because a
+# force-add is invisible to the next person and this is not.
+!.env.node0*.example
+!ivgs-infra/.env.node0*.example
 
 # local per-node model smoke-test compose files (not for the repo)
 ivgs-infra/docker-compose.smoke-*.yml

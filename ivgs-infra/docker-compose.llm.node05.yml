@@ -1,0 +1,140 @@
+# =============================================================================
+# IVGS v5 - Qwen LLM stack, node-05   (WP-61-QWEN)
+# =============================================================================
+# ONE tracked file, deployed to node-05 only. It follows the WP-44 quality-stack
+# overlay pattern, which follows the WP-48 telemetry overlay pattern, for the
+# same three reasons:
+#
+#   * Its own compose project (`name: ivgs-llm`), so this file can never be
+#     composed against another node's stack file and can never recreate a
+#     service it does not name. `docker compose -f docker-compose.llm.node05.yml
+#     up -d` reaches exactly the one service below. That is WP-34's "additive
+#     only" rule expressed in the file rather than trusted to the command line.
+#
+#   * NO `networks:` key, deliberately. node-05 has no `ivgs-net`, and every
+#     client reaches this service over the host port. node-02 spent hours
+#     "running" while serving nothing because its container held a compose
+#     network that had been removed underneath it (WP-48 S2). The default
+#     project bridge is the one network always recreated with the project.
+#
+#   * It does NOT extend docker-compose.node05.yml. That file describes a
+#     node-05 that has never existed - ComfyUI SDXL fallback, Ollama, an ffmpeg
+#     worker and a celery-worker on a 16 GB RTX 5080. The hardware is a 48 GB
+#     RTX PRO 5000 Blackwell and none of those four services has ever run here.
+#     Superseding it is a change-control matter (AD-02 Draft 4 section 7); a new
+#     overlay is not.
+#
+# WHY node-05 IS THE LLM NODE. Operator ruling, 2026-08-26, on the standalone
+# evaluation of 2026-08-25. Its Proxmox host passed multiple full memtest cycles
+# clean after the RAM replacement; the VM has 78 GB RAM and the RTX PRO 5000
+# Blackwell 48 GB (48935 MiB measured). It runs telemetry and nothing else. The
+# AD-02 Draft-4 quality-services assignment is SUPERSEDED - the CLIP scorer runs
+# on node-06 and node-06 is its sole host.
+#
+# WHAT THIS NODE IS NOT. It runs no Celery worker, subscribes to no queue, and
+# must not enter the GPU scheduler's fleet. AD-02's `dynamically_loadable=false`
+# stands: LLM capability here is fixed at container start by `--model` and is
+# not swappable at runtime.
+#
+# HOW THIS FILE MUST BE INVOKED, and why it is not optional:
+#
+#     docker compose --env-file ivgs-infra/.env.node05 \
+#       -f ivgs-infra/docker-compose.llm.node05.yml up -d
+#
+# The `--env-file` is load-bearing and is the trap dev/CLAUDE.md section 6
+# records. `env_file:` on a SERVICE injects variables into the CONTAINER; it
+# does NOT feed `${VAR}` interpolation in the YAML. Every flag in `command:`
+# below is a `${VAR}`, so without `--env-file` they collapse to their `:-`
+# defaults - which happen to be the right values, and that is worse, not
+# better: an operator who edited VLLM_GPU_UTIL in .env.node05 would see the
+# edit silently ignored and a 0.90 run reported as a 0.85 one. The `:-`
+# defaults exist so a missing file fails visibly on the model name rather than
+# starting something unintended.
+#
+# THE INVOCATION BELOW IS MEASURED, NOT DESIGNED. Every flag was established by
+# a failure during the 2026-08-25 evaluation. /mnt/ivgs-shared/qwen-invocation.txt
+# is the banked original. Read it before changing one of them.
+# =============================================================================
+
+name: ivgs-llm
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Qwen3.8-27B-FP8 on vLLM.
+  #
+  # THE MODEL IS THE FP8 BUILD AND ONLY THE FP8 BUILD. The BF16 base is ~56 GB
+  # of weights and does not fit a 48 GB card. There is no fallback branch here:
+  # a wrong VLLM_MODEL_NAME must fail to start, loudly, rather than half-load.
+  #
+  # THE ENGINE IS THE NIGHTLY IMAGE, PINNED BY TAG AND RECORDED BY DIGEST in the
+  # operator block. vLLM v0.19.2rc1.dev134+ resolves the `qwen3_5` architecture;
+  # earlier builds may not. `cu130-nightly` is a moving tag, which is exactly
+  # why the block records the digest it actually pulled.
+  # ---------------------------------------------------------------------------
+  vllm-qwen:
+    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
+    container_name: ivgs-vllm-qwen-node05
+    restart: unless-stopped
+    env_file:
+      - .env.node05
+    environment:
+      VLLM_HOST: "0.0.0.0"
+      VLLM_PORT: "8000"
+      # Node-local, never /mnt/ivgs-shared. ~29 GB of weights, mmap'd at load;
+      # mmap over NFS is why node-02 stages CogVideoX to /opt/models.
+      HF_HOME: /data/hf-cache
+      CUDA_VISIBLE_DEVICES: "0"
+    volumes:
+      # The HF cache is a node-05 LOCAL bind, and it is the reason the ~29 GB
+      # download happens exactly once. Created by the operator block.
+      - /data/hf-cache:/data/hf-cache
+    ports:
+      # Published on all interfaces and then narrowed by ufw to
+      # 192.168.1.90-93 (see the operator block). Binding to 127.0.0.1 here
+      # instead would make the port unreachable from node-01, which is the one
+      # client that has to reach it.
+      - "0.0.0.0:8000:8000"
+    # --ipc=host, as measured. The banked working invocation used it; a
+    # shm_size cap is the alternative and was not the thing that was proven.
+    ipc: host
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+    healthcheck:
+      # /v1/models, as the package requires - NOT /health. /health answers 200
+      # from the moment the HTTP server binds, which is minutes before the
+      # weights finish loading; /v1/models answers only once the engine has a
+      # model to name, so it is the check that distinguishes "listening" from
+      # "serving". It is behind `--api-key`, so the key is sent.
+      #
+      # `$$VLLM_API_KEY` (doubled) defers expansion to the CONTAINER at run
+      # time, reading the value compose injected from .env.node05, rather than
+      # baking it into the rendered compose config at parse time.
+      test: ["CMD-SHELL", "curl -sf -H \"Authorization: Bearer $$VLLM_API_KEY\" http://localhost:8000/v1/models || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      # 15 minutes. The first start downloads ~29 GB; even a warm start loads
+      # 27B of FP8 weights off disk. A 60s start_period (the fleet default)
+      # would put this container in an unhealthy-restart loop that never
+      # completes a single load.
+      start_period: 900s
+    command: >
+      --model ${VLLM_MODEL_NAME:-Qwen/Qwen3.8-27B-FP8}
+      --served-model-name ${VLLM_SERVED_NAME:-qwen38-27b}
+      --gpu-memory-utilization ${VLLM_GPU_UTIL:-0.90}
+      --max-model-len ${VLLM_MAX_MODEL_LEN:-131072}
+      --max-num-seqs ${VLLM_MAX_NUM_SEQS:-128}
+      --reasoning-parser ${VLLM_REASONING_PARSER:-qwen3}
+      --trust-remote-code
+      --api-key ${VLLM_API_KEY:-ivgs-internal}
