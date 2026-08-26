@@ -400,6 +400,18 @@ def run_orphan_cleanup(self: Any) -> dict[str, Any]:
 # Retention Migration Task
 # ---------------------------------------------------------------------------
 
+
+class RetentionMigrationError(RuntimeError):
+    """A retention migration run did not do what it was asked.
+
+    WP-59 Task 7 / swallowed-failures register. The previous shape returned the
+    report dict whatever happened, so a run whose every tier raised recorded
+    Celery SUCCESS. This is the same treatment WP-00 gave the backup tasks:
+    the task raises, so the failure is a FAILURE in the result backend and the
+    DLQ, not a green row with a list nobody reads.
+    """
+
+
 @shared_task(
     name="ivgs_workers.tasks.periodic_tasks.run_retention_migration",
     bind=True,
@@ -409,21 +421,53 @@ def run_orphan_cleanup(self: Any) -> dict[str, Any]:
     time_limit=3600,
     soft_time_limit=3300,
 )
-def run_retention_migration(self: Any) -> dict[str, Any]:
+def run_retention_migration(
+    self: Any,
+    dry_run: bool | None = None,
+    max_transitions: int | None = None,
+) -> dict[str, Any]:
     """
-    Retention tier migration — runs daily at 03:00 UTC per §10.3.
+    Retention tier migration per §10.3. WP-59 Task 7.
 
-    Executes RetentionService.run_migration() which scans assets and
-    transitions eligible assets between storage tiers.
+    THE REAL ONE. There are two tasks with this name on this fleet and until
+    this package the SCHEDULED one was the other: Celery beat dispatched
+    ``tasks.pipeline_orchestrator.run_retention_migration``, a Phase-5 stub
+    that logs a line and returns ``{'status': 'ok', 'message': 'Retention
+    migration — stub (Phase 8)'}``. It is in the result backend saying exactly
+    that, twice, on 2026-08-24 and 2026-08-25 at 04:00 (``celery_taskmeta``,
+    read 2026-08-26). ``services/retention_migration.py`` has therefore never
+    executed at all -- WP-57 §3.1 attributed the standstill to that module's
+    swallowed ``UndefinedColumn``, and the column defect is real and is fixed,
+    but it was never reached. Both had to be repaired for one to matter.
+
+    DEFAULTS TO DRY RUN, AND THE SCHEDULE SHIPS DISABLED. Nothing has ever
+    migrated a tier here; the first real pass moves 158 live assets and is an
+    attended operator event. ``dry_run`` defaults to the service default
+    (True) so an accidental dispatch reports rather than acts, and
+    ``max_transitions`` is the cap for the operator's first live pass.
+
+    Args:
+        dry_run: None uses the service default (True). Pass False for a real
+            pass -- deliberately explicit; there is no way to move an asset by
+            omitting an argument.
+        max_transitions: Hard ceiling for a capped live pass.
 
     Returns:
         MigrationReport as dict.
+
+    Raises:
+        RetentionMigrationError: when any tier pass failed. The report's
+            ``status`` is no longer swallowed into an ``ok``.
     """
     task_log = logger.bind(
         task_name="run_retention_migration",
         celery_task_id=self.request.id,
     )
-    task_log.info("retention_migration_started")
+    task_log.info(
+        "retention_migration_started",
+        dry_run=dry_run,
+        max_transitions=max_transitions,
+    )
 
     try:
         loop = asyncio.new_event_loop()
@@ -437,6 +481,8 @@ def run_retention_migration(self: Any) -> dict[str, Any]:
 
             service = RetentionService(
                 db_session_factory=async_session_factory,
+                dry_run=True if dry_run is None else bool(dry_run),
+                max_transitions=max_transitions,
             )
 
             report = loop.run_until_complete(service.run_migration())
@@ -446,12 +492,25 @@ def run_retention_migration(self: Any) -> dict[str, Any]:
 
             task_log.info(
                 "retention_migration_completed",
+                dry_run=report.dry_run,
+                status=report.status,
                 scanned=report.assets_scanned,
                 transitions=report.transitions_performed,
                 deleted=report.assets_deleted,
                 preserved=report.assets_preserved,
+                capped=report.capped,
+                would_move=report.would_move,
                 duration_seconds=report.duration_seconds,
             )
+
+            # WP-59 Task 7: a failed tier pass must RECORD failure, not silence.
+            # The report is returned in the exception's payload as well as
+            # logged, so the operator loses nothing by the raise.
+            if report.status != "ok":
+                raise RetentionMigrationError(
+                    f"retention migration finished with status={report.status}; "
+                    f"errors={report.errors}"
+                )
 
             return result
 
@@ -459,7 +518,11 @@ def run_retention_migration(self: Any) -> dict[str, Any]:
             loop.close()
 
     except Exception as exc:
-        task_log.error("retention_migration_failed", error=str(exc))
+        task_log.error(
+            "retention_migration_failed",
+            error=str(exc),
+            error_type=type(exc).__name__,
+        )
         raise
 
 

@@ -87,12 +87,32 @@ class TestTierConfiguration:
         ]
 
     def test_storage_tier_enum_values(self) -> None:
-        """StorageTier enum must have correct string values."""
+        """StorageTier's values must be the DATABASE's labels.
+
+        CORRECTED by WP-59 Task 7. This test asserted `archive` and `delete`,
+        and it passed -- because it was checking the Python enum against itself
+        rather than against the schema it has to write into. The live
+        `storage_tier` PostgreSQL type is
+
+            hot, warm, cold, archived, deleted
+
+        -- both terminal labels are PAST PARTICIPLES. Every write of
+        `StorageTier.ARCHIVE` or `StorageTier.DELETE` would have raised
+        `invalid input value for enum storage_tier`. WP-57 §3.1 found the
+        archive half (D-1); the delete half is the same defect one hop further
+        down the tier chain and was not named there.
+
+        This is not a relaxed assertion. It is a STRICTER one: the old version
+        pinned the Python constant, this version pins the contract with the
+        database, which is the only thing that could have caught the defect.
+        `test_wp59_retention.py::test_every_tier_value_is_a_real_storage_tier_label`
+        checks the whole enum against the live label set for the same reason.
+        """
         assert StorageTier.HOT.value == "hot"
         assert StorageTier.WARM.value == "warm"
         assert StorageTier.COLD.value == "cold"
-        assert StorageTier.ARCHIVE.value == "archive"
-        assert StorageTier.DELETE.value == "delete"
+        assert StorageTier.ARCHIVE.value == "archived"
+        assert StorageTier.DELETE.value == "deleted"
 
 
 # ---------------------------------------------------------------------------

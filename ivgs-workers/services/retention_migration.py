@@ -44,13 +44,26 @@ logger = structlog.get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 class StorageTier(str, Enum):
-    """Storage tier levels per §10.3."""
+    """Storage tier levels per §10.3.
+
+    THE VALUES ARE THE POSTGRES ENUM LABELS, NOT THE ENGLISH WORDS. The live
+    ``storage_tier`` type is ``hot, warm, cold, archived, deleted`` -- both
+    terminal labels are PAST PARTICIPLES. This class said ``archive`` and
+    ``delete``, so every write of either would have failed with
+
+        invalid input value for enum storage_tier: "archive"
+
+    WP-57 §3.1 found the ``archive`` half (D-1). The ``delete`` half is the
+    same defect one hop further down the chain and was not named there; both
+    are corrected here. Nothing had ever reached either, because the scan that
+    feeds them could not run at all -- see ``_process_tier_transitions``.
+    """
 
     HOT = "hot"
     WARM = "warm"
     COLD = "cold"
-    ARCHIVE = "archive"
-    DELETE = "delete"
+    ARCHIVE = "archived"
+    DELETE = "deleted"
 
 
 # Tier progression order (hot is most accessible, delete is terminal)
@@ -136,6 +149,28 @@ class MigrationReport(BaseModel):
     transitions: list[TierTransitionRecord] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
     duration_seconds: float = 0.0
+    # --- WP-59 Task 7 ---
+    dry_run: bool = True
+    status: str = Field(
+        default="ok",
+        description=(
+            "'ok' or 'failed'. A tier pass that raises now sets this and the "
+            "task raises on it. It used to be swallowed per tier and the run "
+            "reported success having scanned nothing."
+        ),
+    )
+    capped: bool = Field(
+        default=False,
+        description="True when max_transitions stopped the run short.",
+    )
+    would_move: dict[str, dict[str, int]] = Field(
+        default_factory=dict,
+        description=(
+            "Per tier hop ('hot->warm'), {'assets': n, 'bytes': n}. Populated "
+            "in BOTH modes: in dry-run it is the whole output, in a live run it "
+            "is what was attempted."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +253,9 @@ class RetentionService:
         self,
         db_session_factory: Any,
         seaweedfs_filer_url: str = "http://node-01:8888",
+        *,
+        dry_run: bool = True,
+        max_transitions: int | None = None,
     ) -> None:
         """
         Initialize retention service.
@@ -225,7 +263,20 @@ class RetentionService:
         Args:
             db_session_factory: Async SQLAlchemy session factory.
             seaweedfs_filer_url: SeaweedFS filer URL for file operations.
+            dry_run: WP-59 Task 7. DEFAULTS TO TRUE, deliberately. This service
+                has never moved an asset in its life -- the first real run
+                touches 158 live assets and must be an attended event, not a
+                cron surprise at 04:00. A dry run performs the whole scan and
+                the whole eligibility decision and writes NOTHING: no UPDATE,
+                no SeaweedFS call, no audit row. Its report is the answer to
+                "what would move, how many, how many bytes, per tier".
+            max_transitions: Hard ceiling on transitions performed in one run.
+                The operator's first live pass is a CAPPED pass; leaving the
+                cap at None is the unbounded run and should follow a capped one
+                that behaved.
         """
+        self._dry_run = dry_run
+        self._max_transitions = max_transitions
         self._db_session_factory = db_session_factory
         self._seaweedfs_filer_url = seaweedfs_filer_url
         self._policies_cache: dict[str, RetentionPolicy] = {}
@@ -330,9 +381,14 @@ class RetentionService:
         Returns:
             MigrationReport: Summary of the migration run.
         """
-        report = MigrationReport()
+        report = MigrationReport(dry_run=self._dry_run)
 
-        self._log.info("retention_migration_started", run_id=report.run_id)
+        self._log.info(
+            "retention_migration_started",
+            run_id=report.run_id,
+            dry_run=self._dry_run,
+            max_transitions=self._max_transitions,
+        )
 
         # Load/refresh policies
         await self.load_policies()
@@ -352,14 +408,33 @@ class RetentionService:
                 )
                 report.transitions_performed += count
             except Exception as exc:
+                # WP-59 Task 7: FIX THE SWALLOW.
+                #
+                # This except used to append a string to `report.errors` and
+                # carry on, and NOTHING read `report.errors`. The task returned
+                # `{'status': 'ok'}` and Celery recorded SUCCESS, so a scan that
+                # raised UndefinedColumn on every tier of every run reported a
+                # migration that had scanned nothing and moved nothing. Same
+                # class as the four in the swallowed-failures register
+                # (WP-00-SWALLOWED-FAILURES), and the seventh instance of the
+                # inert-mechanism pattern.
+                #
+                # The per-tier catch is KEPT -- one tier failing should not stop
+                # the other three from being assessed, which is genuine value --
+                # but `status` now goes to 'failed', and the calling task raises
+                # on it. A failed tier pass records failure.
+                report.status = "failed"
                 report.errors.append(
-                    f"Tier {current_tier.value}→{next_tier.value}: {exc}"
+                    f"Tier {current_tier.value}->{next_tier.value}: "
+                    f"{type(exc).__name__}: {exc}"
                 )
                 self._log.error(
                     "tier_transition_error",
                     current_tier=current_tier.value,
                     next_tier=next_tier.value,
                     error=str(exc),
+                    error_type=type(exc).__name__,
+                    consequence="this tier moved nothing; the run is reported failed",
                 )
 
         report.completed_at = datetime.now(timezone.utc)
@@ -370,10 +445,14 @@ class RetentionService:
         self._log.info(
             "retention_migration_completed",
             run_id=report.run_id,
+            dry_run=report.dry_run,
+            status=report.status,
             scanned=report.assets_scanned,
             transitions=report.transitions_performed,
             deleted=report.assets_deleted,
             preserved=report.assets_preserved,
+            capped=report.capped,
+            would_move=report.would_move,
             errors=len(report.errors),
             duration_seconds=report.duration_seconds,
         )
@@ -409,12 +488,26 @@ class RetentionService:
         async with self._db_session_factory() as session:
             from sqlalchemy import text
 
+            # `assets` has `seaweedfs_path` and `seaweedfs_fid`. There is no
+            # `storage_path` column and there never has been -- WP-57 §3.1
+            # (D-1), verified again here against the live schema on 2026-08-26:
+            #
+            #     ERROR:  column "storage_path" does not exist
+            #
+            # `seaweedfs_fid` is selected alongside it because the fid is the
+            # handle that actually addresses the bytes on this fleet: the filer
+            # namespace is EMPTY (measured -- GET /ivgs/ returns 404 and the
+            # filer root lists no entries), so every object is a volume object
+            # reached by fid, and `seaweedfs_path` is a label rather than a
+            # location. Any future physical move has to work on the fid.
             result = await session.execute(
                 text(
-                    "SELECT id, asset_type, storage_path, storage_tier, "
-                    "tier_transition_at, preserve_flag, created_at "
+                    "SELECT id, asset_type::text, seaweedfs_path, "
+                    "storage_tier::text, tier_transition_at, preserve_flag, "
+                    "created_at, coalesce(seaweedfs_fid, ''), "
+                    "coalesce(file_size_bytes, 0) "
                     "FROM assets "
-                    "WHERE storage_tier = :tier "
+                    "WHERE storage_tier = CAST(:tier AS storage_tier) "
                     "AND (preserve_flag IS NULL OR preserve_flag = false) "
                     "ORDER BY tier_transition_at ASC NULLS FIRST "
                     "LIMIT 5000"
@@ -429,6 +522,8 @@ class RetentionService:
             asset_type = str(row[1])
             storage_path = str(row[2]) if row[2] else ""
             tier_transition_at = row[4] or row[6]  # fallback to created_at
+            seaweedfs_fid = str(row[7] or "")
+            file_size_bytes = int(row[8] or 0)
 
             policy = self.get_policy_for_asset_type(asset_type)
             tier_duration_days = policy.get_tier_duration_days(current_tier)
@@ -442,6 +537,36 @@ class RetentionService:
             if time_in_tier < tier_duration_days:
                 continue
 
+            # This asset IS eligible. Record it in `would_move` before doing
+            # anything, so a dry run and a live run count the same population
+            # and the operator's dry-run output is a prediction of the live
+            # pass rather than a separate calculation.
+            hop = f"{current_tier.value}->{next_tier.value}"
+            bucket = report.would_move.setdefault(hop, {"assets": 0, "bytes": 0})
+            bucket["assets"] += 1
+            bucket["bytes"] += file_size_bytes
+
+            if self._dry_run:
+                # WP-59 Task 7. Nothing is written in dry-run mode: not the
+                # tier column, not the audit row, not a SeaweedFS call. The
+                # eligibility decision above has already been made in full,
+                # which is the part worth rehearsing.
+                transition_count += 1
+                continue
+
+            if (
+                self._max_transitions is not None
+                and transition_count >= self._max_transitions
+            ):
+                report.capped = True
+                self._log.warning(
+                    "retention_migration_capped",
+                    cap=self._max_transitions,
+                    tier=current_tier.value,
+                    consequence="remaining eligible assets were not transitioned",
+                )
+                break
+
             # Perform transition
             try:
                 if next_tier == StorageTier.DELETE:
@@ -453,6 +578,7 @@ class RetentionService:
                     await self._transition_tier(
                         asset_id=asset_id,
                         storage_path=storage_path,
+                        seaweedfs_fid=seaweedfs_fid,
                         from_tier=current_tier,
                         to_tier=next_tier,
                         policy_name=policy.name,
@@ -462,8 +588,13 @@ class RetentionService:
                 transition_count += 1
 
             except Exception as exc:
+                # Per-asset, and it does NOT stop the tier -- one bad row should
+                # not strand the rest. But it marks the run failed, because a
+                # run that could not do what it was asked is not a successful
+                # run however many other rows it managed.
+                report.status = "failed"
                 report.errors.append(
-                    f"Transition failed for {asset_id}: {exc}"
+                    f"Transition failed for {asset_id}: {type(exc).__name__}: {exc}"
                 )
                 self._log.error(
                     "asset_transition_failed",
@@ -480,6 +611,7 @@ class RetentionService:
         *,
         asset_id: str,
         storage_path: str,
+        seaweedfs_fid: str,
         from_tier: StorageTier,
         to_tier: StorageTier,
         policy_name: str,
@@ -488,52 +620,50 @@ class RetentionService:
         """
         Transition an asset from one tier to another.
 
-        1. Move file to the new tier's SeaweedFS volume
-        2. Update database record (storage_tier, tier_transition_at)
-        3. Log to audit_log
+        WHAT THIS ACTUALLY DOES, STATED HONESTLY (WP-59 Task 7).
 
-        Args:
-            asset_id: Asset UUID.
-            storage_path: Current SeaweedFS file path.
-            from_tier: Current storage tier.
-            to_tier: Target storage tier.
-            policy_name: Name of the governing retention policy.
-            report: Running migration report.
+        It moves the asset's TIER, which is a database fact, and it does not
+        move any bytes. The old body POSTed to the filer path with
+        ``X-Seaweedfs-Replication`` and ``X-Seaweedfs-Collection`` headers and
+        called that a move. It is not one, twice over:
+
+        * The filer namespace on this fleet is EMPTY. Measured 2026-08-26:
+          ``GET /ivgs/`` on the filer answers 404 and the filer root lists no
+          entries at all, while the volume servers hold 7 volumes and ~100
+          files. Every asset is a VOLUME object addressed by fid;
+          ``seaweedfs_path`` is a label the uploader writes into the row and
+          never writes to the filer. So the POST addressed nothing.
+        * SeaweedFS assigns a volume's COLLECTION and replication at
+          ``/dir/assign`` time, when the object is first written. There is no
+          filer header that relocates an existing object between collections.
+          Genuinely moving the bytes means re-uploading them into a volume of
+          the target collection and rewriting the fid -- which is a real
+          feature, is not what this service was written to do, and is not being
+          smuggled in under a header.
+
+        So the physical placement is recorded as NOT PERFORMED rather than
+        implied to have happened. A tier column that says ``cold`` over bytes
+        that are still on the hot volume is a smaller lie than a log line that
+        says the bytes moved, and it is the one the operator can see.
         """
-        client = await self._get_client()
-
-        # SeaweedFS tier assignment via replication header
-        tier_replication = {
-            StorageTier.HOT: "000",      # SSD, no replication
-            StorageTier.WARM: "001",     # HDD, 1 replica
-            StorageTier.COLD: "010",     # Compressed HDD
-            StorageTier.ARCHIVE: "100",  # NAS archival
-        }
-
-        replication = tier_replication.get(to_tier, "000")
-
+        # Update database
+        now = datetime.now(timezone.utc)
         try:
-            # Move file with tier assignment
-            _response = await client.post(  # noqa: F841
-                f"{self._seaweedfs_filer_url}{storage_path}",
-                headers={
-                    "X-Seaweedfs-Replication": replication,
-                    "X-Seaweedfs-Collection": to_tier.value,
-                },
-            )
-
-            # Update database
-            now = datetime.now(timezone.utc)
             async with self._db_session_factory() as session:
                 async with session.begin():
                     from sqlalchemy import text
 
+                    # NO `updated_at`. The `assets` table does not have one --
+                    # verified against the live schema; its mutable-timestamp
+                    # column is `tier_transition_at`, which is set here. The old
+                    # statement named `updated_at` and would have failed with
+                    # UndefinedColumn the moment the scan above was repaired.
                     await session.execute(
                         text(
-                            "UPDATE assets SET storage_tier = :tier, "
-                            "tier_transition_at = :now, "
-                            "updated_at = :now "
-                            "WHERE id = :asset_id"
+                            "UPDATE assets SET "
+                            "storage_tier = CAST(:tier AS storage_tier), "
+                            "tier_transition_at = :now "
+                            "WHERE id = CAST(:asset_id AS uuid)"
                         ),
                         {
                             "tier": to_tier.value,
@@ -541,6 +671,17 @@ class RetentionService:
                             "asset_id": asset_id,
                         },
                     )
+
+            self._log.info(
+                "tier_placement_not_performed",
+                asset_id=asset_id,
+                seaweedfs_fid=seaweedfs_fid,
+                to_tier=to_tier.value,
+                reason=(
+                    "SeaweedFS assigns collection at write time; relocating an "
+                    "existing fid between collections is not implemented"
+                ),
+            )
 
             record = TierTransitionRecord(
                 asset_id=asset_id,
@@ -557,6 +698,7 @@ class RetentionService:
                 from_tier=from_tier.value,
                 to_tier=to_tier.value,
                 policy_name=policy_name,
+                physical_move="not_performed",
             )
 
         except Exception as exc:
@@ -582,32 +724,56 @@ class RetentionService:
             storage_path: SeaweedFS file path.
             report: Running migration report.
         """
-        client = await self._get_client()
-
+        # THREE DEFECTS IN THE OLD BODY, all of which would have fired on the
+        # first row that ever reached this method (WP-59 Task 7):
+        #
+        #   status = 'deleted'      -- `assets` has NO `status` column.
+        #   storage_tier = 'delete' -- the enum label is `deleted`.
+        #   updated_at = NOW()      -- `assets` has no `updated_at` column.
+        #
+        # All three verified against the live schema on 2026-08-26. None had
+        # ever been reached because the scan feeding this method could not run.
+        #
+        # The tombstone is `storage_tier = 'deleted'`, which is what the rest of
+        # the system already reads as "not a live asset": `find_by_hash` and the
+        # upload dedup both exclude it (asset_service.py:161, :302), so a
+        # deleted-tier row is correctly invisible to dedup. The ROW is kept, not
+        # dropped -- a tombstone that says which asset went is worth more than a
+        # missing row, and dropping it would take the quality scores with it.
         try:
-            if storage_path:
-                await client.delete(
-                    f"{self._seaweedfs_filer_url}{storage_path}"
-                )
-
             async with self._db_session_factory() as session:
                 async with session.begin():
                     from sqlalchemy import text
 
                     await session.execute(
                         text(
-                            "UPDATE assets SET status = 'deleted', "
-                            "storage_tier = 'delete', "
-                            "updated_at = NOW() "
-                            "WHERE id = :asset_id"
+                            "UPDATE assets SET "
+                            "storage_tier = CAST('deleted' AS storage_tier), "
+                            "tier_transition_at = now() "
+                            "WHERE id = CAST(:asset_id AS uuid)"
                         ),
                         {"asset_id": asset_id},
                     )
 
+            # The bytes are NOT removed here, deliberately. Retention-driven
+            # byte deletion on this fleet has to go through the fid, and it has
+            # to answer the same question project deletion answers -- is any
+            # other live row pointing at this object? -- because a library
+            # asset and a deduplicated asset can both share bytes with a row
+            # that is not expiring. That guard lives in
+            # `ProjectDeletionService.binary_manifest` (WP-59 Task 4) and this
+            # service does not have it. Tombstoning the row makes the object an
+            # orphan by construction, which is the shape `orphan_cleanup` exists
+            # to sweep -- once it, too, is repaired (WP-59 report, Task 2).
             self._log.info(
-                "asset_permanently_deleted",
+                "asset_tombstoned",
                 asset_id=asset_id,
                 storage_path=storage_path,
+                bytes_removed=False,
+                reason=(
+                    "byte removal needs the shared-object guard this service "
+                    "does not have; the object becomes an orphan for the sweep"
+                ),
             )
 
         except Exception as exc:

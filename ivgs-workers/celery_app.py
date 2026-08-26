@@ -204,16 +204,54 @@ CELERY_BEAT_SCHEDULE: Dict[str, Any] = {
         "schedule": timedelta(minutes=5),
         "options": {"queue": "default", "priority": 5},
     },
+    # WP-59 Task 2 — the same phantom, one schedule up.
+    #
+    # `tasks.pipeline_orchestrator.run_orphan_cleanup` is ALSO a stub
+    # ("Orphan cleanup — stub (Phase 8)"), and it too is in celery_taskmeta
+    # recording SUCCESS at 03:00. The real `OrphanCleanupService` has never run
+    # either -- which matters to this package specifically, because Task 2
+    # names orphan_cleanup as the backstop for anything the binary purge
+    # misses. It cannot be a backstop while the thing on the schedule is a
+    # stub, and its own three scans query `assets.storage_path` and
+    # `assets.status`, NEITHER OF WHICH EXISTS (verified live 2026-08-26).
+    #
+    # Left pointing at the stub deliberately: repairing OrphanCleanupService is
+    # a package of its own -- it QUARANTINES and then permanently DELETES
+    # binaries, and it has no shared-object guard, so switching it on today
+    # would let it delete a library asset's bytes out from under every project
+    # referencing them (WP-59 Task 4 is exactly that guard). Recorded as a
+    # decision in the WP-59 report rather than switched on here.
     "orphan-cleanup": {
         "task": "tasks.pipeline_orchestrator.run_orphan_cleanup",
         "schedule": crontab(hour=3, minute=0),
         "options": {"queue": "default", "priority": 2},
     },
-    "retention-migration": {
-        "task": "tasks.pipeline_orchestrator.run_retention_migration",
-        "schedule": crontab(hour=4, minute=0),
-        "options": {"queue": "default", "priority": 2},
-    },
+    # WP-59 Task 7 — SHIPPED DISABLED, AND POINTED AT THE REAL TASK.
+    #
+    # This entry used to name `tasks.pipeline_orchestrator.run_retention_migration`,
+    # which is a Phase-5 STUB: it logs one line and returns
+    # {'status': 'ok', 'message': 'Retention migration — stub (Phase 8)'}.
+    # That string is in the result backend under this schedule's dispatches on
+    # 2026-08-24 and 2026-08-25 at 04:00 (celery_taskmeta, read 2026-08-26), so
+    # `services/retention_migration.py` has never executed once in the three
+    # months the surface has been reporting a migration mechanism.
+    #
+    # It now names the real task -- and it is COMMENTED OUT, because enabling
+    # both repairs at once would put the first tier migration this fleet has
+    # ever performed on 158 live assets at 04:00, unattended. The package
+    # instruction is explicit that this is an attended event. The operator
+    # enables it by uncommenting these five lines after a dry run and a capped
+    # live pass have both behaved (WP-59 report, Task 7 operator block).
+    #
+    # Note the dry_run kwarg is NOT set to False here even when re-enabled: the
+    # task defaults to dry-run, so uncommenting this alone gives a nightly
+    # REPORT, not a nightly migration. Turning off dry-run is a second,
+    # separate, deliberate edit.
+    # "retention-migration": {
+    #     "task": "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
+    #     "schedule": crontab(hour=4, minute=0),
+    #     "options": {"queue": "default", "priority": 2},
+    # },
     "backup-verification": {
         "task": "tasks.pipeline_orchestrator.run_backup_verification",
         "schedule": crontab(hour=5, minute=0),
