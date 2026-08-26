@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1026** | **0** | 0 | 0 | 953 (WP-61) |
-| `ivgs-workers` | **838** | 18 | 48 | 15 | 838 (WP-61) |
+| `ivgs-api` | **1061** | **0** | 0 | 0 | 1026 (WP-62) |
+| `ivgs-workers` | **868** | 18 | 48 | 15 | 838 (WP-62) |
 | `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
-| `tests_system` | **150** | 12 | 15 | 30 | 125 (WP-61) |
-| **Total** | **2053** | **50** | **63** | **45** | 1955 / 50 (WP-61) |
+| `tests_system` | **165** | 12 | 15 | 30 | 150 (WP-62) |
+| **Total** | **2133** | **50** | **63** | **45** | 2053 / 50 (WP-62) |
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own
@@ -31,6 +31,42 @@ rows above it — 50 — and every per-tree figure is unchanged and quoted from 
 run. **No test outcome changed; a total did.** It is exactly the class of
 defect this series of packages exists to close, in the document that scores
 them, and it is recorded rather than quietly corrected.
+
+**WP-63 added 80 tests (2026-08-26) and moved no failure row.** 35 in
+`ivgs-api` (1026 -> 1061), 30 in `ivgs-workers` (838 -> 868) and 15 in
+`tests_system` (150 -> 165). Failures, skips and errors are unchanged in every
+tree. This tree now needs migration **0036**.
+
+**THREE EXISTING TESTS WERE UPDATED AND NONE WAS WEAKENED**, each for a reason
+that is written into the test itself:
+
+| Test | Why it moved, and why it is not a relaxation |
+|---|---|
+| `ivgs-api/tests/test_wp62_guards.py::TestRegenerateIsGuarded::test_the_guard_is_at_the_choke_point_not_the_route` | The fourth caller it warned about arrived — `POST /projects/{id}/scenes/batch-regenerate`, which the frontend had been calling since WP-38 and which answered 404. Serving it needed the guarded body to take N scenes in one job, so the singular name became a delegation. The test follows the choke point AND now asserts the delegation, and fails if either guard is COPIED into the wrapper: one definition across four callers instead of three. |
+| `ivgs-workers/tests/test_wp44_storyboard_prompt_rules.py::…::test_the_sql_embeds_the_exact_seed_template_text` | Renamed `test_the_sql_is_self_consistent_about_what_it_installs`. It asserted that the seed FILE appears verbatim in WP-44's corrective SQL — right while that SQL was pending. It has since been APPLIED (`storyboard_generation` v3 is live, md5 `8b120d1ff6f84f8286bf16d6022041a0`, exactly what the SQL predicts), so it is a spent artefact and rewriting it to match a later file would make it lie about what it installed. The property becomes self-consistency: the text it embeds must hash to the md5 it declares — which the old containment check could not have caught drifting. A NEW test keeps the current file an EXTENSION of what the SQL installed: every line of RULE 1 must still be present, character for character. |
+| `tests_system/test_wp62_surfaces.py::…::test_d_the_env_example_records_the_pin_and_does_not_invent_it` | **This row was moved by an operator commit, not by WP-63's code.** It asserted `.env.node05.example` must NOT hold a complete 64-character digest — the only available way to say "no plausible wrong digest" while the real one was unknown. a6a4f8e then committed the digest the operator MEASURED off the running container, and the assertion turned red on the arrival of the fact it was waiting for. It now names the measured value; an invented 64-character digest still fails, by name, and so does a different prefix — strictly stronger, because the old form would have accepted `sha256:3dbe092e-WHATEVER-I-LIKE`. |
+
+* `test_wp63_blank_check.py` (15, workers) — the blank/solid-colour check on
+  five files: the three operator-cleared frames it wrongly rejected (banked at
+  `ivgs-workers/tests/fixtures/wp63/`) and two constructed blanks. **Every test
+  runs the REAL Stage-3 resize first**, because the banked frames PASS the old
+  check at their native 1024x1024 and only fail after IVGS's own letterbox
+  padding enters the denominator — a test that fed the bytes straight to
+  `validate()` would have passed against the broken code. Verified red with the
+  old verdict rule restored: 5 fail, including all three banked frames.
+* `test_wp63_failure_attribution.py` (14, workers) — the job row naming the
+  stage the checkpoint recorded, driving the real `update_job_status` with the
+  ledger stubbed to job d4b41765's actual rows. One test pins the LIMIT of the
+  class inference rather than glossing it.
+* `test_wp63_regeneration.py` (22, api) — Tasks 7 and 8, every claim on the
+  BROKER. Includes the measured double-press costing exactly one dispatch, and
+  the storyboard re-run no longer duplicating every scene.
+* `test_wp63_storyboard_prompt.py` (13, api) — a deterministic, model-free
+  checker that the four measured scenes FAIL and a compliant rewrite PASSES,
+  plus the tracked template pinned against the exact phrases its publisher
+  refuses to publish without.
+* `test_compliance_scanner.py` (+15, tests_system) — the exemption pragma, in
+  both directions.
 
 **WP-62 added 98 tests (2026-08-26) and moved no failure row.** 73 in
 `ivgs-api` (953 -> 1026) and 25 in `tests_system` (125 -> 150). Failures, skips

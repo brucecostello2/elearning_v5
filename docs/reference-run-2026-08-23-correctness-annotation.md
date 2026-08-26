@@ -243,3 +243,86 @@ source is genuinely wrong and regeneration is post-M3.3 by the ruling in §2 and
 for a faithful translation of a defective source — which is the whole point of
 the fail-and-flag contract.
 
+
+---
+
+## 8. The quality record was validator-distorted until 2026-08-26
+
+**Added 2026-08-26 by WP-63-VALIDATOR, Task 2.** Nothing in the run moved. No
+asset was regenerated, no narration edited, no variant touched. What changed is
+what the QUALITY RECORD beside the run is worth.
+
+### 8.1 What was wrong
+
+`ImageValidator`'s blank/solid-colour check computed *distinct colours divided
+by total pixels* and demanded more than 0.05. That is a measure of colour
+density, not of blankness, and its denominator is the pixel count. Stage 3 fits
+every non-16:9 frame inside 1920x1080 and pads it with black before validating,
+which adds 907,200 identical pixels — **43.75% of the frame** — to that
+denominator.
+
+So the pipeline's own letterboxing pushed real frames under the floor. Measured
+on three frames the operator recovered from ComfyUI and verified by eye
+(people at whiteboards, a hand with a pencil over paper):
+
+| | as generated, 1024x1024 | after Stage 3's resize | old verdict |
+|---|---|---|---|
+| `ivgs_flux_00087_` | 0.0876 | 0.0485 | REJECT |
+| `ivgs_flux_00089_` | 0.0766 | 0.0427 | REJECT |
+| `ivgs_flux_00094_` | 0.0809 | 0.0447 | REJECT |
+
+### 8.2 What it did to this run's record
+
+The 2026-08-26 08:10 rescore of this project's banked assets returned
+**11 approved / 1 flagged / 8 rejected** over 20 assets. **Six of the eight
+rejections were "Image appears blank or solid color".**
+
+Re-scored on 2026-08-26 under the corrected validator, append-only, tagged
+`WP-63-VALIDATOR` (`asset_quality_scores`; the old rows are untouched and still
+say what they said):
+
+| | 2026-08-26 08:10 | 2026-08-26, corrected | moved |
+|---|---|---|---|
+| approved | 11 | **17** | +6 |
+| flagged | 1 | 1 | — |
+| rejected | 8 | **2** | −6 |
+
+The six that moved are exactly the six that carried the blank/solid message.
+The two remaining rejections are `Unsupported video codec: mpeg4` and the one
+flag is a video resolution/duration deviation — unchanged, which is the control:
+nothing moved that the fix did not touch.
+
+**So: for three months this run's technical quality record understated it by
+six assets, for a reason that had nothing to do with the assets.**
+
+### 8.3 And they are still not good frames — for the reason §3 is about
+
+This matters, and it is the same lesson as the rest of this document. The six
+are **not blank**. Two of them, read by eye:
+
+* `3d89b0ef…` is a wall-mounted screen carrying five rows of garbled
+  arithmetic — `- 45 - 15+4+ - 15+2`, `- 25 - 15+ = - 15`. Rich, structured,
+  and wrong.
+* `ef51a8c8…` is a near-white sheet with a faint `x 6/4 =` floating in the
+  middle of it.
+
+Both are **text-in-the-visual failures**: the image model was asked for numbers
+and produced text-shaped marks, which is precisely what RULE 1 of the storyboard
+prompt exists to prevent and what §3 of this document is about at the narration
+level.
+
+The corrected blank check gives the right answer to its own question — these
+frames are not blank. **Whether they are USABLE is a different question, and no
+scorer in this pipeline answers it**, for the same reason §4 gives: every gate
+here measures output against input, and these were faithfully rendered from
+what they were asked for.
+
+### 8.4 What this does not change
+
+Nothing about the run's status. `reference-run-2026-08-23` remains the technical
+conformance standard for the AD-05 migration, must not be regenerated before
+M3.3, and its narration is still the live test case the WP-61 translation flag
+fires on. The es-ES variant was not read and stays `flagged`.
+
+**"Matches the reference" is still not "correct". What §8 adds is that "the
+reference scored badly" was not correct either.**
