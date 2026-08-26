@@ -9,8 +9,9 @@
 #   2. Decrypt backup: gpg --decrypt backup.sql.gz.gpg | gunzip > restore.sql
 #   3. Drop and recreate target database: dropdb ivgs; createdb ivgs
 #   4. Restore: psql ivgs < restore.sql
-#   5. Point-in-time recovery — UNAVAILABLE, see WP-57 Task 6 and
-#      docs/runbooks/point-in-time-recovery.md. --pit now refuses with a reason.
+#   5. Point-in-time recovery — AVAILABLE since WP-59 Task 8. Replays the WAL
+#      archive onto the weekly pg_basebackup into a STAGED cluster, never the
+#      live one. Refuses, naming the reason, when a precondition is absent.
 #   6. Verify row counts match backup record expectations
 #   7. Restart ivgs-api (runs Alembic migrations automatically)
 #   8. Restart ivgs-workers
@@ -23,7 +24,7 @@
 # Usage:
 #   ./restore.sh YYYY-MM-DD                      # Restore specific date
 #   ./restore.sh YYYY-MM-DD --dry-run             # Preview without executing
-#   ./restore.sh YYYY-MM-DD --pit YYYY-MM-DD-HH:MM  # REFUSES: no physical base backup
+#   ./restore.sh YYYY-MM-DD --pit YYYY-MM-DD-HH:MM  # PITR into a staged cluster
 #   ./restore.sh YYYY-MM-DD --skip-confirmation   # Skip safety prompts
 # =============================================================================
 
@@ -100,9 +101,12 @@ Arguments:
 
 Options:
   --dry-run            Preview actions without executing
-  --pit TARGET         UNAVAILABLE on this system - backups are logical
-                       (pg_dump), so archived WAL cannot be replayed. The flag
-                       is kept so it fails with a reason rather than silently.
+  --pit TARGET         Point-in-time recovery to YYYY-MM-DD-HH:MM. Replays the
+                       WAL archive onto the weekly pg_basebackup into a STAGED
+                       cluster on a spare port. The live database is never
+                       touched. Refuses, naming the precondition, when there is
+                       no base at or before the target, or the WAL archive is
+                       missing, off the NAS, or has a gap.
   --skip-confirmation  Skip interactive safety prompts
   --help               Show this help message
 
@@ -389,62 +393,236 @@ apply_wal_logs() {
     fi
 
     # =======================================================================
-    # WP-57 Task 6 — THIS CANNOT WORK, AND IT NOW SAYS SO INSTEAD OF TRYING.
+    # WP-59 Task 8 — PITR NOW EXISTS, AND THIS PERFORMS IT.
     # =======================================================================
-    # Establish by measurement, 2026-08-26:
-    #   * scripts/backup.sh takes `pg_dump --format=plain` (backup.sh:310-313) —
-    #     a LOGICAL dump. `pg_basebackup` appears NOWHERE in this repository.
-    #   * The WAL archive is real and current: 99 segments, 740 MB, and
-    #     pg_stat_archiver.last_archived_time was minutes old when checked.
+    # WP-57 Task 6 established that it could not: `backup.sh` takes
+    # `pg_dump --format=plain`, a LOGICAL dump, and WAL records physical block
+    # changes keyed to LSNs in one data directory. Restoring SQL builds a new
+    # cluster with a different layout and an unrelated timeline, so
+    # `recovery_target_time` had nothing to seek within. This function refused
+    # with that reason (exit 5) rather than writing a recovery.conf that would
+    # have sent an operator hunting a base backup that did not exist.
     #
-    # PostgreSQL cannot replay WAL onto a restored logical dump, and this is not
-    # a configuration gap that can be closed with a flag. WAL records physical
-    # block changes keyed to LSNs in a specific data directory. `pg_dump`
-    # produces SQL; restoring it builds a brand-new cluster with different block
-    # layout and an unrelated LSN timeline. There is no base to roll forward
-    # from, so `recovery_target_time` has nothing to seek within.
+    # The operator ruled to build one (D-2). `scripts/basebackup.sh` takes a
+    # weekly `pg_basebackup` into /mnt/backup/ivgs/basebackup/, and these
+    # segments now have something to replay onto.
     #
-    # What this function used to do was write a recovery.conf to /tmp and tell
-    # the operator to copy it into PGDATA and restart — instructions which, if
-    # followed during a real incident, put the cluster into recovery looking for
-    # a base backup that does not exist. That is worse than refusing: it burns
-    # the operator's time at the moment they have least of it, and it is the
-    # 75-day-backup-gap failure mode exactly — an artefact that manufactures
-    # confidence it cannot honour.
+    # IT STILL REFUSES CLEARLY WHEN THE PRECONDITIONS ARE ABSENT, and there are
+    # four of them. Each is checked and named separately, because "PITR failed"
+    # is not a useful sentence at 3 a.m.:
     #
-    # THE ARCHIVE IS NOT USELESS — it is unusable *today*. If a physical base
-    # backup is introduced (WP-57 D-2), these segments become replayable and
-    # this function should be rewritten around `pg_basebackup`. Until then the
-    # honest recovery promise is checkpoint-only: restore the latest dump.
-    log_error "Point-in-time recovery is NOT AVAILABLE on this system."
-    log_error "  Reason: backups are LOGICAL (pg_dump). WAL replay requires a"
-    log_error "  PHYSICAL base backup (pg_basebackup), which this system does"
-    log_error "  not take. Archived WAL cannot be applied to a pg_dump restore."
-    log_error "  What you CAN do: re-run without --pit to restore the latest"
-    log_error "  dump. Recovery is to that dump's checkpoint, not to an instant."
-    log_error "  See docs/runbooks/point-in-time-recovery.md."
-    return 5
+    #   1. A base backup exists, at or before the target instant.
+    #   2. The WAL archive is reachable and is on the NAS.
+    #   3. The archive covers the base's start_lsn forward -- an unbroken
+    #      segment run. A gap makes replay stop at the gap, silently, which is
+    #      the worst possible outcome and the reason WP-57 D-3 mattered.
+    #   4. The target instant is not before the base was taken.
+    #
+    # A PITR IS A NEW CLUSTER, NOT AN EDIT OF THIS ONE. What this writes is a
+    # complete, ready-to-start data directory in a STAGING location, plus the
+    # exact commands to bring it up. It does not stop, reconfigure or overwrite
+    # the running cluster, and it never will: an in-place PITR of a live
+    # database is a one-way door pressed under stress. The operator promotes
+    # the recovered cluster deliberately, having looked at it.
+    # =======================================================================
+    local basebackup_root="${BASEBACKUP_NAS_DIR:-/mnt/backup/ivgs/basebackup}"
 
-    # Configure PostgreSQL for WAL replay
-    local pg_data_dir
-    pg_data_dir="$(PGPASSWORD="${POSTGRES_PASSWORD}" psql \
-        -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" \
-        -U "${POSTGRES_SUPERUSER}" -d postgres \
-        -t -A -c "SHOW data_directory;" 2>/dev/null)"
+    log_info "Step 5: Point-in-time recovery to ${PIT_TARGET}"
 
-    log_info "PostgreSQL data directory: ${pg_data_dir}"
+    # --- Precondition 1: a physical base backup exists ---------------------
+    if [ ! -d "${basebackup_root}" ]; then
+        log_error "Point-in-time recovery is NOT POSSIBLE: no base backup directory."
+        log_error "  Looked in: ${basebackup_root}"
+        log_error "  WAL replay requires a PHYSICAL base backup (pg_basebackup)."
+        log_error "  Take one with: scripts/basebackup.sh   (dry run first:"
+        log_error "  scripts/basebackup.sh --dry-run). Until a base exists, the"
+        log_error "  honest recovery promise is checkpoint-only: re-run this"
+        log_error "  script without --pit to restore the latest logical dump."
+        log_error "  See docs/runbooks/point-in-time-recovery.md."
+        return 5
+    fi
 
-    # Create recovery signal and configure WAL replay
-    # Note: This requires PostgreSQL to be restarted with recovery parameters
-    cat > "/tmp/ivgs_recovery.conf" <<RECOVERY_EOF
+    # The newest base at or before the target. Recovery replays FORWARD, so a
+    # base taken after the target instant is useless for it.
+    local pit_epoch base_dir="" base_epoch=0
+    pit_epoch="$(date -d "$(echo "${PIT_TARGET}" | sed 's/-\([0-9][0-9]:[0-9][0-9]\)$/ \1/')" +%s 2>/dev/null || echo 0)"
+    if [ "${pit_epoch}" -eq 0 ]; then
+        log_error "Could not parse --pit target ${PIT_TARGET}."
+        log_error "  Expected YYYY-MM-DD-HH:MM (e.g. 2026-08-26-14:30)."
+        return 5
+    fi
+
+    local candidate candidate_epoch
+    while IFS= read -r candidate; do
+        [ -f "${candidate}/basebackup_record.json" ] || continue
+        candidate_epoch="$(stat -c %Y "${candidate}" 2>/dev/null || echo 0)"
+        if [ "${candidate_epoch}" -le "${pit_epoch}" ] && \
+           [ "${candidate_epoch}" -gt "${base_epoch}" ]; then
+            base_epoch="${candidate_epoch}"
+            base_dir="${candidate}"
+        fi
+    done < <(find "${basebackup_root}" -maxdepth 1 -mindepth 1 -type d | sort)
+
+    if [ -z "${base_dir}" ]; then
+        log_error "Point-in-time recovery is NOT POSSIBLE: no base backup was"
+        log_error "  taken at or before ${PIT_TARGET}."
+        log_error "  Recovery replays WAL FORWARD from a base; a base taken"
+        log_error "  after the target instant cannot reach it."
+        log_error "  Bases present in ${basebackup_root}:"
+        find "${basebackup_root}" -maxdepth 1 -mindepth 1 -type d -printf '    %f\n' 2>/dev/null | sort >&2
+        return 5
+    fi
+
+    local start_lsn
+    start_lsn="$(python3 -c "import json;print(json.load(open('${base_dir}/basebackup_record.json')).get('start_lsn',''))" 2>/dev/null || echo "")"
+    log_info "Base backup selected" \
+        "{\"base_dir\":\"${base_dir}\",\"start_lsn\":\"${start_lsn}\"}"
+
+    # --- Precondition 2: the WAL archive is real, and is the NAS -----------
+    if [ ! -d "${WAL_ARCHIVE_DIR}" ]; then
+        log_error "Point-in-time recovery is NOT POSSIBLE: WAL archive directory"
+        log_error "  ${WAL_ARCHIVE_DIR} does not exist. Nothing to replay."
+        return 5
+    fi
+    # WP-59 Task 9. A WAL archive on the LOCAL disk is the shadowed-mount
+    # failure, and a recovery that replays from a shadowed tree replays a
+    # partial history without saying so. Refuse.
+    if [ -r "$(dirname "$0")/lib/nfs_guard.sh" ]; then
+        # shellcheck source=lib/nfs_guard.sh
+        . "$(dirname "$0")/lib/nfs_guard.sh"
+        if ! assert_nfs_destination "${WAL_ARCHIVE_DIR}" "WAL archive (restore source)"; then
+            log_error "Point-in-time recovery is NOT POSSIBLE: the WAL archive at"
+            log_error "  ${WAL_ARCHIVE_DIR} is not on the NAS. Replaying from a"
+            log_error "  shadowed local directory would replay a partial history"
+            log_error "  and stop early without an error (WP-57 D-3)."
+            return 5
+        fi
+    fi
+
+    local wal_count
+    wal_count="$(find "${WAL_ARCHIVE_DIR}" -maxdepth 1 -type f -name '[0-9A-F]*' 2>/dev/null | wc -l)"
+    if [ "${wal_count}" -eq 0 ]; then
+        log_error "Point-in-time recovery is NOT POSSIBLE: the WAL archive at"
+        log_error "  ${WAL_ARCHIVE_DIR} contains no segments."
+        return 5
+    fi
+
+    # --- Precondition 3: the segment run is unbroken -----------------------
+    # Segment names are 24 hex characters; within one timeline+logical-file the
+    # last 8 characters increment. A missing segment stops replay dead at that
+    # point, and PostgreSQL will report it as a successful recovery to an
+    # earlier instant. Checking here converts a silent short recovery into a
+    # refusal that names the gap.
+    local gap_report
+    gap_report="$(find "${WAL_ARCHIVE_DIR}" -maxdepth 1 -type f -name '[0-9A-F]*' -printf '%f\n' \
+        | grep -E '^[0-9A-F]{24}$' | sort | python3 -c '
+import sys
+names = [l.strip() for l in sys.stdin if l.strip()]
+gaps = []
+prev = None
+for n in names:
+    if prev is not None and int(n, 16) != int(prev, 16) + 1:
+        gaps.append(f"{prev} -> {n}")
+    prev = n
+print("; ".join(gaps))
+' 2>/dev/null || echo "")"
+    if [ -n "${gap_report}" ]; then
+        log_error "Point-in-time recovery is NOT SAFE: the WAL archive has gaps."
+        log_error "  ${gap_report}"
+        log_error "  Replay would stop at the first gap and report success at an"
+        log_error "  earlier instant than requested. Refusing."
+        log_error "  If segments were stranded on local disk (WP-57 D-3), merge"
+        log_error "  them into ${WAL_ARCHIVE_DIR} and re-run."
+        return 5
+    fi
+    log_info "WAL archive verified" \
+        "{\"segments\":${wal_count},\"gaps\":0}"
+
+    # --- Stage the recovery cluster ----------------------------------------
+    local stage_dir="${PITR_STAGE_DIR:-/var/lib/ivgs/pitr-${RESTORE_DATE}-$(date +%s)}"
+
+    if [ "${DRY_RUN}" = true ]; then
+        log_info "[DRY RUN] All preconditions satisfied. Would stage a recovery"
+        log_info "[DRY RUN]   cluster from ${base_dir} into ${stage_dir}"
+        log_info "[DRY RUN]   and replay ${wal_count} segments to ${PIT_TARGET}."
+        echo "pitr_base_dir=${base_dir}"
+        echo "pitr_stage_dir=${stage_dir}"
+        echo "pitr_wal_segments=${wal_count}"
+        return 0
+    fi
+
+    mkdir -p "${stage_dir}"
+    log_info "Unpacking base backup into ${stage_dir}"
+    if ! tar -xzf "${base_dir}/base.tar.gz" -C "${stage_dir}"; then
+        log_error "Could not unpack ${base_dir}/base.tar.gz into ${stage_dir}."
+        return 5
+    fi
+    # Tablespace tars, if any, sit beside base.tar.gz named by their OID.
+    local tblspc
+    while IFS= read -r tblspc; do
+        [ "$(basename "${tblspc}")" = "base.tar.gz" ] && continue
+        log_warn "Tablespace archive present and NOT unpacked automatically: ${tblspc}"
+        log_warn "  A cluster with tablespaces needs each unpacked to its own"
+        log_warn "  original location before start. Stopping rather than"
+        log_warn "  producing a cluster that starts and is missing data."
+        return 5
+    done < <(find "${base_dir}" -maxdepth 1 -type f -name '*.tar.gz')
+
+    chmod 700 "${stage_dir}"
+
+    # recovery.signal + the two recovery GUCs. PostgreSQL 12+ takes these in
+    # postgresql.auto.conf, NOT a recovery.conf -- which is the other reason
+    # the old /tmp/ivgs_recovery.conf advice could not have worked on 17.2.
+    cat >> "${stage_dir}/postgresql.auto.conf" <<RECOVERY_EOF
+
+# --- WP-59 point-in-time recovery, staged $(date -u +%Y-%m-%dT%H:%M:%SZ) ---
 restore_command = 'cp ${WAL_ARCHIVE_DIR}/%f %p'
 recovery_target_time = '${PIT_TARGET}'
-recovery_target_action = 'promote'
+# 'pause', not 'promote'. The cluster stops at the target and waits, so the
+# operator can connect and LOOK at what they recovered before making it
+# writable. Promoting automatically ends the timeline and forecloses a second
+# attempt at a different instant.
+recovery_target_action = 'pause'
 RECOVERY_EOF
+    touch "${stage_dir}/recovery.signal"
 
-    log_warn "WAL replay configuration written to /tmp/ivgs_recovery.conf"
-    log_warn "Manual steps required: copy to pg_data_dir, create recovery.signal, restart PostgreSQL"
-    log_info "WAL replay configuration prepared"
+    log_info "Recovery cluster staged" \
+        "{\"stage_dir\":\"${stage_dir}\",\"base\":\"${base_dir}\",\"target\":\"${PIT_TARGET}\"}"
+
+    cat <<INSTRUCTIONS
+=============================================================================
+POINT-IN-TIME RECOVERY CLUSTER STAGED — the live database was NOT touched.
+=============================================================================
+  Base backup : ${base_dir}   (start_lsn ${start_lsn})
+  WAL archive : ${WAL_ARCHIVE_DIR}   (${wal_count} segments, no gaps)
+  Target time : ${PIT_TARGET}
+  Staged at   : ${stage_dir}
+
+Start the recovered cluster on a SPARE PORT, alongside the live one:
+
+  docker run --rm -d --name ivgs-pitr \\
+    -v ${stage_dir}:/var/lib/postgresql/data \\
+    -v ${WAL_ARCHIVE_DIR}:${WAL_ARCHIVE_DIR}:ro \\
+    -p 5433:5432 postgres:17.2
+
+Watch it reach the target:
+
+  docker logs -f ivgs-pitr        # "recovery stopping before ... pause"
+
+Then LOOK at it before you trust it:
+
+  psql -h 127.0.0.1 -p 5433 -U ${POSTGRES_USER} -d ${POSTGRES_DB} \\
+       -c "SELECT count(*) FROM projects;"
+
+Only when it is what you expected:
+
+  psql -h 127.0.0.1 -p 5433 -U ${POSTGRES_USER} -d postgres \\
+       -c "SELECT pg_wal_replay_resume();"
+
+It is a separate cluster on 5433. Cutting over to it is a deliberate,
+separate act -- see docs/runbooks/point-in-time-recovery.md.
+=============================================================================
+INSTRUCTIONS
 }
 
 # ---------------------------------------------------------------------------

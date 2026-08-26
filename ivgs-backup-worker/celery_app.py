@@ -110,6 +110,34 @@ BEAT_SCHEDULE = {
         "schedule": crontab(hour=2, minute=0),
         "options": {"queue": "backup"},
     },
+    # WP-59 Task 8 (WP-57 D-2, RULED: implement PITR).
+    #
+    # WEEKLY, Sunday 01:00 UTC. Three constraints put it there and they are all
+    # about not colliding with something else on this node:
+    #
+    #   * BEFORE the 02:00 logical dump, not after. If both were to fail on the
+    #     same night the operator should find out from the one that runs every
+    #     night, and a 01:00 start gives the base backup an hour of headroom
+    #     before pg_dump wants the same I/O.
+    #   * Sunday, because a base backup reads the whole data directory and this
+    #     is a 16 GB node that has been OOM-killed by its host before
+    #     (dev/CLAUDE.md §7). The quietest night is the right one.
+    #   * Weekly rather than daily because the WAL archive is what covers the
+    #     interval between bases -- that is the entire point of having one.
+    #     Taking a base every night would store the same cluster seven times to
+    #     shorten a replay that already takes seconds on a 670 KB-dump database.
+    #
+    # THE WINDOW IS RECONCILED, NOT INHERITED. WAL retention must cover the
+    # interval back to the oldest base it must replay onto. Base retention is
+    # 35 days and WAL retention is 7 (BACKUP_RETENTION_WAL_DAYS), so the WAL
+    # window is SHORTER than the base window -- deliberately, and the runbook
+    # states the resulting promise rather than pretending the longer number
+    # governs. See docs/runbooks/point-in-time-recovery.md §"The window".
+    "physical-base-backup": {
+        "task": "tasks.backup_tasks.run_base_backup",
+        "schedule": crontab(day_of_week=0, hour=1, minute=0),
+        "options": {"queue": "backup"},
+    },
 }
 
 
@@ -130,6 +158,7 @@ celery_app.conf.update(
         "tasks.backup_tasks.run_asset_backup":         {"queue": "backup"},
         "tasks.backup_tasks.run_config_backup":        {"queue": "backup"},
         "tasks.backup_tasks.run_verification":         {"queue": "backup"},
+        "tasks.backup_tasks.run_base_backup":          {"queue": "backup"},
     },
     # Reliability — backups must not be lost.  acks_late + reject_on_worker_lost
     # means if the worker dies mid-task, the message is re-delivered.

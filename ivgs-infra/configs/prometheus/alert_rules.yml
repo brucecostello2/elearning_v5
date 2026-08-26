@@ -214,7 +214,7 @@ groups:
       # -----------------------------------------------------------------------
       - alert: BackupStale
         expr: |
-          time() - ivgs_backup_last_timestamp > 93600
+          time() - ivgs_backup_last_timestamp{backup_type!="physical_base_backup"} > 93600
         labels:
           severity: critical
           team: infrastructure
@@ -230,6 +230,49 @@ groups:
             root crontab for asset and config backups.
           action: "Confirm the schedule is firing before assuming the backup itself is broken."
           runbook: "docs/runbooks/backup-failed.md"
+
+      # -----------------------------------------------------------------------
+      # Alert 5c: BaseBackupStale — WP-59 Task 8
+      # Condition: no physical base backup has reported in for over 8 days
+      # Severity: Critical
+      # -----------------------------------------------------------------------
+      # WHY A SEPARATE RULE RATHER THAN THE ONE ABOVE. BackupStale's threshold
+      # is 26 hours, which is right for three DAILY jobs and catastrophically
+      # wrong for a WEEKLY one: the base backup would sit "stale" for six days
+      # out of every seven and page continuously, which is the same as no alert
+      # at all. `backup_type != "physical_base_backup"` above excludes it from
+      # that rule; this one carries its own window.
+      #
+      # 8 DAYS, NOT 7. A weekly job that is merely late -- the node was busy,
+      # the run overlapped a maintenance window -- must not page. One day of
+      # slack is the same reasoning as BackupStale's 26-vs-24, at weekly scale.
+      #
+      # THIS IS THE ALERT THAT MATTERS MOST FOR PITR, and it is worth saying
+      # why. If the base backup silently stops, nothing breaks and nothing
+      # looks wrong: the WAL archive keeps filling, the nightly dump keeps
+      # succeeding, every dashboard stays green. What is lost is the ability to
+      # recover to a point in time -- and it is lost invisibly, discovered only
+      # during an incident. That is precisely the 75-day-gap shape this fleet
+      # has already been bitten by twice.
+      - alert: BaseBackupStale
+        expr: |
+          time() - ivgs_backup_last_timestamp{backup_type="physical_base_backup"} > 691200
+        labels:
+          severity: critical
+          team: infrastructure
+          component: backup
+        annotations:
+          summary: "No physical base backup in over 8 days on node-01"
+          description: >-
+            The weekly pg_basebackup has not reported a completion timestamp
+            for more than 8 days. Point-in-time recovery degrades silently
+            without it: the WAL archive keeps filling and has nothing newer to
+            replay onto, so the recoverable window stops moving forward while
+            everything else stays green. Check the `physical-base-backup` entry
+            in ivgs-backup-worker/celery_app.py and
+            /var/log/ivgs/basebackup.log.
+          action: "Run scripts/basebackup.sh --dry-run first; it names the precondition that failed (NFS destination, replication privilege, wal senders, space)."
+          runbook: "docs/runbooks/point-in-time-recovery.md"
 
   # =========================================================================
   # Group 2: Warning Alerts — Require Investigation

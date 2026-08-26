@@ -419,6 +419,141 @@ def run_full_database_backup(self, backup_id: Optional[str] = None) -> Dict:
 
 
 # ---------------------------------------------------------------------------
+# Task: Physical base backup (WP-59 Task 8 / WP-57 D-2)
+# ---------------------------------------------------------------------------
+
+@shared_task(
+    name="tasks.backup_tasks.run_base_backup",
+    bind=True,
+    autoretry_for=(),   # same as the others: no auto-retry, manual control
+    max_retries=0,
+)
+def run_base_backup(
+    self,
+    backup_id: Optional[str] = None,
+    dry_run: bool = False,
+) -> Dict:
+    """
+    Invoke /scripts/basebackup.sh — the weekly physical base for PITR.
+
+    WHY THIS TASK EXISTS. WP-57 Task 6 established that point-in-time recovery
+    was impossible here: the WAL archive was live and faithfully maintained and
+    there was no physical base to replay it onto, because `backup.sh` takes a
+    logical `pg_dump` and `pg_basebackup` appeared nowhere in the repository.
+    WP-57 declined to build one on the grounds that shipping an unrehearsed
+    second recovery mechanism creates a second thing nobody has proven (D-2).
+    The operator has ruled: implement it. It is built here AND rehearsed —
+    Task 10 restores into a scratch database and records the timings, so it
+    ships proven rather than merely present.
+
+    SAME PATTERN AS THE OTHER THREE BACKUP JOBS, deliberately. It goes through
+    `_run_backup_script`, the script owns its `backup_records` row via
+    `lib/backup_record.sh`, failure raises `BackupTaskError` so Celery records
+    FAILURE rather than a green row over a broken backup (the WP-00 rule), and
+    it pushes the same `ivgs_backup_last_status` / `ivgs_backup_last_timestamp`
+    gauges the BackupFailed and BackupStale alerts read. A new backup type that
+    invented its own reporting would be a fourth thing to keep in step.
+
+    Args:
+        backup_id: Pre-created row id (API path). Omitted on the scheduled path,
+            where the script mints its own and owns the row end to end.
+        dry_run: Run every pre-flight and report the space the base would need,
+            writing nothing. No `backup_records` row is opened or closed.
+
+    Returns:
+        Dict of the script's KEY=VALUE output. The DB row is the source of
+        truth; this is for Flower and debugging.
+
+    Raises:
+        BackupTaskError: on any failure.
+    """
+    logger.info("run_base_backup START",
+                extra={"backup_id": backup_id, "dry_run": dry_run})
+
+    extra_args = ["--dry-run"] if dry_run else None
+
+    if backup_id is not None and not dry_run:
+        try:
+            _update_record_running(backup_id)
+        except Exception as exc:
+            logger.exception("Failed to mark base-backup record as running",
+                             extra={"backup_id": backup_id})
+            raise BackupTaskError(
+                f"base backup {backup_id}: DB pre-update failed: {exc}"
+            ) from exc
+
+    result = _run_backup_script(backup_id, "basebackup.sh", extra_args)
+
+    if result["returncode"] != 0:
+        err = result["stderr"] or f"script exited {result['returncode']}"
+        logger.error("run_base_backup FAILED",
+                     extra={"backup_id": backup_id,
+                            "returncode": result["returncode"],
+                            "stderr_tail": err[-500:]})
+        if backup_id is not None and not dry_run:
+            try:
+                _update_record_failed(backup_id, err)
+            except Exception:
+                logger.exception("Failed to mark base-backup record as failed",
+                                 extra={"backup_id": backup_id})
+        raise BackupTaskError(
+            f"basebackup.sh exited {result['returncode']} for backup "
+            f"{backup_id or '(scheduled)'}: {err[-500:]}"
+        )
+
+    kv = result["kv"]
+
+    if dry_run:
+        logger.info("run_base_backup DRY RUN OK", extra=dict(kv))
+        return {
+            "status": "dry_run",
+            "would_write_to": kv.get("would_write_to", ""),
+            "cluster_size_mb": _safe_int(kv.get("cluster_size_mb"), 0),
+            "start_lsn": kv.get("start_lsn", ""),
+        }
+
+    size = _safe_int(kv.get("size_bytes"), 0)
+    path = kv.get("backup_path", "")
+    effective_id = backup_id or kv.get("backup_id", "")
+
+    if backup_id is not None:
+        try:
+            _update_record_success(
+                backup_id=backup_id,
+                size_bytes=size,
+                backup_path=path,
+                completed_at=datetime.now(timezone.utc),
+            )
+        except Exception as exc:
+            logger.exception("Failed to mark base-backup record as completed",
+                             extra={"backup_id": backup_id})
+            raise BackupTaskError(
+                f"base backup {backup_id}: DB post-update failed: {exc}"
+            ) from exc
+
+    # Same rule as the database backup: a base that exists but whose row could
+    # not be written is not a fully successful run, because nothing will find it.
+    if kv.get("record_write") == "failed":
+        raise BackupTaskError(
+            f"base backup {effective_id}: pg_basebackup succeeded but "
+            f"basebackup.sh could not write its backup_records row; see "
+            f"/var/log/ivgs/basebackup.log"
+        )
+
+    logger.info("run_base_backup OK", extra={
+        "backup_id": effective_id, "size_bytes": size, "backup_path": path,
+        "start_lsn": kv.get("start_lsn", ""),
+    })
+    return {
+        "backup_id": effective_id,
+        "status": "completed",
+        "size_bytes": size,
+        "backup_path": path,
+        "start_lsn": kv.get("start_lsn", ""),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Task: Asset backup
 # ---------------------------------------------------------------------------
 
