@@ -93,6 +93,46 @@ class TestGpuTelemetryIsNullableNotZero:
         assert node.gpu_utilization_pct is None
 
 
+class TestNoLayerReintroducesTheZeros:
+    """WP-60 Task 2(a) — THE TEST THAT WOULD HAVE CAUGHT THE FOURTH SITE.
+
+    This package fixed the substitution in the registry, in `/fleet`, in
+    `to_node_view` and in the pydantic schema — deployed all four — and the GPU
+    Fleet card STILL printed 0 C / 0 W, because
+    `GpuService._scheduler_node_response` passed `temperature_c=0.0` explicitly
+    at the last step, three lines beneath a comment claiming they were "left at
+    their schema defaults ... rather than being invented".
+
+    Four correct layers and one wrong one is a wrong answer. Asserting on the
+    schema default alone could never have caught it — the defect was a caller
+    overriding the default. So this asserts on the SOURCE: no constructor
+    anywhere in the service may pass a literal zero for a measurement.
+    """
+
+    def test_no_gpu_response_is_constructed_with_a_literal_zero_reading(self):
+        import re
+        from pathlib import Path
+
+        src = (
+            Path(__file__).resolve().parents[1]
+            / "app" / "services" / "gpu_service.py"
+        ).read_text()
+        code = "\n".join(
+            line for line in src.splitlines()
+            if not line.lstrip().startswith("#")
+        )
+
+        offenders = re.findall(
+            r"^\s*(temperature_c|power_draw_w|gpu_utilization_pct)\s*=\s*0(?:\.0)?\s*,",
+            code,
+            re.M,
+        )
+        assert not offenders, (
+            f"a GPU telemetry field is constructed with a literal zero: "
+            f"{offenders}. None means 'not measured'; 0 is a reading."
+        )
+
+
 class TestReservedVramIsNamedForWhatItIs:
     """WP-60 Task 2(b).
 

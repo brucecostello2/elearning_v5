@@ -29,6 +29,7 @@ SeaweedFS directories scanned per §10.2:
 from __future__ import annotations
 
 import json
+import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -315,8 +316,8 @@ class OrphanCleanupService:
     def __init__(
         self,
         db_session_factory: Any,
-        seaweedfs_base_url: str = "http://node-01:9333",
-        seaweedfs_filer_url: str = "http://node-01:8888",
+        seaweedfs_base_url: str | None = None,
+        seaweedfs_filer_url: str | None = None,
         dry_run: bool = True,
     ) -> None:
         """
@@ -332,8 +333,30 @@ class OrphanCleanupService:
                 by omitting an argument.
         """
         self._db_session_factory = db_session_factory
-        self._seaweedfs_base_url = seaweedfs_base_url
-        self._seaweedfs_filer_url = seaweedfs_filer_url
+        # WP-60 Task 10 — THE DEFAULTS POINTED AT THE CONTAINER'S OWN LOOPBACK.
+        #
+        # These were hardcoded `http://node-01:9333` and `http://node-01:8888`.
+        # Inside a compose container `node-01` resolves to **127.0.1.1** before
+        # it resolves to 192.168.1.90 -- verified with `getent hosts node-01`
+        # in ivgs-celery-default -- and nothing listens on those ports there.
+        # So every storage probe hung until its connect timeout: on 161 assets
+        # that is roughly half an hour of the sweep doing nothing, which is how
+        # a repaired scan still looks broken.
+        #
+        # The right values have been in the environment the whole time
+        # (SEAWEEDFS_MASTER_URL / SEAWEEDFS_FILER_URL, set by compose to the
+        # service names), and this service ignored them. It reads them now, and
+        # an explicit argument still wins so tests can point it anywhere.
+        self._seaweedfs_base_url = (
+            seaweedfs_base_url
+            or os.getenv("SEAWEEDFS_MASTER_URL")
+            or "http://seaweedfs-master:9333"
+        ).rstrip("/")
+        self._seaweedfs_filer_url = (
+            seaweedfs_filer_url
+            or os.getenv("SEAWEEDFS_FILER_URL")
+            or "http://seaweedfs-filer:8888"
+        ).rstrip("/")
         self._http_client: httpx.AsyncClient | None = None
         self._log = logger.bind(service="orphan_cleanup")
         # WP-60 Task 10 (WP-59 D-2). The guard is not optional and is not a
@@ -381,8 +404,11 @@ class OrphanCleanupService:
     async def _get_client(self) -> httpx.AsyncClient:
         """Get or create HTTP client for SeaweedFS operations."""
         if self._http_client is None or self._http_client.is_closed:
+            # WP-60 Task 10: a per-asset probe, not a download. 30s/10s meant
+            # one unreachable endpoint turned a sweep into a half-hour stall
+            # with nothing in the log to say why. Short, and bounded.
             self._http_client = httpx.AsyncClient(
-                timeout=httpx.Timeout(30.0, connect=10.0),
+                timeout=httpx.Timeout(5.0, connect=2.0),
             )
         return self._http_client
 

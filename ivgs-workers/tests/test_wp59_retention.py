@@ -246,6 +246,55 @@ class TestDryRun:
         assert r.policy_gaps == {}
 
 
+class TestNightlyVisibility:
+    """WP-60 Task 8. The nightly dry run's result must be VISIBLE, or a run
+    that quietly stops scanning looks exactly like a run that found nothing."""
+
+    def test_would_move_gauge_handles_the_mapping_it_is_actually_given(self):
+        """`would_move` is `{"hot->warm": {"assets": 39, "bytes": …}}`, not a
+        count. The first version did `int(report.would_move or 0)` and raised
+        TypeError on the first live dispatch — the push failed and the gauge
+        was silently absent, which is the exact defect this task exists to
+        prevent, inside the mechanism built to prevent it."""
+        from tasks.periodic_tasks import _would_move_assets
+
+        class _R:
+            pass
+
+        r = _R()
+        r.would_move = {
+            "hot->warm": {"assets": 39, "bytes": 109966042},
+            "warm->cold": {"assets": 3, "bytes": 12},
+        }
+        assert _would_move_assets(r) == 42
+
+        for empty in ({}, None):
+            r.would_move = empty
+            assert _would_move_assets(r) == 0
+
+    def test_the_metrics_push_never_raises_into_the_migration(self):
+        """A reporting failure must not fail the run — but it must be LOUD.
+        That is why the except logs at WARNING with the error type, and it is
+        how the dict/int defect above was caught on its first dispatch."""
+        import structlog
+        from tasks.periodic_tasks import _report_retention_migration_metrics
+
+        class _Bad:
+            dry_run = True
+            status = "ok"
+            assets_scanned = 1
+            transitions_performed = 0
+            assets_deleted = 0
+            errors: list = []
+
+            @property
+            def would_move(self):
+                raise RuntimeError("boom")
+
+        # Must not propagate.
+        _report_retention_migration_metrics(_Bad(), structlog.get_logger("t"))
+
+
 class TestTaskWiring:
     def test_the_scheduled_entry_is_live_names_the_real_task_and_is_a_dry_run(self):
         """UPDATED BY WP-60 Task 8, AND STRICTLY STRONGER THAN BEFORE.
@@ -306,6 +355,64 @@ class TestTaskWiring:
         assert "kwargs" not in block, (
             "the scheduled entry passes kwargs. It must pass none, so the "
             "dry-run default cannot be overridden here by accident."
+        )
+
+    def test_every_declared_task_name_belongs_to_the_function_under_it(self):
+        """WP-60. A DECORATOR THAT DRIFTED OFF ITS FUNCTION FAILS NIGHTLY.
+
+        This test exists because WP-60 broke exactly that and no existing test
+        noticed. `_report_retention_migration_metrics` was inserted between
+        `@shared_task(name="...run_retention_migration")` and
+        `def run_retention_migration`, so the HELPER took the decorator and the
+        task became a plain function. The beat entry then named something that
+        was not registered, and the nightly dry run would have raised
+        NotRegistered every night — loudly, but into a log nobody reads, which
+        is the same family of defect as the stub reporting SUCCESS.
+
+        It was caught by running the task against the deployed image, not by
+        reading. What is asserted here is the invariant that broke, and it is
+        checked in the SOURCE deliberately: importing this module does NOT
+        autodiscover its tasks, and WP-59 §3.1 records concluding a task was
+        unregistered from exactly that mistaken import. `celery_app.tasks`
+        would be the wrong oracle here.
+        """
+        import re
+
+        src = (
+            Path(__file__).resolve().parents[1] / "tasks" / "periodic_tasks.py"
+        ).read_text()
+
+        # @shared_task( ... name="X" ... ) followed by the next `def NAME(`
+        pattern = re.compile(
+            r'@shared_task\((?P<args>[^)]*?)\)\s*\ndef\s+(?P<func>\w+)\s*\(',
+            re.S,
+        )
+        seen = {}
+        for m in pattern.finditer(src):
+            name_m = re.search(r'name="([^"]+)"', m.group("args"))
+            assert name_m, "a @shared_task has no explicit name"
+            declared = name_m.group(1).rsplit(".", 1)[-1]
+            seen[name_m.group(1)] = m.group("func")
+            assert declared == m.group("func"), (
+                f'@shared_task(name="...{declared}") decorates '
+                f'`{m.group("func")}`. The decorator has drifted onto a '
+                f"different function; the name it declares is no longer "
+                f"registered and every dispatch of it raises NotRegistered."
+            )
+
+        # And the live beat entries in the ivgs_workers namespace must name
+        # something this module actually declares.
+        import celery_app as ca
+
+        missing = [
+            f"{entry_name} -> {entry['task']}"
+            for entry_name, entry in ca.CELERY_BEAT_SCHEDULE.items()
+            if entry["task"].startswith("ivgs_workers.tasks.periodic_tasks.")
+            and entry["task"] not in seen
+        ]
+        assert not missing, (
+            f"beat schedule names a task periodic_tasks.py does not declare: "
+            f"{missing}"
         )
 
     def test_the_orphan_schedule_is_off_and_not_merely_pointed_at_a_stub(self):

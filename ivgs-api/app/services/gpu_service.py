@@ -100,13 +100,27 @@ class GpuService:
             gpu_model=view["gpu_model"],
             total_vram_mb=view["total_vram_mb"],
             used_vram_mb=view["used_vram_mb"],
+            # WP-60 Task 2(b): the same integer, correctly named. Surfaces must
+            # render THIS one, because "used VRAM" it is not.
+            reserved_vram_mb=view["reserved_vram_mb"],
             available_vram_mb=view["available_vram_mb"],
-            gpu_utilization_pct=view["gpu_utilization_pct"],
-            # The scheduler registry carries neither temperature nor power. They
-            # come from the node exporters (WP-48) and are left at their schema
-            # defaults here rather than being invented from the VRAM figures.
-            temperature_c=0.0,
-            power_draw_w=0.0,
+            # WP-60 Task 2(a) — THE FOURTH PLACE THESE ZEROS WERE WRITTEN, and
+            # the one that survived the first sweep of this package.
+            #
+            # The comment here USED TO SAY these were "left at their schema
+            # defaults ... rather than being invented". They were not left at
+            # anything: the constructor passed `temperature_c=0.0` and
+            # `power_draw_w=0.0` explicitly, three lines under a sentence
+            # denying it. The schema defaults were then changed to None, the
+            # scheduler was fixed to publish real readings, `to_node_view` was
+            # fixed to carry them nullable — and the card still printed 0 C / 0 W,
+            # because this line overwrote all of it at the last step.
+            #
+            # A comment that describes the opposite of the code beneath it is
+            # the same class of defect as the surfaces this package exists to
+            # correct, one layer in.
+            temperature_c=view["temperature_c"],
+            power_draw_w=view["power_draw_w"],
             power_tdp_w=None,
             compute_capability=None,
             status=view["status"],
@@ -426,10 +440,16 @@ class GpuService:
             gpu_model=node.gpu_model,
             total_vram_mb=node.total_vram_mb,
             used_vram_mb=node.used_vram_mb,
+            reserved_vram_mb=node.used_vram_mb,
             available_vram_mb=node.available_vram_mb,
-            gpu_utilization_pct=0.0,
-            temperature_c=0.0,
-            power_draw_w=0.0,
+            # WP-60 Task 2(a). `gpu_nodes` has no telemetry columns at all, so
+            # there is nothing here to report and 0.0 asserted otherwise. This
+            # path serves the legacy table WP-45 established nothing reads any
+            # more (see register_gpu_node's warning), but a fabricated zero is a
+            # fabricated zero wherever it is written.
+            gpu_utilization_pct=None,
+            temperature_c=None,
+            power_draw_w=None,
             power_tdp_w=node.power_tdp_w,
             compute_capability=node.compute_capability,
             status=node.status,

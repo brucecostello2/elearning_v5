@@ -460,15 +460,43 @@ class RetentionMigrationError(RuntimeError):
     """
 
 
-@shared_task(
-    name="ivgs_workers.tasks.periodic_tasks.run_retention_migration",
-    bind=True,
-    max_retries=1,
-    acks_late=True,
-    reject_on_worker_lost=True,
-    time_limit=3600,
-    soft_time_limit=3300,
-)
+def _would_move_assets(report: Any) -> int:
+    """Total assets a dry run says it would move, across all tier hops.
+
+    WP-60 Task 8. `would_move` is a MAPPING, not a count -- it looks like
+    ``{"hot->warm": {"assets": 39, "bytes": 109966042}}`` -- and the first
+    version of the gauge did `int(report.would_move or 0)`, which raises
+    TypeError on a dict. The push failed on the very first live dispatch.
+
+    Worth recording rather than quietly correcting, because it is the one place
+    this package's own design was tested against itself: the failure was
+    LOUD. `retention_migration_metrics_push_failed` appeared in the log with
+    the TypeError named, which is exactly why that except logs at WARNING with
+    the error type instead of shrugging. A swallowed push would have left the
+    gauge silently absent -- the defect this task exists to prevent, in the
+    mechanism built to prevent it.
+    """
+    raw = getattr(report, "would_move", None)
+    if isinstance(raw, dict):
+        total = 0
+        for hop in raw.values():
+            if isinstance(hop, dict):
+                try:
+                    total += int(hop.get("assets", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+            else:
+                try:
+                    total += int(hop)
+                except (TypeError, ValueError):
+                    continue
+        return total
+    try:
+        return int(raw or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def _report_retention_migration_metrics(report: Any, task_log: Any) -> None:
     """One greppable line and two gauges, per WP-60 Task 8.
 
@@ -528,8 +556,7 @@ def _report_retention_migration_metrics(report: Any, task_log: Any) -> None:
             f"ivgs_retention_migration_assets_scanned "
             f"{int(report.assets_scanned or 0)}",
             "# TYPE ivgs_retention_migration_would_move gauge",
-            f"ivgs_retention_migration_would_move "
-            f"{int(getattr(report, 'would_move', 0) or 0)}",
+            f"ivgs_retention_migration_would_move {_would_move_assets(report)}",
         ]
         body = ("\n".join(lines) + "\n").encode()
 
@@ -552,6 +579,15 @@ def _report_retention_migration_metrics(report: Any, task_log: Any) -> None:
         )
 
 
+@shared_task(
+    name="ivgs_workers.tasks.periodic_tasks.run_retention_migration",
+    bind=True,
+    max_retries=1,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=3600,
+    soft_time_limit=3300,
+)
 def run_retention_migration(
     self: Any,
     dry_run: bool | None = None,

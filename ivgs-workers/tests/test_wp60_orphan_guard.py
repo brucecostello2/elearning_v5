@@ -351,6 +351,42 @@ async def test_the_guard_treats_an_unreachable_database_as_keep():
     assert await guard.keep_reason("9,abc", "/ivgs/x.png", None) == "guard_unavailable"
 
 
+def test_storage_urls_come_from_the_environment_not_from_node_01(monkeypatch):
+    """WP-60 Task 10 — a repaired scan that still probes the wrong host.
+
+    The defaults were `http://node-01:9333` / `:8888`. Inside a compose
+    container `node-01` resolves to **127.0.1.1** first (verified with
+    `getent hosts node-01` in ivgs-celery-default) and nothing listens there,
+    so every probe hung until its connect timeout — roughly half an hour across
+    161 assets, with nothing in the log to say why.
+
+    The correct values were in the environment the whole time.
+    """
+    monkeypatch.setenv("SEAWEEDFS_MASTER_URL", "http://seaweedfs-master:9333")
+    monkeypatch.setenv("SEAWEEDFS_FILER_URL", "http://seaweedfs-filer:8888")
+
+    svc = OrphanCleanupService(db_session_factory=lambda: None)
+    assert "node-01" not in svc._seaweedfs_base_url
+    assert "node-01" not in svc._seaweedfs_filer_url
+    assert svc._seaweedfs_base_url == "http://seaweedfs-master:9333"
+    assert svc._seaweedfs_filer_url == "http://seaweedfs-filer:8888"
+
+
+def test_an_explicit_url_still_wins_over_the_environment(monkeypatch):
+    monkeypatch.setenv("SEAWEEDFS_FILER_URL", "http://from-env:8888")
+    svc = OrphanCleanupService(
+        db_session_factory=lambda: None,
+        seaweedfs_filer_url="http://explicit:8888",
+    )
+    assert svc._seaweedfs_filer_url == "http://explicit:8888"
+
+
+def test_the_service_defaults_to_dry_run():
+    """It QUARANTINES and then PERMANENTLY DELETES. A caller that forgets an
+    argument must get a report, not a purge."""
+    assert OrphanCleanupService(db_session_factory=lambda: None)._dry_run is True
+
+
 async def test_the_guard_refuses_an_object_it_cannot_identify():
     guard = SharedObjectGuard(lambda: None)
     assert await guard.keep_reason("", "", None) == "no_handle"
