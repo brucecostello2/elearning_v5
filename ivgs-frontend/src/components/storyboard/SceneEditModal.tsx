@@ -5,6 +5,7 @@ import SceneThumbnail from "@/components/SceneThumbnail";
 import { apiErrorMessage } from "@/lib/api-error";
 import type {
   Scene,
+  SceneAdaptationProposal,
   SceneStatus,
   CameraAngle,
   TransitionType,
@@ -124,7 +125,19 @@ const MEDIA_TYPES: { value: MediaType; label: string; description: string }[] = 
   {
     value: "animation",
     label: "Animation",
-    description: "Motion graphics via Remotion/AnimateDiff (§7.1.8)",
+    /* WP-64. THIS LINE WAS WRONG, and it was wrong in the one place an
+       operator reads before choosing the branch. The animation branch is
+       Wan2.2-Animate POSE REENACTMENT (`ivgs-workers/tasks/
+       animation_generation_task.py`), not motion graphics: it needs a
+       reference still containing a PERSON plus the project's reference clip,
+       and it REFUSES a personless still by name rather than animating a
+       diagram. "Motion graphics via Remotion/AnimateDiff" describes a pathway
+       this pipeline does not have, and picking this branch for an equation
+       card fails the scene after the dispatch. */
+    description:
+      "Animates a PERSON in this scene's still, driven by the project's " +
+      "reference clip (Wan2.2-Animate). Not motion graphics — a still with " +
+      "no person in it is refused.",
   },
 ];
 
@@ -156,6 +169,15 @@ interface SceneEditModalProps {
   onClose: () => void;
   /** Regenerate scene callback */
   onRegenerate: (sceneId: string) => Promise<void>;
+  /**
+   * WP-64 Task 3. Ask the storyboard model for a description written for
+   * `targetMediaType`. Returns a PROPOSAL; it saves nothing. Optional so a
+   * caller that has not wired it simply does not show the action.
+   */
+  onAdaptDescription?: (
+    sceneId: string,
+    targetMediaType: string
+  ) => Promise<SceneAdaptationProposal>;
 }
 
 export default function SceneEditModal({
@@ -164,6 +186,7 @@ export default function SceneEditModal({
   onSave,
   onClose,
   onRegenerate,
+  onAdaptDescription,
 }: SceneEditModalProps): React.ReactElement {
   // ── Form State ────────────────────────────────────────────────────────
   const [narrationText, setNarrationText] = useState<string>(
@@ -204,6 +227,14 @@ export default function SceneEditModal({
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  /* WP-64 Task 3. The proposal lives here, in local state, and NOWHERE else
+     until the operator presses Save. It is never written into
+     `visualDescription` behind their back: an adaptation is an authored change
+     to creative intent and replacing the words they wrote, silently, on a
+     dropdown change, would destroy work with no diff and no undo. */
+  const [isAdapting, setIsAdapting] = useState<boolean>(false);
+  const [adaptError, setAdaptError] = useState<string | null>(null);
+  const [proposal, setProposal] = useState<SceneAdaptationProposal | null>(null);
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"content" | "visual" | "timing" | "advanced">(
     "content"
@@ -304,6 +335,56 @@ export default function SceneEditModal({
     generationParams,
     scene,
   ]);
+
+  /**
+   * WP-64 Task 3. Ask for a description written for the medium now selected.
+   *
+   * EXPLICIT, NEVER SILENT. It is a button the operator presses, the result
+   * lands in a panel they read, and it reaches `visualDescription` only when
+   * they press "Use this text" — at which point it is an ordinary unsaved edit
+   * they can still change or abandon. Nothing here writes the scene; that is
+   * Save, exactly as it was before this existed.
+   */
+  const handleAdapt = useCallback(async (): Promise<void> => {
+    if (!canEdit || !onAdaptDescription || isAdapting) return;
+    /* The medium currently CHOSEN in the form, not the one on the row: the
+       operator asks for the adaptation while the dropdown is changed and
+       before they save. Falling back to the row's value keeps the action
+       usable for "rewrite this for what it already is". */
+    const target = mediaType || normalizeMediaType(scene.media_type) || "image";
+    if (!visualDescription.trim()) {
+      setAdaptError(
+        "There is no visual description to adapt. Write one first, or " +
+          "regenerate the storyboard."
+      );
+      return;
+    }
+    setAdaptError(null);
+    setIsAdapting(true);
+    try {
+      const result = await onAdaptDescription(scene.id, target);
+      setProposal(result);
+    } catch (err) {
+      setAdaptError(apiErrorMessage(err));
+    } finally {
+      setIsAdapting(false);
+    }
+  }, [
+    canEdit,
+    onAdaptDescription,
+    isAdapting,
+    mediaType,
+    scene.id,
+    scene.media_type,
+    visualDescription,
+  ]);
+
+  /** Accept the proposal into the editable field. Still unsaved. */
+  const handleAcceptProposal = useCallback((): void => {
+    if (!proposal) return;
+    setVisualDescription(proposal.adapted_description);
+    setProposal(null);
+  }, [proposal]);
 
   /**
    * Save form data to API.
@@ -629,6 +710,93 @@ export default function SceneEditModal({
                   and nothing else.
                 </p>
               </div>
+
+              {/* ── Adapt description for this medium — WP-64 Task 3 ──
+                  The description above was authored for ONE medium and no
+                  pipeline stage rewrites it when the medium changes: the
+                  video and animation tasks interpolate it as it stands. So
+                  changing the dropdown alone dispatches the right engine
+                  into a still's words. This is the explicit repair, and it
+                  is explicit on purpose: it proposes, the operator reads and
+                  edits, and Save is still the only thing that writes. */}
+              {onAdaptDescription && (
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Adapt description for{" "}
+                        {mediaTypeLabel(
+                          mediaType ||
+                            normalizeMediaType(scene.media_type) ||
+                            "image"
+                        )}
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Rewrites the visual description for the medium selected
+                        above — motion, camera and order for a video clip; the
+                        build and the performer for an animation; one composed
+                        instant for an image. Nothing below rewrites it for you,
+                        so a description authored for a still stays a still.{" "}
+                        <strong className="font-medium">
+                          You review the result and press Save; this button
+                          saves nothing.
+                        </strong>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAdapt}
+                      disabled={!canEdit || isAdapting}
+                      className="shrink-0 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isAdapting ? "Adapting…" : "Adapt description"}
+                    </button>
+                  </div>
+
+                  {adaptError && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {adaptError}
+                    </p>
+                  )}
+
+                  {proposal && (
+                    <div className="mt-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 p-3">
+                      <p className="text-xs font-medium text-indigo-800 dark:text-indigo-200">
+                        Proposed description for{" "}
+                        {mediaTypeLabel(proposal.target_media_type)} — not saved
+                      </p>
+                      <p className="mt-2 whitespace-pre-wrap text-sm text-gray-900 dark:text-gray-100">
+                        {proposal.adapted_description}
+                      </p>
+                      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+                        {proposal.model} · adaptation prompt v
+                        {proposal.prompt_version}. Your current text is
+                        untouched until you use this.
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleAcceptProposal}
+                          disabled={!canEdit}
+                          className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded disabled:opacity-50"
+                        >
+                          Use this text
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setProposal(null)}
+                          className="px-3 py-1.5 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 text-xs font-medium rounded"
+                        >
+                          Discard
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 

@@ -71,6 +71,7 @@ export default function StoryboardPage(): React.ReactElement {
     isLoading: scenesLoading,
     error,
     mutate,
+    adaptSceneDescription,
     reorderScenes,
     deleteScene,
     deleteScenes,
@@ -713,6 +714,12 @@ export default function StoryboardPage(): React.ReactElement {
             scene={editingScene}
             canEdit={canEdit}
             onSave={handleSaveScene}
+            /* WP-64 Task 3. Passed straight through: it returns a proposal and
+               writes nothing, so there is no page-level state to keep and no
+               cache to invalidate. The modal holds the proposal until the
+               operator accepts it, at which point it becomes an ordinary
+               unsaved edit that `handleSaveScene` persists. */
+            onAdaptDescription={adaptSceneDescription}
             onClose={handleCloseEditModal}
             onRegenerate={handleRegenerateScene}
           />

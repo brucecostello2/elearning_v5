@@ -258,3 +258,28 @@ export interface TimelineZoomConfig {
   /** Zoom step size */
   step: number;
 }
+
+/**
+ * WP-64 Task 3. The proposal returned by
+ * `POST /projects/{id}/scenes/{sid}/adapt-description`.
+ *
+ * `scene_written` is always false and is in the payload deliberately: the
+ * endpoint returns a suggestion for a human to read and edit, and the save is
+ * the ordinary PATCH the modal already makes. Reading it from the response
+ * rather than from documentation is what stops a future caller assuming the
+ * scene has been updated.
+ */
+export interface SceneAdaptationProposal {
+  scene_id: string;
+  scene_index: number;
+  current_media_type: string;
+  target_media_type: string;
+  current_description: string;
+  adapted_description: string;
+  prompt_version: number;
+  prompt_id: string;
+  model: string;
+  binding: string;
+  scene_written: boolean;
+  generated_at: string;
+}

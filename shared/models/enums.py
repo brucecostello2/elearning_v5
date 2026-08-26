@@ -124,7 +124,16 @@ class UserRole(str, enum.Enum):
 # ── §4.1 Table 5: prompt_type ────────────────────────────────────────
 
 class PromptType(str, enum.Enum):
-    """10 prompt types covering every pipeline stage (§9.1)."""
+    """11 prompt types: the ten pipeline stages (§9.1), plus one editor prompt.
+
+    WP-64 Task 3 added ``SCENE_MEDIA_ADAPTATION``, and it is deliberately in
+    this enum rather than in a table of its own. It is not a pipeline stage --
+    nothing dispatches it, no orchestrator names it -- but it is a versioned,
+    published, rollback-able prompt that an operator action renders against a
+    model, which is exactly what this table exists to hold. Giving it a second
+    home would mean a second publish path, a second history and a second place
+    to look when a rewrite reads wrong.
+    """
     MASTER = "master"
     TRANSCRIPT_REFINEMENT = "transcript_refinement"
     STORYBOARD_GENERATION = "storyboard_generation"
@@ -135,6 +144,11 @@ class PromptType(str, enum.Enum):
     TALKING_HEAD = "talking_head"
     COMPOSITION = "composition"
     TRANSLATION = "translation"
+    #: WP-64 Task 3. The Edit Scene modal's "Adapt description for this medium"
+    #: action. Not a stage: it is rendered synchronously by the API against the
+    #: STORYBOARD binding (Llama), and its output is returned to the operator to
+    #: read and edit, never written to the scene by the endpoint itself.
+    SCENE_MEDIA_ADAPTATION = "scene_media_adaptation"
 
 
 # ── §4.1 Table 4: asset_type ─────────────────────────────────────────

@@ -6,6 +6,9 @@ Endpoints:
 - PATCH  /api/v1/projects/{id}/scenes/{sid}          — Update scene
 - POST   /api/v1/projects/{id}/scenes/reorder        — Bulk reorder
 - POST   /api/v1/projects/{id}/scenes/{sid}/regenerate — Queue scene regeneration
+- POST   /api/v1/projects/{id}/scenes/{sid}/adapt-description — Propose a
+         medium-appropriate rewrite of this scene's visual description (WP-64
+         Task 3). Returns a proposal; writes no scene row.
 """
 import logging
 from datetime import datetime, timezone
@@ -21,6 +24,8 @@ from app.core.auth import get_current_user, get_service_or_user
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.storyboard import (
+    SceneAdaptDescriptionRequest,
+    SceneAdaptDescriptionResponse,
     SceneBatchRegenerateRequest,
     SceneCreate,
     SceneReorderRequest,
@@ -179,6 +184,77 @@ async def update_scene(
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Scene {scene_id} not found"}},
         )
     return SceneResponse.model_validate(scene)
+
+
+@router.post(
+    "/{scene_id}/adapt-description",
+    response_model=SceneAdaptDescriptionResponse,
+    summary="Adapt this scene's visual description to a medium",
+)
+async def adapt_scene_description(
+    project_id: UUID,
+    scene_id: UUID,
+    data: SceneAdaptDescriptionRequest,
+    request: Request,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Propose a rewrite of this scene's visual description for a medium.
+
+    WP-64 Task 3. **This endpoint never writes the scene.** It returns the
+    rewrite for the operator to read, edit and save; saving is the existing
+    ``PATCH /projects/{id}/scenes/{sid}``. A feature that silently replaced an
+    operator's own words the moment they changed a dropdown would destroy
+    authored intent with no diff and no undo.
+
+    WHY IT EXISTS. A scene's description is authored once by Stage 2 for the
+    media_type Stage 2 chose. ``update_scene`` above persists a media_type
+    change with no rewrite, and neither media task adds the motion afterwards
+    (``video_generation_task.py:245``, ``animation_generation_task.py:389``
+    interpolate the description as-is). So a scene switched to video used to
+    reach CogVideoX carrying a still's words. This is the explicit repair.
+
+    409 PIPELINE_ALREADY_RUNNING, though it dispatches no stage: it consumes
+    capacity on the same LLM a running Stage 1 or Stage 2 is using, and it
+    reads scene rows that run may be about to overwrite (Task 3(c)).
+    """
+    from app.services.adaptation_service import AdaptationError, AdaptationService
+
+    client_ip = request.client.host if request.client else None
+    try:
+        result = await AdaptationService(db).adapt_description(
+            project_id=project_id,
+            scene_id=scene_id,
+            target_media_type=data.target_media_type,
+            actor=current_user,
+            client_ip=client_ip,
+        )
+    except PipelineAlreadyRunningError as e:
+        raise already_running(e)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(e)}},
+        )
+    except AdaptationError as e:
+        # 502, not 500: the API worked, the model or its endpoint did not, and
+        # the operator needs to be able to tell those apart before deciding
+        # whether to retry (WP-61's rebuilt distinction, applied here).
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail={"error": {"code": "ADAPTATION_FAILED", "message": str(e)}},
+        )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": {
+                    "code": "RESOURCE_NOT_FOUND",
+                    "message": f"Scene {scene_id} not found in project {project_id}",
+                }
+            },
+        )
+    return SceneAdaptDescriptionResponse(**result)
 
 
 @router.post("/reorder", response_model=List[SceneResponse], summary="Bulk reorder scenes")

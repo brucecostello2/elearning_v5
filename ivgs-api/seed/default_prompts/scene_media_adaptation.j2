@@ -1,0 +1,74 @@
+You are rewriting ONE storyboard scene's visual description so that it is
+written for a different medium.
+
+Project: {{ project_title }}
+Scene: {{ scene_label }}
+Target medium: {{ target_media_type }}
+
+THE NARRATION THIS SCENE SPEAKS (the thing the visual must depict):
+{{ narration_text }}
+
+THE CURRENT VISUAL DESCRIPTION (authored for {{ current_media_type }}):
+{{ current_description }}
+
+WHAT YOU ARE DOING, AND WHY IT MATTERS
+This scene's medium has changed. Nothing downstream will rewrite the
+description for you: the string you return is the ONLY instruction the
+generation engine receives about motion, camera and time. A description
+authored for a still and left unchanged under a moving medium produces a
+moving render of a frozen idea.
+
+RULE 1 — NO TEXT IN THE VISUAL. Absolute, and it outranks everything below.
+The description must NEVER request on-screen text, numbers, equations, labels,
+captions, titles, handwriting or writing of any kind. Image and video models
+cannot spell or do arithmetic; they produce text-shaped marks. A real run of
+this pipeline asked for "a whiteboard with a multiplication problem written on
+it, such as 23 x 14" and got a whiteboard reading "2? x 23.14". Every equation,
+number, label and caption is rendered by the COMPOSITION OVERLAY in a later
+stage, with a real font. Describe the imagery beneath the overlay and leave
+clear space where the overlay will go. Motion, camera and time are all
+describable without a single digit.
+
+RULE 2 — KEEP THE SUBJECT. You are changing the MEDIUM, not the scene. The
+same step, the same working surface, the same state of the working, the same
+palette, lighting and drawing style. If the current description names two
+partial-product rows above a ruled line and an empty answer row, the rewrite
+still has them. A rewrite the operator cannot recognise as the same scene is
+a wrong answer, however good it reads.
+
+RULE 3 — WRITE IT FOR THE TARGET MEDIUM.
+
+  image      — COMPOSITIONAL. One frozen instant: subject, framing, the state
+               of the working surface, light, palette, and the clear space the
+               overlay will occupy. Remove camera moves, remove ordering words,
+               remove anything that only exists over a duration. A still has
+               none of those.
+
+  video_clip — MOTION, CAMERA AND TIME, all three, in words:
+                 * WHAT MOVES, as a verb: the hand sweeps down the column, the
+                   pencil traces the ruled line, the counters slide into two
+                   groups.
+                 * WHAT THE CAMERA DOES: holds steady, drifts slowly right,
+                   pushes in on the working surface, tilts down from face to
+                   page. "Locked-off camera" is a legitimate answer and counts,
+                   but say it.
+                 * WHAT HAPPENS IN WHAT ORDER: begins with..., then...,
+                   continues until..., ends holding on.... The clip has a start
+                   and an end and the description must say which is which.
+
+  animation  — THE BUILD OR THE TRANSFORM, AND THE PERSON PERFORMING IT. Say
+               what accumulates, assembles, grows or changes state, and in what
+               order; and name the visible human whose pose drives it. This is
+               not decoration: the animation branch is pose reenactment
+               (Wan2.2-Animate), it transfers a driving video's motion onto the
+               SUBJECT of the scene's still, and the pipeline REFUSES a scene
+               whose reference image contains no person rather than inventing a
+               body. If the current description has no person in it, put one in
+               - a presenter, a tutor, a demonstrator at the working surface -
+               and let them perform the step.
+
+OUTPUT
+Return the rewritten visual description and NOTHING ELSE. No preamble, no
+explanation, no quotation marks around it, no bullet points, no markdown, no
+label. One paragraph of plain prose. If you have nothing to change, return the
+current description unchanged rather than commentary about it.

@@ -4,6 +4,7 @@ import { api } from "@/lib/api";
 import { unwrapList } from "@/lib/unwrap";
 import type {
   Scene,
+  SceneAdaptationProposal,
   SceneUpdatePayload,
   SceneReorderPayload,
   StoryboardResponse,
@@ -22,6 +23,11 @@ import type {
  * - Regenerate scene (POST /api/v1/projects/{id}/scenes/{sid}/regenerate)
  * - Batch regenerate (POST /api/v1/projects/{id}/scenes/batch-regenerate)
  * - Approve storyboard (POST /api/v1/projects/{id}/scenes/approve?tier=)
+ * - Adapt a scene description to a medium
+ *   (POST /api/v1/projects/{id}/scenes/{sid}/adapt-description) -- WP-64 Task 3.
+ *   Deliberately NOT an SWR mutation: it writes no scene row, so there is
+ *   nothing in the cache to invalidate. Treating it as a mutation would blank
+ *   and refetch the list to reflect a change that has not happened.
  *
  * SWR configuration:
  * - Revalidation on focus: enabled
@@ -88,6 +94,14 @@ interface UseStoryboardReturn {
   regenerateScene: (sceneId: string) => Promise<void>;
   /** Regenerate multiple scenes */
   regenerateScenes: (sceneIds: string[]) => Promise<void>;
+  /**
+   * Ask the storyboard model to rewrite a scene's visual description for a
+   * medium. Returns the PROPOSAL; nothing is saved until the operator saves.
+   */
+  adaptSceneDescription: (
+    sceneId: string,
+    targetMediaType: string
+  ) => Promise<SceneAdaptationProposal>;
 }
 
 export function useStoryboard(
@@ -386,6 +400,37 @@ export function useStoryboard(
    * server's own reason; callers surface it verbatim rather than inventing
    * one.
    */
+  /**
+   * WP-64 Task 3. Propose a rewrite of one scene's visual description for
+   * `targetMediaType`.
+   *
+   * NO CACHE MUTATION, AND THAT IS THE CONTRACT. The endpoint writes no scene
+   * row -- it returns text for the operator to read, edit and save. Wrapping
+   * this in `mutate` would refetch the scene list to show a change that has
+   * not been made, and an optimistic update would put the model's words into
+   * the UI as though they were saved. The modal holds the proposal in local
+   * state until the operator presses Save, which is the ordinary PATCH.
+   *
+   * A 409 (PIPELINE_ALREADY_RUNNING) arrives as an ApiRequestError carrying
+   * the server's own reason; the caller surfaces it verbatim.
+   */
+  const adaptSceneDescription = useCallback(
+    async (
+      sceneId: string,
+      targetMediaType: string
+    ): Promise<SceneAdaptationProposal> => {
+      if (!projectId) {
+        throw new Error("Project ID is required");
+      }
+      const response = await api.post<SceneAdaptationProposal>(
+        `/api/v1/projects/${projectId}/scenes/${sceneId}/adapt-description`,
+        { target_media_type: targetMediaType }
+      );
+      return response.data;
+    },
+    [projectId]
+  );
+
   const approveStoryboard = useCallback(
     async (tier: "prototype" | "production" = "prototype"): Promise<unknown> => {
       const response = await api.post<unknown>(
@@ -404,6 +449,7 @@ export function useStoryboard(
     isLoading,
     error,
     mutate: () => mutate(),
+    adaptSceneDescription,
     approveStoryboard,
     updateScene,
     deleteScene,

@@ -41,9 +41,16 @@ class Prompt(Base):
         PG_ENUM("master", "transcript_refinement", "storyboard_generation",
                 "image_generation", "video_generation", "animation_generation",
                 "tts_voice", "talking_head", "composition", "translation",
+                # WP-64 Task 3, migration 0038. Not a pipeline stage: the Edit
+                # Scene modal's "Adapt description for this medium" action.
+                # The label MUST be listed here as well as in the database
+                # type -- SQLAlchemy validates the value it READS against this
+                # tuple, so a row carrying a label the ORM does not know raises
+                # LookupError on every SELECT of the table, not just on insert.
+                "scene_media_adaptation",
                 name="prompt_type", create_type=False),
         nullable=False,
-        doc="PostgreSQL ENUM prompt_type — 10 values",
+        doc="PostgreSQL ENUM prompt_type — 11 values (WP-64, 0038)",
     )
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)

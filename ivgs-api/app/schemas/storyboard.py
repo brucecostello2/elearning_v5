@@ -93,6 +93,61 @@ class SceneCreate(BaseModel):
         return v
 
 
+class SceneAdaptDescriptionRequest(BaseModel):
+    """Body for POST /projects/{id}/scenes/{sid}/adapt-description. WP-64 Task 3.
+
+    ``target_media_type`` is what the description should be rewritten FOR, and
+    it is deliberately explicit rather than read off the scene row: the operator
+    asks for the adaptation while the dropdown is changed and BEFORE they save,
+    so the row still says what the scene used to be.
+    """
+
+    target_media_type: str = Field(
+        description=(
+            "The medium to write the description for: image, video_clip or "
+            "animation."
+        ),
+    )
+
+    @field_validator("target_media_type")
+    @classmethod
+    def validate_target(cls, v: str) -> str:
+        from app.services.adaptation_service import MEDIA_TYPES
+
+        value = (v or "").strip()
+        if value not in MEDIA_TYPES:
+            raise ValueError(
+                f"Invalid target media type '{v}'. "
+                f"Allowed: {', '.join(MEDIA_TYPES)}."
+            )
+        return value
+
+
+class SceneAdaptDescriptionResponse(BaseModel):
+    """The proposal, returned to the modal. NOT a record of a write.
+
+    ``scene_written`` is in the payload and is always ``False``. It is there so
+    the contract is legible from the response itself rather than from the
+    documentation: this endpoint returns a suggestion for a human to read, edit
+    and save, and the save is the existing PATCH.
+    """
+
+    scene_id: UUID
+    scene_index: int
+    current_media_type: str
+    target_media_type: str
+    current_description: str
+    adapted_description: str
+    prompt_version: int
+    prompt_id: UUID
+    model: str
+    binding: str
+    scene_written: bool = False
+    generated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SceneUpdate(BaseModel):
     """Schema for PATCH /api/v1/projects/{id}/scenes/{sid}.
 

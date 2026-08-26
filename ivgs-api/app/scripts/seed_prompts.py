@@ -2,7 +2,8 @@
 Seed default global prompts from template files.
 
 Reads .j2 files from /ivgs/ivgs-api/seed/default_prompts/ and creates
-global prompt records (project_id=NULL, scene_id=NULL) for all 10 types.
+global prompt records (project_id=NULL, scene_id=NULL) for all 11 types
+(ten pipeline stages plus the WP-64 editor adaptation prompt).
 
 Usage:
     docker-compose exec api python -m app.scripts.seed_prompts
@@ -33,6 +34,13 @@ PROMPT_TEMPLATES = {
     "talking_head": "talking_head.j2",
     "composition": "composition.j2",
     "translation": "translation.j2",
+    # WP-64 Task 3, migration 0038. Not a pipeline stage: the Edit Scene
+    # modal's "Adapt description for this medium" action. It is here so a
+    # freshly seeded database has it, exactly as it has the other ten;
+    # `wp64_publish_adaptation_prompt.py` is how an EXISTING database gets it
+    # (and how it gets subsequent versions), because this script only ever
+    # inserts when there is no active row.
+    "scene_media_adaptation": "scene_media_adaptation.j2",
 }
 
 SEED_DIR = Path(__file__).resolve().parent.parent.parent / "seed" / "default_prompts"
