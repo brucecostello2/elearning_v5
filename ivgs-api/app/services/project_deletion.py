@@ -331,6 +331,26 @@ PROJECT_CATEGORIES: tuple[Category, ...] = (
         ),
     ),
     Category(
+        key="project_gate_decisions",
+        label="Review gate decisions",
+        detail=(
+            "Every storyboard and draft review decision recorded for this "
+            "project: who approved or rejected what, when, and against which "
+            "artefact version."
+        ),
+        # project_gate_decisions_project_id_fkey (WP-62 migration 0035).
+        # FOUND BY THE CATEGORY-MAP TEST, which walks pg_constraint's cascade
+        # closure outward from `projects` and fails by name on any table it
+        # reaches that this map has missed -- exactly as it found
+        # `prompt_tag_associations` on its first run. A new table with an
+        # ON DELETE CASCADE to projects cannot be added without landing here.
+        cascade="cascade",
+        count_sql=(
+            "SELECT count(*) FROM project_gate_decisions "
+            "WHERE project_id = :project_id"
+        ),
+    ),
+    Category(
         key="storage_quotas",
         label="Storage quota records",
         detail="This project's storage accounting row.",
@@ -893,7 +913,39 @@ class ProjectDeletionService:
             # The resume manifest. Written before destruction so a crash after
             # the rows are gone still has somewhere to read the object list.
             "binary_manifest": manifest,
+            # WP-59: written BEFORE destruction, deliberately, so a crash after
+            # the rows are gone still has a manifest to resume from.
+            #
+            # WP-62 Task 5. THE CLOSURE, AND WHAT WAS ACTUALLY MISSING.
+            #
+            # Measured 2026-08-26 across all 14 rows in `audit_log` for
+            # `resource_type='project'`: every one has
+            # `before_payload->>'purge_state' = 'pending'` AND
+            # `after_payload->>'purge_state' = 'complete'`, and every one is
+            # `action_type = 'PROJECT_DELETE_COMPLETED'`. So the closure the
+            # ledger asks for -- COMPLETED updating the ORIGINATING row --
+            # already exists: `_record_completion` UPDATEs this row by its own
+            # id. What did NOT exist is any way to read that without knowing
+            # it: this field says "pending" forever on a finished deletion, one
+            # column away from an after_payload that says "complete", and an
+            # operator querying the obvious field gets the wrong answer on
+            # every historical row.
+            #
+            # The field is NOT rewritten on completion -- a `before_payload` is
+            # a record of the moment before, and editing it would destroy the
+            # evidence that the row was written before destruction began. It is
+            # LABELLED instead, so it can only be read as what it is, and
+            # `deletion_audit_status()` below is the read path that does the
+            # classification once for everyone.
             "purge_state": "pending",
+            "purge_state_note": (
+                "This is the state at the moment BEFORE destruction and it is "
+                "never updated. Read after_payload->>'purge_state' for the "
+                "outcome, and action_type for whether the purge finished at "
+                "all: a row still at PROJECT_DELETE_STARTED died mid-purge and "
+                "is resumable from the binary_manifest above."
+            ),
+            "purge_started_at": datetime.now(timezone.utc).isoformat(),
         }
         await self.db.execute(
             text(
@@ -1155,6 +1207,101 @@ class ProjectDeletionService:
             {"payload": json.dumps(after), "id": audit_id},
         )
         await self.db.commit()
+
+    # ------------------------------------------------------------------
+    # Audit (WP-62 Task 5)
+    # ------------------------------------------------------------------
+
+    async def deletion_audit_status(
+        self, limit: int = 200,
+    ) -> list[dict[str, Any]]:
+        """Every deletion this system has recorded, classified.
+
+        WP-62 Task 5. HOW AN OPERATOR AUDITS THE TEN 2026-08-26 DELETIONS --
+        and every one after them -- without knowing which of four fields to
+        read or how the two payloads relate.
+
+        The classification is derived here, once, rather than being a query an
+        operator has to get right:
+
+          completed          action_type COMPLETED, after_payload purge_state
+                             'complete'. The purge reached every object.
+          completed_partial  COMPLETED, but the purge could not finish some
+                             half of its work: 'files_incomplete',
+                             'redis_incomplete' or both. The rows are gone; the
+                             named objects are not.
+          died_mid_purge     Still at PROJECT_DELETE_STARTED. The rows were
+                             destroyed and `_record_completion` never ran.
+                             RESUMABLE: `resume_pending_deletions(project_id)`
+                             re-runs the purge from the manifest in
+                             before_payload and converges to the same end
+                             state.
+          in_flight          Also STARTED, but written within the last five
+                             minutes. Indistinguishable from died_mid_purge by
+                             the record alone -- a purge that is running writes
+                             nothing until it finishes -- so it is reported as
+                             a separate class rather than as a false alarm. The
+                             fix if it is genuinely stuck is the same resume.
+
+        THE TEN 2026-08-26 DELETIONS ARE HISTORICAL TEST DATA AND ARE NOT
+        MODIFIED by this or by anything else in WP-62. They read `completed`
+        here, which is what they are; their `before_payload.purge_state` still
+        says "pending" and always will, because it is a record of the moment
+        before destruction. Rows written from this package onward carry
+        `purge_state_note` explaining that in place; the ten do not, which is
+        exactly why this read path exists rather than a data fix.
+        """
+        rows = (
+            await self.db.execute(
+                text(
+                    "SELECT id::text, action_type, resource_id::text, timestamp, "
+                    "       before_payload, after_payload, "
+                    "       (now() - timestamp) > interval '5 minutes' AS settled "
+                    "FROM audit_log "
+                    "WHERE resource_type = 'project' "
+                    "AND action_type IN ('PROJECT_DELETE_STARTED', "
+                    "                    'PROJECT_DELETE_COMPLETED') "
+                    "ORDER BY timestamp DESC LIMIT :limit"
+                ),
+                {"limit": limit},
+            )
+        ).fetchall()
+
+        out: list[dict[str, Any]] = []
+        for (
+            audit_id, action_type, project_id, stamp, before, after, settled,
+        ) in rows:
+            before = before or {}
+            after = after or {}
+            purge_state = after.get("purge_state")
+            if action_type == "PROJECT_DELETE_COMPLETED":
+                classification = (
+                    "completed" if purge_state == "complete"
+                    else "completed_partial"
+                )
+            else:
+                classification = "died_mid_purge" if settled else "in_flight"
+
+            out.append(
+                {
+                    "audit_id": audit_id,
+                    "project_id": project_id,
+                    "project_name": before.get("project_name"),
+                    "requested_by": before.get("requested_by"),
+                    "requested_at": stamp.isoformat() if stamp else None,
+                    "action_type": action_type,
+                    "classification": classification,
+                    "purge_state": purge_state,
+                    "completed_at": after.get("completed_at"),
+                    "files_deleted": after.get("files_deleted"),
+                    "files_preserved": after.get("files_preserved"),
+                    "files_failed": after.get("files_failed") or [],
+                    "redis_purge_error": after.get("redis_purge_error"),
+                    "resumable": classification in ("died_mid_purge", "in_flight"),
+                    "objects_in_manifest": len(before.get("binary_manifest") or []),
+                }
+            )
+        return out
 
     # ------------------------------------------------------------------
     # Resume (Task 2: idempotent and resumable)
