@@ -395,3 +395,98 @@ class TestUnknownFieldsProduceARecord:
             URL, json=_bundle(a_field_from_the_future=True), headers=_svc()
         )
         assert r.status_code == 201, r.text
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-03 — the four MBCP runtimes ModelEngine could not name
+# ---------------------------------------------------------------------------
+
+class TestMbcpRuntimeEngines:
+    """0042: `engine=tts` and the three remote talking-head runtimes validate.
+
+    MBCP's export drain was 422'd on `engine` with `input: "tts"`, blocking four
+    live certificates (Kokoro + three XTTS-v2). `magihuman`, `humo` and
+    `wan22_s2v` would have failed identically on certification.
+
+    ⛔ These prove validation ONLY, against a test client. They do NOT prove the
+    live endpoint accepts the value: the enum lands in the API image and nothing
+    takes effect until node-01 is deployed and 0042 runs. See the WP-IVGS-03
+    report §5 — the live half is NOT YET PROVEN.
+    """
+
+    # (engine value, the ivgs_stage MBCP certifies it under)
+    BLOCKED = [
+        ("tts", "tts"),                    # XTTS-v2 + Kokoro, one TtsServerAdapter
+        ("magihuman", "talking_head"),
+        ("humo", "talking_head"),
+        ("wan22_s2v", "talking_head"),
+    ]
+
+    @pytest.mark.parametrize("engine,stage", BLOCKED)
+    async def test_previously_blocked_engine_now_accepted(
+        self, client: AsyncClient, engine: str, stage: str
+    ):
+        r = await client.post(
+            URL,
+            json=_bundle(engine=engine, ivgs_stage=stage),
+            headers=_svc(),
+        )
+        assert r.status_code == 201, r.text
+        assert r.json().get("ad01_id")
+
+    async def test_the_exact_refused_payload_shape_validates(
+        self, client: AsyncClient, db_session
+    ):
+        """The verbatim failure: engine='tts' on a voiceover_tts certificate.
+
+        Asserts the value REACHES THE ROW, not merely that the request 201s —
+        `engine` is supplied-wins (`ad01_ingest.py:195`), and a value that
+        validated but was silently replaced by the stage default (`coqui`) would
+        still be a defect.
+        """
+        name = f"Kokoro-{uuid.uuid4().hex[:8]}"
+        r = await client.post(
+            URL,
+            json=_bundle(model_name=name, ivgs_stage="tts", engine="tts"),
+            headers=_svc(),
+        )
+        assert r.status_code == 201, r.text
+
+        row = (
+            await db_session.execute(select(Model).where(Model.name == name))
+        ).scalar_one()
+        assert row.engine == ModelEngine.TTS
+        assert row.stage == ModelStage.VOICEOVER_TTS
+
+    async def test_no_existing_value_was_removed(self):
+        """§7.1 is RULED: ledger the inconsistency, do not clean it up.
+
+        `coqui`, `kokoro`, `animatediff`, `latentsync` and `sadtalker` name model
+        families rather than runtimes by WP-46's own reasoning. They are in use
+        on live rows — including the Kokoro-82M row rendering today — so 0042
+        removes nothing. This test fails if a later package removes one without
+        the separate ruling that requires.
+        """
+        assert {e.value for e in ModelEngine} == {
+            # the twelve that existed before 0042
+            "vllm", "ollama", "comfyui", "coqui", "kokoro", "cogvideox",
+            "wan21", "animatediff", "latentsync", "sadtalker", "remotion",
+            "ffmpeg",
+            # the four 0042 adds
+            "tts", "magihuman", "humo", "wan22_s2v",
+        }
+
+    async def test_domain_is_still_closed(self, client: AsyncClient):
+        """Extending the enum must not turn `engine` into free text.
+
+        MBCP's side IS free text (`mbcp_core/models/model.py:33`, String(64), no
+        CHECK). IVGS's staying closed is what makes the next unnamed runtime a
+        loud 422 rather than a silently mis-registered row.
+        """
+        r = await client.post(
+            URL,
+            json=_bundle(engine="tts_coqui"),  # MBCP's adapter_key, NOT its engine
+            headers=_svc(),
+        )
+        assert r.status_code == 422
+        assert r.json()["detail"][0]["loc"] == ["body", "engine"]

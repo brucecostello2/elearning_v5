@@ -104,6 +104,27 @@ class ModelEngine(str, enum.Enum):
     SADTALKER = "sadtalker"
     REMOTION = "remotion"
     FFMPEG = "ffmpeg"
+    # WP-IVGS-03 — four MBCP runtimes this enum could not name. MBCP's
+    # ``models.engine`` is free text (``mbcp_core/models/model.py:33``,
+    # ``String(64)``, no CHECK), IVGS's is closed, and nothing keeps the two
+    # domains in step; every value below was measured from where MBCP actually
+    # writes that column, not from ``adapter_key`` (which is ``tts_coqui``,
+    # ``ffmpeg_composition`` etc. and is NOT the engine value).
+    #
+    # ``tts`` is the runtime name, and deliberately not a model family: ONE
+    # adapter (``mbcp_adapters/tts_server.py:56 TtsServerAdapter``, registered
+    # under ``runtime_kind "tts"``) serves BOTH XTTS-v2 and Kokoro, exactly as
+    # ``comfyui`` serves six families. This is WP-46's rule applied, not
+    # relaxed: engine names the RUNTIME. It is the value four live MBCP
+    # certificates were 422'd on.
+    TTS = "tts"
+    # The three remote engine_only talking-head runtimes. MBCP's convention for
+    # these is ``engine == adapter_key`` (measured for ``latentsync`` and
+    # ``wan22_s2v``, inferred for the other two — see the WP-IVGS-03 report
+    # §1.3). Each is its own served engine, not a family on a shared runtime.
+    MAGIHUMAN = "magihuman"
+    HUMO = "humo"
+    WAN22_S2V = "wan22_s2v"
 
 
 class CapabilityDimension(str, enum.Enum):
