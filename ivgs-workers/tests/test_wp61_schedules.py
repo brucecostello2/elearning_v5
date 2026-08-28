@@ -398,38 +398,22 @@ class TestOrphanScheduleIsOnWeeklyAndCannotDelete:
                 f"periodic_tasks.py does not declare."
             )
 
-    def test_get_beat_schedule_is_no_longer_a_SECOND_schedule(self):
-        """It was a drifting copy, and it would have undone both rulings.
+    def test_get_beat_schedule_IS_GONE_not_merely_delegating(self):
+        """WP-IVGS-08 Task 2(c). This used to assert that
+        `periodic_tasks.get_beat_schedule()` returned the ONE real schedule
+        rather than a second hand-written copy -- WP-61's repair of a function
+        that had drifted into a competing statement of the truth.
 
-        `periodic_tasks.get_beat_schedule()` returned a hand-written dict:
-        `orphan-cleanup-daily` with NO kwargs (nightly, able to permanently
-        delete, running the zero-coverage Type-1 scan) and
-        `retention-migration-daily` with NO kwargs (an uncapped dry run). It
-        was uncalled, and being uncalled is the ONLY reason it never did harm:
-        one `app.conf.beat_schedule = get_beat_schedule()` -- which its own
-        docstring suggested -- would have replaced both rulings with their
-        opposites, and every test that reads `celery_app.py` would still pass.
+        The function is now REMOVED. It had zero callers: only its own
+        definition and that test. Deleting it is strictly stronger than the
+        delegation it replaced, because a copy of the schedule cannot drift out
+        of a function that does not exist. This test inverts to hold that line.
         """
-        from tasks.periodic_tasks import get_beat_schedule
-
-        import celery_app as ca
-
-        assert get_beat_schedule() is ca.CELERY_BEAT_SCHEDULE
-
-        # And no dict key naming a schedule entry survives in this module.
-        # Checked as `"name":` -- with the colon -- so the docstring above,
-        # which QUOTES the old entry names as history, does not trip it. The
-        # names must be present as prose and absent as code.
-        src = PERIODIC_SRC.read_text()
-        for entry in ("orphan-cleanup-daily", "retention-migration-daily",
-                      "backup-verification-daily"):
-            assert f'"{entry}":' not in src, (
-                f"the second schedule has reappeared in periodic_tasks.py: "
-                f"{entry}"
-            )
-
-
-@pytest.mark.asyncio
+        import tasks.periodic_tasks as pt
+        assert not hasattr(pt, "get_beat_schedule"), (
+            "re-introducing this function re-opens the second-schedule defect "
+            "WP-61 closed; the schedule lives in celery_app.CELERY_BEAT_SCHEDULE"
+        )
 class TestQuarantineOnlyAndExclusionActuallyBite:
     """The kwargs are not decoration: the service must honour them."""
 

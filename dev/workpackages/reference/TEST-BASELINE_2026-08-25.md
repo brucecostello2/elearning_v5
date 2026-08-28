@@ -16,11 +16,27 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **1395** | **0** | 0 | 0 | 1359 (WP-68) |
-| `ivgs-workers` | **933** | 18 | 48 | 15 | 925 (WP-IVGS-06) |
+| `ivgs-workers` | **930** | 18 | 48 | 15 | 933 (WP-IVGS-07) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2577** | **45** | **63** | **45** | 2563 / 45 (WP-IVGS-06) |
+| **Total** | **2574** | **45** | **63** | **45** | 2577 / 45 (WP-IVGS-07) |
+
+**Updated 2026-08-28 by WP-IVGS-08 — a row moved DOWN, deliberately.** `ivgs-workers`
+933 -> **930**. WP-IVGS-08 Task 2(a) DELETED the dead fallback subsystem
+(`services/fallback_chain.py` + `tests/test_fallback_chain.py`) under an operator ruling, and
+those 9 tests went with it. **Collection confirms the removal exactly: 1018 -> 1009 collected,
+-9, nothing else.** Failed / skipped / errors are byte-identical at 18 / 48 / 15 — no failure
+row moved.
+
+⚠ **AN ARITHMETIC GAP I DID NOT RESOLVE, recorded rather than smoothed.** Collected fell by
+**9** but `passed` fell by only **3**. Failed, skipped and errors did not move, so three of the
+usual buckets cannot absorb the other six. I confirmed the deleted file contributed exactly 9
+PASSING tests (run on the pre-deletion tree), and that `test_wp61_schedules.py` collects 15
+both before and after, so the 1:1 replacement there is clean. **The residual six are
+unexplained.** This document already carries a history of its own totals not summing (see the
+correction below, carried from WP-52 through WP-60); this is another instance and is logged as
+one rather than papered over.
 
 **Updated 2026-08-28 by WP-IVGS-07.** `ivgs-workers` 925 -> **933** (+8 dropped-param and
 release-idempotence tests), `ivgs-scheduler` 46 -> **52** (+6 node-pinning tests), `ivgs-api`

@@ -17,6 +17,20 @@ RUN pip install --no-cache-dir --prefix=/install \
 # --- Runtime stage ---
 FROM python:3.12.8-slim-bookworm
 
+# WP-IVGS-08 Task 3(a). THE IMAGE NOW CARRIES ITS OWN IDENTITY.
+#
+# Measured 2026-08-27 (WP-IVGS-03 S2.4): the running image was v5.27.0-motion
+# while /health said 5.0.0, openapi said 5.1.0 and IVGS_API_TAG said
+# v5.1.14-stream-b -- four answers, none of them right, and nothing inside the
+# image knew which build it was. dev/CLAUDE.md S6 already documents that the
+# env-injected tag is a known liar; this is the fix for the other half.
+ARG IVGS_BUILD_REF=unknown
+ARG IVGS_BUILD_SHA=unknown
+ENV IVGS_BUILD_REF=${IVGS_BUILD_REF} \
+    IVGS_BUILD_SHA=${IVGS_BUILD_SHA}
+LABEL org.opencontainers.image.version="${IVGS_BUILD_REF}" \
+      org.opencontainers.image.revision="${IVGS_BUILD_SHA}"
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq5 curl \
     && rm -rf /var/lib/apt/lists/*

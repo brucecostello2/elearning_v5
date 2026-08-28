@@ -611,3 +611,62 @@ class TestWpIvgs04WhatTheReSentTtsCertificateDoesToTheStore:
         assert existing.engine == ModelEngine.TTS
         assert existing.state == ModelState.APPROVED, "lifecycle state is kept"
         assert existing.enabled is True, "and it stays enabled — still selectable"
+
+
+class TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted:
+    """WP-IVGS-08 Task 4. The column defaulted to an unconditional TRUE, so
+    every ingested model claimed it could be hot-swapped -- vLLM included,
+    which AD-01 §211 says outright cannot be."""
+
+    @pytest.mark.parametrize("engine,expected", [
+        # FIXED at process start -> not loadable.
+        ("vllm", False),      # AD-01 §211, named
+        ("coqui", False),     # measured: servers/coqui/server.py:52-56
+        ("kokoro", False),    # measured: servers/kokoro/server.py:50
+        ("tts", False),       # the runtime name for both TTS engines
+        # LOADABLE.
+        ("comfyui", True),    # AD-01 §91, named
+        ("ollama", True),     # ⛔ AD-01 §91 AND §211 both put Ollama HERE.
+        ("cogvideox", True),
+        ("latentsync", True),
+    ])
+    def test_the_class_boundary(self, engine, expected):
+        from app.api.ad01_ingest import is_dynamically_loadable
+        assert is_dynamically_loadable(ModelEngine(engine)) is expected
+
+    async def test_ingest_writes_it_explicitly_for_a_fixed_engine(
+        self, client: AsyncClient, db_session
+    ):
+        r = await client.post(URL, json=_bundle(
+            ivgs_stage="tts", engine="tts",
+            model_name=f"wpivgs08-fixed-{uuid.uuid4().hex[:6]}"), headers=_svc())
+        assert r.status_code == 201, r.text
+        row = await db_session.get(Model, uuid.UUID(r.json()["ad01_id"]))
+        assert row.dynamically_loadable is False
+
+    async def test_ingest_writes_it_explicitly_for_a_loadable_engine(
+        self, client: AsyncClient, db_session
+    ):
+        r = await client.post(URL, json=_bundle(
+            ivgs_stage="image_generation", engine="comfyui",
+            model_name=f"wpivgs08-load-{uuid.uuid4().hex[:6]}"), headers=_svc())
+        assert r.status_code == 201, r.text
+        row = await db_session.get(Model, uuid.UUID(r.json()["ad01_id"]))
+        assert row.dynamically_loadable is True
+
+    async def test_a_re_cert_that_changes_engine_moves_the_flag_with_it(
+        self, client: AsyncClient, db_session
+    ):
+        """The flag is a property of the ENGINE. A model re-certified onto a
+        fixed engine must stop claiming it is hot-swappable."""
+        name = f"wpivgs08-move-{uuid.uuid4().hex[:6]}"
+        first = await client.post(URL, json=_bundle(
+            ivgs_stage="image_generation", engine="comfyui", model_name=name),
+            headers=_svc())
+        mid = await db_session.get(Model, uuid.UUID(first.json()["ad01_id"]))
+        assert mid.dynamically_loadable is True
+
+        await client.post(URL, json=_bundle(
+            ivgs_stage="tts", engine="tts", model_name=name), headers=_svc())
+        await db_session.refresh(mid)
+        assert mid.dynamically_loadable is False

@@ -77,10 +77,16 @@ SCRIPTS_DIR = os.environ.get("SCRIPTS_DIR", "/scripts")
 
 # Postgres connection (sync — Celery doesn't play well with async DB).
 # DSN env var matches the existing IVGS pattern.
-DB_DSN = os.environ.get(
-    "POSTGRES_DSN_SYNC",
-    "postgresql://ivgs:Costello0359@postgres:5432/ivgs",
-)
+_POSTGRES_DSN_VAR = "POSTGRES_DSN_SYNC"
+DB_DSN = os.environ.get(_POSTGRES_DSN_VAR, "").strip()
+if not DB_DSN:
+    # WP-IVGS-08 Task 2(d). Was a hardcoded DSN carrying the database password.
+    # See `celery_app._require` for why this refuses rather than defaulting.
+    raise RuntimeError(
+        f"{_POSTGRES_DSN_VAR} is not set. The backup worker will not start "
+        f"without an explicit database DSN: it used to fall back to a "
+        f"hardcoded one, which could silently back up the wrong database."
+    )
 
 
 # ---------------------------------------------------------------------------

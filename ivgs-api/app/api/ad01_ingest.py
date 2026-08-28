@@ -72,6 +72,43 @@ _STAGE_DEFAULT_ENGINE: dict[ModelStage, ModelEngine] = {
 }
 
 
+# WP-IVGS-08 Task 4. Engines that serve ONE model fixed at process start.
+#
+# The column defaults to TRUE, so every ingested model claimed it could be
+# hot-swapped -- including vLLM, which AD-01 S211 states in as many words
+# cannot: "vLLM serves a fixed model per process and cannot hot-swap arbitrary
+# large models at request time". The planner uses this flag to decide what it
+# may select, so a wrong TRUE lets it pick a model the node is not serving.
+#
+# ⛔ THE WORK ORDER'S CLASS LIST WAS WRONG ABOUT OLLAMA, and it asked to be
+# checked rather than assumed. AD-01 puts Ollama in the LOADABLE class twice --
+# S91 "(ComfyUI checkpoint, Ollama)" and S211 "ComfyUI checkpoints and Ollama
+# models can be loaded/unloaded on demand". Ollama is NOT fixed. Only vLLM is,
+# among the engines AD-01 names.
+#
+# THE TTS ENGINES ARE HERE ON MEASUREMENT, NOT ON AD-01'S PROSE, and that is
+# flagged in the report rather than buried: `servers/coqui/server.py:52-56`
+# builds `TTS(XTTS_MODEL)` inside `load()` at container start, and
+# `servers/kokoro/server.py:50` does the same with `KOKORO_VOICE`. One model per
+# process, fixed at init -- AD-08 S5's reasoning exactly, applied to engines
+# AD-01's sentence predates. `tts` is the runtime name for both.
+#
+# Everything absent from this set is loadable, which is the safe direction: a
+# model wrongly marked loadable is a planner error, while one wrongly marked
+# fixed is merely never chosen.
+_FIXED_AT_INIT_ENGINES: frozenset[ModelEngine] = frozenset({
+    ModelEngine.VLLM,
+    ModelEngine.COQUI,
+    ModelEngine.KOKORO,
+    ModelEngine.TTS,
+})
+
+
+def is_dynamically_loadable(engine: ModelEngine) -> bool:
+    """Whether ``engine`` can load/unload a model on demand (AD-01 S211)."""
+    return engine not in _FIXED_AT_INIT_ENGINES
+
+
 @ad01_router.post(
     "/certified-models",
     response_model=ExportReceiptOut,
@@ -171,6 +208,9 @@ async def receive_certified_model(
             display_name=bundle.model_name,  # AD-01 editorial; seed with name
             stage=stage,
             engine=engine,  # supplied (SSOT) or stage-derived (recorded gap)
+            # WP-IVGS-08 Task 4: set EXPLICITLY, never left to the column
+            # default, which was an unconditional TRUE.
+            dynamically_loadable=is_dynamically_loadable(engine),
             tier=ModelTier.BOTH,  # MBCP sends weight_tier, not the model tier
             state=ModelState.CANDIDATE,
             weights_ref=bundle.bundle_manifest_url,  # signed manifest endpoint
@@ -194,6 +234,10 @@ async def receive_certified_model(
         # operator's editorial correction of engine/VRAM/license.
         if bundle.engine is not None:
             model.engine = bundle.engine
+            # The flag is a property of the ENGINE, so it must follow an engine
+            # change on re-certification -- otherwise a model moved from comfyui
+            # to a fixed engine keeps claiming it is hot-swappable.
+            model.dynamically_loadable = is_dynamically_loadable(bundle.engine)
         model.weights_ref = bundle.bundle_manifest_url
         model.weights_checksum = bundle.bundle_digest
         if bundle.measured_vram_gb is not None:

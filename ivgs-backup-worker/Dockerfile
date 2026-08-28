@@ -32,6 +32,14 @@ RUN pip install --no-cache-dir --prefix=/install \
 # --- Runtime stage ---
 FROM python:3.12.8-slim-bookworm
 
+# WP-IVGS-08 Task 3(a). No image in this fleet should be unidentifiable.
+ARG IVGS_BUILD_REF=unknown
+ARG IVGS_BUILD_SHA=unknown
+ENV IVGS_BUILD_REF=${IVGS_BUILD_REF} \
+    IVGS_BUILD_SHA=${IVGS_BUILD_SHA}
+LABEL org.opencontainers.image.version="${IVGS_BUILD_REF}" \
+      org.opencontainers.image.revision="${IVGS_BUILD_SHA}"
+
 # Phase 14 backup tooling:
 #   docker.io  — invoke docker run/exec for verify_backup.sh's temp postgres
 #   gnupg      — gpg for encrypt/decrypt operations

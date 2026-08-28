@@ -44,43 +44,6 @@ logger = structlog.get_logger(__name__)
 # Celery Beat Schedule Configuration
 # ---------------------------------------------------------------------------
 
-def get_beat_schedule() -> dict[str, dict[str, Any]]:
-    """The live Celery Beat schedule. WP-61 Task 7.
-
-    **THIS FUNCTION USED TO BE A SECOND, DRIFTING COPY OF THE SCHEDULE, AND IT
-    IS EXACTLY THE DEFECT THIS PACKAGE'S TASKS 6 AND 7 ARE ABOUT.**
-
-    It returned a hand-written dict of six entries. Nothing called it -- the
-    real schedule is ``celery_app.CELERY_BEAT_SCHEDULE``, assigned at
-    ``celery_app.py`` under ``app.conf.beat_schedule`` -- and being uncalled is
-    the only reason it never did any harm. What it contained, read on
-    2026-08-26:
-
-        "orphan-cleanup-daily"     -> run_orphan_cleanup, DAILY at 02:00,
-                                      with NO kwargs
-        "retention-migration-daily"-> run_retention_migration, NO kwargs,
-                                      hour driven by a RETENTION_JOB_CRON env
-                                      var nothing sets
-
-    Both rulings this package implements live in kwargs. An orphan entry with
-    no kwargs is a nightly sweep that can reach permanent deletion and that
-    runs the zero-coverage Type-1 scan; a retention entry with no kwargs is an
-    uncapped dry run. So one `app.conf.beat_schedule = get_beat_schedule()` --
-    the very line this docstring used to suggest -- would have silently
-    replaced both rulings with their opposites, and every test that reads
-    `celery_app.py` would still have passed.
-
-    It now returns the one real schedule. There is no second statement of what
-    somebody believed the schedule was.
-
-    The import is function-level because ``celery_app`` imports this module's
-    tasks; a module-level import would be circular.
-    """
-    from celery_app import CELERY_BEAT_SCHEDULE
-
-    return CELERY_BEAT_SCHEDULE
-
-
 # ---------------------------------------------------------------------------
 # DLQ Processing Task
 # ---------------------------------------------------------------------------

@@ -34,10 +34,36 @@ BROKER_URL = os.environ.get(
     "IVGS_CELERY_BROKER_URL",
     "redis://redis:6379/0",
 )
-RESULT_BACKEND = os.environ.get(
-    "IVGS_CELERY_RESULT_BACKEND",
-    "db+postgresql+psycopg2://ivgs:Costello0359@postgres:5432/ivgs",
-)
+def _require(var: str, what: str) -> str:
+    """Read a required connection string, or REFUSE AT IMPORT.
+
+    WP-IVGS-08 Task 2(d). Both this and `backup_tasks.DB_DSN` carried a
+    hardcoded DSN **including the database password** as their `os.environ.get`
+    default. Two defects in one line:
+
+      1. A live credential in tracked source. It is in git history and stays
+         there; it is dead only once the password is rotated, which is an
+         operator action recorded in the register.
+      2. A silent fallback. A backup worker started with no configuration did
+         not fail -- it quietly connected to whatever `postgres:5432` resolved
+         to, which is precisely how a backup can appear healthy while writing
+         the results of the wrong database.
+
+    Refusing at import is deliberate: the container dies on start and the
+    operator sees it, rather than the first scheduled backup failing at 02:00.
+    """
+    value = os.environ.get(var, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"{var} is not set. The backup worker will not start without an "
+            f"explicit {what}: it used to fall back to a hardcoded DSN, which "
+            f"could silently target the wrong database. Set {var} in the "
+            f"node's env file."
+        )
+    return value
+
+
+RESULT_BACKEND = _require("IVGS_CELERY_RESULT_BACKEND", "result backend DSN")
 
 # Task hard timeout — full DB backup should complete in well under this on
 # the small DB we have today.  Tunable via env for larger DBs in future.
