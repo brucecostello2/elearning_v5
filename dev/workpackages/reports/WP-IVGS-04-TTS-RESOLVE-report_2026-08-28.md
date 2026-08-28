@@ -1013,8 +1013,20 @@ the re-send is scheduled, not after.** Run §8.3's block plus this, on node-01:
 ```bash
 # ===== NODE-01  192.168.1.90  =====  green-light check, run BEFORE scheduling the re-send
 ( set -u
-  echo "--- 1. every node on the new image ---"
+  echo "--- 1. every node ALIVE on the bus (this does NOT prove the image) ---"
   docker exec ivgs-celery-default celery -A celery_app inspect ping --timeout 10 2>&1 | grep -cE '^->'
+  echo "--- 1b. and every node on the INTENDED image (this is the real check) ---"
+  # Corrected 2026-08-28, operator-accepted: 1 was labelled "every node on the
+  # new image" and `inspect ping` proves only that a worker answers. A node on
+  # a stale image pings exactly the same. Never reuse 1 as an image check.
+  WANT="${IVGS_EXPECT_TAG:?set IVGS_EXPECT_TAG to the tag this deploy intends}"
+  docker ps --format '{{.Names}} {{.Image}}' | grep -E 'fastapi|celery' |
+    awk -v w="$WANT" '{print ($2 ~ w ? "  OK   " : "  WRONG ") $0}'
+  for H in 192.168.1.91 192.168.1.92 192.168.1.93; do
+    ssh root@$H "docker ps --format '{{.Names}} {{.Image}}'" 2>/dev/null |
+      grep -iE 'celery-node|cogvideox-worker' |
+      awk -v w="$WANT" '{print ($2 ~ w ? "  OK   " : "  WRONG ") $0}'
+  done
   echo "--- 2. the enum names tts in production ---"
   docker exec ivgs-postgres psql -U ivgs -d ivgs -tAc \
     "select count(*) from pg_enum where enumtypid='model_engine'::regtype and enumlabel='tts';"

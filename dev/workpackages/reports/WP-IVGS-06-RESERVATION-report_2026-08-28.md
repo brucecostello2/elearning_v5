@@ -332,7 +332,15 @@ failure is logged loudly rather than swallowed.** The counter would otherwise ha
 forever — indistinguishable from "fail-open never happened", which is exactly the blindness it
 exists to remove.
 
-### 6.3 ⛔ OPERATOR BLOCK — rebuild `ivgs-coqui` (Task 3's other half). NOT RUN.
+### 6.3 ⛔ OPERATOR BLOCK — rebuild `ivgs-coqui`. **DEFERRED by ruling, 2026-08-28.**
+
+> **OPERATOR RULING: DEFER. The `ivgs-coqui` rebuild does not run yet.** The five parameters
+> do nothing today, but `accepts_params={"speed"}` makes the surface honest about it, so
+> nobody is offered a control that lies. **This block runs when something needs those
+> parameters, not before.**
+>
+> D-7 therefore stays HALF closed deliberately, not by omission. The block below is banked
+> against that day and its step 4 remains the acceptance test.
 
 The source is committed; the image is not built. This is the half the order told me to stop at.
 
@@ -394,7 +402,7 @@ being discarded. That negative is the control for this positive.
 | id | What | Status |
 |---|---|---|
 | **D-6** | Inline `speaker_wav` bytes never transmitted | ✅ **CLOSED** — materialised to shared storage; LTAS-verified |
-| **D-7** | Five XTTS sampling params accepted and dropped | ⚠ **HALF** — engine source patched, image not rebuilt (§6.3); IVGS capability corrected |
+| **D-7** | Five XTTS sampling params accepted and dropped | ⚠ **HALF, BY RULING (2026-08-28): DEFERRED.** Engine source patched, image deliberately **not** rebuilt; `accepts_params={"speed"}` keeps the surface honest meanwhile. §6.3 runs when something needs those parameters |
 | **D-8** | `/schedule` 500 → every GPU stage unreserved | ✅ **CLOSED** — and metered |
 | **D-9** | `gpu_reservation_released` fires **twice** for one task | ⛔ **NEW** — release is idempotent (404 accepted) so it is not currently harmful; it means two paths both release and neither knows about the other. WP-08 territory |
 | **D-10** | The scheduler reserved **node-03** while the work executed on **node-04**. Nothing binds execution to the assigned node | ⛔ **NEW** — the reservation is accounting, not placement. `binding.py` calls per-node endpoint maps "an AD-01.9 scheduler-integration follow-on"; **this is that gap, and it makes reservation accounting fleet-wide rather than per-GPU** |
