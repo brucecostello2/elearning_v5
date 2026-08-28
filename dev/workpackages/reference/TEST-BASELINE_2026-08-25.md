@@ -15,12 +15,28 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1406** | **0** | 0 | 0 | 1395 (WP-IVGS-07) |
+| `ivgs-api` | **1410** | **0** | 0 | 0 | 1406 (WP-IVGS-08 baseline; +4, see below) |
 | `ivgs-workers` | **930** | 18 | 48 | 15 | **939** (corrected; WP-IVGS-07's 933 was wrong) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
+| `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2585** | **45** | **63** | **45** | 2574 / 45 (WP-IVGS-08 pre-api) |
+| **Total** | **2613** | **45** | **65** | **45** | 2585 / 45 (WP-IVGS-08) |
+
+**Updated 2026-08-28 by WP-IVGS-09.** Two rows move and one is new.
+
+⛔ **`ivgs-api` 1406 → 1410, and the four were already in the tree.** They are
+`ivgs-api/tests/test_wpivgs08_selection_audit.py` — added by WP-IVGS-08's HELD
+commits, after this document was last measured. **WP-IVGS-09 added no API
+tests.** Counted here so the next package does not read the +4 as unexplained.
+
+**`ivgs-motion-renderer` is a NEW TREE**, added to `pyproject.toml`'s `testpaths`
+and deliberately NOT to `pythonpath`: `ivgs-scheduler` is already on the path and
+ships its own `main.py`, so a bare `import main` would resolve to whichever tree
+pytest reached first. The renderer suite loads its module by explicit file
+location. **2 of its 26 skip** where `ffmpeg` is not installed on the host — they
+run inside the image, and a third, structural, test covers the same defect
+everywhere.
 
 **Updated 2026-08-28 by WP-IVGS-08 — a row moved DOWN, deliberately.** `ivgs-workers`
 933 -> **930**. WP-IVGS-08 Task 2(a) DELETED the dead fallback subsystem
@@ -289,6 +305,24 @@ PGUSER=$(grep '^POSTGRES_USER=' ivgs-infra/.env | cut -d= -f2-)
 
 export TEST_DATABASE_URL="postgresql+asyncpg://${PGUSER}:${PGPW}@192.168.1.90:5432/ivgs_reconciliation_test"
 export BACKUP_TEST_DSN="postgresql://${PGUSER}:${PGPW}@192.168.1.90:5432/ivgs_reconciliation_test"
+
+# WP-IVGS-09 (RC-J8). ⛔ THE BACKUP-WORKER SUITE NEEDS THREE MORE, AND WITHOUT
+# THEM IT IS 4 FAILED, NOT 4 PASSED. WP-IVGS-08 Task 2(d) made
+# `ivgs-backup-worker/celery_app.py:66` refuse AT IMPORT when the result-backend
+# DSN is unset — deliberately, because the old hardcoded fallback could silently
+# target the wrong database. The suite imports `tasks.backup_tasks`, which
+# imports `celery_app`, so the refusal reaches pytest as four collection-time
+# failures:
+#
+#   RuntimeError: IVGS_CELERY_RESULT_BACKEND is not set. The backup worker will
+#   not start without an explicit result backend DSN…
+#
+# Supplied the way compose does — `ivgs-infra/docker-compose.override.node01.yml:87-88`
+# — but pointed at the TEST database, never at `ivgs`.
+export IVGS_CELERY_BROKER_URL="redis://192.168.1.90:6379/0"
+export IVGS_CELERY_RESULT_BACKEND="db+postgresql+psycopg2://${PGUSER}:${PGPW}@192.168.1.90:5432/ivgs_reconciliation_test"
+export POSTGRES_DSN_SYNC="$BACKUP_TEST_DSN"
+
 unset PGPW PGUSER
 ```
 
@@ -600,7 +634,7 @@ passes and 19 diagnosed failures.
 ## 5. `ivgs-backup-worker` — 4 passed, 0 failed
 
 ```bash
-.venv/bin/python -m pytest ivgs-backup-worker/tests   # needs BACKUP_TEST_DSN, §1
+.venv/bin/python -m pytest ivgs-backup-worker/tests   # needs ALL FIVE variables in §1
 ```
 
 Runtime 0.3s. **No remaining failures.**
