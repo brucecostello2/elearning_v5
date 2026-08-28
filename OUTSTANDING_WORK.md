@@ -111,7 +111,16 @@ not render the head. B5's "Stage 8 must bind via the factory" was misframed; the
 belongs at Stage 6. Recorded here so B5 is not lost.)*
 
 ## P1.0a — Stage-6 SadTalker fallback is not selection-driven *(new, WP-02-ORCH6 finding F2, 2026-08-15)*
-**Status:** OPEN — blocks a true cross-engine GUI swap at Stage 6.
+
+**⚖ RULING (operator ruling 2026-08-28): CLOSED — superseded by AD-01 selection.** The row asked whether
+the Stage-6 SadTalker fallback is selection-driven work. It is not work: AD-01 selection
+is the mechanism that chooses a Stage-6 engine, and a hardcoded fallback inside a provider
+is not a second opinion it is entitled to. **One cross-check carries forward, and only one:
+at M3.3-R3 (activities realized), confirm that NO HARDCODED SadTalker FALLBACK SURVIVES the
+stage-6 activity realization.** That is a line on the M3.3-R3 checklist, not a reopening of
+this row — see §RC-I.1.
+
+**Status:** CLOSED *(was: OPEN — blocks a true cross-engine GUI swap at Stage 6.)*
 `ivgs-workers/providers/talking_head.py` `SadTalkerProvider.render` raises
 `ValueError("sadtalker provider requires scene image and voiceover audio")` unless a
 per-scene still is supplied. Stage 6 renders the presenter from the reference clip against
@@ -129,7 +138,14 @@ Three mutually incompatible SadTalker contracts now exist: the live task's
 second. **Which one node-04 actually implements is unknown and should be established first.**
 
 ## P1.0b — Every GPU node except node-01 names a database driver that is not installed; this blocks the entire AD-01 binding on the fleet *(new, WP-02 check-6b deployment, 2026-08-15)*
-**Status:** OPEN — **node-04 fixed; nodes 02, 03, 05, 06 still broken.** Severity proposed P1; operator to confirm.
+
+**⚖ RULING (operator ruling 2026-08-28): CLOSED.** WP-IVGS-08 Task 8 settled it by measurement: **nine
+consumers connect; the engines are not consumers.** A vLLM server is not a Celery worker and
+does not open a database session, so "every GPU node names a driver that is not installed"
+was true of a set that does not include the engines. The nodes that DO bind (the Celery
+workers on 02/03/04) use `+asyncpg` and connect.
+
+**Status:** CLOSED *(was: OPEN — **node-04 fixed; nodes 02, 03, 05, 06 still broken.** Severity proposed P1; operator to confirm.)*
 
 **The defect.** `DATABASE_URL` in the per-node compose files:
 
@@ -288,7 +304,12 @@ The §6.2 checkpoint/resume guarantee is **fictional**. This is the only stated 
 **Scope/action:** ~~fix the signature at 3 sites; add `finally`-block releases at the other 5~~ — both done 2026-08-23 (the "other 5" were in fact 4, and already released via `IVGSBaseTask`; the real gap was the two GPU render stages). **Remaining:** decide explicitly whether reservation failure should be fatal (AD-05 O-3, after P2.6), and the 404-as-success behaviour above. Pairs with P2.29.
 
 ## P1.4 — M1-QA: formal Stage-8 validation + visual acceptance *(new)*
-**Status:** **(a), (b), (c) all DONE 2026-08-15 by WP-03-STAGE8-VALIDATION.** Report:
+
+**⚖ RULING (operator ruling 2026-08-28): ARCHIVED — superseded by AD-03 §10.** M1-QA's remaining
+acceptance criteria are AD-03 §10's criteria now; keeping a second list of them is how two
+definitions of "acceptable" come to disagree. No work is dropped — it moved.
+
+**Status:** ARCHIVED *(was: **(a), (b), (c) all DONE 2026-08-15 by WP-03-STAGE8-VALIDATION.** Report:)*
 `dev/workpackages/reports/WP-03-STAGE8-VALIDATION-report_2026-08-15.md`.
 
 - **(a) Operator visual QA — DONE. Both the 1080p and the 4K finals PASS on picture
@@ -353,7 +374,12 @@ the message predicate `_is_face_detection_failure` in `talking_head_task.py` wit
 typed error.** Recorded so the compromise is not forgotten once the constraint lifts.
 
 ## P1.4f — Model Store hygiene items *(new, 2026-08-15; record only, do not act)*
-**Status:** OPEN, recorded at operator instruction.
+
+**⚖ RULING (operator ruling 2026-08-28): ARCHIVED.** The row is marked *"record only, do not act"* and
+has been since 2026-08-15. **Record-only IS archive.** A row that may never be acted on does
+not belong in an open backlog; it belongs in the record, which is where it now is.
+
+**Status:** ARCHIVED *(was: OPEN, recorded at operator instruction.)*
 
 1. **`latentsync-alt` must never become a production default.** A deliberate test model
    created to debug the WP-02 check-6b GUI swap — not an error. **Once WP-02 is closed,
@@ -501,7 +527,12 @@ held under P1.4d and P1.4f.4. The figures in the directive are provisional pendi
 30-second measurement round — **build against the contract shape, not those numbers.**
 
 ## P1.4h — IVGS-0.6: animation scenes render a still image *(new, operator ruling 2026-08-22)*
-**Status:** OPEN, **numbered but not yet in any work order.**
+
+**⚖ RULING (operator ruling 2026-08-28): JOINS THE RUN-2 SWEEP.** Whether an animation scene still
+renders a still is a question RUN-2 answers by observation, not one to be argued from code.
+Gated on **P2.46**, the bounded sweep immediately after RUN-2.
+
+**Status:** GATED — RUN-2 sweep (P2.46) *(was: OPEN, **numbered but not yet in any work order.**)*
 
 AD-07 §4.6 records that IVGS animation scenes render a still image rather than motion,
 and calls it "defect IVGS-0.5". **That number is already taken** — IVGS-0.5 in both
@@ -1032,7 +1063,11 @@ rollback source for both. Three copies now exist where there were two.
 > this package - but it is a live trap for anyone who banks from node-02 again.
 
 ## P1.4q — A failed render job strands its project in a non-retriggerable state *(new, 2026-08-23, WP-37 record-only)*
-**Status:** OPEN. **Record only** - no code was written for this.
+
+**⚖ RULING (operator ruling 2026-08-28): JOINS THE RUN-2 SWEEP.** Whether a failed render still strands
+its project non-retriggerable is a question RUN-2 exercises. Gated on **P2.46**.
+
+**Status:** GATED — RUN-2 sweep (P2.46) *(was: OPEN. **Record only** - no code was written for this.)*
 
 **Observed twice on 2026-08-23**, both times during the first end-to-end run. A render
 job fails terminally; the project is left in whatever in-progress state it had reached
@@ -1054,7 +1089,13 @@ project: it says "refining the transcript" about a project where nothing is runn
 not a patch, which is why it is recorded rather than fixed here.
 
 ## P1.4r — Frontend: unguarded `.split()` on the project detail page *(new, 2026-08-23, WP-37 record-only)*
-**Status:** OPEN. **Record only.** Added to the frontend fix list; not fixed in WP-37.
+
+**⚖ RULING (operator ruling 2026-08-28): FOLDS INTO THE FRONTEND REBUILD.** Not a standalone row: the
+guard is fixed in the same rebuild that lifts the Media Type dropdown — **WP-IVGS-09 Task 3**,
+which is itself gated on Task 2's draft existing. If the dropdown does not lift, this does not
+ship either, and the row returns here rather than half-landing.
+
+**Status:** GATED — WP-IVGS-09 Task 3 (frontend rebuild) *(was: OPEN. **Record only.** Added to the frontend fix list; not fixed in WP-37.)*
 
 Console error on `/projects/[id]`, in the `page-*.js` chunk:
 
@@ -1075,20 +1116,53 @@ Backup tasks return `{'status':'failed', 'returncode':N}` instead of raising, so
 **Scope/action:** raise on non-zero return; `_update_record_failed` sets `completed_at` + `error_message` before raising; record coverage for all invocation paths; write `verified_at` not `completed_at`; frontend duration sanity clamp; real row counts or drop the check. Also investigate why the worker path takes 64 s for work the CLI does in under 1 s. **Agent plan WP-01.**
 
 ## P1.5a — `verify_backup.sh` has never been able to pass *(new 2026-08-14)*
-**Status:** OPEN.
+
+**⚖ RULING (operator ruling 2026-08-28): CLOSED — STALE.** The row describes `verify_backup.sh` reading
+the staging directory and spawning a 2 GB tmpfs. Neither is true: `dev/CLAUDE.md` §8 records
+both fixed on 2026-08-14 (bare-filename checksums; PGDATA on disk, `--memory=512m`), gated
+both ways — passes on a known-good backup, fails on a byte-corrupted copy — and the script is
+scheduled again at 05:00.
+
+**Status:** CLOSED — stale *(was: OPEN.)*
 It reads the **staging** directory (`/tmp/ivgs-backup/<date>`), not the NAS. Compounding this, `backup.sh` writes the checksum file with the staging path embedded, so `sha256sum -c` can never succeed from the NAS. It also spawns a sibling Postgres container with a 2 GB tmpfs via the mounted Docker socket — affordable on 31 GB, and it was never affordable when the box was thought to be 16 GB.
 **Scope/action:** point at the NAS directory; write checksums with bare filenames; use real row counts. **Do not run it until fixed.** Agent plan **WP-20**.
 
 ## P1.5b — No alert on backup staleness *(new 2026-08-14)*
-**Status:** OPEN. `BackupFailed` fires on failure. Nothing fires when a backup simply does not happen — which is the actual failure mode, and was invisible for 75 days because of P1.5.
+
+**⚖ RULING (operator ruling 2026-08-28): CLOSED ON EVIDENCE.** Probed in WP-IVGS-09 Task 0(b). The
+alert exists, is loaded, and is healthy:
+
+* **Rule text:** `ivgs-infra/configs/prometheus/alert_rules.yml:190` — `alert: BackupStale`,
+  `expr: time() - ivgs_backup_last_timestamp{backup_type!="physical_base_backup"} > 93600`
+  (26 hours; severity critical). A second rule, `BaseBackupStale` (`:257`, WP-59 Task 8),
+  covers the weekly physical base backup at its own threshold.
+* **Live:** `GET :9090/api/v1/rules` on node-01, 2026-08-28 —
+  `ivgs_critical_alerts | BackupStale | state=inactive | health=ok`. Loaded and evaluating,
+  not merely present in a file.
+* An `inhibit_rule` in `alertmanager.yml:63-68` stops `BackupStale` and `BackupFailed`
+  double-paging for the same `backup_type`.
+
+**Status:** CLOSED — evidence in WP-IVGS-09 §0(b) *(was: OPEN. `BackupFailed` fires on failure. Nothing fires when a backup simply does not happen — which is the actual failure mode, and was invisible for 75 days because of P1.5.)*
 **Scope/action:** alert on the age of the newest `full_database` record, beyond ~26 hours. Agent plan **WP-21**.
 
 ## P1.6 — Defect #4: `Prompt.prompt_type` ENUM-as-String *(carried, v3.1 P1.1)*
-**Status:** OPEN (latent — prompt library empty). Will 500 on first INSERT with `DatatypeMismatchError`; architecturally identical to the fixed Defect #3 (`User.role`). **Blocks P1.7.**
+
+**⚖ RULING (operator ruling 2026-08-28): ACCEPTED AS `String` — ARCHIVED.** The schema is not changing.
+**Validation lives in code**, not in a PostgreSQL type. Consequence, stated rather than left
+implicit: **P1.7 is no longer blocked by this row** — its "hard-blocked by P1.6" line is
+superseded by this ruling.
+
+**Status:** ARCHIVED — accepted as String *(was: OPEN (latent — prompt library empty). Will 500 on first INSERT with `DatatypeMismatchError`; architecturally identical to the fixed Defect #3 (`User.role`). **Blocks P1.7.**)*
 **Scope/action:** `app/models/prompt.py:40-43` — swap `String(32)` for `PG_ENUM` mirroring migration 0001's 10 values; the `.cast(String)` workarounds in `prompt_service.py:61,77` become dead. Build, CLI-verify an INSERT. ~45–60 min.
 
 ## P1.7 — Prompt-management 9-step browser smoke *(carried, v3.1 P1.2)*
-**Status:** OPEN; code deployed in v5.1.8, never functionally smoke-tested. **Hard-blocked by P1.6.**
+
+**⚖ RULING (operator ruling 2026-08-28): GATED — "before first production content render".** It is a
+smoke test of a surface an author uses, so it gates the first real course, not a milestone.
+Its old blocker P1.6 is archived-as-accepted above, so nothing stands in front of it but the
+gate.
+
+**Status:** GATED — before first production content render *(was: OPEN; code deployed in v5.1.8, never functionally smoke-tested. **Hard-blocked by P1.6.**)*
 **Scope/action:** seed 10 system-tier prompts → list → filter → detail → project-tier override → effective resolution → edit → delete → fallback. ~30–45 min once unblocked.
 
 ## P1.8 — GPU Fleet acceptance bullets (~18 of 24 deferred) *(carried, v3.1 P1.3)*
@@ -1184,13 +1258,40 @@ worker traffic.
 detour mid-verification.)*
 
 ## P2.1 — 1,957 lines of orphaned operational machinery *(new, code audit; **decide before wiring**)*
-**Status:** OPEN — **this is the WS-T fork in the road.**
+
+**⚖ RULING (operator ruling 2026-08-28): THE LOST TEXT IS FOUND AND RESTORED — no REMOVE-per-A1.**
+The row's title says *"decide before wiring"* and §RC-H3 asked *decided what?*. WP-IVGS-09
+Task 0(b) grepped the reports and specs; **the decision exists in three places and agrees
+with itself**:
+
+* `docs/adr/ADR-005-durable-execution-engine.md:1-6` — **Status: Accepted**, 2026-08-14,
+  decider Bruce Costello. The WS-T fork was taken, in favour of Temporal.
+* `docs/IVGS_v5_Addendum_AD-05_Orchestration_Migration.md:219-221` — `RetryEngine`,
+  `DLQService` and (then) `FallbackChain` sit in the **Replace/Delete** column of the binding
+  §8 scope boundary.
+* `docs/IVGS_v5_Addendum_AD-05_Orchestration_Migration.md:287` — migration step **8**:
+  *"After a clean verified run, delete the Celery coordinator and the ~1,957 orphaned lines;
+  retire ledger P0.1, P1.1–P1.2, P2.1–P2.3 together."*
+
+**So the decision is: DELETE, at AD-05 migration step 8, with `FallbackChain`'s L1→L4 policy
+extracted first** (AD-05 §8's named special case). Two of the three modules are already gone —
+WP-IVGS-08 Task 2(a) deleted `services/fallback_chain.py` under an operator ruling. **Gate:
+AD-05 step 8 (post-cutover), i.e. after M3.3-R5.**
+
+**Status:** GATED — AD-05 migration step 8 (post-cutover) *(was: OPEN — **this is the WS-T fork in the road.**)*
 `RetryEngine` (461), `DLQService` (754), `FallbackChain` (742) are **imported by no stage task**. They reference each other only in docstrings describing an integration that was never built (`dlq_service.py:18`, `fallback_chain.py:23`). Their internal lazy imports use a package that does not exist anywhere in the repo — there is no `ivgs_workers/` directory and nothing in `pyproject.toml` creates the alias — e.g. `fallback_chain.py:459`, `periodic_tasks.py:166`. **14 such imports.** Being inside function bodies they don't break registration; they would `ModuleNotFoundError` on first execution. This is why `periodic_tasks.py` is dormant: it cannot run.
 Meanwhile actual retry behaviour is ad-hoc `self.retry()` with hand-rolled `retry_config` lookups (`stage1_transcript.py:678-694`, `stage2_storyboard.py:702-718`), and Table 6-4's backoff sequences are re-encoded as decorator constants across eight files.
 **Scope/action:** **Do not wire these in pending the WS-T decision** — 2–4 sessions of work a durable engine makes redundant. **Do** extract `FallbackChain`'s L1→L4 *policy* (needed either way; it is domain logic). Under WS-T these 1,957 lines are deleted outright.
 
 ## P2.2 — Test coverage is inverted *(new, code audit)*
-**Status:** OPEN — most significant supportability finding.
+
+**⚖ RULING (operator ruling 2026-08-28): ARCHIVED AS OBSERVATION.** "Coverage is inverted" is a
+measurement, not a task, and it has no target to be measured against. **The target is set by
+M3.3-R3**: tests are written against the realized activities, not against the orchestrator
+they replace — which is what the row's own scope/action already said. Archived rather than
+carried, so it stops being counted as open work nobody can finish.
+
+**Status:** ARCHIVED — observation *(was: OPEN — most significant supportability finding.)*
 Zero tests reference `pipeline_orchestrator*`, `handle_stage_completion`, or the media join. Meanwhile `test_retry_engine.py` (236), `test_dlq_service.py` (379), `test_fallback_chain.py` (244) — **859 lines** — cover the P2.1 modules that never execute. The 1,397-line live orchestrator, source of most ledger incidents, is untested.
 **Scope/action:** if WS-T proceeds, write tests against the new workflow definitions rather than the doomed orchestrator. If it does not, orchestrator tests become P1.
 
@@ -1214,7 +1315,12 @@ Each is a runtime-only `next_stage_task_not_registered` waiting to happen; none 
 `POST /clip/score` → **404** (images get `quality_decision: flagged`, `clip_score: null`); `GET /assets?sha256=` → **404** (dedup absent → duplicate rows on re-fires; dedup also wouldn't backfill `scene_id`); `POST /quality-scores` → **404** (quality persistence absent). Re-enable dedup/quality when the quality/composition stages need them.
 
 ## P2.5 — ORCH-5: worker → `projects.state` mapping (+ tighten `approve_storyboard` guard) *(carried, v3.1 P2.28)*
-**Status:** OPEN — confirmed reproducing. After a full run `projects.state` stays stale even though the pipeline advanced; the dashboard view is misleading (render-job stage + dispatched tasks are the de facto truth). The deliberately lenient `approve_storyboard` guard (`project_service.py`) accepts pre-`STORYBOARD_GENERATION` states and is empirically relied upon by the e2e.
+
+**⚖ RULING (operator ruling 2026-08-28): JOINS RC-F / M3.3.** Worker → `projects.state` mapping is
+orchestration-layer behaviour and moves with the orchestration layer. Tracked in **§RC-F**
+alongside P1.2 and P2.4 rather than separately here.
+
+**Status:** GATED — M3.3 (§RC-F) *(was: OPEN — confirmed reproducing. After a full run `projects.state` stays stale even though the pipeline advanced; the dashboard view is misleading (render-job stage + dispatched tasks are the de facto truth). The deliberately lenient `approve_storyboard` guard (`project_service.py`) accepts pre-`STORYBOARD_GENERATION` states and is empirically relied upon by the e2e.)*
 **Scope/action:** update `projects.state` on each transition. **FIX-WHEN:** once state advances correctly, tighten the guard per spec Table 4-3. *(Under WS-T this becomes a workflow query — truthful by construction. Consider deferring the full fix into WS-T rather than fixing twice.)*
 
 ## P2.6 — GPU monitoring + heartbeat registry (Blackwell) *(carried, v3.1 P2.29)*
@@ -1258,75 +1364,307 @@ the same Prometheus series `/api/v1/nodes` already reads. *Not addressed by WS-T
 **Status:** Code defect CLOSED; re-opened as MBCP **WP-A**. Verified in `cogvideox-5b.json`: `CLIPLoader`, `CogVideoTextEncode`, `CogVideoSampler`, `CogVideoDecode`, `DownloadAndLoadCogVideoModel` — the correct names, no X-suffixed phantoms. **But it has never touched a GPU.** MBCP WP-A is that smoke test and blocks WP-B. Every VRAM figure in `comfyui.py` remains `PROVISIONAL` (see S-7). Treat the first GPU smoke as a gate, not a formality.
 
 ## P2.10 — Weight-fetch live pass *(carried, handoff register #5)*
-**Status:** OPEN — never exercised. IVGS **pulls** weights via `ivgs-models/mbcp_fetch.py` against `{serving_url}/weights/{model}/manifest`. Needs the fleet up (WS-T.7) plus `MBCP_SERVING_TOKEN` + `MBCP_WEIGHT_SIGNING_KEY` handoff. *(Direction is pull, not push — do not invert in docs or code.)*
+
+**⚖ RULING (operator ruling 2026-08-28): GATED, TWO STEPS, IN ORDER.** (1) the **MBCP session, steps
+1–3** (engine-values query → WO-MBCP-01 → re-send); then (2) **WP-65 §8 Block A**. It is not
+runnable before both: a weight fetch needs a bundle whose engine values MBCP has agreed, and
+the block that runs it is already written and held.
+
+**Status:** GATED — MBCP session steps 1-3, then WP-65 §8 Block A *(was: OPEN — never exercised. IVGS **pulls** weights via `ivgs-models/mbcp_fetch.py` against `{serving_url}/weights/{model}/manifest`. Needs the fleet up (WS-T.7) plus `MBCP_SERVING_TOKEN` + `MBCP_WEIGHT_SIGNING_KEY` handoff. *(Direction is pull, not push — do not invert in docs or code.)*)*
 
 ## P2.11 — `IVGS_SCHEDULER_TAG=latest` — pin *(carried, v3.1 P2.11)*
 **Status:** OPEN. §19.5 no-`:latest` violation; the only unpinned tag in `.env`. Confirmed `:v5.1.0` == `:latest` (same image ID) → pinning is a zero-behaviour-change close.
 
 ## P2.12 — No manifest regenerate/reset *(carried, v3.1 P2.30)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
+
 `composition_manifests.job_id` is UNIQUE with no reset endpoint; re-running Stage 4 can't regenerate. Add a reset/regenerate path.
 
 ## P2.13 — Animation stored as `asset_type="image"` *(carried, v3.1 P2.31)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Interim relabel; the manifest groups animation as image. Give animation a distinct type for correct layer semantics.
 
 ## P2.14 — `assets.duration_seconds` not persisted on upload *(carried, v3.1 P2.32 + Addendum B1 — merged)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 The voiceover task computes real per-scene durations and the column exists, but `POST …/assets/upload` accepts only `file/asset_type/scene_id/language_code` → all audio rows `NULL`. Stage 7 works around it by re-deriving the timeline via `ffprobe`. **Root of the "duration disease"** — Stage-4 storyboard estimates (115s) were never reconciled against real narration (~214.94s). **Fix:** add a `duration` form field (plus `sample_rate`/`bit_depth`) or probe server-side.
 
 ## P2.15 — `seaweedfs_path` not unique per scene *(carried, v3.1 P2.33)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Server derives the audio path from project + language only, so all same-language audio share one path string with distinct FIDs; the worker reports a *different* path. Latent trap for anything reconstructing paths instead of using `seaweedfs_fid`/`asset_id`. Include `scene_id` in the server path; align the worker's reported path.
 
 ## P2.16 — Rollback snapshot/restore unwired *(carried, v3.1 P2.35)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Storage-path crash fixed (`c3e8a1a`), but `rollback_service.py` (~164/241/244) still references `/ivgs/ivgs-api/config` and `/ivgs/.env`, and `rollback_to` restarts containers — full §14.3 rollback needs host-level `deploy-node.sh` integration. Decide: wire to the real layout, or remove.
 
 ## P2.17 — Voiceover dead scene→audio back-link PATCH (401) *(carried, v3.1 P2.36)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Fires 6×/run. Audio is already scene-linked via the upload form's `scene_id` (`eaddebb`), so the back-link adds nothing and is swallowed as a warning. Confirm nothing reads `scene.audio_asset_id`, then delete the call + helper. Bundle with P2.3.
 
 ## P2.18 — `GET /assets?asset_type=reference_clip` returns 500 *(carried, v3.1 P2.37)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Orchestrator's presenter-clip lookup 500s; the orchestrator soft-continues so it doesn't block. A 5xx server bug — likely an enum/query mishandle in `list_assets`. Return empty list / clean 404 so Stage 6 can take the no-clip skip path.
 
 ## P2.19 — stage7 caption clock not audio-anchored *(carried, Addendum B2)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Latent until captions are enabled (Remotion on node-06, WS-T.7). Anchor the caption clock on real audio length, same principle as the Pillar-1 fix.
 
 ## P2.20 — Duplicate/accumulated assets; no supersede-or-prune *(carried, Addendum B3)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Re-fires accumulated multiple draft assets (`0a83f6f2`, `8e0c8531`, `4a9ce479`, `061f64eb`, `f78eb063`) plus duplicate per-scene audio. Add an asset supersede/cleanup policy. Inflates SeaweedFS and muddies "current best".
 
 ## P2.21 — Defect #5: "[object Object]" validation banner *(carried, v3.1 P2.3)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Frontend error-handler doesn't string-coerce FastAPI's structured detail envelope. Extract `detail[0].msg`. Pairs with P2.23.
 
 ## P2.22 — Defect #9: `/api/v1/nodes` stub hardcodes `status="online"` *(carried, v3.1 P2.4)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
+
 `nodes.py:82` returns "online" unconditionally → "6 online" when only node-01 runs. Interim ICMP/DNS ping, or full fix at fleet rollout. Don't add `test_nodes.py` until then (would freeze the lie).
 
 ## P2.23 — Backend UUID path-param validation (422 not 500) *(carried, v3.1 P2.7)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Class-level UUID validation; architectural decision on scope + error envelope. Pair with P2.21.
 
 ## P2.24 — Migrate ad-hoc `fetch()` to centralized api-client *(carried, v3.1 P2.6)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 16 sites in 7 files + GPU-history call → `src/lib/api-client.ts`; add a pre-commit hook blocking unprefixed `access_token` reads.
 
 ## P2.25 — CI scaffolding (Actions + Playwright + pytest) *(carried, v3.1 P2.13)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 (a) Playwright smoke for the 8-page + 9-step walks; (b) `build-images.yml`; (c) PR template (stale-base + tsc + migration-roundtrip + overlay-rule). Multi-session.
 
 ## P2.26 — Test directory scope unification *(carried, v3.1 P2.1)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
+
 `tests/` (9), `ivgs-workers/tests/` (16), `ivgs-scheduler/tests/` (4) unrunnable; `conftest.py` collision blocks a unified `testpaths`. Resolve via `importmode=importlib`; wire testcontainers + Alembic. Pairs with P2.27, P2.2.
 
 ## P2.27 — `tests/` pytest collection fails on SQLite *(carried, v3.1 P2.24)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
+
 `shared/database.py:31` passes `pool_size`/`max_overflow`/`pool_timeout` unconditionally; SQLite/NullPool → TypeError at `create_engine`. Make the factory dialect-aware.
 
 ## P2.28 — Author RUNBOOK.md *(carried, v3.1 P2.18)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 High institutional value; more material than ever. §1 session-start gate; §2 deploy invariants (build from monorepo root; `--env-file` + `-f` overlay rules; `--force-recreate --no-deps <svc>`; derive compose invocation from container labels); §3 image-drift lesson; §4 backup; §5 incident response. **Absorbs P2.21-tag-taxonomy from v3.1.** Prerequisite for delegating work to agents.
 
 ## P2.29 — Compose reconciliation: `base.yml` vs `node01.yml`; monitoring net *(merges v3.1 P2.19 + P2.25)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
+
 `base.yml` (seaweedfs 3.80, underscore volumes) vs `node01.yml` (3.71, hyphen volumes) — twice caused recreate accidents; reconcile or delete `base.yml`. `docker-compose.monitoring.yml` references non-existent external net `ivgs_default` (real net: `ivgs-infra_ivgs-net`) — latent because deploys use `--no-deps`.
 
 ## P2.30 — Image/dependency hygiene *(merges v3.1 P2.8, P2.10, P2.15, P2.22)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 (a) Old GHCR image cleanup — 14+ stale tags each for api/frontend; author a retention policy. (b) bcrypt/passlib version warning at startup — pin compatible versions. (c) Restore `@sha256` digest pins on base images lost in `b933357`; pin live `v5.5.x` digests in compose. (d) Pre-commit hook failing `*.key`/`*.crt`/`*.pem` under `configs/nginx/ssl/`.
 
 ## P2.31 — Update `IVGS_INFRASTRUCTURE_REFERENCE` *(carried, v3.1 P2.17)*
+
+**Status:** VERIFY-AT-RUN-2 — see the ruling above
+
+**⚖ RULING (operator ruling 2026-08-28): VERIFY-AT-RUN-2.** This row is one of the **20 carried-from-v3.1
+rows, P2.12 through P2.31 inclusive**, ruled as one block. They are not closed on reading and
+not archived on age: **RUN-2 exercises them, and observation closes or confirms each one.**
+Whatever RUN-2 does not touch gets **one bounded sweep immediately afterwards — P2.46**.
+
+⚠ Two rows in this range were missing from §RC-H3's grouped entry (`P2.12–P2.14, P2.16–P2.28,
+P2.30, P2.31`, which is **18**, not the 20 the same section claimed): **P2.15** and **P2.29**.
+The ruling is on the **contiguous range**, so both are included and the count reconciles at 20.
 Still describes a split repo. Update to the monorepo at `/opt/ivgs`.
 
 ---
 
 
 ## P2.32 — AD-07 v2.x contract extension: style bible, continuity IDs, source refs *(new 2026-08-22)*
+
 **Status:** OPEN — **recording only, nothing implemented.**
 **Origin:** operator-commissioned external design review, 2026-08-22. Working note on node-01
 at `docs/Assessment_External_Orchestrator_Prompt_vs_IVGS_2026-08-22.md` — **currently
@@ -1429,13 +1767,27 @@ which of the two owns the field, or the same conflict is rebuilt one layer up.
 | **S-10** | `.51` is a Proxmox clone with a parked twin | Operator | Shares `machine-id` and SSH host keys with the parked production VM. node-01 holds a known-hosts entry for `.51`. Regenerate before both run; expect to clear node-01's entry. |
 
 ## P2.35 — Proposed AD-01 amendment: an auxiliary text-generation ModelStage *(new, WP-IVGS-0.2, operator ruling 2026-08-22)*
+
+**⚖ RULING (operator ruling 2026-08-28): DROPPED — zero named consumer.** The proposed auxiliary
+text-generation `ModelStage` has no caller, no stage and nobody asking for it. An amendment
+to AD-01 that nothing would use is a schema change bought with no benefit. Dropped, not
+deferred: there is no trigger that would make it right later that would not also be a fresh
+proposal.
+
+**Status:** DROPPED — see the ruling above
+
 `ModelStage` has nine members and none covers an auxiliary chat-LLM call, so Stage 3's image-prompt writer borrows `storyboard_generation` and Stage 5's narration optimiser borrows `transcript_refinement` (`utils/llm_binding.py`; bindings KEPT as implemented by ruling) — propose a dedicated stage at the next AD-01 amendment and repoint those two call sites.
 
 ## P2.36 — Per-run tier selector in the UI — DEFERRED to M6 *(new, WP-IVGS-0.3, operator ruling 2026-08-22)*
 `?tier=` is plumbed end to end on `POST /projects/{id}/trigger` and `POST /projects/{id}/storyboard/approve` and defaults to prototype, but nothing in the frontend sets it; surface a per-run choice at M6.
 
 ## P2.37 — `segment_planner` splits Stage-8 render segments on float boundaries *(new, WP-04-FRAME-ALIGN D-2, operator ruling 2026-08-23 — RECORD ONLY, do not touch)*
-**Status:** OPEN — **record only.** Ruled 2026-08-23: do **not** fold this into WP-04.
+
+**⚖ RULING (operator ruling 2026-08-28): CLOSED — settled by AD-03 §10.** The float-boundary question
+the row records is answered by AD-03 §10's criteria; there is no separate decision left to
+make about `segment_planner`.
+
+**Status:** CLOSED — settled by AD-03 §10 *(was: OPEN — **record only.** Ruled 2026-08-23: do **not** fold this into WP-04.)*
 `ivgs-workers/services/segment_planner.py:239-241`:
 
     num_segments = math.ceil(scene_duration / self._max_duration)
@@ -1455,7 +1807,13 @@ the 1080p and the 4K finals passed operator visual QA). Changing its segment bou
 for a defect nobody has measured is a bad trade. **Scope it separately, measure first.**
 
 ## P2.38 — `output_fps` is accepted and discarded; `output.fps` is a claim, never a measurement *(new, WP-04-FRAME-ALIGN D-3, operator ruling 2026-08-23 — RECORD ONLY, do not build)*
-**Status:** OPEN — **record only.** Ruled 2026-08-23: do **not** plumb it now.
+
+**⚖ RULING (operator ruling 2026-08-28): RECLASSIFIED — FIX, not record-only.** `output_fps` is
+accepted and discarded, which means the API takes a parameter it does not honour. **Either
+wire it or answer 400.** Silently accepting is the one option ruled out. Batched
+**post-RUN-2**, so the fix does not move a parameter under the run RUN-2 is banking.
+
+**Status:** FIX — post-RUN-2 batch *(was: OPEN — **record only.** Ruled 2026-08-23: do **not** plumb it now.)*
 `ivgs-workers/servers/latentsync/server.py:145` declares `output_fps: int = Form(30)`.
 It is **never passed to `_runner`** (`:164-165` passes width, height, mode, seed only) and
 `_runner`'s final ffmpeg pass (`:105-109`) carries no `-r`. IVGS therefore **cannot set
@@ -1474,7 +1832,15 @@ other value would silently not take effect**, and no stored metadata would revea
 record the measured fps rather than the requested one.
 
 ## P2.39 — 23 urgent scheduling requests are stranded against a zero-node fleet, and nothing owns them *(new, WP-08-GPU-RESERVATIONS D-3, operator ruling 2026-08-23)*
-**Status:** OPEN — new item, ruled in 2026-08-23. Nothing owns this today.
+
+**⚖ RULING (operator ruling 2026-08-28): WP-IVGS-09 Task 0(c), OPERATOR-ATTENDED.** The queue is
+listed before anything is drained, and the drain waits for an explicit GO. **The row's
+premise has moved twice and both corrections are recorded in the WP-IVGS-09 report §0(c):**
+the fleet is no longer zero nodes (3 alive, 293,661 MB), and the "23" is a DEPTH COUNTER, not
+a queue census — the counters read `urgent 22 / normal -2 / batch 0` against actual sorted
+sets of `urgent 18 / normal 2 / batch 0`. **A queue length of −2 is not a queue length.**
+
+**Status:** OPERATOR-ATTENDED — WP-IVGS-09 Task 0(c) *(was: OPEN — new item, ruled in 2026-08-23. Nothing owns this today.)*
 Measured live on node-01, 2026-08-23:
 
     $ docker exec ivgs-scheduler sh -lc 'curl -s localhost:8001/fleet'
@@ -1673,6 +2039,33 @@ now, the Node Monitor's log panel container picker. **Scope/action:** `docker rm
 scheduler at all — only `DELETE /reservations/{reservation_id}` — so there is no
 reservation-count query to run. That is why WP-08's exit-gate clause "reservation count
 returns to baseline" is unmeasurable as written. **Pairs with P2.6.**
+
+## P2.46 — The RUN-2 residue sweep: one bounded pass, immediately after RUN-2 *(new, operator ruling 2026-08-28, added by WP-IVGS-09 Task 0(a))*
+
+**Status:** GATED — opens the moment RUN-2 is banked; closes in one pass.
+
+**⚖ THIS ROW EXISTS BECAUSE THE RULING REQUIRED IT.** The 2026-08-28 ruling on the
+carried-v3.1 block reads: *"Rows RUN-2 exercises close-or-confirm by observation; residue gets
+one bounded sweep immediately after RUN-2. Add that sweep as a row."* This is that row.
+
+**What it sweeps.** Everything the ruling routed here, and nothing else:
+
+| Row | Why it is here |
+|---|---|
+| **P2.12 – P2.31** (20 rows, contiguous) | VERIFY-AT-RUN-2. RUN-2 closes or confirms whatever it touches; this sweep takes the remainder |
+| **P1.4h** | IVGS-0.6 — does an animation scene still render a still? Observation, not code reading |
+| **P1.4q** | Does a failed render still strand its project non-retriggerable? |
+
+**BOUNDED, and the bound is the point.** ⛔ **One pass. Each row gets a verdict — CLOSED with
+the observation that closed it, or CONFIRMED-OPEN with what was seen — and no row is carried
+forward for a second look.** A sweep that may run twice is not a sweep; it is the backlog
+growing a new place to hide, which is the condition §RC-H3 was opened to end.
+
+**Not a licence to widen.** Rows not in the table above do not join this sweep because they
+happen to be nearby. If RUN-2 surfaces something new, it opens its own row.
+
+**Depends on:** RUN-2 existing (Next item 1 on the board). **Blocks:** nothing — it is a
+close-out, not a prerequisite.
 
 # DEFERRED (conscious, with re-open trigger)
 
@@ -2046,39 +2439,51 @@ the list** — the residue is §RC-H3 and the operator rules it.
 | **P1.2** — checkpoint `stage_order` mismatch; resume computes the wrong stage | **M3.3** — it is an orchestration-migration item and belongs in RC-F | — |
 | **P2.4** — residual 4xx cluster (checkpoint line item promoted out) | **M3.3**, with P1.2 | — |
 
-### H.3 ⛔ NEEDS-RULING — the residue, one line each
+### H.3 ✅ RULED — the residue, and where each row went
 
-**These have no gate derivable from the row. I did not invent one.** Each stays marked
-**NEEDS-RULING** in the register until the operator rules it.
+⚖ **RULED IN FULL, 2026-08-28.** This section listed **41 rows with no derivable gate** and
+asked the operator one question each. **Every one is answered.** The rulings are recorded on
+the rows themselves — each carries a `⚖ RULING (operator ruling 2026-08-28)` block — and are
+summarised here so the section reads as a settled record rather than an open question.
 
-| Row | The question |
-|---|---|
-| P1.0a | Is the Stage-6 SadTalker fallback selection-driven work, or superseded by AD-01 selection entirely? |
-| P1.0b | Is the missing DB driver on GPU nodes still real after the ARCH-1 binding moved to the workers? |
-| P1.4 | Does M1-QA still gate anything, or did AD-03 §10 replace it? |
-| P1.4f | "Record only, do not act" — does it ever become actionable, or is it archive? |
-| P1.4h | Is IVGS-0.6 (animation renders a still) closed by WP-46/WP-68, or still live? |
-| P1.4n | Does `ffmpeg` still fail to resolve a binding after the `tts`/registry work? |
-| P1.4q | Is the non-retriggerable stranded-project state still reachable after WP-45's resume work? |
-| P1.4r | Frontend `.split()` guard — is the frontend in scope for any current milestone? |
-| P1.5a / P1.5b | `verify_backup.sh` is recorded as fixed in `dev/CLAUDE.md` §8 — is P1.5a stale, and does P1.5b's staleness alert exist now? |
-| P1.6 | `Prompt.prompt_type` ENUM-as-String — schema change or accepted? |
-| P1.7 | Prompt-management browser smoke — does it gate a milestone? |
-| P2.1 | 1,957 lines of orphaned machinery — the row says "decided"; decided *what*? |
-| P2.2 | Inverted test coverage — is there a target, or is this observational? |
-| P2.5 | ORCH-5 state mapping — M3.3 or now? |
-| P2.10 | Weight-fetch live pass — blocked on MBCP, or runnable? |
-| P2.12–P2.14, P2.16–P2.28, P2.30, P2.31 | Carried v3.1 rows, 20 of them. **One ruling could cover the block**: are carried-from-v3.1 rows still live, or archived wholesale? |
-| P2.35 | Proposed AD-01 amendment (auxiliary text ModelStage) — ratify or drop? |
-| P2.37 | `segment_planner` float boundaries — does AD-03 §10's ruling settle it? |
-| P2.38 | `output_fps` accepted and discarded — "record only"; does it stay that way? |
-| P2.39 | 23 stranded urgent requests — now that the scheduler answers (RC-A9/D-8), are they drainable? |
+**Nothing was invented to shorten the list.** Where a ruling closes a row it names the
+evidence; where it archives one it says why archive is the right shelf; where it gates one it
+names the gate.
 
-⚠ **P2.12–P2.31 is 20 of the 41.** A single ruling on the carried-v3.1 block would cut this
-list in half, which is why they are grouped rather than listed one by one.
+| Row(s) | Ruling | Where it now lives |
+|---|---|---|
+| **P1.0a** | **CLOSED** — superseded by AD-01 selection | one cross-check line on **M3.3-R3**: no hardcoded SadTalker fallback survives stage-6 activity realization |
+| **P1.0b** | **CLOSED** — WP-IVGS-08 Task 8 proved **nine consumers connect; the engines are not consumers** | — |
+| **P1.4** | **ARCHIVED** — superseded by **AD-03 §10** | AD-03 §10 |
+| **P1.4f** | **ARCHIVED** — record-only *is* archive | — |
+| **P1.4h** | joins the RUN-2 sweep | **P2.46** |
+| **P1.4n** | probed in **WP-IVGS-09 Task 0(b)** — resolves-or-named-refusal, evidence on the row | ruled on the evidence |
+| **P1.4q** | joins the RUN-2 sweep | **P2.46** |
+| **P1.4r** | folds into the frontend rebuild | **WP-IVGS-09 Task 3** |
+| **P1.5a** | **CLOSED** — stale; `dev/CLAUDE.md` §8 records the fix and the two-way gate | — |
+| **P1.5b** | **CLOSED** on the Task 0(b) grep + live-Prometheus evidence | `alert_rules.yml:190`, loaded and healthy |
+| **P1.6** | **ACCEPTED as `String` → ARCHIVED**; validation lives in code | ⚠ this also unblocks **P1.7** |
+| **P1.7** | **GATED** — *"before first production content render"* | — |
+| **P2.1** | the lost *"decided"* text was **found and restored** by Task 0(b): the decision is **DELETE at AD-05 migration step 8** | gated on **AD-05 step 8** (post-cutover) |
+| **P2.2** | **ARCHIVED** as observation; the target is set by **M3.3-R3** | M3.3-R3 |
+| **P2.5** | joins **RC-F / M3.3** | §RC-F |
+| **P2.10** | **GATED** — MBCP session steps 1–3, **then** WP-65 §8 Block A | — |
+| **P2.12 – P2.31** (**20 rows, contiguous**) | **VERIFY-AT-RUN-2** — RUN-2 exercises them; observation closes or confirms each | residue → **P2.46** |
+| **P2.35** | **DROPPED** — zero named consumer | — |
+| **P2.37** | **CLOSED** — settled by AD-03 §10 | — |
+| **P2.38** | reclassified **FIX** — wire `output_fps` or answer **400**; silently accepting is ruled out | post-RUN-2 batch |
+| **P2.39** | **OPERATOR-ATTENDED** — listed, then drained on an explicit GO | **WP-IVGS-09 Task 0(c)** |
 
+#### ⚠ The count this section carried was wrong, and the ruling exposed it
 
----
+§RC-H3 said *"P2.12–P2.31 is 20 of the 41"* while its grouped entry enumerated
+`P2.12–P2.14, P2.16–P2.28, P2.30, P2.31` — which is **18**. **P2.15** and **P2.29** were
+inside the stated range and outside the enumeration. The ruling is on the **contiguous
+range**, so both are included, the block is genuinely 20, and the count reconciles.
+
+**P2.29 is a partial**: §H.1 closed its monitoring-net half and left the
+`base.yml` vs `node01.yml` half open. VERIFY-AT-RUN-2 applies to the open half only.
+
 
 ## RC-I — M3.3 runway, A-4 ruling, and fleet facts (2026-08-28)
 
@@ -2113,3 +2518,55 @@ Temporal **1.29.7** live (operator measurement, 2026-08-28).
 | **RC-I4** | **Nodes 02–05 all rebooted 2026-08-28 between 02:31 and 03:16** — .94 02:31:48, .91 02:32:41, .93 02:34:31, .92 03:16:11. `/var/log/apt/history.log` is present on all four (the July unattended-upgrades precedent). ⚠ **I did not read the journal deeply enough to name the cause** — the correlation is recorded, the cause is not established. ✅ **node-04's 450 W cap HELD** (`power.limit = 450.00 W`, measured post-reboot). ✅ **node-05's vLLM is still on `sha256:3dbe092e…`**, the pinned digest |
 | **RC-I5** | ⛔ **node-03 runs two server containers no IVGS package placed**: `ivgs-cogvideox-server-node03` (`ivgs-workers:cogvideox-pilot-1`) and `ivgs-wan-animate-server-node03`, the latter pulled from **`192.168.1.51:5000/mbcp/comfyui-wan`**. **An MBCP-hosted Docker registry serving IVGS nodes is a seam fact** — it is a third transport alongside AD-04's two seams, and it is not in AD-04. Belongs on the record and in any future seam audit |
 
+
+---
+
+## RC-J — WP-IVGS-09: the renderer executes, and what executing it found (2026-08-28)
+
+### J.1 RC-I1 — **EXECUTED**, with evidence
+
+| id | Row | Status |
+|---|---|---|
+| **RC-I1** | **A-4 renderer — the Pillow reference service, promoted behind HTTP.** `ivgs-motion-renderer` on **node-01**, CPU-only, no weights, no GPU. Deterministic: two identical `POST /render` calls give a byte-identical MP4 (`ae3df1ad…`) and an identical frames digest (`bce6e932…`); four sampled frames byte-identical across independent requests. `/healthz` reports build ref, template inventory, ffmpeg version and the sha256 of **every** font candidate. Failures are named — 400 / 502 / 503 — and never a fabricated frame. **Fonts vendored in-repo** at `shared/motion/fonts/` with their licence | ✅ **EXECUTED.** Evidence: `dev/workpackages/reports/WP-IVGS-09-RENDERER-report_2026-08-28.md` §6 |
+| **RC-I1a** | ⚠ **PLACEMENT REVIEW TRIGGER, as the ruling required.** node-01 is a 16 GB CPU hub already running Postgres, Redis, SeaweedFS, the API, the frontend, the scheduler and three Celery workers. **Revisit placement only if render CPU load measures material.** First data point: a 128-frame render is **14,898 bytes and sub-second**, `--workers 1`. | OPEN as a trigger, not as work. Owner: whoever next measures node-01 load |
+
+### J.2 RC-I3 — **L-1, L-2 and L-6 close**
+
+| id | WP-68 ledger row | Closed by |
+|---|---|---|
+| **L-1** | *"No renderer is deployed for the `motion_graphics` engine, so no motion-graphics frame has reached a draft."* | ✅ **CLOSED.** Draft asset `2ee07595-c143-49c1-b361-71c1b7b1c959`, 115,034 bytes, H.264 1280x720 30 fps + AAC. Two frames banked at `dev/workpackages/reference/wpivgs09-draft-frames/` |
+| **L-2** | *"RULE 1 has promised since v3 that the composition overlay renders the numbers in a real font, and **nothing draws them**. The largest finding in this package."* | ✅ **CLOSED.** Something draws them. A frame of the draft shows `20 tens / 3 units` in DejaVu Sans Bold, and another shows `23 x 14` with the carried `1` in red and the partial product `92` |
+| **L-4** | *"`motion_graphics` scenes are HELD, not dispatched."* | ✅ **CLOSED as unconditional; RETAINED as a measured condition.** The hold now fires only when the renderer is absent, unreachable or degraded, and it says which. Proved by a live negative control |
+| **L-6** | *"The Media Type dropdown does not offer `motion_graphics`."* | ✅ **CLOSED.** The option is offered, gated on L-1 closing first, and the served bundle carries it |
+| **L-3** | Remotion lower-third failures swallowed at `stage7_prototype_draft.py:230-236` | ⛔ **STILL OPEN.** Frozen stage body; it is on the standing swallow register and is not touched by this package |
+| **L-5** | `services/motion_graphics.py` reachable only from `FallbackChain` | ⛔ **STILL OPEN**, and now partly moot: `fallback_chain.py` was deleted by WP-IVGS-08, so its only caller no longer exists at all. Belongs with **P2.1**'s AD-05 step-8 disposition |
+
+### J.3 New, opened by this package
+
+| id | What | Why it is not closed here |
+|---|---|---|
+| **RC-J1** | ✅ **The Model Store row is REGISTERED and AWAITS THE OPERATOR'S APPROVE CLICK.** `maths-motion` / *Maths motion graphics*, `animation_generation` / `motion_graphics`, tier `both`, **state `candidate`**, `dynamically_loadable=true`, GUI weight status **`weightless` — "no weights needed"**. Registered through `POST /api/v1/models`, which lands in CANDIDATE by AD-01.5.1 and cannot land elsewhere | **Approving is an operator act.** Nothing in this package selects it, defaults it or enables it for a project |
+| **RC-J2** | ⛔ **The client registry named a module that did not exist.** `client_registry.py:453` has declared `clients.motion_graphics_client.MotionGraphicsClient` since WP-68 (2026-08-26) and the module was absent — so the Model Store's client surface reported a client for `maths_motion` that could not be constructed. It never raised because `client_path` is a declarative string the registry stores and never imports | ✅ **CLOSED by making the claim true**, not by deleting it: the module exists now, because the renderer does. **The class of defect is not closed** — nothing validates that a registered `client_path` is importable, and a test for that is a candidate for the next hygiene package |
+| **RC-J3** | ⛔ **`ffmpeg_client.compose_scene`'s AUDIO-LESS branch has never worked.** `ffmpeg_client.py:548-554` appends the silent-audio input (`-f lavfi -i anullsrc=…`) **after** `-filter_complex` and `-map [video]` — i.e. in the output section — and ffmpeg requires every input before any output: *"Option map … cannot be applied to input url anullsrc… Error opening input files"*. Measured 2026-08-28 composing a scene with no audio layer | **FROZEN.** AD-05 §8 preserves the eight stage bodies **and their supporting services**, and the standing instruction is *"if a migration session finds itself editing stage internals, stop."* Invisible in normal operation because stage 5 always precedes stage 7. **Re-open trigger: any path that composes a scene without audio** — a preview, a partial re-render, or a motion-only job that skips TTS |
+| **RC-J4** | ⛔ **WP-IVGS-08's vLLM digest pin never reached the repository.** The `vllm/vllm-openai@${VLLM_IMAGE_DIGEST:?…}` pin — the thing that gated WP-IVGS-08's push — existed only in the untracked compose files ON nodes 02 and 04. `grep -c VLLM_IMAGE_DIGEST` on the tracked files was **0**. A redeploy from the tracked tree would silently have restored the floating `cu130-nightly` while the board still read "digest-pinned" | ✅ **CLOSED by WP-IVGS-09**: the node-side hunks are brought into `ivgs-infra/docker-compose.node02.yml` and `…node04.yml`. ⚠ **The class is not closed** — nothing compares a node's deployed compose file against the tracked one, and this is the second package to find drift by diffing them by hand |
+| **RC-J5** | ⛔ **An env-file edit that was never deployed, caught in the act.** `.env.node04:50` carries `IVGS_VLLM_MAX_TOKENS=2048`, written at **14:59:45** on 2026-08-28 — **33 minutes after** `ivgs-celery-node04` was created at 14:26:59. The container has never had the variable. It is untracked and node-local, so nothing in the repo recorded it, and it would have taken effect silently on the next unrelated recreate | ✅ **NEUTRALISED**, not deleted: a compose-level `environment:` entry beats `env_file:`, and node-04 now declares **4096** — the value it is actually running. The stale line is left in place and recorded rather than edited on a node ⚠ **Also recorded:** a stray `.env.node02` (mtime 2026-06-01) sits on node-03 and node-04, referenced by no compose file there |
+| **RC-J6** | ⛔ **The scheduler's queue-depth counter is not the queue.** `pq:depths` read `urgent 22 / normal −2 / batch 0` against sorted sets of `18 / 2 / 0`. **A queue length of −2 is not a queue length.** Three sites in `ivgs-scheduler/priority_queue.py` diverge: `apply_aging` never scans `urgent` (`:211`) and its expired-entry cleanup (`:217-220`) `zrem`s without decrementing; `resolve_priority` on an existing job (`:129-137`) rewrites `effective_priority` without moving the zset entry or touching the counter; `remove_job` (`:288-292`) then decrements a queue the job never joined. **And every queued job reads `base_priority=normal`** — not one of the "23 urgent requests" was submitted as urgent; they are anti-starvation promotions | **NOT FIXED.** P2.39's drain is operator-attended and gated on a GO. Draining empties the queue; these mechanisms refill it wrongly. **Flagged for a ruling, not opened as work without one** |
+| **RC-J7** | ⛔ **A test asserted set EQUALITY on `ModelEngine` under a name that promised subset.** `test_api_model_export.py::test_no_existing_value_was_removed` failed on migration 0044 ADDING `motion_graphics` — an addition, which is not what the test is named for | ✅ **CORRECTED in the same commit**, to the subset relation its name states. `test_domain_is_still_closed` in the same file is what keeps the enum from becoming free text; equality was doing a job nothing asked for |
+| **RC-J8** | ⚠ **`TEST-BASELINE_2026-08-25` §1's environment block is incomplete.** The `ivgs-backup-worker` suite is **4 failed**, not 4 passed, unless `IVGS_CELERY_BROKER_URL`, `IVGS_CELERY_RESULT_BACKEND` and `POSTGRES_DSN_SYNC` are supplied the way compose does — WP-IVGS-08 Task 2(d)'s import-time refusal doing its job | ✅ **The baseline document is corrected in the same commit** |
+| **RC-J9** | ⚠ **The latest DB dump is two migrations behind production.** `/mnt/backup/ivgs/db/2026-08-28/` restores to `alembic_version = 0041`; production is at `0044`. 0042/0043 were applied after the 02:00 backup. **A restore from the latest dump does not carry the current schema; `alembic upgrade` is a required recovery step** | Recorded, not acted on. Worth knowing before an incident rather than during one. Belongs with **DEF.1** (disaster recovery) |
+| **RC-J10** | ⚠ **`dev/CLAUDE.md` §1 no longer describes practice.** It reads *"Claude does NOT commit, push, merge, or deploy"*; the last several work orders have explicitly directed commits and node-01–04 deploys, this one included. The rule and the standing instructions disagree, and a rule contradicted every week stops being read | **Operator ruling needed.** Amend §1 to the actual boundary (commit yes, push never, deploy 01–04 when the order says so) or restate the prohibition and change the orders. **Not amended here** — `dev/CLAUDE.md` is the cold-start contract and is not edited on a package's own initiative |
+
+### J.4 The task-registration gap, worth its own line
+
+⛔ **`app.conf.include` is the registry, and a task module absent from it does not exist to the
+worker.** With `tasks/motion_graphics_task.py` written, the client written, the queue mapped and
+the dispatcher routing to it, `celery inspect registered` on `default-worker@node01` still had
+no motion entry — a dispatch would have gone to a task nobody serves. Added
+(`celery_app.py`, the Replace column of AD-05 §8), verified live:
+
+    ->  default-worker@node01: OK
+        * tasks.motion_graphics_task.render_scene_motion_graphics
+
+`_assert_registry_is_not_vacuous` exists for this class of miss and did not catch it, because
+the registry was not vacuous — it was merely incomplete. **Named here rather than quietly
+fixed.**
