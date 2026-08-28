@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.providers.binding import ModelBinding, resolve_endpoint
+from shared.providers.client_registry import family_of
 from shared.providers.errors import (
     EngineNotRegisteredError,
     SelectionError,
@@ -97,8 +98,17 @@ def _binding_from_model(
         # its own endpoint -- today only (vllm, translation) -> node-05's Qwen
         # -- resolves there, while every other stage on the same engine keeps
         # resolving exactly as it did. Storyboard and transcript stay on Llama.
+        # WP-IVGS-04 Task 2 (D-2). The FAMILY is passed too, because a runtime
+        # engine name -- one MBCP engine serving several model families, today
+        # `tts` -- has no endpoint of its own. It is derived from the row by the
+        # same `family_of` the client registry uses, so the endpoint and the
+        # client can never disagree about which family this row is. An engine
+        # that is not a runtime name ignores it and resolves exactly as before.
         endpoint=resolve_endpoint(
-            model_row.engine.value, node_id, stage=model_row.stage.value,
+            model_row.engine.value,
+            node_id,
+            stage=model_row.stage.value,
+            family=family_of(model_row),
         ),
         node_id=node_id,
         vram_requirement_mb=vram_mb,

@@ -48,6 +48,7 @@ from providers import ensure_registered
 from shared.providers import TTSParams
 from providers._common import engine_model_id
 from shared.providers.binding import ModelBinding
+from shared.providers.client_registry import family_of
 from shared.providers.factory import build_provider, get_binding
 from utils.audio_validator import AudioValidator
 from utils.error_handler import save_checkpoint, update_job_status
@@ -361,7 +362,7 @@ async def _process_single_voiceover(
         # ARCH-1: synthesize via the selected engine. Coqui keeps its rich
         # params and voice cloning; kokoro (English) uses the shared TTS ABC.
         # The reported model is the store model (binding.name).
-        if tts_binding.engine == "coqui":
+        if family_of(tts_binding) == "xtts":
             synthesis_params = CoquiSynthesisParams(
                 text=narration_text,
                 language=coqui_lang,

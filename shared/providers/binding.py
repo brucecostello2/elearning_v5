@@ -73,11 +73,50 @@ _STAGE_ENGINE_ENDPOINTS: dict[tuple[str, str], tuple[str, str]] = {
 }
 
 
+# (engine, family) -> the engine key that already defines where that family
+# serves. WP-IVGS-04 Task 2, closing D-2.
+#
+# WHY AN ALIAS AND NOT A SECOND URL TABLE.
+#
+# MBCP certifies BOTH voiceover models on one runtime, `engine="tts"`
+# (`scripts/seed_stage.py:543,576`). But Kokoro and XTTS are two different
+# servers -- node-04 runs them on :5003 and :5002 -- so `_ENGINE_ENDPOINTS`,
+# which is keyed on the engine ALONE, cannot express where `tts` serves. There
+# is no single right answer to `resolve_endpoint("tts")`.
+#
+# Copying the two URLs into a `(engine, family)` table would answer it and
+# introduce the defect this module already guards against elsewhere: TWO
+# definitions of where Kokoro serves, free to drift, with `IVGS_KOKORO_URL`
+# updating only one of them. node-04 sets `IVGS_KOKORO_URL` and `IVGS_COQUI_URL`
+# today (`docker-compose.node04.yml:106,113`); a second table would silently
+# ignore both.
+#
+# So the runtime name RESOLVES THROUGH the entry that already exists. One
+# definition per family, the deployed environment keeps working unchanged, and
+# `resolve_endpoint("tts", family="kokoro")` is by construction equal to
+# `resolve_endpoint("kokoro")` -- which is asserted by test rather than assumed.
+#
+# It is deliberately a short explicit table, for the same reason
+# `_STAGE_ENGINE_ENDPOINTS` is: a computed name means a typo produces a
+# variable nobody set, which resolves to a default and moves the model without
+# saying so. This can only be extended by editing it.
+_RUNTIME_FAMILY_ALIASES: dict[tuple[str, str], str] = {
+    ("tts", "kokoro"): "kokoro",
+    ("tts", "xtts"): "coqui",
+}
+
+
+def _families_for_runtime(engine: str) -> tuple[str, ...]:
+    """Every family this runtime engine serves, for the refusal message."""
+    return tuple(sorted(f for (e, f) in _RUNTIME_FAMILY_ALIASES if e == engine))
+
+
 def resolve_endpoint(
     engine: str,
     node_id: str | None = None,
     *,
     stage: str | None = None,
+    family: str | None = None,
 ) -> str:
     """Return the serving base URL for ``engine``, optionally scoped to ``stage``.
 
@@ -89,6 +128,15 @@ def resolve_endpoint(
     A stage that is not in the pair table resolves EXACTLY as it did before this
     parameter existed. That is the property that keeps storyboard and transcript
     on Llama while translation moves to Qwen, and it is asserted by test.
+
+    ``family`` resolves a RUNTIME engine name -- one MBCP engine serving several
+    model families, today only ``tts`` -- through the entry that already defines
+    where that family serves (``_RUNTIME_FAMILY_ALIASES``). An engine that is
+    not a runtime name ignores it entirely, so every pre-existing call resolves
+    exactly as it did; that too is asserted by test.
+
+    :raises EndpointResolutionError: no mapping, an empty endpoint, or a runtime
+        engine name given without the family needed to disambiguate it.
     """
     if stage is not None:
         scoped = _STAGE_ENGINE_ENDPOINTS.get((engine, stage))
@@ -101,6 +149,28 @@ def resolve_endpoint(
                     f"endpoint ({env_var})"
                 )
             return url
+
+    # A RUNTIME engine name serves several families and has no endpoint of its
+    # own. Resolve through the family's existing entry, or REFUSE BY NAME --
+    # never pick one. Picking either would send Kokoro's text to XTTS's server
+    # and return plausible audio in the wrong voice, which is the exact failure
+    # AD-01 selection exists to prevent and the hardest kind to notice.
+    runtime_families = _families_for_runtime(engine)
+    if runtime_families:
+        if family is None:
+            raise EndpointResolutionError(
+                f"engine {engine!r} is a runtime name serving "
+                f"{len(runtime_families)} families "
+                f"({', '.join(runtime_families)}); it has no endpoint of its "
+                f"own, so a family is required to resolve one"
+            )
+        aliased = _RUNTIME_FAMILY_ALIASES.get((engine, family))
+        if aliased is None:
+            raise EndpointResolutionError(
+                f"engine {engine!r} has no endpoint for family {family!r}; "
+                f"it serves {', '.join(runtime_families)}"
+            )
+        engine = aliased
 
     entry = _ENGINE_ENDPOINTS.get(engine)
     if entry is None:

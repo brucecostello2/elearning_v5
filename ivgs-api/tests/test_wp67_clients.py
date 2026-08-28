@@ -29,7 +29,8 @@ from pathlib import Path
 
 import pytest
 
-from shared.providers.binding import ModelBinding
+from shared.providers.binding import ModelBinding, resolve_endpoint
+from shared.providers.errors import EndpointResolutionError
 from shared.providers.client_registry import (
     AmbiguousFamilyError,
     ClientSpec,
@@ -400,3 +401,81 @@ class TestTheRuntimeEngineNameResolvesPerFamily:
         set over the family axis, and adding a runtime key must not inflate the
         surface an operator reads."""
         assert registered_families("voiceover_tts") == ("kokoro", "xtts")
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-04 Task 2 (D-2) — the runtime name resolves an ENDPOINT, per family
+# ---------------------------------------------------------------------------
+
+class TestTheRuntimeEngineNameResolvesAnEndpointPerFamily:
+    """D-2. Registering a client was necessary and NOT sufficient.
+
+    ``engine`` is consulted in THREE places. WP-IVGS-04 Task 1 fixed the client
+    registry, keyed on ``(stage, engine, family)``. The other two --
+    ``_ENGINE_ENDPOINTS`` and ``factory._BUILDERS`` -- are keyed on ENGINE
+    ALONE, and one runtime name serving two families cannot be expressed by an
+    engine-keyed map at all. Measured in the deployed image before this fix::
+
+        resolve_endpoint('kokoro') -> http://node-05:8021
+        resolve_endpoint('tts')    -> RAISES EndpointResolutionError
+
+    So a pipeline render through an ``engine='tts'`` row died inside
+    ``get_binding`` -- BEFORE the registry Task 1 fixed was ever consulted.
+    """
+
+    def test_tts_kokoro_resolves_exactly_where_the_kokoro_engine_resolves(self):
+        """THE INVARIANT THAT MAKES THIS SAFE TO DEPLOY. The runtime name is an
+        ALIAS onto the entry already serving that family, so there is ONE
+        definition of where Kokoro serves and node-04's existing
+        ``IVGS_KOKORO_URL`` keeps working with no configuration change."""
+        assert resolve_endpoint("tts", family="kokoro") == resolve_endpoint("kokoro")
+
+    def test_tts_xtts_resolves_exactly_where_the_coqui_engine_resolves(self):
+        assert resolve_endpoint("tts", family="xtts") == resolve_endpoint("coqui")
+
+    def test_the_two_families_do_NOT_resolve_to_the_same_place(self):
+        """The property an engine-keyed map could not hold: Kokoro and XTTS are
+        two different servers on one runtime."""
+        assert resolve_endpoint("tts", family="kokoro") != resolve_endpoint(
+            "tts", family="xtts"
+        )
+
+    def test_the_env_override_is_the_familys_own_variable(self, monkeypatch):
+        monkeypatch.setenv("IVGS_KOKORO_URL", "http://ivgs-kokoro:5003")
+        monkeypatch.setenv("IVGS_COQUI_URL", "http://ivgs-coqui:5002")
+        assert resolve_endpoint("tts", family="kokoro") == "http://ivgs-kokoro:5003"
+        assert resolve_endpoint("tts", family="xtts") == "http://ivgs-coqui:5002"
+
+    def test_a_runtime_name_with_no_family_refuses_by_name(self):
+        """It must NOT silently pick one. A runtime serving two families with no
+        family supplied is ambiguous, and the message has to SAY so rather than
+        repeat the generic 'no endpoint mapping' -- picking either one would be
+        the wrong-weights-plausible-output failure this package exists to stop."""
+        with pytest.raises(EndpointResolutionError) as exc:
+            resolve_endpoint("tts")
+        text = str(exc.value)
+        assert "tts" in text and "family" in text
+        assert "kokoro" in text and "xtts" in text
+
+    def test_an_unknown_family_on_a_runtime_engine_refuses_by_name(self):
+        with pytest.raises(EndpointResolutionError) as exc:
+            resolve_endpoint("tts", family="bark")
+        assert "bark" in str(exc.value)
+
+    @pytest.mark.parametrize("engine", [
+        "vllm", "comfyui", "coqui", "kokoro", "cogvideox", "latentsync",
+        "sadtalker", "wan21", "animatediff", "remotion", "ollama",
+    ])
+    def test_every_pre_existing_engine_resolves_EXACTLY_as_before(self, engine):
+        """A family argument that is not in the alias table changes nothing.
+        Passing one for an engine that never had families is a no-op."""
+        assert resolve_endpoint(engine) == resolve_endpoint(engine, family="anything")
+
+    def test_the_stage_scoped_pair_still_wins(self, monkeypatch):
+        """WP-61's (vllm, translation) -> Qwen routing is untouched."""
+        monkeypatch.setenv("IVGS_VLLM_TRANSLATION_URL", "http://node-05:8000")
+        assert resolve_endpoint("vllm", stage="translation") == "http://node-05:8000"
+        assert (
+            resolve_endpoint("vllm", stage="storyboard_generation")
+            != "http://node-05:8000"
+        )
