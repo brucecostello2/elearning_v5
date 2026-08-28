@@ -1,0 +1,45 @@
+# IVGS v5 — CogVideoX server: SERVER-CODE-ONLY deploy layer (RC-M5)
+# Tag: ghcr.io/brucecostello2/ivgs-workers:cogvideox-h264-1
+#
+# WHY THIS FILE EXISTS — and it is not convenience.
+#
+# `Dockerfile` (the canonical one, beside this) CANNOT REBUILD THIS IMAGE TODAY.
+# Measured on node-03, 2026-08-28:
+#
+#   1. It pins nothing: `pip install --pre torch torchvision torchaudio` against
+#      the cu128 NIGHTLY index. Run now, that resolution is UNSATISFIABLE —
+#        ERROR: Cannot install torch and torchvision==0.27.0.dev20260407+cu128
+#        because these package versions have conflicting dependencies.
+#      pip picks a current nightly torch while torchvision still wants the older
+#      pinned-by-metadata torch, and the build dies at that layer.
+#
+#   2. Pinning it to what the RUNNING image actually has does not rescue it
+#      either: that image carries torch 2.12.0.dev20260407+cu128 /
+#      torchvision 0.27.0.dev20260407+cu128 / torchaudio 2.11.0.dev20260407+cu128,
+#      and `dev20260407` HAS BEEN GARBAGE-COLLECTED from the nightly index —
+#      the wheels are gone upstream. A canonical rebuild is not merely broken,
+#      it is not reproducible at all.
+#
+# The only way to build from `Dockerfile` today is to move torch to a CURRENT
+# nightly. That swaps the CUDA/torch stack underneath a WORKING Blackwell
+# (sm_120) GPU server — precisely the fragility `Dockerfile`'s own header
+# documents — to ship a change that touches ONE PYTHON FILE. That trade is
+# wrong, so it was not made.
+#
+# So this layer changes server.py and NOTHING else. The base is pinned by IMAGE
+# ID, not by tag, so it cannot drift: the deployed image is bit-identical to the
+# image that was running, except for /app/server.py.
+#
+# THIS IS A WORKAROUND AROUND A REAL DEFECT, NOT A FIX FOR IT. The unpinned
+# nightly install in `Dockerfile` is the defect. It is filed, not buried —
+# see RC-M8 in OUTSTANDING_WORK.md.
+#
+# Build (node-03, from /opt/ivgs):
+#   DOCKER_BUILDKIT=0 docker build \
+#     -t ghcr.io/brucecostello2/ivgs-workers:cogvideox-h264-1 \
+#     -f ivgs-workers/servers/cogvideox/Dockerfile.serverpatch \
+#     ivgs-workers/servers/cogvideox
+FROM ghcr.io/brucecostello2/ivgs-workers@sha256:4eb9b82eaf9c606e0c874f8ce0bedc5e2c0b85f9eedad5805016e3eab12ce795
+
+# WORKDIR, ENV, EXPOSE, HEALTHCHECK and CMD are all inherited unchanged.
+COPY server.py /app/server.py

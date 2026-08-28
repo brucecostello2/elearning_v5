@@ -2902,9 +2902,71 @@ Scene 11 is `video_clip`; its CogVideoX render was rejected by the quality valid
 
 **CogVideoX is emitting mpeg4.** Not fixed — the order says *"Nothing else"*. **RC-M5**, open.
 
+> ✅ **RC-M5 CLOSED 2026-08-28 by WP-IVGS-09e — see §RC-N.** The mpeg4 was a vendored
+> default, not our code: `imageio` is absent from the image, so `export_to_video` took
+> diffusers' deprecated OpenCV branch and its hardcoded `mp4v` fourcc. The encode is now
+> pinned explicitly in our own call (h264 / yuv420p / +faststart). Scene 11 re-rendered,
+> and **draft asset `c9cabd58` exists** — 14/14 scenes composed.
+
 ### M.4 The DLQ crash
 
 | id | Row |
 |---|---|
 | **RC-M6** | ✅ **`ErrorDetail.to_dlq_payload()` NOW EXISTS.** `utils/error_handler.py:295` has always called it and the method never existed, so every dead-letter routing attempt died on `AttributeError` inside the bare `except` and logged `dlq_routing_failed` **CRITICAL** — four times on this project's stage-7 failures alone. Keys are `dead_letter_messages`'s own columns so the payload cannot drift from the row it becomes |
 | **RC-M7** | ⛔ **AND FIXING IT PROVED THE WRITE SIDE IS ABSENT ENTIRELY.** The crash was masking a missing endpoint. Measured after the fix: `dlq_routing_api_error status_code=405` — **there is no `POST /api/v1/dlq/messages`** (the path exists for GET only), and **`DLQService` has no create method**: `list_messages`, `get_message`, `replay_message`, `discard_message`, `bulk_replay`, `get_analytics`. `dead_letter_messages` has **0 rows, ever**. **The DLQ is a read-and-replay surface over a table nothing has ever written.** AD-05 §9 retains the table deliberately as the operator audit record, so the write side is wanted and missing. ⛔ Not built here — out of scope. **Open** |
+
+---
+
+## RC-N — WP-IVGS-09e: the mpeg4 was never ours, and the draft finally exists (2026-08-28)
+
+Project `9c29b1d1`, scene 11 (`208a8ec2`, the only `video_clip`). RC-M5's open question —
+*where does mpeg4 come from* — is answered, fixed at the producer, deployed, and the draft
+asset RC-M3 could not reach **now exists**.
+
+### N.1 The measurement: three hops, and none of them are our code
+
+| id | Row |
+|---|---|
+| **RC-N1** | ✅ **MEASURED, and the encode is NOT in our code.** Our only encode statement was `ivgs-workers/servers/cogvideox/server.py:120` — `export_to_video(frames, str(out_path), fps=req.fps)`, which names **no codec**. Everything else is a vendored default. In the running `cogvideox-pilot-1` image: `diffusers/utils/export_utils.py:168` `if not is_imageio_available():` → `:176` `return _legacy_export_to_video(...)` → **`:130` `fourcc = cv2.VideoWriter_fourcc(*"mp4v")`**. `mp4v` is MPEG-4 Part 2 == **`mpeg4`** |
+| **RC-N2** | ⛔ **AND THE BRANCH WE WERE ON IS THE ONE NOBODY INTENDED.** `is_imageio_available()` measured **`False`** in the image. Cause: `requirements.txt:16` asks for **`imageio-ffmpeg`**, which is only the ffmpeg **binary wheel** — it does **not** satisfy `is_imageio_available()`, which wants the separate **`imageio`** package. So diffusers silently took its deprecated OpenCV fallback, whose codec is hardcoded. Measured: `diffusers 0.38.0`, `imageio-ffmpeg 0.6.0`, `opencv-python-headless 4.13.0.92`, **no `imageio`**. One absent transitive dependency chose the codec for the whole pipeline |
+
+### N.2 The fix — pinned in our call, not inherited
+
+| id | Row |
+|---|---|
+| **RC-N3** | ✅ **`export_to_video` IS NO LONGER CALLED.** `server.py` now carries `encode_h264()`, which drives `imageio_ffmpeg.write_frames` directly with **every parameter composition depends on named explicitly**: `codec="libx264"` (→ ffprobe `h264`), `pix_fmt_out="yuv420p"`, `output_params=["-movflags","+faststart","-profile:v","high","-level","4.0"]`, `macro_block_size=16`. ⛔ **`pip install imageio` was deliberately NOT the fix** — it would also stop the mpeg4, by sending diffusers down its *other* branch to *its* default, which is an accident one dependency resolution away from reverting, and it would still leave pix_fmt and faststart unnamed |
+| **RC-N4** | ✅ **The producer now refuses to emit what stage 7 would reject.** `encode_h264` ffprobes its own output and **raises** if `codec_name != "h264"`. A wrong codec now fails one render at the source instead of travelling downstream to cost a whole draft. Frame normalisation also fixed a latent vendored bug: diffusers multiplies **any** ndarray by 255 assuming float 0..1, destroying an already-uint8 frame; `_frames_to_uint8_rgb` branches on dtype |
+| **RC-N5** | ⓘ **The allowlist was NOT widened and composition does NOT transcode.** `utils/video_validator.py:85` `("h264","h265","hevc","vp9")` is unchanged and was correct throughout. The producer was wrong; the producer was fixed |
+
+### N.3 Proof — the encode, the asset, and the draft
+
+```
+cogvideox-server (node-03), live render of scene 11:
+  encoded 81284d8f-....mp4: 720x480 @8fps codec=libx264 pix_fmt=yuv420p
+                            faststart=yes (probed: h264)
+
+stored asset ec6fedcd  (sha256 512b19f4... == assets.content_hash):
+  codec_name=h264  pix_fmt=yuv420p  profile=High  atoms=[ftyp,moov,free,mdat]  <- moov FIRST
+  validator: is_valid=True  errors=[]        <- was: "Unsupported video codec: mpeg4"
+
+manifest dcc868ec:  all 14 scenes carry audio+background   (scenes_without_background = [])
+
+stage7_prototype_draft_complete:
+  asset_id c9cabd58-378e-4c51-b81d-9070edb46946
+  /ivgs/final/9c29b1d1-.../draft_720p_en-US.mp4
+  1280x720 30fps h264 + aac 48k stereo, 136.61s, 3,461,078 bytes
+  scene_count 14  scenes_composed 14  scenes_failed 0  corruption 7/7
+```
+
+Scene 11's clip was read by eye at t=120s in the composed draft: real content, pillarboxed
+720×480 into 1280×720. **RC-M5 is CLOSED.**
+
+### N.4 ⛔ What this package did NOT fix — named, not buried
+
+| id | Row |
+|---|---|
+| **RC-N6** | ⛔ **THE IMAGE CANNOT BE REBUILT FROM ITS OWN DOCKERFILE, AND THAT IS A WORSE DEFECT THAN THE CODEC WAS.** `Dockerfile:59` runs `pip install --pre torch torchvision torchaudio` against the **moving cu128 nightly index**, pinning nothing. Run today it **fails outright** — `ERROR: Cannot install torch and torchvision==0.27.0.dev20260407+cu128 because these package versions have conflicting dependencies`. **And pinning to the known-good set does not rescue it**: the running image carries `torch 2.12.0.dev20260407+cu128` / `torchvision 0.27.0.dev20260407+cu128` / `torchaudio 2.11.0.dev20260407+cu128`, and **`dev20260407` has been garbage-collected from the index** — the wheels are gone upstream. So RC-N3 was deployed as a **pinned-base derived layer** (`Dockerfile.serverpatch`, `FROM …@sha256:4eb9b82e…`) moving `server.py` and nothing else, rather than swapping the CUDA/torch stack under a working sm_120 server to ship a one-file change. **That is a workaround, not a fix.** To fix: move to a **released** cu128 torch, pin all three, re-verify `torch.cuda.get_arch_list()` lists `sm_120`. Needs a GPU window. **HELD** |
+| **RC-N7** | ⛔ **`POST /jobs/{id}/resume` DISPATCHES STAGE 7 WITH AN EMPTY SCENE LIST.** Resume mints a **new** job id, but `pipeline_orchestrator_v2.py:1238` builds stage 7's payload via `_build_manifest_scenes(project_id, _fetch_latest_manifest(base_input["job_id"]), ...)` — the manifest is looked up by the **NEW** job id, which has none, so `timeline.get("scenes")` is `[]` and stage 7 dies in input validation: `List should have at least 1 item after validation, not 0`. Measured live on job `a6e5f2d1` at 22:08:57. **This is a live failure I caused by exercising the path, and it is a pre-existing defect, not a consequence of RC-N3** — the manifest belongs to the original job. Adjacent to the already-known "resume computes the wrong stage" trap in `dev/CLAUDE.md §7`. **HELD** — the order said *"Nothing else"* |
+| **RC-N8** | ⚠ **The server ACCEPTS `width`/`height` AND SILENTLY IGNORES THEM, and the client reports the request as if it were the result.** `server.py`'s `_MODEL(...)` call passes `prompt`/`num_frames`/`num_inference_steps`/`guidance_scale`/`generator` and **no width/height**, so CogVideoX renders its own default. `video_generation_task.py:278-279` asks for **854×480**; the render is **720×480**; and `cogvideox_client.py:220-221` returns `width=params.width, height=params.height` — **the REQUESTED size, never the produced one**. That fabricated figure is then handed to the validator as `expected_width`, which duly warns `Resolution mismatch: expected 854×480, got 720×480`. A client asserting a dimension it never measured is the same family as the tag-liars WP-IVGS-08 found. **Warning-only, so it composes.** **HELD** |
+| **RC-N9** | ⚠ **Every CogVideoX clip is permanently `flagged` on frame rate.** `video_generation_task.py:281` requests `fps=8` (CogVideoX-5b's native rate: 49 frames ÷ 8 = 6 s) while `video_validator.py:88` `allowed_fps = (24, 25, 30, 60)`. Warning, not error — `is_valid=True` and it composes — but the decision can never be `approved`, which matters to any gate that reads `quality_decision`. Same producer-vs-consumer family as the codec, one severity down. **HELD** |
+| **RC-N10** | ⓘ **RC-M7 reconfirmed live, untouched.** `dlq_routing_api_error status_code=405` fired again at 22:08:57 on the RC-N7 failure. The DLQ write side is still absent. **Excluded by the order; still open** |

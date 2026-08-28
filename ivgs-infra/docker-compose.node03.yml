@@ -175,7 +175,7 @@ services:
   # Runs the locally-built image (pull_policy: never) — no registry needed.
   # ---------------------------------------------------------------------------
   cogvideox-server:
-    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-pilot-1  # pinned: only built cogvideox image (rebuild+retag to bump)
+    image: ghcr.io/brucecostello2/ivgs-workers:cogvideox-h264-1  # RC-M5: pins the H.264 encode. Built from Dockerfile.serverpatch (server.py only) because the canonical Dockerfile no longer builds — see that file's header
     container_name: ivgs-cogvideox-server-node03
     pull_policy: never
     <<: [*common-restart, *common-logging, *gpu-resources]
