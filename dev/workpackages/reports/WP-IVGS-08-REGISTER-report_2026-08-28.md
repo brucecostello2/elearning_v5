@@ -362,6 +362,96 @@ rowed as debt because they are already register items (P2.40, P2.42) plus two or
 
 ---
 
+## §9B Task 8(e) — the engines, and an assertion standard I did not meet
+
+### 9B.1 ⛔ The miss, stated plainly
+
+**The GO order specified: env DB-keys 0 AND the engine reports healthy. I asserted `StartedAt`
+moved AND env-cleared — and stopped there.** I reported "six engines cleared". Two of them never
+came back, and **the fleet audit found it, not me.** A two-condition assertion where three were
+required is exactly the shape of defect this package spent its length closing.
+
+### 9B.2 node-02 `ivgs-vllm-primary` — ruled out in order, then found
+
+`LocalEntryNotFoundError` against a **68 GB cache that was perfectly intact.**
+
+| Hypothesis | Verdict |
+|---|---|
+| Mount-order latent (WAL-shadow class) | ⛔ **Ruled out.** `/data/models` is on the root LV, not a late mount. Only `/mnt/ivgs-shared` is NFS |
+| Env collateral from my `POSTGRES_PASSWORD` split | ⛔ **Ruled out explicitly.** `HF_HOME=/data/models` present and correct; `VLLM_MODEL_NAME` present in the container env with the right value |
+| Cache genuinely gone | ⛔ **Ruled out.** `refs/main → 565debb…`, snapshot with 23 entries / **15 safetensors**, 68 G of blobs, **0 broken symlinks** |
+
+**Actual cause — a fourth class: the §6.3 interpolation trap.** The container was started with
+`--model meta-llama/Llama-3.3-70B-Instruct` while the cache holds
+`RedHatAI/Llama-3.3-70B-Instruct-FP8-dynamic`. `docker-compose.node02.yml:78` reads
+`${VLLM_MODEL_NAME:-meta-llama/…}`, and that variable lives in **`.env.node02` — a SERVICE
+`env_file`, which does not feed `${}` interpolation.** `dev/CLAUDE.md` §6.3 documents this
+for node-05; **node-02 had the identical shape and nobody had cold-started it under the
+compose-level `--env-file` until I did.** The container env had the right value the whole time.
+
+**Fixed by moving the five vars to the compose-level `.env`** — closing the trap rather than
+working around it with a different `--env-file`.
+
+### 9B.3 node-04 `ivgs-vllm-midsize`
+
+`vllm: error: unrecognized arguments: --disable-log-requests`. **Verified against the pinned
+image, not assumed:** `vllm serve --help` on `sha256:3dbe092e…` returns **zero** matches.
+Removed. ⓘ A first attempt put the explanatory comment *inside* the multi-line `command:`
+scalar, which compose rejected as `'services[vllm].command' invalid command line string` — the
+comment had become part of the command.
+
+### 9B.4 The digest pin
+
+**All three nodes already held the same bytes** — `sha256:3dbe092e…`, node-05's proven digest —
+so convergence was a **pin, not a pull**. Both services now reference
+`vllm/vllm-openai@${VLLM_IMAGE_DIGEST:?…}` with **no `:-` default**: an unset digest refuses to
+render rather than silently floating again. `cu130-nightly` is the floating tag whose local
+bytes moved under these two services (WP-62 D-1 class).
+
+| Service | Pinned to | Bytes-for-bytes |
+|---|---|---|
+| node-02 `vllm` | `sha256:3dbe092ec5b2cef63b6104d33fa75d6ce53a7870962529ada69f78bbbc38e776` | identical to node-05's |
+| node-04 `vllm` | same digest | identical to node-05's |
+
+### 9B.5 redis-exporter — the check, not the service
+
+The image is **distroless**: no `wget`, no `sh` (`docker exec … sh` → *executable file not
+found*). It bakes `CMD wget --spider …/metrics` into its own Dockerfile, so **deleting it from
+compose changed nothing** and it had to be overridden with `disable: true`. Prometheus scrapes
+the exporter and its target is **UP** — a container healthcheck contradicting a working scrape
+is worse than none.
+
+### 9B.6 The full ordered assertion — all six
+
+```
+ivgs-vllm-primary   DBKEYS=0  healthy  /v1/models 200 ['llama-3.3-70b']  VRAM 88330 MiB
+ivgs-vllm-midsize   DBKEYS=0  healthy  /v1/models 200 ['mistral-24b']    VRAM 92500 MiB
+ivgs-coqui          DBKEYS=0  healthy
+ivgs-kokoro         DBKEYS=0  healthy
+ivgs-whisperx       DBKEYS=0  healthy
+ivgs-latentsync     DBKEYS=0  healthy
+```
+
+### 9B.7 Fleet facts recorded (RC-I4 / RC-I5)
+
+Nodes 02–05 rebooted **02:31–03:16** today; `apt/history.log` present on all four. ⚠ **I did not
+establish the cause** — correlation only. ✅ node-04's **450 W cap held**. ✅ node-05 still on the
+pinned digest. ⛔ node-03 pulls `192.168.1.51:5000/mbcp/comfyui-wan` — **an MBCP-hosted registry
+serving IVGS nodes is a third transport, and it is not in AD-04.**
+
+---
+
+## §9C Deliverables
+
+1. ⛔ **`OUTSTANDING_WORK.md`** — the reconciled register (§RECONCILIATION, `RC-A`…`RC-I`),
+   including the **M3.3 GATE TABLE** with its R1–R5 runway.
+2. ⛔ **`dev/DEVELOPMENT-STATUS.md`** — **NEW.** The one-page board, filled from this session's
+   measurements. `dev/CLAUDE.md` §12a makes updating it the closing act of every package.
+3. `dev/CLAUDE.md` — §6.1a (never redirect a deploy's stderr), §12a, and the `.51` registry /
+   `.96` Temporal fleet rows.
+
+---
+
 ## §10 Push block — count-gated
 
 ⛔ **NOT PUSHED.**
@@ -373,7 +463,7 @@ rowed as debt because they are already register items (P2.40, P2.42) plus two or
   N=$(git rev-list --count origin/main..HEAD)
   echo "commits ahead of origin/main: $N"
   git --no-pager log --oneline origin/main..HEAD
-  if [ "$N" -eq 5 ]; then
+  if [ "$N" -eq 7 ]; then
     git push origin main && echo "PUSHED"
   else
     echo "REFUSING: expected exactly 3, found $N. Inspect the list above."
