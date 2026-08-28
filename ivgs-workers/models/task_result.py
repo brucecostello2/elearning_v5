@@ -398,3 +398,49 @@ class ErrorDetail(BaseModel):
 
     class Config:
         extra = "allow"
+
+    def to_dlq_payload(self) -> Dict[str, Any]:
+        """The dead-letter record, in the shape `dead_letter_messages` holds.
+
+        ⛔ THIS METHOD DID NOT EXIST, AND ITS ONLY CALLER HAS ALWAYS CALLED IT.
+        `utils/error_handler.py:295` does `error_detail.to_dlq_payload()`, which
+        raised `AttributeError: 'ErrorDetail' object has no attribute
+        'to_dlq_payload'` -- caught by the bare `except` around the HTTP call and
+        logged `dlq_routing_failed` at CRITICAL. Every dead-letter routing
+        attempt has died here, before the request was ever built. Measured four
+        times on project 9c29b1d1's stage-7 failures alone, 2026-08-28.
+
+        Keys are the table's own columns (`dead_letter_messages`), so the
+        payload cannot drift from the thing it is meant to become. `task_args`
+        is added by the caller, which is the only field it knows and this
+        does not.
+
+        ⚠ FIXING THIS DOES NOT MAKE DLQ ROUTING WORK, and saying so is the
+        point. There is no `POST /api/v1/dlq/messages` route and no create
+        method on `DLQService` -- the whole write side is absent, and
+        `dead_letter_messages` has never held a row. What this changes is the
+        failure: a CRITICAL `AttributeError` becomes a `dlq_routing_api_error`
+        naming a missing endpoint, which is the true state.
+        """
+        return {
+            "task_name": self.task_name,
+            "task_kwargs": self.kwargs or {},
+            "exception_type": self.exception_type,
+            "exception_message": self.exception_message,
+            "traceback": self.traceback,
+            "failure_category": self.failure_category.value,
+            "retry_count_exhausted": self.retry_count,
+            # Not columns of `dead_letter_messages`, and sent anyway: they are
+            # what an operator needs to find the run this record belongs to, and
+            # the ingest that does not yet exist will want them.
+            "task_id": self.task_id,
+            "job_id": self.job_id,
+            "project_id": self.project_id,
+            "stage": self.stage,
+            "max_retries": self.max_retries,
+            "node_hostname": self.node_hostname,
+            "worker_id": self.worker_id,
+            "occurred_at": (
+                self.occurred_at.isoformat() if self.occurred_at else None
+            ),
+        }

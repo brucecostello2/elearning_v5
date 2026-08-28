@@ -305,6 +305,59 @@ class AssetService:
         )
         existing_asset = existing.scalar_one_or_none()
 
+        # ⛔ WP-IVGS-09d. A COMPOSITION LAYER IS KEYED ON (scene, asset), SO ONE
+        # ROW CANNOT SERVE TWO SCENES.
+        #
+        # The dedup above matches on content (or params) within a project and
+        # says nothing about the scene. Two scenes that legitimately produce the
+        # same bytes therefore collapsed onto ONE row, and the second scene got
+        # no row at all -- so `manifests.py`, which builds layers by grouping
+        # assets on `scene_id`, found no background for it and stage 7 refused
+        # the whole draft.
+        #
+        # Measured on project 9c29b1d1: scenes 3, 4 and 5 all carried
+        # `{"top": 23, "bottom": 14, "step": 1}`; scene 3 got asset 0eadd523 and
+        # scenes 4 and 5 were handed the same id. THREE consecutive
+        # `prototype_draft` runs failed on *"Scene 355de248... has no background
+        # layer"* while every render had reported success.
+        #
+        # The bytes are still stored once: the new row REUSES the existing
+        # object's fid and path. What it does not reuse is the row, because the
+        # row is what carries the scene link.
+        if existing_asset is not None and existing_asset.scene_id != scene_id:
+            shared = Asset(
+                project_id=project_id,
+                scene_id=scene_id,
+                asset_type=asset_type,
+                seaweedfs_fid=existing_asset.seaweedfs_fid,
+                seaweedfs_path=existing_asset.seaweedfs_path,
+                mime_type=content_type,
+                file_size_bytes=len(file_content),
+                language_code=language_code,
+                content_hash=content_hash,
+                generation_params_hash=generation_params_hash,
+                generation_metadata=generation_metadata,
+                storage_tier=existing_asset.storage_tier,
+                last_accessed_at=datetime.now(timezone.utc),
+            )
+            # The stored object now has two referents. Counted on the row that
+            # owns the bytes, so retention cannot tier it out while the second
+            # scene still points at it.
+            existing_asset.reference_count += 1
+            existing_asset.last_accessed_at = datetime.now(timezone.utc)
+            self.db.add(shared)
+            await self.db.commit()
+            await self.db.refresh(shared)
+            logger.info(
+                "asset_shared_object_new_scene_row hash=%s... shares_fid_with=%s "
+                "new_id=%s scene_id=%s",
+                content_hash[:16], existing_asset.id, shared.id, scene_id,
+            )
+            # NOT `was_deduplicated`: a row was created. Reporting True here
+            # would tell the worker "your scene already had this", which is the
+            # sentence that hid the defect.
+            return shared, False
+
         if existing_asset:
             # Deduplication: increment reference_count, don't re-upload
             existing_asset.reference_count += 1

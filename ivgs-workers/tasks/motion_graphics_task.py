@@ -234,14 +234,37 @@ def _params_for_scene(scene: SceneMotionInput) -> List[Dict[str, Any]]:
     )
 
 
-def _params_hash(invocations: List[Dict[str, Any]]) -> str:
-    """A stable idempotency key over what was asked for.
+def _params_hash(invocations: List[Dict[str, Any]], scene_id: str) -> str:
+    """A stable idempotency key over what was asked for, FOR ONE SCENE.
 
     ``sort_keys`` so two dicts that differ only in insertion order do not look
     like two different renders.
+
+    ⛔ THE SCENE ID IS IN THE KEY, AND LEAVING IT OUT WAS A REAL DEFECT.
+    WP-IVGS-09 hashed the parameters alone and probed with
+    ``find_duplicate_or_none(..., hash_kind="params", project_id=...)`` -- which
+    is PROJECT-scoped. Two scenes may legitimately ask for the same picture: a
+    lesson that works 23 x 14 can show ``step 1`` twice, and on project
+    9c29b1d1 scenes 3, 4 and 5 all carried
+    ``{"top": 23, "bottom": 14, "step": 1}``.
+
+    What happened, measured: scene 3 rendered and got an asset. Scenes 4 and 5
+    hit the dedup, took scene 3's asset id into their RESULT OBJECT, and
+    reported ``success`` with ``was_deduplicated=True`` -- **without an asset row
+    of their own**. `manifests.py` groups assets by ``scene_id`` to build layers,
+    so scenes 4 and 5 had no ``background`` and stage 7 refused the whole draft
+    three times with *"Scene 355de248... has no background layer"*.
+
+    The dedup exists so a RE-RUN OF THE SAME SCENE re-links instead of
+    re-rendering. That is what the key now says. Two scenes wanting the same
+    picture each get their own asset, because a composition layer is keyed on
+    (scene, asset) and there is no way to share one.
     """
     return hashlib.sha256(
-        json.dumps(invocations, sort_keys=True, separators=(",", ":")).encode()
+        json.dumps(
+            {"scene_id": scene_id, "invocations": invocations},
+            sort_keys=True, separators=(",", ":"),
+        ).encode()
     ).hexdigest()
 
 
@@ -333,7 +356,7 @@ async def _render_one_scene(
 
     params = invocations[0]
     result.template = str(params.get("template", ""))
-    params_hash = _params_hash(invocations)
+    params_hash = _params_hash(invocations, scene.scene_id)
 
     # Idempotent re-run: the same parameters are the same picture. Probed on
     # the PARAMS hash, before rendering — a content hash is only knowable after

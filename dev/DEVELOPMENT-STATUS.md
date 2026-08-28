@@ -10,7 +10,7 @@ Everything below is from measurement taken this session, not from memory.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api / frontend `v5.32.2-motion-authoring`**; workers + `ivgs-motion-renderer` `v5.32.0-motion-live`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api / workers `v5.32.3-scene-scoped-dedup`**, frontend `v5.32.2-motion-authoring`; workers + `ivgs-motion-renderer` `v5.32.0-motion-live`; scheduler + backup-worker `v5.31.0-hygiene` | none |
 | **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.32.0-motion-live`**; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
 | **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.32.0-motion-live`** | ⓘ also runs two servers no IVGS package placed — RC-I5 |
 | **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.32.0-motion-live`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
@@ -30,7 +30,28 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-09c** — the RUN-2 motion-scene blocker. **1 commit held, none pushed.**
+**WP-IVGS-09d** — RUN-2 blocked at stage 7. **1 commit held, none pushed.**
+
+⛔ **ONE ASSET ROW CANNOT SERVE TWO SCENES.** Three `prototype_draft` runs failed on *"Scene
+355de248… has no background layer"* while that scene's render reported success. **Two dedups,
+neither scene-aware**: my `_params_hash` (project-scoped, WP-IVGS-09) and — the deeper one that
+survived fixing it — `asset_service.upload_asset:288-320`, which matches content within a
+project and says nothing about the scene, so two scenes collapsed onto one row and the second
+got none. Layers are grouped on `scene_id`, so it had no background.
+
+Fixed: the key is per scene, and a content match from a *different* scene now gets **its own row
+reusing the same stored object**. Measured: five rows, one object `1,015f44e519a7`,
+`reference_count=9`. **The stage-7 failure moved from scene 4 to scene 11.**
+
+⛔ **A draft was NOT reached, and the remaining blocker is a separate defect this order
+excluded**: scene 11's CogVideoX output is rejected — *"Unsupported video codec: mpeg4 (allowed:
+h264, h265, hevc, vp9)"*. **RC-M5, open.**
+
+✅ **The DLQ CRITICAL is gone** — `ErrorDetail.to_dlq_payload()` never existed. ⛔ **And fixing it
+proved the write side is absent entirely**: `dlq_routing_api_error status_code=405`, no
+`POST /dlq/messages`, no create method, `dead_letter_messages` has **0 rows ever**. RC-M7.
+
+**WP-IVGS-09c** — the motion-authoring blocker. Pushed with 09d pending.
 
 ⛔ **RUN-2 BLOCKER, FIXED.** Six scenes flipped to `motion_graphics` in the GUI carried
 `generation_params = {}`: **nothing authors a template after the storyboard exists.** v6's RULE 8
@@ -165,14 +186,14 @@ packages.
 
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1449** | **0** | 0 | 0 | 1427 + **22** (WP-IVGS-09c motion-authoring tests) |
-| `ivgs-workers` | **930** | 18 | 48 | 15 | ✅ byte-identical |
+| `ivgs-api` | **1451** | **0** | 0 | 0 | 1449 + **2** (WP-IVGS-09d) |
+| `ivgs-workers` | **939** | 18 | 48 | 15 | 930 + **9** (WP-IVGS-09d); failure rows byte-identical |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |
 | `tests_system` | **193** | 12 | 15 | 30 | ✅ byte-identical |
 
-✅ **ZERO NEW FAILURES**, three times — WP-IVGS-09, 09b and 09c. One test moved and was corrected
+✅ **ZERO NEW FAILURES**, four times — WP-IVGS-09, 09b, 09c and 09d. One test moved and was corrected
 in the same commit (`test_no_existing_value_was_removed` asserted set EQUALITY under a name that
 promised subset — RC-J7).
 

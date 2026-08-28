@@ -15,13 +15,17 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1449** | **0** | 0 | 0 | 1427 + **22** (WP-IVGS-09c motion-authoring tests) |
-| `ivgs-workers` | **930** | 18 | 48 | 15 | **939** (corrected; WP-IVGS-07's 933 was wrong) |
+| `ivgs-api` | **1451** | **0** | 0 | 0 | 1449 + **2** (WP-IVGS-09d scene-aware upload) |
+| `ivgs-workers` | **939** | 18 | 48 | 15 | 930 + **9** (WP-IVGS-09d scene-scoped dedup) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2652** | **45** | **65** | **45** | 2630 / 45 (WP-IVGS-09b) |
+| **Total** | **2663** | **45** | **65** | **45** | 2652 / 45 (WP-IVGS-09c) |
+
+**Updated 2026-08-28 by WP-IVGS-09d.** `ivgs-api` 1449 -> **1451** (+2, scene-aware upload) and
+`ivgs-workers` 930 -> **939** (+9, scene-scoped dedup key and the DLQ payload).
+**No failure row moved in any tree.**
 
 **Updated 2026-08-28 by WP-IVGS-09c.** `ivgs-api` **1427 -> 1449**: twenty-two tests in
 `test_wpivgs09c_motion_authoring.py`, pinning the motion-spec authoring path and every one of

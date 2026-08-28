@@ -2848,3 +2848,63 @@ happened. Fixed, and pinned on the exact literal.
 | **RC-L7** | ⛔ **AD-08 evidence: a reservation is not headroom.** LatentSync OOM'd on node-04 with **4.31 MiB free** while `ivgs-vllm-midsize` held **92.5 GB resident** alongside `comfyui`. A GPU reservation *was* acquired — reservations record intent and **do not evict**, and nothing on the node arbitrates between a resident vLLM and an on-demand render. **node-04 stacking is the live headroom problem**, and it is AD-08's (Concurrency and Capability Pool) to answer. ⛔ Not fixed here — the order excludes it |
 | **RC-L8** | ⚠ **Jobs tab, two wrong columns → P2.46 sweep.** TYPE shows the job's **creation-time** `job_type` (`image_generation` for a regen that ran the motion branch, tts and talking head), and DURATION is wrong — `c6002413` displayed *"under 1s"* having run ~90 s. Both are display derivations from a row that stopped describing the work |
 | **RC-L9** | ⚠ **`error_classifier` tags these `classified_default_transient` → P2.46 sweep.** A missing `generation_params`, an unknown template and a CUDA OOM are none of them transient: the first two are deterministic and will fail identically on retry, and the third needs eviction, not patience. Misclassification costs two pointless retries and a DLQ row that reads as bad luck |
+
+
+---
+
+## RC-M — WP-IVGS-09d: one asset row cannot serve two scenes (2026-08-28)
+
+Project `9c29b1d1`. Three consecutive `prototype_draft` runs (`0ecb29bc`, `4b1c1241`,
+`578545be`) failed with *"Scene 355de248… has no background layer"* — scene index 4,
+`motion_graphics`, whose render reported **success**.
+
+### M.1 The mechanism: TWO dedups, neither scene-aware
+
+Scenes 3, 4 and 5 all carried `{"top": 23, "bottom": 14, "step": 1}`. **That is legitimate** — a
+lesson working 23 × 14 can show one step more than once.
+
+| id | Where | What it did |
+|---|---|---|
+| **RC-M1** | `ivgs-workers/tasks/motion_graphics_task.py`, `_params_hash` + the dedup probe | ⛔ **MINE, from WP-IVGS-09.** The idempotency key was the **parameters alone**, probed with `find_duplicate_or_none(..., hash_kind="params", project_id=…)` — **project-scoped**. Scene 3 rendered; scenes 4 and 5 took scene 3's asset id into their *result object*, reported `was_deduplicated=True` / `success`, and **got no asset row**. Measured: 2 × `motion_scene_rendered`, 3 × `motion_scene_deduplicated`, all three naming asset `0eadd523` — scene 3's |
+| **RC-M2** | `ivgs-api/app/services/asset_service.py:288-320`, `upload_asset` | ⛔ **THE DEEPER ONE, and it survived the first fix.** The dedup matches `content_hash` (or params hash) **AND `project_id`** — and says **nothing about `scene_id`**. On a hit it increments `reference_count` and **returns the existing row**. So even with the worker probing per-scene, the upload still collapsed two scenes onto one row. Measured after fixing RC-M1: scene 4 rendered, uploaded, and the API handed back `0eadd523` again |
+
+**Why that breaks stage 7:** `manifests.py:196-227` builds layers by grouping assets on
+`scene_id`. No row for the scene → no `background` → the scene lands in
+`scenes_without_background`, and `ffmpeg_client.py:385-387` refuses the whole draft.
+
+⛔ **This was never motion-specific.** Two `image` scenes with byte-identical output collapse the
+same way. Motion graphics merely made it certain: a template with identical parameters produces
+identical bytes every time, by design.
+
+### M.2 The fix — bytes once, a row per scene
+
+| id | Row |
+|---|---|
+| **RC-M3** | ✅ **`_params_hash` now keys on `(scene_id, invocations)`.** The dedup exists so a **re-run of one scene** re-links instead of re-rendering; that is unchanged. Two scenes wanting the same picture no longer collide |
+| **RC-M4** | ✅ **`upload_asset` is scene-aware.** When a content match belongs to a *different* scene, a **new row** is created **reusing the existing object's `seaweedfs_fid` and path** — the bytes are still stored once, and `reference_count` on the owning row counts the shares so retention cannot tier the object out from under a second referent. It returns `was_deduplicated=False`, because a row *was* created: reporting `True` is the sentence that hid this |
+
+**Measured after:** five distinct asset rows for scenes 3, 4, 5, 7, 10, all with content hash
+`83fba15b…` and **one shared object `1,015f44e519a7`**, owner `reference_count = 9`.
+
+### M.3 Proof — the failure moved
+
+```
+manifest for job 4bf3ff53:  scenes_without_background = [11]     (was [4, 5, 7, 10, 11])
+layers per scene: 0:2 1:2 2:2 3:2 4:2 5:2 6:2 7:2 8:2 9:2 10:2 11:1 12:2 13:2
+stage 7 now refuses:  "Scene 208a8ec2… has no background layer"   <- scene index 11
+```
+
+⛔ **A DRAFT ASSET WAS NOT REACHED, and the reason is a SEPARATE defect this order excludes.**
+Scene 11 is `video_clip`; its CogVideoX render was rejected by the quality validator:
+
+    video_validation_rejected  errors: ["Unsupported video codec: mpeg4
+                               (allowed: h264, h265, hevc, vp9)"]
+
+**CogVideoX is emitting mpeg4.** Not fixed — the order says *"Nothing else"*. **RC-M5**, open.
+
+### M.4 The DLQ crash
+
+| id | Row |
+|---|---|
+| **RC-M6** | ✅ **`ErrorDetail.to_dlq_payload()` NOW EXISTS.** `utils/error_handler.py:295` has always called it and the method never existed, so every dead-letter routing attempt died on `AttributeError` inside the bare `except` and logged `dlq_routing_failed` **CRITICAL** — four times on this project's stage-7 failures alone. Keys are `dead_letter_messages`'s own columns so the payload cannot drift from the row it becomes |
+| **RC-M7** | ⛔ **AND FIXING IT PROVED THE WRITE SIDE IS ABSENT ENTIRELY.** The crash was masking a missing endpoint. Measured after the fix: `dlq_routing_api_error status_code=405` — **there is no `POST /api/v1/dlq/messages`** (the path exists for GET only), and **`DLQService` has no create method**: `list_messages`, `get_message`, `replay_message`, `discard_message`, `bulk_replay`, `get_analytics`. `dead_letter_messages` has **0 rows, ever**. **The DLQ is a read-and-replay surface over a table nothing has ever written.** AD-05 §9 retains the table deliberately as the operator audit record, so the write side is wanted and missing. ⛔ Not built here — out of scope. **Open** |

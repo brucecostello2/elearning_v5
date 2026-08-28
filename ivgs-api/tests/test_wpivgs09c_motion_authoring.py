@@ -173,3 +173,94 @@ class TestTheOtherMediumAwarePromptIsStillExcluded:
         from app.services.adaptation_service import MEDIA_TYPES as ADAPT
 
         assert "motion_graphics" not in ADAPT
+
+
+class TestOneRowCannotServeTwoScenes:
+    """WP-IVGS-09d. A composition layer is keyed on (scene, asset).
+
+    `asset_service.upload_asset` deduped on content-or-params within a project
+    and said nothing about the scene, so two scenes producing the same bytes
+    collapsed onto one row and the second got none. `manifests.py` groups assets
+    by `scene_id` to build layers, so that scene had no background and stage 7
+    refused the whole draft — three consecutive times on project 9c29b1d1,
+    while every render reported success.
+    """
+
+    async def test_the_same_bytes_for_a_SECOND_scene_get_their_own_row(
+        self, db_session, model_store_project
+    ):
+        import uuid as _uuid
+
+        from app.models.storyboard_scene import StoryboardScene
+        from app.services.asset_service import AssetService
+
+        scenes = []
+        for i in range(2):
+            sc = StoryboardScene(
+                id=_uuid.uuid4(), project_id=model_store_project.id,
+                scene_index=i, media_type="motion_graphics",
+                narration_text="n", visual_description="v", duration_seconds=5.0,
+            )
+            db_session.add(sc)
+            scenes.append(sc)
+        await db_session.flush()
+
+        svc = AssetService(db_session)
+        payload = b"identical rendered bytes for both scenes"
+        first, dedup_a = await svc.upload_asset(
+            project_id=model_store_project.id, file_content=payload,
+            filename="a.mp4", content_type="video/mp4", asset_type="video",
+            scene_id=scenes[0].id,
+        )
+        second, dedup_b = await svc.upload_asset(
+            project_id=model_store_project.id, file_content=payload,
+            filename="b.mp4", content_type="video/mp4", asset_type="video",
+            scene_id=scenes[1].id,
+        )
+
+        assert first.id != second.id, (
+            "the second scene was handed the first scene's asset row; it will "
+            "have no background layer and stage 7 will refuse the draft"
+        )
+        assert second.scene_id == scenes[1].id
+        assert dedup_b is False, (
+            "reporting was_deduplicated=True for a row that was created is the "
+            "sentence that hid this defect"
+        )
+        # The bytes are still stored once.
+        assert second.seaweedfs_fid == first.seaweedfs_fid
+        assert second.content_hash == first.content_hash
+
+    async def test_the_same_scene_uploading_twice_STILL_dedups(
+        self, db_session, model_store_project
+    ):
+        """The behaviour the dedup exists for is unchanged: a re-run of ONE
+        scene re-references rather than duplicating."""
+        import uuid as _uuid
+
+        from app.models.storyboard_scene import StoryboardScene
+        from app.services.asset_service import AssetService
+
+        sc = StoryboardScene(
+            id=_uuid.uuid4(), project_id=model_store_project.id, scene_index=0,
+            media_type="motion_graphics", narration_text="n",
+            visual_description="v", duration_seconds=5.0,
+        )
+        db_session.add(sc)
+        await db_session.flush()
+
+        svc = AssetService(db_session)
+        payload = b"one scene, uploaded twice"
+        first, _ = await svc.upload_asset(
+            project_id=model_store_project.id, file_content=payload,
+            filename="a.mp4", content_type="video/mp4", asset_type="video",
+            scene_id=sc.id,
+        )
+        second, deduped = await svc.upload_asset(
+            project_id=model_store_project.id, file_content=payload,
+            filename="a.mp4", content_type="video/mp4", asset_type="video",
+            scene_id=sc.id,
+        )
+        assert second.id == first.id
+        assert deduped is True
+        assert second.reference_count == 2
