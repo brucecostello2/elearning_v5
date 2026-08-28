@@ -490,3 +490,124 @@ class TestMbcpRuntimeEngines:
         )
         assert r.status_code == 422
         assert r.json()["detail"][0]["loc"] == ["body", "engine"]
+
+
+class TestWpIvgs04WhatTheReSentTtsCertificateDoesToTheStore:
+    """WP-IVGS-04 Task 2 — UPDATE or INSERT, proven rather than reasoned.
+
+    The work order's premise was that MBCP's Kokoro certificate lands on the
+    row rendering today and flips its engine under it. **It does not**, and the
+    reason is that the receiver matches on ``Model.name``
+    (``ad01_ingest.py:150``, a UNIQUE column) while MBCP's certificate carries
+    ``model_name="Kokoro"`` (``scripts/seed_stage.py:576`` on origin/main) and
+    the rendering row is named ``kokoro-82m``. Two different strings, so the
+    certificate reaches a DIFFERENT row.
+
+    These tests pin the mechanism, not the live data: same name -> UPDATE in
+    place, different name -> INSERT a second row. Both branches are exercised
+    so a later change to the match key cannot flip one silently.
+    """
+
+    async def test_a_matching_name_UPDATES_the_existing_row_in_place(
+        self, client: AsyncClient, db_session
+    ):
+        """``ad01_ingest.py:190-196`` — the else branch. Supplied-wins engine."""
+        first = await client.post(
+            URL,
+            json=_bundle(model_name="Kokoro", ivgs_stage="tts", engine="kokoro"),
+            headers=_svc(),
+        )
+        assert first.status_code == 201, first.text
+        assert first.json()["created"] is True
+        model_id = first.json()["ad01_id"]
+
+        second = await client.post(
+            URL,
+            json=_bundle(model_name="Kokoro", ivgs_stage="tts", engine="tts"),
+            headers=_svc(),
+        )
+        assert second.status_code == 201, second.text
+        # SAME id back, and created=False: one row, updated.
+        assert second.json()["created"] is False
+        assert second.json()["ad01_id"] == model_id
+
+        rows = (
+            await db_session.execute(select(Model).where(Model.name == "Kokoro"))
+        ).scalars().all()
+        assert len(rows) == 1, "the re-send must not duplicate the row"
+        assert rows[0].engine == ModelEngine.TTS, (
+            "engine is supplied-wins (ad01_ingest.py:195) — the row's engine "
+            "changes under it"
+        )
+
+    async def test_a_DIFFERENT_name_INSERTS_and_leaves_the_first_row_alone(
+        self, client: AsyncClient, db_session
+    ):
+        """THE CASE THAT ACTUALLY APPLIES to the live store.
+
+        ``kokoro-82m`` is the row rendering today. MBCP's certificate says
+        ``Kokoro``. The match at ``ad01_ingest.py:150`` is exact string
+        equality on a UNIQUE column, so the certificate cannot reach it: the
+        rendering row keeps its engine and keeps resolving through the
+        registration WP-IVGS-04 left untouched.
+        """
+        rendering = Model(
+            name="kokoro-82m",
+            display_name="kokoro-82m",
+            stage=ModelStage.VOICEOVER_TTS,
+            engine=ModelEngine.KOKORO,
+            state=ModelState.APPROVED,
+            enabled=True,
+        )
+        db_session.add(rendering)
+        await db_session.commit()
+
+        r = await client.post(
+            URL,
+            json=_bundle(model_name="Kokoro", ivgs_stage="tts", engine="tts"),
+            headers=_svc(),
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["created"] is True, "a new row, not an update"
+        assert r.json()["ad01_id"] != str(rendering.id)
+
+        await db_session.refresh(rendering)
+        assert rendering.engine == ModelEngine.KOKORO, (
+            "the live rendering row is NOT touched by the certificate"
+        )
+        assert (
+            await db_session.execute(
+                select(func.count()).select_from(Model).where(
+                    Model.stage == ModelStage.VOICEOVER_TTS
+                )
+            )
+        ).scalar_one() == 2, "two rows now co-exist — AD-10 §5.2 territory"
+
+    async def test_the_xtts_row_DOES_change_engine_because_its_name_matches(
+        self, client: AsyncClient, db_session
+    ):
+        """The blast radius that is real. ``XTTS-v2`` is MBCP's model name AND
+        the IVGS row name, so this certificate lands on the live row and flips
+        ``coqui`` -> ``tts``. That row is approved and enabled."""
+        existing = Model(
+            name="XTTS-v2",
+            display_name="XTTS-v2",
+            stage=ModelStage.VOICEOVER_TTS,
+            engine=ModelEngine.COQUI,
+            state=ModelState.APPROVED,
+            enabled=True,
+        )
+        db_session.add(existing)
+        await db_session.commit()
+
+        r = await client.post(
+            URL,
+            json=_bundle(model_name="XTTS-v2", ivgs_stage="tts", engine="tts"),
+            headers=_svc(),
+        )
+        assert r.status_code == 201, r.text
+        assert r.json()["created"] is False
+        await db_session.refresh(existing)
+        assert existing.engine == ModelEngine.TTS
+        assert existing.state == ModelState.APPROVED, "lifecycle state is kept"
+        assert existing.enabled is True, "and it stays enabled — still selectable"

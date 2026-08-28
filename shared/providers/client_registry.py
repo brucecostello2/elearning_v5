@@ -37,7 +37,7 @@ run this scene?".
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Callable
 
 from shared.providers.contracts import ClientContract, SceneInput
@@ -93,6 +93,16 @@ class ClientSpec:
 
 
 _REGISTRY: dict[tuple[str, str, str], ClientSpec] = {}
+
+#: MBCP's runtime engine name for BOTH voiceover families. Not a family name:
+#: MBCP serves XTTS-v2 and Kokoro on one `tts_coqui` adapter and certifies both
+#: with `engine="tts"` (`scripts/seed_stage.py:543,576`).
+MBCP_TTS_RUNTIME_ENGINE = "tts"
+
+#: The engine key each voiceover family is registered under TODAY. Read, never
+#: written -- the runtime-name registration below derives from these so it
+#: cannot drift from the entries that serve the live rows.
+_ENGINE_BY_TTS_FAMILY: dict[str, str] = {"xtts": "coqui", "kokoro": "kokoro"}
 
 #: family -> the names/patterns that resolve to it, for models whose rows
 #: predate any family field. Checked in order; first match wins.
@@ -511,6 +521,49 @@ def register_builtin_clients() -> None:
         ),
         name_patterns=(r"kokoro",),
     )
+
+    # --- voiceover_tts on the RUNTIME engine name -------------------------
+    #
+    # WP-IVGS-04 Task 1, closing WP-IVGS-03 D-1.
+    #
+    # THE TWO ENTRIES ABOVE ARE KEYED ON A MODEL FAMILY, NOT AN ENGINE.
+    # `coqui` and `kokoro` are the names of TTS model families; MBCP's actual
+    # runtime name for both is `tts` (`scripts/seed_stage.py:543,576` on
+    # origin/main -- XTTS-v2 and Kokoro are two config rows on ONE
+    # `tts_coqui` adapter). WP-IVGS-03 added `tts` to `ModelEngine` so those
+    # certificates could be INGESTED; until this registration exists, a row
+    # carrying the correct runtime name is certified, stored, selectable --
+    # and resolves to nothing.
+    #
+    # REGISTERED ON THE THREE-TUPLE, NOT AS AN `engine -> client` ALIAS, and
+    # the distinction is load-bearing: `tts` is ONE runtime serving TWO
+    # families. An alias maps an engine to a single client, so it would pick
+    # one model and be silently wrong for the other -- the exact failure
+    # shape (right engine, wrong weights, plausible output) that AD-01
+    # selection exists to prevent. The registry already separates families;
+    # these are two more keys reusing the two that are already here.
+    #
+    # THE CONTRACT IS DERIVED, NOT RETYPED. `replace(engine=...)` on the
+    # contract just registered means "what Kokoro requires" cannot fork into
+    # two drifting copies as the runtime key ages. `name_patterns` are
+    # deliberately NOT passed again -- they are family-keyed and engine-
+    # independent, and re-declaring them would only duplicate entries in
+    # `_NAME_PATTERNS`.
+    #
+    # NOTHING ABOVE IS REMOVED OR ALTERED. The Kokoro row rendering today is
+    # live on engine `kokoro` and keeps resolving through the entry above it;
+    # the `coqui`/`kokoro` value-domain cleanup remains deferred to AD-10
+    # (WP-IVGS-03 S7.1).
+    for _family in ("xtts", "kokoro"):
+        _spec = _REGISTRY[("voiceover_tts", _ENGINE_BY_TTS_FAMILY[_family], _family)]
+        register_client(
+            ClientSpec(
+                contract=replace(_spec.contract, engine=MBCP_TTS_RUNTIME_ENGINE),
+                client_path=_spec.client_path,
+                graph=_spec.graph,
+                build_kwargs=dict(_spec.build_kwargs),
+            )
+        )
 
 
 register_builtin_clients()

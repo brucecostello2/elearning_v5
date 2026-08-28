@@ -311,3 +311,92 @@ class TestAnimateDiffWasChosenOnEvidence:
 
         supplied = set(AnimateDiffParams().as_context())
         assert slots <= supplied, f"unfillable slots: {sorted(slots - supplied)}"
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-04 TASK 1 — the runtime engine name resolves, per family
+# ---------------------------------------------------------------------------
+
+class TestTheRuntimeEngineNameResolvesPerFamily:
+    """WP-IVGS-03 D-1, closed on the THREE-TUPLE and not on an alias.
+
+    WP-IVGS-03 added ``tts`` to ``ModelEngine`` so MBCP's certificates could be
+    INGESTED. It did not make the models RUNNABLE: this registry is keyed on
+    ``(stage, engine, family)`` (``client_registry.py:106``) and its two TTS
+    clients were registered only under the model-FAMILY values ``coqui`` and
+    ``kokoro``. The moment MBCP sends the real runtime name, the key misses.
+
+    WHY NOT AN ``engine -> client`` ALIAS, which was the other option on the
+    table. ``tts`` is ONE runtime serving TWO families -- MBCP certifies both
+    XTTS-v2 and Kokoro with ``engine="tts"`` (``scripts/seed_stage.py:543,576``,
+    read off ``origin/main``). An alias maps an engine to a single client, so it
+    would pick one model and be silently wrong for the other. The registry
+    already distinguishes by family; two more keys reusing the two existing
+    families is the shape that was already there.
+    """
+
+    def test_engine_tts_resolves_to_kokoro_for_the_kokoro_family(self):
+        b = _binding("kokoro-82m", "voiceover_tts", "tts")
+        assert family_of(b) == "kokoro"
+        assert resolve_client(b).client_path == "clients.kokoro_client.KokoroClient"
+
+    def test_engine_tts_resolves_to_xtts_for_the_xtts_family(self):
+        b = _binding("XTTS-v2", "voiceover_tts", "tts")
+        assert family_of(b) == "xtts"
+        assert resolve_client(b).client_path == "clients.coqui_client.CoquiClient"
+
+    def test_one_engine_two_families_two_different_clients(self):
+        """The property an engine->client alias could not have expressed. Both
+        rows carry the SAME stage and the SAME engine and must not resolve to
+        the same client."""
+        kokoro = resolve_client(_binding("kokoro-82m", "voiceover_tts", "tts"))
+        xtts = resolve_client(_binding("XTTS-v2", "voiceover_tts", "tts"))
+        assert kokoro.client_path != xtts.client_path
+
+    @pytest.mark.parametrize("name,engine,expect_path", [
+        # The registrations that serve the row rendering today. WP-IVGS-04
+        # REMOVES NOTHING: the Kokoro-82M row is live on engine 'kokoro' and
+        # resolves through this entry right now.
+        ("kokoro-82m", "kokoro", "clients.kokoro_client.KokoroClient"),
+        ("XTTS-v2", "coqui", "clients.coqui_client.CoquiClient"),
+    ])
+    def test_the_existing_registrations_still_resolve_unchanged(
+        self, name, engine, expect_path
+    ):
+        assert resolve_client(
+            _binding(name, "voiceover_tts", engine)
+        ).client_path == expect_path
+
+    def test_the_contract_is_the_same_object_shape_on_both_keys(self):
+        """The new key must not fork the contract. A second, drifting copy of
+        'what Kokoro requires' is the defect WP-67 exists to prevent."""
+        for family, engines in (("kokoro", ("kokoro", "tts")),
+                                ("xtts", ("coqui", "tts"))):
+            contracts = [
+                contract_for("voiceover_tts", e, family) for e in engines
+            ]
+            assert all(c is not None for c in contracts)
+            assert contracts[0].requires == contracts[1].requires
+            assert contracts[0].produces == contracts[1].produces
+            assert contracts[0].family == family
+
+    def test_an_unregistered_family_on_engine_tts_still_refuses_by_name(self):
+        """The registry must not become permissive because a runtime name was
+        added. A third TTS family on the same runtime has no client, and says
+        so with the message WP-67 built."""
+        with pytest.raises(NoClientForFamilyError) as exc:
+            resolve_client(_binding("Bark-small", "voiceover_tts", "tts"))
+        text = str(exc.value)
+        assert exc.value.reason == "no_client_for_family"
+        assert "Bark-small" in text
+        assert "no client for family" in text
+        assert "'bark-small'" in text
+        assert "certified, fetched and selected" in text
+        # It still lists what DOES exist for the stage.
+        assert "kokoro" in text and "xtts" in text
+
+    def test_the_stage_still_advertises_exactly_two_tts_families(self):
+        """Two engines, two families -- not four. registered_families() is a
+        set over the family axis, and adding a runtime key must not inflate the
+        surface an operator reads."""
+        assert registered_families("voiceover_tts") == ("kokoro", "xtts")
