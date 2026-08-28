@@ -15,12 +15,26 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1359** | **0** | 0 | 0 | 1286 (WP-67) |
-| `ivgs-workers` | **903** | 18 | 48 | 15 | 887 (WP-64) |
-| `ivgs-scheduler` | **35** | **20** | 0 | 0 | 35 / 20 (WP-60) |
+| `ivgs-api` | **1395** | **0** | 0 | 0 | 1359 (WP-68) |
+| `ivgs-workers` | **925** | 18 | 48 | 15 | 903 (WP-68) |
+| `ivgs-scheduler` | **46** | **15** | 0 | 0 | 35 / 20 (WP-60) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2494** | **50** | **63** | **45** | 2421 / 50 (WP-67) |
+| **Total** | **2563** | **45** | **63** | **45** | 2494 / 50 (WP-68) |
+
+**Updated 2026-08-28 by WP-IVGS-04 and WP-IVGS-06.** `ivgs-api` 1359 -> **1395**
+(+7 WP-IVGS-03, +29 WP-IVGS-04/06), `ivgs-workers` 903 -> **925** (+13 WP-IVGS-04, +9
+WP-IVGS-06), both with **no failure row moved**.
+
+⛔ **`ivgs-scheduler` moved a FAILURE row, downward: 35/20 -> 46/15.** Five previously
+failing tests now pass and **none of them was touched**. `FakeRedis`/`FakePipeline` had no
+`zremrangebyscore`, and `LoadBalancer._record_weight_metrics` (`load_balancer.py:304`) calls
+it on every scheduling pass — so every test in `test_load_balancer.py` that reached
+`get_weighted_candidates` with at least one candidate died on `AttributeError` before
+asserting anything. WP-IVGS-06 implemented the command on the fake (it really removes, so a
+test can assert the trim), which unblocked four tests there plus one in `test_scheduler.py`.
+**No assertion was weakened and no skip marker was added** — the gap was in the double, not
+in the expectations. The remaining 15 are untouched and unexplained here, as before.
 
 **A correction to this table's own arithmetic, carried since WP-52.** The
 Total row has read **47 failed** through WP-52, WP-57 and WP-59 while its own

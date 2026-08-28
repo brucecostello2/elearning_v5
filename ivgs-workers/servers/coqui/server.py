@@ -67,7 +67,29 @@ async def tts_to_audio(req: TTSRequest) -> Response:
     if not req.text or not req.text.strip():
         raise HTTPException(status_code=422, detail="text is empty")
 
+    # WP-IVGS-06 Task 3 (D-7). THESE FIVE WERE ACCEPTED AND DROPPED.
+    #
+    # `TTSRequest` has declared `temperature`, `length_penalty`,
+    # `repetition_penalty`, `top_k` and `top_p` since this server was written,
+    # and the client has always sent them -- `coqui_client.py:201-211`. This
+    # dict carried only text/language/speed, so a caller setting
+    # `temperature=0.31` got 0.75 and no indication that its value had been
+    # discarded. The old comment said they were "accepted (XTTS defaults match
+    # these)", which is true only for a caller that never changes them.
+    #
+    # ⛔ THE MODEL SUPPORTS ALL OF THEM. Measured on this container:
+    # `Xtts.inference` takes `temperature, top_k, top_p, length_penalty,
+    # repetition_penalty, speed, enable_text_splitting`, and `TTS.tts_to_file`
+    # forwards `**kwargs` through `Synthesizer.tts` to it. Nothing was missing
+    # but the forwarding.
     kwargs = {"text": req.text, "language": _lang(req.language), "speed": req.speed}
+    kwargs.update(
+        temperature=req.temperature,
+        length_penalty=req.length_penalty,
+        repetition_penalty=req.repetition_penalty,
+        top_k=req.top_k,
+        top_p=req.top_p,
+    )
     if req.speaker_wav and os.path.isfile(req.speaker_wav):
         kwargs["speaker_wav"] = req.speaker_wav
     else:

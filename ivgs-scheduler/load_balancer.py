@@ -29,6 +29,21 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
+#: Weight prior for a node whose heartbeat carried NO utilisation reading.
+#: WP-IVGS-06 Task 1.
+#:
+#: DELIBERATELY NOT 0.0, and the choice is load-bearing. The §12.1 weight is
+#: ``(1 - gpu_util) x (1 - mem_util) x queue_headroom``, so ``gpu_util = 0.0``
+#: is the MAXIMUM weight -- an unmeasured GPU would be preferred over every
+#: measured one, attracting work because nothing is known about it. That is
+#: WP-60's lying zero with the sign flipped against us.
+#:
+#: 0.5 is a neutral prior: it neither rewards nor punishes the absence of a
+#: reading. When NO node reports -- today's fleet -- every candidate carries the
+#: same factor, it cancels from the ranking, and selection falls back to VRAM
+#: and queue depth, both of which are actually measured.
+UNKNOWN_GPU_UTIL_PRIOR = 0.5
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -107,6 +122,7 @@ class LoadBalancer:
 
         candidates: List[GpuCandidate] = []
         weights: List[float] = []
+        unmeasured_nodes: List[str] = []
 
         for node in alive_nodes:
             available_vram = node.total_vram_mb - node.used_vram_mb
@@ -123,7 +139,36 @@ class LoadBalancer:
 
             # Compute weight per §12.1 formula:
             # weight = (1 - gpu_util) × (1 - mem_util) × (max_queue - current_queue)
-            gpu_util = node.gpu_utilization_pct / 100.0
+            #
+            # WP-IVGS-06 Task 1. `gpu_utilization_pct` IS NULLABLE and this line
+            # divided by it unguarded, so EVERY /schedule call raised
+            # `TypeError: unsupported operand type(s) for /: 'NoneType' and
+            # 'float'` -> HTTP 500 -> every GPU stage fail-open UNRESERVED.
+            #
+            # WP-60 (`b94ec6f`) made the field `Optional[float] = None` for a
+            # good reason: a worker whose `nvidia-smi` call failed used to have
+            # a confident 0% recorded, indistinguishable from a genuinely idle
+            # GPU. That fix was right. This consumer was never updated to match
+            # -- `load_balancer.py` has not been touched since `48dc12f` -- so a
+            # correctness fix in the producer became a crash in the consumer.
+            #
+            # ⛔ THE UNKNOWN CASE IS NOT 0.0. Substituting zero here would put
+            # WP-60's lying zero straight back, one layer down, and it is worse
+            # here than it was there: `1 - 0.0 = 1.0` is the MAXIMUM weight, so
+            # an unmeasured GPU would outrank every measured one and attract
+            # the work precisely because nothing is known about it.
+            #
+            # A declared neutral prior instead. When no node has a reading --
+            # today's fleet state -- every candidate takes the same prior, the
+            # term cancels out of the ranking, and selection degrades to the
+            # VRAM and queue-depth factors, which ARE measured. That is the
+            # honest behaviour: rank on what is known, do not invent the rest.
+            util_pct = node.gpu_utilization_pct
+            if util_pct is None:
+                gpu_util = UNKNOWN_GPU_UTIL_PRIOR
+                unmeasured_nodes.append(node.node_id)
+            else:
+                gpu_util = util_pct / 100.0
             mem_util = node.used_vram_mb / max(node.total_vram_mb, 1)
             queue_headroom = max(
                 0,
@@ -153,6 +198,21 @@ class LoadBalancer:
             )
             candidates.append(candidate)
             weights.append(weight)
+
+        # NAMED, not silent. Scheduling still happened; it happened on less
+        # information than the formula assumes, and an operator reading these
+        # logs should be able to tell those two states apart.
+        if unmeasured_nodes:
+            logger.warning(
+                "gpu_utilization_unknown_using_prior",
+                nodes=sorted(set(unmeasured_nodes)),
+                unmeasured_count=len(set(unmeasured_nodes)),
+                prior=UNKNOWN_GPU_UTIL_PRIOR,
+                effect=(
+                    "weight ranking falls back to VRAM and queue depth for "
+                    "these nodes; their heartbeats carried no nvidia-smi reading"
+                ),
+            )
 
         if not candidates:
             logger.warning(

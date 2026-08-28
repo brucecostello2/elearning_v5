@@ -501,6 +501,22 @@ def register_builtin_clients() -> None:
                 stage="voiceover_tts",
                 engine="coqui",
                 requires=frozenset({SceneInput.PROMPT}),
+                # WP-IVGS-06 Task 3 (D-7). ONLY `speed`, and that is the honest
+                # answer today rather than the flattering one.
+                #
+                # The client sends `temperature`, `top_k`, `top_p`,
+                # `length_penalty` and `repetition_penalty`, the engine's
+                # `TTSRequest` declares all five, and `Xtts.inference` genuinely
+                # supports every one -- measured on node-04. But `ivgs-coqui`'s
+                # `server.py` builds `kwargs = {text, language, speed}` and
+                # forwards nothing else, so all five are accepted and dropped.
+                #
+                # ⛔ They are deliberately NOT listed here. `accepts_params` is
+                # what a surface offers an operator; listing a control that
+                # cannot move the output would be the defect one layer up from
+                # where it lives. They go in when the engine block in the
+                # WP-IVGS-06 report has been applied and proven, not before.
+                accepts_params=frozenset({"speed"}),
                 produces="audio/wav",
             ),
             client_path="clients.coqui_client.CoquiClient",
@@ -515,6 +531,12 @@ def register_builtin_clients() -> None:
                 stage="voiceover_tts",
                 engine="kokoro",
                 requires=frozenset({SceneInput.PROMPT}),
+                # WP-IVGS-06 Task 3. `speed` only, and for Kokoro this is FINAL
+                # rather than pending an engine fix: its server states in its
+                # own docstring that "Kokoro uses only text / language / speed;
+                # the XTTS-specific fields and speaker_wav are accepted for
+                # contract symmetry". Kokoro does not voice-clone either.
+                accepts_params=frozenset({"speed"}),
                 produces="audio/wav",
             ),
             client_path="clients.kokoro_client.KokoroClient",

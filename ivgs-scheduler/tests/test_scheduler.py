@@ -135,6 +135,37 @@ class FakeRedis:
             self._sorted_sets[key] = {}
         self._sorted_sets[key].update(mapping)
 
+    async def zremrangebyscore(self, key: str, min_score, max_score):
+        """Drop members whose score falls in [min, max].
+
+        WP-IVGS-06. THE FAKE WAS MISSING THIS AND IT BLOCKED THE WHOLE FILE:
+        `LoadBalancer._record_weight_metrics` (`load_balancer.py:304`) trims the
+        weight time-series on every call, so EVERY test that reached
+        `get_weighted_candidates` with at least one candidate died on
+        `AttributeError: 'FakePipeline' object has no attribute
+        'zremrangebyscore'` -- four pre-existing tests plus this package's.
+
+        Implemented, not stubbed: it actually removes, so a test can assert the
+        trim happened.
+        """
+        def _bound(v, default):
+            if v in ("-inf", "+inf", "inf"):
+                return default
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                return default
+
+        lo = _bound(min_score, float("-inf"))
+        hi = _bound(max_score, float("inf"))
+        bucket = self._sorted_sets.get(key)
+        if not bucket:
+            return 0
+        doomed = [m for m, score in bucket.items() if lo <= score <= hi]
+        for m in doomed:
+            del bucket[m]
+        return len(doomed)
+
     async def zrangebyscore(self, key: str, min_score, max_score, **kwargs):
         """Members whose score falls in [min, max]. Used by
         `GpuRegistry.get_alive_nodes` to find nodes heartbeating since the
@@ -214,6 +245,10 @@ class FakePipeline:
         self._commands.append(("zadd", key, mapping))
         return self
 
+    def zremrangebyscore(self, key, min_score, max_score):
+        self._commands.append(("zremrangebyscore", key, min_score, max_score))
+        return self
+
     async def execute(self):
         for cmd in self._commands:
             op = cmd[0]
@@ -237,6 +272,8 @@ class FakePipeline:
                 await self._redis.delete(cmd[1])
             elif op == "zadd":
                 await self._redis.zadd(cmd[1], cmd[2])
+            elif op == "zremrangebyscore":
+                await self._redis.zremrangebyscore(cmd[1], cmd[2], cmd[3])
         self._commands.clear()
 
 

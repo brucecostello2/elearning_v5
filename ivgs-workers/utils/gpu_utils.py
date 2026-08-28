@@ -200,12 +200,104 @@ def acquire_gpu_reservation(
                 job_id=job_id,
             )
 
-    except (GpuReservationError,):
+    except (GpuReservationError,) as e:
+        _record_reservation_outcome(
+            job_id=job_id, model_name=model_name, error=e,
+            vram_requirement_mb=vram_requirement_mb,
+        )
         raise
     except Exception as e:
-        raise GpuReservationError(
+        wrapped = GpuReservationError(
             f"GPU reservation failed: {e}", job_id=job_id
-        ) from e
+        )
+        _record_reservation_outcome(
+            job_id=job_id, model_name=model_name, error=e,
+            vram_requirement_mb=vram_requirement_mb,
+        )
+        raise wrapped from e
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-06 Task 1 — the fail-open outcome, NAMED and METERED
+# ---------------------------------------------------------------------------
+#
+# WHAT THIS DOES AND DOES NOT CHANGE.
+#
+# It does NOT change the policy. All eight call sites catch bare
+# `except Exception` and proceed unreserved, and every one of them is inside a
+# FROZEN stage body (`dev/CLAUDE.md` §3), so `proceed_unreserved` cannot be
+# turned into `refuse` from here -- a distinct fatal error class would be
+# swallowed by the same `except Exception` that swallows this one. Making the
+# choice enforceable needs those eight sites opened, which is a separate ruling
+# (AD-05 O-3 / P2.6). ⚠ Stated so nobody reads this as "fail-open is now a
+# ruled decision everywhere": it is a ruled decision that is RECORDED, not one
+# that is ENFORCED.
+#
+# What it does change: the outcome stops being invisible. Before this, a fleet
+# running every render unreserved looked identical -- in metrics -- to a fleet
+# reserving correctly. The log line existed (WP-08) but nothing counted it, so
+# no alert could fire and no dashboard could show it.
+
+#: The policy in force when a reservation cannot be obtained. One of
+#: "proceed_unreserved" or "refuse". Only the former is ENFORCEABLE today --
+#: see the note above.
+GPU_RESERVATION_FAILURE_POLICY = os.getenv(
+    "IVGS_GPU_RESERVATION_FAILURE_POLICY", "proceed_unreserved"
+)
+
+
+def _record_reservation_outcome(
+    *, job_id: str, model_name: str, error: BaseException,
+    vram_requirement_mb: int,
+) -> None:
+    """Name the outcome in the log AND count it in Prometheus.
+
+    Never raises: a failure to record must not become a second failure on top
+    of the one being recorded.
+    """
+    reason = type(error).__name__
+    logger.warning(
+        "gpu_reservation_outcome",
+        job_id=job_id,
+        model_name=model_name,
+        vram_requirement_mb=vram_requirement_mb,
+        policy=GPU_RESERVATION_FAILURE_POLICY,
+        outcome="unreserved",
+        reason=reason,
+        error=str(error)[:500],
+        enforceable=False,
+        note=(
+            "the caller decides whether to proceed; every current call site "
+            "proceeds. This event is the record that it did."
+        ),
+    )
+    try:
+        import urllib.request
+
+        gateway = os.getenv(
+            "PROMETHEUS_PUSHGATEWAY", "http://pushgateway:9091"
+        ).rstrip("/")
+        # Same exposition shape and gateway as the retention gauges
+        # (`periodic_tasks.py:561`), so existing alerting can reach it without
+        # a new mechanism.
+        body = (
+            "# TYPE ivgs_gpu_reservation_unavailable_total counter\n"
+            "ivgs_gpu_reservation_unavailable_total"
+            f'{{policy="{GPU_RESERVATION_FAILURE_POLICY}",reason="{reason}"}} 1\n'
+        ).encode()
+        request = urllib.request.Request(
+            f"{gateway}/metrics/job/ivgs_gpu_reservation/instance/{model_name}",
+            data=body,
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            if response.status >= 300:
+                raise RuntimeError(f"pushgateway HTTP {response.status}")
+    except Exception as exc:
+        logger.warning(
+            "gpu_reservation_metric_push_failed",
+            error=str(exc), error_type=type(exc).__name__,
+        )
 
 
 def release_gpu_reservation(reservation_id: str) -> bool:

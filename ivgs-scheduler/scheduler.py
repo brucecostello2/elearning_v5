@@ -58,7 +58,11 @@ class GpuCandidate:
     total_vram_mb: int
     used_vram_mb: int
     available_vram_mb: int
-    gpu_utilization_pct: float
+    # WP-IVGS-06 Task 1: nullable, mirroring `GpuNode`. The candidate carries
+    # the reading it was given -- including its ABSENCE -- so nothing
+    # downstream renders a prior as though it were a measurement. The prior
+    # exists only inside the weight formula, never on the record.
+    gpu_utilization_pct: Optional[float]
     has_model_loaded: bool
     weight: float = 0.0
     queue_depth: int = 0

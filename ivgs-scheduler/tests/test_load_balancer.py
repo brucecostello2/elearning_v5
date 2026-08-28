@@ -238,3 +238,131 @@ class TestWeightedRandomSelection:
         """Empty candidate list returns None."""
         selected = await load_balancer.select_weighted_random([])
         assert selected is None
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-06 Task 1 — D-8: the nullable reading the consumer never handled
+# ---------------------------------------------------------------------------
+
+class TestUnmeasuredGpuUtilisation:
+    """D-8. `gpu_utilization_pct` is `Optional[float]` and this module divided
+    by it unguarded, so EVERY `POST /schedule` returned 500 and every GPU stage
+    ran unreserved through its fail-open path.
+
+    WP-60 (`b94ec6f`) made the field nullable on purpose -- a worker whose
+    `nvidia-smi` call failed used to record a confident 0%, indistinguishable
+    from an idle GPU. That producer fix was right; this consumer was never
+    updated for it. Measured live on 2026-08-28 before the fix::
+
+        TypeError: unsupported operand type(s) for /: 'NoneType' and 'float'
+        at load_balancer.py:126
+    """
+
+    @pytest.mark.asyncio
+    async def test_a_node_with_no_reading_does_not_raise(self, load_balancer):
+        """The whole defect, in one line."""
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("node-04:gpu0", gpu_util=None)]
+        )
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+
+        candidates = await load_balancer.get_weighted_candidates(
+            model_name="kokoro-82m", vram_requirement_mb=8192
+        )
+        assert len(candidates) == 1
+
+    @pytest.mark.asyncio
+    async def test_the_unknown_reading_is_NOT_treated_as_zero(self, load_balancer):
+        """⛔ THE REGRESSION GUARD THAT MATTERS.
+
+        `gpu_util = 0.0` gives `1 - 0.0 = 1.0`, the MAXIMUM weight -- so an
+        unmeasured GPU would outrank every measured one and attract work
+        *because* nothing is known about it. A future 'simplification' to
+        `or 0.0` must fail here.
+        """
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("unmeasured", gpu_util=None)]
+        )
+        unknown = (await load_balancer.get_weighted_candidates("m", 8192))[0].weight
+
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("idle", gpu_util=0.0)]
+        )
+        genuinely_idle = (await load_balancer.get_weighted_candidates("m", 8192))[0].weight
+
+        assert unknown < genuinely_idle, (
+            "an unmeasured GPU must not score as high as a measured idle one"
+        )
+
+    @pytest.mark.asyncio
+    async def test_the_unknown_reading_is_not_treated_as_busy_either(
+        self, load_balancer
+    ):
+        """The opposite error. Treating unknown as 100% busy would make an
+        unmeasured node unselectable, and with the whole fleet unmeasured --
+        today's state -- nothing would ever schedule."""
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("unmeasured", gpu_util=None)]
+        )
+        unknown = (await load_balancer.get_weighted_candidates("m", 8192))[0].weight
+
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("busy", gpu_util=100.0)]
+        )
+        fully_busy = (await load_balancer.get_weighted_candidates("m", 8192))[0].weight
+
+        assert unknown > fully_busy
+
+    @pytest.mark.asyncio
+    async def test_when_NO_node_reports_the_term_cancels_from_the_ranking(
+        self, load_balancer
+    ):
+        """Today's fleet: no node sends a reading. Every candidate then carries
+        the same prior, so ranking falls back to VRAM and queue depth -- the
+        factors that ARE measured. The node with more free VRAM must win."""
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+        load_balancer._registry.get_alive_nodes = AsyncMock(return_value=[
+            _make_node("roomy", used_vram=1024, gpu_util=None),
+            _make_node("tight", used_vram=40960, gpu_util=None),
+        ])
+        by_id = {c.node_id: c.weight
+                 for c in await load_balancer.get_weighted_candidates("m", 8192)}
+        assert by_id["roomy"] > by_id["tight"]
+
+    @pytest.mark.asyncio
+    async def test_the_candidate_records_the_ABSENCE_not_the_prior(
+        self, load_balancer
+    ):
+        """The prior belongs to the weight formula, not to the record. If the
+        candidate carried 0.5 the fleet page would report a measurement nobody
+        took -- WP-60's defect, one layer along."""
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("node-04:gpu0", gpu_util=None)]
+        )
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+        c = (await load_balancer.get_weighted_candidates("m", 8192))[0]
+        assert c.gpu_utilization_pct is None
+
+    @pytest.mark.asyncio
+    async def test_a_real_reading_still_computes_exactly_as_before(
+        self, load_balancer
+    ):
+        """No behaviour change for a node that DOES report."""
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+        load_balancer._registry.get_alive_nodes = AsyncMock(
+            return_value=[_make_node("measured", total_vram=1000, used_vram=0,
+                                     gpu_util=40.0)]
+        )
+        c = (await load_balancer.get_weighted_candidates("m", 100))[0]
+        # (1 - 0.40) * (1 - 0/1000) * (10 - 0) = 6.0
+        assert c.weight == pytest.approx(6.0)

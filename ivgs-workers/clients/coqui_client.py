@@ -135,6 +135,84 @@ class CoquiSynthesisResult:
 # Coqui XTTS v2 Client
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# WP-IVGS-06 Task 2 — D-6: inline reference audio that could never arrive
+# ---------------------------------------------------------------------------
+#
+# `CoquiSynthesisParams.speaker_wav` is `Optional[bytes]` -- inline reference
+# audio for voice cloning. It was NEVER TRANSMITTED: this module sent
+# `params.speaker_wav_path or ""` and nothing else, so a caller supplying bytes
+# got the engine's built-in speaker, a valid WAV, and no error of any kind.
+#
+# WHY IT COULD NOT SIMPLY BE SENT. The engine's contract is a PATH, resolved on
+# the SERVER: `ivgs-coqui`'s `server.py` does `os.path.isfile(req.speaker_wav)`
+# and falls back to the built-in speaker if that fails. Bytes have nowhere to go
+# in that contract, so "just include them in the payload" is not available
+# without changing the engine image.
+#
+# WHY NOT DELETE THE FIELD INSTEAD. That was the other option and it is the one
+# the work order leant toward. It is blocked: both the declaration
+# (`stage5_voiceover.py:100`) and the only use (`:369`) are inside a FROZEN
+# stage body, and the WP-IVGS-05 freeze exception was explicitly ruled "not a
+# precedent". Removing the field means opening that file again, which needs its
+# own ruling. Closing the transport gap does not.
+#
+# So the bytes are MATERIALISED to storage both sides already share -- the
+# worker writes it, the engine reads it, verified on node-04 -- and the path is
+# sent. Content-addressed, so repeated renders with the same reference reuse one
+# file instead of littering.
+#
+# ⚠ AN EXPLICIT PATH STILL WINS. Stage 5 supplies both; preferring the path
+# keeps today's behaviour byte-identical for every existing caller, and inline
+# bytes are used only where there is otherwise nothing.
+
+#: Where materialised reference clips live. Must be readable by the ENGINE
+#: container, not just the worker -- they are different filesystems otherwise.
+SPEAKER_REF_DIR = os.environ.get(
+    "IVGS_TTS_SPEAKER_REF_DIR", "/mnt/ivgs-shared/tts-refs"
+)
+
+
+def _resolve_speaker_reference(params: "CoquiSynthesisParams") -> str:
+    """The `speaker_wav` value to put on the wire: a path the ENGINE can open.
+
+    Order: an explicit path (unchanged behaviour) -> inline bytes materialised
+    to shared storage -> "" (the engine's built-in speaker).
+    """
+    if params.speaker_wav_path:
+        return params.speaker_wav_path
+    data = params.speaker_wav
+    if not data:
+        return ""
+    try:
+        os.makedirs(SPEAKER_REF_DIR, exist_ok=True)
+        digest = hashlib.sha256(data).hexdigest()[:32]
+        path = os.path.join(SPEAKER_REF_DIR, f"{digest}.wav")
+        if not os.path.exists(path):
+            # Write-then-rename: two workers cloning the same voice at once
+            # must never let the engine open a half-written file.
+            tmp = f"{path}.{os.getpid()}.part"
+            with open(tmp, "wb") as fh:
+                fh.write(data)
+            os.replace(tmp, path)
+        logger.info(
+            "tts_reference_voice_materialised path=%s bytes=%d", path, len(data)
+        )
+        return path
+    except Exception as exc:
+        # NAMED, not swallowed. The caller asked for a specific voice and will
+        # not get it; the render still proceeds with the built-in speaker,
+        # which is what happened silently before this function existed.
+        # Refusing instead is defensible and would need its own ruling.
+        logger.error(
+            "tts_reference_voice_unavailable error_type=%s error=%s ref_dir=%s "
+            "bytes=%d effect=%s",
+            type(exc).__name__, exc, SPEAKER_REF_DIR, len(data),
+            "synthesising with the engine's built-in speaker instead",
+        )
+        return ""
+
+
 class CoquiClient(TTSProvider):
     """
     Coqui XTTS v2 implementation of the TTSProvider interface (spec 19.1).
@@ -201,7 +279,7 @@ class CoquiClient(TTSProvider):
         payload = {
             "text": params.text,
             "language": lang,
-            "speaker_wav": params.speaker_wav_path or "",
+            "speaker_wav": _resolve_speaker_reference(params),
             "temperature": params.temperature,
             "length_penalty": params.length_penalty,
             "repetition_penalty": params.repetition_penalty,
