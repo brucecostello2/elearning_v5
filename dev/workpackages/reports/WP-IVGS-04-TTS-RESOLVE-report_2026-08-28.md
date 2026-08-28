@@ -693,3 +693,371 @@ plus this report.
 
 **Committed and held. Not pushed. node-01 deployed; nodes 02/03/04 authored only. No live row
 changed. No gate pressed. `.51`, `.52`, NODE-05 and NODE-06 untouched.**
+
+---
+---
+
+# ADDENDUM — D-2 and D-3 closed, and the pipeline render proven
+
+**2026-08-28, second session. Two operator rulings, both recorded at §A0.**
+Supersedes §3, §4 and §6.3 above; §10's ledger is restated at §A8.
+
+## §A0 The two rulings, and the conditions attached
+
+**1. D-2 — fix it.** Reversing the earlier *"report only"*.
+
+**2. D-3 — the stage-body freeze lifted, NARROWLY.** Operator's reasoning, recorded as a ruling:
+*"D-2's fix converts a hard failure into a silent one, and shipping that to the fleet is worse
+than shipping nothing. That justifies the exception."* Conditions: the edit is confined to the
+branch condition; no refactor, no cleanup while the file is open; show the diff; **stop and ask
+rather than widening if the correct fix needs more than that branch.**
+
+⚠ **It needed two lines, not one, and that was flagged before the edit rather than absorbed.**
+The condition cannot reach `family_of` without an import. Nothing else in the file is touched:
+
+```diff
++from shared.providers.client_registry import family_of
+...
+-        if tts_binding.engine == "coqui":
++        if family_of(tts_binding) == "xtts":
+```
+
+`1 file changed, 2 insertions(+), 1 deletion(-)` — the whole diff.
+
+**3. node-01-only confinement lifted** for nodes 02/03/04 (*"that was for unattended running; I am
+here"*). NODE-05 and NODE-06 remain out of bounds and were not touched.
+
+---
+
+## §A1 ⛔ CORRECTION — §4's account of D-3 was overstated
+
+**§4 above says the narrow branch silently disables voice cloning and yields "a valid WAV in the
+wrong voice". That is wrong, and it was wrong when written.** Measured on the wire:
+
+```
+rich branch   -> {'speaker_wav': '/ref/actor.wav', 'temperature': 0.31, 'top_k': 50, ...}
+narrow branch -> {'speaker_wav': '/ref/actor.wav', 'temperature': 0.75, 'top_k': 50, ...}
+DELTA on the wire: {'temperature': (0.31, 0.75)}
+```
+
+`coqui_client.py:204` sends **`params.speaker_wav_path or ""`**. That path is set on BOTH
+branches — the rich one from `task_input.speaker_wav_path`, the narrow one from
+`TTSParams.speaker_wav`, which stage 5 populates from the *same* field. **The reference voice
+survives the narrow branch. The only on-wire loss was `temperature`.**
+
+What misled me: `CoquiSynthesisParams.speaker_wav` (inline `bytes`) has no equivalent on
+`TTSParams`, so a field-name comparison shows a loss. But that field **is never transmitted by
+any branch** — see D-6 below. The earlier reading confused "dropped between the two params
+objects" with "dropped from the request".
+
+⚠ **And the real-world impact of the surviving delta is currently ZERO** — see §A5. The fix is
+still correct, and I would still make it; but it corrected an honesty defect in the code, not an
+active production fault. Claiming otherwise would be the thing this report exists to avoid.
+
+---
+
+## §A2 D-2 — what was built
+
+### A2.1 Endpoints: an ALIAS, not a second table of URLs
+
+`shared/providers/binding.py`. `_ENGINE_ENDPOINTS` is keyed on the engine alone, and `tts` serves
+two families on two different servers, so there is **no single right answer** to
+`resolve_endpoint("tts")`.
+
+Copying the two URLs into a `(engine, family)` table would have answered it and created the
+defect this module already guards against: **two definitions of where Kokoro serves**, free to
+drift, with node-04's `IVGS_KOKORO_URL` updating only one. So the runtime name resolves
+**through** the entry that already exists:
+
+```python
+_RUNTIME_FAMILY_ALIASES: dict[tuple[str, str], str] = {
+    ("tts", "kokoro"): "kokoro",
+    ("tts", "xtts"):   "coqui",
+}
+```
+
+**The property this buys, asserted by test rather than assumed:**
+`resolve_endpoint("tts", family="kokoro") == resolve_endpoint("kokoro")`, always.
+
+⛔ **A runtime name with no family REFUSES BY NAME.** It must never pick one — that would send
+Kokoro's text to XTTS's server and return plausible audio in the wrong voice.
+
+### A2.2 Providers: the builder asks the registry
+
+`ivgs-workers/providers/tts.py`. `_BUILDERS` is also engine-keyed, so one `tts` builder serves
+both families — **by asking `resolve_client`**, not by branching on name or stage.
+`providers/image.py:31-51` is the chain-of-ifs pattern being avoided. It **reuses**
+`build_coqui`/`build_kokoro`, so there is no second construction path and Coqui keeps its ARCH-1
+`fallback_url=None` (pinned by test).
+
+### A2.3 `factory.py` passes the family
+
+`_binding_from_model` now derives the family with the same `family_of` the registry uses, so the
+endpoint and the client can never disagree about which family a row is.
+
+---
+
+## §A3 Deploy — the whole fleet, and what it did NOT disturb
+
+`v5.28.1-engine-domain`, api + workers, built and **verified by opening the images** (both builds
+were cached, so an exit code proved nothing):
+
+```
+grep -c _RUNTIME_FAMILY_ALIASES /app/shared/providers/binding.py   -> 4   (api and workers)
+grep -n 'family_of(tts_binding)' /app/tasks/stage5_voiceover.py    -> 365: if family_of(tts_binding) == "xtts":
+grep -c 'register_engine_builder("tts"' /app/providers/tts.py      -> 1
+```
+
+Banked as artifacts with checksums, then loaded on each node from the shared store — no GHCR.
+
+| Node | Service | Result |
+|---|---|---|
+| node-01 | fastapi-backend + 3 workers | `v5.28.1`, healthy. Postgres **Up 2 days** — `--no-deps` held |
+| node-02 | `celery-worker` | `ivgs-celery-node02` on `v5.28.1` |
+| node-03 | **`cogvideox-worker`** | `ivgs-cogvideox-worker-node03` `v5.27.0-motion` -> `v5.28.1`. ⚠ Only it moved; the `profiles: ["standby"]` `celery-worker` was **not** started (CLAUDE.md §6.2) |
+| node-04 | `celery-worker` | `ivgs-celery-node04` on `v5.28.1`. ⚠ ComfyUI, kokoro and coqui all still **"Up About an hour"** — `--no-deps` held against `depends_on: [comfyui]` |
+
+**D-2 verified on node-04 against its REAL configuration**, which is the point of the alias
+design — zero config change was needed:
+
+```
+tts/kokoro  -> http://ivgs-kokoro:5003
+tts/xtts    -> http://ivgs-coqui:5002
+engines: ('cogvideox','comfyui','coqui','kokoro','latentsync','sadtalker','tts','vllm')
+```
+
+---
+
+## §A4 The pipeline render — a real Stage 5 task, on node-04, through `engine='tts'`
+
+Fixtures, all disposable and all since deleted: one project, **two new `models` rows carrying
+`engine='tts'`**, one project-scoped selection, one storyboard scene, one render job. **No
+existing row was modified at any point.**
+
+⚠ **The first attempt failed, and that is recorded rather than smoothed over.** It failed at the
+asset-upload FK (`scene_id ... is not present in storyboard_scenes`) and then the checkpoint
+404 — both my incomplete fixture, neither the change. It is worth reading because it shows the
+seam already worked: `model_bound -> wpivgs04-xtts-testrow`, `synthesizing_voiceover` ->
+1.0 s -> `normalizing_audio` -> `validating_audio`, and 941,766 bytes reached SeaweedFS.
+
+ⓘ I also hit the `docker exec` heredoc trap on the way — a fixture INSERT reported success and
+inserted nothing, because `-i` was missing. `dev/CLAUDE.md` §7 documents exactly this; the
+project's own notes caught it.
+
+**The clean run:**
+
+```json
+"model_used": "wpivgs04-xtts-testrow",     "status": "success",
+"asset_id": "9b22d22a-a2db-4b1e-a947-1c65d61446c1",
+"file_size_bytes": 868038,  "duration_seconds": 6.027,
+"sample_rate": 48000,  "bit_depth": 24,
+"quality_score": 1.0,  "quality_decision": "approved",  "snr_db": 101.34,
+"successful_count": 1, "failed_count": 0
+```
+
+A real Celery task, routed to `gpu_tts`, executed by `image-worker@node04`, resolving a model row
+whose engine is `tts`, producing validated 48 kHz/24-bit audio persisted to SeaweedFS.
+
+ⓘ The GPU reservation failed open as designed (`gpu_reservation_unavailable ... fail_open=True`),
+on a **pre-existing** scheduler fault: `unsupported operand type(s) for /: 'NoneType' and 'float'`
+— HTTP 500 from `:8002/schedule`, unrelated to this package but worth a look.
+
+---
+
+## §A5 Acceptance — the voice verified, the temperature NOT
+
+The operator's condition: *"verify the voice, not the bytes ... if you cannot verify voice
+identity by any means available on this fleet, say so plainly and report the render as
+UNVERIFIED rather than claiming it."*
+
+### A5.1 ✅ Do the parameters reach the client? — PROVEN
+
+The **real** `_process_single_voiceover` on node-04, with a recording provider (the branch is
+real; only the transport is not):
+
+| row | engine | branch | temperature handed to client |
+|---|---|---|---|
+| `wpivgs04-xtts-testrow` | **tts** | **RICH** | **0.31** |
+| `XTTS-v2` | coqui | RICH | 0.31 — identical |
+| `kokoro-82m` | tts | NARROW | n/a — **the control**, unchanged either way |
+
+### A5.2 ✅ Is it the same voice? — PROVEN, against a real reference clip
+
+Long-term average spectrum cosine similarity, renders made through the deployed client on
+node-04, reference `/mnt/ivgs-shared/wp42-voice-ab/kokoro_short_scene17_en-US.wav`:
+
+| comparison | similarity |
+|---|---|
+| cloned `engine='tts'` vs cloned `engine='coqui'` | **0.98488** |
+| cloned `engine='tts'` vs the DEFAULT speaker | 0.73508 |
+| cloned `engine='coqui'` vs the DEFAULT speaker | 0.71832 |
+
+**This discriminates.** The reference clip demonstrably moves the voice (0.72–0.74 away from the
+built-in speaker), and the two engine values land on **each other** at 0.985 — with byte-identical
+output lengths (258,124 both). The engine value does not change the voice.
+
+### A5.3 ⛔ Does `temperature` change the audio? — **UNVERIFIED, because it CANNOT**
+
+Reported as the operator required rather than claimed. The behavioural test **failed to
+discriminate**:
+
+```
+intra-pair LTAS similarity @ temp=0.05 : 0.92024
+intra-pair LTAS similarity @ temp=0.99 : 0.95473
+-> low-temp renders are NOT more self-consistent
+```
+
+**The reason is not measurement weakness. The server discards the parameter.** `ivgs-coqui`'s
+`/app/server.py`:
+
+```python
+kwargs = {"text": req.text, "language": _lang(req.language), "speed": req.speed}
+...
+tts.tts_to_file(file_path=out_path, **kwargs)
+```
+
+`TTSRequest` declares `temperature`, `length_penalty`, `repetition_penalty`, `top_k` and `top_p`
+— and **none of them is passed to the model.** The server's own comment says they are *"accepted
+(XTTS defaults match these)"*.
+
+⛔ **So D-3's live impact today is ZERO**, and §4's severity was overstated twice over. The fix
+remains right — the code now says what it does, and the defect would bite the moment the server
+honours the parameter — but **no audible defect was fixed, and none is claimed.**
+
+---
+
+## §A6 Tests and baseline
+
+| Tree | Result | Baseline | Delta |
+|---|---|---|---|
+| `ivgs-api` | **1395 passed, 0 failed** | 1359 / 0 | +36 tests, **0 failures** |
+| `ivgs-workers` | **916 passed**, 18 failed, 48 skipped, 15 errors | 903 / 18 / 48 / 15 | +13 tests, **failure counts identical** |
+
+**ZERO NEW FAILURES.** Two full-suite runs used, the limit.
+
+New: 18 endpoint tests (every pre-existing engine pinned to resolve *exactly* as before), 13
+builder + D-3 tests. ⚠ **One of my own new tests asserted something false and was corrected**:
+it claimed `TTSParams` cannot carry `speaker_wav`. It can — as a `str` path, where the rich
+object has `bytes`. The corrected test pins the *type* difference, which is the actual trap and
+is what a name-only comparison misses. That correction is what exposed §A1.
+
+---
+
+## §A7 Teardown — nothing of mine remains
+
+```
+projects=0   test_models=0   orphan_assets=0    seaweedfs delete -> 200
+```
+
+The three live `voiceover_tts` rows are **byte-identical to their state before this package
+began**, re-read after teardown:
+
+```
+XTTS-v2    | coqui  | approved  | t | f
+Kokoro     | coqui  | candidate | f | f
+kokoro-82m | kokoro | approved  | t | t
+```
+
+**15 projects remain** — the operator's and every other existing project untouched.
+
+---
+
+## §A8 Ledger, restated
+
+| id | What | Status |
+|---|---|---|
+| **D-1** | Runtime engine name has no client | ✅ CLOSED (Task 1) |
+| **D-2** | `tts` misses `_ENGINE_ENDPOINTS` and `_BUILDERS` | ✅ **CLOSED** — alias + registry-delegating builder, proven on node-04 |
+| **D-3** | Branch keyed on the engine string | ✅ **CLOSED** — two lines, under the operator's narrow exception. ⚠ Severity was overstated; live impact is zero (§A5.3) |
+| **D-4** | `Kokoro` vs `kokoro-82m` are different rows | ⛔ OPEN — AD-10 §5.2 |
+| **D-5** | Seam drift: `bundle_version`, `bundle_link_basis` unmodelled | ⚠ NOTED |
+| **D-6** | `CoquiSynthesisParams.speaker_wav` (inline bytes) is **never transmitted** — `coqui_client.py:204` sends only the path. An operator supplying inline speaker audio with no path gets the default voice, silently, on every branch | ⛔ **NEW, OPEN** — pre-existing, not introduced here |
+| **D-7** | `ivgs-coqui` accepts five XTTS sampling parameters and passes none to the model (`server.py`). The client sends them; the server drops them | ⛔ **NEW, OPEN** — engine-side |
+| **D-8** | GPU scheduler 500: `unsupported operand type(s) for /: 'NoneType' and 'float'` on `POST :8002/schedule`; every TTS render fails open unreserved | ⛔ **NEW, OPEN** — pre-existing |
+
+---
+
+## §A9 ⚠ The gating condition for MBCP's re-send
+
+**With D-2 and D-3 closed, XTTS-v2's row can flip to `engine='tts'` and still render correctly** —
+that was the last barrier. As the operator required, **confirm the whole chain is green BEFORE
+the re-send is scheduled, not after.** Run §8.3's block plus this, on node-01:
+
+```bash
+# ===== NODE-01  192.168.1.90  =====  green-light check, run BEFORE scheduling the re-send
+( set -u
+  echo "--- 1. every node on the new image ---"
+  docker exec ivgs-celery-default celery -A celery_app inspect ping --timeout 10 2>&1 | grep -cE '^->'
+  echo "--- 2. the enum names tts in production ---"
+  docker exec ivgs-postgres psql -U ivgs -d ivgs -tAc \
+    "select count(*) from pg_enum where enumtypid='model_engine'::regtype and enumlabel='tts';"
+  echo "--- 3. resolve + build, on the node that runs TTS ---"
+  ssh root@192.168.1.93 "docker exec ivgs-celery-node04 python -c \"
+from shared.providers.binding import resolve_endpoint
+from shared.providers.client_registry import resolve_client
+from shared.providers.factory import build_provider
+from shared.providers.binding import ModelBinding
+from providers import ensure_registered; ensure_registered()
+import uuid
+for n,f in (('XTTS-v2','xtts'),('kokoro-82m','kokoro')):
+    b=ModelBinding(model_id=uuid.uuid4(),name=n,display_name=n,stage='voiceover_tts',
+                   engine='tts',tier='production',endpoint=resolve_endpoint('tts',family=f))
+    print(' ', n, '->', resolve_client(b).client_path, '@', b.endpoint,
+          '->', type(build_provider(b)).__name__)
+\""
+) 2>&1 | tr -cd '\11\12\15\40-\176'
+```
+
+Expect `5`, `1`, and both rows resolving to their own client and endpoint. ⛔ **If any line
+differs, do not schedule the re-send.**
+
+---
+
+## §A10 What I did NOT verify — addendum
+
+1. ⛔ **`temperature` has no demonstrable effect on the audio, and cannot** (§A5.3). Reported
+   UNVERIFIED, as instructed. What IS proven is that it reaches the client.
+2. ⛔ **Voice cloning was verified with a SHARED-PATH reference clip.** `ivgs-coqui` resolves
+   `speaker_wav` as a path **on the server** and falls back to the built-in speaker if it is not
+   readable there. `/mnt/ivgs-shared` is mounted in that container, so a shared path works — **a
+   node-01-local path would silently fall back.** I did not test that failure mode.
+3. ⛔ **4(a) still not performed.** No `pending_exports` row touched; `.51`/`.52` untouched. The
+   §A9 block is the pre-flight, not the ingest.
+4. ⚠ **The render used my own test rows, not `XTTS-v2` or `kokoro-82m`.** Their live engine values
+   were never changed. The rows were name-matched to the same families, so they exercise the same
+   registry and endpoint entries — but they are not the production rows.
+5. **`tests_system`, `ivgs-scheduler`, `ivgs-backup-worker` suites not re-run** (unchanged trees).
+6. **Kokoro through the full pipeline was not run** — only through the recorder and the direct
+   client. It is the control for D-3, not the subject.
+7. **D-6, D-7 and D-8 are reported, not fixed**, and none is in this package's scope.
+
+---
+
+## §A11 Push block — count-gated, superseding §11
+
+⛔ **NOT PUSHED.**
+
+```bash
+# ===== NODE-01  192.168.1.90  =====
+( set -u
+  cd /opt/ivgs || { echo "no /opt/ivgs"; false; }
+  N=$(git rev-list --count origin/main..HEAD)
+  echo "commits ahead of origin/main: $N"
+  git --no-pager log --oneline origin/main..HEAD
+  if [ "$N" -eq 4 ]; then
+    git push origin main && echo "PUSHED"
+  else
+    echo "REFUSING: expected exactly 4, found $N. Inspect the list above."
+  fi
+) 2>&1 | tr -cd '\11\12\15\40-\176'
+```
+
+| Commit | |
+|---|---|
+| `0c49444` | `fix(wp-ivgs-04): the runtime name MBCP sends now resolves, per family` |
+| `2cf50c9` | `docs(wp-ivgs-04): report — the premise that did not survive measurement` |
+| `e343692` | `fix(wp-ivgs-04): D-2 and D-3 — endpoint, provider, and the right call shape` |
+| *(pending)* | `docs(wp-ivgs-04): addendum — the render proven, and two corrections` |
+
+**Fleet on `v5.28.1-engine-domain` (nodes 01–04). Production at alembic 0042. No live row
+changed. No gate pressed. NODE-05, NODE-06, `.51` and `.52` untouched. Committed and held.**
