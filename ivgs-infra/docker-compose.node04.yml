@@ -85,6 +85,38 @@ services:
     env_file:
       - .env.node04
     environment:
+      # WP-IVGS-09 Task 0(d). DECLARED AT COMPOSE LEVEL, not inherited from an
+      # env file, and not left to the code default.
+      #
+      # MEASURED 2026-08-28 across all four worker containers:
+      #   node-01 ivgs-celery-default          UNSET -> code default 4096
+      #   node-02 ivgs-celery-node02           2048  (from .env.node02)
+      #   node-03 ivgs-cogvideox-worker-node03 2048  (from .env.node03)
+      #   node-04 ivgs-celery-node04           UNSET -> code default 4096
+      # Four containers, two answers, and nothing anywhere saying which was
+      # intended. `dev/CLAUDE.md` §6.3's trap governs: a value in an env file is
+      # invisible in the tracked tree and does not reach an already-running
+      # container -- measured here, `.env.node04` gained this variable at
+      # 14:59:45 on 2026-08-28, 33 minutes AFTER the container that would have
+      # read it was created, so node-04 has been running 4096 while its env file
+      # claimed 2048. A compose-level `environment:` entry is visible in git AND
+      # wins over `env_file:`, which closes both halves.
+      #
+      # ⛔ EVERY VALUE BELOW IS THE ONE THAT NODE IS ALREADY RUNNING. This
+      # declaration moves no behaviour; it makes the running value legible.
+      #
+      # node-04: 4096 -- THE VALUE THIS CONTAINER IS ACTUALLY RUNNING, from the
+      # code default, because the variable has never reached it.
+      #
+      # This deliberately does NOT adopt `.env.node04`'s 2048. That line has
+      # never taken effect (see the timestamps above), and adopting it here
+      # would narrow a budget on a node where nothing reads it -- a silent
+      # behaviour change bought for nothing. Declaring 4096 pins what runs and,
+      # because compose-level `environment:` beats `env_file:`, stops the stale
+      # 2048 taking effect on the next recreate without anyone deciding it should.
+      # Inert on this node in any case: gpu_image/gpu_tts/gpu_talking_head do not
+      # read it (config.py:437 hardcodes 4096 for the media stages).
+      IVGS_VLLM_MAX_TOKENS: "4096"
       REDIS_URL: redis://${NODE_01_IP}:6379/0
       # asyncpg, not psycopg: DATABASE_URL is consumed ONLY by create_async_engine
       # (shared/database.py:38, periodic_tasks.py:656), and the workers image ships
@@ -175,7 +207,10 @@ services:
   # FLUX on a 48 GB card — the GPU scheduler must gate dispatch; kept pending
   # until that contention is wired and Mistral-24B weights are staged.
   vllm:
-    image: vllm/vllm-openai:${VLLM_IMAGE_TAG:-cu130-nightly}
+    # WP-IVGS-08 Task 8(e)(2). PINNED BY DIGEST -- cu130-nightly FLOATS, and
+    # this service's recreate was the first cold start of newer bytes, which
+    # rejected --disable-log-requests outright. No :- default: refuse if unset.
+    image: vllm/vllm-openai@${VLLM_IMAGE_DIGEST:?VLLM_IMAGE_DIGEST required (Task 8e pin)}
     container_name: ivgs-vllm-midsize
     profiles: ["pending"]
     pull_policy: never
@@ -205,7 +240,6 @@ services:
       --trust-remote-code
       --api-key ${VLLM_API_KEY:-ivgs-internal}
       --served-model-name ${VLLM_SERVED_NAME:-mistral-24b}
-      --disable-log-requests
     shm_size: "8g"
 
   # Coqui XTTS v2 — primary multilingual TTS (Table B-1: 16 GB; §17.1: 8 langs)

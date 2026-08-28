@@ -101,6 +101,33 @@ services:
     env_file:
       - .env.node03
     environment:
+      # WP-IVGS-09 Task 0(d). DECLARED AT COMPOSE LEVEL, not inherited from an
+      # env file, and not left to the code default.
+      #
+      # MEASURED 2026-08-28 across all four worker containers:
+      #   node-01 ivgs-celery-default          UNSET -> code default 4096
+      #   node-02 ivgs-celery-node02           2048  (from .env.node02)
+      #   node-03 ivgs-cogvideox-worker-node03 2048  (from .env.node03)
+      #   node-04 ivgs-celery-node04           UNSET -> code default 4096
+      # Four containers, two answers, and nothing anywhere saying which was
+      # intended. `dev/CLAUDE.md` §6.3's trap governs: a value in an env file is
+      # invisible in the tracked tree and does not reach an already-running
+      # container -- measured here, `.env.node04` gained this variable at
+      # 14:59:45 on 2026-08-28, 33 minutes AFTER the container that would have
+      # read it was created, so node-04 has been running 4096 while its env file
+      # claimed 2048. A compose-level `environment:` entry is visible in git AND
+      # wins over `env_file:`, which closes both halves.
+      #
+      # ⛔ EVERY VALUE BELOW IS THE ONE THAT NODE IS ALREADY RUNNING. This
+      # declaration moves no behaviour; it makes the running value legible.
+      #
+      # node-03: 2048, and INERT on this node. Its queues are gpu_video and
+      # gpu_animation, and `get_vllm_config_for_stage` gives image/video/
+      # animation a HARDCODED 4096 (config.py:437) without consulting this
+      # variable at all. Declared anyway, at the value already running, so a
+      # future stage landing on these queues inherits a stated number rather
+      # than discovering one.
+      IVGS_VLLM_MAX_TOKENS: "2048"
       REDIS_URL: redis://${NODE_01_IP}:6379/0
       # asyncpg, not psycopg: the workers image ships psycopg2 + asyncpg, not
       # psycopg (v3), and DATABASE_URL is consumed only by create_async_engine.

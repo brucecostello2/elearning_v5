@@ -79,6 +79,41 @@ x-gpu-service-urls: &gpu-service-urls
   SADTALKER_URL: "http://${NODE_04_IP}:${SADTALKER_PORT}"
   WHISPERX_URL: "http://${NODE_04_IP}:${WHISPERX_PORT}"
   REMOTION_URL: "http://${NODE_06_IP}:${REMOTION_PORT}"
+  # WP-IVGS-09 (RC-I1). THE ONE NON-GPU MEMBER OF THIS ANCHOR, deliberately.
+  #
+  # `ivgs-motion-renderer` is CPU-only and lives on node-01 itself, so this
+  # names a container on the local compose network rather than a node address.
+  # It is here rather than on one service because the anchor is where "the
+  # address of engine X" is defined once for every node-01 container -- the
+  # orchestrator probes the renderer before dispatching (queue `default`), the
+  # media task calls it (queue `default`), and a second definition somewhere
+  # else is how `IVGS_KOKORO_URL` came to have two answers (WP-42).
+  #
+  # SET AT COMPOSE LEVEL, NOT IN .env.node01. `dev/CLAUDE.md` §6 records why
+  # that distinction is load-bearing: `env_file:` injects into the container and
+  # is invisible in the tracked tree, which is exactly how `IVGS_VLLM_MAX_TOKENS`
+  # came to sit in an env file on node-04 for 33 minutes after the container that
+  # would have read it was created (WP-IVGS-09 §0(d)).
+  #
+  # There is NO `:-` default here on purpose, mirroring
+  # `shared/providers/binding.py:45`: an engine with no renderer must refuse by
+  # name, not resolve to something that will answer 400.
+  IVGS_MOTION_GRAPHICS_URL: "${IVGS_MOTION_GRAPHICS_URL}"
+  # WP-IVGS-09 Task 0(d). DECLARED, not inherited.
+  #
+  # Measured 2026-08-28: this variable is set to 2048 in the node-02 and node-03
+  # worker containers and UNSET on node-01 and node-04, where the code default
+  # (`ivgs-workers/config.py:104`) supplies 4096 -- four containers, two answers,
+  # and nothing anywhere saying which was intended.
+  #
+  # 4096 here is the value node-01 IS ALREADY RUNNING, so this declaration moves
+  # nothing; it only makes the running value visible in the tracked tree. It is
+  # inert on this node in any case: `get_vllm_config_for_stage` reads
+  # `self.vllm.max_tokens` only for `transcript_refinement` and the `else`
+  # branch, and the three media stages carry a hardcoded 4096 (`config.py:437`).
+  # STAGE 2 IS EXEMPT AND STAYS EXEMPT -- it has its own knob,
+  # `IVGS_VLLM_STORYBOARD_MAX_TOKENS` (WP-37), and that exemption is not touched.
+  IVGS_VLLM_MAX_TOKENS: "${IVGS_VLLM_MAX_TOKENS:-4096}"
   API_BASE_URL: "http://fastapi-backend:8001"
 
 networks:
@@ -482,6 +517,45 @@ services:
         --without-heartbeat
         --without-mingle
         -n default-worker@node01
+
+  # ---------------------------------------------------------------------------
+  # Motion-graphics renderer (WP-IVGS-09, ledger RC-I1)
+  #
+  # The A-4 renderer, RULED: the Pillow reference service -- `shared/motion/`
+  # promoted behind a small FastAPI app. CPU-ONLY BY CONSTRUCTION: no CUDA base,
+  # no torch, no weights, no `deploy.resources` GPU reservation. RC-I1's
+  # placement ruling put it on node-01 for exactly that reason ("CPU-only,
+  # agent-deployable, no GPU contention"), and the register row says placement
+  # is revisited only if render CPU load measures material.
+  #
+  # It has NO database, NO Redis and NO SeaweedFS. The worker task owns every
+  # side effect; this service takes parameters and returns frames. That is why
+  # it has no `depends_on` -- it depends on nothing, and a healthcheck that
+  # waited on Postgres would be inventing a coupling.
+  # ---------------------------------------------------------------------------
+  motion-renderer:
+    image: ghcr.io/brucecostello2/ivgs-motion-renderer:${IVGS_MOTION_RENDERER_TAG:?IVGS_MOTION_RENDERER_TAG required}
+    container_name: ivgs-motion-renderer
+    <<: [*common-restart, *common-logging]
+    environment:
+      # Nothing else. The service reads its build identity from the image (baked
+      # by the Dockerfile's ARG, `dev/CLAUDE.md` §6: never read a tag variable
+      # out of a container and believe it) and needs no other configuration.
+      IVGS_LOG_LEVEL: "${IVGS_LOG_LEVEL:-info}"
+    ports:
+      # Published on the LAN address, like every other node-01 service. The
+      # measured consumer is node-01's own `default`-queue worker, which reaches
+      # it by container DNS -- but a published port is what lets an operator
+      # curl /healthz and see the template inventory without a docker exec.
+      - "${NODE_01_IP:?NODE_01_IP must be set}:8500:8500"
+    networks:
+      - ivgs-net
+    healthcheck:
+      <<: *common-healthcheck
+      # /healthz answers 503 when the pinned font or ffmpeg is missing, so this
+      # goes red for the two reasons that would otherwise leave a green
+      # container that cannot draw.
+      test: ["CMD-SHELL", "curl -sf http://localhost:8500/healthz || exit 1"]
 
   # ---------------------------------------------------------------------------
   # Composition worker (Stage 7 prototype_draft + Stage 8 final_render)
