@@ -1,0 +1,21 @@
+# ivgs-motion-renderer — WP-IVGS-09 Task 1.
+#
+# DELIBERATELY SHORT. This service exists to put the EXISTING Pillow reference
+# implementation (`shared/motion/raster.py`) behind HTTP. Every dependency is
+# either the web surface or something raster.py already needed; nothing new
+# draws anything.
+#
+# Pinned exactly, no ranges. The contract of this service is that the same
+# request gives the same bytes, and the rasterisation of a glyph is a property
+# of the Pillow build. A range would let that move under a rebuild with nothing
+# saying so.
+#
+# Pillow is 12.2.0 because that is what `ivgs-api` and `ivgs-workers` pin
+# (`ivgs-api/requirements.txt:30`, `ivgs-workers/requirements.txt:45`) and what
+# `test_wp68_motion.py`'s determinism assertions were measured against. A second
+# Pillow version in the fleet would mean two answers to "what does this template
+# look like", which is the failure this file exists to prevent.
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+Pillow==12.2.0
+structlog==24.4.0

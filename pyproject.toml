@@ -57,7 +57,12 @@ disallow_untyped_defs = false
 # conftest under that name and then refused the second, so bare `pytest` exited 4
 # having run nothing. Config alone cannot fix it: --import-mode=importlib, with
 # and without consider_namespace_packages, still derives the same name for both.
-testpaths = ["ivgs-api/tests", "ivgs-workers/tests", "ivgs-scheduler/tests", "tests_system"]
+# WP-IVGS-09 added `ivgs-motion-renderer/tests`. It is on TESTPATHS but
+# deliberately NOT on `pythonpath` below: `ivgs-scheduler` is already there
+# and ships its own `main.py`, so a bare `import main` would resolve to
+# whichever tree pytest reached first. The renderer suite loads its module
+# by explicit file location instead.
+testpaths = ["ivgs-api/tests", "ivgs-workers/tests", "ivgs-scheduler/tests", "ivgs-motion-renderer/tests", "tests_system"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]

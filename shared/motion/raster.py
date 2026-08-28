@@ -29,11 +29,25 @@ from typing import Any
 
 from shared.motion.templates import DrawOp, Op, TemplateRender
 
-#: A font that ships on this node. Chosen and PINNED rather than discovered:
-#: font substitution changes every pixel, and a "deterministic" renderer whose
-#: output depends on what is installed is not one.
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+#: The typeface, PINNED rather than discovered: font substitution changes every
+#: pixel, and a "deterministic" renderer whose output depends on what is
+#: installed is not one.
+#:
+#: WP-IVGS-09 Task 1(b) moved the bytes INTO THE REPOSITORY (`fonts/`, with its
+#: licence). The old value named `/usr/share/fonts/...`, which made the contract
+#: depend on the host's package list -- and WP-68 §5 measured that dependency
+#: failing: this module REFUSED inside the production image, where
+#: `fonts-dejavu-core` is not installed. A renderer whose determinism rests on a
+#: coincidence of provisioning is not deterministic; it is lucky.
+FONT_PATH = str(Path(__file__).resolve().parent / "fonts" / "DejaVuSans-Bold.ttf")
+
+#: The SAME TYPEFACE at its system location, for a tree used without the
+#: vendored copy. It used to be `DejaVuSans.ttf` -- the REGULAR weight -- so the
+#: "fallback" quietly re-drew every glyph in a different face while the
+#: docstring above said that was exactly what must not happen. A fallback that
+#: changes the picture is the defect, not the safety net. Corrected by
+#: WP-IVGS-09.
+FONT_FALLBACK = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 #: Paper, ink, rule and emphasis. Flat colours, not a theme: this is a
 #: reference rasteriser and every value here is something a real renderer
