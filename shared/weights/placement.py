@@ -293,11 +293,18 @@ UNHOSTED_ENGINES: dict[str, str] = {
         "no Remotion container runs on node-02, node-03 or node-04 "
         "(verified 2026-08-26)"
     ),
-    "motion_graphics": (
-        "no motion-graphics renderer is deployed on this fleet. WP-68 built "
-        "the templates and proved them against a local rasteriser; standing a "
-        "renderer up is an operator action"
-    ),
+    # `motion_graphics` WAS HERE and is deliberately gone. WP-IVGS-09 (RC-I1)
+    # deployed `ivgs-motion-renderer` on node-01, so the sentence this row
+    # carried -- "no motion-graphics renderer is deployed on this fleet" -- is
+    # no longer true, and a refusal that gives a false reason is worse than one
+    # that gives none.
+    #
+    # It is not moved into ENGINE_HOSTS either, and that is not an omission.
+    # ENGINE_HOSTS answers "where do this engine's WEIGHTS go"; `motion_graphics`
+    # is in WEIGHTLESS_ENGINES above precisely because that question does not
+    # apply to it. A hosted engine with no weights belongs in NEITHER map, and
+    # `compute_status` checks weightless FIRST so no weight state is ever
+    # computed for it.
     "sadtalker": "no sadtalker container is deployed on this fleet",
     "wan21": "no standalone wan21 server is deployed; Wan runs under comfyui on node-03",
 }

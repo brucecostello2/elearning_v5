@@ -495,6 +495,14 @@ def create_celery_app(config: Optional[WorkerConfig] = None) -> Celery:
         "tasks.stage8_final_render",
         "tasks.video_generation_task",
         "tasks.animation_generation_task",
+        # WP-IVGS-09. THE LIST IS THE REGISTRY, and a task module absent from it
+        # is not merely unimported -- it does not exist to the worker. Measured
+        # 2026-08-28: with the module written, the client written, the queue
+        # mapped and the dispatcher routing to it, `celery inspect registered`
+        # still had no `motion_graphics` entry, and a dispatch would have gone to
+        # a task nobody serves. `_assert_registry_is_not_vacuous` below exists
+        # for exactly this class of miss.
+        "tasks.motion_graphics_task",
         "tasks.talking_head_task",
         "tasks.pipeline_orchestrator",
         "tasks.pipeline_orchestrator_v2",

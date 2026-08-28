@@ -125,6 +125,21 @@ class ModelEngine(str, enum.Enum):
     MAGIHUMAN = "magihuman"
     HUMO = "humo"
     WAN22_S2V = "wan22_s2v"
+    # WP-IVGS-09 (migration 0044). The runtime `ivgs-motion-renderer` serves.
+    #
+    # Declared by WP-68 in the endpoint table, the capability registry and the
+    # weightless map -- but never in this enum, so the engine existed everywhere
+    # except the one place a Model Store row has to name it. Nothing failed
+    # because nothing had tried: an engine with no renderer had no row to insert.
+    #
+    # A RUNTIME, not a family, on the same reasoning as `tts` above: the family
+    # is `maths_motion` (client_registry.py:439), and one renderer could later
+    # serve a second family of templates without a second engine value.
+    #
+    # NOT folded into `ffmpeg`. `ffmpeg` is a local binary with no endpoint --
+    # `resolve_endpoint("ffmpeg")` correctly refuses, measured 2026-08-28 -- and
+    # this is an HTTP service with a URL, a health endpoint and a build ref.
+    MOTION_GRAPHICS = "motion_graphics"
 
 
 class CapabilityDimension(str, enum.Enum):

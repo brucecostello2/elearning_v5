@@ -48,6 +48,21 @@ class PipelineStage(str, Enum):
     # Parallel media-generation stages dispatched alongside IMAGE_GENERATION
     VIDEO_GENERATION = "video_generation"
     ANIMATION_GENERATION = "animation_generation"
+    # WP-IVGS-09. The fourth media branch gets its own label for the reason
+    # WP-39 gave animation one: the media join counts ONE report per dispatched
+    # media STAGE and guards each with a (job_id, stage) idempotency key, so two
+    # branches reporting under one label means the second is dropped as a
+    # duplicate and the join hangs with every asset already in SeaweedFS
+    # (measured on job bd99fe37, 2026-08-23). Sharing `animation_generation`
+    # with Wan — which is where MBCP's taxonomy puts both, and why WP-67
+    # registers `maths_motion` there — would reproduce exactly that.
+    #
+    # Safe against the schema: `pipeline_checkpoints.stage_name`,
+    # `render_jobs.resume_from_stage` and `task_retries.stage_name` are all
+    # varchar. The `model_stage` DB enum is MBCP's NINE-value taxonomy and is a
+    # different thing entirely (dev/CLAUDE.md §11 terminology trap); it is not
+    # touched, and motion graphics remain `animation_generation` to AD-01.
+    MOTION_GRAPHICS = "motion_graphics"
 
 
 class StageStatus(str, Enum):

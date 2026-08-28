@@ -466,15 +466,35 @@ class TestMbcpRuntimeEngines:
         on live rows — including the Kokoro-82M row rendering today — so 0042
         removes nothing. This test fails if a later package removes one without
         the separate ruling that requires.
+
+        ⛔ CORRECTED 2026-08-28 (WP-IVGS-09). This was written as SET EQUALITY,
+        so it also failed on an ADDITION — and migration 0044 adding
+        `motion_graphics` (the runtime `ivgs-motion-renderer` serves) tripped it.
+        That is not what the test is named for, and equality is the wrong
+        relation for it: this file already has
+        `test_domain_is_still_closed`, which is what stops the enum becoming
+        free text, and `test_a_new_value_is_a_migration_not_a_code_edit`-style
+        coverage lives with each migration. A removal is a SUBSET violation, so
+        subset is what is asserted, and the additions are listed separately so
+        the record still says which package added what.
         """
-        assert {e.value for e in ModelEngine} == {
-            # the twelve that existed before 0042
+        engines = {e.value for e in ModelEngine}
+
+        pre_0042 = {
             "vllm", "ollama", "comfyui", "coqui", "kokoro", "cogvideox",
             "wan21", "animatediff", "latentsync", "sadtalker", "remotion",
             "ffmpeg",
-            # the four 0042 adds
-            "tts", "magihuman", "humo", "wan22_s2v",
         }
+        added_by_0042 = {"tts", "magihuman", "humo", "wan22_s2v"}
+        added_by_0044 = {"motion_graphics"}
+
+        missing = (pre_0042 | added_by_0042 | added_by_0044) - engines
+        assert not missing, (
+            f"values were REMOVED from ModelEngine: {sorted(missing)}. §7.1 is "
+            f"ruled — ledger the inconsistency, do not clean it up. A removal "
+            f"needs its own operator ruling and a migration that proves no row "
+            f"references the value."
+        )
 
     async def test_domain_is_still_closed(self, client: AsyncClient):
         """Extending the enum must not turn `engine` into free text.

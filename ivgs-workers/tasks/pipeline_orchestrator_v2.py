@@ -23,9 +23,10 @@ Stage sequence (§6.1):
   8. Final Render               → COMPLETE
 
 Media Generation Routing (Table 6-1):
-  image       → gpu_image queue (FluxClient)
-  video_clip  → gpu_video queue (CogVideoX/Wan2.1)
-  animation   → gpu_image queue (AnimateDiff) or composition queue (Remotion)
+  image           → gpu_image queue (FluxClient)
+  video_clip      → gpu_video queue (CogVideoX/Wan2.1)
+  animation       → gpu_animation queue (Wan2.2-Animate, WP-46)
+  motion_graphics → default queue (ivgs-motion-renderer on node-01, WP-IVGS-09)
 """
 
 from __future__ import annotations
@@ -42,6 +43,8 @@ from models.task_result import (
     PipelineStage,
     StageStatus,
 )
+from shared.providers.binding import resolve_endpoint
+from shared.providers.errors import EndpointResolutionError
 from utils.error_handler import (
     advance_project_state,
     save_checkpoint,
@@ -106,6 +109,13 @@ STAGE_TASK_MAP: Dict[str, str] = {
         # task here, which is why an "animation" was a still.
         "tasks.animation_generation_task.generate_scene_animations"
     ),
+    PipelineStage.MOTION_GRAPHICS.value: (
+        # WP-IVGS-09 (RC-I1). A NINTH body, for a branch that had none: WP-68
+        # held these scenes because no renderer existed. Naming the Wan task
+        # here instead would run pose reenactment against a scene with no
+        # person in it -- the failure WP-68 Task 1 measured and refused.
+        "tasks.motion_graphics_task.render_scene_motion_graphics"
+    ),
     PipelineStage.COMPOSITION_MANIFEST.value: (
         "tasks.stage4_manifest.build_composition_manifest"
     ),
@@ -133,6 +143,11 @@ STAGE_QUEUE_MAP: Dict[str, str] = {
     # which node-03's worker consumes alongside gpu_video — the node where the
     # Wan engine and its weights live.
     PipelineStage.ANIMATION_GENERATION.value: "gpu_animation",
+    # WP-IVGS-09. `default`, i.e. node-01 -- NOT a gpu_* queue. RC-I1 ruled the
+    # renderer CPU-only and placed it on node-01, so the task sits on the same
+    # node as the service it calls and occupies no GPU worker. A gpu_animation
+    # placement would queue CPU work behind a 14B diffusion render.
+    PipelineStage.MOTION_GRAPHICS.value: "default",
     PipelineStage.COMPOSITION_MANIFEST.value: "default",
     PipelineStage.TTS_AUDIO.value: "gpu_tts",
     PipelineStage.TALKING_HEAD_RENDER.value: "gpu_talking_head",
@@ -166,6 +181,9 @@ STAGE_PROJECT_STATE: Dict[str, str] = {
     PipelineStage.IMAGE_GENERATION.value: "MEDIA_GENERATION",
     PipelineStage.VIDEO_GENERATION.value: "MEDIA_GENERATION",
     PipelineStage.ANIMATION_GENERATION.value: "MEDIA_GENERATION",
+    # WP-IVGS-09. The fourth media branch means the same thing to the
+    # project as the other three: media is being generated.
+    PipelineStage.MOTION_GRAPHICS.value: "MEDIA_GENERATION",
     PipelineStage.COMPOSITION_MANIFEST.value: "MANIFEST_GENERATION",
     PipelineStage.TTS_AUDIO.value: "AUDIO_GENERATION",
     PipelineStage.TALKING_HEAD_RENDER.value: "TALKING_HEAD_RENDER",
@@ -188,6 +206,10 @@ MEDIA_GENERATION_STAGES = {
     PipelineStage.IMAGE_GENERATION.value,
     PipelineStage.VIDEO_GENERATION.value,
     PipelineStage.ANIMATION_GENERATION.value,
+    # WP-IVGS-09. Membership here is what makes a stage joinable: it
+    # gates the resume fan-out (line ~261) and routes the completion to
+    # the media join instead of the linear stage transition (~418).
+    PipelineStage.MOTION_GRAPHICS.value,
 }
 
 
@@ -552,6 +574,64 @@ def handle_stage_completion(
 # Media generation dispatch (Stage 3 — parallel per scene)
 # ---------------------------------------------------------------------------
 
+#: How long the pre-dispatch renderer probe may take. Short by design: this is
+#: a same-node call to a CPU service that answers from memory, and the whole
+#: point is to learn the answer cheaply before arming a join. A slow answer is
+#: treated as no answer, which is the honest reading — a renderer that cannot
+#: say "ready" in three seconds cannot be relied on to draw.
+_MOTION_RENDERER_PROBE_TIMEOUT_S = 3.0
+
+
+def _motion_renderer_refusal(config: WorkerConfig) -> str:
+    """``""`` if the motion-graphics renderer can draw; else WHY it cannot.
+
+    WP-IVGS-09. WP-68's hold was unconditional because no renderer existed.
+    Now one does, so the condition is MEASURED — and it returns a sentence, not
+    a boolean, because the sentence is what goes in the log line an operator
+    will read.
+
+    Two distinct facts, kept distinct:
+
+    * ``IVGS_MOTION_GRAPHICS_URL`` unset — ``resolve_endpoint`` raises by name
+      (the engine carries no default, deliberately: WP-68 Task 2.1). This is
+      "no renderer is deployed".
+    * the URL is set but the service does not answer 200 on ``/healthz`` — the
+      renderer is down, or up with no font or no ffmpeg, which it reports as
+      503 rather than as a green light.
+
+    Both hold the scenes. Neither renders anything, and neither turns a motion
+    graphic into a still.
+    """
+    try:
+        endpoint = resolve_endpoint("motion_graphics")
+    except EndpointResolutionError as exc:
+        return (
+            f"motion_graphics scenes were chosen by the storyboard but no "
+            f"renderer endpoint resolves: {exc}. These scenes are NOT "
+            f"dispatched and NOT silently rendered as images (WP-68 L-1/L-4)."
+        )
+
+    try:
+        with httpx.Client(timeout=_MOTION_RENDERER_PROBE_TIMEOUT_S) as client:
+            resp = client.get(f"{endpoint.rstrip('/')}/healthz")
+    except Exception as exc:  # noqa: BLE001 — every transport failure is one fact
+        return (
+            f"motion_graphics scenes were chosen by the storyboard and "
+            f"IVGS_MOTION_GRAPHICS_URL resolves to {endpoint}, but the renderer "
+            f"is not reachable: {type(exc).__name__}: {exc}. These scenes are "
+            f"NOT dispatched and NOT silently rendered as images."
+        )
+
+    if resp.status_code != 200:
+        return (
+            f"motion_graphics renderer at {endpoint} answered HTTP "
+            f"{resp.status_code} on /healthz — it is running but not able to "
+            f"render ({resp.text[:200]}). These scenes are NOT dispatched and "
+            f"NOT silently rendered as images."
+        )
+    return ""
+
+
 @celery_app.task(
     bind=True,
     base=IVGSBaseTask,
@@ -603,19 +683,26 @@ def dispatch_media_generation(
     image_scenes: List[Dict[str, Any]] = []
     video_scenes: List[Dict[str, Any]] = []
     animation_scenes: List[Dict[str, Any]] = []
+    motion_scenes: List[Dict[str, Any]] = []
 
-    # WP-68. A media type this build does not dispatch is HELD AND NAMED, not
+    # WP-68. A media type this build cannot dispatch is HELD AND NAMED, not
     # absorbed into the image branch.
     #
     # The `else` below used to swallow every unrecognised value silently, so a
     # scene the storyboard deliberately chose as something else became a still
-    # with nothing anywhere saying so. `motion_graphics` (migration 0041) is
-    # the first value that is legitimately chooseable and not yet renderable:
-    # no renderer is deployed on this fleet, and `animation_generation_task` is
-    # frozen under AD-05 §8 and would run Wan2.2-Animate's client against it --
-    # which needs a person in a reference still that a motion graphic does not
-    # have. Dispatching it would fail deep in a worker; absorbing it into image
-    # would fail silently and look fine. Holding it says the true thing.
+    # with nothing anywhere saying so.
+    #
+    # WP-IVGS-09 (RC-I1) CHANGES WHAT IS HELD, NOT WHETHER HOLDING HAPPENS.
+    # `motion_graphics` now has a renderer (`ivgs-motion-renderer` on node-01)
+    # and a body of its own (`tasks/motion_graphics_task.py`), so the branch is
+    # dispatched WHEN THE RENDERER IS THERE. WP-68's hold becomes a MEASURED
+    # condition rather than an unconditional one: the check below asks the
+    # renderer whether it can draw, and holds by the same name when it cannot.
+    #
+    # It is checked HERE, before the join is armed, deliberately. Dispatching
+    # into an absent renderer would arm the join for a stage that can only fail,
+    # and a job whose only media is motion graphics would then have to travel
+    # all the way to a failed stage to learn what one HTTP call knows now.
     held_scenes: List[Dict[str, Any]] = []
 
     for scene in scenes:
@@ -627,7 +714,7 @@ def dispatch_media_generation(
         elif media_type == "animation":
             animation_scenes.append(scene)
         elif media_type == "motion_graphics":
-            held_scenes.append(scene)
+            motion_scenes.append(scene)
         else:
             logger.warning(
                 "scene_media_type_unrecognised_defaulted_to_image",
@@ -637,21 +724,19 @@ def dispatch_media_generation(
             )
             image_scenes.append(scene)  # Default to image
 
-    if held_scenes:
-        logger.warning(
-            "scene_media_type_held_no_renderer",
-            job_id=job_id,
-            media_type="motion_graphics",
-            scene_count=len(held_scenes),
-            scene_ids=[s.get("scene_id") for s in held_scenes],
-            reason=(
-                "motion_graphics scenes were chosen by the storyboard but no "
-                "renderer is deployed for the motion_graphics engine "
-                "(IVGS_MOTION_GRAPHICS_URL is unset and resolves to no "
-                "endpoint by design). These scenes are NOT dispatched and NOT "
-                "silently rendered as images. WP-68 ledger L-1."
-            ),
-        )
+    if motion_scenes:
+        renderer_refusal = _motion_renderer_refusal(config)
+        if renderer_refusal:
+            held_scenes = motion_scenes
+            motion_scenes = []
+            logger.warning(
+                "scene_media_type_held_no_renderer",
+                job_id=job_id,
+                media_type="motion_graphics",
+                scene_count=len(held_scenes),
+                scene_ids=[s.get("scene_id") for s in held_scenes],
+                reason=renderer_refusal,
+            )
 
     dispatched: List[Dict[str, Any]] = []
 
@@ -692,6 +777,10 @@ def dispatch_media_generation(
         (PipelineStage.IMAGE_GENERATION.value, "gpu_image", image_scenes),
         (PipelineStage.VIDEO_GENERATION.value, "gpu_video", video_scenes),
         (PipelineStage.ANIMATION_GENERATION.value, "gpu_animation", animation_scenes),
+        # WP-IVGS-09. Its own stage label, for the WP-39 reason recorded on
+        # `PipelineStage.MOTION_GRAPHICS`: two branches reporting under one
+        # label means the second is dropped as a duplicate and the join hangs.
+        (PipelineStage.MOTION_GRAPHICS.value, "default", motion_scenes),
     )
     expected_stages: List[str] = [
         stage_label for stage_label, _, stage_scenes in dispatch_plan if stage_scenes
@@ -754,6 +843,8 @@ def dispatch_media_generation(
         image_scenes=len(image_scenes),
         video_scenes=len(video_scenes),
         animation_scenes=len(animation_scenes),
+        motion_graphics_scenes=len(motion_scenes),
+        held_scenes=len(held_scenes),
         total_tasks=total_media_tasks,
         expected_stages=expected_stages,
     )
