@@ -962,6 +962,33 @@ kokoro-82m | kokoro | approved  | t | t
 
 ---
 
+## §A7a ⛔ OPERATOR RULING ON THE FREEZE EXCEPTION — recorded 2026-08-28
+
+**A frozen stage body was opened for a defect that measured cosmetic.**
+
+The exception at §A0 was granted on my premise that D-2's fix would convert a hard failure into
+a silent wrong-voice one. **That premise was wrong.** `speaker_wav_path` was sent by both
+branches (§A1), and `temperature` cannot have an audible effect because `ivgs-coqui`'s server
+declares it and passes it to nothing (§A5.3). The two-line edit stands and the code is now
+honest, but the justification for opening the file did not survive measurement.
+
+⚠ **The rule this leaves behind, in the operator's words: next time that argument is made, we
+need to know it was CHECKED TO THE WIRE, not reasoned from code.** A severity claim that opens a
+frozen file must be measured at the boundary it claims to cross, before the exception is
+requested — not after the edit has shipped. **This is not a precedent.**
+
+## §A7b Design note worth reusing — the alias that needed no configuration
+
+Resolving `tts` **through the entry that already defines where each family serves**, rather than
+into a second URL table, required **zero configuration change on node-04**: its existing
+`IVGS_KOKORO_URL` and `IVGS_COQUI_URL` drove the new runtime name unchanged.
+
+`IVGS_TTS_URL` had been assumed inevitable — by me in §3, which states flatly that no
+environment variable could work around D-2. That was true of the *shape* the fix was assumed to
+take and false of the fix that was built. **The reason it was avoidable: one definition cannot
+drift from itself.** A second table would have answered the question and introduced a second
+place for Kokoro's address to live.
+
 ## §A8 Ledger, restated
 
 | id | What | Status |
