@@ -278,6 +278,90 @@ so there was nothing to close.
 
 ---
 
+## §9A SECOND PASS — the completion order
+
+### 9A.1 Task 5 — the audit moved to the write
+
+`manual_override` is the one function that performs an operator-intent selection write, and two
+callers reach it: the route (which audited) and `preset_service` (which did not). **The audit
+now lives in the function**, so a third caller cannot forget, and **the route's duplicate was
+removed** — one writer, one definition of the payload. ⚠ `_replace_selection` deliberately is
+NOT the site: it also serves automatic selection, which is not an audited operator act.
+4 tests, including that the row names what it **replaced**.
+
+⛔ **The sweep found the gap is far wider: 20 service modules write, none audit.** Sharpest:
+**project deletion is audited nowhere** — not the service, not the route. Irreversible
+destruction with no trail. Rowed as **RC-G5 (P1)** and **RC-G6**; not fixed here.
+
+### 9A.2 Task 1(b) — the structural finding
+
+**76 rows; 71 open; 5 marked closed in place. ⛔ 50 of the 71 open rows carry no gate, owner or
+re-open trigger** — violating this document's own DEFERRED definition. That is the honest
+result of a row-by-row pass, and it is **RC-G7**.
+
+Live-verified this pass: **P0.1 CLOSES** — `broker_visibility_timeout = 7200` measured in the
+running worker against `time_limit=3900`; **7200 > 3900**, so the duplicate-execution window is
+gone. **That was the register's last P0.** **P1.3** also closes: no two-argument
+`release_gpu_reservation` call remains.
+
+### 9A.3 Task 8 — the rotation, attended
+
+**(1) The cause, not the symptom.** `POSTGRES_PASSWORD` sat in `.env.node02/03/04`, which every
+service lists as `env_file:` — so six engines held a credential none uses. **It was redundant
+too**: the DB-consuming service builds `DATABASE_URL` in its own compose `environment:` block
+from the compose-level `--env-file`. So the split is a **deletion**, and the tracked
+`.env.node02.example` now documents that.
+
+**(2) Rotation.** Staged on four nodes → `ALTER ROLE` → rolling recreate, API last-touched.
+**`pg_hba` 9/9 replication lines verified before and after.** Backup window checked (14:22 UTC
+vs 02:00/05:00). **Nine consumers proved connectivity.**
+
+```
+NEGATIVE PROOF   OLD -> FATAL:  password authentication failed for user
+                 NEW -> authenticated
+```
+
+**(3) Engines, one at a time**, each asserted on **two** conditions — `StartedAt` moved AND
+`env | grep -cE '^(POSTGRES|DATABASE_URL)'` returns **0**. ⚠ Four of node-04's five engine
+services are `profiles: ["pending"]`; without `--profile pending` the recreate skips silently.
+
+**(4) End state:** ten containers hold a DB key — nine consumers plus `ivgs-postgres` itself.
+**Zero engines hold one.** Engines healthy (5002/5003/9000 all 200), five Celery nodes.
+⛔ **The old value remains in git history and is dead because rotated, not because history was
+cleaned.** No rewrite was performed and none is proposed.
+
+### 9A.4 ⛔ I hit the silent-no-op trap a third time, during the task about it
+
+Four consecutive remote recreates reported success and changed nothing: the `ssh` command string
+had no `cd /opt/ivgs`. `Up 4 hours` caught it; then an **unsuppressed stderr** named it —
+`couldn't find env file: /root/ivgs-infra/.env`. The earlier attempts had that redirected to
+`/dev/null`. **The assertion worked; my discipline did not.** The lesson for the deploy standard
+is narrower than "check the image": **never redirect a deploy command's stderr.**
+
+### 9A.5 The test-count gap — RESOLVED, not logged
+
+**WP-IVGS-07's `933` was wrong.** The baseline commit `e11911c`, re-run in today's environment,
+gives **939 passed**. `939 → 930` is **exactly −9**.
+
+| | Node-id | Commit |
+|---|---|---|
+| **Vanished (10)** | `test_fallback_chain.py` × 9 | `6a817d7` |
+| | `test_wp61_schedules.py::…::test_get_beat_schedule_is_no_longer_a_SECOND_schedule` | `6a817d7` |
+| **Appeared (1)** | `…::test_get_beat_schedule_IS_GONE_not_merely_delegating` | `6a817d7` |
+
+**−10 + 1 = −9 collected (1018 → 1009) and −9 passed (939 → 930). Both reconcile.** The baseline
+document is corrected.
+
+### 9A.6 ⛔ STILL NOT DONE
+
+**6(d)** five dead Prometheus targets, **6(e)** `IVGS_VLLM_MAX_TOKENS` consistency, **7(c)**
+`/root` tarball cleanup, **7(d)** node-02 stale `vllm.service`. The completion order placed them
+before Task 8; **I went to Task 8 on the explicit GO and did not return to them.** They are not
+rowed as debt because they are already register items (P2.40, P2.42) plus two order items —
+**they remain open work, named here.**
+
+---
+
 ## §10 Push block — count-gated
 
 ⛔ **NOT PUSHED.**
@@ -289,7 +373,7 @@ so there was nothing to close.
   N=$(git rev-list --count origin/main..HEAD)
   echo "commits ahead of origin/main: $N"
   git --no-pager log --oneline origin/main..HEAD
-  if [ "$N" -eq 3 ]; then
+  if [ "$N" -eq 5 ]; then
     git push origin main && echo "PUSHED"
   else
     echo "REFUSING: expected exactly 3, found $N. Inspect the list above."
