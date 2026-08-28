@@ -43,6 +43,10 @@ class TTSRequest(BaseModel):
     repetition_penalty: float = 5.0
     top_k: int = 50
     top_p: float = 0.85
+    # WP-IVGS-07. The client began sending this in the same package that wired
+    # the five above. Undeclared here, Pydantic would have DROPPED it silently
+    # -- creating a fresh instance of D-7 inside D-7's own fix.
+    enable_text_splitting: bool = True
 
 
 def load():
@@ -89,6 +93,7 @@ async def tts_to_audio(req: TTSRequest) -> Response:
         repetition_penalty=req.repetition_penalty,
         top_k=req.top_k,
         top_p=req.top_p,
+        enable_text_splitting=req.enable_text_splitting,
     )
     if req.speaker_wav and os.path.isfile(req.speaker_wav):
         kwargs["speaker_wav"] = req.speaker_wav

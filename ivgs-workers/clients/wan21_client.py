@@ -85,9 +85,33 @@ class Wan21GenerationParams:
             "guidance_scale": self.guidance_scale,
             "num_inference_steps": self.num_inference_steps,
             "seed": self.seed,
+            # ⛔ WP-IVGS-07 Task 3 (D-11) — THE DEDUP TRAP, AND WHY THE HASH AND
+            # THE REQUEST HAD TO CHANGE IN THE SAME COMMIT.
+            #
+            # `quality` reached NEITHER the request NOR this hash. That was
+            # self-consistent while it did nothing: two requests differing only
+            # in `quality` produced identical video, so sharing a cache entry
+            # was correct.
+            #
+            # The moment `quality` starts influencing the render -- as it now
+            # does, below -- a hash that ignores it makes STANDARD and HIGH
+            # collide: the second request is served the first one's artifact
+            # from the dedup cache and nothing anywhere reports a mismatch.
+            # Wiring the parameter without this line would have been strictly
+            # worse than leaving it dead.
+            "quality": self.quality.value,
         }
         canonical = json.dumps(data, sort_keys=True)
         return hashlib.sha256(canonical.encode()).hexdigest()
+
+
+#: What each preset actually changes. WP-IVGS-07 Task 3.
+#: Declared as a table rather than computed so the two presets are readable
+#: side by side and a third cannot be added by accident.
+_QUALITY_PROFILES: dict[str, dict[str, int]] = {
+    "standard": {},                                  # the shipped defaults
+    "high": {"num_inference_steps": 75},
+}
 
 
 @dataclass
@@ -223,6 +247,17 @@ class Wan21Client(VideoProvider):
 
     async def generate_video(self, params: Wan21GenerationParams) -> Wan21GenerationResult:
         """Generate a video clip via the richer task-facing interface."""
+        # WP-IVGS-07 Task 3 (D-11). `quality` reached nothing at all -- and
+        # neither did `num_inference_steps`, which this payload simply omitted,
+        # so the engine used its own default for every render regardless of
+        # what the caller asked for. Both are sent now.
+        #
+        # The preset is applied as an OVERRIDE on top of the explicit fields,
+        # so `quality` cannot silently contradict a value the caller set
+        # deliberately without that being visible in this one table.
+        steps = params.num_inference_steps
+        profile = _QUALITY_PROFILES.get(params.quality.value, {})
+        steps = profile.get("num_inference_steps", steps)
         payload = {
             "prompt": params.prompt,
             "negative_prompt": params.negative_prompt,
@@ -231,6 +266,7 @@ class Wan21Client(VideoProvider):
             "num_frames": min(params.num_frames, 150),
             "fps": params.fps,
             "guidance_scale": params.guidance_scale,
+            "num_inference_steps": steps,
             "seed": params.seed,
         }
         request_id, video_bytes, status_data, elapsed = await self._run_with_failover(payload)

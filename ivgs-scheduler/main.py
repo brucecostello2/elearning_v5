@@ -162,6 +162,19 @@ class ScheduleRequest(BaseModel):
     stage: Optional[int] = Field(
         default=None, description="Pipeline stage number for phase gate"
     )
+    # WP-IVGS-07 Task 1 (D-10). The node the caller is ALREADY RUNNING ON.
+    #
+    # Optional so an older worker image behaves exactly as before through a
+    # rolling deploy: absent means "choose for me", which is what every caller
+    # did until now and what produced the wrong-machine accounting.
+    required_node: Optional[str] = Field(
+        default=None,
+        description=(
+            "Pin the reservation to this node (the worker's own hostname). "
+            "Celery queue routing already fixed where the task executes; the "
+            "scheduler must account for it there, not choose somewhere else."
+        ),
+    )
 
     @field_validator("priority")
     @classmethod
@@ -605,6 +618,7 @@ async def schedule_job(request: ScheduleRequest) -> ScheduleResponse:
             priority=request.priority,
             project_id=request.project_id,
             stage=request.stage,
+            required_node=request.required_node,
         )
 
         elapsed = time.monotonic() - start_time

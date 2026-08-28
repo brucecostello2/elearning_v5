@@ -163,6 +163,7 @@ class GpuScheduler:
         priority: str = "normal",
         project_id: Optional[str] = None,
         stage: Optional[int] = None,
+        required_node: Optional[str] = None,
     ) -> ScheduleResult:
         """
         Schedule a GPU job using VRAM-aware bin-packing per §12.1.
@@ -225,10 +226,21 @@ class GpuScheduler:
         candidates = await self._load_balancer.get_weighted_candidates(
             model_name=model_name,
             vram_requirement_mb=vram_requirement_mb,
+            required_node=required_node,
         )
 
         if not candidates:
             from main import NoCapacityError
+            # WP-IVGS-07: name the node when one was required. "No GPU nodes
+            # available" while three sit idle is a misleading thing to tell an
+            # operator; the true statement is that THIS node cannot take it.
+            if required_node:
+                raise NoCapacityError(
+                    f"node {required_node!r} cannot admit model {model_name!r} "
+                    f"requiring {vram_requirement_mb} MB VRAM. The task is "
+                    f"already executing there -- Celery routing, not the "
+                    f"scheduler, chose it -- so another node is not an option."
+                )
             raise NoCapacityError(
                 f"No GPU nodes available for model '{model_name}' "
                 f"requiring {vram_requirement_mb} MB VRAM"

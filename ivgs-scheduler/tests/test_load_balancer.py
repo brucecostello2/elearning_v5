@@ -366,3 +366,91 @@ class TestUnmeasuredGpuUtilisation:
         c = (await load_balancer.get_weighted_candidates("m", 100))[0]
         # (1 - 0.40) * (1 - 0/1000) * (10 - 0) = 6.0
         assert c.weight == pytest.approx(6.0)
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-07 Task 1 — D-10: the reservation must land on the executing node
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+class TestTheReservationFollowsTheRouting:
+    """D-10, measured 2026-08-28: a reservation was held against `node-03:gpu0`
+    while the work executed on node-04.
+
+    The two placement mechanisms were never connected. Celery routing decides
+    where a task runs -- `gpu_tts` is consumed only by node-04, `gpu_video` and
+    `gpu_animation` only by node-03, `gpu_llm` only by node-02 -- and that
+    happens BEFORE the task body runs. The scheduler then ranked the whole
+    fleet by weight and answered with whichever node looked freest, and every
+    call site discarded that answer, keeping only `reservation_id`.
+
+    ⛔ The consequence is the inverse of protection: VRAM is decremented on an
+    idle machine while the machine actually loading the model is admitted
+    against headroom nobody is consuming.
+    """
+
+    @pytest.fixture
+    def three_nodes(self, load_balancer):
+        load_balancer._check_model_loaded = AsyncMock(return_value=False)
+        load_balancer._get_queue_depth = AsyncMock(return_value=0)
+        load_balancer._registry.get_alive_nodes = AsyncMock(return_value=[
+            # node-03 looks freest, which is exactly how D-10 happened.
+            _make_node("node-03:gpu0", used_vram=0, gpu_util=0.0),
+            _make_node("node-04:gpu0", used_vram=20000, gpu_util=60.0),
+            _make_node("node-02:gpu0", used_vram=10000, gpu_util=30.0),
+        ])
+        return load_balancer
+
+    async def test_without_a_required_node_it_still_ranks_the_whole_fleet(
+        self, three_nodes
+    ):
+        """Unchanged behaviour for any caller that genuinely wants advice."""
+        c = await three_nodes.get_weighted_candidates("m", 1000)
+        assert {x.node_id for x in c} == {"node-02:gpu0", "node-03:gpu0", "node-04:gpu0"}
+        assert c[0].node_id == "node-03:gpu0", "the freest node still wins the ranking"
+
+    async def test_a_required_node_pins_the_reservation_there(self, three_nodes):
+        """THE FIX. node-04 is busier and would never win on weight; it is where
+        the task is executing, so it is the only correct answer."""
+        c = await three_nodes.get_weighted_candidates("m", 1000, required_node="node-04")
+        assert [x.node_id for x in c] == ["node-04:gpu0"]
+
+    async def test_it_does_NOT_fall_back_to_the_freest_node(self, three_nodes):
+        """⛔ THE REGRESSION GUARD. A 'helpful' fallback to another node when the
+        required one is full would silently restore D-10 -- and would be worse,
+        because it would look like the fix was working."""
+        three_nodes._registry.get_alive_nodes = AsyncMock(return_value=[
+            _make_node("node-03:gpu0", total_vram=49152, used_vram=0),
+        ])
+        c = await three_nodes.get_weighted_candidates("m", 1000, required_node="node-04")
+        assert c == [], "an absent required node yields NO candidate, never a substitute"
+
+    async def test_a_required_node_with_too_little_vram_yields_nothing(
+        self, three_nodes
+    ):
+        """The protection D-10 removed: the executing node's own headroom is
+        what decides admission."""
+        three_nodes._registry.get_alive_nodes = AsyncMock(return_value=[
+            _make_node("node-04:gpu0", total_vram=49152, used_vram=49000),
+            _make_node("node-03:gpu0", total_vram=49152, used_vram=0),
+        ])
+        assert await three_nodes.get_weighted_candidates(
+            "m", 8192, required_node="node-04") == []
+
+    async def test_the_bare_hostname_matches_the_registry_gpu_suffix(self, three_nodes):
+        """The worker knows itself as `node-04`; the registry keys it
+        `node-04:gpu0`. The join has to work without the worker knowing the GPU
+        index, which it does not."""
+        c = await three_nodes.get_weighted_candidates("m", 1000, required_node="node-04")
+        assert c and c[0].node_id == "node-04:gpu0"
+
+    async def test_a_multi_gpu_node_offers_all_of_its_own_gpus(self, three_nodes):
+        """Pinning is to the NODE, not to a card. Two GPUs on the pinned host
+        stay available to rank between; other hosts do not."""
+        three_nodes._registry.get_alive_nodes = AsyncMock(return_value=[
+            _make_node("node-04:gpu0", used_vram=30000),
+            _make_node("node-04:gpu1", used_vram=0),
+            _make_node("node-03:gpu0", used_vram=0),
+        ])
+        c = await three_nodes.get_weighted_candidates("m", 1000, required_node="node-04")
+        assert {x.node_id for x in c} == {"node-04:gpu0", "node-04:gpu1"}

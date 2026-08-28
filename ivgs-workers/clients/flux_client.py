@@ -194,6 +194,7 @@ class FluxClient(ImageProvider):
         sampler: str = "euler",
         scheduler: str = "normal",
         denoise: float = 1.0,
+        clip_skip: int = -1,
     ) -> dict:
         """Build ComfyUI workflow JSON for FLUX.1/SDXL generation."""
         actual_seed = seed if (seed is not None and seed >= 0) else random.randint(0, 2**32 - 1)
@@ -215,8 +216,22 @@ class FluxClient(ImageProvider):
             },
             "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": model}},
             "5": {"class_type": "EmptyLatentImage", "inputs": {"width": width, "height": height, "batch_size": 1}},
-            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["4", 1]}},
-            "7": {"class_type": "CLIPTextEncode", "inputs": {"text": negative_prompt, "clip": ["4", 1]}},
+            # WP-IVGS-07 Task 3 (D-11). `clip_skip` was declared on
+            # `FluxGenerationParams:105` and referenced NOWHERE -- one mention
+            # tree-wide, its own declaration. Both encoders now read CLIP
+            # through `CLIPSetLastLayer` instead of straight off the
+            # checkpoint, which is the only way ComfyUI expresses this.
+            #
+            # BEHAVIOURALLY NEUTRAL UNTIL SOMEONE SETS IT: -1 is the declared
+            # default here AND ComfyUI's own default for `stop_at_clip_layer`
+            # (verified against node-04's /object_info), so an unset request
+            # renders exactly as it did before this node existed.
+            "10": {
+                "class_type": "CLIPSetLastLayer",
+                "inputs": {"clip": ["4", 1], "stop_at_clip_layer": clip_skip},
+            },
+            "6": {"class_type": "CLIPTextEncode", "inputs": {"text": prompt, "clip": ["10", 0]}},
+            "7": {"class_type": "CLIPTextEncode", "inputs": {"text": negative_prompt, "clip": ["10", 0]}},
             "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
             "9": {"class_type": "SaveImage", "inputs": {"filename_prefix": "ivgs_flux", "images": ["8", 0]}},
         }
@@ -314,6 +329,7 @@ class FluxClient(ImageProvider):
             sampler=params.sampler.value,
             scheduler=params.scheduler.value,
             denoise=params.denoise_strength,
+            clip_skip=params.clip_skip,
         )
         prompt_id, image_bytes, image_filename, _hist, elapsed = await self._run_with_failover(workflow, client_id)
         return FluxGenerationResult(

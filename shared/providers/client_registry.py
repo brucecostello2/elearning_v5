@@ -511,12 +511,29 @@ def register_builtin_clients() -> None:
                 # `server.py` builds `kwargs = {text, language, speed}` and
                 # forwards nothing else, so all five are accepted and dropped.
                 #
-                # ⛔ They are deliberately NOT listed here. `accepts_params` is
-                # what a surface offers an operator; listing a control that
-                # cannot move the output would be the defect one layer up from
-                # where it lives. They go in when the engine block in the
-                # WP-IVGS-06 report has been applied and proven, not before.
-                accepts_params=frozenset({"speed"}),
+                # WIDENED 2026-08-28 by WP-IVGS-07 Task 6, in the SAME deploy
+                # window as the engine rebuild that made them real. The rule
+                # this follows in both directions: the surface must never
+                # advertise ahead of the deploy, and must not stay narrowed
+                # after it.
+                #
+                # `ivgs-coqui:coqui-v5.2.9-params` now forwards all of these to
+                # `Xtts.inference`. Two were proven to move the output on the
+                # deployed engine rather than assumed:
+                #   temperature           -- mean intra-pair LTAS 0.99767 @0.05
+                #                            vs 0.97369 @0.99. Before the
+                #                            rebuild the ordering was INVERTED
+                #                            (0.92024 vs 0.95473), i.e. noise.
+                #   enable_text_splitting -- 248460 B / 5.18 s (True) vs
+                #                            273036 B / 5.69 s (False).
+                # ⚠ `top_k`, `top_p`, `length_penalty` and `repetition_penalty`
+                # travel on the same `kwargs.update` line and are accepted by
+                # `Xtts.inference`, but were NOT individually demonstrated.
+                accepts_params=frozenset({
+                    "speed", "temperature", "top_k", "top_p",
+                    "length_penalty", "repetition_penalty",
+                    "enable_text_splitting",
+                }),
                 produces="audio/wav",
             ),
             client_path="clients.coqui_client.CoquiClient",

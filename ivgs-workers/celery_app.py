@@ -952,9 +952,25 @@ class IVGSBaseTask(celery_app.Task):  # type: ignore[misc]
         if self._gpu_reservation_id:
             try:
                 from utils.gpu_utils import release_gpu_reservation
+                # WP-IVGS-07 Task 2 (D-9). THIS USED TO LOG
+                # `gpu_reservation_released` ITSELF, and so did
+                # `release_gpu_reservation` (`gpu_utils.py:336`) -- one release,
+                # TWO identical events, 131 microseconds apart. Measured
+                # 2026-08-28 on a real render.
+                #
+                # ⛔ It was never a double release. But `gpu_reservation_acquired`
+                # is logged ONCE, so anything reconciling acquires against
+                # releases saw a permanent 2:1 imbalance and would have
+                # concluded the fleet was releasing reservations it never held
+                # -- the opposite of the truth, and the exact shape of question
+                # this event exists to answer.
+                #
+                # The util owns the event because it is the layer that knows
+                # WHICH outcome occurred (released vs. already-gone). This layer
+                # records only its own concern: that the task let go of its id.
                 release_gpu_reservation(self._gpu_reservation_id)
-                self.structured_logger.info(
-                    "gpu_reservation_released",
+                self.structured_logger.debug(
+                    "task_gpu_reservation_cleared",
                     reservation_id=self._gpu_reservation_id,
                 )
             except Exception as release_err:

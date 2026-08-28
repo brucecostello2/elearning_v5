@@ -286,6 +286,11 @@ class CoquiClient(TTSProvider):
             "top_k": params.top_k,
             "top_p": params.top_p,
             "speed": params.speed,
+            # WP-IVGS-07 Task 3 (D-11). Declared on `CoquiSynthesisParams:100`
+            # and referenced nowhere. `Xtts.inference` accepts it (measured on
+            # node-04), and the engine forwards **kwargs, so the only thing
+            # missing was this line.
+            "enable_text_splitting": params.enable_text_splitting,
         }
         audio_bytes, elapsed = await self._post_with_failover(payload)
 

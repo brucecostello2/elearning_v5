@@ -98,6 +98,7 @@ class LoadBalancer:
         self,
         model_name: str,
         vram_requirement_mb: int,
+        required_node: Optional[str] = None,
     ) -> List:
         """
         Get GPU candidates ranked by weighted random selection per §12.1.
@@ -119,6 +120,36 @@ class LoadBalancer:
         if not alive_nodes:
             logger.warning("no_alive_nodes_for_balancing")
             return []
+
+        # WP-IVGS-07 Task 1 (D-10). PIN, do not rank.
+        #
+        # The caller is a worker that is ALREADY EXECUTING on a specific node:
+        # Celery delivered the task to exactly one queue consumer before any of
+        # this ran, so the executing node is a FACT by the time a reservation is
+        # requested, not a choice still open. Ranking here and returning a
+        # different node produced D-10 -- a reservation held against node-03
+        # while the work ran on node-04, measured 2026-08-28.
+        #
+        # ⛔ THE CONSEQUENCE OF GETTING THIS WRONG IS THE OPPOSITE OF PROTECTION.
+        # VRAM is decremented on a machine that is idle, and the machine
+        # actually loading the model is admitted against someone else's
+        # headroom. Two concurrent jobs on the real node both "fit", because
+        # neither was ever counted there.
+        #
+        # When `required_node` is absent the behaviour is exactly as before, so
+        # any caller that genuinely wants placement advice still gets it.
+        if required_node:
+            prefix = f"{required_node}:"
+            pinned = [n for n in alive_nodes
+                      if n.node_id == required_node or n.node_id.startswith(prefix)]
+            if not pinned:
+                logger.warning(
+                    "required_node_not_registered",
+                    required_node=required_node,
+                    alive=[n.node_id for n in alive_nodes],
+                    effect="no candidate can be offered; the caller will be refused",
+                )
+            alive_nodes = pinned
 
         candidates: List[GpuCandidate] = []
         weights: List[float] = []

@@ -129,6 +129,7 @@ def acquire_gpu_reservation(
     vram_requirement_mb: int,
     estimated_duration_s: int = 120,
     priority: str = "normal",
+    node_hostname: Optional[str] = None,
 ) -> Dict[str, Any]:
     """
     Acquire a GPU reservation via the GPU Scheduler API (§12.3).
@@ -153,12 +154,26 @@ def acquire_gpu_reservation(
         If no capacity available or scheduler rejects the request.
     """
     client = _get_client()
+    # WP-IVGS-07 Task 1 (D-10). SEND THE NODE WE ARE ON.
+    #
+    # This function runs INSIDE the task, on the worker that Celery already
+    # delivered it to. `gpu_tts` is consumed only by node-04, `gpu_video` and
+    # `gpu_animation` only by node-03, `gpu_llm` only by node-02 -- so by the
+    # time we are here the executing node is settled and the scheduler has no
+    # placement decision left to make. Until now we did not tell it, and it
+    # ranked the fleet and answered with whichever node looked freest: D-10,
+    # measured as a reservation on node-03 for work running on node-04.
+    #
+    # Defaulted rather than required, so NONE of the eight call sites -- all
+    # inside frozen stage bodies -- has to change.
+    node = node_hostname or WorkerConfig().node_hostname
     payload = {
         "job_id": job_id,
         "model_name": model_name,
         "vram_requirement_mb": vram_requirement_mb,
         "estimated_duration_s": estimated_duration_s,
         "priority": priority,
+        "required_node": node,
     }
 
     try:
@@ -316,10 +331,27 @@ def release_gpu_reservation(reservation_id: str) -> bool:
     client = _get_client()
     try:
         resp = client.delete(f"/reservations/{reservation_id}")
-        if resp.status_code in (200, 204, 404):
+        # WP-IVGS-07 Task 2 (D-9). 200 AND 404 BOTH MEAN "NOT HELD ANY MORE",
+        # and they are idempotent-equivalent -- but they are NOT the same event
+        # and collapsing them was a small lie in the log.
+        #
+        # Measured on the live scheduler 2026-08-28: a repeat DELETE returns
+        # 404 and frees NOTHING (used_vram_mb went 0 -> 4096 -> 0 across two
+        # releases, never negative). So the server is already idempotent and
+        # the counter cannot be driven below zero -- the risk this task was
+        # opened to check does not exist. What did exist is that a no-op
+        # reported itself as a release.
+        if resp.status_code in (200, 204):
             logger.info(
                 "gpu_reservation_released",
                 reservation_id=reservation_id,
+            )
+            return True
+        if resp.status_code == 404:
+            logger.info(
+                "gpu_reservation_release_noop",
+                reservation_id=reservation_id,
+                reason="already released or expired; nothing was decremented",
             )
             return True
         logger.warning(
@@ -645,6 +677,33 @@ class GpuReservationError(Exception):
     def __init__(self, message: str, job_id: Optional[str] = None):
         super().__init__(message)
         self.job_id = job_id
+
+
+class GpuReservationRefused(GpuReservationError):
+    """The reservation could not be obtained AND policy says do not proceed.
+
+    WP-IVGS-07 Task 4. SHIPPED NOW, DELIBERATELY UNRAISED, so that the M3.3
+    cutover is a one-line edit per stage rather than a rediscovery.
+
+    ⛔ WHY IT CANNOT TAKE EFFECT YET. All eight acquire sites catch bare
+    ``except Exception`` inside FROZEN stage bodies (`dev/CLAUDE.md` §3), so a
+    refusal raised from here is swallowed exactly like every other failure and
+    the stage proceeds unreserved regardless of policy. The class existing does
+    not change that; only the ``except`` clauses can, and opening them is
+    M3.3's job.
+
+    THE EDIT EACH SITE NEEDS, once:
+
+        except GpuReservationRefused:
+            raise
+        except Exception as e:          # <- the existing line, unchanged
+            ...
+
+    The table in the WP-IVGS-07 report lists all eight with file, line and
+    current text. Until that lands, ``IVGS_GPU_RESERVATION_FAILURE_POLICY``
+    has exactly one honest value and the outcome event says
+    ``enforceable=False``.
+    """
 
 
 class GpuNoCapacityError(GpuReservationError):

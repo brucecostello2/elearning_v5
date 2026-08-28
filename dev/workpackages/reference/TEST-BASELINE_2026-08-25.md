@@ -16,11 +16,15 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **1395** | **0** | 0 | 0 | 1359 (WP-68) |
-| `ivgs-workers` | **925** | 18 | 48 | 15 | 903 (WP-68) |
-| `ivgs-scheduler` | **46** | **15** | 0 | 0 | 35 / 20 (WP-60) |
+| `ivgs-workers` | **933** | 18 | 48 | 15 | 925 (WP-IVGS-06) |
+| `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2563** | **45** | **63** | **45** | 2494 / 50 (WP-68) |
+| **Total** | **2577** | **45** | **63** | **45** | 2563 / 45 (WP-IVGS-06) |
+
+**Updated 2026-08-28 by WP-IVGS-07.** `ivgs-workers` 925 -> **933** (+8 dropped-param and
+release-idempotence tests), `ivgs-scheduler` 46 -> **52** (+6 node-pinning tests), `ivgs-api`
+**1395** unchanged. **No failure row moved in any tree.**
 
 **Updated 2026-08-28 by WP-IVGS-04 and WP-IVGS-06.** `ivgs-api` 1359 -> **1395**
 (+7 WP-IVGS-03, +29 WP-IVGS-04/06), `ivgs-workers` 903 -> **925** (+13 WP-IVGS-04, +9
