@@ -108,6 +108,19 @@ only the second half is elevated in the naive form.
 A GHCR push is optional convenience. **It is never a precondition for a deploy,
 and "no registry credentials" is never a reason to stop.**
 
+### 6.1a A deploy command's stderr is NEVER redirected
+
+`>/dev/null 2>&1` on a `docker compose up` hides the one line that tells you it
+did nothing. Measured three times in one session (WP-IVGS-06 §6.1, WP-IVGS-08
+§9A.4): a wrong service name, a missing `cd`, and a `profiles:`-gated service
+each produced a silent no-op that **exited 0**. The fourth attempt, run without
+the redirect, printed the cause immediately —
+`couldn't find env file: /root/ivgs-infra/.env`.
+
+Redirect stdout if it is noisy. Never stderr. Then assert the RUNNING image with
+`scripts/verify-deployed-image.sh <container> <tag> [ssh-host]`, which fails on a
+wrong tag AND on a missing container.
+
 ### 6.2 node-03's worker service is `cogvideox-worker`, not `celery-worker`
 
 Container `ivgs-cogvideox-worker-node03`. node-03 also DECLARES a

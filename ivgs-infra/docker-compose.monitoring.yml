@@ -20,16 +20,14 @@
 
 
 networks:
-  ivgs-net:
-    external: true
-    name: ivgs-infra_ivgs-net
   monitoring_net:
     driver: bridge
     ipam:
       config:
         - subnet: 172.28.0.0/16
-  ivgs_default:
+  ivgs-net:
     external: true
+    name: ivgs-infra_ivgs-net
 
 volumes:
   alertmanager_data:
@@ -81,7 +79,12 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.28.0.10
-      ivgs_default: {}
+      # WP-IVGS-08 Task 6(d). Was `ivgs_default`, a network that does not
+      # exist on this fleet -- compose refuses with "network ivgs_default
+      # declared as external, but could not be found", so these services never
+      # started and their Prometheus targets have been permanently RED. Every
+      # other service on node-01 uses `ivgs-net`.
+      ivgs-net: {}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9090/-/healthy"]
       interval: 15s
@@ -139,7 +142,12 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.28.0.11
-      ivgs_default: {}
+      # WP-IVGS-08 Task 6(d). Was `ivgs_default`, a network that does not
+      # exist on this fleet -- compose refuses with "network ivgs_default
+      # declared as external, but could not be found", so these services never
+      # started and their Prometheus targets have been permanently RED. Every
+      # other service on node-01 uses `ivgs-net`.
+      ivgs-net: {}
     depends_on:
       prometheus:
         condition: service_healthy
@@ -242,7 +250,12 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.28.0.13
-      ivgs_default: {}
+      # WP-IVGS-08 Task 6(d). Was `ivgs_default`, a network that does not
+      # exist on this fleet -- compose refuses with "network ivgs_default
+      # declared as external, but could not be found", so these services never
+      # started and their Prometheus targets have been permanently RED. Every
+      # other service on node-01 uses `ivgs-net`.
+      ivgs-net: {}
     depends_on:
       prometheus:
         condition: service_healthy
@@ -292,7 +305,12 @@ services:
     networks:
       monitoring_net:
         ipv4_address: 172.28.0.14
-      ivgs_default: {}
+      # WP-IVGS-08 Task 6(d). Was `ivgs_default`, a network that does not
+      # exist on this fleet -- compose refuses with "network ivgs_default
+      # declared as external, but could not be found", so these services never
+      # started and their Prometheus targets have been permanently RED. Every
+      # other service on node-01 uses `ivgs-net`.
+      ivgs-net: {}
     depends_on:
       prometheus:
         condition: service_healthy

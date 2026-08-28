@@ -2004,8 +2004,8 @@ proven red-green.
 
 | id | Pri | Row | Gate / owner |
 |---|---|---|---|
-| **RC-G5** | **P1** | ⛔ **Project deletion is audited NOWHERE** — not `services/project_deletion.py`, not the `DELETE /projects/{id}` route. Irreversible destruction with no trail | **Gate: before any production content exists to delete.** Owner: next hygiene package |
-| **RC-G6** | **P2** | **20 of the service layer's writers hold zero audit calls.** `manual_override` is now audited; the rest are not. Highest-risk by "changes what the pipeline produces, or destroys data": `project_deletion`, `rollback_service`, `retention_service`, `user_service`, `regeneration` | **Gate: none set.** Needs a ruling on which writes are audit-worthy — not all are (asset/checkpoint/DLQ writes are operational) |
+| **RC-G5** | — | ⛔ **WITHDRAWN — I WAS WRONG.** I reported project deletion as "audited nowhere". **It is audited.** `services/project_deletion.py:952` writes `INSERT INTO audit_log` in **raw SQL**, and commits it BEFORE destruction precisely so the row outlives the project (`audit_log` has no FK to `projects`, verified in that module against the live schema). Live proof: **16 `PROJECT_DELETE_COMPLETED` rows**. My sweep grepped for the `AuditLog` ORM symbol and missed every raw-SQL writer. **Caught by the operator requiring this be verified before the row was written** | Withdrawn, no gate |
+| **RC-G6** | **P2** | **Service-layer audit parity sweep — project deletion path first.** Corrected count after re-running the sweep across BOTH mechanisms (ORM `AuditLog` and raw `INSERT INTO audit_log`): **4 of 20 service modules audit** — `adaptation_service`, `gate_service`, `model_selection` (added by this package) and `project_deletion`. **16 do not.** ⚠ Not all should: asset/checkpoint/DLQ writes are operational, not operator-intent. The scope is a parity sweep that decides, per module, which class each write belongs to. ⓘ **The gap this names is `audit_log` coverage, not the deletion record** — the deletion record exists and works | **BEFORE FIRST PRODUCTION CONTENT RENDER** (same gate as RC-D1) | **IVGS** |
 | **RC-G7** | **P2** | ⛔ **50 of the register's 71 open rows carry no gate, owner, or re-open trigger**, violating this document's own DEFERRED definition. 76 rows total, 5 marked closed in place | **Gate: the next register pass.** This is the structural finding of Task 1(b) |
 | **RC-G8** | — | **Postgres credential rotated 2026-08-28**, attended. ⚠ **The old value remains in git history and is dead because rotated**, not because history was cleaned — history rewrite was out of scope and is not proposed | **CLOSED** |
 
@@ -2017,4 +2017,63 @@ proven red-green.
 | **RC-G10** | **P1** | **AD-10 §7.2 mirror-rule amendment**, promised by the MBCP orchestrator and never received or ratified: *"no field with an enumerated domain without a mechanism keeping both sides in step; no MBCP adapter without its engine value landing in IVGS first."* ⓘ This is the rule whose absence produced WP-IVGS-03 and WP-IVGS-04 in the first place | **Before the next MBCP adapter is added** | MBCP session |
 | **RC-G11** | — | **Cross-reference: WP-IVGS-03 §5.4's intent is CLOSED by WP-IVGS-08 Task 3.** §5.4 wanted version identity and declined to build it because nothing in the image knew its own build. Evidence now: `GET /api/v1/version` through the ingress returns `{"build_ref":"v5.31.0-hygiene","commit_sha":"914277c"}`, and all four version sources agree | Closed — see RC-G12 for the residue |
 | **RC-G12** | P2 | The residue of the above: **`ExportBundleIn`'s `extra` policy on the DEPLOYED build was "undetermined"** in WP-IVGS-03 solely because the build was unidentifiable. It is now identifiable, so the row is **verifiable and must be verified** rather than carried | **Gate: next package.** Method: read `model_config` from the running image at a known build ref |
+
+
+---
+
+## RC-H — Gate assignment pass (2026-08-28)
+
+Task 1(b) found **50 of 71 open rows with no gate, owner or re-open trigger**. This pass
+assigns one **only where the row itself supplies it**. ⛔ **No gate here was invented to shorten
+the list** — the residue is §RC-H3 and the operator rules it.
+
+### H.1 Closed by this package's evidence
+
+| Row | Evidence |
+|---|---|
+| **P0.1** — `broker_visibility_timeout` below two tasks' hard time limits → duplicate GPU execution | ✅ **CLOSED. THE REGISTER'S LAST P0.** Measured in the running worker 2026-08-28: `WorkerConfig().broker_visibility_timeout` = **7200**, against `time_limit=3900` on `animation_generation_task.py:664` and `video_generation_task.py:545`. **7200 > 3900 by 3300 s.** The row was written when the value was 3600, i.e. *below* both limits — a task could exceed the visibility timeout and be redelivered while still running. What changed: the timeout was raised to 7200. The window the row describes cannot occur at these values. ⚠ **It re-opens if either number moves**: re-open trigger = any change to `broker_visibility_timeout` or to a task `time_limit` |
+| **P1.3** — 3 `release_gpu_reservation(reservation, config)` calls raising `TypeError` | ✅ **CLOSED.** No two-argument invocation remains; all three sites carry only a WP-08 comment recording the old call |
+| **P2.11** — `IVGS_SCHEDULER_TAG=latest`, pin it | ✅ **CLOSED**, and its origin found: the belief came from `.env.node01`'s injected variable, deleted in RC-A7. Scheduler pinned at `v5.31.0-hygiene` |
+| **P2.40** — five of node-01's Prometheus targets DOWN | ✅ **CLOSED. 14/14 targets up, zero red.** Count was 4, not 5. Two node-01 exporters were declared but never started — `redis-exporter`/`postgres-exporter` referenced network `ivgs_default`, which does not exist (`network ivgs_default declared as external, but could not be found`), and dual-attachment left them unresolvable by name. Fixed to `ivgs-net` alone, scrape targets repointed to container-DNS. **node-06's two targets REMOVED with a reason** — node-06 is operator-managed and out of bounds, so those rows could never go green from here |
+| **P2.29** — compose reconciliation, *"monitoring net"* | ⚠ **PARTIAL.** The monitoring-net half is fixed (above). The `base.yml` vs `node01.yml` half is untouched — stays open |
+
+### H.2 Gated where the row itself supplies the gate
+
+| Row | Gate | Owner |
+|---|---|---|
+| **P1.4g** — consume MBCP's operating envelope and deployment spec | Next MBCP session | MBCP |
+| **P2.7** — MBCP `serving-authoring-loop-1` unhealthy | Next MBCP session | MBCP |
+| **P1.2** — checkpoint `stage_order` mismatch; resume computes the wrong stage | **M3.3** — it is an orchestration-migration item and belongs in RC-F | — |
+| **P2.4** — residual 4xx cluster (checkpoint line item promoted out) | **M3.3**, with P1.2 | — |
+
+### H.3 ⛔ NEEDS-RULING — the residue, one line each
+
+**These have no gate derivable from the row. I did not invent one.** Each stays marked
+**NEEDS-RULING** in the register until the operator rules it.
+
+| Row | The question |
+|---|---|
+| P1.0a | Is the Stage-6 SadTalker fallback selection-driven work, or superseded by AD-01 selection entirely? |
+| P1.0b | Is the missing DB driver on GPU nodes still real after the ARCH-1 binding moved to the workers? |
+| P1.4 | Does M1-QA still gate anything, or did AD-03 §10 replace it? |
+| P1.4f | "Record only, do not act" — does it ever become actionable, or is it archive? |
+| P1.4h | Is IVGS-0.6 (animation renders a still) closed by WP-46/WP-68, or still live? |
+| P1.4n | Does `ffmpeg` still fail to resolve a binding after the `tts`/registry work? |
+| P1.4q | Is the non-retriggerable stranded-project state still reachable after WP-45's resume work? |
+| P1.4r | Frontend `.split()` guard — is the frontend in scope for any current milestone? |
+| P1.5a / P1.5b | `verify_backup.sh` is recorded as fixed in `dev/CLAUDE.md` §8 — is P1.5a stale, and does P1.5b's staleness alert exist now? |
+| P1.6 | `Prompt.prompt_type` ENUM-as-String — schema change or accepted? |
+| P1.7 | Prompt-management browser smoke — does it gate a milestone? |
+| P2.1 | 1,957 lines of orphaned machinery — the row says "decided"; decided *what*? |
+| P2.2 | Inverted test coverage — is there a target, or is this observational? |
+| P2.5 | ORCH-5 state mapping — M3.3 or now? |
+| P2.10 | Weight-fetch live pass — blocked on MBCP, or runnable? |
+| P2.12–P2.14, P2.16–P2.28, P2.30, P2.31 | Carried v3.1 rows, 20 of them. **One ruling could cover the block**: are carried-from-v3.1 rows still live, or archived wholesale? |
+| P2.35 | Proposed AD-01 amendment (auxiliary text ModelStage) — ratify or drop? |
+| P2.37 | `segment_planner` float boundaries — does AD-03 §10's ruling settle it? |
+| P2.38 | `output_fps` accepted and discarded — "record only"; does it stay that way? |
+| P2.39 | 23 stranded urgent requests — now that the scheduler answers (RC-A9/D-8), are they drainable? |
+
+⚠ **P2.12–P2.31 is 20 of the 41.** A single ruling on the carried-v3.1 block would cut this
+list in half, which is why they are grouped rather than listed one by one.
 

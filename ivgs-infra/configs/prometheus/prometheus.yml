@@ -161,7 +161,15 @@ scrape_configs:
           role: "image-utility"
           gpu: "rtx-pro-5000-blackwell"   # WP-48: was rtx-5080; measured on the box
       - targets:
-          - "node-06:9100"
+          # WP-IVGS-08 Task 6(d). node-06 target REMOVED, not left red.
+          #
+          # node-06 is OPERATOR-MANAGED and out of bounds for automated work
+          # (dev/CLAUDE.md S2). Prometheus cannot even resolve the name from
+          # this network, so this row could never go green from here -- it was
+          # a permanently-red target, which trains operators to ignore the
+          # target page. Restore it in the same change that provisions
+          # node-06's exporters; the register carries that as RC-D7's neighbour.
+          # - "node-06:9400"  (node-exporter) -- re-add when node-06 exports
         labels:
           node: "node-06"
           role: "remotion-compositor"
@@ -236,7 +244,15 @@ scrape_configs:
       # has no /opt/ivgs. Registering it now means the target goes green the
       # moment the operator provisions it, with no config change to remember.
       - targets:
-          - "node-06:9400"
+          # WP-IVGS-08 Task 6(d). node-06 target REMOVED, not left red.
+          #
+          # node-06 is OPERATOR-MANAGED and out of bounds for automated work
+          # (dev/CLAUDE.md S2). Prometheus cannot even resolve the name from
+          # this network, so this row could never go green from here -- it was
+          # a permanently-red target, which trains operators to ignore the
+          # target page. Restore it in the same change that provisions
+          # node-06's exporters; the register carries that as RC-D7's neighbour.
+          # - "node-06:9400"  (nvidia-gpu-exporter) -- re-add when node-06 exports
         labels:
           node: "node-06"
           role: "compositor"
@@ -278,7 +294,8 @@ scrape_configs:
       # Giving it a container name would point it at something that does not
       # exist. Ledger P2.62.
       - targets:
-          - "node-01:9187"
+          # WP-IVGS-08 Task 6(d): container-DNS, the only pattern that resolves.
+          - "ivgs-postgres-exporter:9187"
         labels:
           service: "postgresql"
           node: "node-01"
@@ -305,7 +322,7 @@ scrape_configs:
       # Giving it a container name would point it at something that does not
       # exist. Ledger P2.62.
       - targets:
-          - "node-01:9121"
+          - "ivgs-redis-exporter:9121"
         labels:
           service: "redis"
           node: "node-01"
