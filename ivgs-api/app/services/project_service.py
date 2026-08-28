@@ -644,6 +644,23 @@ class ProjectService:
                 "Cannot approve storyboard: no storyboard scenes persisted for this project."
             )
 
+        # WP-IVGS-09f. THE SAME AUTHORING GUARD THE REGEN PATH RUNS, HERE TOO.
+        #
+        # `_author_missing_motion_specs` gives an unauthored motion scene a
+        # template, and — since this package — RE-AUTHORS one whose stored spec
+        # `verify_spec_against_narration` can prove contradicts its own
+        # narration. It was reachable only from Regen, so this release, which is
+        # the OTHER way media gets rendered, would happily dispatch a spec the
+        # regen path would have refused.
+        #
+        # That gap is not theoretical: it is the path that rendered scenes 2, 3,
+        # 7 and 10 of project 9c29b1d1 against a sum their words never work.
+        # "Must not render" has to mean on every path that renders, or it means
+        # nothing. Raises before any job row exists, exactly as it does in Regen.
+        from app.services.regeneration import _author_missing_motion_specs
+
+        await _author_missing_motion_specs(self.db, list(scene_rows), project)
+
         job = await self.db.scalar(
             select(RenderJob)
             .where(RenderJob.project_id == project_id)
@@ -655,17 +672,26 @@ class ProjectService:
                 "Cannot approve storyboard: no render job found for this project."
             )
 
-        scenes = [
-            {
-                "scene_id": str(s.id),
-                "scene_index": s.scene_index,
-                "narration_text": s.narration_text,
-                "visual_description": s.visual_description,
-                "media_type": s.media_type or "image",
-                "duration_seconds": s.duration_seconds,
-            }
-            for s in scene_rows
-        ]
+        # WP-IVGS-09f. THIS LIST USED TO BE HAND-ROLLED HERE, AND IT DROPPED FIVE
+        # FIELDS — including `generation_params`, which IS a motion scene's
+        # entire content.
+        #
+        # `regeneration.scene_payload` is the canonical builder every other
+        # dispatch uses; it has carried the WP-43 D-2 fields (camera_angle,
+        # transition_type, effects, timing_offset_ms, generation_params) since
+        # migration 0028. This copy never learned them, so the storyboard
+        # release could not dispatch a motion scene's template EVEN WHEN THE ROW
+        # HELD A PERFECTLY GOOD ONE.
+        #
+        # Measured today: after the authoring above wrote correct specs for
+        # scenes 2, 3, 7 and 10, all six motion scenes still failed in the worker
+        # with "is media_type=motion_graphics but carries no generation_params"
+        # — the worker was telling the truth about the MESSAGE, while the
+        # database held the spec all along. Two builders for one payload is the
+        # defect; there is now one.
+        from app.services.regeneration import scene_payload
+
+        scenes = [scene_payload(s) for s in scene_rows]
 
         project.state = ProjectState.MEDIA_GENERATION.value
         project.updated_at = datetime.now(timezone.utc)

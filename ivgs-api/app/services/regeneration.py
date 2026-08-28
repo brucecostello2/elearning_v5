@@ -171,13 +171,72 @@ async def _author_missing_motion_specs(
         MotionAuthoringError,
         author_params_for_scene,
         has_motion_spec,
+        verify_spec_against_narration,
     )
 
-    unauthored = [
-        s for s in scenes
-        if (s.media_type or "image") == "motion_graphics"
-        and not has_motion_spec(s.generation_params)
+    motion = [s for s in scenes if (s.media_type or "image") == "motion_graphics"]
+    if not motion:
+        return
+
+    # WP-IVGS-09f. THE WHOLE PROJECT'S NARRATIONS, AS CONTEXT FOR THE OPERANDS.
+    #
+    # A lesson works more than one sum, and it names each sum's operands ONCE,
+    # in that example's opening scene. Measured on 9c29b1d1: scenes 0-7 work
+    # 23 x 14 and scenes 8-11 work 32 x 21, and scene 10 -- "move to the tens
+    # digit, 2 ... second answer is 640" -- never says 32 or 21 at all. Authoring
+    # it from its own narration alone is not strict, it is impossible.
+    #
+    # So the neighbours travel with the ask, labelled by index. The prompt is
+    # explicit that they establish WHICH SUM only; the scene's own words remain
+    # the sole authority on WHICH STEP. Ordered by index, and the scene itself is
+    # left in -- removing it would make the indices lie.
+    all_scenes = list(
+        (
+            await db.scalars(
+                select(StoryboardScene)
+                .where(StoryboardScene.project_id == motion[0].project_id)
+                .order_by(StoryboardScene.scene_index)
+            )
+        ).all()
+    )
+    context_scenes = [
+        (s.scene_index, s.narration_text or "") for s in all_scenes
     ]
+    context_text = " ".join(t for _, t in context_scenes)
+
+    # ⛔ RE-AUTHOR A SPEC THAT CONTRADICTS ITS OWN NARRATION.
+    #
+    # WP-IVGS-09c deliberately left an existing spec alone -- "silently
+    # re-authoring a spec the operator chose would be the opposite of [Regen's]
+    # promise". That reasoning holds for a spec that is merely a CHOICE. It does
+    # not hold for one that is PROVABLY INCONSISTENT with the words it plays
+    # under: scene 7 carried a template that can draw at most 230 over narration
+    # saying "our final answer is 322", and scene 10 carried 23 x 14 over
+    # narration working 32 x 21. Those are not choices to respect, and rendering
+    # them again on an operator's Regen press would repeat the exact defect the
+    # operator pressed Regen to fix.
+    #
+    # The test is the mechanical guard, never taste: a spec is re-authored only
+    # when `verify_spec_against_narration` can PROVE it contradicts the scene.
+    unauthored = []
+    for s in motion:
+        if not has_motion_spec(s.generation_params):
+            unauthored.append(s)
+            continue
+        try:
+            verify_spec_against_narration(
+                dict(s.generation_params),
+                s.narration_text or "",
+                context_text=context_text,
+                scene_index=s.scene_index,
+            )
+        except MotionAuthoringError as exc:
+            logger.warning(
+                "motion_spec_contradicts_narration scene=%s index=%s params=%s "
+                "reason=%s -- re-authoring",
+                s.id, s.scene_index, s.generation_params, exc,
+            )
+            unauthored.append(s)
     if not unauthored:
         return
 
@@ -190,6 +249,8 @@ async def _author_missing_motion_specs(
                 visual_description=scene.visual_description or "",
                 project_name=(project.name if project else ""),
                 project_description=(project.description if project else "") or "",
+                scene_index=scene.scene_index,
+                context_scenes=context_scenes,
             )
         except MotionAuthoringError as exc:
             raise RegenerationError(

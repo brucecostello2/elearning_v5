@@ -100,11 +100,42 @@ def build_prompt(
     visual_description: str,
     project_name: str,
     project_description: str,
+    scene_index: int | None = None,
+    context_scenes: "list[tuple[int, str]] | None" = None,
 ) -> str:
-    """RULE 8's ask, narrowed to one scene.
+    """RULE 8's ask, narrowed to one scene — and ANCHORED TO THAT SCENE'S WORDS.
 
     The catalogue is rendered from the templates module, so the prompt and the
     renderer cannot disagree about what exists or what a parameter is called.
+
+    WP-IVGS-09f. WHAT THIS PROMPT USED TO RECEIVE, AND WHY EVERY SCENE CAME BACK
+    THE SAME. It got the narration, the image-era ``visual_description``, and the
+    project name/description — **no scene index and no neighbours**. It then
+    handed the model a fully worked answer in prose:
+
+        So that scene is {"top": 23, "bottom": 14, "step": 0}
+
+    At ``TEMPERATURE = 0.1`` a model shown a complete answer returns that answer.
+    Measured on project ``9c29b1d1``: scenes 3, 4, 5, 7 and 10 all came back
+    ``{"top": 23, "bottom": 14, "step": 1}`` — identical, and four of them wrong,
+    while their narrations walk five different steps of two different sums.
+
+    TWO CHANGES, AND THE SECOND IS THE ONE THAT MATTERS.
+
+    1. **The worked example no longer uses this lesson's numbers.** It is stated
+       on 47 x 36 so that copying it is visibly wrong rather than accidentally
+       plausible, and the step-selection rule is spelled out per step kind
+       instead of left to one word ("step") in a parameter gloss.
+
+    2. **The scene is placed in its lesson.** A lesson works more than one sum:
+       ``9c29b1d1`` does 23 x 14 in scenes 0-7 and 32 x 21 in scenes 8-11.
+       Scene 10's own words are *"move to the tens digit, 2 ... 2 times 2 ... 2
+       times 3 ... second answer is 640"* — **its multiplier 21 is never spoken
+       in that scene at all**; it is spoken in scene 8. A prompt given only the
+       scene's own narration therefore CANNOT resolve the operands, and asking
+       it to would be asking it to guess. So neighbours are supplied, LABELLED
+       BY INDEX and explicitly marked as context-for-operands-only: the scene's
+       own words remain the sole authority on WHICH STEP this is.
     """
     cat = template_catalogue()
     lines = []
@@ -115,6 +146,14 @@ def build_prompt(
         for pname, meaning in sorted(spec["params"].items()):
             lines.append(f"      {pname}: {meaning}")
     catalogue = "\n".join(lines)
+
+    here = "this scene" if scene_index is None else f"scene {scene_index}"
+    if context_scenes:
+        ctx = "\n".join(
+            f"  scene {i}: {(t or '').strip()}" for i, t in context_scenes
+        )
+    else:
+        ctx = "  (no neighbouring scenes supplied)"
 
     return f"""You are authoring ONE motion-graphics scene for a maths lesson.
 
@@ -127,28 +166,60 @@ THE LESSON
   Title: {project_name}
   About: {project_description}
 
-THIS SCENE
-  Narration the learner will hear: {narration or "(none recorded)"}
-  The description it currently carries, written for a still image and NOT
-  something the renderer will read: {visual_description or "(none recorded)"}
+THE SCENE YOU ARE AUTHORING IS {here.upper()}, AND ITS OWN NARRATION IS THE ONLY
+AUTHORITY ON WHICH STEP IT SHOWS:
+
+  {narration or "(none recorded)"}
+
+  (It also carries this description, written for a still image, which the
+  renderer will never read and which you should ignore for arithmetic:
+  {visual_description or "(none recorded)"})
+
+THE SURROUNDING SCENES, FOR CONTEXT ONLY. A lesson often works MORE THAN ONE
+SUM. Use these ONLY to discover which sum {here} belongs to and what its two
+whole operands are — for example when {here} says "move to the tens digit" but
+never repeats the numbers. DO NOT take the STEP from these; the step comes from
+{here}'s own words above.
+
+{ctx}
 
 THE ONLY TEMPLATES THAT EXIST. Use a template name and parameter names EXACTLY
 as written. Do not invent a template, a parameter, or a parameter spelling.
 
 {catalogue}
 
-THE PARAMETERS ARE THE LESSON'S WHOLE NUMBERS, NOT THE DIGITS THIS STEP
-MULTIPLIES. A narration that says "multiply 4 times 3" while the lesson is
-23 x 14 is describing ONE STEP of that sum: the whole sum is what the template
-draws, and "step" selects which multiplier digit the scene works. So that scene
-is {{"top": 23, "bottom": 14, "step": 0}} — NOT {{"top": 14, "bottom": 3}}. Read the
-narration for which step it is; read the lesson for the numbers.
+CHOOSE THE TEMPLATE FROM WHAT THE WORDS DESCRIBE:
 
-THE NUMBERS MUST BE THE ONES THIS LESSON ACTUALLY USES. Take them from the
-narration and the lesson together. If the narration names no numbers, take them from the lesson
-title and description. Do not choose round or convenient numbers that the
-lesson does not teach — the learner sees this arithmetic worked on screen, and
-nothing downstream checks it.
+  the words multiply one digit of the multiplier through the top number,
+  write a digit, carry, or announce that row's partial answer
+      -> column_multiplication_step
+  the words start a new row with a placeholder zero, or announce which
+  multiplier digit is now being worked
+      -> column_multiplication_step, with "step" naming THAT digit
+  the words ADD the two partial answers together to reach the final total
+      -> column_addition_carry, with top and bottom being THE TWO PARTIAL
+         ANSWERS being added, not the original operands
+  the words are about a number separating into its tens and its units
+      -> place_value_split
+  the words merely point at part of an existing sum
+      -> highlight_and_hold
+
+"step" COUNTS FROM THE UNITS DIGIT OF THE MULTIPLIER: step 0 is the multiplier's
+ones digit, step 1 is its tens digit. Narration that says "multiplying by the
+ones digit" is step 0; "now the tens digit" is step 1.
+
+THE PARAMETERS ARE THE LESSON'S WHOLE NUMBERS, NOT THE DIGITS THIS STEP
+MULTIPLIES. A narration reading "multiply 6 times 7" inside a lesson working
+47 x 36 is describing ONE STEP of that sum: the whole sum is what the template
+draws. That scene is {{"top": 47, "bottom": 36, "step": 0}} — NOT
+{{"top": 7, "bottom": 6}}. (47 x 36 is an ILLUSTRATION. It is not this lesson's
+sum. Do not copy 47 or 36 into your answer.)
+
+THE NUMBERS MUST BE THE ONES {here.upper()} ACTUALLY WORKS. If {here} announces a
+result — "our second answer is 640" — then the template and parameters you
+choose MUST be ones that produce that very number. A spec whose arithmetic does
+not reach the number the learner is about to hear is wrong, and it will be
+refused. Do not choose round or convenient numbers the lesson does not teach.
 
 Reply with ONE JSON object and nothing else. No prose, no code fence, no
 explanation.
@@ -243,6 +314,246 @@ def parse_and_validate(raw: str) -> Dict[str, Any]:
     return spec
 
 
+# ---------------------------------------------------------------------------
+# THE NARRATION GUARD (WP-IVGS-09f)
+#
+# ⛔ THIS IS A GUARD, NOT THE L7 CHECKER, AND THE DIFFERENCE IS THE WHOLE POINT.
+#
+# WP62-L7 records that nothing downstream reads a motion scene's arithmetic —
+# every quality gate measures output-against-input, so a template that draws a
+# confident, beautifully rendered WRONG SUM passes all of them. The real checker
+# for "does this teach the right thing" is human eyes until M3.3 lands one.
+#
+# This is not that. This is the much narrower, purely mechanical question:
+#
+#     does the spec CONTRADICT ITS OWN NARRATION?
+#
+# It cannot tell you a spec is correct. It can only tell you that a spec is
+# provably inconsistent with the words the learner will hear over it — and it
+# refuses those by name so they never reach a renderer. Everything it checks is
+# derived from the templates module's own arithmetic, so it cannot drift from
+# what the renderer will actually draw.
+#
+# It would have caught, mechanically and without a model:
+#   * scene 7  — authored column_multiplication_step(23,14,1), which can draw at
+#                most 230, over narration that says "our final answer is 322"
+#   * scene 10 — authored (23,14,1) -> 230, over narration that says "our second
+#                answer is 640", a different sum entirely
+# It would NOT have caught scene 2's original {"top": 14, "bottom": 3}: 14 and 3
+# both appear in that scene's words. That one is the prompt's job (the
+# whole-numbers rule), and saying so is more useful than pretending otherwise.
+
+#: Words that mean "this scene adds two partial answers together".
+_ADD_WORDS = ("add", "plus", "together", "sum")
+#: Words that mean "a digit carried into the next column".
+_CARRY_WORDS = ("carry", "carried", "carrying")
+#: Words that mean "this scene announces a result".
+_ANSWER_WORDS = ("answer", "total", "altogether")
+#: Words that mean "a number is being split into tens and units".
+_PLACE_WORDS = ("place value", "tens place", "ones place", "means 10", "split")
+#: Words that mean "a multiplication step is being worked".
+_MULT_WORDS = ("multiply", "multiplying", "times", "digit", "placeholder", "zero")
+
+#: Which keyword class each template REQUIRES the narration to be in. A template
+#: absent from this map is unconstrained (``highlight_and_hold`` only points at
+#: an existing sum, so any narration can legitimately want it).
+_TEMPLATE_REQUIRES: Dict[str, tuple] = {
+    "column_addition_carry": _ADD_WORDS,
+    "column_multiplication_step": _MULT_WORDS,
+    "place_value_split": _PLACE_WORDS,
+}
+
+
+def narration_numbers(narration: str) -> "set[int]":
+    """Every standalone integer the narration says, as ints.
+
+    Word boundaries matter: "322" must not also yield 32 or 22, or the
+    producibility check below would accept a spec that reaches a substring of
+    the number the learner hears.
+    """
+    return {int(m) for m in re.findall(r"\b\d+\b", narration or "")}
+
+
+def producible_numbers(spec: Dict[str, Any]) -> "set[int]":
+    """Every number this exact spec can legitimately put in front of a learner.
+
+    Computed the way the TEMPLATE computes it — same digit order, same carries,
+    same placeholder shift — so this set cannot drift from what is drawn.
+    """
+    name = spec.get("template")
+    out: "set[int]" = set()
+
+    def digits(n: int) -> "list[int]":
+        return [int(c) for c in str(abs(int(n)))][::-1]  # units first, as the renderer
+
+    if name == "column_multiplication_step":
+        a, b, step = int(spec["top"]), int(spec["bottom"]), int(spec["step"])
+        db = digits(b)
+        step = max(0, min(step, len(db) - 1))
+        multiplier = db[step]
+        out |= {a, b, multiplier, a * multiplier, a * multiplier * (10 ** step)}
+        carry = 0
+        for d in digits(a):
+            total = d * multiplier + carry
+            out |= {d, d * multiplier, total, total % 10}
+            carry = total // 10
+            if carry:
+                out.add(carry)
+    elif name == "column_addition_carry":
+        a, b = int(spec["top"]), int(spec["bottom"])
+        out |= {a, b, a + b}
+        da, db = digits(a), digits(b)
+        carry = 0
+        for i in range(max(len(da), len(db))):
+            total = (da[i] if i < len(da) else 0) + (db[i] if i < len(db) else 0) + carry
+            out |= {total, total % 10}
+            carry = total // 10
+            if carry:
+                out.add(carry)
+        out |= set(da) | set(db)
+    elif name == "place_value_split":
+        n = int(spec["number"])
+        out |= {n, (abs(n) // 10) * 10, abs(n) % 10}
+    elif name == "highlight_and_hold":
+        a, b = int(spec["top"]), int(spec["bottom"])
+        out |= {a, b, int(spec.get("column", 0))} | set(digits(a)) | set(digits(b))
+
+    return out
+
+
+def verify_spec_against_narration(
+    spec: Dict[str, Any],
+    narration: str,
+    *,
+    context_text: str = "",
+    scene_index: Any = None,
+) -> None:
+    """Refuse a spec that contradicts the words it will play under.
+
+    Three assertions, cheapest first, each refusing BY NAME. Raises
+    ``MotionAuthoringError``; returns ``None`` when the spec is merely not
+    provably wrong — which is not the same as right (see the block above).
+    """
+    where = "this scene" if scene_index is None else f"scene {scene_index}"
+    words = (narration or "").lower()
+    name = str(spec.get("template"))
+    said = narration_numbers(narration)
+    can_draw = producible_numbers(spec)
+    params = {k: v for k, v in spec.items() if k != "template"}
+
+    # 1. STEP KIND. The template must be one the words could plausibly want.
+    required = _TEMPLATE_REQUIRES.get(name)
+    if required and not any(w in words for w in required):
+        raise MotionAuthoringError(
+            f"{where}: template {name!r} needs narration about "
+            f"{'/'.join(required[:3])}, and this scene's words contain none of "
+            f"them: {narration.strip()[:160]!r}. Refused rather than rendered — "
+            f"a template that animates a step the words never mention teaches "
+            f"over the top of them."
+        )
+
+    # 2. PRODUCIBILITY — the assertion that catches a spec pointed at the wrong
+    #    sum. If the learner is about to HEAR a number, the animation must be
+    #    able to REACH it. Only numbers larger than anything the template can
+    #    produce are treated as proof of contradiction; small shared digits are
+    #    not evidence either way, and pretending they are would refuse correct
+    #    specs.
+    ceiling = max(can_draw) if can_draw else 0
+    unreachable = sorted(n for n in said if n > ceiling)
+    if unreachable:
+        raise MotionAuthoringError(
+            f"{where}: the narration says {unreachable[0]}, which "
+            f"{name}{params} can never draw — the largest number it produces is "
+            f"{ceiling}. The spec is pointed at a different sum from the words. "
+            f"Refused rather than rendered."
+        )
+
+    # 2b. THE ANNOUNCED RESULT. Stronger than the ceiling above, and narrower:
+    #     when a sentence ANNOUNCES a result — "our first answer is 92" — that
+    #     exact number must be one the template actually produces, not merely
+    #     one it does not exceed. This is what separates step 0 from step 1 of
+    #     the same sum: (23,14,step=1) draws 230 and never 92, so it cannot sit
+    #     under narration announcing 92, even though 92 < 230 and the ceiling
+    #     test alone lets it through. Measured: that is exactly what scene 3
+    #     carried. Restricted to the announcing SENTENCE on purpose — scene 7
+    #     also says "23 times 14 equals 322" while adding 92 and 230, and those
+    #     operands belong to the lesson, not to this template's arithmetic.
+    for sentence in re.split(r"(?<=[.!?])\s+", narration or ""):
+        if not any(w in sentence.lower() for w in _ANSWER_WORDS):
+            continue
+        for n in sorted(narration_numbers(sentence)):
+            if n not in can_draw:
+                raise MotionAuthoringError(
+                    f"{where}: the narration announces {n} — "
+                    f"{sentence.strip()[:90]!r} — but {name}{params} never "
+                    f"produces {n}; it draws {sorted(can_draw)[-6:]}. The words "
+                    f"and the animation would disagree in front of the learner. "
+                    f"Refused rather than rendered."
+                )
+
+    # 4. THE MULTIPLIER THE WORDS NAME. Narration in this lesson's own idiom
+    #    states the step and the multiplier together — "the ones digit, which is
+    #    4 in 14" — and that sentence pins TWO things mechanically: the
+    #    multiplier is 14, and the digit being worked is 4, so `step` must be
+    #    the position of 4 within 14.
+    #
+    #    This is the assertion that catches an inverted spec, which neither the
+    #    ceiling nor the announced-result test can see. Measured: scene 2
+    #    carried {"top": 14, "bottom": 3} over exactly that sentence — 14 read as
+    #    the multiplicand when the words call it the multiplier. Every number in
+    #    that spec appears in the narration and nothing it draws exceeds what the
+    #    words say, so tests 1-3 all pass it. This one does not.
+    #
+    #    Only fires when the narration actually uses the construction; silence is
+    #    not evidence of anything and is not treated as such.
+    if name == "column_multiplication_step":
+        m = re.search(
+            r"(ones|tens)\s+digit,?\s+which\s+is\s+(\d+)\s+in\s+(\d+)",
+            words,
+        )
+        if m:
+            spoken_digit, spoken_multiplier = int(m.group(2)), int(m.group(3))
+            bottom = int(spec["bottom"])
+            if bottom != spoken_multiplier:
+                raise MotionAuthoringError(
+                    f"{where}: the narration calls {spoken_multiplier} the number "
+                    f"being multiplied BY — {m.group(0)!r} — but the spec makes "
+                    f"the multiplier {bottom} (bottom={bottom}, top={spec['top']}). "
+                    f"The two operands are the wrong way round. Refused rather "
+                    f"than rendered."
+                )
+            db_digits = [int(c) for c in str(abs(bottom))][::-1]
+            step_i = max(0, min(int(spec["step"]), len(db_digits) - 1))
+            if db_digits[step_i] != spoken_digit:
+                raise MotionAuthoringError(
+                    f"{where}: the narration works the digit {spoken_digit} of "
+                    f"{spoken_multiplier} — {m.group(0)!r} — but step="
+                    f"{spec['step']} selects {db_digits[step_i]}. The animation "
+                    f"would work a different digit from the one the learner "
+                    f"hears named. Refused rather than rendered."
+                )
+
+    # 3. OPERAND GROUNDING. Every literal number in the params must be spoken
+    #    somewhere real — this scene, or the surrounding scenes that establish
+    #    which sum is being worked. A lesson's second worked example names its
+    #    operands once, in its opening scene, and never again (measured: scene
+    #    10 of 9c29b1d1 never says 32 or 21), so the scene's own words alone are
+    #    NOT a sufficient source and requiring them would refuse correct specs.
+    grounded = said | narration_numbers(context_text)
+    for key, value in sorted(params.items()):
+        if not isinstance(value, int) or isinstance(value, bool):
+            continue          # `label` and friends are prose, not arithmetic
+        if key == "step" or 0 <= value <= 9:
+            continue          # a step index / single digit is structural, not a quantity
+        if value not in grounded:
+            raise MotionAuthoringError(
+                f"{where}: parameter {key}={value} appears nowhere in this "
+                f"scene's narration or its neighbours', so it was invented. "
+                f"Spoken numbers are {sorted(grounded)}. Refused rather than "
+                f"rendered."
+            )
+
+
 def has_motion_spec(generation_params: Any) -> bool:
     """Whether a scene already carries a template. ``{}`` and ``None`` do not.
 
@@ -261,6 +572,8 @@ async def author_params_for_scene(
     visual_description: str,
     project_name: str,
     project_description: str,
+    scene_index: Any = None,
+    context_scenes: "list[tuple[int, str]] | None" = None,
 ) -> Dict[str, Any]:
     """Ask the storyboard model for this scene's template + parameters.
 
@@ -268,6 +581,12 @@ async def author_params_for_scene(
     reason ``adapt-description`` does: RULE 8 is a storyboard rule, and the model
     that writes storyboards is the one that has been told what these templates
     are. It does not fall back to another model.
+
+    WP-IVGS-09f: the reply is now also checked AGAINST THIS SCENE'S OWN WORDS by
+    ``verify_spec_against_narration`` before it is returned. A spec that
+    contradicts its narration is refused here, where the refusal names the scene
+    and costs nothing, rather than rendered into a draft an operator has to
+    watch to discover.
     """
     from app.services.adaptation_service import _call_model, _resolve_binding
 
@@ -277,6 +596,8 @@ async def author_params_for_scene(
         visual_description=visual_description,
         project_name=project_name,
         project_description=project_description,
+        scene_index=scene_index,
+        context_scenes=context_scenes,
     )
     answer = await _call_model(
         prompt,
@@ -286,9 +607,16 @@ async def author_params_for_scene(
         temperature=TEMPERATURE,
     )
     spec = parse_and_validate(answer.get("content", ""))
+    verify_spec_against_narration(
+        spec,
+        narration,
+        context_text=" ".join(t or "" for _, t in (context_scenes or [])),
+        scene_index=scene_index,
+    )
     logger.info(
-        "motion_spec_authored project=%s template=%s params=%s binding=%s",
-        project_id, spec.get("template"),
+        "motion_spec_authored project=%s scene_index=%s template=%s params=%s "
+        "binding=%s narration_verified=True",
+        project_id, scene_index, spec.get("template"),
         {k: v for k, v in spec.items() if k != "template"},
         resolved["binding"],
     )

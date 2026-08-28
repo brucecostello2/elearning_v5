@@ -2970,3 +2970,63 @@ Scene 11's clip was read by eye at t=120s in the composed draft: real content, p
 | **RC-N8** | ⚠ **The server ACCEPTS `width`/`height` AND SILENTLY IGNORES THEM, and the client reports the request as if it were the result.** `server.py`'s `_MODEL(...)` call passes `prompt`/`num_frames`/`num_inference_steps`/`guidance_scale`/`generator` and **no width/height**, so CogVideoX renders its own default. `video_generation_task.py:278-279` asks for **854×480**; the render is **720×480**; and `cogvideox_client.py:220-221` returns `width=params.width, height=params.height` — **the REQUESTED size, never the produced one**. That fabricated figure is then handed to the validator as `expected_width`, which duly warns `Resolution mismatch: expected 854×480, got 720×480`. A client asserting a dimension it never measured is the same family as the tag-liars WP-IVGS-08 found. **Warning-only, so it composes.** **HELD** |
 | **RC-N9** | ⚠ **Every CogVideoX clip is permanently `flagged` on frame rate.** `video_generation_task.py:281` requests `fps=8` (CogVideoX-5b's native rate: 49 frames ÷ 8 = 6 s) while `video_validator.py:88` `allowed_fps = (24, 25, 30, 60)`. Warning, not error — `is_valid=True` and it composes — but the decision can never be `approved`, which matters to any gate that reads `quality_decision`. Same producer-vs-consumer family as the codec, one severity down. **HELD** |
 | **RC-N10** | ⓘ **RC-M7 reconfirmed live, untouched.** `dlq_routing_api_error status_code=405` fired again at 22:08:57 on the RC-N7 failure. The DLQ write side is still absent. **Excluded by the order; still open** |
+
+---
+
+## RC-O — WP-IVGS-09f: a motion scene is authored from ITS OWN narration (2026-08-28)
+
+RUN-2 review. The draft rendered, the operator watched it, and **every motion scene's
+calculation was wrong for its narration**. Scenes 3, 4, 5, 7 and 10 all carried the identical
+spec `{"top": 23, "bottom": 14, "step": 1}`; scene 2 carried `{"top": 14, "bottom": 3}`. The
+renderer drew each of them correctly. The specs were wrong.
+
+### O.1 (a) What the authoring prompt received, and what came back
+
+| id | Row |
+|---|---|
+| **RC-O1** | ✅ **MEASURED: the prompt got the scene's narration and NO position.** `build_prompt` took `narration`, `visual_description` (image-era prose), `project_name`, `project_description` — **no scene index, no neighbours**. So the scene's words *were* present; nothing else about where the scene sat was |
+| **RC-O2** | ⛔ **AND THE PROMPT HANDED THE MODEL A WORKED ANSWER IN THIS LESSON'S OWN NUMBERS.** It read: *"So that scene is `{"top": 23, "bottom": 14, "step": 0}`"*. At `TEMPERATURE = 0.1` a model shown a complete answer returns it. **Five scenes, one answer.** The instruction that was supposed to teach the whole-numbers rule became the answer key |
+| **RC-O3** | ⛔ **A LESSON WORKS MORE THAN ONE SUM, AND NOTHING TOLD THE PROMPT THAT.** `9c29b1d1` does **23 × 14** in scenes 0–7 and **32 × 21** in scenes 8–11. Scene 10's own words are *"move to the tens digit, 2 … 2 times 2 … 2 times 3 … our second answer is 640"* — **its operands 32 and 21 are never spoken in that scene at all**; they are spoken in scene 8. Authoring scene 10 from its own narration alone is not strict, it is **impossible**, and that is why neighbours are now supplied |
+
+### O.2 (b) + (c) The fix, and the guard
+
+| id | Row |
+|---|---|
+| **RC-O4** | ✅ **The worked example moved OFF this lesson's numbers** — stated on 47 × 36, so copying it is visibly wrong rather than quietly plausible — and the template choice is now spelled out per step kind (partial / carry / placeholder row / addition / place value) instead of resting on one word in a parameter gloss |
+| **RC-O5** | ✅ **The scene is placed in its lesson.** `build_prompt` takes `scene_index` and index-labelled `context_scenes`, explicitly marked *context-for-operands-only*: the scene's own words remain the sole authority on WHICH STEP |
+| **RC-O6** | ✅ **`verify_spec_against_narration` — four mechanical assertions, all refuse-by-name.** (1) the template's keyword class must appear in the words; (2) **producibility** — no number the narration says may exceed anything the template can draw; (3) **the announced result** — a sentence saying *"our first answer is 92"* requires 92 to be a number the template actually produces, which is what separates step 0 from step 1 of the same sum; (4) **the multiplier the words name** — *"the ones digit, which is 4 in 14"* pins `bottom=14` and pins `step` to the position of 4, which is what catches inverted operands |
+| **RC-O7** | ⛔ **IT IS A GUARD, NOT THE L7 CHECKER, AND THE CODE SAYS SO IN THOSE WORDS.** It cannot say a spec is right. It says only that a spec is **provably inconsistent with the words it plays under**. Everything it checks is computed from `shared.motion.templates`' own arithmetic so it cannot drift from what is drawn. Its limits are pinned as tests, not left implied |
+| **RC-O8** | ✅ **A contradicting spec is now RE-AUTHORED, not respected.** WP-IVGS-09c deliberately left an existing spec alone. That holds for a spec that is a *choice*; it does not hold for one the guard can *prove* contradicts its narration — re-rendering that on an operator's Regen press repeats the exact defect they pressed Regen to fix |
+
+### O.3 ⛔ The second defect, found only because the first fix was deployed
+
+| id | Row |
+|---|---|
+| **RC-O9** | ⛔ **THE STORYBOARD RELEASE BUILT ITS OWN SCENE PAYLOAD AND DROPPED FIVE FIELDS — INCLUDING `generation_params`, WHICH IS A MOTION SCENE'S ENTIRE CONTENT.** `project_service.approve_storyboard` hand-rolled a six-key dict while `regeneration.scene_payload` — the builder every other dispatch uses — has carried `camera_angle`, `transition_type`, `effects`, `timing_offset_ms` and `generation_params` since migration 0028. **Measured live**: with correct specs sitting in the database, all six motion scenes still failed in the worker with *"is media_type=motion_graphics but carries no generation_params"*. The worker was telling the truth about the **message**; the row held the spec all along. Two builders for one payload was the defect; there is now one. **The release path also now runs the authoring guard** — *"must not render"* has to mean on every path that renders |
+
+### O.4 (d) Proof — the six specs beside the words they play under
+
+| # | Narration (verbatim) | Authored spec | Draws |
+|---|---|---|---|
+| **2** | "…multiplying by the **ones digit, which is 4 in 14**. Multiply 4 times 3, which equals 12. Write the 2 … **carry the 1**…" | `column_multiplication_step` 23×14 step 0 | 23 × 4 = **92**, carry 1 shown |
+| **3** | "…multiply 4 times 2 … Add the carried 1 to get 9. So, our **first answer is 92**." | `column_multiplication_step` 23×14 step 0 | **92** |
+| **4** | "…multiply by the **tens digit, which is 1 in 14** … Put a **zero in the ones place** as a placeholder." | `column_multiplication_step` 23×14 step 1 | **230** with placeholder 0 |
+| **5** | "Multiply 1 times 3 … and 1 times 2 … Our **second answer is 230**." | `column_multiplication_step` 23×14 step 1 | **230** |
+| **7** | "Then, 1 **plus** 2 equals 3. Our **final answer is 322**." | `column_addition_carry` 230 + 92 | **322**, carry 1 shown |
+| **10** | "…move to the **tens digit, 2** … 2 times 2 … 2 times 3 … Our **second answer is 640**." | `column_multiplication_step` **32×21** step 1 | **640** |
+
+**Was, for all five of 3/4/5/7/10:** `23 × 14 step 1` → 230, under words announcing 92, a
+placeholder row, 230, 322 and 640 respectively. **Scene 2 was `14 × 3` → 42.**
+
+**Each of the six frames was read by eye**, not inferred from a log. New draft asset
+**`5bb622d7`** — 1280×720, 137.47 s, **14/14 scenes composed, 0 failed**, sha256 matches its row.
+
+### O.5 ⛔ HELD
+
+| id | Row |
+|---|---|
+| **RC-O10** | ⚠ **Scenes 2 and 3 now render the IDENTICAL animation, and so do 4 and 5.** Both pairs are one multiplier digit of one sum, and `column_multiplication_step` takes only `(top, bottom, step)` — it cannot distinguish *"write the 2, carry the 1"* from *"…so our first answer is 92"*, nor *"put a zero as a placeholder"* from *"our second answer is 230"*. The arithmetic is right and matches the words; the learner sees the same clip twice. Fixing it needs a **template that can render part of a row** — a renderer change, out of this order's scope. **HELD** |
+| **RC-O11** | ⚠ **The guard cannot catch a wrong spec whose numbers are all spoken and whose result is never announced.** Stated as a passing test rather than left implied. WP62-L7's real checker is human eyes until M3.3 |
+| **RC-O12** | ⛔ **Authoring moves the storyboard fingerprint, which invalidates the approval that released it.** `artifact_version` hashes `(scene_id, scene_index, updated_at)`, so writing a spec re-opens the storyboard gate the write was performed under. Survivable here — the gate is checked before authoring within one call — but it means any authoring-on-dispatch permanently races the gate it just passed. **HELD** for AD-05 |
+| **RC-O13** | ⚠ **`approve_storyboard` dispatches onto the project's LATEST job row rather than creating one.** It released onto `a6e5f2d1`, a row already `failed` from WP-IVGS-09e's resume. The stage ran and reported against a terminal job. **HELD** |
+| **RC-O14** | ⓘ **Scene 2's original `{"top": 14, "bottom": 3}` would NOT have been caught by assertions 1-3** — every number in it is spoken and nothing it draws exceeds the words. Assertion 4 exists for exactly that shape. Recorded because a guard's blind spots are worth as much as its catches |
