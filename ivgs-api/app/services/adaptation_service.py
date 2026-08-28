@@ -246,13 +246,30 @@ async def _resolve_binding(db: AsyncSession, project_id: UUID) -> Dict[str, Any]
     }
 
 
-async def _call_model(prompt: str, *, endpoint: str, model: str) -> Dict[str, Any]:
-    """One chat completion. Raises on anything that is not a usable answer."""
+async def _call_model(
+    prompt: str,
+    *,
+    endpoint: str,
+    model: str,
+    max_tokens: int | None = None,
+    temperature: float | None = None,
+) -> Dict[str, Any]:
+    """One chat completion. Raises on anything that is not a usable answer.
+
+    ``max_tokens`` and ``temperature`` default to this module's values, so every
+    existing caller is byte-for-byte unchanged. WP-IVGS-09c added the overrides
+    for `motion_authoring`, which asks the SAME binding for a much smaller and
+    much less creative answer -- one JSON object of template + numbers. Sharing
+    this function rather than copying it keeps ONE definition of the ceiling
+    check below, which is the part that matters: a truncated answer is not a
+    short answer, and a truncated JSON object is not JSON at all.
+    """
+    ceiling = MAX_TOKENS if max_tokens is None else max_tokens
     body = {
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": MAX_TOKENS,
-        "temperature": TEMPERATURE,
+        "max_tokens": ceiling,
+        "temperature": TEMPERATURE if temperature is None else temperature,
     }
     url = f"{endpoint}/v1/chat/completions"
     try:
@@ -289,8 +306,8 @@ async def _call_model(prompt: str, *, endpoint: str, model: str) -> Dict[str, An
         # a short description: the end of the sentence is missing and nothing
         # in the text says so. The operator would paste half a shot.
         raise AdaptationError(
-            f"the adaptation hit the output ceiling (max_tokens={MAX_TOKENS}, "
-            "finish_reason='length'). The rewrite would end mid-sentence; "
+            f"the completion hit the output ceiling (max_tokens={ceiling}, "
+            "finish_reason='length'). The answer would end mid-sentence; "
             "refusing to offer it."
         )
     return {

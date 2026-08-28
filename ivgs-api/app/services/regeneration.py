@@ -148,6 +148,80 @@ async def dispatch_scene_media_regeneration(
     )
 
 
+async def _author_missing_motion_specs(
+    db: AsyncSession,
+    scenes: List[StoryboardScene],
+    project: Optional[Project],
+) -> None:
+    """Give every unauthored `motion_graphics` scene a template + parameters.
+
+    WP-IVGS-09c. Only touches scenes that are `motion_graphics` AND carry no
+    template. A scene v6 authored, or one an operator wrote by hand, is left
+    exactly as it is -- Regen re-renders from the scene's CURRENT fields, and
+    silently re-authoring a spec the operator chose would be the opposite of
+    that promise.
+
+    ⛔ A scene that cannot be authored RAISES, and the batch is refused whole.
+    Dispatching the rest and leaving this one to fail in a worker is what
+    produced the measured incident: six refusals inside the media stage, a
+    failed stage, and partial-advance into a talking-head render that had no
+    business running. One scene that cannot be drawn is a reason not to start.
+    """
+    from app.services.motion_authoring import (
+        MotionAuthoringError,
+        author_params_for_scene,
+        has_motion_spec,
+    )
+
+    unauthored = [
+        s for s in scenes
+        if (s.media_type or "image") == "motion_graphics"
+        and not has_motion_spec(s.generation_params)
+    ]
+    if not unauthored:
+        return
+
+    for scene in unauthored:
+        try:
+            spec = await author_params_for_scene(
+                db,
+                project_id=scene.project_id,
+                narration=scene.narration_text or "",
+                visual_description=scene.visual_description or "",
+                project_name=(project.name if project else ""),
+                project_description=(project.description if project else "") or "",
+            )
+        except MotionAuthoringError as exc:
+            raise RegenerationError(
+                f"scene {scene.scene_index} is media_type=motion_graphics and "
+                f"carries no template, and one could not be authored: {exc} "
+                f"Nothing was dispatched and no job row was created. Give the "
+                f"scene a generation_params object, or set its media type back "
+                f"to one the renderer reads prose for."
+            ) from exc
+        except Exception as exc:  # noqa: BLE001 - the binding or the endpoint
+            raise RegenerationError(
+                f"scene {scene.scene_index} is media_type=motion_graphics and "
+                f"carries no template, and the storyboard model could not be "
+                f"reached to author one: {type(exc).__name__}: {exc}. Nothing "
+                f"was dispatched and no job row was created."
+            ) from exc
+
+        scene.generation_params = spec
+        db.add(scene)
+        logger.info(
+            "motion_spec_authored_for_regen scene=%s index=%s template=%s",
+            scene.id, scene.scene_index, spec.get("template"),
+        )
+
+    # Committed before the job row so the dispatched scenes carry the spec the
+    # worker will read. The worker reads `generation_params` off the task input,
+    # which is built from these rows below.
+    await db.commit()
+    for scene in unauthored:
+        await db.refresh(scene)
+
+
 async def dispatch_scene_media_regenerations(
     db: AsyncSession,
     scenes: List[StoryboardScene],
@@ -230,6 +304,27 @@ async def dispatch_scene_media_regenerations(
         )
 
     project = await db.scalar(select(Project).where(Project.id == project_id))
+
+    # WP-IVGS-09c. AUTHOR A MOTION SCENE'S SPEC BEFORE DISPATCHING IT.
+    #
+    # THE MEASURED DEFECT. A scene flipped to `motion_graphics` in the GUI
+    # carries `generation_params = {}` and its old image prose; nothing authors
+    # a template, because v6's RULE 8 only runs while the whole storyboard is
+    # being written and this path is a RE-RENDER path, not an authoring one
+    # (WP-45: "pressing Regen on a scene card does not re-run the storyboard
+    # LLM"). Measured on project 9c29b1d1: six such scenes, all six refused at
+    # dispatch with the correct named error, the stage failed, and
+    # partial-advance carried the job on into talking_head_render.
+    #
+    # Regen is the surface an operator reaches for after flipping a scene, so
+    # Regen is where the gap is closed -- and ONLY for the medium that has one.
+    # Nothing changes for image, video_clip or animation: their descriptions are
+    # prose the renderer reads, and `adapt-description` already rewrites those.
+    #
+    # ⛔ IT RUNS BEFORE THE JOB ROW, with the two refusals above, for the reason
+    # they do: a scene that cannot be authored must not leave a `pending` job
+    # behind, and it must not reach a worker that can only refuse it deeper in.
+    await _author_missing_motion_specs(db, scenes, project)
 
     media_types = [s.media_type or "image" for s in scenes]
     # The job row's type names the work. With a mixed batch there is no single

@@ -10,7 +10,7 @@ Everything below is from measurement taken this session, not from memory.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api / frontend `v5.32.1-picker-medium`**; workers + `ivgs-motion-renderer` `v5.32.0-motion-live`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api / frontend `v5.32.2-motion-authoring`**; workers + `ivgs-motion-renderer` `v5.32.0-motion-live`; scheduler + backup-worker `v5.31.0-hygiene` | none |
 | **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.32.0-motion-live`**; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
 | **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.32.0-motion-live`** | ⓘ also runs two servers no IVGS package placed — RC-I5 |
 | **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.32.0-motion-live`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
@@ -30,7 +30,30 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-09b** — the picker defect RUN-2 found. **1 commit held, none pushed.**
+**WP-IVGS-09c** — the RUN-2 motion-scene blocker. **1 commit held, none pushed.**
+
+⛔ **RUN-2 BLOCKER, FIXED.** Six scenes flipped to `motion_graphics` in the GUI carried
+`generation_params = {}`: **nothing authors a template after the storyboard exists.** v6's RULE 8
+only runs while the storyboard is being written, and per-scene Regen is a *re-render* path that
+never reaches a prompt. All six refused at dispatch, the stage failed, and partial-advance
+carried the job into `talking_head_render` and the LatentSync OOM.
+
+**Regen now authors** template + parameters on the storyboard binding before dispatching, and the
+card carries a **"Needs template"** badge so the flip says so instead of the run saying so.
+Proved on the operator's own project: `motion_graphics | complete`, and the renderer took its
+**first real `/render` call**. §RC-L.
+
+⚠ **The model's number choice needs eyes.** Its first spec drew **14 × 3 = 42** — right
+arithmetic, wrong lesson (23 × 14). The prompt now names the whole-numbers rule and re-measures
+correct on two further scenes; `step` selection is still imperfect. **WP62-L7: human eyes are
+the gate until M3.3.**
+
+✅ **TASK B: a presenter IS configured** (`reference_clip` `25208d83`, uploaded 19:22). The
+dispatch was correct and **no code was written**, per the order. The no-presenter skip already
+exists cleanly in the frozen body (`talking_head_task.py:436-444`), so removing the presenter
+does what is intended with no edit.
+
+**WP-IVGS-09b** — the picker defect RUN-2 found. Pushed with 09c pending.
 
 ✅ **WP-IVGS-09's eight commits WERE PUSHED**, 2026-08-28 18:42 UTC — `origin/main` is now
 `4aed3b0`, measured from the remote-tracking ref and its reflog. So the held count is **1**, not
@@ -98,7 +121,12 @@ package's board.**
 
 ## Open operator decisions
 
-- ⛔ **The Model Store APPROVE click** for `maths-motion` (RC-J1)
+- ⛔ **P1.0a IS REVERSED (RC-L6).** `falling_back_to_sadtalker` fired live 2026-08-28 20:03 — the
+  hardcoded fallback is alive in the frozen stage-6 body (`talking_head_task.py:792-794`). Its
+  removal is now an **M3.3-R3 edit row**, not a cross-check line
+- ⛔ **node-04 headroom (RC-L7, AD-08).** LatentSync OOM'd with 4.31 MiB free while
+  `ivgs-vllm-midsize` held 92.5 GB resident. **A reservation was acquired — reservations do not
+  evict.** Stacking on node-04 is the live problem and it is AD-08's to answer
 - ✅ *(settled 2026-08-28)* the queue drain and the counter row — **P2.39 CLOSED, P2.47 opened**
 - ⛔ **.96 admin access method** — needed by M3.3-R2 (namespace creation)
 - ⚠ **`dev/CLAUDE.md` §1 contradicts the last several work orders** (RC-J10) — amend the rule
@@ -137,14 +165,14 @@ packages.
 
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1427** | **0** | 0 | 0 | 1410 + **17** (WP-IVGS-09b picker tests) |
+| `ivgs-api` | **1449** | **0** | 0 | 0 | 1427 + **22** (WP-IVGS-09c motion-authoring tests) |
 | `ivgs-workers` | **930** | 18 | 48 | 15 | ✅ byte-identical |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |
 | `tests_system` | **193** | 12 | 15 | 30 | ✅ byte-identical |
 
-✅ **ZERO NEW FAILURES**, twice — WP-IVGS-09 and WP-IVGS-09b. One test moved and was corrected
+✅ **ZERO NEW FAILURES**, three times — WP-IVGS-09, 09b and 09c. One test moved and was corrected
 in the same commit (`test_no_existing_value_was_removed` asserted set EQUALITY under a name that
 promised subset — RC-J7).
 

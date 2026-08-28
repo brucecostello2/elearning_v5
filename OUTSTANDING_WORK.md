@@ -2767,3 +2767,84 @@ would meet it. **A test that exercises the pipeline is not a test of the page.**
 was at `0043`; the new tests insert a `motion_graphics`-engine row and got
 `InvalidTextRepresentationError: invalid input value for enum model_engine`. Brought to `0044`.
 Recorded in `TEST-BASELINE`.
+
+
+---
+
+## RC-L — WP-IVGS-09c: RUN-2, the motion scenes nothing authored (2026-08-28)
+
+Project `9c29b1d1` ("two by two multiplication"), job `dc9af832`, regen `c6002413`.
+
+### L.1 TASK A — the measurement, three paths, one that worked
+
+| path | what it produces for a `motion_graphics` scene |
+|---|---|
+| **v6 authoring it itself** (stage 2, RULE 8) | ✅ `generation_params = {"template": …, …}`. RULE 8 is live and correct — *"a motion_graphics scene is STRUCTURED DATA, not a description"* — but it **only runs while the whole storyboard is being written** |
+| **The GUI flip** | ⛔ `media_type` and nothing else. Measured: six scenes at **`generation_params = {}`**, each still carrying its *image* prose (*"Close-up of a hand moving a pencil across the paper"*) |
+| **Per-scene Regen** | ⛔ **Never reaches a prompt at all.** `regenerate_scene` → `dispatch_scene_media_regeneration`, which re-renders from the scene's *current* fields. WP-45's own docstring: *"pressing Regen on a scene card does not re-run the storyboard LLM, it re-renders that scene's media."* |
+
+⛔ **So a flipped scene had no way to become renderable**, and the failure surfaced deep in the
+run: six correct named refusals inside the media stage → stage FAILED → partial-advance →
+`talking_head_render` → the LatentSync OOM.
+
+⚠ **`adapt-description`, the other medium-aware prompt, is NOT the answer and must not become
+it.** `adaptation_service.MEDIA_TYPES` is `("image", "video_clip", "animation")` and excludes
+this medium on purpose — *"would ask the model to write a description for a renderer that never
+reads one"* — with `test_wp68_prompt_v6.py` asserting the exclusion **so a future tidy-up does
+not 'fix' it into agreement**. A new module was the honest shape, not a widening of the one that
+was right.
+
+### L.2 The fix, and what it refuses
+
+| id | Row |
+|---|---|
+| **RC-L1** | ✅ **`app/services/motion_authoring.py`** — asks the **storyboard binding** (the model RULE 8 was written for) for ONE template + parameters, for ONE scene. The catalogue is rendered from `shared.motion.templates`, so the prompt cannot name a template the renderer lacks. **Every deviation is refused by name**: unknown template, missing parameter, invented parameter, non-JSON, or a spec the templates module itself will not render. **No closest match, no default template, no partial spec** — a motion graphic that draws the wrong sum is worse than a scene that says it could not be authored, because the arithmetic *is* the content |
+| **RC-L2** | ✅ **Wired into the regen dispatch, before the job row**, beside the gate and in-flight refusals and for their reason: a scene that cannot be authored must not leave a `pending` row, and must not reach a worker that can only refuse it deeper in. **Only scenes that are `motion_graphics` AND carry no template are touched** — a spec v6 or an operator wrote is left exactly as it is, because Regen re-renders from current fields and silently re-authoring would break that promise |
+| **RC-L3** | ✅ **The flip now SAYS so.** `motionSceneNeedsAuthoring()` in `lib/scenes.ts` and a **"Needs template"** badge on the scene card. Amber, not red: the scene is not broken, it is unfinished, and Regen finishes it. `{}` is the shape the flip leaves — an object that exists and says nothing — so the predicate checks for the template, not for truthiness |
+
+### L.3 Proved live, on the operator's own project, through the regen path only
+
+```
+scene 2  bc397345  narration: "…multiply 4 times 3, which equals 12. Write the 2 …carry the 1"
+POST /projects/9c29b1d1/scenes/bc397345/regenerate   -> HTTP 202
+  motion_spec_authored  template=column_multiplication_step  binding=llama-3.3-70b-storyboard
+                        [vllm] tier=prototype  endpoint=http://node-02:8000
+  motion_scene_rendered -> asset fb51f04b, 12,743 bytes
+  ivgs-motion-renderer: 1x POST /render, 1x motion_render_complete   <- ITS FIRST REAL CALL
+  checkpoint: motion_graphics | complete | 20:27:30      <- the stage that failed before
+```
+
+⛔ **AND THE MODEL CHOSE THE WRONG OPERANDS THE FIRST TIME.** It authored
+`{"top": 14, "bottom": 3}` — reading *"4 times 3"* as the two numbers — and the renderer drew
+**14 × 3 = 42**, with a correct carry. **Arithmetically right and pedagogically wrong**: the
+lesson is 23 × 14 and that scene is its units step, 4 × 23. Frame read by eye; nothing in the
+pipeline could have told.
+
+The prompt now states what the template's own parameter descriptions already implied — *the
+parameters are the lesson's WHOLE numbers, not the digits this step multiplies* — with the
+worked counter-example. Re-measured on two further narrations: **`top: 23, bottom: 14`, correct
+in both.** ⚠ **`step` is still chosen imperfectly**: a narration describing the *completion* of
+the units step drew `step: 1` where `0` was right. **Not tuned further** — the order forbids a
+prompt-iteration loop, and **WP62-L7 makes human eyes the gate until M3.3 regardless.**
+
+⚠ **A BUG I SHIPPED AND CAUGHT LIVE, NOT WITH PYTEST.** `build_prompt` is an f-string and the
+counter-example contains literal JSON; unescaped, `{"top": 23, …}` is read as a format field and
+**every authoring call died** with `ValueError: Invalid format specifier`. The suite already
+called `build_prompt` and would have caught it on the next run — it was deployed before that run
+happened. Fixed, and pinned on the exact literal.
+
+### L.4 TASK B — a presenter IS configured. Reporting, not coding, as ordered.
+
+| id | Row |
+|---|---|
+| **RC-L4** | ✅ **MEASURED: project `9c29b1d1` HAS a presenter.** One `reference_clip` asset — `25208d83`, `magihuman_testB_t2v.mp4`, 5,376,326 bytes, uploaded 2026-08-28 19:22:23. `projects.talking_head_asset_id` is NULL and `actors` is empty, but the orchestrator resolves the presenter from the project's `reference_clip` assets (`pipeline_orchestrator_v2.py:1212`, `:1975-1994`), and there is one. **So `talking_head_render` was dispatched because a presenter genuinely is configured — that dispatch is not the defect.** ⛔ **NO CODE WRITTEN**, per the order's own branch |
+| **RC-L5** | ⓘ **And the no-presenter skip already exists, cleanly, inside the frozen body.** `talking_head_task.py:436-444`: `if not task_input.reference_clip_asset_id: log.info("stage6_skipped_no_reference_clip")`, status SUCCESS, advances to prototype_draft. **Removing the presenter for this run does exactly what the order intends, with no edit at all** |
+
+### L.5 Register-only, as ordered — no code
+
+| id | Row |
+|---|---|
+| **RC-L6** | ⛔ **P1.0a IS REVERSED.** Ruled CLOSED on 2026-08-28 as *"superseded by AD-01 selection"*, with a carried M3.3-R3 cross-check line. **`falling_back_to_sadtalker` fired LIVE the same day, 20:03**, twice on node-04 — the hardcoded fallback is alive in the frozen stage-6 body at **`talking_head_task.py:792-794`** and it is not selection-driven. It then died on DNS (`Temporary failure in name resolution` ×4 — no SadTalker container exists; `UNHOSTED_ENGINES` says so). **The cross-check line becomes an M3.3-R3 EDIT ROW**: remove the hardcoded SadTalker fallback when stage 6's activity is realized. Evidence: node-04 `ivgs-celery-node04`, 8× `CUDA out of memory`, 2× `falling_back_to_sadtalker`, 4× DNS failure, 2026-08-28 |
+| **RC-L7** | ⛔ **AD-08 evidence: a reservation is not headroom.** LatentSync OOM'd on node-04 with **4.31 MiB free** while `ivgs-vllm-midsize` held **92.5 GB resident** alongside `comfyui`. A GPU reservation *was* acquired — reservations record intent and **do not evict**, and nothing on the node arbitrates between a resident vLLM and an on-demand render. **node-04 stacking is the live headroom problem**, and it is AD-08's (Concurrency and Capability Pool) to answer. ⛔ Not fixed here — the order excludes it |
+| **RC-L8** | ⚠ **Jobs tab, two wrong columns → P2.46 sweep.** TYPE shows the job's **creation-time** `job_type` (`image_generation` for a regen that ran the motion branch, tts and talking head), and DURATION is wrong — `c6002413` displayed *"under 1s"* having run ~90 s. Both are display derivations from a row that stopped describing the work |
+| **RC-L9** | ⚠ **`error_classifier` tags these `classified_default_transient` → P2.46 sweep.** A missing `generation_params`, an unknown template and a CUDA OOM are none of them transient: the first two are deterministic and will fail identically on retry, and the third needs eviction, not patience. Misclassification costs two pointless retries and a DLQ row that reads as bad luck |

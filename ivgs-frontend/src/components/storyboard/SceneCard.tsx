@@ -5,6 +5,7 @@ import SceneThumbnail from "@/components/SceneThumbnail";
 import {
   mediaTypeIcon,
   mediaTypeLabel,
+  motionSceneNeedsAuthoring,
   sceneBadge,
   sceneTitle,
 } from "@/lib/scenes";
@@ -304,6 +305,25 @@ export default function SceneCard({
             {mediaTypeIcon(scene.media_type)}{" "}
             {mediaTypeLabel(scene.media_type)}
           </span>
+          {/* WP-IVGS-09c. THE FLIP SAYS SO, HERE, INSTEAD OF THE RUN SAYING SO
+              LATER. A motion graphic is drawn from a template and its numbers;
+              changing the Media Type does not author them, and until this badge
+              existed the only thing that ever mentioned it was a refusal inside
+              the media stage, hours in. Amber, not red: the scene is not broken,
+              it is unfinished, and Regen finishes it. */}
+          {motionSceneNeedsAuthoring(scene) && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-xs font-medium text-amber-800 dark:text-amber-300"
+              title={
+                "This scene is a motion graphic but has no template or numbers " +
+                "yet. The renderer draws from a template, not from a " +
+                "description. Press Regen and the storyboard model will author " +
+                "them from this scene's narration."
+              }
+            >
+              Needs template
+            </span>
+          )}
           <span
             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
               STATUS_COLORS[scene.status]

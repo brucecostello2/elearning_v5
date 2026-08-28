@@ -120,6 +120,34 @@ export function normalizeMediaType(value: unknown): MediaType | null {
   return ALIASES[key] ?? null;
 }
 
+/**
+ * Whether a scene is a motion graphic that nothing has authored yet.
+ *
+ * WP-IVGS-09c. THE STATE THE GUI HAD NO WORD FOR. Flipping a scene's Media
+ * Type to Motion Graphics changes `media_type` and nothing else: the renderer
+ * takes a TEMPLATE NAME and its numbers, not prose, and only v6's RULE 8
+ * authors those — and RULE 8 only runs while the whole storyboard is being
+ * written. Measured on project 9c29b1d1: six flipped scenes at
+ * `generation_params = {}`, each still carrying the image prose it was written
+ * with, every one of them refused at dispatch deep inside a run.
+ *
+ * `{}` is the shape the flip leaves — an object that exists and says nothing —
+ * so this checks for the template, not for truthiness.
+ */
+export function motionSceneNeedsAuthoring(scene: {
+  media_type?: unknown;
+  generation_params?: unknown;
+}): boolean {
+  if (normalizeMediaType(scene.media_type) !== "motion_graphics") return false;
+  const p = scene.generation_params;
+  return (
+    typeof p !== "object" ||
+    p === null ||
+    typeof (p as { template?: unknown }).template !== "string" ||
+    ((p as { template: string }).template ?? "").length === 0
+  );
+}
+
 /** Human label for a scene's media type, honest about the untyped case. */
 export function mediaTypeLabel(value: unknown): string {
   const t = normalizeMediaType(value);
