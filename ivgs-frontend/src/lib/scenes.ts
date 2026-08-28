@@ -34,8 +34,34 @@
  * disagreed with each other; the wire settles it.
  */
 
-/** The three values `SceneUpdate` / `SceneCreate` accept, exactly as sent. */
-export const MEDIA_TYPES = ["image", "video_clip", "animation"] as const;
+/*
+ * WP-IVGS-09 Task 3 — `motion_graphics` joins the vocabulary, and the gate it
+ * waited behind.
+ *
+ * WP-68 added the value to the API (migration 0041, `shared.models.enums.
+ * MediaType`) and DELIBERATELY did not add it here, because no renderer
+ * existed: "WP-64 removed a dropdown option advertising a pathway that did not
+ * exist, and adding one back early would be the same defect" (WP-68 L-6).
+ *
+ * The pathway exists now. `ivgs-motion-renderer` is deployed on node-01, and a
+ * motion-graphics frame has reached a composed DRAFT — draft asset
+ * `2ee07595-c143-49c1-b361-71c1b7b1c959`, frames banked at
+ * `dev/workpackages/reference/wpivgs09-draft-frames/`. The option is offered
+ * because the thing it names now happens.
+ *
+ * ⛔ AND IT WAS ALREADY A DISPLAY DEFECT. `normalizeMediaType` returned `null`
+ * for `"motion_graphics"`, so the moment a v6 storyboard chose one, the
+ * storyboard rendered it as "Not set" with a generic frame icon — the same
+ * shape of wire/type disagreement WP-43 fixed for the other three.
+ */
+
+/** The four values `SceneUpdate` / `SceneCreate` accept, exactly as sent. */
+export const MEDIA_TYPES = [
+  "image",
+  "video_clip",
+  "animation",
+  "motion_graphics",
+] as const;
 
 export type MediaType = (typeof MEDIA_TYPES)[number];
 
@@ -43,12 +69,14 @@ const MEDIA_TYPE_LABEL: Record<MediaType, string> = {
   image: "Image",
   video_clip: "Video Clip",
   animation: "Animation",
+  motion_graphics: "Motion Graphics",
 };
 
 const MEDIA_TYPE_ICON: Record<MediaType, string> = {
   image: "🖼️",
   video_clip: "🎬",
   animation: "✨",
+  motion_graphics: "🔢",
 };
 
 /**
@@ -68,7 +96,14 @@ const ALIASES: Record<string, MediaType> = {
   clip: "video_clip",
   animation: "animation",
   animated: "animation",
+  /* `motion` stays mapped to `animation`: it is a LEGACY display name from
+     before either branch existed, and re-pointing it at `motion_graphics`
+     would silently retype existing scene rows on read. New scenes name
+     `motion_graphics` exactly. */
   motion: "animation",
+  motion_graphics: "motion_graphics",
+  "motion graphics": "motion_graphics",
+  motiongraphics: "motion_graphics",
 };
 
 /**

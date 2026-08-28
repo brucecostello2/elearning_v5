@@ -140,6 +140,25 @@ const MEDIA_TYPES: { value: MediaType; label: string; description: string }[] = 
       "reference clip (Wan2.2-Animate). Not motion graphics — a still with " +
       "no person in it is refused.",
   },
+  {
+    value: "motion_graphics",
+    label: "Motion Graphics",
+    /* WP-IVGS-09 Task 3, gated on Task 2. WP-68 built the templates and left
+       this option OFF, because no renderer was deployed and offering a
+       pathway that does not exist is the defect WP-64 removed (L-6). The
+       renderer is on node-01 now and a frame has reached a draft, so the
+       option is offered.
+
+       The description names the ONE thing an operator has to know before
+       choosing it: this branch does not take a prompt. It takes a template
+       name and its numbers, and anything outside the four templates is
+       refused by name rather than approximated. */
+    description:
+      "Draws the maths itself from a template and its numbers — place value, " +
+      "column addition with the carry, one multiplication step, or a " +
+      "highlighted column. Not a prompt: this branch needs structured " +
+      "parameters, and the digits are DRAWN, so they cannot be misspelled.",
+  },
 ];
 
 /*

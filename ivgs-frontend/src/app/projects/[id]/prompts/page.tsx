@@ -57,7 +57,25 @@ const SOURCE_STYLES: Record<string, string> = {
   SCENE: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
 };
 
-function prettyType(value: string): string {
+/*
+ * P1.4r, fixed in the rebuild that lifts the dropdown (operator ruling
+ * 2026-08-28). The console error on the project pages was
+ *
+ *     Cannot read properties of undefined (reading 'split')
+ *
+ * and this is the only unguarded `.split()` left under `src/app/projects/` —
+ * the other two sites (`TranscriptEditor`, `PromptEditor`) already carry
+ * guards and say so. `EffectivePrompt.prompt_type` is declared `string`, but
+ * a declared type is an assertion about the wire, not a fact about it: WP-35
+ * measured `project.target_languages` not existing on the wire at all while
+ * the type said it did, which is the same defect one field over.
+ *
+ * Guarded rather than defaulted to a placeholder: an empty label says "this
+ * row has no type", which is true, where "Unknown" would be this function's
+ * invention.
+ */
+function prettyType(value: unknown): string {
+  if (typeof value !== "string" || value.length === 0) return "";
   return value
     .split("_")
     .map((w) => (w.length > 0 ? w[0]!.toUpperCase() + w.slice(1) : w))

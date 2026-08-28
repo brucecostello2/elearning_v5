@@ -335,7 +335,10 @@ export interface SceneResponse {
   scene_index: number;
   narration_text: string;
   visual_description: string;
-  media_type: "image" | "video_clip" | "animation";
+  // WP-IVGS-09 Task 3. `motion_graphics` (migration 0041) joins the union the
+  // moment the renderer exists; `src/lib/scenes.ts` is the single definition
+  // and this mirrors it. The two files disagreeing is the WP-43 defect.
+  media_type: "image" | "video_clip" | "animation" | "motion_graphics";
   duration_seconds: number;
   status: string;
   assets: AssetSummary[];
