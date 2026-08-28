@@ -30,7 +30,7 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-09 — the numbers reach the screen.** **7 commits held, none pushed.**
+**WP-IVGS-09 — the numbers reach the screen.** **8 commits held, none pushed.**
 The count is the gate in the report's §12 push block.
 
 ⛳ **Task 2 PASSED: a motion-graphics frame reached a DRAFT.** Draft asset
@@ -38,12 +38,17 @@ The count is the gate in the report's §12 push block.
 banked at `dev/workpackages/reference/wpivgs09-draft-frames/`. The negative control fires the
 named hold with no asset and no armed join.
 
-⛔ **TWO THINGS ARE WAITING ON THE OPERATOR:**
+✅ **P2.39 CLOSED — the stranded queue is drained.** 22 entries, on the operator's GO of
+2026-08-28, using the scheduler's own `remove_job` except where it provably could not
+(4 entries). `/fleet` now reads `{urgent: 0, normal: 0, batch: 0}` against a verifiably empty
+queue. ⛔ **The drain proved the counter defect in the open**: with every entry gone,
+`pq:depths` still read `urgent: 6, normal: −2`. Reconciled by hand — **the only time these two
+records have ever been reconciled** — and rowed as **P2.47**.
+
+⛔ **ONE THING IS WAITING ON THE OPERATOR:**
 
 1. **The Model Store APPROVE click.** `maths-motion` is registered, `state=candidate`, GUI
    weight status **`weightless` — "no weights needed"**. Approving is the operator's act.
-2. **GO to drain the stranded scheduler queue** (P2.39). The queue is **listed** in the report
-   §3, with a proposed disposition per row. Nothing has been drained.
 
 ---
 
@@ -59,7 +64,7 @@ pushed **2026-08-28 16:12 UTC**.
 **WP-IVGS-07's close and all of WP-IVGS-08 are on the remote.** The two figures did not agree
 with each other either: `75762b8..8e3b829` is **12** commits, not 9.
 
-**Held now: this package's 7, and nothing else.**
+**Held now: this package's 8, and nothing else.**
 
 ---
 
@@ -69,7 +74,7 @@ with each other either: `75762b8..8e3b829` is **12** commits, not 9.
    item 1**: it is now the gate on the largest single block in the register — **20
    carried-v3.1 rows are VERIFY-AT-RUN-2**, plus P1.4h and P1.4q, with **P2.46** as the one
    bounded sweep afterwards
-2. **Push** — count-gated block in the WP-IVGS-09 report §12 (expected: **7**)
+2. **Push** — count-gated block in the WP-IVGS-09 report §12 (expected: **8**)
 3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
    first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
 4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward
@@ -82,8 +87,7 @@ with each other either: `75762b8..8e3b829` is **12** commits, not 9.
 ## Open operator decisions
 
 - ⛔ **The Model Store APPROVE click** for `maths-motion` (RC-J1)
-- ⛔ **GO to drain the stranded scheduler queue**, and whether RC-J6's three counter defects
-  become a row (P2.39 / RC-J6)
+- ✅ *(settled 2026-08-28)* the queue drain and the counter row — **P2.39 CLOSED, P2.47 opened**
 - ⛔ **.96 admin access method** — needed by M3.3-R2 (namespace creation)
 - ⚠ **`dev/CLAUDE.md` §1 contradicts the last several work orders** (RC-J10) — amend the rule
   or change the orders; not amended on a package's own initiative
@@ -100,14 +104,14 @@ Authority: **`OUTSTANDING_WORK.md`** — the P0–P3 register plus §RECONCILIAT
 
 | Metric | Count |
 |---|---|
-| Rows total (P0–P3) | **77** — P2.46 added, the RUN-2 sweep the ruling required |
+| Rows total (P0–P3) | **78** — **P2.46** (the RUN-2 sweep the ruling required) and **P2.47** (the scheduler's drifting depth counter, opened on the GO) |
 | **P0 open** | **0** |
 | ⛔ **NEEDS-RULING** | **0** — was **41**. §RC-H3 is **RULED IN FULL** |
-| Closed / archived / dropped by the rulings | **11** (P1.0a, P1.0b, P1.4, P1.4f, P1.5a, P1.5b, P1.6, P2.2, P2.35, P2.37, and P2.1's decision restored) |
+| Closed / archived / dropped by the rulings | **12** (P1.0a, P1.0b, P1.4, P1.4f, P1.5a, P1.5b, P1.6, P2.2, P2.35, P2.37, **P2.39 — drained**, and P2.1's decision restored) |
 | Gated by the rulings | **7** (P1.4h, P1.4q, P1.4r, P1.7, P2.1, P2.5, P2.10) |
 | **VERIFY-AT-RUN-2** | **20** — P2.12 through P2.31, contiguous |
 | Reclassified FIX | **1** (P2.38) |
-| Operator-attended | **1** (P2.39) |
+| Operator-attended, now done | **1** (P2.39 — drained on the GO; **P2.47** opened from what the drain showed) |
 
 ⚠ **§RC-H3 said its carried block was "20 of the 41" while enumerating 18.** P2.15 and P2.29
 were inside the stated range and outside the list. The ruling is on the contiguous range, so

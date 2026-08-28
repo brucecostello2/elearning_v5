@@ -31,7 +31,7 @@ were not contacted.
 |---|---|
 | **0(a)** apply the 20 rulings | ✅ **DONE.** 39 rows carry a `⚖ RULING (operator ruling 2026-08-28)` block; §RC-H3 rewritten as a settled record; **P2.46** added as the RUN-2 sweep the ruling required |
 | **0(b)** three probes | ✅ **DONE.** P1.4n named-refusal measured; P1.5b **closed on live Prometheus evidence**; P2.1's lost "decided" text **found in three places and restored** |
-| **0(c)** the 23 stranded requests | ✅ **LISTED — and the premise moved twice.** ⛔ **STOPPED for the operator's GO before draining.** §3 |
+| **0(c)** the 23 stranded requests | ✅ **LISTED, then DRAINED on the GO.** 22 entries, one line each; `pq:depths` reconciled to the queue for the first time. **P2.39 CLOSED**, **P2.47 opened**. §3 |
 | **0(d)** WP-IVGS-08 §9 threads | ✅ **DONE.** Both suites re-baselined; the 0043 downgrade exercised on a scratch DB; `IVGS_VLLM_MAX_TOKENS` measured across four containers and declared at compose level per node |
 | **1** the renderer | ✅ **DONE.** `ivgs-motion-renderer` deployed on node-01, deterministic, weightless Model Store row registered. ⛔ **STOPPED for your APPROVE click.** §6 |
 | **2** acceptance | ✅ **PASSED.** A motion-graphics frame reached a **DRAFT**; negative control fires the named hold. §7 |
@@ -90,12 +90,14 @@ M3.3-R3 entry. It is a checklist line, not a reopened row.
 
 ---
 
-## §3. ⛔ Task 0(c) — the stranded queue, LISTED. **STOPPING HERE FOR YOUR GO.**
+## §3. ✅ Task 0(c) — the stranded queue: LISTED, then DRAINED on the GO
 
 The order: *"LIST the 23 stranded urgent requests (age, project, stage) in the report, then
 STOP and wait for the operator's GO before draining."*
 
-**Listed below. Nothing has been drained. Nothing will be until you say GO.**
+**Listed at §3.2, drained at §3.3 on the operator's GO of 2026-08-28.** The list below is
+kept as it was written *before* the GO — it is the census the disposition was approved against,
+and rewriting it after the fact would hide that the queue grew by two in between (§3.3).
 
 ### 3.1 ⚠ The premise moved twice, and both corrections change what draining means
 
@@ -137,7 +139,7 @@ code paths update inconsistently, all in `ivgs-scheduler/priority_queue.py`:
 jobs — the anti-starvation bump (`:196`, 30-minute interval) promoting `normal → urgent`. The
 row's title, *"23 urgent scheduling requests"*, describes something that never happened.
 
-### 3.2 THE LIST — 20 entries, all of them (age at 2026-08-28 16:5x UTC)
+### 3.2 THE LIST AS PRESENTED FOR APPROVAL — 20 entries (ages at 2026-08-28 16:5x UTC)
 
 ⛔ **Not one is a live pending job.** Four are terminal, ten reference `render_jobs` rows that
 no longer exist, six are synthetic probes left by earlier packages.
@@ -170,20 +172,95 @@ Stage, where a job row survives, is `render_jobs.job_type`; `render_jobs` has no
 carries `job_id`, `base_priority`, `effective_priority`, `submitted_at`, `aging_bumps` and
 nothing else. **Stated rather than guessed.**
 
-### 3.3 ⛔ WAITING FOR GO. What I will do when you give it.
+### 3.3 ✅ GO RECEIVED — DRAINED. One line per row, as ordered.
 
-**One line per row, as ordered.** The proposed disposition, for your approval alongside the GO:
+Disposition approved as proposed, including the `pq:depths` reset and the direct
+`zrem pq:queue:normal` for rows 19 and 20. **Executed 2026-08-28**, inside `ivgs-scheduler`,
+using the scheduler's **own** `PriorityQueueManager.remove_job` — so what each row got is what
+production does, not what a script thinks production does.
 
-| Group | Rows | Proposed disposition |
-|---|---|---|
-| Synthetic probes | 13, 14, 15, 16, 17, 18 | `remove_job` — they were never work |
-| Terminal jobs | 1, 2, 10, 11 | `remove_job` — the job finished (or failed) days ago; the queue entry is a tombstone |
-| Deleted projects | 3–9, 12, 19, 20 | `remove_job` — the `render_jobs` row is gone; there is nothing to schedule |
-| The counter | `pq:depths` | **reset to the measured `ZCARD` of each zset after the drain.** ⛔ `remove_job` will not fix `normal = −2` on its own: rows 19 and 20 are in the normal zset with `effective_priority=urgent`, so `remove_job` would `zrem` from `urgent` (a miss) and decrement `urgent` again. Those two need a direct `zrem` from `pq:queue:normal`. |
+⚠ **The list grew from 20 to 22 between §3.2 and the GO, and both new entries fall inside an
+approved group.** `3f489575…` and `8cdb79b6…` are **this package's own Task-2 jobs**. Their
+projects were deleted through the WP-59 flow and **their queue entries survived it** — the
+accumulation mechanism reproduced live, three hours after §3.2 was written. Disposition:
+*deleted projects*, as approved. Nothing else moved.
 
-⚠ **The three code defects in §3.1 are NOT fixed by draining.** Draining empties the queue; the
-mechanisms that filled it wrongly stay. They belong in a row of their own, and I have not
-opened one without your ruling — say the word and it lands as a P2 with the three sites named.
+| # | job_id | group | method | result |
+|---:|---|---|---|---|
+| 14 | `probe` | synthetic | `remove_job` | hash deleted · urgent zset **CLEARED** |
+| 15 | `wpivgs06-probe` | synthetic | `remove_job` | hash deleted · **CLEARED** |
+| 17 | `wpivgs07-dbl` | synthetic | `remove_job` | hash deleted · **CLEARED** |
+| 13 | `d04f0000-…00d1` | synthetic | `remove_job` | hash deleted · **CLEARED** |
+| 16 | `d06f0000-…00d1` | synthetic | `remove_job` | hash deleted · **CLEARED** |
+| 18 | `d07f0000-…00d1` | synthetic | `remove_job` | hash deleted · **CLEARED** |
+| 10 | `610b35d8-…3905` | terminal (`transcript_refinement`, success) | `remove_job` | hash deleted · **CLEARED** |
+| 11 | `439b2779-…f375` | terminal (`transcript_refinement`, success) | `remove_job` | hash deleted · **CLEARED** |
+| 1 | `b3df6eb6-…acb6` | terminal (`image_generation`, failed), **hash expired >72 h** | **direct `zrem pq:queue:urgent`** — `remove_job` is a no-op without a hash (`:284`) | removed=1 |
+| 2 | `1e65b11d-…8d0b` | terminal (`final_render`, success), **hash expired >72 h** | **direct `zrem pq:queue:urgent`** | removed=1 |
+| 3 | `89383cdd-…1e33` | deleted project | `remove_job` | **CLEARED** |
+| 4 | `1aa7b507-…19e3` | deleted project | `remove_job` | **CLEARED** |
+| 5 | `98b32541-…7e51` | deleted project | `remove_job` | **CLEARED** |
+| 6 | `8b881252-…3f16` | deleted project | `remove_job` | **CLEARED** |
+| 7 | `d4b41765-…2dfd` | deleted project | `remove_job` | **CLEARED** |
+| 8 | `02d2c773-…30c6` | deleted project | `remove_job` | **CLEARED** |
+| 9 | `bd07f416-…4c37` | deleted project | `remove_job` | **CLEARED** |
+| 12 | `aae4f8cc-…2a41` | deleted project | `remove_job` | **CLEARED** |
+| 21 | `3f489575-…3383` | deleted project *(this package's Task-2 job)* | `remove_job` | **CLEARED** |
+| 22 | `8cdb79b6-…3cfe` | deleted project *(this package's Task-2 job)* | `remove_job` | **CLEARED** |
+| 19 | `de838c11-…ceac1e` | deleted project, **in the NORMAL zset with `effective_priority=urgent`** | **direct `zrem pq:queue:normal` + `del` hash** — `remove_job` would have `zrem`'d from `urgent` (a miss) and decremented `urgent` for a job that never joined it | zrem=1 · hash_del=1 |
+| 20 | `47be634d-…6287` | deleted project, same shape | **direct `zrem pq:queue:normal` + `del` hash** | zrem=1 · hash_del=1 |
+
+### 3.4 ⛔ THE DRAIN PROVED THE COUNTER DEFECT IN THE OPEN
+
+```
+BEFORE  zcards = {urgent: 20, normal: 2, batch: 0}   depths = {urgent: 24, normal: -2, batch: 0}
+AFTER   zcards = {urgent:  0, normal: 0, batch: 0}   depths = {urgent:  6, normal: -2, batch: 0}
+RESET   zcards = {urgent:  0, normal: 0, batch: 0}   depths = {urgent:  0, normal:  0, batch: 0}
+```
+
+**The middle line is the whole argument.** All 22 entries gone, the queue verifiably empty —
+and the counter still read **`urgent: 6, normal: −2`**. Eighteen `remove_job` calls took urgent
+from 24 to 6; the four direct removals had no counter to decrement; and `normal` never moved off
+−2 because nothing has ever decremented it correctly.
+
+`pq:depths` was reset to the measured `ZCARD` under the same ruling. **That reset is the only
+reconciliation of these two records that has ever happened, and a person did it.**
+
+Live afterwards:
+
+```
+$ docker exec ivgs-scheduler sh -lc 'curl -s localhost:8001/fleet'
+queue_depth = {'urgent': 0, 'normal': 0, 'batch': 0}
+alive_nodes = 3/3   total_vram_mb = 293661   nodes = node-02:gpu0, node-03:gpu0, node-04:gpu0
+
+$ docker exec ivgs-redis redis-cli -n 1 --scan --pattern 'pq:*'
+pq:depths                       <- the counter hash itself; correct that it remains
+```
+
+`gpu_reservations` is empty, as it was before and throughout. **P2.39 is CLOSED.**
+
+### 3.5 ✅ P2.47 opened — and the drain found two more sites than the ruling asked for
+
+The ruling: *"open the P2 row for the three §3.1 counter defects, all three sites named."*
+**Opened as P2.47**, with those three named — and with **two more the drain exposed**, recorded
+rather than left for the next package to re-find:
+
+4. ⛔ **`get_queue_depths` clamps the defect out of sight.** `priority_queue.py:309-313`,
+   `max(0, int(depths.get(...)))`. `/fleet` reported `normal: 0` while the stored counter was
+   **−2**. The clamp turns an impossible value into a plausible one — the fabricated-absence
+   rule inverted: **reporting a believable number about something that is broken.** This is why
+   nobody has noticed in the eight days the queue has been drifting.
+5. ⛔ **Project deletion never purges Redis db 1 — this is the SOURCE of the accumulation.**
+   `project_deletion.py:401-410` purges five `ivgs:*` key shapes, **all in db 0**. The priority
+   queue lives in **db 1** (`SCHEDULER_REDIS_URL=redis://redis:6379/1`) and is not touched.
+   **Twelve of the 22 drained had no `render_jobs` row at all** — deleted projects whose queue
+   entries were left behind. Reproduced by this package's own two test projects, three hours
+   apart.
+
+P2.47 also says what **not** to do: do not "fix" this by making `get_queue_depths` return the
+`ZCARD`s. That makes the surface honest and leaves three write paths still corrupting a value
+nobody reads — the half-fix that removes the evidence. **One record, not two**, is the answer,
+and site 5 is separable and probably the most valuable single fix.
 
 ---
 
@@ -891,9 +968,10 @@ Stated plainly, as ordered.
 
 ### 10.1 Not done, and stopped for you on purpose
 
-1. **P2.39's drain.** Listed, not drained. ⛔ Waiting on GO (§3.3).
-2. **The Model Store APPROVE click.** Registered as `candidate`, weightless and visible.
-   ⛔ Yours (§6.6).
+1. **The Model Store APPROVE click.** Registered as `candidate`, weightless and visible.
+   ⛔ Yours (§6.6). **This is the only thing still waiting.**
+
+*(P2.39’s drain was the other one. GO received; executed at §3.3, closed.)*
 
 ### 10.2 Not verified
 
@@ -924,8 +1002,11 @@ Stated plainly, as ordered.
     otherwise unverified by this pass**.
 11. **`ffmpeg_client`'s audio-less branch is broken and NOT fixed** (RC-J3). Frozen supporting
     service.
-12. **RC-J6's three scheduler counter defects are not fixed** and are not rowed as work without
-    a ruling.
+12. **P2.47's five scheduler defects are ROWED BUT NOT FIXED.** The drain removed the entries;
+    the mechanisms that produced them are untouched. ⚠ **In particular, site 5 is still live:
+    the next project deleted through the WP-59 flow will leak its queue entries again**, and
+    nothing will say so, because `get_queue_depths` clamps the counter. The queue is empty
+    today and will not stay that way on its own.
 13. **Nodes 05, 06, `.51`, `.52`, `.96` were not contacted.** Out of bounds.
 14. **No GHCR push.** Images exist locally on node-01 and, for the worker, as an artifact on
     `/mnt/ivgs-shared`. §6.1: a GHCR push is never a precondition for a deploy.
@@ -950,7 +1031,7 @@ reads it later as a system defect.
 | Deliverable | Where |
 |---|---|
 | **Report** | this file |
-| **Register** | `OUTSTANDING_WORK.md` — 39 rows ruled, §RC-H3 rewritten as settled, **P2.46** added, **§RC-J** added (RC-I1 executed, RC-I3's closures, RC-J1–J10) |
+| **Register** | `OUTSTANDING_WORK.md` — 39 rows ruled, §RC-H3 rewritten as settled, **P2.46** added, **P2.47** opened on the GO, **P2.39 CLOSED with the drain evidence**, **§RC-J** added (RC-I1 executed, RC-I3's closures, RC-J1–J10) |
 | **Board** | `dev/DEVELOPMENT-STATUS.md` — renderer on the fleet row, **RUN-2 promoted to Next item 1**, counts refreshed, NEEDS-RULING **41 → 0** |
 | **Test baseline** | `dev/workpackages/reference/TEST-BASELINE_2026-08-25.md` — api 1410, new renderer tree, and the backup-worker env block completed |
 | **Banked frames** | `dev/workpackages/reference/wpivgs09-draft-frames/` — two frames **out of the composed draft**, with a README and the WP62-L7 caveat |
@@ -988,11 +1069,12 @@ pushes anything.**
 
 ### 12.2 The count
 
-**Expected commit count ahead of `origin/main`: `7` — the seven this package made. The block
+**Expected commit count ahead of `origin/main`: `8` — the eight this package made. The block
 refuses if the real count differs.**
 
 ```
-<this commit>  docs(wp-ivgs-09): correct the push state - WP-IVGS-08 IS pushed, and the board said otherwise
+<this commit>  fix(wp-ivgs-09): P2.39 drained on the GO, and P2.47 opened from what the drain showed
+3dc4517        docs(wp-ivgs-09): correct the push state - WP-IVGS-08 IS pushed, and the board said otherwise
 f04835e  docs(wp-ivgs-09): report, banked draft frames, corrected baseline, and the board
 f105044  feat(wp-ivgs-09): the Media Type dropdown lifts, gated on a draft existing
 e7a5970  fix(wp-ivgs-09): compose - the renderer, MAX_TOKENS per node, and a digest pin that never reached the repo
@@ -1006,7 +1088,7 @@ e7a5970  fix(wp-ivgs-09): compose - the renderer, MAX_TOKENS per node, and a dig
 cd /opt/ivgs
 git fetch origin main
 AHEAD=$(git rev-list --count origin/main..HEAD)
-EXPECT=7
+EXPECT=8
 if [ "$AHEAD" != "$EXPECT" ]; then
   echo "REFUSING: $AHEAD commits ahead, expected $EXPECT. Someone else committed, or a"
   echo "commit was amended. Re-read the log before pushing."

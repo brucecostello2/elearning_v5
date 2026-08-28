@@ -1840,7 +1840,40 @@ the fleet is no longer zero nodes (3 alive, 293,661 MB), and the "23" is a DEPTH
 a queue census — the counters read `urgent 22 / normal -2 / batch 0` against actual sorted
 sets of `urgent 18 / normal 2 / batch 0`. **A queue length of −2 is not a queue length.**
 
-**Status:** OPERATOR-ATTENDED — WP-IVGS-09 Task 0(c) *(was: OPEN — new item, ruled in 2026-08-23. Nothing owns this today.)*
+**Status:** ✅ **CLOSED — DRAINED 2026-08-28 on the operator's GO** *(was: OPEN — new item, ruled in 2026-08-23. Nothing owns this today.)*
+
+**⛳ THE DRAIN, EXECUTED.** Disposition table approved as proposed (WP-IVGS-09 report §3.3),
+then run inside `ivgs-scheduler` using the scheduler's **own** `PriorityQueueManager.remove_job`
+so the disposition is what production does, not what a script thinks production does.
+
+| Group | Count | Method | Result |
+|---|---:|---|---|
+| Synthetic probes left by WP-IVGS-06/07 | 6 | `remove_job` | hash deleted, zset entry cleared |
+| Terminal jobs, hash still present | 2 | `remove_job` | cleared |
+| Terminal jobs, hash expired >72 h | 2 | **direct `zrem pq:queue:urgent`** — `remove_job` is a no-op without a hash (`:284`) | cleared |
+| Deleted projects, in the urgent zset | 10 | `remove_job` | cleared |
+| Deleted projects, in the NORMAL zset with `effective_priority=urgent` | 2 | **direct `zrem pq:queue:normal` + `del`** — `remove_job` would have `zrem`'d from `urgent` (a miss) and decremented `urgent` for a job that never joined it | cleared |
+| **Total** | **22** | | |
+
+```
+BEFORE  zcards = {urgent: 20, normal: 2, batch: 0}   depths = {urgent: 24, normal: -2, batch: 0}
+AFTER   zcards = {urgent:  0, normal: 0, batch: 0}   depths = {urgent:  6, normal: -2, batch: 0}
+RESET   zcards = {urgent:  0, normal: 0, batch: 0}   depths = {urgent:  0, normal:  0, batch: 0}
+```
+
+⛔ **The middle line is the finding.** With the queue verifiably empty, the counter still read
+**`urgent: 6, normal: −2`**. `pq:depths` was reset to the measured `ZCARD` under the same
+ruling — **the only reconciliation of these two records that has ever happened, performed by
+hand.** The mechanisms that produced the drift are untouched and are now **P2.47**.
+
+Live afterwards: `GET /fleet` → `queue_depth {urgent: 0, normal: 0, batch: 0}`, 3/3 nodes alive,
+293,661 MB VRAM. `gpu_reservations` is empty, as it was throughout. Only `pq:depths` remains
+under `pq:*`, which is correct — it is the counter hash itself.
+
+⚠ **The list grew by two between §3.2 and the drain, and both fall inside an approved group.**
+`3f489575…` and `8cdb79b6…` are this package's own Task-2 test jobs. Their projects were deleted
+through the WP-59 flow and **their queue entries survived it** — which is P2.47 site 5,
+reproduced live rather than inferred. Disposition: *deleted projects*, as approved.
 Measured live on node-01, 2026-08-23:
 
     $ docker exec ivgs-scheduler sh -lc 'curl -s localhost:8001/fleet'
@@ -2066,6 +2099,89 @@ happen to be nearby. If RUN-2 surfaces something new, it opens its own row.
 
 **Depends on:** RUN-2 existing (Next item 1 on the board). **Blocks:** nothing — it is a
 close-out, not a prerequisite.
+
+## P2.47 — The scheduler's queue-depth counter is a second, unreconciled record of the queue, and five sites let it drift *(new, operator ruling 2026-08-28, opened by WP-IVGS-09 Task 0(c) after the P2.39 drain)*
+
+**Status:** OPEN — P2. **Opened by operator ruling on the GO**, alongside P2.39's drain.
+
+**⛔ THE EVIDENCE IS A NUMBER THAT CANNOT EXIST.** Measured on node-01, 2026-08-28, immediately
+before the drain:
+
+| | urgent | normal | batch |
+|---|---:|---:|---:|
+| `pq:depths` — the counter `/fleet` reports | **24** | **−2** | 0 |
+| `ZCARD pq:queue:<level>` — the actual queue | **20** | **2** | 0 |
+
+**A queue length of −2 is not a queue length.** `pq:depths` is a hash of counters maintained
+*alongside* the sorted sets rather than derived from them, and **nothing in the scheduler ever
+reconciles the two**.
+
+**And the drain proved it in the open.** After removing all 22 entries — queue verifiably empty,
+`ZCARD` 0/0/0 — the counter still read **`urgent: 6, normal: −2`**. It was reset to the measured
+`ZCARD` by hand, under the same ruling. That reset is the only reconciliation that has ever
+happened, and it was performed by a person.
+
+### The five sites, all in `ivgs-scheduler/priority_queue.py`
+
+**The three the ruling names:**
+
+1. **`apply_aging` never scans `urgent`** — `:211`, `for priority_level in ["batch", "normal"]`.
+   Its expired-job cleanup at `:217-220` `zrem`s an entry whose hash has gone **without**
+   `hincrby`-ing the depth down — and it cannot reach an `urgent` entry at all. **So an urgent
+   entry whose 72-hour job hash has expired is immortal and permanently uncounted.** Two of the
+   22 drained were exactly that, submitted 2026-08-25.
+2. **`resolve_priority` on an EXISTING job** — `:129-137`. It recomputes `effective_priority`
+   and `hset`s it into the hash **without moving the zset entry and without touching the
+   counter**. That is why two jobs sat in `pq:queue:normal` carrying
+   `effective_priority=urgent` with `aging_bumps=0`.
+3. **`remove_job` decrements a queue the job never joined** — `:288-292`. It `zrem`s from, and
+   `hincrby`s down, `DEPTHS[effective_priority]`. After (2) the entry is in a *different* zset,
+   so the `zrem` misses and the decrement lands on the wrong counter. **That is where
+   `normal = −2` comes from**, and it is why those two rows needed a direct
+   `zrem pq:queue:normal` in the drain rather than `remove_job`.
+
+**Two more the drain exposed, recorded rather than left for the next package to re-find:**
+
+4. **⛔ `get_queue_depths` HIDES the defect from the surface an operator would use to notice
+   it** — `:309-313`, `max(0, int(depths.get(...)))`. `/fleet` reported `normal: 0` while the
+   stored counter was `−2`. The clamp turns an impossible value into a plausible one. **A
+   negative counter is information; clamping it away is the fabricated-absence rule (WP-57/60)
+   inverted — reporting a plausible number about something that is broken.**
+5. **⛔ PROJECT DELETION NEVER PURGES THE SCHEDULER QUEUE, AND THIS IS THE SOURCE OF THE
+   ACCUMULATION.** `project_deletion.py:401-410` purges `ivgs:job_context`, `ivgs:media_tasks`,
+   `ivgs:media_join_ctx`, `ivgs:media_failures` and `ivgs:media_join_seen:*` — **all in Redis
+   db 0**. The priority queue lives in **db 1** (`SCHEDULER_REDIS_URL=redis://redis:6379/1`) and
+   is not touched. **Twelve of the 22 entries drained had no `render_jobs` row at all**: their
+   projects were deleted through the WP-59 flow and their queue entries were left behind.
+   Reproduced in this package — the two test projects created for Task 2 were deleted through
+   that flow and their queue entries were still present afterwards.
+
+### Why this is P2 and not P1
+
+Nothing is scheduled off this counter. `admission_control` and `load_balancer` read the fleet
+registry, not `pq:depths`; the queue has no dequeuer at all (P2.39, and AD-05 O-3 / P2.6 own
+that). **It is a reporting and hygiene defect, not a dispatch defect** — today. It becomes P1
+the moment anything schedules off the depth, which is exactly what a Temporal-era admission
+gate would want to do.
+
+### Scope, and one thing NOT to do
+
+**Do not "fix" this by making `get_queue_depths` return the `ZCARD`s.** That would make the
+surface honest and leave three write paths still corrupting a value nobody reads — the
+half-fix that removes the evidence. Either derive depth from the sorted sets *and delete
+`pq:depths`*, so there is one record instead of two, or repair all three write paths and add
+the reconciliation that has never existed. **One record is the better answer**, and it is the
+same reasoning that governs every other "two definitions, free to drift" row in this register.
+
+Site 5 is separable and is arguably the most valuable single fix: **project deletion should
+purge db 1 too**, which stops the accumulation at its source regardless of what happens to the
+counter.
+
+**Gate:** none — it is ordinary work. **Re-open trigger if deferred:** any change that makes a
+dispatch, admission or alerting decision from `pq:depths`.
+
+**Related:** **P2.39** (the drain, done, operator-attended), **P2.6** / AD-05 **O-3** (the GPU
+monitoring and heartbeat registry that would give the queue a dequeuer), **RC-J6**.
 
 # DEFERRED (conscious, with re-open trigger)
 
@@ -2550,7 +2666,7 @@ Temporal **1.29.7** live (operator measurement, 2026-08-28).
 | **RC-J3** | ⛔ **`ffmpeg_client.compose_scene`'s AUDIO-LESS branch has never worked.** `ffmpeg_client.py:548-554` appends the silent-audio input (`-f lavfi -i anullsrc=…`) **after** `-filter_complex` and `-map [video]` — i.e. in the output section — and ffmpeg requires every input before any output: *"Option map … cannot be applied to input url anullsrc… Error opening input files"*. Measured 2026-08-28 composing a scene with no audio layer | **FROZEN.** AD-05 §8 preserves the eight stage bodies **and their supporting services**, and the standing instruction is *"if a migration session finds itself editing stage internals, stop."* Invisible in normal operation because stage 5 always precedes stage 7. **Re-open trigger: any path that composes a scene without audio** — a preview, a partial re-render, or a motion-only job that skips TTS |
 | **RC-J4** | ⛔ **WP-IVGS-08's vLLM digest pin never reached the repository.** The `vllm/vllm-openai@${VLLM_IMAGE_DIGEST:?…}` pin — the thing that gated WP-IVGS-08's push — existed only in the untracked compose files ON nodes 02 and 04. `grep -c VLLM_IMAGE_DIGEST` on the tracked files was **0**. A redeploy from the tracked tree would silently have restored the floating `cu130-nightly` while the board still read "digest-pinned" | ✅ **CLOSED by WP-IVGS-09**: the node-side hunks are brought into `ivgs-infra/docker-compose.node02.yml` and `…node04.yml`. ⚠ **The class is not closed** — nothing compares a node's deployed compose file against the tracked one, and this is the second package to find drift by diffing them by hand |
 | **RC-J5** | ⛔ **An env-file edit that was never deployed, caught in the act.** `.env.node04:50` carries `IVGS_VLLM_MAX_TOKENS=2048`, written at **14:59:45** on 2026-08-28 — **33 minutes after** `ivgs-celery-node04` was created at 14:26:59. The container has never had the variable. It is untracked and node-local, so nothing in the repo recorded it, and it would have taken effect silently on the next unrelated recreate | ✅ **NEUTRALISED**, not deleted: a compose-level `environment:` entry beats `env_file:`, and node-04 now declares **4096** — the value it is actually running. The stale line is left in place and recorded rather than edited on a node ⚠ **Also recorded:** a stray `.env.node02` (mtime 2026-06-01) sits on node-03 and node-04, referenced by no compose file there |
-| **RC-J6** | ⛔ **The scheduler's queue-depth counter is not the queue.** `pq:depths` read `urgent 22 / normal −2 / batch 0` against sorted sets of `18 / 2 / 0`. **A queue length of −2 is not a queue length.** Three sites in `ivgs-scheduler/priority_queue.py` diverge: `apply_aging` never scans `urgent` (`:211`) and its expired-entry cleanup (`:217-220`) `zrem`s without decrementing; `resolve_priority` on an existing job (`:129-137`) rewrites `effective_priority` without moving the zset entry or touching the counter; `remove_job` (`:288-292`) then decrements a queue the job never joined. **And every queued job reads `base_priority=normal`** — not one of the "23 urgent requests" was submitted as urgent; they are anti-starvation promotions | **NOT FIXED.** P2.39's drain is operator-attended and gated on a GO. Draining empties the queue; these mechanisms refill it wrongly. **Flagged for a ruling, not opened as work without one** |
+| **RC-J6** | ✅ **RULED AND ROWED — see P2.47.** The operator opened a P2 on the GO of 2026-08-28, with all three named sites plus the two the drain exposed. ⛔ **The scheduler's queue-depth counter is not the queue.** `pq:depths` read `urgent 22 / normal −2 / batch 0` against sorted sets of `18 / 2 / 0`. **A queue length of −2 is not a queue length.** Three sites in `ivgs-scheduler/priority_queue.py` diverge: `apply_aging` never scans `urgent` (`:211`) and its expired-entry cleanup (`:217-220`) `zrem`s without decrementing; `resolve_priority` on an existing job (`:129-137`) rewrites `effective_priority` without moving the zset entry or touching the counter; `remove_job` (`:288-292`) then decrements a queue the job never joined. **And every queued job reads `base_priority=normal`** — not one of the "23 urgent requests" was submitted as urgent; they are anti-starvation promotions | ✅ **RULED. Opened as P2.47** — *"open the P2 row for the three §3.1 counter defects, all three sites named"* (operator, 2026-08-28). P2.47 names those three and **two more the drain exposed**: `get_queue_depths` clamps the negative to 0 so `/fleet` never showed it, and **project deletion never purges Redis db 1**, which is the source of the accumulation. Still NOT FIXED — rowed, scoped, and gated on nothing |
 | **RC-J7** | ⛔ **A test asserted set EQUALITY on `ModelEngine` under a name that promised subset.** `test_api_model_export.py::test_no_existing_value_was_removed` failed on migration 0044 ADDING `motion_graphics` — an addition, which is not what the test is named for | ✅ **CORRECTED in the same commit**, to the subset relation its name states. `test_domain_is_still_closed` in the same file is what keeps the enum from becoming free text; equality was doing a job nothing asked for |
 | **RC-J8** | ⚠ **`TEST-BASELINE_2026-08-25` §1's environment block is incomplete.** The `ivgs-backup-worker` suite is **4 failed**, not 4 passed, unless `IVGS_CELERY_BROKER_URL`, `IVGS_CELERY_RESULT_BACKEND` and `POSTGRES_DSN_SYNC` are supplied the way compose does — WP-IVGS-08 Task 2(d)'s import-time refusal doing its job | ✅ **The baseline document is corrected in the same commit** |
 | **RC-J9** | ⚠ **The latest DB dump is two migrations behind production.** `/mnt/backup/ivgs/db/2026-08-28/` restores to `alembic_version = 0041`; production is at `0044`. 0042/0043 were applied after the 02:00 backup. **A restore from the latest dump does not carry the current schema; `alembic upgrade` is a required recovery step** | Recorded, not acted on. Worth knowing before an incident rather than during one. Belongs with **DEF.1** (disaster recovery) |
