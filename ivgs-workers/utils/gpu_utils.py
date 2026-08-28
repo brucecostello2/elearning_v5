@@ -274,8 +274,16 @@ def _record_reservation_outcome(
     try:
         import urllib.request
 
+        # AN IP, NOT THE CONTAINER NAME -- found by the metric failing, not by
+        # reading code. `periodic_tasks.py:569` defaults to
+        # `http://pushgateway:9091`, correct THERE because Celery beat runs on
+        # node-01 and shares a compose network with the gateway. This function
+        # runs on every GPU node, and node-02/03/04 cannot resolve that name:
+        # measured `URLError: Temporary failure in name resolution` from
+        # node-04, while `http://192.168.1.90:9091` answers 200 from the same
+        # container. A worker-side metric needs a fleet-reachable address.
         gateway = os.getenv(
-            "PROMETHEUS_PUSHGATEWAY", "http://pushgateway:9091"
+            "PROMETHEUS_PUSHGATEWAY", "http://192.168.1.90:9091"
         ).rstrip("/")
         # Same exposition shape and gateway as the retention gauges
         # (`periodic_tasks.py:561`), so existing alerting can reach it without
