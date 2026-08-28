@@ -7,6 +7,8 @@ Base Pydantic v2 schemas used across all endpoints.
 """
 from typing import Generic, List, Optional, TypeVar
 
+import os
+
 from pydantic import BaseModel, ConfigDict, Field
 
 T = TypeVar("T")
@@ -75,7 +77,13 @@ class HealthResponse(BaseModel):
     """
 
     status: str = Field(description="Overall status: healthy | degraded | unhealthy")
-    version: str = Field(default="5.0.0")
+    # WP-IVGS-08 Task 3(a). Was `default="5.0.0"` -- the third place this API
+    # asserted a version it had no way of knowing (with `/health` and
+    # `openapi.json`, which disagreed with it and with each other). It now
+    # defaults to the build baked into the image, or "unknown".
+    version: str = Field(
+        default_factory=lambda: os.environ.get("IVGS_BUILD_REF", "unknown")
+    )
     database: ServiceStatus
     redis: ServiceStatus
     seaweedfs: ServiceStatus

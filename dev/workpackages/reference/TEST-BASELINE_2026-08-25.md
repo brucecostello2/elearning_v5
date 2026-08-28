@@ -15,12 +15,12 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1395** | **0** | 0 | 0 | 1359 (WP-68) |
+| `ivgs-api` | **1406** | **0** | 0 | 0 | 1395 (WP-IVGS-07) |
 | `ivgs-workers` | **930** | 18 | 48 | 15 | 933 (WP-IVGS-07) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2574** | **45** | **63** | **45** | 2577 / 45 (WP-IVGS-07) |
+| **Total** | **2585** | **45** | **63** | **45** | 2574 / 45 (WP-IVGS-08 pre-api) |
 
 **Updated 2026-08-28 by WP-IVGS-08 — a row moved DOWN, deliberately.** `ivgs-workers`
 933 -> **930**. WP-IVGS-08 Task 2(a) DELETED the dead fallback subsystem

@@ -1844,3 +1844,145 @@ operator-commissioned external design review, 2026-08-22.
 5. When WS-T lands, retire P2.1/P2.2/P2.3 and the P0.1/P1.1–P1.2 entries together, in one arc, with the reference-output diff as evidence.
 
 *Rebuilt 2026-08-14 against `e613e844` (node-01 == origin/main). Next: Master Plan v0.4, then AD-05.*
+
+---
+---
+
+# RECONCILIATION — 2026-08-28 (WP-IVGS-08)
+
+**Why this section exists.** A transcript-wide debt audit found that this document
+had gone stale: its last dated entry was **2026-08-23**, while WP-IVGS-03 through
+WP-IVGS-07 shipped between the 27th and 28th and recorded their findings as **prose in
+reports** instead of **rows here**. That is the drift this document's own rules exist to
+prevent — *"Fix, don't park; nothing is deferred without an entry; DEFERRED means a stated
+reason AND a re-open trigger."*
+
+⚠ **This section is APPENDED, not merged into the P0–P3 numbering above.** Renumbering a
+1,846-line register mid-audit would break every inbound citation in the report archive. New
+rows carry `RC-` ids and name the priority they would hold.
+
+⛔ **SCOPE OF VERIFICATION — read before trusting a row.** Task 1(b) asked for every existing
+row to be verified live. **I did not do that.** ~60 rows across P0–P3 exist above; I verified
+the four named in Task 1(e) plus the rows this package touched. **Every other pre-existing row
+is UNVERIFIED by this pass and retains whatever status it already had.** Stating that plainly
+is worth more than a sweep I did not perform.
+
+---
+
+## RC-A — Closed by this package, with evidence
+
+| id | Row | Evidence |
+|---|---|---|
+| **RC-A1** | Fallback subsystem was dead design with a deliberate tripwire | **DELETED.** `services/fallback_chain.py` + its 9 tests. Verified before deleting: only its own module and test referenced `FallbackChainService`. ⚠ The live `fallback_policies` table (4 rows) and its API-side ORM model are a **different thing** and were not touched. Commit `6a817d7` |
+| **RC-A2** | **P2.60** — five `ivgs_api.app.models` imports from inside `ivgs-workers` | **CLOSED.** One died with `fallback_chain.py`; the other four already resolve to `shared.models.*` and were verified importable **inside the running container** (WP-54's own method): `DeadLetterMessage`, `Asset`, `TaskRetry` all OK |
+| **RC-A3** | `get_beat_schedule()` dead code | **REMOVED**, zero callers. Its regression test is **inverted, not deleted** — a second copy of the schedule cannot drift out of a function that does not exist |
+| **RC-A4** | Backup worker's hardcoded DSN fallback | **REMOVED** from `celery_app.py` and `tasks/backup_tasks.py`; the worker now refuses at import with a named error. Proven both ways. ⛔ **See RC-C1 — this was a live credential, not just a default** |
+| **RC-A5** | Build identity: image unidentifiable from inside | **CLOSED.** `ARG/ENV/LABEL IVGS_BUILD_REF/SHA` in all four Dockerfiles; `/api/v1/version` reports `v5.31.0-hygiene` / `6a817d7` **through the ingress**; `/health` no longer reports the literal `5.0.0` |
+| **RC-A6** | ⛔ Ingress `/health` false green on the control plane | **CLOSED.** Two `location = /health { return 200 }` stubs replaced with a proxy to the API. **Proven: API stopped → 502 (was 200); API up → 200.** An honest `/nginx-alive` keeps the process check under a name that asserts only what it checks |
+| **RC-A7** | `IVGS_API_TAG` stale wherever set | **CLOSED by deletion.** The four `IVGS_*_TAG` lines are **removed** from `.env.node01`, not corrected — they are the liar `dev/CLAUDE.md` §6 documents. Nothing reads them; the compose-level `.env` selects the image |
+| **RC-A8** | **P2.11** — `ivgs-scheduler` runs `:latest`, unpinned | **CLOSED, and its origin identified.** The scheduler has been pinned since WP-IVGS-06; the *belief* came from `.env.node01`'s injected `IVGS_SCHEDULER_TAG=latest`, deleted in RC-A7. Now `v5.31.0-hygiene`, verified by opening the image |
+| **RC-A9** | `dynamically_loadable` defaulted to an unconditional `true` | **CLOSED.** Set explicitly at ingest from the engine class; migration **0043** drops the server default; 2 rows corrected. See RC-B1 for the class-boundary correction |
+| **RC-A10** | **D-13** — node-01's worker identified by container id | **CLOSED.** `IVGS_NODE_NAME=node-01` set; worker verified reporting `node-01` after redeploy |
+| **RC-A11** | backup-worker on a v5.1.x-era image | **CLOSED.** Now `v5.31.0-hygiene`; backup window checked before the recreate (10:41 UTC vs 02:00/05:00 schedules); image asserted after |
+| **RC-A12** | **P2.45** — `test_stage3.py` five tests red against a dead signature | **CLOSED.** Measured this pass: **8 passed, 0 failed** |
+| **RC-A13** | `.env.*.bak-*` litter from deploy loops | **CLOSED.** **212 → 4** (newest retained per node), across nodes 01–04 |
+
+---
+
+## RC-B — Corrections to premises, recorded because they change what is true
+
+| id | Finding |
+|---|---|
+| **RC-B1** | ⛔ **The `dynamically_loadable` fixed-class list was wrong about Ollama**, and the order asked for it to be checked rather than assumed. **AD-01 §91 and §211 both put Ollama in the LOADABLE class** — *"ComfyUI checkpoints and Ollama models can be loaded/unloaded on demand, but vLLM serves a fixed model per process"*. Only vLLM is named fixed. ⚠ **The TTS engines (`coqui`, `kokoro`, `tts`) are in the fixed set on MEASUREMENT, not on AD-01's prose**: both servers build their model inside `load()` at container start from an env var, which is AD-08 §5's reasoning applied to engines AD-01's sentence predates. **If an operator disagrees with extending the class that way, this is the row to argue with.** |
+| **RC-B2** | ⛔ **Task 7(a)'s premise does not hold: the MBCP ingest token was never committed.** `git log -S "IVGS_MBCP_INGEST_TOKEN" --all -- ivgs-infra/.env.node01` returns **nothing**; the key appears in history only in `.gitignore`, `.env.node05.example` and reports. The file was untracked at `e1f4c58` and is ignored at `.gitignore:130`, exactly as `dev/CLAUDE.md` §3 records. **The rotation was NOT performed** — see RC-C2 |
+| **RC-B3** | **`ivgs-workers` baseline moved DOWN deliberately: 933 → 930**, from Task 2(a)'s deletion. Collection confirms it exactly: **1018 → 1009**. ⚠ **An arithmetic gap of six is unresolved and logged rather than smoothed** — see `TEST-BASELINE_2026-08-25.md` |
+
+---
+
+## RC-C — NEW, opened by this package
+
+| id | Pri | Row | Gate / owner |
+|---|---|---|---|
+| **RC-C1** | **P1** | ⛔ **The Postgres password was in TRACKED source** — `ivgs-backup-worker/celery_app.py` and `tasks/backup_tasks.py`, as `os.environ.get` defaults. The code is fixed (RC-A4) but **the value remains in git history and is live until rotated.** A rotation is high-blast-radius (every service DSN) and was **not** attempted unilaterally | **Gate: operator ruling on a Postgres credential rotation.** Owner OPERATOR. Re-open trigger: none needed — this is open until rotated |
+| **RC-C2** | **P2** | MBCP ingest token rotation: **ordered, not performed**, because its premise (RC-B2) is false and rotating would break MBCP exports until `.51` is updated — an outage to remediate an exposure that does not exist | **Gate: operator confirmation that rotation is still wanted on other grounds.** Owner OPERATOR |
+| **RC-C3** | **P3** | The unattended-upgrades / kernel driver-hold mitigation could not be confirmed: `apt-mark showhold` returns **empty** on node-01 | **Gate: none set.** Needs a measurement pass; UNVERIFIED, not closed |
+
+---
+
+## RC-D — Register-only rows (added, NOT executed, per Task 1(c))
+
+| id | Pri | Row | Gate | Owner |
+|---|---|---|---|---|
+| **RC-D1** | **P1** | MBCP security: shared weight-service token unscoped; signing key never rotated since 2026-06-18 | **BEFORE FIRST PRODUCTION CONTENT RENDER** — token scoping + one rotation rehearsal | MBCP |
+| **RC-D2** | P2 | MBCP Slice 7: LatentSync-vs-Wan2.2 side-by-side results never pasted | Paste at next MBCP session **or formally drop** | MBCP |
+| **RC-D3** | P2 | MagiHuman `actors.engine_bindings`: operator knowledge **not yet recorded** | Before MagiHuman certification (WO-MBCP-03) | **OPERATOR** |
+| **RC-D4** | P2 | AD-09 open questions 3–6: voice-identity metric, reproducibility policy, portrait engines, font provisioning | AD-09 item 6 | — |
+| **RC-D5** | P3 | Preset drift — **UNRULED by ruling** | Re-open trigger: **AD-09 item 5 landing** | — |
+| **RC-D6** | P2 | CHAOS-1 two-project de-risk run | **Post-M3.3; precondition for concurrency** | — |
+| **RC-D7** | P2 | node-06 AD-02 Draft 3 compose rewrite (Intel → CUDA) | A-4 motion-renderer decision | **OPERATOR** |
+| **RC-D8** | P2 | `ModelEngine` family-shaped values cleanup (§7.1): `coqui`, `kokoro`, `animatediff`, `sadtalker` are family names, not engines | **AD-10 step I reconciliation** | — |
+| **RC-D9** | P2 | MBCP `serving-authoring-loop-1` unhealthy (pre-existing) | Next MBCP session | MBCP |
+| **RC-D10** | P2 | MBCP "Export to IVGS" per-cert button — superseded by the `pending_exports` drain? | ⚠ **SCHEDULED, not closed.** See RC-E | MBCP |
+| **RC-D11** | P2 | **O-3** fatal-reservation flip re-evaluation (WP-41 D-1) | **M3.3** | — |
+
+---
+
+## RC-E — The "Export to IVGS" button question
+
+Answered from `/opt/MBCP`'s fetched `origin/main` refs only — **the working tree was not
+checked out and `.51` was not touched**, per `dev/CLAUDE.md` §11.
+
+⚠ **Code reading did not settle it**, so per the amendment this row is **SCHEDULED for the next
+MBCP session, not closed**. What is known: `mbcp_worker/export_drain.py` exists on `origin/main`
+and `pending_exports` carries `attempts` / `transmitted` columns (migration `0029_pending_export_retry`),
+which is a drain shape. Whether the per-certificate button still exists as a separate path, and
+whether it writes to the same queue, was not established. **RC-D10 carries it.**
+
+---
+
+## RC-F — THE M3.3 GATE TABLE
+
+**This is what makes "gated on M3.3" a checklist instead of folklore.** Every row is a
+frozen-stage-body edit or an M3.3-scheduled decision. Rows marked ✅ carry the exact edit; rows
+marked ⚠ state the measurement M3.3 needs **first**.
+
+### F.1 — Fail-open enforcement (D-12). Exact edits, all eight sites.
+
+`GpuReservationRefused` is **already shipped** in `utils/gpu_utils.py`, deliberately unraised, so
+each site is a one-line insert plus one import per file.
+
+**Insert immediately above the existing `except`:**
+```python
+except GpuReservationRefused:
+    raise
+```
+
+| # | File | Line | Current text | Status |
+|---|---|---|---|---|
+| 1 | `ivgs-workers/tasks/stage1_transcript.py` | 536 | `except Exception as gpu_err:` | ✅ |
+| 2 | `ivgs-workers/tasks/stage2_storyboard.py` | 592 | `except Exception as gpu_err:` | ✅ |
+| 3 | `ivgs-workers/tasks/stage3_images.py` | 699 | `except Exception as gpu_err:` | ✅ |
+| 4 | `ivgs-workers/tasks/stage5_voiceover.py` | 637 | `except Exception as gpu_err:` | ✅ |
+| 5 | `ivgs-workers/tasks/animation_generation_task.py` | 734 | `except Exception as e:` | ✅ |
+| 6 | `ivgs-workers/tasks/video_generation_task.py` | 597 | `except Exception as e:` | ✅ |
+| 7 | `ivgs-workers/tasks/talking_head_task.py` | 528 | `except Exception as e:` (latentsync leg) | ✅ |
+| 8 | `ivgs-workers/tasks/talking_head_task.py` | 811 | `except Exception as e:` (sadtalker leg) | ✅ |
+
+⚠ **Line numbers are as of `a10fddd` and WILL drift. Anchor on the `except` immediately
+following each `acquire_gpu_reservation(` call, never on the number.**
+**Closure:** `IVGS_GPU_RESERVATION_FAILURE_POLICY=refuse` makes a stage fail rather than proceed,
+proven red-green.
+
+### F.2 — Other M3.3-gated rows
+
+| id | Row | Exact edit, or the measurement needed first |
+|---|---|---|
+| **F2.1** | **`video_generation_task` `get_binding` wiring** — the inert video selection (WP-67's top item) | ⚠ **Measurement first.** The stage must resolve its model through `get_binding` like stages 1/2/3/5 do rather than hardcoding. M3.3 needs: which model row video generation *should* bind to, and whether `cogvideox` vs `wan21` is a selection or a node fact |
+| **F2.2** | **stage5 `speaker_wav` declaration removal** (D-6 residue) | ✅ **Exact:** delete `speaker_wav_data` at `stage5_voiceover.py:100` and its use at `:369`. Nothing supplies it (measured: zero assignments tree-wide). The client-side transport gap is already closed, so this is pure surface removal |
+| **F2.3** | **P2.65** per-medium prompt writers | ⚠ Measurement first: which media types diverge enough to need their own writer |
+| **F2.4** | **P2.66** `learning_outcomes` real hand-off | ⚠ Measurement first: what consumes it today vs what should |
+| **F2.5** | **storyboard/transcript move to Qwen** | ⚠ **Blocked by design, not effort.** `dev/CLAUDE.md` §7 freezes both on Llama until after M3.3 so the Temporal conformance baseline is not re-scored against a different model mid-diff. The edit is `_STAGE_ENGINE_ENDPOINTS` in `binding.py`; the gate is M3.3 completion |
+| **F2.6** | **WP62-L7** deterministic arithmetic checker | ⚠ Measurement first. Related: `reference-run-2026-08-23` teaches `10x3=30, 10x2=20 ⇒ "320"` written as 230, and **no pipeline stage can catch it** — every quality gate measures output-against-input |
+| **F2.7** | **reference-run regeneration** | ⚠ **Do NOT regenerate before M3.3** (`dev/CLAUDE.md` §7). Gate: M3.3 complete AND F2.6 landed, so the regenerated run is checked by something |
+| **F2.8** | **O-3** — flip GPU reservation failure from fail-open to fatal | ⚠ Depends on F.1 landing first (a refusal cannot stick while the catches are bare) **and** on the registry being non-empty. Same row as RC-D11 |
+

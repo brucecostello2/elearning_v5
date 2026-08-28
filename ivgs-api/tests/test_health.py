@@ -1,3 +1,4 @@
+import os
 """
 Health check endpoint tests.
 
@@ -14,7 +15,17 @@ async def test_health_check_success(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert data["status"] in ("healthy", "degraded")
-    assert data["version"] == "5.0.0"
+    # WP-IVGS-08 Task 3(a). This asserted the string literal "5.0.0" that
+    # `health.py` hardcoded -- so the test PINNED THE DEFECT: the running image
+    # was v5.27.0-motion while this endpoint said 5.0.0, and this assertion
+    # would have failed had anyone made it truthful.
+    #
+    # `/health` now reports the build baked in at image build time. In a test
+    # process there is no build, so "unknown" is correct -- and "unknown" is a
+    # real answer, not a placeholder: it means the image was built without the
+    # build args, a state an operator must be able to see.
+    assert data["version"] == os.environ.get("IVGS_BUILD_REF", "unknown")
+    assert data["version"] != "5.0.0", "the hardcoded literal must not come back"
     assert "database" in data
     assert "redis" in data
     assert "seaweedfs" in data
@@ -61,5 +72,15 @@ async def test_root_endpoint(client: AsyncClient):
     assert response.status_code == 200
     data = response.json()
     assert data["name"] == "IVGS v5 API"
-    assert data["version"] == "5.0.0"
+    # WP-IVGS-08 Task 3(a). This asserted the string literal "5.0.0" that
+    # `health.py` hardcoded -- so the test PINNED THE DEFECT: the running image
+    # was v5.27.0-motion while this endpoint said 5.0.0, and this assertion
+    # would have failed had anyone made it truthful.
+    #
+    # `/health` now reports the build baked in at image build time. In a test
+    # process there is no build, so "unknown" is correct -- and "unknown" is a
+    # real answer, not a placeholder: it means the image was built without the
+    # build args, a state an operator must be able to see.
+    assert data["version"] == os.environ.get("IVGS_BUILD_REF", "unknown")
+    assert data["version"] != "5.0.0", "the hardcoded literal must not come back"
     assert data["status"] == "operational"

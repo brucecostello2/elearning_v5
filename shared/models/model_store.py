@@ -185,6 +185,56 @@ def _sa_enum(py_enum: type[enum.Enum], name: str) -> SAEnum:
 # models
 # ---------------------------------------------------------------------------
 
+#: Engines that serve ONE model fixed at process start (WP-IVGS-08 Task 4).
+#:
+#: AD-01 §211: "vLLM serves a fixed model per process and cannot hot-swap
+#: arbitrary large models at request time." ⛔ AD-01 §91 and §211 both put
+#: **Ollama in the LOADABLE class**, so it is deliberately absent here.
+#:
+#: The TTS engines are here on MEASUREMENT rather than AD-01's prose:
+#: `servers/coqui/server.py:52-56` builds `TTS(XTTS_MODEL)` inside `load()` at
+#: container start and `servers/kokoro/server.py:50` does the same. One model
+#: per process, fixed at init.
+FIXED_AT_INIT_ENGINES: frozenset[ModelEngine] = frozenset({
+    ModelEngine.VLLM,
+    ModelEngine.COQUI,
+    ModelEngine.KOKORO,
+    ModelEngine.TTS,
+})
+
+
+def is_dynamically_loadable(engine: "ModelEngine | str | None") -> bool:
+    """Whether ``engine`` can load/unload a model on demand (AD-01 §211)."""
+    if engine is None:
+        return True
+    if not isinstance(engine, ModelEngine):
+        try:
+            engine = ModelEngine(str(getattr(engine, "value", engine)))
+        except ValueError:
+            return True
+    return engine not in FIXED_AT_INIT_ENGINES
+
+
+def _default_dynamically_loadable(context) -> bool:
+    """Derive the flag from the row's own engine at INSERT time.
+
+    WP-IVGS-08 Task 4. Migration 0043 removed the SERVER default, which was an
+    unconditional `true` -- so vLLM models claimed to be hot-swappable and the
+    planner could pick one the node was not serving.
+
+    ⛔ THIS IS NOT THE OLD DEFAULT MOVED UP A LAYER. The server default answered
+    `true` for every row regardless of engine; this computes the correct value
+    from the engine the row is actually being written with. An explicit value
+    passed by a caller always wins.
+
+    It exists because the flag is a PROPERTY OF THE ENGINE, and two insert
+    paths (`ad01_ingest` and the manual registration route) would otherwise each
+    have to remember it -- exactly the kind of duplicated knowledge that drifts.
+    """
+    params = context.get_current_parameters()
+    return is_dynamically_loadable(params.get("engine"))
+
+
 class Model(Base):
     """AD-01.5.2 ``models`` — the curated registry row."""
 
@@ -220,7 +270,10 @@ class Model(Base):
     license: Mapped[str | None] = mapped_column(String(128), nullable=True)
     vram_gb: Mapped[float | None] = mapped_column(Numeric(6, 2), nullable=True)
     dynamically_loadable: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, server_default=text("true"),
+        # No `server_default`: migration 0043 dropped it so the DATABASE never
+        # invents this value. The Python-side default computes it from the
+        # engine -- see `_default_dynamically_loadable`.
+        Boolean, nullable=False, default=_default_dynamically_loadable,
     )
     default_params: Mapped[dict | None] = mapped_column(JSONVariant, nullable=True)
     # WP-53, migration 0029. AD-04 seam 1: the DECLARED geometry and sampler

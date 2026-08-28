@@ -55,7 +55,10 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="IVGS v5 API",
     description="Instructional Video Generation System — Version 5.0",
-    version="5.1.0",
+    # WP-IVGS-08 Task 3(a). The FOURTH place this API stated a version, and it
+    # disagreed with the other three: /health said 5.0.0, / said 5.0.0, this
+    # (openapi.json info.version) said 5.1.0, and the image was v5.27.0-motion.
+    version=os.environ.get("IVGS_BUILD_REF", "unknown"),
     lifespan=lifespan,
     docs_url="/api/v1/docs",
     redoc_url="/api/v1/redoc",
@@ -89,7 +92,8 @@ async def root():
     """Root endpoint — API information."""
     return {
         "name": "IVGS v5 API",
-        "version": "5.0.0",
+        # WP-IVGS-08 Task 3(a): the build, not a literal. See health.build_ref.
+        "version": os.environ.get("IVGS_BUILD_REF", "unknown"),
         "status": "operational",
         "docs": "/api/v1/docs",
     }
