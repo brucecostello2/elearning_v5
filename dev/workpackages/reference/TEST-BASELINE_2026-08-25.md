@@ -15,13 +15,29 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1410** | **0** | 0 | 0 | 1406 (WP-IVGS-08 baseline; +4, see below) |
+| `ivgs-api` | **1427** | **0** | 0 | 0 | 1410 + **17** (WP-IVGS-09b picker tests) |
 | `ivgs-workers` | **930** | 18 | 48 | 15 | **939** (corrected; WP-IVGS-07's 933 was wrong) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2613** | **45** | **65** | **45** | 2585 / 45 (WP-IVGS-08) |
+| **Total** | **2630** | **45** | **65** | **45** | 2613 / 45 (WP-IVGS-09) |
+
+**Updated 2026-08-28 by WP-IVGS-09b.** `ivgs-api` **1410 -> 1427**: seventeen tests in
+`test_wpivgs09b_scene_picker_media_type.py`, pinning the scene picker's media-type
+eligibility in BOTH directions. **No failure row moved in any tree.**
+
+⛔ **THE TEST DATABASE MUST BE AT MIGRATION `0044`.** `ivgs_reconciliation_test` was at
+`0043` and the new tests, which insert a `motion_graphics`-engine model row, died on
+
+    asyncpg.exceptions.InvalidTextRepresentationError:
+      invalid input value for enum model_engine: "motion_graphics"
+
+That is not a code defect and not a flake — it is this document's §1 environment being
+incomplete about the schema the suite needs. Bring it up with
+
+    cd /opt/ivgs/ivgs-api && DATABASE_URL="postgresql+asyncpg://…/ivgs_reconciliation_test" \
+      /opt/ivgs/.venv/bin/python -m alembic upgrade head
 
 **Updated 2026-08-28 by WP-IVGS-09.** Two rows move and one is new.
 

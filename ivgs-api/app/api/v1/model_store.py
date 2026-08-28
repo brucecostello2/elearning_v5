@@ -528,11 +528,22 @@ async def scene_selection_read(
     Changing Media Type changes the stage, which changes the candidate list --
     an animation scene offers animation models. The mapping is data
     (``selection_panel.MEDIA_TYPE_STAGE``), not a conditional in the component.
+
+    WP-IVGS-09b: an unmapped ``media_type`` is a **422 that names it**, not a
+    silent fall back to image generation. The fall back is what let
+    ``motion_graphics`` sit unmapped while the picker confidently offered FLUX
+    for a scene that draws arithmetic -- a wrong answer with nothing to notice.
     """
-    return await selection_panel.scene_panel(
-        db, project_id=project_id, scene_id=scene_id,
-        media_type=media_type, tier=tier,
-    )
+    try:
+        return await selection_panel.scene_panel(
+            db, project_id=project_id, scene_id=scene_id,
+            media_type=media_type, tier=tier,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={"error": {"code": "VALIDATION_ERROR", "message": str(exc)}},
+        ) from exc
 
 
 @selections_router.post("/clear", response_model=ClearSelectionOut)

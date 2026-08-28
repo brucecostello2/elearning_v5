@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field, replace
+from collections.abc import Iterable
 from typing import Any, Callable
 
 from shared.providers.contracts import ClientContract, SceneInput
@@ -129,6 +130,32 @@ def registered_families(stage: str | None = None) -> tuple[str, ...]:
 def contract_for(stage: str, engine: str, family: str) -> ClientContract | None:
     spec = _REGISTRY.get((stage, engine, family))
     return spec.contract if spec else None
+
+
+def engines_for_families(stage: str, families: Iterable[str]) -> frozenset[str]:
+    """The engine keys that serve ``families`` on ``stage``.
+
+    WP-IVGS-09b. A STAGE IS NOT A MEDIUM, and on ``animation_generation`` the
+    difference is load-bearing: ``wan_animate`` and ``animatediff`` serve the
+    ``animation`` medium on engine ``comfyui``, while ``maths_motion`` serves
+    ``motion_graphics`` on engine ``motion_graphics``. Anything that offers an
+    operator "the models for this stage" offers both, and one of them cannot
+    run the other's scene -- Wan2.2-Animate needs a person in a reference still
+    and refuses a personless one by name.
+
+    Derived from the registry rather than restated beside it. A second list of
+    "which engines are animation engines" is a second definition, and this
+    module exists to be the first one.
+
+    Returns an EMPTY set for a family nobody registered, and the caller must
+    decide what that means -- offering everything would be the wrong answer,
+    which is why this does not fall back.
+    """
+    wanted = set(families)
+    return frozenset(
+        engine for (s, engine, family) in _REGISTRY
+        if s == stage and family in wanted
+    )
 
 
 def family_of(binding: Any) -> str:

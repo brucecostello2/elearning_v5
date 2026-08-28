@@ -496,7 +496,10 @@ class StageBindingOut(BaseModel):
 
     stage: ModelStage
     tier: ModelTier
-    #: "selection" | "preset" | "auto" | "default" | "none"
+    #: "selection" | "preset" | "auto" | "default" | "only_candidate" | "none"
+    #: `only_candidate` is WP-IVGS-09b: a medium that shares a stage may have no
+    #: `is_default` of its own, and when it has exactly one servable model that
+    #: model is what will run. Distinct from `default` because nobody chose it.
     provenance: str
     provenance_label: str
     selection: SelectionOut | None = None

@@ -1069,7 +1069,11 @@ pushes anything.**
 
 ### 12.2 The count
 
-**Expected commit count ahead of `origin/main`: `8` — the eight this package made. The block
+✅ **SUPERSEDED — WP-IVGS-09's eight commits were pushed 2026-08-28 18:42 UTC.** `origin/main`
+is `4aed3b0`. The block below stands as the record of what was gated; **the live expected count
+is now `1`**, the WP-IVGS-09b picker fix, and the same block works with `EXPECT=1`.
+
+**Expected commit count when this was written: `8` — the eight this package made. The block
 refuses if the real count differs.**
 
 ```

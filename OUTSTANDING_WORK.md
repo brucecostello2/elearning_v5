@@ -2686,3 +2686,84 @@ no motion entry — a dispatch would have gone to a task nobody serves. Added
 `_assert_registry_is_not_vacuous` exists for this class of miss and did not catch it, because
 the registry was not vacuous — it was merely incomplete. **Named here rather than quietly
 fixed.**
+
+
+---
+
+## RC-K — WP-IVGS-09b: the scene model picker offered no motion-graphics model (2026-08-28)
+
+**Reported live during RUN-2, from the GUI.** *"A scene switched to media type motion_graphics
+offers NO model. The picker keeps 'image generation' and 'change model' lists nothing, despite
+maths-motion being approved+enabled."*
+
+### K.1 What the picker asks, and what it got
+
+The request is `useModelSelections.useSceneSelection` (`ivgs-frontend/src/hooks/useModelSelections.ts:127-132`):
+
+    GET /api/v1/projects/{pid}/model-selections/scene/{sid}?media_type=<medium>&tier=production
+
+Measured through **nginx over https — the browser's own route**, before any change:
+
+| media_type | stage returned | candidates |
+|---|---|---|
+| image | `image_generation` | flux1-schnell, FLUX.1-dev |
+| video_clip | `video_generation` | CogVideoX-5b, Wan2.2-T2V |
+| animation | `animation_generation` | wan2.2-animate, AnimateDiff-SD15, **maths-motion**, MimicMotion, Wan2.2-Animate |
+| **motion_graphics** | ⛔ **`image_generation`** | ⛔ **flux1-schnell, FLUX.1-dev** |
+
+### K.2 Which side dropped it — **the API, and the frontend was innocent**
+
+| id | Finding | Site |
+|---|---|---|
+| **RC-K1** | ⛔ **`MEDIA_TYPE_STAGE` had three entries and the lookup defaulted.** `motion_graphics` was absent, and `MEDIA_TYPE_STAGE.get(media_type or "image", ModelStage.IMAGE_GENERATION)` silently made it an image. **The default is what made it silent** — nothing failed, nothing warned, and the picker confidently offered FLUX for a scene that draws arithmetic | `ivgs-api/app/services/selection_panel.py:319-323` (the map) and `:335` (the defaulting lookup) |
+| **RC-K2** | ✅ **The frontend passes the medium correctly and filters nothing.** `SceneEditModal.tsx:751-755` sends the draft medium; `ModelPicker.tsx:133` renders every candidate the server sends. **There is no frontend map and no frontend filter** — the whole of the eligibility decision is server-side | measured, not inferred |
+| **RC-K3** | ⛔ **The mirror defect, found by the same measurement and live before this package: the `animation` picker listed `maths-motion` as SELECTABLE.** `_candidates_for` filtered on `(stage, tier)` with **no family dimension**, and `animation` and `motion_graphics` share `animation_generation` in MBCP's taxonomy. Wan2.2-Animate reenacts a person and refuses a personless still by name; a template renderer cannot animate a person. Each medium was being offered the other's model | `ivgs-api/app/services/selection_panel.py:109-117` |
+| **RC-K4** | ⛔ **THE HALF THAT WAS STILL WRONG AFTER THE CANDIDATE FILTER LANDED.** With candidates narrowed but `resolve_binding` left stage-wide, a `motion_graphics` scene with no selection of its own resolved to **`wan2.2-animate`** — the panel offered exactly one model and announced underneath it that the scene was bound to one that cannot render it. `is_default` is one flag per stage and on `animation_generation` it belongs to the animation medium | `ivgs-api/app/services/selection_panel.py`, the stage-default fallback |
+
+### K.3 The fix
+
+**A STAGE IS NOT A MEDIUM.** Both halves keyed on `(stage, family)`:
+
+* `MEDIA_TYPE_STAGE` gains `motion_graphics -> ANIMATION_GENERATION`, and the defaulting lookup
+  becomes `stage_for_media_type()`, which **refuses an unmapped medium by name** (422). A test
+  asserts every value of the `MediaType` enum is mapped, so this gap cannot reopen silently.
+* `MEDIA_TYPE_FAMILIES` names the families each medium may use, **only for the media types that
+  share a stage**. `talking_head`, `video_generation` and `voiceover_tts` also serve several
+  families but each serves one medium, so they are untouched and still get every model on their
+  stage.
+* The engine set is **derived from the WP-67 client registry**
+  (`client_registry.engines_for_families`, new), not restated beside it — a second list of
+  "which engines are animation engines" is a second definition, free to drift.
+* `resolve_binding` takes the same engine set for its **default** lookup only. It does **not**
+  narrow the two selection lookups: a row an operator wrote is theirs, and if it points
+  somewhere the medium cannot use, the existing warning machinery surfaces it rather than a
+  filter making their choice vanish.
+* New provenance **`only_candidate`** — deliberately not "default": a medium sharing a stage may
+  have no `is_default` of its own, and when exactly one servable model exists that model is what
+  will run. Two or more, or none, yields `none` and asks the operator to choose. Nobody chose
+  it, so it is not called a default.
+
+### K.4 Proved, before and after, on the same endpoint through the GUI path
+
+| media_type | before | after |
+|---|---|---|
+| image | 2 candidates, `image_generation` | **unchanged** |
+| video_clip | 2 candidates, `video_generation` | **unchanged** |
+| animation | **5**, incl. `maths-motion` selectable | **4** — `maths-motion` gone; `wan2.2-animate` still the default |
+| **motion_graphics** | `image_generation`, 2 FLUX rows | ✅ **`animation_generation`, 1 candidate: `maths-motion`, approved, selectable; `provenance=only_candidate`** |
+
+**And through the GUI's own action path, not a bypass** — the read the modal makes on open, then
+the `PUT` the *"Use this model"* button makes (`useModelSelections.select:69-75`): offered
+`maths-motion` → pressed → HTTP 200 with `scene_id` set → re-read shows `provenance=scene`. The
+animation medium was unchanged throughout.
+
+⚠ **Why WP-IVGS-09's acceptance did not catch it.** That harness created scenes and dispatched
+media **below the GUI** — it never opened the picker, because dispatch does not consult the model
+binding for this branch at all (`motion_graphics_task` resolves its endpoint directly). The
+render path was right and the *selection surface* was wrong, and only a person opening the modal
+would meet it. **A test that exercises the pipeline is not a test of the page.**
+
+⚠ **The test database was two migrations behind and this is where it showed.** `ivgs_reconciliation_test`
+was at `0043`; the new tests insert a `motion_graphics`-engine row and got
+`InvalidTextRepresentationError: invalid input value for enum model_engine`. Brought to `0044`.
+Recorded in `TEST-BASELINE`.

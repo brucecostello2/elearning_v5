@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import ModelPicker from "@/components/models/ModelPicker";
 import { useModelSelections, useSceneSelection } from "@/hooks/useModelSelections";
+import { mediaTypeLabel } from "@/lib/scenes";
 import type { ModelTier, SelectionCandidate } from "@/types/models";
 
 /**
@@ -135,7 +136,17 @@ export default function SceneModelPicker({
       <ModelPicker
         binding={binding}
         busy={busy || !canEdit}
-        title={`Model for this scene (${binding.stage})`}
+        /* WP-IVGS-09b. THE TITLE NAMES THE MEDIUM FIRST, and this is not
+           cosmetic: `binding.stage` alone is what the defect report quoted --
+           "the picker keeps image generation". It said `image_generation` for a
+           motion-graphics scene because the medium was unmapped server-side and
+           fell back. With that fixed the stage reads `animation_generation`,
+           which is CORRECT to AD-01 (motion graphics are an animation-stage
+           family) and would read as still-wrong to an operator who just chose
+           "Motion Graphics". Both facts are shown, medium first, because the
+           medium is what they picked and the stage is what the selection is
+           keyed by. */
+        title={`Model for this scene · ${mediaTypeLabel(mediaType)} (${binding.stage})`}
         onSelect={doSelect}
         onUseDefault={doClear}
         inheritedName={
@@ -145,6 +156,18 @@ export default function SceneModelPicker({
       <p className="text-xs text-gray-500 dark:text-gray-400">
         Medium, description and model are the three things this scene binds.
         Changing the Media Type above changes which models are offered here.
+        {mediaType === "motion_graphics" || mediaType === "animation" ? (
+          <>
+            {" "}
+            <span className="text-gray-600 dark:text-gray-300">
+              Animation and Motion Graphics share the{" "}
+              <code>animation_generation</code> stage and are offered{" "}
+              <strong>different</strong> models: Wan2.2-Animate reenacts a
+              person, and a motion-graphics template draws numbers. Neither can
+              do the other&apos;s job, so neither is listed for it.
+            </span>
+          </>
+        ) : null}
       </p>
     </div>
   );

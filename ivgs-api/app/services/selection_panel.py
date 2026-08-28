@@ -43,6 +43,12 @@ from app.services.weight_placement import (
     compute_client_status,
     compute_status,
 )
+# Importing this module POPULATES the registry: `client_registry.py:635` calls
+# `register_builtin_clients()` at module scope. `engines_for_families` is empty
+# without that, and `engines_for_media_type` RAISES on an empty result rather
+# than widening -- so if that call is ever removed, this fails loudly here
+# instead of quietly offering every engine on the stage again.
+from shared.providers.client_registry import engines_for_families
 from shared.models.model_store import (
     Model,
     ModelStage,
@@ -64,6 +70,15 @@ _PROVENANCE: dict[SelectionSource, tuple[str, str]] = {
 _DEFAULT_PROVENANCE = ("default", "the system default for this stage")
 _NONE_PROVENANCE = ("none", "no model is bound and no default exists")
 _SCENE_PROVENANCE = ("scene", "overridden for this scene")
+#: WP-IVGS-09b. A medium that shares a stage can have no `is_default` of its own
+#: -- the flag is one-per-stage and `animation_generation`'s belongs to Wan. When
+#: such a medium has exactly ONE servable model, that model is what will run, and
+#: saying so is more useful than "none". It is deliberately NOT called "default":
+#: nobody chose it, it is simply the only candidate, and if a second is approved
+#: this provenance disappears and the operator is asked to choose.
+_ONLY_CANDIDATE_PROVENANCE = (
+    "only_candidate", "the only model this medium can use"
+)
 
 #: Lifecycle states a selection may legitimately keep pointing at. DEPRECATED
 #: is servable (AD-01.5.1) but is worth a warning: it will stop being.
@@ -97,7 +112,10 @@ def _stage_list() -> list[ModelStage]:
 
 
 async def _candidates_for(
-    db: AsyncSession, stage: ModelStage, tier: ModelTier
+    db: AsyncSession,
+    stage: ModelStage,
+    tier: ModelTier,
+    engines: frozenset[str] | None = None,
 ) -> list[SelectionCandidateOut]:
     """Every model that could serve ``(stage, tier)``, usable or not.
 
@@ -105,6 +123,14 @@ async def _candidates_for(
     user who cannot see the model they expected has no way to learn why, which
     is how "the picker is broken" gets reported instead of "the weights are not
     fetched".
+
+    ``engines`` narrows that to the engines a MEDIUM can actually use, and is
+    the one exception to the sentence above -- WP-IVGS-09b. It is not an
+    availability filter: a Wan2.2-Animate row is not "unavailable" to a
+    motion-graphics scene, it is *not a candidate for it at all*, and listing it
+    greyed-out would invite the operator to wonder why. ``None`` means the
+    caller's stage serves one medium and no narrowing applies; the project-scope
+    caller passes ``None`` because it asks about a STAGE and has no medium.
     """
     stmt = (
         select(Model)
@@ -114,6 +140,8 @@ async def _candidates_for(
         )
         .order_by(Model.is_default.desc(), Model.name)
     )
+    if engines is not None:
+        stmt = stmt.where(Model.engine.in_(sorted(engines)))
     rows = (await db.execute(stmt)).scalars().unique().all()
 
     out: list[SelectionCandidateOut] = []
@@ -209,11 +237,25 @@ async def resolve_binding(
     stage: ModelStage,
     tier: ModelTier,
     scene_id: UUID | None = None,
+    engines: frozenset[str] | None = None,
 ) -> _Resolved:
     """What WILL run for this scope, and where the choice came from.
 
     Resolution order is dispatch's order, not a convenient one: scene-scoped
     selection, then project-scoped, then the stage's ``is_default`` model.
+
+    ``engines`` narrows the LAST of those three to the engines a medium can use
+    -- WP-IVGS-09b, and the fix is only half done without it. With the candidate
+    list corrected but the default left stage-wide, a ``motion_graphics`` scene
+    with no selection of its own resolved to ``wan2.2-animate``: the panel
+    offered exactly one model, ``maths-motion``, and announced underneath it that
+    the scene was currently bound to a model that cannot render it. Measured in
+    exactly that state before this change.
+
+    It does NOT narrow the two selection lookups. A row an operator wrote is
+    theirs, and if it points somewhere the medium cannot use, the right
+    behaviour is the warning machinery below -- surfaced, never silently
+    rewritten -- not a filter that makes their choice disappear.
     """
     selection = None
     provenance = None
@@ -266,15 +308,44 @@ async def resolve_binding(
         return _Resolved(provenance[0], provenance[1], selection, model, warning)
 
     # No row at any scope -> the stage default, which is a real binding.
-    default = (
-        await db.execute(
-            select(Model).where(
-                Model.stage == stage,
-                Model.tier.in_([tier, ModelTier.BOTH]),
-                Model.is_default.is_(True),
+    #
+    # WP-IVGS-09b: within the medium's engines, where the medium narrows them.
+    # `animation_generation` has one `is_default` row (`wan2.2-animate`) and it
+    # is the default for the ANIMATION medium, not for every medium the stage
+    # serves.
+    default_stmt = select(Model).where(
+        Model.stage == stage,
+        Model.tier.in_([tier, ModelTier.BOTH]),
+        Model.is_default.is_(True),
+    )
+    if engines is not None:
+        default_stmt = default_stmt.where(Model.engine.in_(sorted(engines)))
+    default = (await db.execute(default_stmt)).scalars().first()
+
+    if default is None and engines is not None:
+        # No `is_default` inside this medium. Rather than fall back to the
+        # stage's default -- which is another medium's model, and the whole
+        # defect -- take the one servable candidate if there is exactly ONE.
+        # Exactly one is not a preference; it is the only unambiguous answer,
+        # and it is the state a newly-approved single-model medium is in.
+        sole = (
+            await db.execute(
+                select(Model).where(
+                    Model.stage == stage,
+                    Model.tier.in_([tier, ModelTier.BOTH]),
+                    Model.engine.in_(sorted(engines)),
+                    Model.state.in_(list(_SERVABLE)),
+                    Model.enabled.is_(True),
+                ).order_by(Model.name)
             )
-        )
-    ).scalars().first()
+        ).scalars().unique().all()
+        if len(sole) == 1:
+            return _Resolved(*_ONLY_CANDIDATE_PROVENANCE, None, sole[0])
+        # Two or more, or none: there is no honest answer, and inventing one is
+        # what this whole change exists to stop. `_NONE_PROVENANCE` says so and
+        # the picker asks the operator to choose.
+        return _Resolved(*_NONE_PROVENANCE, None, None)
+
     if default is None:
         return _Resolved(*_NONE_PROVENANCE, None, None)
     return _Resolved(*_DEFAULT_PROVENANCE, None, default)
@@ -316,11 +387,94 @@ async def project_panel(
 #: offers models for the stage its OWN media type dispatches to, so changing
 #: Media Type changes the candidate list -- which is the behaviour the brief
 #: asks for, expressed as data rather than as a conditional in the component.
+#:
+#: ⛔ WP-IVGS-09b. `motion_graphics` WAS MISSING and the lookup below fell back
+#: to IMAGE_GENERATION, silently. Measured live 2026-08-28 through the GUI path:
+#: a scene switched to `motion_graphics` came back `stage="image_generation"`
+#: with the two FLUX rows as its candidates, so `maths-motion` -- approved,
+#: enabled, and the only thing that can render the scene -- could never be
+#: offered. The medium had a renderer, a task, a queue and a Model Store row,
+#: and the one table that decides what the picker asks about did not know it
+#: existed.
 MEDIA_TYPE_STAGE: dict[str, ModelStage] = {
     "image": ModelStage.IMAGE_GENERATION,
     "video_clip": ModelStage.VIDEO_GENERATION,
     "animation": ModelStage.ANIMATION_GENERATION,
+    # MBCP's taxonomy, not a second opinion: WP-67 registers `maths_motion` on
+    # `animation_generation` (`client_registry.py:439`) and the Model Store row
+    # is `stage=animation_generation`. Motion graphics ARE animation to AD-01;
+    # they are a different FAMILY of it. See MEDIA_TYPE_FAMILIES.
+    "motion_graphics": ModelStage.ANIMATION_GENERATION,
 }
+
+
+#: ⛔ A STAGE IS NOT A MEDIUM, and on `animation_generation` two media types
+#: share one stage.
+#:
+#: Without this, adding `motion_graphics` above would hand a motion-graphics
+#: scene the Wan2.2-Animate rows -- a model that needs a person in a reference
+#: still and refuses a personless one by name -- and would leave an `animation`
+#: scene being offered `maths-motion`, a template renderer that cannot animate a
+#: person. Measured before the fix: the `animation` picker already listed
+#: `maths-motion` as SELECTABLE. That half was live before this package and is
+#: closed by the same edit.
+#:
+#: ONLY the media types that share a stage appear here. `talking_head`,
+#: `video_generation` and `voiceover_tts` also serve several families, but each
+#: serves exactly ONE medium, so narrowing them would change a list nobody
+#: reported and is not this fix's business. A medium absent from this map gets
+#: every model on its stage, which is what it got before.
+MEDIA_TYPE_FAMILIES: dict[str, frozenset[str]] = {
+    "animation": frozenset({"wan_animate", "animatediff"}),
+    "motion_graphics": frozenset({"maths_motion"}),
+}
+
+
+def stage_for_media_type(media_type: str) -> ModelStage:
+    """The stage a medium dispatches to. Refuses an unknown one BY NAME.
+
+    ⛔ THE OLD FORM WAS `MEDIA_TYPE_STAGE.get(media_type, IMAGE_GENERATION)`,
+    and the default is what made this defect silent for the life of the feature:
+    a medium nobody had mapped did not fail, it quietly became an image, and the
+    picker confidently offered FLUX for a scene that draws arithmetic. A wrong
+    answer delivered with no warning is worse than no answer -- the operator has
+    nothing to notice.
+
+    `MediaType` is a closed enum and `SceneUpdate` validates against it, so a
+    value reaching here that this map does not know is a MAPPING GAP, not user
+    input. It says so.
+    """
+    try:
+        return MEDIA_TYPE_STAGE[media_type or "image"]
+    except KeyError:
+        raise ValueError(
+            f"media_type {media_type!r} has no stage mapping. Known: "
+            f"{', '.join(sorted(MEDIA_TYPE_STAGE))}. A media type that reaches "
+            f"this point without a mapping is a gap in MEDIA_TYPE_STAGE, not a "
+            f"bad request -- it was accepted by MediaType and by SceneUpdate."
+        ) from None
+
+
+def engines_for_media_type(media_type: str, stage: ModelStage) -> frozenset[str] | None:
+    """Which engines may be offered for this medium, or ``None`` for "all".
+
+    ``None`` and an empty set are DIFFERENT answers and neither is guessed:
+    ``None`` means this medium does not share its stage and needs no narrowing;
+    an empty set would mean the registry knows no engine for its families, which
+    is a registry gap and is raised rather than silently widened to everything.
+    """
+    families = MEDIA_TYPE_FAMILIES.get(media_type or "image")
+    if families is None:
+        return None
+    engines = engines_for_families(stage.value, families)
+    if not engines:
+        raise ValueError(
+            f"media_type {media_type!r} declares families {sorted(families)} on "
+            f"stage {stage.value!r} and the client registry has no engine for "
+            f"any of them. Refusing to fall back to every engine on the stage: "
+            f"that is how a scene gets offered a model that cannot render it."
+        )
+    return engines
 
 
 async def scene_panel(
@@ -332,9 +486,11 @@ async def scene_panel(
     tier: ModelTier,
 ) -> StageBindingOut:
     """Task 4's payload for one scene: its stage, its override, its inheritance."""
-    stage = MEDIA_TYPE_STAGE.get(media_type or "image", ModelStage.IMAGE_GENERATION)
+    stage = stage_for_media_type(media_type)
+    engines = engines_for_media_type(media_type, stage)
     resolved = await resolve_binding(
-        db, project_id=project_id, stage=stage, tier=tier, scene_id=scene_id
+        db, project_id=project_id, stage=stage, tier=tier, scene_id=scene_id,
+        engines=engines,
     )
     return StageBindingOut(
         stage=stage,
@@ -350,5 +506,5 @@ async def scene_panel(
         model_name=resolved.model.name if resolved.model else None,
         model_display_name=resolved.model.display_name if resolved.model else None,
         warning=resolved.warning,
-        candidates=await _candidates_for(db, stage, tier),
+        candidates=await _candidates_for(db, stage, tier, engines=engines),
     )

@@ -10,7 +10,7 @@ Everything below is from measurement taken this session, not from memory.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | api / workers / frontend **`v5.32.0-motion-live`**; **`ivgs-motion-renderer` `v5.32.0-motion-live`** ⟵ NEW; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api / frontend `v5.32.1-picker-medium`**; workers + `ivgs-motion-renderer` `v5.32.0-motion-live`; scheduler + backup-worker `v5.31.0-hygiene` | none |
 | **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.32.0-motion-live`**; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
 | **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.32.0-motion-live`** | ⓘ also runs two servers no IVGS package placed — RC-I5 |
 | **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.32.0-motion-live`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
@@ -30,8 +30,19 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-09 — the numbers reach the screen.** **8 commits held, none pushed.**
-The count is the gate in the report's §12 push block.
+**WP-IVGS-09b** — the picker defect RUN-2 found. **1 commit held, none pushed.**
+
+✅ **WP-IVGS-09's eight commits WERE PUSHED**, 2026-08-28 18:42 UTC — `origin/main` is now
+`4aed3b0`, measured from the remote-tracking ref and its reflog. So the held count is **1**, not
+9: this fix alone.
+
+⛔ **WP-IVGS-09b — RUN-2 BLOCKER, FIXED.** A scene switched to `motion_graphics` in the GUI
+offered no model: `selection_panel.MEDIA_TYPE_STAGE` had no entry for it and the lookup
+**silently defaulted to `image_generation`**. The same measurement found the mirror — the
+`animation` picker was already offering `maths-motion`, because candidate eligibility was keyed
+on stage alone and the two media share `animation_generation`. Both closed by keying on
+**(stage, family)**, with the engine set derived from the WP-67 registry. Proved before/after on
+the same endpoint through nginx **and** through the GUI's own "Use this model" `PUT`. §RC-K.
 
 ⛳ **Task 2 PASSED: a motion-graphics frame reached a DRAFT.** Draft asset
 `2ee07595-c143-49c1-b361-71c1b7b1c959` — H.264 1280x720 30 fps + AAC, 115,034 bytes. Two frames
@@ -54,17 +65,18 @@ records have ever been reconciled** — and rowed as **P2.47**.
 
 ## Last pushed
 
-**`8e3b829`** — `docs(wp-ivgs-08): correct the push gate to 8 and the board's held count`,
-pushed **2026-08-28 16:12 UTC**.
+**`4aed3b0`** — `fix(wp-ivgs-09): P2.39 drained on the GO, and P2.47 opened from what the drain
+showed`, pushed **2026-08-28 18:42 UTC**. All eight WP-IVGS-09 commits are on the remote, and
+so is the whole of WP-IVGS-08 before them.
 
-⛔ **THIS ROW WAS WRONG AND IS CORRECTED.** It read *"Last pushed `75762b8`"* with
-*"WP-IVGS-08 — 9 commits held, none pushed"* above it. Measured on node-01:
-`git rev-parse origin/main` → `8e3b829`, and `git reflog show origin/main` records **three
-`update by push` entries today** — `75762b8` at 09:28, `e11911c` at 10:15, `8e3b829` at 16:12.
-**WP-IVGS-07's close and all of WP-IVGS-08 are on the remote.** The two figures did not agree
-with each other either: `75762b8..8e3b829` is **12** commits, not 9.
+**Held now: WP-IVGS-09b's single commit, and nothing else.**
 
-**Held now: this package's 8, and nothing else.**
+⚠ **This row was wrong once and is worth remembering.** It read *"Last pushed `75762b8`"* with
+*"WP-IVGS-08 — 9 commits held, none pushed"* above it, while `origin/main` was already at
+`8e3b829` and its reflog showed three `update by push` entries that day. The two figures did not
+even agree with each other: `75762b8..8e3b829` is **12** commits, not 9. **A push count is
+measured from the remote-tracking ref and its reflog, never carried forward from the last
+package's board.**
 
 ---
 
@@ -74,7 +86,7 @@ with each other either: `75762b8..8e3b829` is **12** commits, not 9.
    item 1**: it is now the gate on the largest single block in the register — **20
    carried-v3.1 rows are VERIFY-AT-RUN-2**, plus P1.4h and P1.4q, with **P2.46** as the one
    bounded sweep afterwards
-2. **Push** — count-gated block in the WP-IVGS-09 report §12 (expected: **8**)
+2. **Push** — count-gated block in the WP-IVGS-09 report §12 (expected: **1**, WP-IVGS-09b)
 3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
    first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
 4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward
@@ -125,16 +137,20 @@ packages.
 
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1410** | **0** | 0 | 0 | 1406 + **4 from WP-IVGS-08's held commits**; WP-IVGS-09 added no API tests |
+| `ivgs-api` | **1427** | **0** | 0 | 0 | 1410 + **17** (WP-IVGS-09b picker tests) |
 | `ivgs-workers` | **930** | 18 | 48 | 15 | ✅ byte-identical |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |
 | `tests_system` | **193** | 12 | 15 | 30 | ✅ byte-identical |
 
-✅ **ZERO NEW FAILURES.** One test moved and was corrected in the same commit
-(`test_no_existing_value_was_removed` asserted set EQUALITY under a name that promised
-subset — RC-J7).
+✅ **ZERO NEW FAILURES**, twice — WP-IVGS-09 and WP-IVGS-09b. One test moved and was corrected
+in the same commit (`test_no_existing_value_was_removed` asserted set EQUALITY under a name that
+promised subset — RC-J7).
+
+⛔ **The test database must be at migration `0044`.** `ivgs_reconciliation_test` was at `0043`
+and the new picker tests died on `invalid input value for enum model_engine:
+"motion_graphics"`. Brought up; recorded in `TEST-BASELINE` §1.
 
 ---
 
