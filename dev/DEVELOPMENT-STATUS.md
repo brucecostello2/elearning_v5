@@ -25,7 +25,7 @@ established.**
 
 ## In flight
 
-**WP-IVGS-08 — the register becomes true again.** **7 commits held, none pushed.**
+**WP-IVGS-08 — the register becomes true again.** **9 commits held, none pushed.**
 
 Remaining before push:
 1. ⛔ **Two vLLM engines must reach healthy + `/v1/models` 200 + loaded-model VRAM.** Both are

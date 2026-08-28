@@ -463,7 +463,7 @@ serving IVGS nodes is a third transport, and it is not in AD-04.**
   N=$(git rev-list --count origin/main..HEAD)
   echo "commits ahead of origin/main: $N"
   git --no-pager log --oneline origin/main..HEAD
-  if [ "$N" -eq 7 ]; then
+  if [ "$N" -eq 9 ]; then
     git push origin main && echo "PUSHED"
   else
     echo "REFUSING: expected exactly 3, found $N. Inspect the list above."
