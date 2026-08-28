@@ -291,6 +291,20 @@ services:
   redis-exporter:
     image: oliver006/redis_exporter:v1.58.0
     container_name: ivgs-redis-exporter
+    # WP-IVGS-08 Task 8(e)(4). The IMAGE's own HEALTHCHECK is DISABLED here.
+    #
+    # `oliver006/redis_exporter` bakes `CMD wget --spider .../metrics` into its
+    # Dockerfile, and the image is DISTROLESS -- no `wget`, no `sh` (`docker
+    # exec ... sh` fails with "executable file not found in $PATH"). The check
+    # therefore failed on every interval regardless of the exporter's state,
+    # and the container read `unhealthy` while serving /metrics normally.
+    #
+    # ⛔ Deleting it from this file was not enough -- it is in the image, so it
+    # must be OVERRIDDEN. And the real health signal already exists and is
+    # green: Prometheus scrapes this exporter and its target is UP. A container
+    # healthcheck that contradicts a working scrape is worse than none.
+    healthcheck:
+      disable: true
     hostname: redis-exporter
     restart: unless-stopped
     environment:
@@ -314,12 +328,6 @@ services:
     depends_on:
       prometheus:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9121/metrics"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
     deploy:
       resources:
         limits:

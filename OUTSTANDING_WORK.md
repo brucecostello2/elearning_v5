@@ -2077,3 +2077,39 @@ the list** — the residue is §RC-H3 and the operator rules it.
 ⚠ **P2.12–P2.31 is 20 of the 41.** A single ruling on the carried-v3.1 block would cut this
 list in half, which is why they are grouped rather than listed one by one.
 
+
+---
+
+## RC-I — M3.3 runway, A-4 ruling, and fleet facts (2026-08-28)
+
+### I.1 M3.3 GATE TABLE — the ordered runway (rows, not work)
+
+**Verified independently before writing, as instructed:** `ivgs-workers/temporal_pipeline/` is
+**11 modules, 4,384 lines**; `temporalio` appears **0 times** in `ivgs-workers/requirements.txt`
+and `ivgs-api/requirements.txt` and is **not importable** in the deployed worker
+(`ModuleNotFoundError`); `192.168.1.96` `:7233` and `:8080` are **both open from node-01**.
+Temporal **1.29.7** live (operator measurement, 2026-08-28).
+
+| id | Row | Note |
+|---|---|---|
+| **M3.3-R1** | `temporalio` into `ivgs-workers` requirements + image | ⚠ Verify SDK/server compatibility against **1.29.7** `supportedClients` before pinning a version |
+| **M3.3-R2** | Temporal worker service + infra wiring: compose service, `TEMPORAL_ADDRESS=192.168.1.96:7233`, namespace decision (create `ivgs` vs default) | ⛔ **.96 admin access method is an OPERATOR INPUT** — node-01 root ssh is not authorized there |
+| **M3.3-R3** | Activities realized: stubs bind to engines / DB / SeaweedFS, honouring WP-31's **idempotency** requirement | ⛔ **This is the step the frozen-body edits execute under.** Every per-site edit row in **RC-F.1** cross-links here rather than duplicating |
+| **M3.3-R4** | Conformance replay: `temporal_pipeline/conformance.py` against the **RUN-2 banked golden run**; byte/shape verdict recorded | Depends on RUN-2 existing |
+| **M3.3-R5** | Cutover + fail-open flip + **O-3** re-evaluation | Re-sequences existing rows **RC-D11 / D-12** under this runway |
+
+### I.2 A-4 motion renderer — RULED
+
+| id | Row | Status |
+|---|---|---|
+| **RC-I1** | **A-4 renderer: APPROVED. Technology RULED = the Pillow reference service** — `shared/motion/raster.py` promoted behind a small HTTP service. Deterministic by construction, fonts pinned, **CPU-only**. ⛔ **Remotion explicitly NOT chosen**; its integration is the **L-3** swallow-register item | **RULED-AWAITING-EXECUTION.** Execution = the next package |
+| **RC-I2** | **RC-D7 premise CORRECTED.** The node-06 Intel→CUDA compose rewrite was gated on the A-4 decision. ⛔ **Its card-swap premise was falsified by the 2026-08-28 audit — RTX 5080 confirmed**, not the 96 GB card the row assumed. And the ruled renderer is **CPU-only**, so A-4 does not imply a CUDA workload on node-06 | **Re-gated: "if/when node-06 gains a CUDA workload."** NOT gated on A-4. Owner OPERATOR |
+| **RC-I3** | **L-1, L-2, L-6** close with A-4 execution — cross-reference only, no separate work | Closes with RC-I1 |
+
+### I.3 Fleet facts, recorded — no action
+
+| id | Fact |
+|---|---|
+| **RC-I4** | **Nodes 02–05 all rebooted 2026-08-28 between 02:31 and 03:16** — .94 02:31:48, .91 02:32:41, .93 02:34:31, .92 03:16:11. `/var/log/apt/history.log` is present on all four (the July unattended-upgrades precedent). ⚠ **I did not read the journal deeply enough to name the cause** — the correlation is recorded, the cause is not established. ✅ **node-04's 450 W cap HELD** (`power.limit = 450.00 W`, measured post-reboot). ✅ **node-05's vLLM is still on `sha256:3dbe092e…`**, the pinned digest |
+| **RC-I5** | ⛔ **node-03 runs two server containers no IVGS package placed**: `ivgs-cogvideox-server-node03` (`ivgs-workers:cogvideox-pilot-1`) and `ivgs-wan-animate-server-node03`, the latter pulled from **`192.168.1.51:5000/mbcp/comfyui-wan`**. **An MBCP-hosted Docker registry serving IVGS nodes is a seam fact** — it is a third transport alongside AD-04's two seams, and it is not in AD-04. Belongs on the record and in any future seam audit |
+

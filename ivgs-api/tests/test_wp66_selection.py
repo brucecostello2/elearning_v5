@@ -556,16 +556,38 @@ class TestThePresetPathIsRealAndNowRecordsItself:
 
 
 class TestTheAuditTrail:
-    def test_the_override_route_writes_an_audit_row(self):
+    def test_an_override_writes_an_audit_row_wherever_it_is_called_from(self):
         """A model change alters what the pipeline will PRODUCE, so it is an
-        audited event, not a preference."""
+        audited event, not a preference.
+
+        WP-IVGS-08 Task 5 MOVED THE WRITE, and this test moved with it -- from a
+        source-pin on the route to the invariant that actually matters.
+
+        The old form asserted `"MODEL_SELECTION_SET" in getsource(route)`. That
+        passed while `PresetService.apply_to_project` called `manual_override`
+        DIRECTLY and produced no audit row at all: the route was audited, the
+        service path was not, and a source-pin on the route could never see it.
+
+        The audit now lives in `manual_override`, the one function that performs
+        an operator-intent selection write -- so every caller is covered, and
+        the route must NOT duplicate it. Both halves are asserted here.
+        """
         import inspect
 
         from app.api.v1 import model_store
+        from app.services import model_selection
 
-        src = inspect.getsource(model_store.override)
-        assert "MODEL_SELECTION_SET" in src
-        assert "previous_provenance" in src
+        service_src = inspect.getsource(model_selection.manual_override)
+        assert "MODEL_SELECTION_SET" in service_src, (
+            "the audit must live at the write, or a non-route caller escapes it"
+        )
+        assert "previous_model" in service_src, (
+            "an audit that cannot say what it REPLACED cannot answer 'what changed?'"
+        )
+        route_src = inspect.getsource(model_store.override)
+        assert "MODEL_SELECTION_SET" not in route_src, (
+            "two writers would double-count and fork the payload definition"
+        )
 
     def test_the_clear_route_writes_one_too(self):
         import inspect

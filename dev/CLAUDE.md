@@ -25,7 +25,8 @@ on any node other than node-01 unless explicitly handed over.
 | node-07 | 192.168.1.96 | Temporal cluster ONLY (WP-31 Lane B). No queue, no GPU, no pipeline service - deliberately absent from `/api/v1/nodes` so it cannot enter the "N online" denominator (WP-24 D-1). UI :8080, gRPC :7233, compose at `/opt/temporal/`. |
 | .7 | 192.168.1.7 | TrueNAS. Backup target: /mnt/store/ivgs and /mnt/store/ivgs-archive |
 | .9 | 192.168.1.9 | RETIRED CIFS NAS. Do not write to it. |
-| .51 | 192.168.1.51 | MBCP management plane |
+| .51 | 192.168.1.51 | MBCP management plane. **Also hosts a Docker registry on :5000 that serves IVGS nodes** - node-03 pulls `192.168.1.51:5000/mbcp/comfyui-wan` (WP-IVGS-08 RC-I5). A third transport alongside AD-04's two seams, and not in AD-04. |
+| .96 | 192.168.1.96 | **Temporal 1.29.7 host.** gRPC :7233, UI :8080 - both reachable from node-01 (measured 2026-08-28). **node-01 root ssh is NOT authorized here**; the admin access method is an open operator input and gates M3.3-R2. |
 
 ## 3. Never touch
 
@@ -251,6 +252,11 @@ image_generation / video_generation / animation_generation all map to IVGS
 Stage 3; MBCP's `composition` collapses IVGS Stages 4, 7 and 8; MBCP's
 `translation` is not an IVGS pipeline stage at all. The AD-01 selection key
 (stage, tier) uses MBCP's taxonomy.
+
+## 12a. The development board
+
+`dev/DEVELOPMENT-STATUS.md` is updated as the **closing act of every package**, the same
+discipline as `TEST-BASELINE`. **A stale board is a defect, not an oversight.**
 
 ## 12. Reports
 
