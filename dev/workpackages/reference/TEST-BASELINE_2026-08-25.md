@@ -16,7 +16,7 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **1406** | **0** | 0 | 0 | 1395 (WP-IVGS-07) |
-| `ivgs-workers` | **930** | 18 | 48 | 15 | 933 (WP-IVGS-07) |
+| `ivgs-workers` | **930** | 18 | 48 | 15 | **939** (corrected; WP-IVGS-07's 933 was wrong) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
@@ -29,14 +29,25 @@ those 9 tests went with it. **Collection confirms the removal exactly: 1018 -> 1
 -9, nothing else.** Failed / skipped / errors are byte-identical at 18 / 48 / 15 — no failure
 row moved.
 
-⚠ **AN ARITHMETIC GAP I DID NOT RESOLVE, recorded rather than smoothed.** Collected fell by
-**9** but `passed` fell by only **3**. Failed, skipped and errors did not move, so three of the
-usual buckets cannot absorb the other six. I confirmed the deleted file contributed exactly 9
-PASSING tests (run on the pre-deletion tree), and that `test_wp61_schedules.py` collects 15
-both before and after, so the 1:1 replacement there is clean. **The residual six are
-unexplained.** This document already carries a history of its own totals not summing (see the
-correction below, carried from WP-52 through WP-60); this is another instance and is logged as
-one rather than papered over.
+✅ **THE ARITHMETIC GAP IS RESOLVED, and it was an error in a figure this document carried.**
+
+WP-IVGS-07 recorded `ivgs-workers` at **933 passed**. That number is **not reproducible**. The
+baseline commit `e11911c` re-run in today's environment gives **939 passed**, 18 failed, 48
+skipped, 15 errors. **939 -> 930 is exactly -9**, which matches the collected delta and the
+node-id diff below. There was never a six-test movement; the 933 was wrong.
+
+**Node-id diff, baseline `e11911c` vs `6a817d7` — every test that appeared or vanished:**
+
+*VANISHED (10), all by commit `6a817d7`:*
+- `test_fallback_chain.py` — 9 tests (`TestFallbackChainExecution` x6, `TestFallbackPolicies` x3),
+  deleted with the fallback subsystem under operator ruling
+- `test_wp61_schedules.py::TestOrphanScheduleIsOnWeeklyAndCannotDelete::test_get_beat_schedule_is_no_longer_a_SECOND_schedule`
+
+*APPEARED (1), same commit:*
+- `test_wp61_schedules.py::TestOrphanScheduleIsOnWeeklyAndCannotDelete::test_get_beat_schedule_IS_GONE_not_merely_delegating`
+  — the inversion of the row above, not a new test
+
+**-10 + 1 = -9 collected (1018 -> 1009), and -9 passed (939 -> 930). Both reconcile.**
 
 **Updated 2026-08-28 by WP-IVGS-07.** `ivgs-workers` 925 -> **933** (+8 dropped-param and
 release-idempotence tests), `ivgs-scheduler` 46 -> **52** (+6 node-pinning tests), `ivgs-api`

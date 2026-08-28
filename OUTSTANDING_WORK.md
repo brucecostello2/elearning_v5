@@ -1904,7 +1904,7 @@ is worth more than a sweep I did not perform.
 | id | Pri | Row | Gate / owner |
 |---|---|---|---|
 | **RC-C1** | **P1** | ⛔ **The Postgres password was in TRACKED source** — `ivgs-backup-worker/celery_app.py` and `tasks/backup_tasks.py`, as `os.environ.get` defaults. The code is fixed (RC-A4) but **the value remains in git history and is live until rotated.** A rotation is high-blast-radius (every service DSN) and was **not** attempted unilaterally | **Gate: operator ruling on a Postgres credential rotation.** Owner OPERATOR. Re-open trigger: none needed — this is open until rotated |
-| **RC-C2** | **P2** | MBCP ingest token rotation: **ordered, not performed**, because its premise (RC-B2) is false and rotating would break MBCP exports until `.51` is updated — an outage to remediate an exposure that does not exist | **Gate: operator confirmation that rotation is still wanted on other grounds.** Owner OPERATOR |
+| **RC-C2** | — | **CLOSED — NOT A DEFECT. Premise false.** The MBCP ingest token was **never tracked**: `git log -S "IVGS_MBCP_INGEST_TOKEN" --all -- ivgs-infra/.env.node01` returns nothing, and the file was untracked at `e1f4c58`. **Source of the false premise: the operator's July register.** Rotation was declined because it would have been an outage (MBCP's sender on `.51` fails until updated) to remediate a non-exposure. **Operator ruling 2026-08-28: measurement wins; declining was correct.** ⛔ **MBCP needs no token install** — the Task 7(a) amendment's staged-handoff row is withdrawn and deleted | Closed, no gate |
 | **RC-C3** | **P3** | The unattended-upgrades / kernel driver-hold mitigation could not be confirmed: `apt-mark showhold` returns **empty** on node-01 | **Gate: none set.** Needs a measurement pass; UNVERIFIED, not closed |
 
 ---
@@ -1985,4 +1985,36 @@ proven red-green.
 | **F2.6** | **WP62-L7** deterministic arithmetic checker | ⚠ Measurement first. Related: `reference-run-2026-08-23` teaches `10x3=30, 10x2=20 ⇒ "320"` written as 230, and **no pipeline stage can catch it** — every quality gate measures output-against-input |
 | **F2.7** | **reference-run regeneration** | ⚠ **Do NOT regenerate before M3.3** (`dev/CLAUDE.md` §7). Gate: M3.3 complete AND F2.6 landed, so the regenerated run is checked by something |
 | **F2.8** | **O-3** — flip GPU reservation failure from fail-open to fatal | ⚠ Depends on F.1 landing first (a refusal cannot stick while the catches are bare) **and** on the registry being non-empty. Same row as RC-D11 |
+
+
+---
+
+## RC-G — Second pass (completion order, 2026-08-28)
+
+### G.1 Closed with evidence
+
+| id | Row | Evidence |
+|---|---|---|
+| **RC-G1** | **P0.1** — `broker_visibility_timeout` below two tasks' hard time limits → duplicate GPU execution. **The register's last P0.** | ✅ **CLOSED.** Measured live in the running worker: `broker_visibility_timeout = 7200`, against `time_limit=3900` on `animation_generation_task.py:664` and `video_generation_task.py:545`. **7200 > 3900** — the duplicate-execution window the row describes is gone |
+| **RC-G2** | **P1.3** — three `release_gpu_reservation(reservation, config)` two-argument calls that raise `TypeError` | ✅ **CLOSED.** All three sites now carry only a WP-08 comment recording the old call; no two-arg invocation remains in the tree |
+| **RC-G3** | Task 5 — the service layer did not audit what it wrote | ✅ **CLOSED.** The audit moved to `manual_override` (the one function that performs an operator-intent selection write), so the preset path can no longer bypass it. The route's duplicate was removed — one writer, one definition. 4 tests |
+| **RC-G4** | **RC-C1** — Postgres password in tracked source | ✅ **CLOSED as rotated-and-dead.** See RC-G8 |
+
+### G.2 New, opened by the second pass
+
+| id | Pri | Row | Gate / owner |
+|---|---|---|---|
+| **RC-G5** | **P1** | ⛔ **Project deletion is audited NOWHERE** — not `services/project_deletion.py`, not the `DELETE /projects/{id}` route. Irreversible destruction with no trail | **Gate: before any production content exists to delete.** Owner: next hygiene package |
+| **RC-G6** | **P2** | **20 of the service layer's writers hold zero audit calls.** `manual_override` is now audited; the rest are not. Highest-risk by "changes what the pipeline produces, or destroys data": `project_deletion`, `rollback_service`, `retention_service`, `user_service`, `regeneration` | **Gate: none set.** Needs a ruling on which writes are audit-worthy — not all are (asset/checkpoint/DLQ writes are operational) |
+| **RC-G7** | **P2** | ⛔ **50 of the register's 71 open rows carry no gate, owner, or re-open trigger**, violating this document's own DEFERRED definition. 76 rows total, 5 marked closed in place | **Gate: the next register pass.** This is the structural finding of Task 1(b) |
+| **RC-G8** | — | **Postgres credential rotated 2026-08-28**, attended. ⚠ **The old value remains in git history and is dead because rotated**, not because history was cleaned — history rewrite was out of scope and is not proposed | **CLOSED** |
+
+### G.3 Register-only additions (operator addendum, execute nothing)
+
+| id | Pri | Row | Gate | Owner |
+|---|---|---|---|---|
+| **RC-G9** | **P1** | ⛔ **`magihuman` / `humo` / `wan22_s2v` engine values are INFERRED, never read.** WP-IVGS-03 derived them from MBCP's `engine == adapter_key` convention and recorded them as *not verified*. One read-only query on `.51` settles it: `select name, engine from models where name in ('davinci-magihuman','humo-17B')` | **BEFORE those models are certified** — a wrong guess is a second 422 and a second migration | **OPERATOR**, next MBCP session, **step 0, before WO-MBCP-01** |
+| **RC-G10** | **P1** | **AD-10 §7.2 mirror-rule amendment**, promised by the MBCP orchestrator and never received or ratified: *"no field with an enumerated domain without a mechanism keeping both sides in step; no MBCP adapter without its engine value landing in IVGS first."* ⓘ This is the rule whose absence produced WP-IVGS-03 and WP-IVGS-04 in the first place | **Before the next MBCP adapter is added** | MBCP session |
+| **RC-G11** | — | **Cross-reference: WP-IVGS-03 §5.4's intent is CLOSED by WP-IVGS-08 Task 3.** §5.4 wanted version identity and declined to build it because nothing in the image knew its own build. Evidence now: `GET /api/v1/version` through the ingress returns `{"build_ref":"v5.31.0-hygiene","commit_sha":"914277c"}`, and all four version sources agree | Closed — see RC-G12 for the residue |
+| **RC-G12** | P2 | The residue of the above: **`ExportBundleIn`'s `extra` policy on the DEPLOYED build was "undetermined"** in WP-IVGS-03 solely because the build was unidentifiable. It is now identifiable, so the row is **verifiable and must be verified** rather than carried | **Gate: next package.** Method: read `model_config` from the running image at a known build ref |
 

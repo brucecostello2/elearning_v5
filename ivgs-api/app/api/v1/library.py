@@ -530,6 +530,8 @@ async def apply_preset(
     try:
         result = await PresetService(db).apply_to_project(
             preset_id=body.preset_id, project_id=project_id,
+            # WP-IVGS-08 Task 5: so the audit row names who applied the preset.
+            actor_user_id=getattr(current_user, "id", None),
         )
     except LibraryError as e:
         raise _bad_request(e)

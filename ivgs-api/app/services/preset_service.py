@@ -170,6 +170,7 @@ class PresetService:
 
     async def apply_to_project(
         self, *, preset_id: UUID, project_id: UUID,
+        actor_user_id: UUID | None = None,
     ) -> dict[str, Any]:
         """Write a preset's concrete values into a project.
 
@@ -182,6 +183,7 @@ class PresetService:
         Returns an itemised result. ``applied`` and ``recorded_not_applied`` are
         separate lists on purpose; see the module docstring.
         """
+        self.actor_user_id = actor_user_id
         preset = await self.db.get(Preset, preset_id)
         if preset is None:
             raise LibraryError(f"Preset {preset_id} does not exist")
@@ -257,6 +259,8 @@ class PresetService:
                 # preset from an operator's own choice, and the only trace was
                 # this rationale string. Migration 0040 adds the value.
                 selected_by=SelectionSource.PRESET,
+                # WP-IVGS-08 Task 5: the acting user reaches the audit row.
+                actor_user_id=self.actor_user_id,
             )
             applied.append(f"model_selection {stage.value}/{tier.value}")
 

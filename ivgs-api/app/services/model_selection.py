@@ -29,6 +29,7 @@ from uuid import UUID
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.models.audit_log import AuditLog
 from app.models.gpu_node import GpuNode
 from shared.models.model_store import (
     CapabilityDimension,
@@ -375,6 +376,9 @@ async def manual_override(
     model_id: UUID,
     rationale: str,
     selected_by: SelectionSource = SelectionSource.MANUAL,
+    # WP-IVGS-08 Task 5. Nullable, because `audit_log.user_id` is: a preset
+    # applied without a user still gets a row, which beats no row at all.
+    actor_user_id: UUID | None = None,
 ) -> ProjectModelSelection:
     """AD-01.8.4 — operator/admin override.
 
@@ -415,7 +419,26 @@ async def manual_override(
         raise SelectionRefused(
             client.detail or client.label, reason=client.state,
         )
-    return await _replace_selection(
+    # WP-IVGS-08 Task 5. The previous binding is read BEFORE the replace, so
+    # the audit row can say what changed rather than only what it became.
+    previous = (
+        await session.execute(
+            select(ProjectModelSelection)
+            .where(
+                ProjectModelSelection.project_id == project_id,
+                ProjectModelSelection.stage == stage,
+                ProjectModelSelection.tier == tier,
+                ProjectModelSelection.scene_id == scene_id
+                if scene_id is not None
+                else ProjectModelSelection.scene_id.is_(None),
+            )
+            .order_by(ProjectModelSelection.created_at.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    previous_model = await session.get(Model, previous.model_id) if previous else None
+
+    row = await _replace_selection(
         session,
         project_id=project_id,
         scene_id=scene_id,
@@ -425,6 +448,47 @@ async def manual_override(
         selected_by=selected_by,
         rationale=rationale,
     )
+
+    # THE AUDIT LIVES AT THE WRITE, not at one caller.
+    #
+    # WP-66 measured that the selection ROUTE wrote `audit_log` and the service
+    # layer did not -- so applying a preset changed a project's model bindings
+    # with NO audit trail. Two callers reach this function
+    # (`api/v1/model_store.py:452`, `services/preset_service.py:246`) and only
+    # the route audited.
+    #
+    # WHY HERE AND NOT "route preset writes through the audited path": that
+    # would either make a service depend on a transport, or copy the route's
+    # audit block into the service -- duplicated knowledge of what a selection
+    # audit contains, free to drift. This is the one function that performs an
+    # OPERATOR-INTENT selection write, so auditing here means a third caller
+    # cannot forget. `_replace_selection` is deliberately NOT the site: it also
+    # serves automatic selection, which is not an audited operator act.
+    #
+    # `actor_user_id` is nullable because `audit_log.user_id` is: a preset
+    # applied without a user records a NULL actor, which is still far better
+    # than the no-row-at-all this replaces.
+    session.add(
+        AuditLog(
+            user_id=actor_user_id,
+            action_type="MODEL_SELECTION_SET",
+            resource_type="project",
+            resource_id=project_id,
+            before_payload={
+                "stage": stage.value,
+                "tier": tier.value,
+                "scene_id": str(scene_id) if scene_id else None,
+                "previous_model": previous_model.name if previous_model else None,
+            },
+            after_payload={
+                "model": model.name,
+                "model_id": str(model_id),
+                "selected_by": selected_by.value,
+                "rationale": rationale,
+            },
+        )
+    )
+    return row
 
 
 async def clear_selection(

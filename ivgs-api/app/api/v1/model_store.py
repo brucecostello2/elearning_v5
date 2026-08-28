@@ -460,6 +460,7 @@ async def override(
                 f"{body.rationale} (manual override by "
                 f"{current_user.username})"
             ),
+            actor_user_id=current_user.id,
         )
     except SelectionRefused as exc:
         # WP-66 Task 2. A 4xx with a message the user can act on, and a machine
@@ -478,30 +479,11 @@ async def override(
             status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)
         ) from exc
 
-    # A model change alters what the pipeline will PRODUCE, so it is an audited
-    # event, not a preference.
-    db.add(
-        AuditLog(
-            user_id=current_user.id,
-            action_type="MODEL_SELECTION_SET",
-            resource_type="project",
-            resource_id=project_id,
-            before_payload={
-                "stage": body.stage.value,
-                "tier": body.tier.value,
-                "scene_id": str(body.scene_id) if body.scene_id else None,
-                "previous_model": previous.model.name if previous.model else None,
-                "previous_provenance": previous.provenance,
-            },
-            after_payload={
-                "model_id": str(body.model_id),
-                "selection_id": str(row.id),
-                "selected_by": row.selected_by.value,
-                "rationale": row.rationale,
-                "scope": "scene" if body.scene_id else "project",
-            },
-        )
-    )
+    # WP-IVGS-08 Task 5. THE AUDIT MOVED DOWN, it did not disappear.
+    # `manual_override` now writes it (`services/model_selection.py`), because
+    # the preset path calls that function directly and bypassed this block
+    # entirely -- WP-66's finding. Keeping a copy here would double-audit every
+    # route write and leave two definitions of what a selection audit contains.
     await db.commit()
     await db.refresh(row)
     return SelectionOut.from_row(row)
