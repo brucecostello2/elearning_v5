@@ -30,8 +30,8 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-09 — the numbers reach the screen.** **`N` commits held, none pushed.**
-*(the exact count is the gate in the report's §10 push block)*
+**WP-IVGS-09 — the numbers reach the screen.** **7 commits held, none pushed.**
+The count is the gate in the report's §12 push block.
 
 ⛳ **Task 2 PASSED: a motion-graphics frame reached a DRAFT.** Draft asset
 `2ee07595-c143-49c1-b361-71c1b7b1c959` — H.264 1280x720 30 fps + AAC, 115,034 bytes. Two frames
@@ -49,9 +49,17 @@ named hold with no asset and no armed join.
 
 ## Last pushed
 
-**`75762b8`** — `docs(wp-ivgs-06): report`, 2026-08-28. Fleet tag at that point:
-`v5.30.0-placement`. **Everything since is held — WP-IVGS-08's nine commits and this
-package's.**
+**`8e3b829`** — `docs(wp-ivgs-08): correct the push gate to 8 and the board's held count`,
+pushed **2026-08-28 16:12 UTC**.
+
+⛔ **THIS ROW WAS WRONG AND IS CORRECTED.** It read *"Last pushed `75762b8`"* with
+*"WP-IVGS-08 — 9 commits held, none pushed"* above it. Measured on node-01:
+`git rev-parse origin/main` → `8e3b829`, and `git reflog show origin/main` records **three
+`update by push` entries today** — `75762b8` at 09:28, `e11911c` at 10:15, `8e3b829` at 16:12.
+**WP-IVGS-07's close and all of WP-IVGS-08 are on the remote.** The two figures did not agree
+with each other either: `75762b8..8e3b829` is **12** commits, not 9.
+
+**Held now: this package's 7, and nothing else.**
 
 ---
 
@@ -61,7 +69,7 @@ package's.**
    item 1**: it is now the gate on the largest single block in the register — **20
    carried-v3.1 rows are VERIFY-AT-RUN-2**, plus P1.4h and P1.4q, with **P2.46** as the one
    bounded sweep afterwards
-2. **Push** — count-gated block in the WP-IVGS-09 report §10
+2. **Push** — count-gated block in the WP-IVGS-09 report §12 (expected: **7**)
 3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
    first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
 4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward

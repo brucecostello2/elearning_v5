@@ -33,10 +33,10 @@ were not contacted.
 | **0(b)** three probes | ✅ **DONE.** P1.4n named-refusal measured; P1.5b **closed on live Prometheus evidence**; P2.1's lost "decided" text **found in three places and restored** |
 | **0(c)** the 23 stranded requests | ✅ **LISTED — and the premise moved twice.** ⛔ **STOPPED for the operator's GO before draining.** §3 |
 | **0(d)** WP-IVGS-08 §9 threads | ✅ **DONE.** Both suites re-baselined; the 0043 downgrade exercised on a scratch DB; `IVGS_VLLM_MAX_TOKENS` measured across four containers and declared at compose level per node |
-| **1** the renderer | (see §5) |
-| **2** acceptance | (see §6) |
-| **3** the dropdown | (see §7) |
-| **4** closures and the board | (see §8) |
+| **1** the renderer | ✅ **DONE.** `ivgs-motion-renderer` deployed on node-01, deterministic, weightless Model Store row registered. ⛔ **STOPPED for your APPROVE click.** §6 |
+| **2** acceptance | ✅ **PASSED.** A motion-graphics frame reached a **DRAFT**; negative control fires the named hold. §7 |
+| **3** the dropdown | ✅ **LIFTED**, gated on Task 2 passing. L-6 closes, P1.4r fixed in the same rebuild. §8 |
+| **4** closures and the board | ✅ **DONE.** RC-I1 EXECUTED, RC-I3 closes L-1/L-2/L-6, §RC-J added, board refreshed. §11 |
 
 ---
 
@@ -961,16 +961,52 @@ reads it later as a system defect.
 
 ⛔ **HELD. Nothing has been pushed.** This block is authored for the operator and **not run**.
 
-**Expected commit count on `main` ahead of `origin/main`: `EXPECTED_AHEAD` — the block refuses
-if the real count differs.** *(the literal is filled in by the commit that adds this line; see
-the value in the block below)*
+### ⛔ 12.1 THE BOARD I INHERITED WAS WRONG ABOUT WHAT IS PUSHED
+
+`dev/DEVELOPMENT-STATUS.md` said **"WP-IVGS-08 — 9 commits held, none pushed"** and
+**"Last pushed `75762b8`"**. Measured on node-01 before writing this block:
+
+```
+$ git rev-parse origin/main
+8e3b829188e8f61665aaf17467ac88ea396c7d04     <- WP-IVGS-08's LAST commit
+
+$ git reflog show origin/main --date=iso | head -3
+8e3b829  {2026-08-28 16:12:05 +0000}: update by push
+e11911c  {2026-08-28 10:15:22 +0000}: update by push
+75762b8  {2026-08-28 09:28:15 +0000}: update by push
+```
+
+⛔ **`origin/main` moved twice today, by push, before this session started.** WP-IVGS-07's
+close and all nine of WP-IVGS-08's commits are on the remote. The board's "none pushed" and its
+"last pushed" line were both stale by the time I read them — and `75762b8..8e3b829` is **12**
+commits, not the 9 the board claimed, so the two figures did not agree with each other either.
+
+**A stale board is a defect, not an oversight** (`dev/CLAUDE.md` §12a). Corrected on the board
+in the same commit as this report. I have not run `git fetch`, so this is measured from the
+local remote-tracking ref and its reflog; **the block below fetches and re-checks before it
+pushes anything.**
+
+### 12.2 The count
+
+**Expected commit count ahead of `origin/main`: `7` — the seven this package made. The block
+refuses if the real count differs.**
+
+```
+<this commit>  docs(wp-ivgs-09): correct the push state - WP-IVGS-08 IS pushed, and the board said otherwise
+f04835e  docs(wp-ivgs-09): report, banked draft frames, corrected baseline, and the board
+f105044  feat(wp-ivgs-09): the Media Type dropdown lifts, gated on a draft existing
+e7a5970  fix(wp-ivgs-09): compose - the renderer, MAX_TOKENS per node, and a digest pin that never reached the repo
+32e202f  feat(wp-ivgs-09): motion_graphics dispatches - a ninth body, and the hold becomes measured
+1b64bd3  feat(wp-ivgs-09): the A-4 renderer, executing RC-I1
+84fdfce  docs(wp-ivgs-09): the 41 NEEDS-RULING rows are ruled to zero
+```
 
 ```bash
 # node-01 (192.168.1.90). Read the count, compare, then push. Nothing else.
 cd /opt/ivgs
 git fetch origin main
 AHEAD=$(git rev-list --count origin/main..HEAD)
-EXPECT=EXPECTED_AHEAD
+EXPECT=7
 if [ "$AHEAD" != "$EXPECT" ]; then
   echo "REFUSING: $AHEAD commits ahead, expected $EXPECT. Someone else committed, or a"
   echo "commit was amended. Re-read the log before pushing."
