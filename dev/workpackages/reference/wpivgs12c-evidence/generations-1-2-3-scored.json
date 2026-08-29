@@ -1,0 +1,361 @@
+[
+  {
+    "gen": 1,
+    "scenes": 15,
+    "notes": 3,
+    "dropped": 1,
+    "sourced": 15,
+    "rewrites": 0,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "LO-2": [
+        5
+      ],
+      "LO-3": [
+        10
+      ]
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "transfer",
+      "practice",
+      "practice",
+      "practice",
+      "practice",
+      "practice"
+    ],
+    "media": {
+      "image": 4,
+      "motion_graphics": 2,
+      "video_clip": 9
+    },
+    "refusals": [
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "assessed_by": [
+          11,
+          12,
+          13,
+          14,
+          15
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          1,
+          5
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      }
+    ]
+  },
+  {
+    "gen": 2,
+    "scenes": 10,
+    "notes": 3,
+    "dropped": 1,
+    "sourced": 10,
+    "rewrites": 0,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        2,
+        3,
+        4,
+        6
+      ],
+      "LO-2": [
+        5
+      ],
+      "LO-3": [
+        10
+      ]
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "present",
+      "present",
+      "transfer"
+    ],
+    "media": {
+      "image": 4,
+      "motion_graphics": 1,
+      "video_clip": 5
+    },
+    "refusals": [
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "MERRILL_NO_APPLICATION"
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          3,
+          4,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          1,
+          5,
+          10
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          10
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      }
+    ]
+  },
+  {
+    "gen": 3,
+    "scenes": 17,
+    "notes": 3,
+    "dropped": 1,
+    "sourced": 17,
+    "rewrites": 0,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        3,
+        4,
+        7,
+        9
+      ],
+      "LO-2": [
+        5,
+        6
+      ],
+      "LO-3": [
+        10
+      ]
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "transfer",
+      "practice",
+      "practice",
+      "practice",
+      "guide",
+      "practice",
+      "practice",
+      "transfer"
+    ],
+    "media": {
+      "image": 7,
+      "motion_graphics": 10
+    },
+    "refusals": [
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES",
+      "OUTCOME_UNASSESSED",
+      "EVIDENCE_MAP_DISAGREES"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING",
+      "SEGMENTING"
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          15,
+          16,
+          17
+        ],
+        "assessed_by": [
+          11,
+          12,
+          13,
+          15,
+          16
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          1,
+          5,
+          6,
+          14
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      }
+    ]
+  }
+]

@@ -52,7 +52,12 @@ from shared.models.enums import (
 #: **-2, WP-IVGS-12b:** the model no longer emits outcome TEXT at all. It cites
 #: ids that CODE assigned from `projects.learning_outcomes`, closed by a
 #: per-request enum, and may only PROPOSE a refinement against one. RC-Q9.
-CONTRACT_VERSION = "design-contract-2"
+#:
+#: **-3, WP-IVGS-12c:** `evidence_map` is no longer satisfiable by an empty
+#: array. Every outcome id is a REQUIRED key (measured enforced) holding
+#: 1..`MAX_EVIDENCE_SCENES` scene indices, so "this outcome is assessed by
+#: nothing" stops being an emittable sentence. RC-Q9b.
+CONTRACT_VERSION = "design-contract-3"
 
 #: The one supported mechanism, measured. See the module docstring.
 MECHANISM_JSON_SCHEMA = "json_schema"
@@ -78,7 +83,45 @@ MECHANISM_STRUCTURED_OUTPUTS = "structured_outputs"
 MAX_SCENES = 40
 MAX_SOURCE_REFS_PER_SCENE = 8
 MAX_DROPPED_BEATS = 40
-MAX_EVIDENCE_SCENES = MAX_SCENES
+
+# ⛔ WP-IVGS-12c. `evidence_map[LO-x]` is bounded 1..4 and the LOWER bound is the
+# load-bearing one: RC-Q9b is the designer serving an outcome and assessing it
+# with nothing, and `[]` was the legal way to say so. It is no longer legal.
+#
+# MEASURED 2026-08-29 on the pinned engine before this was written — the whole
+# construct, under a prompt ORDERING every part of it broken, because a schema
+# the model had no wish to break proves nothing:
+#
+#   per-request REQUIRED keys  ✅ ENFORCED. Ordered to emit 'LO-1' only and to
+#                                 omit 'LO-2' and 'LO-3' entirely, it emitted
+#                                 all three.
+#   additionalProperties:false ✅ ENFORCED. Ordered to add 'LO-9', it did not.
+#   minItems+maxItems together ⚠  ENFORCED, AND IT CAN HANG — see below.
+#   `contains`                 ⛔ HTTP 400 `Grammar error: Unimplemented keys:
+#                                 ["contains"]`, exactly like `uniqueItems`.
+#
+# ⚠ THE HANG, AND WHY THE BOUND SHIPS ANYWAY. Ordered in the prompt to emit
+# `[]`, the decoder forbade the `]` and the model took the only other legal
+# continuation — WHITESPACE, 5,243 characters of it, to the token limit,
+# `finish_reason=length`. `maxItems` bounds the ELEMENTS; nothing bounds the
+# whitespace between `[` and the first one. RC-Q12's runaway in a shape
+# `maxItems` does not close.
+#
+# It ships because the corridor is only reachable when the model's next token
+# would be `]`, and two further probes measured that it does not go there under
+# honest pressure: told plainly that the lesson was demonstration-only and
+# assessed nothing, it filled the map (`{"LO-1":[0,1,2,3],"LO-2":[2],"LO-3":[4]}`)
+# rather than hang. And when it IS reached, WP-37's `finish_reason` check raises
+# `VLLMTruncatedResponseError` BEFORE the parse, naming the token limit — a loud
+# failure, not a silent one.
+#
+# ⛳ AND NOTE WHAT THE SAME PROBE PROVED ABOUT THE LIMIT OF ALL THIS: in that
+# demonstration-only run the model's own `design_notes` said the lesson "does
+# not include any practice or assessment items" WHILE its `evidence_map` named
+# scenes. Structure can force the claim to exist. It cannot make the claim true
+# — which is what `EVIDENCE_MAP_DISAGREES` is for, and past that, the reviewer.
+MIN_EVIDENCE_SCENES = 1
+MAX_EVIDENCE_SCENES = 4
 
 
 def _nullable(*types: str) -> List[str]:
@@ -346,24 +389,31 @@ def design_contract_schema(
             "items": {"type": "string"},
         }
 
+    # ⛔ WP-IVGS-12c. One key per outcome, ALL required, and each array bounded
+    # 1..MAX_EVIDENCE_SCENES. `[]` is now ungrammatical, so the model cannot
+    # emit "nothing assesses this" — RC-Q9b's dominant shape. Both constructs
+    # were measured on the pinned engine under a prompt ordering them broken;
+    # see the MIN/MAX_EVIDENCE_SCENES block above for the verdicts and for the
+    # whitespace hang the lower bound makes reachable.
+    evidence_array = {
+        "type": "array",
+        "minItems": MIN_EVIDENCE_SCENES,
+        "maxItems": MAX_EVIDENCE_SCENES,
+        "items": {"type": "integer", "minimum": 0},
+    }
     evidence = (
         {
             "type": "object",
-            "properties": {
-                oid: {
-                    "type": "array",
-                    "maxItems": MAX_EVIDENCE_SCENES,
-                    "items": {"type": "integer", "minimum": 0},
-                }
-                for oid in ids
-            },
+            "properties": {oid: dict(evidence_array) for oid in ids},
             "required": ids,
             "additionalProperties": False,
         }
         if ids
-        else {"type": "object", "additionalProperties": {
-            "type": "array", "maxItems": MAX_EVIDENCE_SCENES,
-            "items": {"type": "integer", "minimum": 0}}}
+        # No ids means the operator stated no outcomes, so there is nothing to
+        # key by and nothing to require. The gate says the outcomes were never
+        # stated; `design_review` carries the whole weight on this path, and
+        # says so by name.
+        else {"type": "object", "additionalProperties": dict(evidence_array)}
     )
 
     properties: Dict[str, Any] = {
@@ -397,9 +447,16 @@ def design_contract_schema(
         "evidence_map": {
             **evidence,
             "description": (
-                "outcome id -> the scene_index values that ASSESS it. Serving "
-                "is not evidence: Foundation §1 stage 2 is a separate question "
-                "and the gate asks it separately."
+                "outcome id -> the scene_index values that ASSESS it. One "
+                "entry per outcome and AT LEAST ONE SCENE EACH — there is no "
+                "way to write 'nothing assesses this', because a design in "
+                "which nothing does is not finished. Serving is not evidence: "
+                "Foundation §1 stage 2 is a separate question and the gate "
+                "asks it separately. Every scene you name here is CHECKED "
+                "against its own declarations: it must list this outcome in "
+                "its `serves_outcomes` and its `instructional_event` must be "
+                "`practice` or `assess`. Naming a scene that does neither is "
+                "refused at the gate."
             ),
         },
         "design_notes": {

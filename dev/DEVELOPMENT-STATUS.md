@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b, the Design Core)
+# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b + 12c, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -7,6 +7,10 @@ Everything below is from measurement taken this session, not from memory.
 ---
 
 ## Fleet — api + workers `v5.37.1-outcomes-by-code`, frontend `v5.37.0-design-core`
+
+⛔ **WP-IVGS-12c IS COMMITTED AND NOT LIVE.** The running images are contract-2
+and system prompt v2; 12c's `evidence_map` bound and promoted refusal are in the
+tree only. No deploy grant was in the order. See report §12c.7.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
@@ -33,8 +37,8 @@ acceptance needs the GPU fleet must not assume overnight availability.**
 
 ## In flight
 
-**WP-IVGS-12 + 12b — Phase 1 of the recovery plan, the DESIGN CORE.**
-**1 commit held, none pushed by me — the operator pushed `cead433` during the session.**
+**WP-IVGS-12 + 12b + 12c — Phase 1 of the recovery plan, the DESIGN CORE.**
+**1 commit held, none pushed by me.**
 
 ### 12b — outcomes cannot be paraphrased, artifacts cannot lie
 
@@ -49,12 +53,37 @@ pinned engine. **Three consecutive generations: all three outcomes verbatim
 every time, zero invented ids, zero drift.** Compare 12a: two of three, reworded,
 every time.
 
-⛔ **RC-Q9b — THE ACCEPTANCE STILL DOES NOT REACH ZERO, FOR A NEW REASON.**
-3, 2, 2 hard refusals, dominated by **`OUTCOME_UNASSESSED`**: the designer serves
-an outcome and never assesses it; generation 3 left LO-3 unserved. ⛳ **A better
-failure than RC-Q9 was** — the gate refuses for a real pedagogical reason against
-the operator's own words, not over a paraphrase — but a failure. **Rowed, not
-built:** no prompt-fitting against three runs of one script.
+✅ **RC-Q9b CLOSED STRUCTURALLY, WITH THE BELT PROMOTED (12c, on the operator's
+ruling).** `evidence_map` is schema-**required** per LO id and bounded **1..4**, so
+"nothing assesses this outcome" is no longer an emittable sentence; and
+`EVIDENCE_MAP_DISAGREES` is **promoted FLAG → HARD REFUSAL** — a scene named as
+evidence for LO-x must itself declare LO-x in `serves_outcomes` AND an
+`instructional_event` in {practice, assess}. **Every outcome served AND assessed
+is now structurally-or-loudly true.** Empty evidence arrays went from
+every-generation to **none in three**. ⛔ **No `dropped_outcomes` mechanism was
+built** — dropping an outcome is an operator act at the gate.
+
+⛔ **RC-Q9c — THE ACCEPTANCE STILL DOES NOT REACH ZERO, AND THE REASON MOVED A
+THIRD TIME.** 5, 6, 5 hard refusals — `EVIDENCE_MAP_DISAGREES` ×3 every
+generation plus `OUTCOME_UNASSESSED` on LO-2/LO-3. ⛳ **The count rose because the
+flag became a refusal, not because anything regressed:** 12b already recorded
+that flag firing "on nearly every outcome of every generation", and the
+underlying `OUTCOME_UNASSESSED` count barely moved (3,2,2 → 2,3,2). **The
+structure did not fix the pedagogy; it made the false claim about the pedagogy
+impossible to ignore.** Two residues, RC-P14-class, **rowed with the evidence and
+NOT tuned against** — the emission order was checked first (`scenes` before
+`evidence_map`, so this is not the model naming scenes it has not designed):
+
+  * **R1** — in gens 1 and 3 the designer wrote real `practice` scenes for LO-1
+    and then named `present` scenes as the evidence. The right answer was in its
+    own output and it pointed elsewhere.
+  * **R2** — LO-2 and LO-3 are assessed by no scene in any generation; every
+    practice scene serves LO-1 only.
+  * ⛳ **The degeneracy the ruling asked me to watch for arrived in generation
+    2:** no `practice` or `assess` scene at all, an `evidence_map` naming scenes
+    anyway, and `design_notes` reading *"providing opportunities for practice and
+    assessment."* Three statements by one author, two false, all three now
+    refused by name.
 
 ⛔ **RC-Q12 — A LIVE HAZARD IN WHAT 12a SHIPPED.** `minItems` with no maximum
 gives constrained decoding an infinite legal continuation and the model takes it
@@ -62,6 +91,18 @@ gives constrained decoding an infinite legal continuation and the model takes it
 on three arrays. **`maxItems` is enforced and now everywhere; `uniqueItems` is
 refused HTTP 400** — ⛳ note the contrast with RC-Q1: an unimplemented GRAMMAR
 key is refused loudly, an unknown BODY member is discarded silently.
+
+⛔ **AND 12c FOUND A SECOND SHAPE `maxItems` DOES NOT CLOSE.** With
+`minItems: 1, maxItems: 4` and the prompt ordering an empty array, the decoder
+forbids the `]` and the model takes the only other legal continuation —
+**WHITESPACE, 5,243 chars, `finish_reason=length`**. `maxItems` bounds the
+elements, nothing bounds the whitespace before the first one. The bound ships
+because two further probes measured the corridor unreachable under honest
+pressure (told the lesson assesses nothing, the model fills the map rather than
+hang), and **WP-37's `finish_reason` check raises before the parse when it is
+reached.** `contains` is a third unimplemented key: **HTTP 400**, like
+`uniqueItems`. **Per-request REQUIRED object keys and `additionalProperties:
+false` are both ENFORCED**, measured under a prompt ordering them broken.
 
 ✅ **RC-Q8 CLOSED.** Artifact identity = name + image digest, in a **sidecar**
 rather than the name — argued from every consumer, because `artifact_path_for`
@@ -95,25 +136,32 @@ real defects — a good trade.**
 
 ## Last pushed
 
-**`cead433`** — `feat(wp-ivgs-12): the Design Core…`, pushed by the operator during this session.
+**`68698db`** — `fix(wp-ivgs-12b): outcomes cannot be paraphrased, artifacts cannot lie`, pushed by the operator between 12b and 12c.
 Measured at the start of this package from the remote-tracking ref:
 `origin/main` and local `HEAD` were **equal**, so the held count was **0**, not
 the 1 the previous board claimed and not the 3 the WP-IVGS-11 report declared —
 the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 
-**Held now: ONE commit — `2b867b0`, WP-IVGS-12b. Nothing else.**
+**Held now: ONE commit — WP-IVGS-12c. Nothing else.**
 
-⚠ **AND I WROTE "TWO" FIRST.** WP-IVGS-12's `cead433` was held when 12b began
-and is not held now: `git reflog show origin/main` records `cead433 update by
-push`, so the operator pushed it mid-session and `origin/main` moved under me.
-**Measured from the remote-tracking ref at close, never carried forward from the
-commit you made** — the same discipline this section has had to relearn three
-times, applied before the report shipped rather than after.
+⚠ **AND THE LINE ABOVE THIS ONE WAS STALE WHEN 12c OPENED.** The board said
+"Held now: ONE commit — `2b867b0`, WP-IVGS-12b"; `git fetch` then
+`git log origin/main..HEAD` measured **0**, because the operator pushed 12b
+(as `68698db`) after that board was written. **Measured from the remote-tracking
+ref at close, never carried forward from the commit you made, and never trusted
+from the previous board** — the same discipline this section has now had to
+relearn four times, and the fourth time it was the board's own claim that was
+wrong rather than a report's.
 
 ⚠ **AN IMAGE TAG IS NOT A GIT TAG, and this package adds a second edge to that
 rule: A TAG IS NOT AN IMAGE EITHER (RC-Q8).** `v5.37.0-design-core` names the
 deployed images; the git tag of the same name is created below as the coherent
 set.
+
+⛔ **AND 12c ADDS A THIRD EDGE: `v5.37.2-evidence-by-structure` IS A GIT TAG WITH
+NO IMAGE BEHIND IT.** No deploy was authorized, so no image of that name was
+built and none is running. The tag names the source; the fleet names
+`v5.37.1-outcomes-by-code`. **Do not read the git tag as a deployment.**
 
 ---
 
@@ -123,30 +171,42 @@ set.
 |---|---|
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
+| ↳ same file, **§12c** | RC-Q9b closed by structure (`evidence_map` required 1..4 per id) with `EVIDENCE_MAP_DISAGREES` promoted to a hard refusal; required-keys and `additionalProperties` measured ENFORCED, `contains` HTTP 400, a new `minItems` whitespace hang found; **acceptance still NOT met — RC-Q9c**; ⛔ **NOT deployed and NOT published — no deploy grant was in the order** |
 
 ---
 
 ## Next, in order
 
-1. ⛔ **THE OPERATOR'S RULING ON RC-Q9b** — every outcome is now the operator's
-   own words (RC-Q9 closed), but the designer still serves outcomes it never
-   assesses. Structural options are in the row; **no prompt-fitting was done**
+1. ⛔ **THE 12c DEPLOY + PUBLISH, THEN THE OPERATOR'S WATCH.** 12c is committed
+   and **not live** — the fleet is still on `v5.37.1-outcomes-by-code`
+   (contract-2, system prompt v2), so a browser opened now shows 12b's
+   behaviour. Rebuild api + workers to `v5.37.2-evidence-by-structure`, deploy
+   nodes 01-04 under §6.1a, **then** run the prompt publisher — in that order,
+   because publishing v3 against contract-2 workers would tell the model the
+   schema forbids what it still permits. Block in report §12c.7
 2. ⛔ **THE OPERATOR'S WATCH** — a project of theirs through the v8 gate. ⚠ The
    rendered panel is described in the report from the live payload and the
    component source, **not from a browser**; how it LOOKS is unverified
-3. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
+3. ⛔ **THE RULING ON RC-Q9c** — the residue above. R1 and R2 may be one defect
+   or two, and telling them apart means changing something and re-running, which
+   is the tuning this package was told not to do
+4. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
    loud. Contaminates any regenerate-on-the-same-project gate reading
-4. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
+5. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
    transcript; the "is this a transcript at all" check does not exist
-5. **Recovery-plan Phase 3** (RC-C + RC-E's UX half), then Phase 4, 5, 6
-6. **RUN-2 / M3.3** — unchanged, and still gated on a correct run
+6. **Recovery-plan Phase 3** (RC-C + RC-E's UX half), then Phase 4, 5, 6
+7. **RUN-2 / M3.3** — unchanged, and still gated on a correct run
 
 ---
 
 ## Open operator decisions
 
-- ⛔ **RC-Q9b — outcomes served but never assessed**, three runs. RC-Q9 itself is
-  CLOSED by structure. Rowed, not built
+- ⛔ **RC-Q9c — the evidence CLAIM is now forced and still wrong.** RC-Q9 and
+  RC-Q9b are both CLOSED by structure. The designer names non-assessing scenes as
+  evidence (R1) and assesses LO-2/LO-3 with nothing (R2), three runs. **Rowed
+  with the evidence, not built** — RC-P14-class, and no prompt was fitted to it
+- ⛔ **THE 12c DEPLOY GRANT.** The code is committed and not live; the order was
+  silent on deploying and §1 says silence does not authorize one
 - ⛔ **RC-Q12 — the other nine per-stage LLM knobs** and every future schema: an
   unbounded array is a runaway, and `uniqueItems` is unavailable
 - ⛔ **RC-Q4 — per-scene presenter selection does not exist** and Foundation §4

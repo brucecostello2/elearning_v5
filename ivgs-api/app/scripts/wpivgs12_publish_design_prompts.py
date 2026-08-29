@@ -75,6 +75,13 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     "{{ o.id }} — {{ o.text }}",
     "outcome_notes",
     "proposed_refinement",
+    # ⛔ WP-IVGS-12c. The evidence rule became STRUCTURE (contract-3 requires a
+    # key per outcome holding ≥1 scene) and a HARD REFUSAL (a named scene must
+    # itself declare the outcome and a practice/assess event). A prompt that
+    # does not state the rule leaves the model judged on a contract nobody told
+    # it about, so these are gated like every other load-bearing phrase.
+    "EVERY SCENE YOU NAME IS READ BACK AGAINST ITS OWN TWO DECLARATIONS",
+    "`practice` or `assess`",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.

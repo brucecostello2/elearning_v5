@@ -1,0 +1,26 @@
+========================================================================
+P1/P2/P3  per-request required keys, additionalProperties, minItems+maxItems
+========================================================================
+
+[bounded 1..4] schema required=['LO-1', 'LO-2', 'LO-3'], addl=false, arrays minItems=1 maxItems=4 — prompt orders all of it broken
+   finish_reason=length in 71s  chars=5243
+   RAW HEAD: '{\n  "evidence_map": {\n    "LO-1": [\n   \t\n\t\n\t\n\t\n\t\n\t\n\t\n\n\n\n\n\n   \n\n\n\n\n\n\n   \n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n'
+   RAW TAIL: '\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n\t\n\n\n\n\n\n'
+
+
+[no minItems (control)] schema required=['LO-1', 'LO-2', 'LO-3'], addl=false, arrays minItems=None maxItems=4 — prompt orders all of it broken
+   200 in 2s  completion_tokens=47
+   evidence_map = {"LO-1": [], "LO-2": [], "LO-3": []}
+   P1 required keys present : True   (got ['LO-1', 'LO-2', 'LO-3'])
+   P2 invented 'LO-9' kept  : False   -> additionalProperties ENFORCED
+   P3 empty arrays emitted  : ['LO-1', 'LO-2', 'LO-3']   -> minItems NOT enforced
+   maxItems respected       : True
+   design_notes             : 'OMITTED'
+
+========================================================================
+P4  `contains` on an array
+========================================================================
+
+[contains] every scene must be `present`, per the prompt; the schema `contains` demands at least one `assess`
+   HTTP 400 REFUSED  {"error":{"message":"Grammar error: Unimplemented keys: [\"contains\"]","type":"BadRequestError","param":null,"code":400}}
+

@@ -1,0 +1,91 @@
+contract design-contract-3   outcome ids ['LO-1', 'LO-2', 'LO-3']
+system=9081 chars  user=42365 chars  script md5-len=2974
+evidence_map bound: {"type": "array", "minItems": 1, "maxItems": 4, "items": {"type": "integer", "minimum": 0}}
+
+--- generation 1: 207s  finish=stop  prompt_tokens=12457 completion_tokens=4102
+    scenes=15 notes=3 dropped_beats=1 sourced=15 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    evidence_map: {"LO-1": [2, 3, 4, 6], "LO-2": [5], "LO-3": [10]}
+    empty evidence arrays  : NONE
+    events: ['hook', 'present', 'present', 'present', 'guide', 'present', 'present', 'guide', 'present', 'transfer', 'practice', 'practice', 'practice', 'practice', 'practice']
+    media : {'image': 4, 'motion_graphics': 2, 'video_clip': 9}
+    ⛔ HARD REFUSALS = 5    flags = 8
+        REFUSE outcome LO-1   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   EVIDENCE_MAP_DISAGREES
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15] assessed=[11, 12, 13, 14, 15]
+        LO-2: served=[1, 5] assessed=[]
+        LO-3: served=[1] assessed=[]
+
+--- generation 2: 153s  finish=stop  prompt_tokens=12457 completion_tokens=3038
+    scenes=10 notes=3 dropped_beats=1 sourced=10 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    evidence_map: {"LO-1": [2, 3, 4, 6], "LO-2": [5], "LO-3": [10]}
+    empty evidence arrays  : NONE
+    events: ['hook', 'present', 'present', 'present', 'guide', 'present', 'present', 'present', 'present', 'transfer']
+    media : {'image': 4, 'motion_graphics': 1, 'video_clip': 5}
+    ⛔ HARD REFUSALS = 6    flags = 8
+        REFUSE outcome LO-1   OUTCOME_UNASSESSED
+        REFUSE outcome LO-1   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   EVIDENCE_MAP_DISAGREES
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   design         MERRILL_NO_APPLICATION
+        LO-1: served=[1, 2, 3, 4, 6, 7, 8, 9, 10] assessed=[]
+        LO-2: served=[1, 5, 10] assessed=[]
+        LO-3: served=[1, 10] assessed=[]
+
+--- generation 3: 233s  finish=stop  prompt_tokens=12457 completion_tokens=4608
+    scenes=17 notes=3 dropped_beats=1 sourced=17 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    evidence_map: {"LO-1": [3, 4, 7, 9], "LO-2": [5, 6], "LO-3": [10]}
+    empty evidence arrays  : NONE
+    events: ['hook', 'present', 'present', 'present', 'guide', 'present', 'present', 'guide', 'present', 'transfer', 'practice', 'practice', 'practice', 'guide', 'practice', 'practice', 'transfer']
+    media : {'image': 7, 'motion_graphics': 10}
+    ⛔ HARD REFUSALS = 5    flags = 7
+        REFUSE outcome LO-1   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   EVIDENCE_MAP_DISAGREES
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   EVIDENCE_MAP_DISAGREES
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        LO-1: served=[1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17] assessed=[11, 12, 13, 15, 16]
+        LO-2: served=[1, 5, 6, 14] assessed=[]
+        LO-3: served=[1] assessed=[]
+
+========================================================================
+ACCEPTANCE — the Task-7 criterion
+========================================================================
+  zero hard refusals, all three      : False  ([5, 6, 5])
+  no invented ids, all three         : True
+  every evidence entry non-empty     : True
+  every outcome served AND assessed  : False
+  dropped_beats per generation       : [1, 1, 1]
+  scenes per generation              : [15, 10, 17]

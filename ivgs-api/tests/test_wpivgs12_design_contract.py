@@ -217,13 +217,20 @@ class TestTheAlignmentTriad:
         assert rows[0].proposed_refinement == "Given two 2-digit numbers…"
 
     def test_a_clean_design_produces_no_refusals(self):
+        """⛔ RE-AIMED BY WP-IVGS-12c, NOT WEAKENED. This design used to pass
+        with NO `evidence_map` at all, and that is precisely RC-Q9b: the gate
+        called a design clean while nothing had decided what would prove the
+        outcome. Contract-3 makes the map required and 1..N; the map here is
+        what a clean design now has to carry, and it names the `assess` scene
+        that agrees with it."""
         from app.services.design_review import review, split
         scenes = [
             _scene(0, instructional_event="hook"),
             _scene(1, instructional_event="guide"),
             _scene(2, instructional_event="assess"),
         ]
-        findings, _ = review(scenes=scenes, outcomes=[OUTCOME])
+        findings, _ = review(scenes=scenes, outcomes=[OUTCOME],
+                             evidence_map={"LO-1": [2]})
         refusals, _ = split(findings)
         assert refusals == [], [f.code for f in refusals]
 

@@ -1,0 +1,26 @@
+========================================================================
+P3b  the SAME bounded 1..4 schema, a NEUTRAL prompt
+========================================================================
+
+[P3b] minItems=1 maxItems=4, nothing asks for an empty array
+   200 in 4s  completion_tokens=80
+   evidence_map = {"LO-1": [0, 2], "LO-2": [1], "LO-3": [3, 4]}
+
+========================================================================
+P3c  the PRODUCTION case: the model's honest answer IS empty
+========================================================================
+
+[P3c] minItems=1 maxItems=4, a lesson that genuinely assesses nothing
+   200 in 5s  completion_tokens=95
+   evidence_map = {"LO-1": [0, 1, 2, 3], "LO-2": [2], "LO-3": [4]}
+   design_notes = 'This lesson is a demonstration-only presentation of 2-digit multiplication concepts, with no interac'
+
+========================================================================
+P5  the alternative: a REQUIRED SCALAR integer, no array to leave empty
+========================================================================
+
+[P5] required scalar `assessed_by_scene`, same unassessable lesson
+   200 in 6s  completion_tokens=133
+   evidence_map = {"LO-1": {"assessed_by_scene": 1, "also_assessed_by": []}, "LO-2": {"assessed_by_scene": 0, "also_assessed_by": []}, "LO-3": {"assessed_by_scene": 0, "also_assessed_by": []}}
+   design_notes = 'This lesson is a demonstration only and does not include any practice or assessment items to evaluat'
+

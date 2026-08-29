@@ -17,6 +17,34 @@ opinion about it. The distinction is the whole reason the gate stayed usable
 through WP-IVGS-10's five hard refusals: a reviewer can act on "scene 7 declares
 no outcome" and can only argue with "scene 7 feels thin".
 
+⛔ WP-IVGS-12c: ONE CHECK WAS PROMOTED FROM FLAG TO REFUSAL, AND WHY IT QUALIFIES
+
+``EVIDENCE_MAP_DISAGREES`` was a flag. It is now a hard refusal, because it is
+the same KIND of thing as "scene 7 declares no outcome" and not the same kind of
+thing as "scene 7 feels thin": the designer names scene 5 as the evidence for
+LO-2, and the check reads scene 5's OWN two declarations — is LO-2 in its
+``serves_outcomes``, and is its ``instructional_event`` ``practice`` or
+``assess``? Both are closed enums the designer wrote itself. Nothing here is
+judged; two declarations by one author are compared and they either agree or
+they do not. That is the WP-IVGS-10 line, and this is on the objective side of
+it.
+
+It is promoted alongside a schema change: ``evidence_map`` now REQUIRES a key
+per outcome holding at least one scene index (contract-3, measured enforced), so
+"nothing assesses this outcome" is no longer an emittable sentence. Together the
+two make *every outcome is served and assessed* **structurally or loudly** true —
+the schema forces the claim to exist, this module refuses a false one.
+
+⛔ AND HERE IS EXACTLY WHAT THAT STILL CANNOT DO, stated because it is the
+residue and not a caveat to be discovered later. Neither the schema nor this
+module can force the named scene to GENUINELY assess. A designer that labels a
+recap ``assess`` and points ``evidence_map`` at it passes both checks. What
+changes is the SHAPE of the failure: RC-Q9b arrived as a missing map, which
+looks like a machine problem; it now arrives as a scene whose event label does
+not match its own narration, which looks like what it is — a wrong brief, in
+front of the reviewer, at the gate. **That judgment is the reviewer's, by
+design.** Foundation §7 gives it to them and this module does not take it back.
+
 ⚠ WHAT IS DELIBERATELY A FLAG THOUGH IT LOOKS CHECKABLE
 
 Beat coverage. Every character of the uploaded script should be inside some
@@ -93,6 +121,25 @@ def _sentences(text: str) -> int:
         return 0
     return len([s for s in text.replace("!", ".").replace("?", ".").split(".")
                 if s.strip()])
+
+
+def _indices(claimed: Any) -> List[int]:
+    """Scene indices out of an ``evidence_map`` entry, tolerantly.
+
+    A stored brief is JSONB and a model emission is a model emission, so ``"3"``
+    is possible and so is ``null`` inside the list. A non-numeric entry is
+    DROPPED rather than crashing the whole review: the gate exists to report on
+    a bad brief, and a gate that 500s on one is no gate.
+    """
+    if not isinstance(claimed, list):
+        return []
+    out: List[int] = []
+    for item in claimed:
+        try:
+            out.append(int(item))
+        except (TypeError, ValueError):
+            continue
+    return out
 
 
 def _scene_field(scene: Any, name: str, default: Any = None) -> Any:
@@ -295,23 +342,64 @@ def review(
                 "Foundation §1 stage 2 decides what would PROVE it.",
                 outcome_id=oid,
             ))
-        claimed = evidence_map.get(oid)
-        if isinstance(claimed, list):
-            phantom = [c for c in claimed if int(c) not in indices]
+        # ── the designer's evidence CLAIM, checked against its own scenes ──
+        raw_claim = evidence_map.get(oid)
+        claimed = _indices(raw_claim)
+        if not claimed:
+            # ⛳ CANNOT FIRE WHEN THE SCHEMA ARMED. contract-3 makes this key
+            # required and its array 1..N, so the model has no way to emit it.
+            # It fires on the paths where that guarantee does not reach: a
+            # project whose outcomes were never stated (the enum degrades to an
+            # open object), a brief written by an older contract, or a row that
+            # arrived by some route other than the capture observer. On those,
+            # THIS is the whole of the guarantee, and it says so out loud.
+            findings.append(Finding(
+                REFUSE, "EVIDENCE_MAP_NAMES_NOTHING",
+                "evidence_map names no scene as the evidence for this outcome. "
+                "Deciding what would PROVE an outcome is stage 2 of backward "
+                "design; a design that never decided it is not finished.",
+                outcome_id=oid, detail={"claimed": raw_claim},
+            ))
+        else:
+            phantom = [c for c in claimed if c not in indices]
             if phantom:
                 findings.append(Finding(
                     REFUSE, "EVIDENCE_MAP_PHANTOM_SCENE",
                     f"evidence_map names scene(s) {phantom} that do not exist.",
                     outcome_id=oid, detail={"claimed": claimed},
                 ))
-            disagree = sorted(set(int(c) for c in claimed if int(c) in indices)
-                              - set(assessed_by))
-            if disagree:
+            # ⛔ WP-IVGS-12c: A HARD REFUSAL, PROMOTED FROM A FLAG. See the
+            # module docstring. A scene named as evidence for this outcome must
+            # itself declare BOTH: the outcome in `serves_outcomes`, and an
+            # instructional_event in {practice, assess}. Two declarations by
+            # one author, compared. The two failures are separated because they
+            # have different fixes — one scene is pointed at the wrong outcome,
+            # the other is labelled the wrong event.
+            real = [c for c in claimed if c in indices]
+            not_serving = sorted(set(real) - set(served_by))
+            not_assessing = sorted((set(real) & set(served_by)) - set(assessed_by))
+            if not_serving or not_assessing:
+                parts = []
+                if not_serving:
+                    parts.append(
+                        f"scene(s) {not_serving} do not list this outcome in "
+                        "their own serves_outcomes"
+                    )
+                if not_assessing:
+                    parts.append(
+                        f"scene(s) {not_assessing} serve it but declare an "
+                        f"instructional_event outside {sorted(ASSESSING_EVENTS)}"
+                    )
                 findings.append(Finding(
-                    FLAG, "EVIDENCE_MAP_DISAGREES",
-                    f"evidence_map claims scene(s) {disagree} assess this "
-                    "outcome, but they do not declare an assessing event.",
+                    REFUSE, "EVIDENCE_MAP_DISAGREES",
+                    "evidence_map claims this outcome is assessed by scenes "
+                    "that say otherwise about themselves: " + "; and ".join(parts)
+                    + ". The map is a claim about the scenes; the scenes are "
+                    "the fact.",
                     outcome_id=oid,
+                    detail={"claimed": claimed, "not_serving": not_serving,
+                            "not_assessing": not_assessing,
+                            "served_by": served_by, "assessed_by": assessed_by},
                 ))
         if not outcome.get("measurable", True):
             findings.append(Finding(

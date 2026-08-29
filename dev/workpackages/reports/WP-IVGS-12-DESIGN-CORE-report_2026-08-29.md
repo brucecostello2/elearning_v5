@@ -1216,3 +1216,274 @@ the reason.
 5. **The 0050 downgrade path was not exercised** against a database containing
    jsonb-`null` rows. The docstring states the normalising UPDATE it needs; I
    ran the upgrade on production and the test database, not the downgrade.
+
+---
+---
+
+# §12c — WP-IVGS-12c: RC-Q9b closed structurally, with the belt promoted
+
+**2026-08-29 · same package lineage, appended here because the RC-Q rows it
+closes are above. Commit and HOLD.**
+
+## 12c.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| **Done** | `evidence_map` is schema-required per LO id and bounded **1..4** — "nothing assesses this" is no longer an emittable sentence; `EVIDENCE_MAP_DISAGREES` **promoted FLAG → HARD REFUSAL** with the two halves reported separately; the prompt states the rule the gate enforces; 18 new tests, one re-aimed |
+| ⛔ **ACCEPTANCE: NOT MET, AND THE REASON MOVED AGAIN** | ✅ zero invented ids, ✅ all three outcomes verbatim, ✅ `outcome_notes` 3/3, ✅ **zero empty evidence arrays** (12b had them every generation), ✅ drops declared. ⛔ **hard refusals 5, 6, 5.** The residue is `EVIDENCE_MAP_DISAGREES` ×3 every generation and `OUTCOME_UNASSESSED` on LO-2/LO-3 — **rowed as RC-Q9c, not tuned** |
+| ⛔ **NOT DEPLOYED, AND NOT PUBLISHED** | The order is silent on deploying and `dev/CLAUDE.md` §1 is explicit that silence does not authorize one. **The fleet still runs `v5.37.1-outcomes-by-code` — contract-2, system prompt v2.** The deploy/publish block is §12c.7, beside the push block |
+| **Held** | **1 commit**, this one, measured from the remote-tracking ref at close |
+
+**Verified live:** every probe against the pinned engine; three end-to-end
+generations on node-02; both full suites baselined by stash-and-rerun.
+⛔ **Still NOT verified:** the rendered gate panel in a browser (unchanged from
+§Z and §12b.7), and that any of this improves a video.
+
+## 12c.1 Task (1) — MEASURE FIRST, and the table
+
+12b proved a per-request `enum` and `maxItems` on ARRAY ITEMS. Required keys on
+an OBJECT are a different construct and were not thereby proven. Probed before
+anything was built — and in every case **the prompt was ordered to violate the
+constraint**, because a schema the model had no wish to break proves nothing.
+The control is the temptation.
+
+| construct | verdict |
+|---|---|
+| per-request **REQUIRED property keys** | ✅ **ENFORCED.** Ordered to emit `LO-1` only and to omit `LO-2`/`LO-3` "entirely — they are wrong and must not appear", it emitted **all three** |
+| **`additionalProperties: false`** per-request | ✅ **ENFORCED.** Ordered to add `"LO-9": [0]` — "that id is the correct one" — it did not appear |
+| **`minItems` + `maxItems` together** | ⚠ **ENFORCED, AND IT CAN HANG.** See below |
+| **`contains`** | ⛔ **HTTP 400** `Grammar error: Unimplemented keys: ["contains"]` — exactly like `uniqueItems`, and the only construct that could have expressed "some scene in this list assesses" without leaving the schema |
+| `maxItems` (re-confirmed) | ✅ ENFORCED — no array exceeded its bound in any probe |
+
+### 12c.1.1 ⛔ THE HANG, WHICH IS RC-Q12'S RUNAWAY IN A SHAPE `maxItems` DOES NOT CLOSE
+
+Ordered to emit `[]` into an array declared `minItems: 1, maxItems: 4`, the
+decoder forbade the `]` and the model took the only other legal continuation:
+**whitespace — 5,243 characters of it, `finish_reason=length`, nothing
+parseable.** `maxItems` bounds the ELEMENTS. Nothing bounds the whitespace
+between `[` and the first one.
+
+⛳ **This nearly killed the structure the ruling asked for**, so it was measured
+rather than reasoned about, twice more:
+
+| probe | result |
+|---|---|
+| same schema, **neutral** prompt | ✅ 200 in 4s — `{"LO-1":[0,2],"LO-2":[1],"LO-3":[3,4]}` |
+| same schema, a lesson told plainly it is **demonstration-only and assesses nothing** | ✅ 200 in 5s — it **filled the map anyway**: `{"LO-1":[0,1,2,3],"LO-2":[2],"LO-3":[4]}` |
+
+So the corridor is only reachable when the model's next token would be `]`, and
+under honest pressure it does not go there — it names a scene instead. **The
+bound ships**, and when the corridor IS reached, WP-37's `finish_reason` check
+raises `VLLMTruncatedResponseError` *before* the parse, naming the token limit.
+A loud failure, not a silent one. Recorded in `contract.py` beside the constant.
+
+⛳ **AND THAT SECOND PROBE PRE-ANSWERED TASK (4) BEFORE THE STRUCTURE WAS
+WRITTEN.** In the demonstration-only run the model's own `design_notes` said the
+lesson "does not include any practice or assessment items" **while its
+`evidence_map` named scenes**. Structure can force the claim to exist. It cannot
+make the claim true.
+
+## 12c.2 Task (2) — the structure
+
+`design-contract-3`. `evidence_map` carries one **required** key per outcome id,
+`additionalProperties: false`, each holding **1..4** scene indices. The LOWER
+bound is the load-bearing one: RC-Q9b's dominant shape was an outcome assessed
+by nothing, and `[]` was the legal way to write it.
+
+**Required-keys measured IMPLEMENTED, so the schema carries this and the
+validator is the belt, not the load.** On the one path the schema cannot reach —
+a project whose operator stated no outcomes, where the enum degrades to an open
+object — `design_review` carries the whole weight, and it says so by name
+(`EVIDENCE_MAP_NAMES_NOTHING`) rather than passing quietly.
+
+⛔ **No `dropped_outcomes` mechanism was built, and none exists.** Dropping an
+outcome is an operator act at the gate. An outcome the operator typed is served
+and assessed, or the design is refused; the designer has no third answer. A test
+pins the absence in both the schema and the validator, so a later package cannot
+add one by drift.
+
+## 12c.3 Task (3) — the belt promoted
+
+`EVIDENCE_MAP_DISAGREES` is a **hard refusal**. A scene named as evidence for
+LO-x must itself declare **both**: LO-x in its `serves_outcomes`, **and** an
+`instructional_event` in `{practice, assess}` (`ASSESSING_EVENTS` — one
+definition, not a second copy in the gate).
+
+⛳ **WHY IT QUALIFIES UNDER WP-IVGS-10'S LINE.** Both halves are closed enums the
+designer wrote itself. Nothing is judged; two declarations by one author are
+compared. That is "scene 7 declares no outcome", not "scene 7 feels thin".
+
+**The two halves are reported separately** — `not_serving` and `not_assessing` —
+because they have different fixes: one scene is pointed at the wrong outcome, the
+other is labelled the wrong event. The measured run shows why that mattered:
+`not_serving` fired twice and `not_assessing` eleven times, and a single
+"disagrees" would have left the reviewer to bisect it.
+
+**The seam is closed, and a test pins it:** the map must name a scene (schema),
+and every named scene must serve AND assess (belt) — so a design passing both
+has, for every outcome, a scene that serves and assesses it, which is exactly
+what `OUTCOME_UNASSESSED` asks. **Every outcome served and assessed is now
+structurally-or-loudly true.**
+
+## 12c.4 Task (5) — the acceptance, third attempt
+
+Same script (the operator's 3,172-byte multiplication lesson), same three ABCD
+outcomes, production parameters (`temperature 0.3`, `top_p 0.9`,
+`max_tokens 8192`), three consecutive generations on the pinned engine.
+
+⚠ **Run on a harness, not through the fleet, and this is why:** no deploy was
+authorized (§12c.0). The harness renders the user template from the seed —
+**verified byte-identical to the active DB row `storyboard_generation` v9** — and
+the system template from the seed, which is byte-for-byte what the publisher
+would publish as v3; it builds the schema from `design_core.contract` and scores
+with `app.services.design_review`, the same modules the worker and the API
+import. What it does not exercise is the capture observer and the storage
+round-trip, **neither of which 12c touched.**
+
+| | gen 1 | gen 2 | gen 3 |
+|---|---|---|---|
+| scenes | 15 | 10 | 17 |
+| outcomes verbatim | ✅ 3/3 | ✅ 3/3 | ✅ 3/3 |
+| **invented ids** | **NONE** | **NONE** | **NONE** |
+| `outcome_notes` entries | 3 | 3 | 3 |
+| **empty evidence arrays** | **NONE** | **NONE** | **NONE** |
+| `dropped_beats` | 1 | 1 | 1 |
+| **hard refusals** | **5** | **6** | **5** |
+| ↳ `EVIDENCE_MAP_DISAGREES` | 3 | 3 | 3 |
+| ↳ `OUTCOME_UNASSESSED` | 2 | 3 | 2 |
+| flags | 8 | 8 | 7 |
+
+**The deltas against 12b (3, 2, 2):** RC-Q9's cure held under regression —
+outcomes verbatim and zero invented ids in all six generations across both
+sessions. `dropped_beats` went from 0,1,1 to **1,1,1** and no gap refusal fired.
+**Empty evidence arrays went from present-in-every-generation to none** — that
+is task (2) working, and it is the one number that moved the way it was meant to.
+
+⛔ **AND THE COUNT WENT UP, WHICH IS THE PROMOTION AND NOT A REGRESSION.** 12b
+recorded `EVIDENCE_MAP_DISAGREES` "flagged on nearly every outcome of every
+generation". Those same claims are now refusals. The underlying
+`OUTCOME_UNASSESSED` count barely moved (3,2,2 → 2,3,2): **the structure did not
+fix the pedagogy, it made the false claim about the pedagogy impossible to
+ignore.** That is what was ordered, and it is not the acceptance criterion.
+
+## 12c.5 Task (4) — ⛔ THE HONEST LIMIT, MEASURED, AND ROWED AS RC-Q9c
+
+Before rowing it I ruled out the defect that would have been mine. **The
+emission order is `scenes` first, `evidence_map` third** — confirmed on all
+three raw contracts — so the model wrote every map with its own scene list
+already in context. It is not being asked to name scenes it has not designed.
+
+Two residues, and they are different:
+
+**R1 — the map points away from the model's own assessing scenes.** In
+generations 1 and 3 the designer wrote five and five `practice` scenes serving
+LO-1 (indices 11-15, and 11-13/15-16) — a genuinely assessed outcome — and then
+named `[2,3,4,6]` and `[3,4,7,9]` as the evidence, every one of them `present`.
+`not_assessing` on eleven scene-references across the three runs. **The correct
+answer existed in its own output and it named something else.**
+
+**R2 — LO-2 and LO-3 are never assessed by any scene, in any generation.** Every
+practice scene the designer wrote serves LO-1 only. This is the RC-Q9b
+pedagogical failure itself, undiminished.
+
+⛳ **AND THE DEGENERATE CASE THE RULING ASKED ME TO WATCH FOR ARRIVED IN
+GENERATION 2.** It contains **no `practice` and no `assess` scene at all**
+(`MERRILL_NO_APPLICATION` fired), its `evidence_map` names scenes 2-6 and 10
+anyway, and its `design_notes` reads *"providing opportunities for practice and
+assessment."* Three statements by one author in one document, two of them false,
+and the gate now refuses all three by name. **This is the assess-labelling
+degeneracy, and it is rowed with the evidence rather than tuned against.**
+
+⛔ **WHAT (2)+(3) CANNOT FORCE, stated plainly.** Neither the schema nor the gate
+can make a named scene GENUINELY assess. A designer that labels a recap `assess`
+and points the map at it passes both checks — there is a test that asserts
+exactly that and tells the next reader not to "fix" it. What changed is the SHAPE
+of the failure the reviewer meets: RC-Q9b arrived as a missing map, which reads
+as a machine fault; it now arrives as a brief whose evidence claim contradicts
+its own scene labels, which reads as what it is — **a wrong-looking brief, in
+front of the reviewer, at the gate, by design.**
+
+⛔ **I DID NOT ITERATE THE PROMPT AGAINST THESE THREE RUNS.** One prompt section
+was added — *"EVERY SCENE YOU NAME IS READ BACK AGAINST ITS OWN TWO
+DECLARATIONS"* — and it was written **before** the acceptance ran, because the
+contract changed and a model judged on a rule nobody told it is being tested on
+a secret. It is gated by the publisher like every other load-bearing phrase. It
+has **not** been touched since the results came in, and it must not be.
+
+## 12c.6 Tests — zero new failures, one re-aimed
+
+| tree | baseline (stashed) | with 12c | verdict |
+|---|---|---|---|
+| `ivgs-api` | — | **1632 passed, 0 failed** | ✅ green |
+| `ivgs-workers` | 18 failed, 987 passed, 48 skipped, 15 errors | **18 failed, 987 passed, 48 skipped, 15 errors** | ✅ **identical** |
+
+**Baselined by `git stash -u` and re-run, not by memory.** The 18 worker failures
+are the pre-existing set §10.1 diagnosed.
+
+`test_wpivgs12c_evidence.py` — **18 new tests**: the schema's bounds and the
+no-ids degradation; RC-Q12's unbounded-array guard re-run over the changed shape;
+both halves of the promoted belt and their separate reporting; `practice`
+counting as well as `assess`; a phantom scene not being double-reported as a
+disagreement; a JSONB `["0", null, "x"]` not 500-ing the gate; the seam between
+(2) and (3); the absence of `dropped_outcomes`; and **the honest limit, pinned**.
+
+⛳ **ONE EXISTING TEST WAS RE-AIMED, AND ITS FAILURE WAS THE POINT.**
+`test_a_clean_design_produces_no_refusals` passed with **no `evidence_map` at
+all** — the gate calling a design clean while nothing had decided what would
+prove the outcome, which is RC-Q9b in a unit test. It now carries the map a clean
+design has to carry, naming the `assess` scene that agrees with it. **Same risk,
+new shape. Not weakened.**
+
+## 12c.7 The tree, the deploy the operator must run, and the push block
+
+**Held: 1 commit. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched.**
+
+⛔ **THE CODE IS NOT LIVE.** The fleet runs `v5.37.1-outcomes-by-code`, which is
+contract-2 and system prompt v2 — so a browser opened now shows 12b's behaviour,
+not 12c's. Deploying needs an image rebuild (the schema is in the workers image,
+the seed prompt in the API image) and then the publisher, **in that order**:
+publishing prompt v3 against contract-2 workers would tell the model the schema
+forbids an empty array while it still permits one.
+
+```
+# node-01, as the operator — DEPLOY, then PUBLISH, then PUSH.
+cd /opt/ivgs
+EXPECTED=1
+ACTUAL=$(git log --oneline origin/main..HEAD | wc -l)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main && git push origin v5.37.2-evidence-by-structure
+fi
+```
+
+The rebuild/redeploy of api + workers to `v5.37.2-evidence-by-structure` across
+nodes 01-04 under §6.1a, and then
+
+    sudo docker exec -i ivgs-fastapi python -m app.scripts.wpivgs12_publish_design_prompts
+
+which publishes `storyboard_generation_system` **v3** and no-ops the other, are
+**the operator's to run** — no deploy grant was in the order. ⚠ Read §12c.4
+before any of it: **the acceptance still does not reach zero hard refusals.**
+
+## 12c.8 What I did not verify — 12c's additions to §Z
+
+1. ⛔ **The rendered gate panel, still.** No browser was driven. The panel renders
+   findings generically by `severity` (`DesignBriefPanel.tsx:124`), so the
+   promotion needs no frontend change — **read from the component source, not
+   from a screen.**
+2. ⛔ **The acceptance through the real pipeline.** It ran on a harness for want
+   of a deploy grant. The capture observer and the storage round-trip were not
+   re-exercised; 12c did not change them, and that is an argument, not a
+   measurement.
+3. ⛔ **The whitespace hang under production conditions.** It was produced only
+   by a prompt explicitly ordering `[]`. Three real generations did not reach it.
+   **That is three runs, not a proof**, and WP-37's check is the net under it.
+4. ⛔ **Whether R1 and R2 have the same cause.** The map pointing away from real
+   practice scenes (R1) and LO-2/LO-3 never being assessed (R2) may be one defect
+   or two. Distinguishing them means changing something and re-running, which is
+   the tuning the ruling forbids against this evidence.
+5. **`structured_outputs` as a fallback for required-keys.** Measured under
+   `response_format: json_schema` only — the same gap 12b left for the enum.
