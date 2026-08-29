@@ -1,0 +1,21 @@
+WP-IVGS-12e — the census that found the root cause.
+Six generations, two packages, two prompt versions, one script.
+
+12d/v4 gen 1:  10 scenes | sourced= 10 designed=  0 | assess=0 practice=0
+12d/v4 gen 2:   9 scenes | sourced=  9 designed=  0 | assess=0 practice=0
+12d/v4 gen 3:  17 scenes | sourced= 17 designed=  0 | assess=0 practice=5
+12e/v5 gen 1:  18 scenes | sourced= 18 designed=  0 | assess=0 practice=0
+12e/v5 gen 2:  19 scenes | sourced= 19 designed=  0 | assess=0 practice=5
+12e/v5 gen 3:  10 scenes | sourced= 10 designed=  0 | assess=0 practice=0
+
+TOTAL 83 SCENES: sourced=83  DESIGNED=0  ASSESS=0
+
+The model has never once invented a scene. Every scene in every generation is
+`origin: sourced` — anchored to a span of the uploaded script. An unaided
+assessment does not exist in that script (its second problem, 32x21, is fully
+worked with every step narrated), so the model has no span to anchor one to.
+
+It is not failing to understand `assess`. It is not designing at all: it is
+segmenting the script and attaching labels — which is the exact defect the
+Design Core was built to remove, surviving inside the contract meant to remove it.
+

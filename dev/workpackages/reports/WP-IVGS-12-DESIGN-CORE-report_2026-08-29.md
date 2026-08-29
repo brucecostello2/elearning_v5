@@ -1857,3 +1857,207 @@ this behaviour is live whether or not these commits are pushed.
 5. **The `minItems` whitespace corridor** is unchanged and unexercised; contract-4
    has no `minItems` array left in `assessment_plan`, but `scenes` and
    `source_refs` still carry one.
+
+---
+---
+
+# §12e — WP-IVGS-12e: the model learns what an assessment is, and it was never the problem
+
+**2026-08-29 · same package lineage. Commit and HOLD.**
+
+## 12e.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| **Ruling recorded** | ✅ `PLAN_ENTRY_UNREALIZED` **keeps the exact kind match**. Evidence kinds are semantic and **are never collapsed to green a number** — now a standing rule on the row, and the precedent |
+| **Done** | Prompt **v5**, purely additive (34 lines, **zero deletions**), operational definitions of `practice` and `assess` traced clause by clause to the Foundation; five new gate phrases, **none audited out**; API rebuilt to `v5.37.4-assess-defined` and redeployed |
+| ⛔ **ACCEPTANCE: NOT MET — 6, 5, 6** | ⛔ **The hole survived operational definitions: `assess` scenes [0, 0, 0]**, unchanged from 12d |
+| ⛔ **ROOT CAUSE FOUND, AND IT IS NOT WHAT THIS PACKAGE REPAIRED** | **83 scenes across six generations: 83 `sourced`, ZERO `designed`, ZERO `assess`.** Rowed as **RC-Q9e**. **STOPPING for the architectural ruling**, as ordered |
+| **Held** | **2 commits** — `git rev-list --count origin/main..HEAD` at close |
+
+## 12e.1 The ruling, recorded
+
+⛔ **EVIDENCE KINDS ARE NEVER COLLAPSED TO GREEN A NUMBER.** `practice` is the
+supported attempt; `assess` is the unaided one; a lesson stopping at the
+supported attempt has not demonstrated the outcome's stated **Degree** (Foundation
+§2's ABCD). The exact-kind match in `PLAN_ENTRY_UNREALIZED` stands, and the
+refusal to loosen it — with generation 3 of 12d one check away from zero — is the
+precedent for the next package that finds itself in that position.
+
+## 12e.2 TASK 1 — prompt v5, additive only
+
+**The diff is 34 added lines and zero deleted ones**, banked at
+`reference/wpivgs12e-evidence/prompt-v4-to-v5.diff`. One new section,
+`## WHAT \`practice\` AND \`assess\` ACTUALLY ARE, AS SCENES`:
+
+- **`practice`** — the learner attempts it **with support visible**: a guided
+  step, a prompt-then-confirm, a faded worked example with the working still on
+  screen. The middle of the fading sequence.
+- **`assess`** — the learner performs it **unaided**, in three beats and no
+  fourth: **POSE** the problem cold (no method reminder, no first step, no column
+  pre-filled) → **HOLD**, a silent attempt window with nothing narrated and
+  nothing highlighted → **REVEAL** for self-check.
+- *"If your scene narrates the method while the learner is supposed to be
+  attempting, you have written a `guide` and labelled it `assess`."*
+- For an `apply` outcome the assess is **the whole procedure, not a fragment**;
+  and an `assess` comes **after** that outcome's `practice`.
+
+⛳ **EVERY CLAUSE TRACES TO THE NORMATIVE SOURCE, NOT TO A RUN** — which is what
+separates this from tuning: Foundation §3's event-8 row (*"full second problem,
+learner-first"*), §4's modality table (*"prompt + pause + reveal … pose the
+problem, hold, then reveal"*), §4's load rules (the fading sequence), and §2's
+worked-example effect with its **Degree** column.
+
+**Five gate phrases added, none removed.** A test asserts that every phrase v4
+gated is still present — this package had to earn its keep by adding, not by
+trading one instruction away for another.
+
+### ⚠ A REBUILD WAS NEEDED, AND THE ORDER'S REASONING DID NOT COVER WHY
+
+The order said no rebuild was needed because contract-4 and the validator are
+untouched — **and that reasoning is correct about ORDERING**: 12c's
+publish-after-deploy rule exists to stop a prompt promising what the deployed
+contract does not enforce, and there is no contract change here.
+
+⛔ **But the publisher reads the seed from INSIDE the image.** Measured before
+publishing: the running container's
+`/app/seed/default_prompts/storyboard_design_system.j2` was **10,615 bytes** (v4)
+against the tracked file's **12,355**. Publishing without a rebuild would have
+re-published **v4's text** and reported success — the RC-E failure class again.
+
+So the API image alone was rebuilt to **`v5.37.4-assess-defined`** and
+redeployed. ⛳ **The workers were NOT rebuilt and their tag is deliberately left
+at `v5.37.3-plan-before-scenes`**: no worker code changed, they do not carry the
+seed, and rebuilding to move a tag would mint a new digest for identical source —
+the board's own stated reason for leaving the frontend at `v5.37.0`. **A split
+tag across the fleet is the honest state and the board says so.**
+
+Reusing the 12d tag was never an option: different bytes under one tag is exactly
+RC-Q8, and `save-image-artifact.sh` would have refused it.
+
+**Published:** `storyboard_generation_system` **v5** (12,250 chars, sha256
+`635347538553b7da…`), superseding v4; **v4 preserved inactive, exactly one active
+row**, rollback one UPDATE. Verified in the database that v5 carries the
+definitions, and read back from the running containers that **contract-4 and the
+exact-kind refusal are unchanged**.
+
+## 12e.3 TASK 2 — the acceptance, and it did not move
+
+| | 12d gen 1-3 (v4) | 12e gen 1 | 12e gen 2 | 12e gen 3 |
+|---|---|---|---|---|
+| scenes | 10 / 9 / 17 | 18 | 19 | 10 |
+| **`assess` scenes** | **0 / 0 / 0** | **0** | **0** | **0** |
+| `practice` scenes | 0 / 0 / 5 | 0 | 5 | 0 |
+| application-bearing | 1 of 3 | ✗ | ✓ | ✗ |
+| plan entries | 3/3 every time | 3/3 | 3/3 | 3/3 |
+| ids verbatim / invented | ✅ / NONE | ✅ / NONE | ✅ / NONE | ✅ / NONE |
+| `dropped_beats` | 1 / 1 / 1 | 2 | 1 | 1 |
+| **hard refusals** | **6, 6, 2** | **6** | **5** | **6** |
+
+**The regressions held** — outcomes verbatim, zero invented ids, drops declared,
+the plan still correct and stable in all three. **Nothing else moved**, and the
+refusal count is marginally worse.
+
+**The assess scenes' shape, which the order asked for: there were none to
+describe.** Zero across three generations and 47 scenes.
+
+## 12e.4 ⛔ RC-Q9e — THE ROOT CAUSE, AND IT IS NOT THE ONE I WAS REPAIRING
+
+Generation 2 produced five `practice` scenes. Their narration:
+
+> *"Start with the ones digit, which is 1. 1 times 2 equals 2. 1 times 3 equals
+> 3. So our first answer is 32."* … *"2 times 2 equals 4. 2 times 3 equals 6.
+> That gives us 640."* … *"Now add: 32 plus 640 equals 672."*
+
+⛔ **THAT IS NOT A PRACTICE SCENE. IT IS A FULLY NARRATED WORKED EXAMPLE.** The
+narration performs every step **for** the learner; there is no pose, no hold, no
+reveal, and nothing for the learner to do. And it is **near byte-identical to
+12d generation 3's**, written under v4, before any of these definitions existed.
+**v5 changed the label's definition and did not change one word of the scene.**
+
+That prompted the census that should have been run five packages ago:
+
+| | scenes | `sourced` | **`designed`** | **`assess`** |
+|---|---|---|---|---|
+| 12d gens 1-3 (v4) | 36 | 36 | **0** | **0** |
+| 12e gens 1-3 (v5) | 47 | 47 | **0** | **0** |
+| **six generations** | **83** | **83** | **0** | **0** |
+
+⛔ **THE MODEL HAS NEVER ONCE INVENTED A SCENE.** Every scene of every generation
+is `origin: "sourced"`, anchored to a span of the uploaded script. The script's
+second problem (32×21) is **fully worked with every step narrated**, so an
+unaided attempt exists nowhere in it — and the model has no span to anchor one
+to.
+
+⛳ **SO THE DIAGNOSIS THIS PACKAGE ACTED ON WAS WRONG, AND I SHOULD SAY SO
+PLAINLY.** The model does not fail to understand what an `assess` scene is. It
+is **not designing at all**: it segments the uploaded script and attaches labels.
+Telling a segmenter what an assessment looks like cannot produce one, because the
+missing step is not knowledge — it is **invention**, and the prompt has invited it
+since v8 (*"Material the outcomes require that the script lacks is legitimate:
+you invent it, mark the scene `origin: designed`"*). **That invitation has been
+declined 83 times out of 83.**
+
+⛳ **AND IT EXPLAINS THE WHOLE LINE OF PACKAGES AT ONCE.** RC-Q9c (evidence
+pointing at `present` scenes), RC-Q9d (a plan promising `assess` and never
+building one), RC-Q9e (definitions changing nothing) are one defect seen three
+times: **the excerpter the Design Core was built to remove is still there,
+wearing the contract's labels.** Every structural fix has correctly forced the
+model to *declare* better; none has made it *design*, and no schema can, because
+the contract cannot compel a scene that has no source span.
+
+⛔ **ROWED AS RC-Q9e. STOPPING FOR THE ARCHITECTURAL RULING**, exactly as Task 2
+directs. The next move is the operator's to order and not mine to attempt — and
+⚠ **the census above should inform it**: whatever shape it takes, the thing to
+fix is that stage 2 will not write a scene the script does not contain, and
+"`designed` scenes: 0 of 83" is the number to measure it against.
+
+## 12e.5 Tests, and the tree
+
+| tree | baseline | with 12e | verdict |
+|---|---|---|---|
+| `ivgs-api` | 1650 passed, 0 failed | **1652 passed, 0 failed** | ✅ green |
+| `ivgs-workers` | 18 failed, 987 passed, 48 skipped, 15 errors | **identical** | ✅ zero new |
+
+Two tests added: one pinning all four beats of the `assess` definition, one
+asserting **v5 removed nothing v4 gated**.
+
+**Held: 2 commits. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched. No contract, validator or worker code changed.**
+
+    1f464bb  feat(wp-ivgs-12e): the model learns what an assessment IS
+    <2nd>    docs(wp-ivgs-12e): the acceptance, and RC-Q9e — 0 designed scenes in 83
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=2
+ACTUAL=$(git rev-list --count origin/main..HEAD)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main && git push origin v5.37.4-assess-defined
+fi
+```
+
+⛔ **THE BROWSER WATCH DOES NOT FOLLOW THIS ONE.** The hand-off the order
+anticipated was conditional on a pass, and this is not a pass: v5 is live and a
+real project through the gate will be **refused**, for the reasons in §12e.4.
+**The next step is the RC-Q9e ruling, not the watch.**
+
+## 12e.6 What I did not verify — 12e's additions to §Z
+
+1. ⛔ **The rendered gate panel, still.** No browser was driven, and this package
+   gives no occasion to: the gate refuses.
+2. ⛔ **Whether the model would invent a scene if the script contained no worked
+   example at all.** The census shows 0 `designed` scenes against *this* script;
+   it does not establish that the model *cannot* invent, only that it never has
+   here. **One script, six generations** — that is the limit of the claim, and
+   distinguishing "will not" from "cannot" needs a second script, which is a
+   measurement the ruling may want and which I did not take.
+3. ⛔ **Whether prompt length is now hurting.** The system prompt has grown
+   7,788 → 12,250 chars across v1-v5 and the arc has not improved. Untested.
+4. **The API/worker tag split** (`v5.37.4` / `v5.37.3`) is correct and
+   deliberate, but `verify-deployed-image.sh` compares tags per container and
+   nothing checks that the SPLIT is intentional. A future reader sees two tags.

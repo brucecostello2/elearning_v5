@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b + 12c + 12d, the Design Core)
+# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b…12e, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,7 +6,14 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.37.3-plan-before-scenes`, frontend `v5.37.0-design-core`
+## Fleet — api `v5.37.4-assess-defined`, workers `v5.37.3-plan-before-scenes`, frontend `v5.37.0-design-core`
+
+⚠ **THE API AND WORKER TAGS DIFFER ON PURPOSE (12e).** Only the API image was
+rebuilt, because the publisher reads the prompt seed from INSIDE the image and
+publishing without a rebuild would have re-published v4's text and reported
+success. **No worker code changed**, and rebuilding to move a tag would mint a
+new digest for identical source — the same reason the frontend sits at
+`v5.37.0`. Contract-4 and the validator are untouched.
 
 ✅ **WP-IVGS-12d IS LIVE.** Nodes 01-04 rebuilt, banked with digest sidecars,
 loaded from the artifact store and deployed under §6.1a; **all four worker
@@ -20,7 +27,7 @@ out of the RUNNING containers. Report §12d.4.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.37.3-plan-before-scenes`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.37.4-assess-defined`** + workers **`v5.37.3-plan-before-scenes`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
 | **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.3-plan-before-scenes`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
 | **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.3-plan-before-scenes`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
 | **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.3-plan-before-scenes`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
@@ -59,6 +66,46 @@ VERBATIM. **`outcomes[]` is gone from the model's schema**; it emits
 pinned engine. **Three consecutive generations: all three outcomes verbatim
 every time, zero invented ids, zero drift.** Compare 12a: two of three, reworded,
 every time.
+
+### 12e — the model learns what an assessment is, and it was never the problem
+
+✅ **RULING RECORDED AS A STANDING RULE: EVIDENCE KINDS ARE NEVER COLLAPSED TO
+GREEN A NUMBER.** `PLAN_ENTRY_UNREALIZED` keeps the exact kind match — `practice`
+is the supported attempt, `assess` the unaided one, and a lesson stopping at the
+supported attempt has not demonstrated the outcome's stated **Degree**. The
+refusal to loosen it, with 12d's generation 3 one check from zero, **is the
+precedent.**
+
+**Prompt v5, additive only — 34 lines added, ZERO deleted**, five gate phrases
+added and none audited out: operational definitions of both kinds, every clause
+traced to Foundation §2/§3/§4 rather than to a run. ⚠ **A rebuild WAS needed and
+the order's reasoning did not cover why** — the publisher reads the seed from
+inside the image (measured: 10,615 bytes in the container vs 12,355 tracked), so
+publishing without one would have re-published v4 and reported success. API only.
+
+⛔ **ACCEPTANCE NOT MET — 6, 5, 6 — AND THE HOLE DID NOT MOVE: `assess` scenes
+[0, 0, 0]**, identical to 12d.
+
+⛔ **RC-Q9e — THE ROOT CAUSE, AND IT IS NOT THE ONE 12e REPAIRED.** Generation 2's
+five `practice` scenes are a fully narrated worked example — *"1 times 2 equals
+2 … so our first answer is 32"* — with nothing for the learner to do, and they
+are **near byte-identical to 12d's, written before these definitions existed.**
+v5 changed the label's definition and not one word of the scene. The census that
+should have been run five packages ago:
+
+> **83 scenes, six generations, two prompt versions: 83 `sourced`, ZERO
+> `designed`, ZERO `assess`.**
+
+**The model has never once invented a scene.** Every scene is anchored to a span
+of the uploaded script; the script's second problem is fully worked, so an
+unaided attempt exists nowhere in it and there is no span to anchor one to.
+⛳ **It is not failing to understand `assess` — it is not designing at all**: it
+segments the script and attaches labels, which is the exact defect the Design
+Core was built to remove, surviving inside the contract meant to remove it. The
+prompt has invited invention since v8 (*"you invent it, mark it
+`origin: designed`"*) and **that invitation has been declined 83 times out of
+83.** RC-Q9c, RC-Q9d and RC-Q9e are one defect seen three times. **Rowed;
+STOPPED for the architectural ruling, which is the operator's to order.**
 
 ### 12d — backward design becomes the emission order
 
@@ -189,14 +236,14 @@ real defects — a good trade.**
 
 ## Last pushed
 
-**`809fdbb`** — `chore(wp-ivgs-12c): deploy v5.37.2…`, pushed by the operator between 12c and 12d.
+**`a998085`** — `docs(wp-ivgs-12d): the deploy, the acceptance, and RC-Q9d`, pushed by the operator between 12d and 12e.
 Measured at the start of this package from the remote-tracking ref:
 `origin/main` and local `HEAD` were **equal**, so the held count was **0**, not
 the 1 the previous board claimed and not the 3 the WP-IVGS-11 report declared —
 the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 
-**Held now: TWO commits — WP-IVGS-12d's code (`5e179ee`, tagged
-`v5.37.3-plan-before-scenes`) and this report/board commit. Nothing else.**
+**Held now: TWO commits — WP-IVGS-12e's prompt/gates/tests (`1f464bb`, tagged
+`v5.37.4-assess-defined`) and this report/board commit. Nothing else.**
 ⚠ **Two, not one, and for a reason worth keeping:** the code is committed and
 tagged BEFORE the images are built, so the deployed image's `IVGS_BUILD_SHA`
 names a real commit that exists; the acceptance result can only be written after.
@@ -241,6 +288,7 @@ shipped with a placeholder.
 |---|---|
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
+| ↳ same file, **§12e** | ruling recorded (exact kind match stands, a standing rule); prompt v5 additive with operational definitions of `practice`/`assess`; API rebuilt because the publisher reads the seed from the image; **acceptance NOT met — 6, 5, 6, `assess` still [0,0,0]** — and the census found the root cause: **0 `designed` scenes in 83 (RC-Q9e)** |
 | ↳ same file, **§12d** | declaration order MEASURED to bind generation order; `assessment_plan` declared first, `evidence_map` removed and derived in code; **three refusals deleted, one added**; migration 0051; prompt v4; deployed to nodes 01-04; **acceptance still NOT met — RC-Q9d**, the plan is prior and stable but non-causal |
 | ↳ same file, **§12c** | RC-Q9b closed by structure (`evidence_map` required 1..4 per id) with `EVIDENCE_MAP_DISAGREES` promoted to a hard refusal; required-keys and `additionalProperties` measured ENFORCED, `contains` HTTP 400, a new `minItems` whitespace hang found; **acceptance still NOT met — RC-Q9c**; ✅ **deployed to nodes 01-04 and prompt v3 published** (§12c.9) |
 
@@ -248,17 +296,16 @@ shipped with a placeholder.
 
 ## Next, in order
 
-1. ⛔ **THE RULING ON RC-Q9d, AND ONE PART OF IT IS A YES/NO** — should
-   `PLAN_ENTRY_UNREALIZED` match the exact `evidence_kind` (as shipped) or any
-   assessing event? The exact match is what makes the promise mean anything; it
-   is also the only thing standing between generation 3 and zero refusals. Then
-   the substance: the model plans `assess` and never builds one, 36 scenes
-   running
-2. ⛔ **THE OPERATOR'S WATCH — a project of theirs through the v8 gate**, and the
-   fleet is carrying contract-4 and prompt v4 (§12d.4). ⚠ **Expect refusals** —
-   the acceptance measured 6, 6, 2. ⚠ The rendered panel is described from the
-   live payload and the component source, **not from a browser**; how it LOOKS
-   is still unverified, and this watch is what closes that
+1. ⛔ **THE ARCHITECTURAL RULING ON RC-Q9e** — stage 2 will not write a scene the
+   uploaded script does not contain: **0 `designed` scenes in 83**. Every
+   structural fix so far has correctly forced the model to DECLARE better and
+   none has made it DESIGN, and no schema can compel a scene with no source
+   span. The next move (a two-call design, or otherwise) is the operator's to
+   order. ⚠ **The census is the number to measure any fix against**
+2. ⛔ **THE OPERATOR'S WATCH — NOT YET.** It was conditional on a pass and 12e is
+   not one: v5 is live and a real project through the gate will be **refused**.
+   The watch follows the RC-Q9e ruling, not this package. ⚠ The rendered panel
+   remains described from the payload and component source, **not a browser**
 3. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
    loud. Contaminates any regenerate-on-the-same-project gate reading
 4. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
@@ -270,6 +317,13 @@ shipped with a placeholder.
 
 ## Open operator decisions
 
+- ⛔ **RC-Q9e — THE MODEL NEVER INVENTS A SCENE: 0 `designed` in 83.** The root
+  cause under RC-Q9c/d/e alike. Operational definitions of `practice`/`assess`
+  (v5) changed the acceptance by nothing. **Architectural, and the operator's to
+  order** — measure any fix against the census
+- ✅ **RULING, STANDING: evidence kinds are never collapsed to green a number.**
+  `PLAN_ENTRY_UNREALIZED` keeps the exact kind match; the refusal to loosen it is
+  the precedent
 - ⛔ **RC-Q9d — the plan is prior, honest, stable and NON-CAUSAL.** RC-Q9, Q9b
   and Q9c are all CLOSED by structure. The model plans the assessment correctly
   before any scene exists and then does not build it: **`assess` written zero

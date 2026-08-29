@@ -1,0 +1,115 @@
+contract design-contract-4   outcome ids ['LO-1', 'LO-2', 'LO-3']
+system=12114 chars  user=42365 chars  script md5-len=2974
+property order    : ['assessment_plan', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+plan entry shape  : ["evidence_kind", "learner_does"]
+evidence_map in schema: False
+
+--- generation 1: 283s  finish=stop  prompt_tokens=13230 completion_tokens=5485
+    scenes=18 notes=3 dropped_beats=2 sourced=18 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+        LO-1 assess: computes the product of two 2-digit numbers using the standard column algorithm
+        LO-2 practice: explains why a placeholder zero is written in the ones column before multiplying by the 
+        LO-3 assess: checks their own work by verifying the column alignment, each partial product, and the p
+    DERIVED evidence_map: {"LO-1": [], "LO-2": [], "LO-3": []}
+    outcomes with no evidence : ['LO-1', 'LO-2', 'LO-3']
+    events: ['hook', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'guide', 'guide', 'transfer', 'hook', 'present', 'guide', 'present', 'guide', 'guide', 'transfer', 'transfer']
+    media : {'image': 5, 'motion_graphics': 13}
+    ⛔ HARD REFUSALS = 6    flags = 11
+        REFUSE outcome LO-1   OUTCOME_UNASSESSED
+        REFUSE outcome LO-1   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   PLAN_ENTRY_UNREALIZED
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   scene 13       SEGMENTING
+        flag   scene 15       SEGMENTING
+        flag   design         MERRILL_NO_APPLICATION
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18] assessed=[]
+        LO-2: served=[1, 5, 10, 11, 14, 17, 18] assessed=[]
+        LO-3: served=[1, 10, 11, 17, 18] assessed=[]
+
+--- generation 2: 253s  finish=stop  prompt_tokens=13230 completion_tokens=4994
+    scenes=19 notes=3 dropped_beats=1 sourced=19 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+        LO-1 assess: multiplies two 2-digit numbers using the standard column algorithm, producing both parti
+        LO-2 practice: explains why a placeholder zero is written in the ones column before multiplying by the 
+        LO-3 assess: checks their own work by verifying the column alignment, each partial product, and the p
+    DERIVED evidence_map: {"LO-1": [11, 12, 13, 14, 15], "LO-2": [], "LO-3": []}
+    outcomes with no evidence : ['LO-2', 'LO-3']
+    events: ['hook', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'transfer', 'practice', 'practice', 'practice', 'practice', 'practice', 'transfer', 'transfer', 'transfer', 'transfer']
+    media : {'image': 8, 'motion_graphics': 11}
+    ⛔ HARD REFUSALS = 5    flags = 8
+        REFUSE outcome LO-1   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   PLAN_ENTRY_UNREALIZED
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19] assessed=[11, 12, 13, 14, 15]
+        LO-2: served=[1, 5, 10, 16, 17, 18, 19] assessed=[]
+        LO-3: served=[1, 10, 16, 17, 18, 19] assessed=[]
+
+--- generation 3: 162s  finish=stop  prompt_tokens=13230 completion_tokens=3204
+    scenes=10 notes=3 dropped_beats=1 sourced=10 rewrites=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+        LO-1 assess: computes the product of two 2-digit numbers using the standard column algorithm, produci
+        LO-2 practice: explains why a placeholder zero is written in the ones column before multiplying by the 
+        LO-3 assess: checks their own work by verifying the column alignment, each partial product, and the p
+    DERIVED evidence_map: {"LO-1": [], "LO-2": [], "LO-3": []}
+    outcomes with no evidence : ['LO-1', 'LO-2', 'LO-3']
+    events: ['hook', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'guide', 'guide', 'transfer']
+    media : {'image': 3, 'motion_graphics': 7}
+    ⛔ HARD REFUSALS = 6    flags = 9
+        REFUSE outcome LO-1   OUTCOME_UNASSESSED
+        REFUSE outcome LO-1   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        REFUSE outcome LO-3   OUTCOME_UNASSESSED
+        REFUSE outcome LO-3   PLAN_ENTRY_UNREALIZED
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 4        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   design         MERRILL_NO_APPLICATION
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 6, 7, 8, 9, 10] assessed=[]
+        LO-2: served=[1, 5, 10] assessed=[]
+        LO-3: served=[1, 10] assessed=[]
+
+========================================================================
+ACCEPTANCE — the Task-7 criterion
+========================================================================
+  zero hard refusals, all three      : False  ([6, 5, 6])
+  no invented ids, all three         : True
+  every outcome has derived evidence : False
+  plan carries one entry per outcome : True
+  every plan entry REALIZED 3/3      : False
+  application-bearing 3/3            : False
+  `assess` scenes per generation     : [0, 0, 0]   (12d was [0, 0, 0])
+  every outcome served AND assessed  : False
+  dropped_beats per generation       : [2, 1, 1]
+  scenes per generation              : [18, 19, 10]
