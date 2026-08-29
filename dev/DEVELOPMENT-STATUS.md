@@ -6,14 +6,14 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — coherent at `v5.34.0-v7-contract`
+## Fleet — coherent at `v5.35.0-rule8-at-birth`
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.34.1-v7-contract`**; workers, frontend, `ivgs-motion-renderer` **`v5.34.0-v7-contract`**; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.34.0-v7-contract`**; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.34.0-v7-contract`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **produced a BLANK clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.34.0-v7-contract`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.35.0-rule8-at-birth`**; frontend + `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.35.0-rule8-at-birth`**; vLLM pinned `sha256:3dbe092e…` | ⚠ one stage-2 run hit `SoftTimeLimitExceeded` — RC-P16 |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.35.0-rule8-at-birth`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **produced a BLANK clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.35.0-rule8-at-birth`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS this package — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer. RTX 5080 16 GB | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
@@ -30,7 +30,58 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-10** — the visual description must depict the narration. **1 commit held, none pushed.**
+**WP-IVGS-10 + the ruling round.** **2 commits held, none pushed.**
+
+### The rulings, executed
+
+⛔ **FREEZE EXCEPTION #2 — GRANTED AND EXECUTED. RC-P1 CLOSED.** Two sites in
+`stage2_storyboard.py`; the diff is three keyword arguments and four lines, everything else
+comment. **It did not need a third site**, and a test asserts the marker appears exactly twice
+so a future third edit under the same banner fails. The operator's reasoning is recorded
+verbatim in the report, the register and both sites: **the golden bank is not yet taken, so
+this is the only cheap moment — banking through the old body would enshrine the
+params-dropping defect as the behaviour M3.3 activities must reproduce to pass conformance.**
+
+⛳ **RULE 8 AT BIRTH IS PROVEN.** Four model-authored motion scenes landed in the database with
+template, params **and phase**, read out before any approval ran; `_author_missing_motion_specs`
+would author **zero**. The checkpoint went from **8 keys to 11**. ⛳ **And the model read the
+PHASE off the narration itself** — `start` for the scene that carries, `complete` for the scene
+that announces the row's answer — with no guard involved. RC-P8 gets an unaided confirmation.
+
+⚠ **The wrapper is DELETED, not dormant.** A recovery path beside a working delivery path makes
+the two indistinguishable, and the re-proof had to tell them apart.
+
+⛔ **RC-P14, NEW AND OPEN — the ruling's last criterion is NOT met.** Hard refusals on content
+scenes did not reach zero: **5 of 14**. RC-P1 fixed the transport; it did not make the model
+comply. Two runs of the FIXED body on one transcript declared `text_carried_by` on **10 of 13**
+and then **2 of 14**. The gate refused exactly the ambiguous scenes and nothing else — what is
+unreliable is the storyboard, not the machinery.
+
+⛔ **RC-P15, NEW.** Three v7 runs on one transcript chose **5, then 0, then 4** motion scenes.
+The zero run declared the escape hatch on ten scenes instead: declaring is cheaper than
+authoring a template. **This is the strongest argument yet for RC-P2**, which measured that
+escape unsafe for maths.
+
+✅ **RC-J10 CLOSED.** `dev/CLAUDE.md` §1 rewritten — Claude commits and HOLDS, never pushes;
+operator holds sole push/merge; deploys nodes 01-04 only on an active grant. §3 amended too,
+so the file no longer says *"editing is not [allowed]"* about a body that visibly carries two
+sanctioned edits.
+
+✅ **`c12fa967` RESOLVED — operator scene re-render.** ⛔ **M3.3-R4 RE-ANCHORED: the conformance
+target is the forthcoming operator-run v7 golden project pinned to its BANKED ARTIFACTS**, not
+live rows. A banked artifact cannot be edited; a row can, and this one was.
+
+⛔ **TWO FAILURE ROWS MOVED MID-PACKAGE AND BOTH WERE MINE.** `ivgs-workers` 18→19: adding the
+enum made `test_media_branch_table_covers_every_media_type` do its job for the first time, and
+**the Temporal shadow DAG had no motion branch while the live orchestrator has routed that
+media type since WP-IVGS-09** — M3.3-R3 would have realized a pipeline that silently dropped
+every motion scene. `tests_system` 12→13: I banked two images with hand-rolled artifact names
+instead of `scripts/save-image-artifact.sh`, reproducing a mistake that script's own header
+records from 2026-08-25. Both fixed; both rows back at baseline.
+
+---
+
+**WP-IVGS-10 (the body of the package)** — the visual description must depict the narration.
 
 ⛔ **THE OPERATOR'S DIAGNOSIS, MEASURED.** Classified with the module that now runs at the
 gate: the reference run `c12fa967` is **16 of 18** scenes DELEGATES-TO-WRONG-MEDIUM (**17 of
@@ -113,7 +164,7 @@ package: `origin/main` and local `HEAD` were **equal** before this package's com
 four packages: 09b, 09c, 09d, 09e and 09f are all on the remote. The operator also pushed two
 AD-07/AD-10 amendment commits *during* this session, which moved `HEAD` under it.
 
-**Held now: WP-IVGS-10's single commit, and nothing else.**
+**Held now: WP-IVGS-10's TWO commits — the package, and the ruling round — and nothing else.**
 
 ⚠ **This row was wrong once and is worth remembering.** It read *"Last pushed `75762b8`"* with
 *"WP-IVGS-08 — 9 commits held, none pushed"* above it, while `origin/main` was already at
@@ -132,7 +183,7 @@ package's board.**
 2. ⛔ **RUN-2** — banks the Temporal golden run that M3.3-R4 replays against. It is the gate
    on the largest single block in the register — **20 carried-v3.1 rows are VERIFY-AT-RUN-2**,
    plus P1.4h and P1.4q, with **P2.46** as the one bounded sweep afterwards
-3. **Push** — count-gated block in the WP-IVGS-10 report §11 (expected: **1**)
+3. **Push** — count-gated block in the WP-IVGS-10 report **§A.7** (expected: **2**; §11's block said 1 and is superseded)
 3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
    first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
 4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward
@@ -144,11 +195,12 @@ package's board.**
 
 ## Open operator decisions
 
-- ⛔ **RC-P1 — the frozen-body edit, or hand-answering at the gate.** v7's `text_carried_by`
-  and `media_rationale` cannot reach the database: `stage2_storyboard.py` drops them in an
-  explicit eight-keyword constructor and again in a five-key POST, both inside a frozen stage
-  body. Two small edits fix it; `dev/CLAUDE.md` §3 forbids them without a ruling. **This gates
-  the acceptance watch**
+- ✅ *(ruled 2026-08-29)* **RC-P1 — freeze exception #2 granted and executed. CLOSED.** RULE 8
+  now works at birth: four model-authored motion scenes landed with template, params and phase,
+  zero post-hoc authoring
+- ⛔ **RC-P14 — the declaration is transportable but not reliably emitted.** 10 of 13 on one
+  run, 2 of 14 on the next, 5 hard refusals. Prompt compliance, not transport. **Belongs with
+  RC-P2 as v8 input**; not implemented, on the same endorsed restraint
 - ⛔ **RC-P2 — the v8 "empty surface only" amendment.** Four of five image scenes drew digits
   from digit-free descriptions. Proposed: a diffusion scene may depict a working surface only
   in its EMPTY state; anything already written is `motion_graphics`. **Not implemented** — one
@@ -164,8 +216,8 @@ package's board.**
   evict.** Stacking on node-04 is the live problem and it is AD-08's to answer
 - ✅ *(settled 2026-08-28)* the queue drain and the counter row — **P2.39 CLOSED, P2.47 opened**
 - ⛔ **.96 admin access method** — needed by M3.3-R2 (namespace creation)
-- ⚠ **`dev/CLAUDE.md` §1 contradicts the last several work orders** (RC-J10) — amend the rule
-  or change the orders; not amended on a package's own initiative
+- ✅ *(ruled 2026-08-29)* **RC-J10 CLOSED** — §1 amended: Claude commits and HOLDS, never
+  pushes; operator holds sole push/merge; deploys nodes 01-04 on an active grant only
 - **MBCP session booking** — gates RC-G9, RC-D1/D2/D3/D9/D10
 - **Postgres history**: the pre-rotation password is dead but remains in git history; no
   rewrite proposed
@@ -200,8 +252,8 @@ packages.
 
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1545** | **0** | 0 | 0 | 1451 + **23** (09f, never rowed) + **71** (WP-IVGS-10) |
-| `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10** (WP-IVGS-10); failure rows byte-identical |
+| `ivgs-api` | **1553** | **0** | 0 | 0 | 1451 + **23** (09f, never rowed) + **79** (WP-IVGS-10) |
+| `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10**; the row moved to 19 mid-package and is **restored** |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |

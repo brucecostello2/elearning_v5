@@ -672,27 +672,6 @@ async def _gate_decision(
             },
         )
 
-    # ── WP-IVGS-10. RECOVER WHAT STAGE 2 AUTHORED AND THE TRANSIT DROPPED ──
-    #
-    # `stage2_storyboard._save_storyboard_scenes` POSTs five keys and the model
-    # emits more: `generation_params` (RULE 8) since v6, and `media_rationale`
-    # and `text_carried_by` (RULES 9 and 1-EXTENDED) since v7. The stage's own
-    # checkpoint carries all of them; the table does not. `storyboard_reconcile`
-    # explains why that is a wrapper rather than the five-line fix.
-    #
-    # HERE, because this is the first POST after the storyboard exists and
-    # because the read path must not write. Idempotent, fills only empty fields,
-    # never overwrites, and never touches `updated_at` -- so it cannot move the
-    # artifact fingerprint the decision below is about to name.
-    if gate == GATE_STORYBOARD:
-        from app.services.storyboard_reconcile import reconcile as _reconcile_storyboard
-
-        summary = await _reconcile_storyboard(db, project_id)
-        if summary.get("filled"):
-            logger.info(
-                "storyboard_reconciled project=%s %s", project_id, summary,
-            )
-
     service = GateService(db)
     try:
         row = await service.decide(

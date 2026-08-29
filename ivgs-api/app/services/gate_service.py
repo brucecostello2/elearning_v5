@@ -381,20 +381,21 @@ class GateService:
     async def storyboard_completeness(self, project_id: UUID) -> List[Dict[str, Any]]:
         """Every scene's completeness verdict, computed fresh, WRITING NOTHING.
 
-        WP-IVGS-10 Task 3. Read on the gate's read path, so it must not write:
-        the scenes are overlaid IN MEMORY with the fields Stage 2 authored and
-        then dropped in transit (`storyboard_reconcile`, and see that module for
-        why they are dropped), because a reviewer must be shown the storyboard
-        the model actually wrote rather than the subset that survived the POST.
-        The persisting half of that recovery runs on the DECISION path, which is
-        a POST.
+        WP-IVGS-10 Task 3, simplified by FREEZE EXCEPTION #2 (RC-P1, ruled
+        2026-08-29). Until that ruling this method overlaid each row IN MEMORY
+        with the fields Stage 2 had authored and then dropped in transit, via a
+        `storyboard_reconcile` wrapper, because the rows themselves could not
+        carry them. **The stage now delivers them**, so the rows ARE the
+        storyboard and the wrapper is gone: what a reviewer sees here is read
+        straight off the table.
+
+        Still a pure read. It computes and returns; it writes nothing.
 
         Returns ``[]`` for a project with no scenes rather than raising: a gate
         whose artifact does not exist has nothing to be complete or incomplete
         about, and ``status`` reports that separately as ``ABSENT``.
         """
         from app.services.storyboard_completeness import assess_storyboard
-        from app.services.storyboard_reconcile import overlay_authored_fields
 
         rows = list(
             (
@@ -407,15 +408,18 @@ class GateService:
         )
         if not rows:
             return []
-        views = await overlay_authored_fields(self.db, project_id, rows)
         # `authoring_will_run=True`: this is the REVIEW, and approving runs
         # `_author_missing_motion_specs` before it runs the enforcement check.
         # A motion scene with no template yet is therefore information, not a
         # blocker, and saying otherwise would be the one kind of falsehood this
         # panel must never tell.
+        #
+        # ⚠ Since RC-P1 that state should be RARE rather than universal: a v7
+        # storyboard arrives with its templates. It is still possible — a GUI
+        # flip sets `media_type` and nothing else — so the distinction stays.
         return [
             a.as_dict()
-            for a in assess_storyboard(views, authoring_will_run=True)
+            for a in assess_storyboard(rows, authoring_will_run=True)
         ]
 
     async def status(self, project_id: UUID, gate: str) -> GateStatus:

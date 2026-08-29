@@ -2457,6 +2457,19 @@ marked ⚠ state the measurement M3.3 needs **first**.
 
 ### F.1 — Fail-open enforcement (D-12). Exact edits, all eight sites.
 
+⛔ **READ FIRST, ADDED 2026-08-29: THIS IS NO LONGER THE ONLY LIST OF FROZEN-BODY EDITS THAT
+M3.3-R3'S ACTIVITIES MUST REPRODUCE.** Two sites in `stage2_storyboard.py` were **already
+executed**, under FREEZE EXCEPTION #2 (§RC-P, RC-P1, operator ruling 2026-08-29) —
+`_validate_storyboard_json`'s constructor and `_save_storyboard_scenes`'s POST body, so that
+the storyboard model's `generation_params`, `media_rationale` and `text_carried_by` reach the
+checkpoint and the database. **The stage-2 activity must reproduce the EDITED body.** An
+activity written against the eight-keyword constructor would re-introduce RC-P1 and pass
+conformance while doing it, because the golden bank will be taken AFTER the edit — which is
+the whole reason the exception was granted before the bank rather than after.
+
+The sites below are still pending and unedited; the two above are done. Do not read the
+absence of a row here as the absence of an edit.
+
 `GpuReservationRefused` is **already shipped** in `utils/gpu_utils.py`, deliberately unraised, so
 each site is a one-line insert plus one import per file.
 
@@ -2615,8 +2628,8 @@ Temporal **1.29.7** live (operator measurement, 2026-08-28).
 |---|---|---|
 | **M3.3-R1** | `temporalio` into `ivgs-workers` requirements + image | ⚠ Verify SDK/server compatibility against **1.29.7** `supportedClients` before pinning a version |
 | **M3.3-R2** | Temporal worker service + infra wiring: compose service, `TEMPORAL_ADDRESS=192.168.1.96:7233`, namespace decision (create `ivgs` vs default) | ⛔ **.96 admin access method is an OPERATOR INPUT** — node-01 root ssh is not authorized there |
-| **M3.3-R3** | Activities realized: stubs bind to engines / DB / SeaweedFS, honouring WP-31's **idempotency** requirement | ⛔ **This is the step the frozen-body edits execute under.** Every per-site edit row in **RC-F.1** cross-links here rather than duplicating |
-| **M3.3-R4** | Conformance replay: `temporal_pipeline/conformance.py` against the **RUN-2 banked golden run**; byte/shape verdict recorded | Depends on RUN-2 existing |
+| **M3.3-R3** | Activities realized: stubs bind to engines / DB / SeaweedFS, honouring WP-31's **idempotency** requirement | ⛔ **This is the step the frozen-body edits execute under.** Every per-site edit row in **RC-F.1** cross-links here rather than duplicating. ⛔ **AMENDED 2026-08-29: the stage-2 activity must reproduce the EDITED `stage2_storyboard.py`, not the body as it stood before FREEZE EXCEPTION #2.** Concretely, `_validate_storyboard_json` forwards `generation_params`, `media_rationale` and `text_carried_by` to the scene object, and `_save_storyboard_scenes` includes each on the wire when it is not None. An activity that reproduces the pre-exception eight-keyword constructor would re-introduce RC-P1 and pass conformance while doing so |
+| **M3.3-R4** | Conformance replay: `temporal_pipeline/conformance.py` against the **banked golden run**; byte/shape verdict recorded | ⛔ **RE-ANCHORED 2026-08-29 by operator ruling.** The target is the **forthcoming operator-run v7 golden project, pinned to its BANKED ARTIFACTS** — not `c12fa967`, whose live database state stopped being a frozen fixture when the operator re-rendered a scene in it on 2026-08-28. A banked artifact cannot be edited; a row can, and this one was. ⛳ **And the timing is now the point of RC-P1**: the bank does not exist yet, which is precisely why the freeze exception was granted before it is taken |
 | **M3.3-R5** | Cutover + fail-open flip + **O-3** re-evaluation | Re-sequences existing rows **RC-D11 / D-12** under this runway |
 
 ### I.2 A-4 motion renderer — RULED
@@ -3051,9 +3064,24 @@ records the general rule and what building it measured. Report:
 | **RC-P0c** | ⚠ **RULE 1 has only ever been checked for DIGITS.** Three measured descriptions demand legible writing with no numeral in them: *"a few key steps **written** in the margins"*, *"her paper with a few **calculations** on it"*, an infographic *"with a focus on the steps and the **calculations**"*. v7's classifier checks both halves |
 | **RC-P0d** | ⓘ **`motion_authoring.build_prompt` advertised EVERY parameter to the model as `<int>`, `label` included.** Live consequence on `c12fa967` scene 1: `{"template": "highlight_and_hold", …, "label": 0}` — a caption written as the integer zero because the prompt said it was one. Fixed: each parameter's shape is now derived from the template's own signature (`templates.param_kinds`) |
 
-## P.2 — ⛔ RC-P1: RULE 8 HAS NEVER WORKED AT BIRTH, AND THE FIX IS IN A FROZEN BODY
+## P.2 — ✅ RC-P1: RULE 8 NEVER WORKED AT BIRTH. FIXED UNDER FREEZE EXCEPTION #2
 
-**OPEN. This is the package's largest finding and it gates its own acceptance.**
+**CLOSED 2026-08-29.** ⛔ **FREEZE EXCEPTION #2, GRANTED BY THE OPERATOR.**
+
+**THE OPERATOR'S REASONING, VERBATIM:**
+
+> *"the Temporal conformance target (the RUN-2 golden bank) is NOT yet recorded; banking a run
+> through the current body would enshrine the params-dropping defect as the behavior M3.3
+> activities must reproduce to pass conformance. The only cheap moment for this edit is now,
+> pre-bank. Unlike exception #1, the premise here is measured to the wire — your own acceptance
+> run disproved your first draft and proved both loss sites. SCOPE: those two sites only; show
+> the diff; declared keys pass through to checkpoint and database intact; nothing else in the
+> file changes. If the fix needs a third site, STOP."*
+
+**It did not need a third site.** The diff is two hunks; three keyword arguments at site 1 and
+four lines at site 2, everything else comment.
+`test_wpivgs10_stage2_delivery_and_gate.py::test_the_exception_touched_exactly_two_sites`
+asserts the marker appears **exactly twice**, so a third edit under the same banner fails.
 
 `stage2_storyboard.py` loses v7's three new fields **twice**, and both losses are inside one
 of the eight frozen stage task bodies:
@@ -3077,15 +3105,35 @@ the same thing and believing a `ConfigDict` did not.
 will refuse every content-bearing diffusion scene and the reviewer must answer each one by
 hand. That is what happened on this run.
 
-**The fix is two small edits inside the frozen body.** `dev/CLAUDE.md` §3 / AD-05 §8 forbid
-them here — *"Wrapping is allowed; editing is not"* — so this package wraps
-(`app/services/storyboard_reconcile.py`, armed and inert, every constraint proven by test)
-and files the edits for **M3.3-R3**. ⛔ **DECISION FOR THE OPERATOR: sanction the two-line
-frozen-body edit now, or accept hand-answering at the gate.**
+### What the fix proved, live
+
+| criterion (from the ruling) | result |
+|---|---|
+| model-authored `motion_graphics` scenes land WITH template+params | ✅ **four scenes** — `col_mult 23×14 step 0 start`, `step 0 complete`, `step 1 complete`, `32×21 step 1 full` — written by the model, read out of the database **before any approval ran** |
+| zero post-hoc authoring | ✅ `has_motion_spec` is true for all four, so `_author_missing_motion_specs` authors **0 scenes** |
+| the checkpoint carries the declared keys | ✅ **11 keys per scene, up from 8** |
+| `media_rationale` / `text_carried_by` at birth | ✅ measured on an earlier run of the fixed body: rationale on **13 of 13**, carrier on **10 of 13** |
+| hard-refusal count on content scenes drops to zero | ⛔ **NOT MET — 5 of 14.** See RC-P14 |
+
+⚠ **THE WRAPPER IS DELETED, NOT LEFT DORMANT.** `app/services/storyboard_reconcile.py` and its
+two call sites are gone. A recovery path running beside a working delivery path makes the two
+indistinguishable, and the re-proof had to be able to tell "the model authored it and it
+arrived" from "something recovered it afterwards".
+
+⚠ **The exception introduces one new instance of an existing failure mode**, stated rather than
+hidden: `_save_storyboard_scenes` swallows a non-2xx (logs `scene_save_failed`, continues), so
+a model emitting an out-of-domain `text_carried_by` now loses that scene to a 400 where before
+the field could not be sent at all. Not a new CLASS — any 400 already lost a scene — and not
+fixed here, because the fix is a third site.
 
 ## P.3 — ⛔ RC-P2: RULE 1's FOUNDING PREMISE DOES NOT HOLD
 
-**OPEN. Measured on the acceptance run's five image scenes; four attempted digits.**
+**OPEN, and the operator has ENDORSED leaving it unimplemented:** *"your restraint is endorsed:
+v8 stays unimplemented; the operator's acceptance watch is the evidence pass. Row stays open
+with the four-of-five measurement attached."* The measurement is below and stays attached to
+this row.
+
+**Measured on the acceptance run's five image scenes; four attempted digits.**
 
 | scene | its description named | the image contains |
 |---|---|---|
@@ -3144,3 +3192,18 @@ must be reachable from the synonym table**.
 | **RC-P11** | ⓘ **`scripts/verify-deployed-image.sh` reports an unreachable host as `container is not running at all`.** It prepends `root@` itself; passing `root@<ip>` yields `root@root@<ip>` and a false DEPLOY FAILED, indistinguishable from a genuinely absent container. Not fixed here. **Ledgered** |
 | **RC-P12** | ⚠ **Scene 8's spec is a residual, and it is upstream.** Its narration works BOTH partial products in one breath; `column_multiplication_step` draws one row, so the picture shows 640 and not the 32 before it. The spec is consistent with the words and the guard accepted it. v7 says *"give each step its OWN scene"* and this storyboard did not |
 | **RC-P13** | ⓘ **The workers image was rebuilt and deployed to all four nodes** for RC-P4. `shared/providers/client_registry.py`'s `accepts_params` gained `phase` there too; it is descriptive on the worker side (the enforcement is in `ivgs-motion-renderer`), and the fleet is kept coherent rather than mixed |
+
+## P.7 — the ruling round: RC-J10, c12fa967, and what the re-proof exposed
+
+| id | state |
+|---|---|
+| **RC-J10** | ✅ **CLOSED 2026-08-29 by operator ruling.** `dev/CLAUDE.md` §1 rewritten to match a month of standing orders: **Claude commits and HOLDS, never pushes; the operator holds sole push and merge authority; Claude deploys nodes 01-04 only when the active order grants it, under the §6.1a standard.** The old text (*"Claude does NOT commit, push, merge, or deploy"*) had contradicted every work order since late July. §3 now also carries both freeze exceptions, so a fresh session does not read *"editing is not [allowed]"* against a file that visibly has been |
+| **c12fa967** | ✅ **RESOLVED 2026-08-29 — OPERATOR ACTION.** The 22:56 `media_type` flip and the 23:03 audio assets were **a scene re-render performed by the operator**, not drift and not an unattributed write. Flag closed. ⛔ **CONSEQUENCE, and it changes what M3.3-R4 diffs against:** `c12fa967`'s LIVE DATABASE STATE IS NO LONGER A FROZEN FIXTURE. The conformance target is **the forthcoming operator-run v7 golden project, pinned to its BANKED ARTIFACTS**, never to live rows — which is the right anchor anyway, since a row can be edited and a banked artifact cannot |
+| **RC-P14** | ⛔ **OPEN — THE DECLARATION IS TRANSPORTABLE BUT NOT RELIABLY EMITTED.** RC-P1 fixed the transport; it did not make the model comply. Two runs of the fixed body on the IDENTICAL transcript: one declared `text_carried_by` on **10 of 13** scenes, the other on **2 of 14**, leaving **5 hard refusals** — scenes 0 and 8 (numeric narration, `image`, no declaration), 6 and 10 (same, `video_clip`), and scene 7, whose DESCRIPTION names `23`, `14` and `322` outright, a plain RULE 1 breach. **The gate did its job**: it refused exactly the ambiguous scenes and nothing else. What is unreliable is the storyboard, not the machinery. Belongs with RC-P2 as v8 input; **not implemented**, on the same restraint |
+| **RC-P15** | ⓘ **The model's media choice swings hard between runs on one transcript.** Three v7 runs: **5** motion scenes, then **0**, then **4**. The zero run declared `text_carried_by` on ten scenes instead — it found RULE 1-EXTENDED's escape (ii) and took it universally, which is exactly the attractor RC-P2 warns about: (ii) is cheaper than authoring a template, and RC-P2 measured it unsafe for maths. **This is the strongest single argument for RC-P2's amendment** |
+| **RC-P16** | ⓘ **Stage 2 hit `SoftTimeLimitExceeded` on one run and left its job row `running` forever.** The next trigger was refused `PIPELINE_ALREADY_RUNNING` and WP-59's delete guard refused too, correctly — the project could not be deleted until the stranded row was marked terminal by hand. A soft-time-limit kill does not run the failure path that would have marked it. Same family as swallow-register entry 17 |
+
+⚠ **RC-P8 (the `phase`) got a second, unaided confirmation.** In the re-proof the storyboard
+model — not the authoring path — emitted `phase: "start"` for the scene that writes a digit and
+carries, and `phase: "complete"` for the scene that announces that row's answer. **The model
+read the phase off the narration exactly as RULE 8 asks**, at birth, with no guard involved.

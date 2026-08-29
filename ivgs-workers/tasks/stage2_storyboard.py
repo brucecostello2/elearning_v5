@@ -321,6 +321,39 @@ def _validate_storyboard_json(
                 scene_title=raw_scene.get("scene_title", raw_scene.get("title")),
                 transition=raw_scene.get("transition"),
                 notes=raw_scene.get("notes"),
+                # ⛔ FREEZE EXCEPTION #2, GRANTED BY THE OPERATOR 2026-08-29.
+                # WP-IVGS-10, RC-P1. SITE 1 OF TWO.
+                #
+                # This constructor was an EXPLICIT EIGHT-KEYWORD CALL, and every
+                # other key the storyboard model emitted was simply not passed.
+                # `StoryboardScene` is `extra="allow"` -- and `extra` keeps keys
+                # that are SUPPLIED, so the fields were gone HERE, before the
+                # stage's own checkpoint was ever written.
+                #
+                # Consequence: **RULE 8 has never worked at birth.** v6 has asked
+                # the model for a motion template since 2026-08-26 and v7 adds two
+                # more declarations; not one of them could reach the database.
+                # Measured on project 5d58f2f5, checkpoint f9545dae, 2026-08-29:
+                # twelve scenes, eight keys each, no `generation_params` on any of
+                # the five the model chose as motion_graphics.
+                #
+                # THE OPERATOR'S REASONING FOR GRANTING THE EXCEPTION, VERBATIM:
+                # "the Temporal conformance target (the RUN-2 golden bank) is NOT
+                # yet recorded; banking a run through the current body would
+                # enshrine the params-dropping defect as the behavior M3.3
+                # activities must reproduce to pass conformance. The only cheap
+                # moment for this edit is now, pre-bank. Unlike exception #1, the
+                # premise here is measured to the wire."
+                #
+                # Named rather than splatted. `**raw_scene` would collide with the
+                # eight keywords above, and a filtered splat would carry whatever
+                # a model happened to invent into the checkpoint and the API. The
+                # three keys below are the ones the v7 CONTRACT declares, and the
+                # cost is stated rather than hidden: a v8 field needs this line
+                # again, and that is a smaller price than an open passthrough.
+                generation_params=raw_scene.get("generation_params"),
+                media_rationale=raw_scene.get("media_rationale"),
+                text_carried_by=raw_scene.get("text_carried_by"),
             )
             validated_scenes.append(scene)
         except Exception as e:
@@ -438,6 +471,25 @@ def _save_storyboard_scenes(
             "media_type": scene.media_type,
             "duration_seconds": scene.duration_seconds,
         }
+
+        # ⛔ FREEZE EXCEPTION #2, GRANTED BY THE OPERATOR 2026-08-29.
+        # WP-IVGS-10, RC-P1. SITE 2 OF TWO. See site 1 for the reasoning.
+        #
+        # This payload was five keys. `SceneCreate` has accepted
+        # `generation_params` since migration 0028 and the other two since 0045;
+        # the worker never sent any of them.
+        #
+        # ⚠ ADDED ONLY WHEN PRESENT, so a scene that carries none produces a
+        # request BYTE-IDENTICAL to the one this function sent before the
+        # exception. A v6-era storyboard's wire shape does not move.
+        #
+        # `getattr` and not attribute access: these arrive as pydantic EXTRA
+        # fields, so they are absent -- not None -- on a scene the model did not
+        # author them for.
+        for _declared in ("generation_params", "media_rationale", "text_carried_by"):
+            _value = getattr(scene, _declared, None)
+            if _value is not None:
+                payload[_declared] = _value
 
         try:
             with httpx.Client(

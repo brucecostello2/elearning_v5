@@ -8,9 +8,36 @@ safely without breaking anything.
 
 ## 1. Authority
 
-The operator holds sole merge authority. Claude authors code and proposes.
-Claude does NOT commit, push, merge, or deploy. Claude does not run commands
-on any node other than node-01 unless explicitly handed over.
+**Amended 2026-08-29 by operator ruling, closing ledger RC-J10.** The previous
+text read *"Claude does NOT commit, push, merge, or deploy. Claude does not run
+commands on any node other than node-01 unless explicitly handed over."* It had
+contradicted every work order for roughly a month — orders that say **"Commit
+and HOLD"**, that require a deploy to nodes 01-04 to prove a fix, and that gate
+a package on a live pipeline run. A rule nobody follows is worse than no rule:
+it teaches a fresh session to distrust this file. This section now says what
+actually happens.
+
+**THE OPERATOR HOLDS SOLE PUSH AND MERGE AUTHORITY. That does not move.**
+
+| Claude | |
+|---|---|
+| **Commits** | ✅ **YES, and HOLDS.** One commit per package unless the order says otherwise |
+| **Pushes** | ⛔ **NEVER.** Every report ends with a count-gated push block the OPERATOR runs |
+| **Merges** | ⛔ **NEVER** |
+| **Deploys** | ✅ **nodes 01-04 ONLY, and only when the active order grants it** — under the §6.1a standard: stderr never redirected, and `scripts/verify-deployed-image.sh` asserting the RUNNING image afterwards |
+| **node-05, node-06, `.96`, `.51`, `.7`** | ⛔ **NEVER**, whatever an order says. node-06 and `.51` are operator-managed; `.96` has no authorized admin path |
+
+**A deploy grant is per-package and does not carry forward.** An order that is
+silent about deploying does not authorize one.
+
+**The push block is the operator's.** It states the expected held count and
+refuses if the count differs, so a package that quietly accumulated a second
+commit cannot be pushed by reflex.
+
+⛔ **Frozen stage bodies are governed by §3, not by this section, and a deploy
+grant is not a freeze exception.** A freeze exception is a separate, explicit,
+per-site ruling — there have been two, and both are recorded in
+`OUTSTANDING_WORK.md`.
 
 ## 2. Fleet - label EVERY command with its node
 
@@ -35,6 +62,22 @@ on any node other than node-01 unless explicitly handed over.
 - `git clean`, `git rm`, or any destructive git operation.
 - The eight stage task bodies during the orchestration migration - the scope
   boundary in AD-05 section 8 is binding. Wrapping is allowed; editing is not.
+
+  ⛔ **TWO FREEZE EXCEPTIONS HAVE BEEN GRANTED, BOTH BY EXPLICIT OPERATOR
+  RULING, BOTH PER-SITE.** They are exceptions to this rule, not erosions of
+  it: a package that finds a defect in a frozen body writes the wrapper and
+  files the row. It does not edit and ask afterwards.
+
+  **#2, 2026-08-29 (WP-IVGS-10, ledger RC-P1):** two sites in
+  `stage2_storyboard.py` - `_validate_storyboard_json`'s eight-keyword
+  constructor and `_save_storyboard_scenes`'s five-key POST - which together
+  meant **RULE 8 had never worked at birth**: not one field the storyboard
+  model authored beyond those five could reach the database. Granted because
+  the Temporal conformance target is **not yet banked**, so the only cheap
+  moment to fix it is before a golden run enshrines the defect as the behaviour
+  M3.3 activities must reproduce. Scope was two sites and the diff was shown;
+  `ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py` asserts the marker
+  appears **exactly twice**, so a third edit under the same banner fails a test.
 - `.9` - retired, retained read-only as fallback.
 
 ## 4. Ground truth beats documentation

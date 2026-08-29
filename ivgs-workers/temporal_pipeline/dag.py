@@ -185,6 +185,33 @@ MEDIA_BRANCHES: Tuple[MediaBranch, ...] = (
         queue="gpu_animation",
         idempotency_stage="s3a",
     ),
+    MediaBranch(
+        # ⛔ THE FOURTH BRANCH, ADDED 2026-08-29 BY WP-IVGS-10.
+        #
+        # It was missing, and nothing had noticed for the same reason RC-P4's
+        # gap went unnoticed: `MediaType` had only three members, so
+        # `test_media_branch_table_covers_every_media_type` compared two
+        # three-element sets and passed. Adding `MOTION_GRAPHICS` to the enum
+        # made that test do its job immediately — which is what an invariant
+        # test is for, and why the enum and this table belong to one commit.
+        #
+        # ⚠ THE SHADOW WAS BEHIND THE LIVE ORCHESTRATOR, not ahead of it.
+        # `pipeline_orchestrator_v2` has routed this media type since
+        # WP-IVGS-09 (`:716` fans it into `motion_scenes`, `:117` dispatches
+        # `tasks.motion_graphics_task.render_scene_motion_graphics`). M3.3-R3
+        # realizes activities FROM THIS TABLE, so a branch missing here would
+        # have produced a Temporal pipeline that silently dropped every motion
+        # scene while the Celery one rendered them.
+        #
+        # `default`, not a `gpu_*` queue, and that is deliberate rather than a
+        # placeholder: the renderer is CPU-only, has no weights and no GPU, and
+        # lives on node-01 beside that queue's worker (RC-I1's placement).
+        media_type=MediaType.MOTION_GRAPHICS.value,
+        node_id="s3_motion",
+        label=PipelineStage.MOTION_GRAPHICS.value,
+        queue="default",
+        idempotency_stage="s3m",
+    ),
 )
 
 MEDIA_BRANCH_BY_TYPE: Dict[str, MediaBranch] = {b.media_type: b for b in MEDIA_BRANCHES}

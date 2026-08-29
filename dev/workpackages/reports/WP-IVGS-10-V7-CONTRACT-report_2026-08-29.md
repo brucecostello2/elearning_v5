@@ -650,3 +650,237 @@ The motion scenes will be right.
 
 **Frozen stage bodies were not touched. Nodes 05, 06 and `.96` were not contacted. No secrets
 appear in this report or in any commit.**
+
+---
+---
+
+# ADDENDUM — the ruling round, 2026-08-29
+
+Four rulings and an execution addendum. This section is appended rather than folded into the
+body above, so that what was reported BEFORE the rulings and what changed AFTER them stay
+separable. **§0's conflict (1) and §12's RC-P1 row are superseded by A.1 below.**
+
+## §A.0 The rulings, as received
+
+| ruling | disposition |
+|---|---|
+| **RC-P1** | ⛔ **FREEZE EXCEPTION #2, GRANTED.** Two named sites, diff shown, scope enforced |
+| **RC-J10** | ✅ **`dev/CLAUDE.md` §1 amended; RC-J10 CLOSED** |
+| **RC-P2** | ⚠ Restraint endorsed; v8 stays unimplemented; row open with the measurement attached |
+| **`c12fa967`** | ✅ **RESOLVED — operator action.** Flag closed; M3.3-R4 re-anchored |
+
+## §A.1 ⛔ FREEZE EXCEPTION #2 — the diff, and its scope
+
+**The operator's reasoning, recorded verbatim in three places** (this report, the register's
+§RC-P.2, and both sites in the stage body itself):
+
+> *"the Temporal conformance target (the RUN-2 golden bank) is NOT yet recorded; banking a run
+> through the current body would enshrine the params-dropping defect as the behavior M3.3
+> activities must reproduce to pass conformance. The only cheap moment for this edit is now,
+> pre-bank. Unlike exception #1, the premise here is measured to the wire — your own acceptance
+> run disproved your first draft and proved both loss sites."*
+
+**Two hunks. Three keyword arguments at site 1, four lines at site 2; everything else is
+comment.** It did NOT need a third site.
+
+```
+SITE 1  _validate_storyboard_json  — the eight-keyword constructor
++   generation_params=raw_scene.get("generation_params"),
++   media_rationale=raw_scene.get("media_rationale"),
++   text_carried_by=raw_scene.get("text_carried_by"),
+
+SITE 2  _save_storyboard_scenes    — the five-key POST
++   for _declared in ("generation_params", "media_rationale", "text_carried_by"):
++       _value = getattr(scene, _declared, None)
++       if _value is not None:
++           payload[_declared] = _value
+```
+
+**Named, not splatted.** `**raw_scene` would collide with the eight keywords; a filtered splat
+would carry whatever a model invented into the checkpoint and on to the API. The cost is
+stated rather than hidden: a v8 field needs both sites again.
+
+**Added only when present**, so a scene carrying none produces the byte-identical five-key
+request the function sent before — a v6-era storyboard's wire shape does not move.
+
+**The scope condition is a test.** `test_the_exception_touched_exactly_two_sites` asserts the
+marker `FREEZE EXCEPTION #2` appears **exactly twice** in the file, so a third edit smuggled in
+under the same banner fails a test rather than a review.
+
+⚠ **The wrapper is DELETED, not left dormant.** `app/services/storyboard_reconcile.py` and its
+two call sites are gone, and this was not tidiness: a recovery path running beside a working
+delivery path makes the two indistinguishable, and the re-proof below had to be able to tell
+*"the model authored it and it arrived"* from *"something recovered it afterwards"*.
+
+⚠ **One new instance of an existing failure mode, stated plainly.**
+`_save_storyboard_scenes` swallows a non-2xx and continues, so a model emitting an
+out-of-domain `text_carried_by` now loses that scene to a 400 where previously the field could
+not be sent at all. Not a new class — any 400 already lost a scene — and not fixed here,
+because the fix is a third site and the ruling says STOP.
+
+## §A.2 The re-proof
+
+Two fresh v7 projects, both deleted through the WP-59 flow afterwards. Neither result is
+what I would have written in advance, and both are reported.
+
+### ✅ What the ruling asked for, and got
+
+| criterion | result |
+|---|---|
+| model-authored motion scenes land WITH template+params | ✅ **four**, read out of the database **before any approval ran** |
+| zero post-hoc authoring | ✅ `_author_missing_motion_specs` would author **0 scenes** — all four already have templates |
+| the checkpoint carries the declared keys | ✅ **11 keys per scene, up from 8** |
+
+The four, exactly as Stage 2 wrote them:
+
+```
+scene 2  motion_graphics  col_mult 23×14 step 0 phase start
+scene 3  motion_graphics  col_mult 23×14 step 0 phase complete
+scene 5  motion_graphics  col_mult 23×14 step 1 phase complete
+scene 9  motion_graphics  col_mult 32×21 step 1 phase full
+```
+
+⛳ **The model read the PHASE off the narration itself, at birth, with no guard involved** —
+`start` for the scene that writes a digit and carries, `complete` for the scene that announces
+that row's answer. RC-P8 gets an unaided second confirmation it did not have before.
+
+### ⛔ What the ruling asked for and did NOT get — RC-P14
+
+**"Hard-refusal count on content scenes drops to zero" is NOT met: 5 of 14.** And the reason
+matters, because it is not the transport:
+
+| scene | why it refuses |
+|---|---|
+| 0, 8 | numeric narration, `image`, **no declaration emitted** |
+| 6, 10 | numeric narration, `video_clip`, **no declaration emitted** |
+| 7 | its DESCRIPTION names `23`, `14` and `322` outright — a plain RULE 1 breach |
+
+**RC-P1 fixed the transport; it did not make the model comply.** Two runs of the FIXED body on
+the identical transcript: one declared `text_carried_by` on **10 of 13** scenes, the other on
+**2 of 14**. The declaration now arrives whenever the model emits it — that is proven — and the
+model emits it unreliably.
+
+**The gate did its job**: it refused exactly the ambiguous scenes and nothing else. What is
+unreliable is the storyboard, not the machinery. Rowed as **RC-P14**, not implemented, on the
+same restraint the operator endorsed for RC-P2.
+
+### ⓘ RC-P15 — and it is the strongest argument yet for RC-P2
+
+**Three v7 runs on one transcript chose 5, then 0, then 4 motion scenes.** The zero run
+declared `text_carried_by` on ten scenes instead: it found RULE 1-EXTENDED's escape (ii) and
+took it universally, because declaring is cheaper than authoring a template. **RC-P2 measured
+that escape unsafe for maths** — four of five image scenes drew digits. A rule offering a cheap
+wrong answer beside an expensive right one will be answered cheaply.
+
+### ⓘ RC-P16 — a stranded job the delete guard then blocked
+
+One run hit `SoftTimeLimitExceeded` in stage 2 and left its job row `running` forever: the soft
+kill does not run the failure path that marks it. The next trigger was refused
+`PIPELINE_ALREADY_RUNNING`, and WP-59's delete guard refused too — **correctly, and it is the
+guard working** — so the project could not be deleted until the row was marked terminal by
+hand. Same family as swallow-register entry 17.
+
+## §A.3 RC-J10 — `dev/CLAUDE.md` §1 rewritten, and §3 made consistent
+
+§1 now states what actually happens: **Claude commits and HOLDS, never pushes; the operator
+holds sole push and merge authority; Claude deploys nodes 01-04 only when the active order
+grants it, under the §6.1a standard.** node-05, node-06, `.96`, `.51` and `.7` stay ⛔ NEVER,
+whatever an order says. A deploy grant is per-package and does not carry forward.
+
+⛳ **§3 was amended too, unasked, because leaving it would have replaced one contradiction with
+another.** It said *"Wrapping is allowed; editing is not"* in a file whose §1 now sanctions
+deploys and whose stage-2 body visibly carries two edits. It now records both freeze
+exceptions, per-site, with the rule that a package finding a defect in a frozen body **writes
+the wrapper and files the row — it does not edit and ask afterwards**.
+
+## §A.4 `c12fa967` — resolved, and M3.3-R4 re-anchored
+
+The 22:56 flip and 23:03 audio were **an operator scene re-render**. Flag closed; it was not
+drift and not an unattributed write.
+
+⛔ **The consequence is larger than the flag.** `c12fa967`'s live database state is no longer a
+frozen fixture, so **M3.3-R4's conformance target is the forthcoming operator-run v7 golden
+project, pinned to its BANKED ARTIFACTS, never to live rows.** That is the better anchor
+regardless: a banked artifact cannot be edited and a row can — this one was. And it closes the
+loop on RC-P1's timing, because the bank does not exist yet, which is exactly why the exception
+was granted before it is taken rather than after.
+
+## §A.5 Tests after the exception — and two failure rows that moved, both mine
+
+| Tree | final | baseline | delta |
+|---|---|---|---|
+| `ivgs-api` | **1553 P / 0 F** | 1451 | +102 (23 from 09f, **79** here) |
+| `ivgs-workers` | **949 P / 18 F** / 48 S / 15 E | 939 / 18 | +10, **failure row restored** |
+| `ivgs-scheduler` | 52 P / 15 F | 52 / 15 | ✅ byte-identical |
+| `ivgs-backup-worker` | 4 P / 0 F | 4 P | ✅ |
+| `ivgs-motion-renderer` | 24 P / 2 S | 24 / 2 | ✅ byte-identical |
+| `tests_system` | **193 P / 12 F** / 15 S / 30 E | 193 / 12 | ✅ **restored** |
+
+**ZERO NEW FAILURES.** But it took three passes to be able to write that, and the two rows
+that moved in between were both my own doing.
+
+⛔ **`ivgs-workers` 18 → 19.** Adding `MediaType.MOTION_GRAPHICS` made
+`test_wp41_dag.py::test_media_branch_table_covers_every_media_type` do its job for the first
+time — it had been comparing two three-element sets and passing. **The Temporal shadow DAG had
+no motion branch while the live orchestrator has routed that media type since WP-IVGS-09**, so
+M3.3-R3 would have realized a Temporal pipeline that silently dropped every motion scene while
+the Celery one rendered them. Fixed by adding the fourth branch, on the `default` queue,
+mirroring the live routing.
+
+⚠ **And I missed it for an hour.** After adding the enum I re-ran only my own new test file,
+then reported the tree "byte-identical" from a measurement taken BEFORE the enum change. **A
+tree-level count is only true as of the change it was taken after** — the same lesson as the
+stale baseline row in §7, arrived at from the other direction.
+
+⛔ **`tests_system` 12 → 13.** `test_wp58_retention.py::test_the_live_artifact_store_conforms`
+caught me banking two worker images as `ivgs-workers-<tag>.tar.zst` instead of running
+`sudo scripts/save-image-artifact.sh`, which derives `<namespace>_<repo>_<tag>.tar.zst` from
+`scripts/lib/artifact_name.sh`. **That script's own header records a hand-rolled
+`docker save | zstd -o` producing a file no deploy path could find, on 2026-08-25** — I
+reproduced a documented mistake because `dev/CLAUDE.md` §6.1 shows the raw pipe and does not
+name the script. Re-banked properly; MANIFEST.txt and the `.sha256` now exist, which the
+hand-rolled files never had.
+
+## §A.6 Deployed
+
+**Fleet coherent at `v5.35.0-rule8-at-birth`** — api and workers on all four nodes, seven
+containers, each `DEPLOY VERIFIED` against the running image. Workers travelled as an artifact
+via `scripts/save-image-artifact.sh`. node-05, node-06 and `.96` not contacted.
+
+## §A.7 ⛔ PUSH — count-gated, superseding §11
+
+**Nothing has been pushed.** §11's block expected 1; the correct figure is now **2**.
+
+```bash
+# node-01. Refuses unless EXACTLY TWO commits are held.
+cd /opt/ivgs
+git fetch origin
+HELD=$(git rev-list --count origin/main..HEAD)
+if [ "$HELD" -ne 2 ]; then
+  echo "REFUSED: expected 2 held commits, found $HELD. Do not push."
+else
+  git log --oneline origin/main..HEAD
+  echo "--- 2 commits as expected; pushing"
+  git push origin main
+fi
+```
+
+## §A.8 What is still open
+
+| id | state |
+|---|---|
+| **RC-P2** | ⛔ **OPEN**, restraint endorsed. v8 unimplemented; the acceptance watch is the evidence pass |
+| **RC-P14** | ⛔ **OPEN, NEW.** The declaration is transportable but not reliably emitted — 10/13 on one run, 2/14 on another, 5 hard refusals |
+| **RC-P15** | ⓘ **OPEN, NEW.** Media choice swings 5 / 0 / 4 across three runs on one transcript; the zero run took the escape hatch universally. The strongest argument yet for RC-P2 |
+| **RC-P16** | ⓘ **OPEN, NEW.** A soft-time-limit kill strands a job row `running`, which then blocks WP-59 deletion |
+| **RC-P3** | ⛔ **OPEN.** A blank clip recorded as a successful render |
+| **RC-P11** | ⓘ **OPEN.** `verify-deployed-image.sh` reports an unreachable host as a missing container |
+| **RC-P1** | ✅ **CLOSED** — freeze exception #2, both sites, proven live and by test |
+| **RC-J10** | ✅ **CLOSED** — `dev/CLAUDE.md` §1 and §3 amended |
+| **`c12fa967`** | ✅ **RESOLVED** — operator action; M3.3-R4 re-anchored to banked artifacts |
+
+⛔ **The acceptance watch is still the operator's, and RC-P14 changes what they will see.**
+The storyboard now arrives with its motion templates and phases already authored — that half is
+fixed and proven. What they will still meet is a handful of content-bearing diffusion scenes
+the model did not declare, refused by name at the gate, and image scenes that attempt digits.
+Neither is a transport defect any more; both are prompt-compliance, and both are rowed.

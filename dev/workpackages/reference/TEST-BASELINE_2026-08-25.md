@@ -15,13 +15,13 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1545** | **0** | 0 | 0 | 1451 + **23** (WP-IVGS-09f, never rowed) + **71** (WP-IVGS-10) |
+| `ivgs-api` | **1553** | **0** | 0 | 0 | 1451 + **23** (WP-IVGS-09f, never rowed) + **79** (WP-IVGS-10) |
 | `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10** (WP-IVGS-10 media taxonomy) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2767** | **45** | **65** | **45** | 2663 + **104** (WP-IVGS-09f's 23 + WP-IVGS-10's 81) |
+| **Total** | **2775** | **45** | **65** | **45** | 2663 + **112** (WP-IVGS-09f's 23 + WP-IVGS-10's 89) |
 
 **Updated 2026-08-29 by WP-IVGS-10.** `ivgs-api` **1451 -> 1545** and `ivgs-workers`
 **939 -> 949**. **No failure row moved in any tree.**
@@ -33,10 +33,30 @@ baseline that is only updated by some packages is worse than one nobody trusts, 
 next package reads the gap as a regression — which is precisely what happened for ten minutes
 this session.
 
-The 71 are `test_wpivgs10_completeness.py` (18), `test_wpivgs10_phase.py` (24),
-`test_wpivgs10_prompt_v7.py` (19) and `test_wpivgs10_reconcile_and_gate.py` (13, one of them
-covering two frozen-body characterisations). The 10 are
-`ivgs-workers/tests/test_wpivgs10_media_taxonomy.py`.
+The 79 are `test_wpivgs10_completeness.py` (18), `test_wpivgs10_phase.py` (24),
+`test_wpivgs10_prompt_v7.py` (19) and `test_wpivgs10_stage2_delivery_and_gate.py` (18). The 10
+are `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py`.
+
+⛔ **TWO FAILURE ROWS MOVED DURING THIS PACKAGE AND BOTH WERE MINE. Both are fixed and both
+are recorded, because each was a way of being wrong that will recur.**
+
+**`ivgs-workers` 18 -> 19 -> 18.** Adding `MediaType.MOTION_GRAPHICS` made
+`test_wp41_dag.py::test_media_branch_table_covers_every_media_type` do its job for the first
+time: it had been comparing two three-element sets and passing. The Temporal shadow DAG's
+`MEDIA_BRANCHES` had no motion branch, while the live orchestrator has routed that media type
+since WP-IVGS-09 — so M3.3-R3 would have realized a Temporal pipeline that silently dropped
+every motion scene. Fixed by adding the fourth branch. ⚠ **I missed it for an hour because I
+re-ran only my own new test file after adding the enum, and then reported the tree as
+"byte-identical" from a measurement taken BEFORE the enum change.** A tree-level count is only
+true as of the change it was taken after.
+
+**`tests_system` 12 -> 13 -> 12.** `test_wp58_retention.py::test_the_live_artifact_store_conforms`
+failed because I banked two worker images with hand-rolled names
+(`ivgs-workers-<tag>.tar.zst`) instead of running `sudo scripts/save-image-artifact.sh`, which
+derives `<namespace>_<repo>_<tag>.tar.zst` from `scripts/lib/artifact_name.sh`. That script's
+own header records a hand-rolled `docker save | zstd -o` producing a file no deploy path could
+find, on 2026-08-25. **`dev/CLAUDE.md` §6.1 shows the raw pipe idiom and does not name the
+script**; use the script.
 
 ⛔ **THE TEST DATABASE MUST NOW BE AT MIGRATION `0045`** (was 0044). Migration 0045 adds
 `storyboard_scenes.media_rationale` and `.text_carried_by`; without it every scene SELECT

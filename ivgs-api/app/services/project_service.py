@@ -663,12 +663,15 @@ class ProjectService:
 
         # ── WP-IVGS-10 Task 3. THE COMPLETENESS GATE, AND WHERE IT SITS ──────
         #
-        # AFTER the authoring above, deliberately. A motion scene arrives here
-        # with no template far more often than not -- `_save_storyboard_scenes`
-        # drops `generation_params` in transit (see `storyboard_reconcile`) --
-        # so a completeness check placed BEFORE the authoring would refuse every
-        # motion scene in every storyboard for a field the very next line fills
-        # in. It runs on the rows as they will actually be dispatched.
+        # AFTER the authoring above, deliberately. A completeness check placed
+        # BEFORE it would refuse a motion scene for a field the very next line
+        # fills in; this runs on the rows as they will actually be dispatched.
+        #
+        # ⚠ Before FREEZE EXCEPTION #2 (RC-P1, ruled 2026-08-29) that was the
+        # UNIVERSAL case -- Stage 2 dropped `generation_params` in transit, so
+        # no motion scene could ever arrive with a template. It now does, and
+        # the authoring above is back to being what WP-IVGS-09c built it for:
+        # the GUI flip and the Regen path, neither of which reaches a prompt.
         #
         # ⛔ IT REFUSES ONLY THE OBJECTIVE LIMB, and the operator's ruling of
         # 2026-08-28 draws that line: a hard refusal is for a scene whose
