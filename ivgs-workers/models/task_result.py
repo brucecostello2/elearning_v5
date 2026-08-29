@@ -86,11 +86,43 @@ class FailureCategory(str, Enum):
 
 
 class MediaType(str, Enum):
-    """Media asset types produced during the pipeline."""
+    """Media asset types produced during the pipeline.
+
+    ⛔ `MOTION_GRAPHICS` WAS MISSING FOR THREE DAYS AND NOBODY COULD HAVE SEEN
+    IT, and the way it surfaced is worth recording: WP-IVGS-10's acceptance run
+    was the FIRST TIME A STORYBOARD MODEL EVER CHOSE IT.
+
+    WP-68 added `motion_graphics` on 2026-08-26 to the PostgreSQL enum
+    (migration 0041), to the capability registry (`maths_motion`), to the
+    selection panel and to the storyboard prompt's RULE 2 and RULE 8. It did not
+    add it here. So Stage 2 could ASK for a motion-graphics scene and could not
+    RECEIVE one:
+
+        Scene 3: media_type 'motion_graphics' is not in the pipeline taxonomy.
+        Known values: ['animated','animation','image','still','video','video_clip'].
+        Stage 3 dispatches on this field and has no branch for it.
+
+    measured live on project 5d58f2f5, 2026-08-29 00:56:20Z, node-02 — and
+    because WP-53's check RAISES rather than skipping the scene (deliberately,
+    and correctly), **one such scene failed the entire storyboard** and the
+    stage retried to exhaustion.
+
+    Nothing had met it because nothing had tried. v6 shipped the rule on
+    2026-08-26 and every motion scene since has arrived by a GUI flip or by
+    WP-IVGS-09c's Regen path — both of which write the row through the API, past
+    this enum entirely. The first model that took RULE 8 at its word met the
+    gap immediately.
+
+    ⚠ THIS IS THE DEEPER HALF OF WP-IVGS-10's TRANSIT-LOSS FINDING.
+    `_save_storyboard_scenes` dropping `generation_params` meant a
+    motion_graphics scene born in Stage 2 would arrive without its template;
+    this meant it could not arrive at all.
+    """
 
     IMAGE = "image"
     VIDEO_CLIP = "video_clip"
     ANIMATION = "animation"
+    MOTION_GRAPHICS = "motion_graphics"
 
 
 # ---------------------------------------------------------------------------
@@ -262,6 +294,13 @@ MEDIA_TYPE_SYNONYMS: dict[str, str] = {
     "animation": MediaType.ANIMATION.value,
     "image": MediaType.IMAGE.value,
     "still": MediaType.IMAGE.value,
+    # WP-IVGS-10. The fourth media type, and the two spellings a model actually
+    # writes. Added with the enum member above, because the check in
+    # `stage2_storyboard` reads BOTH -- the enum decides what is legal and this
+    # table decides what prose maps onto it, and a value in one and not the
+    # other still fails the storyboard.
+    "motion_graphics": MediaType.MOTION_GRAPHICS.value,
+    "motion graphics": MediaType.MOTION_GRAPHICS.value,
 }
 
 

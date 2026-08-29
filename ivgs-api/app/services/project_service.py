@@ -661,6 +661,57 @@ class ProjectService:
 
         await _author_missing_motion_specs(self.db, list(scene_rows), project)
 
+        # ── WP-IVGS-10 Task 3. THE COMPLETENESS GATE, AND WHERE IT SITS ──────
+        #
+        # AFTER the authoring above, deliberately. A motion scene arrives here
+        # with no template far more often than not -- `_save_storyboard_scenes`
+        # drops `generation_params` in transit (see `storyboard_reconcile`) --
+        # so a completeness check placed BEFORE the authoring would refuse every
+        # motion scene in every storyboard for a field the very next line fills
+        # in. It runs on the rows as they will actually be dispatched.
+        #
+        # ⛔ IT REFUSES ONLY THE OBJECTIVE LIMB, and the operator's ruling of
+        # 2026-08-28 draws that line: a hard refusal is for a scene whose
+        # narration states written or numeric content while the scene is a
+        # diffusion medium and declares nothing about where that content lives,
+        # or a motion scene with no template. Everything subjective -- is this a
+        # GOOD picture of this step -- is a soft flag the reviewer already saw
+        # on the gate panel, and the human gate stays the judge of it.
+        #
+        # There is no prompt loop here. A refusal is a stop, with every failing
+        # scene named in one message, and the fix is the reviewer's: rewrite the
+        # description, flip the medium, or declare the carrier.
+        #
+        # The rows are re-read rather than reused: `_author_missing_motion_specs`
+        # writes specs, and asserting completeness over the pre-authoring objects
+        # would assess a storyboard that no longer exists.
+        from app.services.storyboard_completeness import (
+            StoryboardIncomplete,
+            refuse_if_incomplete,
+        )
+
+        fresh_rows = (
+            await self.db.scalars(
+                select(StoryboardScene)
+                .where(StoryboardScene.project_id == project_id)
+                .order_by(StoryboardScene.scene_index)
+            )
+        ).all()
+        try:
+            assessments = refuse_if_incomplete(list(fresh_rows))
+        except StoryboardIncomplete as exc:
+            logger.warning(
+                "storyboard_completeness_refused project=%s scenes=%s refused=%s",
+                project_id, len(fresh_rows), len(exc.assessments),
+            )
+            raise
+        soft = [a for a in assessments if a.severity == "flag"]
+        logger.info(
+            "storyboard_completeness_passed project=%s scenes=%s soft_flags=%s",
+            project_id, len(fresh_rows), len(soft),
+        )
+        scene_rows = list(fresh_rows)
+
         job = await self.db.scalar(
             select(RenderJob)
             .where(RenderJob.project_id == project_id)

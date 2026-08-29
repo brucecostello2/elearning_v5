@@ -3025,8 +3025,122 @@ placeholder row, 230, 322 and 640 respectively. **Scene 2 was `14 × 3` → 42.*
 
 | id | Row |
 |---|---|
-| **RC-O10** | ⚠ **Scenes 2 and 3 now render the IDENTICAL animation, and so do 4 and 5.** Both pairs are one multiplier digit of one sum, and `column_multiplication_step` takes only `(top, bottom, step)` — it cannot distinguish *"write the 2, carry the 1"* from *"…so our first answer is 92"*, nor *"put a zero as a placeholder"* from *"our second answer is 230"*. The arithmetic is right and matches the words; the learner sees the same clip twice. Fixing it needs a **template that can render part of a row** — a renderer change, out of this order's scope. **HELD** |
+| **RC-O10** | ✅ **CLOSED by WP-IVGS-10 Task 4 (`phase`); see §RC-P, RC-P8.** ⚠ **Scenes 2 and 3 now render the IDENTICAL animation, and so do 4 and 5.** Both pairs are one multiplier digit of one sum, and `column_multiplication_step` takes only `(top, bottom, step)` — it cannot distinguish *"write the 2, carry the 1"* from *"…so our first answer is 92"*, nor *"put a zero as a placeholder"* from *"our second answer is 230"*. The arithmetic is right and matches the words; the learner sees the same clip twice. Fixing it needs a **template that can render part of a row** — a renderer change, out of this order's scope. **HELD** — *and done: `column_multiplication_step` and `column_addition_carry` now take a `phase`, `full` is byte-identical to the pre-phase renderer, and scenes 2 and 3 were re-verified on real frames as two different pictures.* |
 | **RC-O11** | ⚠ **The guard cannot catch a wrong spec whose numbers are all spoken and whose result is never announced.** Stated as a passing test rather than left implied. WP62-L7's real checker is human eyes until M3.3 |
 | **RC-O12** | ⛔ **Authoring moves the storyboard fingerprint, which invalidates the approval that released it.** `artifact_version` hashes `(scene_id, scene_index, updated_at)`, so writing a spec re-opens the storyboard gate the write was performed under. Survivable here — the gate is checked before authoring within one call — but it means any authoring-on-dispatch permanently races the gate it just passed. **HELD** for AD-05 |
 | **RC-O13** | ⚠ **`approve_storyboard` dispatches onto the project's LATEST job row rather than creating one.** It released onto `a6e5f2d1`, a row already `failed` from WP-IVGS-09e's resume. The stage ran and reported against a terminal job. **HELD** |
 | **RC-O14** | ⓘ **Scene 2's original `{"top": 14, "bottom": 3}` would NOT have been caught by assertions 1-3** — every number in it is spoken and nothing it draws exceeds the words. Assertion 4 exists for exactly that shape. Recorded because a guard's blind spots are worth as much as its catches |
+
+---
+
+# §RC-P — WP-IVGS-10: the visual description must depict the narration
+
+**Operator ruling, 2026-08-28:** *"the storyboard's visual layer is authored as aesthetic
+staging, not content. A scene's `visual_description` routinely omits what its narration
+actually says."* The earlier math-planner proposal is WITHDRAWN as over-fit; this section
+records the general rule and what building it measured. Report:
+`dev/workpackages/reports/WP-IVGS-10-V7-CONTRACT-report_2026-08-29.md`.
+
+## P.1 — what was measured, before anything was written
+
+| id | finding |
+|---|---|
+| **RC-P0** | ⛔ **THE DEFECT, MEASURED OVER BOTH STORED STORYBOARDS with the classifier that now runs at the gate.** The reference run `c12fa967`: **16 of 18** scenes DELEGATES-TO-WRONG-MEDIUM, and the one DEPICTS is a row flipped by hand at 22:56 that night — as the run was banked it is **17 of 18**. The operator's `9c29b1d1`: **8 of 14**. ⛔ **And in `9c29b1d1` all six DEPICTS are motion scenes WP-IVGS-09f authored, so every visual the storyboard MODEL itself wrote is a delegation or a generic — 0 of 8** |
+| **RC-P0a** | ⛔ **The operator's own example reproduces exactly.** Scene 1 narration *"**Write the numbers** on top and underneath, making sure the ones digits **line up** … **Draw a line** underneath"* against visual *"A hand holding a pencil, poised over a blank sheet of lined paper with a ruler and a soft pink pencil case nearby, warm and gentle lighting"* — which names **no part of the working surface at all** |
+| **RC-P0b** | ⛔ **v6's OUTPUT CONTRACT CONTRADICTED ITS OWN RULE 2.** The field list read *`"media_type": One of "image", "video_clip", or "animation"`* three rules above RULE 2 and RULE 8, which offer `motion_graphics`. A model reads its output contract first. Corrected in v7 and **gated** |
+| **RC-P0c** | ⚠ **RULE 1 has only ever been checked for DIGITS.** Three measured descriptions demand legible writing with no numeral in them: *"a few key steps **written** in the margins"*, *"her paper with a few **calculations** on it"*, an infographic *"with a focus on the steps and the **calculations**"*. v7's classifier checks both halves |
+| **RC-P0d** | ⓘ **`motion_authoring.build_prompt` advertised EVERY parameter to the model as `<int>`, `label` included.** Live consequence on `c12fa967` scene 1: `{"template": "highlight_and_hold", …, "label": 0}` — a caption written as the integer zero because the prompt said it was one. Fixed: each parameter's shape is now derived from the template's own signature (`templates.param_kinds`) |
+
+## P.2 — ⛔ RC-P1: RULE 8 HAS NEVER WORKED AT BIRTH, AND THE FIX IS IN A FROZEN BODY
+
+**OPEN. This is the package's largest finding and it gates its own acceptance.**
+
+`stage2_storyboard.py` loses v7's three new fields **twice**, and both losses are inside one
+of the eight frozen stage task bodies:
+
+1. **`_validate_storyboard_json:315-324`** builds every scene from an **explicit
+   eight-keyword constructor** and never passes the rest. The worker's `StoryboardScene` IS
+   `extra="allow"` — and `extra` keeps keys that are SUPPLIED, so the fields are gone here,
+   **before the checkpoint is written**.
+2. **`_save_storyboard_scenes:434-440`** then POSTs five of the eight survivors.
+
+**Measured on the acceptance run**: project `5d58f2f5`, storyboard checkpoint `f9545dae`,
+twelve scenes, **eight keys each**, and no `generation_params` on any of the five the model
+chose as `motion_graphics`.
+
+⚠ **This report's own first draft asserted loss (2) was the only one**, inferred from the
+model config. The run disproved it. Recorded because reading the constructor would have said
+the same thing and believing a `ConfigDict` did not.
+
+**Consequence, and the operator needs it before their acceptance watch:** v7's
+`text_carried_by` and `media_rationale` **cannot reach the database at all**, so the gate
+will refuse every content-bearing diffusion scene and the reviewer must answer each one by
+hand. That is what happened on this run.
+
+**The fix is two small edits inside the frozen body.** `dev/CLAUDE.md` §3 / AD-05 §8 forbid
+them here — *"Wrapping is allowed; editing is not"* — so this package wraps
+(`app/services/storyboard_reconcile.py`, armed and inert, every constraint proven by test)
+and files the edits for **M3.3-R3**. ⛔ **DECISION FOR THE OPERATOR: sanction the two-line
+frozen-body edit now, or accept hand-answering at the gate.**
+
+## P.3 — ⛔ RC-P2: RULE 1's FOUNDING PREMISE DOES NOT HOLD
+
+**OPEN. Measured on the acceptance run's five image scenes; four attempted digits.**
+
+| scene | its description named | the image contains |
+|---|---|---|
+| 0 | a surface *"entirely empty, no ruled line and no rows written yet"* | ✅ **nothing written** |
+| 1 | *"two rows… right edges flush… a ruled horizontal line… answer row still empty"* | ⛔ **`23 = 14`** and **`-- = 14`** |
+| 7 | *"the completed working… every row filled beneath its ruled line"* | ⛔ two sheets of invented arithmetic |
+| 10 | *"both partial-product rows written above the ruled line"* | ⛔ a page of invented arithmetic |
+| 11 | *"the working visible across it: two partial-product rows"* | ⛔ **the description's own vocabulary printed as headings** — *"Partial product rows"*, *"Full Answer row:"* — over nine rows of garbage |
+
+**Not one of those descriptions contains a numeral.** They pass RULE 1's deletion test, they
+pass the gate, and the model drew digits anyway — because a *column-arithmetic layout* means
+digits. **RULE 1 can stop you ASKING for digits; it cannot stop the model DRAWING them.**
+
+The one clean image is the only one whose surface was described as EMPTY. Proposed v8
+amendment, **for the operator's ruling, deliberately NOT implemented here** — one run is not
+a false-positive rate, and fitting a hard rule to a single storyboard is the over-fitting the
+math-planner proposal was withdrawn for:
+
+> A diffusion scene may depict a working surface only in its **EMPTY** state. Any surface
+> with writing already on it is `motion_graphics`, without exception.
+
+## P.4 — ⛔ RC-P3: A BLANK CLIP RECORDED AS A SUCCESSFUL RENDER
+
+**OPEN.** Scene 4's `video_clip`: 720×480, 48 frames, **889,012 bytes**, status `success`,
+composed into the draft — and **flat**. Greyscale stddev **0.45–0.53** at five sample points
+against **95.8** for a real image scene. A fabricated absence of exactly the class WP-57/60
+legislated against: an asset that is not the requested render, which the pipeline cannot tell
+from one that is.
+
+## P.5 — ⛔ RC-P4: STAGE 2 COULD NOT RECEIVE THE MEDIA TYPE IT WAS TOLD TO CHOOSE
+
+**CLOSED by this package.** WP-68 added `motion_graphics` on 2026-08-26 to the PostgreSQL
+enum, the capability registry, the selection panel and the prompt — **and not to `MediaType`
+in `ivgs-workers/models/task_result.py`**. Nothing met the gap because nothing had tried:
+every motion scene on this fleet since arrived by a GUI flip or by Regen, both of which write
+through the API past that enum. **WP-IVGS-10's acceptance run was the first time a storyboard
+model ever chose the value** and it failed immediately —
+
+    Scene 3: media_type 'motion_graphics' is not in the pipeline taxonomy.
+
+and because WP-53's check RAISES rather than skipping the scene, **one scene failed the whole
+storyboard** and the stage retried to exhaustion. Fixed (not a frozen stage body), pinned by
+ten tests including the invariant that would have caught it on the day: **every enum member
+must be reachable from the synonym table**.
+
+## P.6 — what was built
+
+| id | what |
+|---|---|
+| **RC-P5** | ✅ **v7 published** (prompt `6907e7b1`, `stored sha256 fa9ae1c0…`). RULE 1-EXTENDED — content that is written or numeric is never delegated to diffusion; two sanctioned answers and **no third**. RULE 5 amended — *staging may remain, content is mandatory*, with WHAT IS SHOWN / IN WHAT STATE / CHANGING HOW and a second deletion test. RULE 9 — one line per scene recording the classification that decided the medium. **Every WP-63/64/65/68 gate phrase survives**, pinned by a parameterised test |
+| **RC-P6** | ✅ **The declaration is a COLUMN, not a phrase** (migration 0045: `media_rationale`, `text_carried_by` with a one-value CHECK). Every previous attempt to state something about a visual inside the visual's own text had to be recovered by a regular expression afterwards, and those are the checks this repository has measured being satisfied by accident |
+| **RC-P7** | ✅ **The gate validator.** Hard refusal on the objective limb ONLY (`409 STORYBOARD_INCOMPLETE`, every failing scene named once); soft flags for GENERIC surfaced per scene in the gate panel; **no prompt loops**. One assessment feeds both the panel and the enforcement, so the reviewer sees exactly what will refuse |
+| **RC-P8** | ✅ **RC-O10 CLOSED.** `phase` on both column templates — `start` writes the row's first column and leaves it incomplete, `complete` opens with that column already drawn and finishes, `full` is unchanged and **byte-identical** to the pre-phase renderer (five ops-digests pinned). `start`'s last frame IS `complete`'s first frame. Verified on real frames: scene 2 ends at the carry and the `2`, scene 3 ends at `92` |
+| **RC-P9** | ⚠ **The 09f guard gained a FIFTH assertion, and assertions 1–4 are byte-identical.** A guard that cannot see a parameter cannot refuse a spec that gets it wrong; adding `phase` without it would move the defect from *"the template cannot tell these apart"* to *"the template can, and nothing checks whether it did"*. Flagged rather than assumed |
+| **RC-P10** | ⚠ **The gate panel distinguishes "will be authored" from "will refuse".** `approve_storyboard` authors missing motion templates BEFORE the enforcement check, so a template-less motion scene blocks nothing — and it is the state MOST motion scenes are in, because of RC-P1. Telling a reviewer otherwise would be a false statement in the one place this package exists to make truthful |
+| **RC-P11** | ⓘ **`scripts/verify-deployed-image.sh` reports an unreachable host as `container is not running at all`.** It prepends `root@` itself; passing `root@<ip>` yields `root@root@<ip>` and a false DEPLOY FAILED, indistinguishable from a genuinely absent container. Not fixed here. **Ledgered** |
+| **RC-P12** | ⚠ **Scene 8's spec is a residual, and it is upstream.** Its narration works BOTH partial products in one breath; `column_multiplication_step` draws one row, so the picture shows 640 and not the 32 before it. The spec is consistent with the words and the guard accepted it. v7 says *"give each step its OWN scene"* and this storyboard did not |
+| **RC-P13** | ⓘ **The workers image was rebuilt and deployed to all four nodes** for RC-P4. `shared/providers/client_registry.py`'s `accepts_params` gained `phase` there too; it is descriptive on the worker side (the enforcement is in `ivgs-motion-renderer`), and the fleet is kept coherent rather than mixed |

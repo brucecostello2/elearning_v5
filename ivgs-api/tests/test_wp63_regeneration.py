@@ -90,11 +90,22 @@ async def approved_project(db_session, operator_token):
     await db_session.flush()
     scenes = []
     for i in range(9):
+        # WP-IVGS-10: v7-valid. The fixture changed, not the assertions -- see
+        # the same note in test_wp62_gates.py. `Scene {i} narration` states a
+        # numeral, so the row carries the declaration that the narration is
+        # what says it, and the visual describes the working rather than the
+        # room.
         scene = StoryboardScene(
             id=uuid.uuid4(), project_id=project.id, scene_index=i,
             narration_text=f"Scene {i} narration",
-            visual_description="a teacher at a whiteboard",
+            # ⚠ NO NUMERAL IN THIS PROSE -- see the note in test_wp62_gates.py.
+            visual_description=(
+                "a working surface with a partial-product row already written "
+                "above a ruled horizontal line, the answer row still empty"
+            ),
             media_type="image", duration_seconds=10.0,
+            text_carried_by="narration",
+            media_rationale="image with text_carried_by narration: the number is spoken.",
             created_at=now, updated_at=now,
         )
         db_session.add(scene)

@@ -466,9 +466,14 @@ def register_builtin_clients() -> None:
                 stage="animation_generation",
                 engine="motion_graphics",
                 requires=frozenset({SceneInput.STRUCTURED_SCENE_DATA}),
+                # `phase` added by WP-IVGS-10 Task 4 (RC-O10): which part of a
+                # partial-product or addition row THIS scene writes, so two
+                # consecutive sub-steps are two pictures rather than one twice.
+                # Kept in step with `ivgs-motion-renderer._ACCEPTED_PARAMS`,
+                # which refuses by name against this list.
                 accepts_params=frozenset({
                     "template", "number", "top", "bottom", "step", "column",
-                    "label",
+                    "label", "phase",
                 }),
                 produces="video/mp4",
                 notes=(

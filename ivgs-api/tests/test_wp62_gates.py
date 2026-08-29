@@ -64,12 +64,38 @@ async def storyboarded_project(db_session, operator_token):
     )
     db_session.add(project)
     await db_session.flush()
+    # WP-IVGS-10. THE FIXTURE IS NOW A v7-VALID STORYBOARD, and the scenes are
+    # what changed, not the assertions.
+    #
+    # These tests are about the GATE -- that a decision is recorded, that the
+    # release dispatches, that the response carries the M3.3 signal shape. They
+    # are not about storyboard content. But `narration_text=f"Scene {i}"`
+    # contains a NUMERAL, and v7's RULE 1-EXTENDED refuses a diffusion scene
+    # whose narration states written or numeric content while the row declares
+    # nothing about where that content lives. The refusal was correct; the
+    # fixture was a storyboard v7 will not release.
+    #
+    # `text_carried_by="narration"` is the declaration a real scene like this
+    # would carry: the number is spoken, and the picture shows the board.
     for i in range(3):
         db_session.add(
             StoryboardScene(
                 id=uuid.uuid4(), project_id=project.id, scene_index=i,
-                narration_text=f"Scene {i}", visual_description="a board",
+                narration_text=f"Scene {i}",
+                # ⚠ NO NUMERAL IN THIS PROSE. A first cut wrote "{i + 1}
+                # row(s)" here and was refused by RULE 1 -- correctly, and it is
+                # the same trap v5 measured five of thirteen real descriptions
+                # falling into. Position and count are describable without a
+                # digit; that is what "POSITION, COUNT, WIDTH, ORDER and
+                # EMPTINESS" is for.
+                visual_description=(
+                    "the working surface with a partial-product row already "
+                    "written above a ruled horizontal line, the answer row "
+                    "still empty"
+                ),
                 media_type="image", duration_seconds=5.0,
+                text_carried_by="narration",
+                media_rationale="image with text_carried_by narration: the number is spoken.",
                 created_at=now, updated_at=now,
             )
         )

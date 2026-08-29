@@ -50,6 +50,7 @@ from app.services.regeneration import (
 )
 from app.api.v1._dispatch_guards import gate_blocked
 from app.services.gate_service import GateBlocked, GateError, GateService
+from app.services.storyboard_completeness import StoryboardIncomplete
 from app.services.project_progress import ProjectProgressService
 from app.services.project_deletion import (
     AlreadyDeletedError,
@@ -671,6 +672,27 @@ async def _gate_decision(
             },
         )
 
+    # ── WP-IVGS-10. RECOVER WHAT STAGE 2 AUTHORED AND THE TRANSIT DROPPED ──
+    #
+    # `stage2_storyboard._save_storyboard_scenes` POSTs five keys and the model
+    # emits more: `generation_params` (RULE 8) since v6, and `media_rationale`
+    # and `text_carried_by` (RULES 9 and 1-EXTENDED) since v7. The stage's own
+    # checkpoint carries all of them; the table does not. `storyboard_reconcile`
+    # explains why that is a wrapper rather than the five-line fix.
+    #
+    # HERE, because this is the first POST after the storyboard exists and
+    # because the read path must not write. Idempotent, fills only empty fields,
+    # never overwrites, and never touches `updated_at` -- so it cannot move the
+    # artifact fingerprint the decision below is about to name.
+    if gate == GATE_STORYBOARD:
+        from app.services.storyboard_reconcile import reconcile as _reconcile_storyboard
+
+        summary = await _reconcile_storyboard(db, project_id)
+        if summary.get("filled"):
+            logger.info(
+                "storyboard_reconciled project=%s %s", project_id, summary,
+            )
+
     service = GateService(db)
     try:
         row = await service.decide(
@@ -722,6 +744,34 @@ async def _gate_decision(
                             "job_type": exc.job_type,
                             "status": exc.status,
                         },
+                    }
+                },
+            )
+        except StoryboardIncomplete as exc:
+            # WP-IVGS-10 Task 3. ITS OWN CODE, not INVALID_STATE_TRANSITION.
+            # A reviewer told "invalid state transition" goes to look at the
+            # project's state, and the project's state is fine: what is wrong is
+            # named scenes in the storyboard on their screen, and the surface
+            # branches on this code to say so beside them.
+            #
+            # The approval STANDS, on the same rule every other release refusal
+            # here follows: a human approved this storyboard and that is
+            # recorded. Only the dispatch is refused. Re-approving after fixing
+            # the scenes is required anyway, because editing a scene moves the
+            # artifact fingerprint and re-opens the gate on its own.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "STORYBOARD_INCOMPLETE",
+                        "message": (
+                            f"{exc}\n\nThe approval WAS recorded (decision "
+                            f"{row.id}); only the dispatch was refused. Fix the "
+                            f"scenes named above -- each needs either a "
+                            f"motion_graphics template or an explicit "
+                            f"text_carried_by declaration -- and approve again."
+                        ),
+                        "scenes": [a.as_dict() for a in exc.assessments],
                     }
                 },
             )

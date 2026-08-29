@@ -11,7 +11,7 @@ import { useAssetObjectUrl } from "@/hooks/useAssetMedia";
 import { assetRenderKind } from "@/lib/media";
 import { sceneBadge, sceneTitle } from "@/lib/scenes";
 import type { Asset } from "@/types/api";
-import type { GateState } from "@/hooks/useProjectProgress";
+import type { GateState, SceneCompleteness } from "@/hooks/useProjectProgress";
 
 /**
  * An open human review gate, as the PRIMARY action, with its preview adjacent.
@@ -60,6 +60,105 @@ const DECISION_HELP: Record<Decision, string> = {
  * second because nothing had happened), two audit rows, zero broker messages.
  * It dispatches now, so the tooltip says so, and says what it costs.
  */
+
+/**
+ * WP-IVGS-10 Task 3. THE COMPLETENESS PANEL — what the reviewer is owed.
+ *
+ * The operator's ruling of 2026-08-28 draws one line and this component is on
+ * the right side of it. Two severities, rendered as two different things,
+ * because they are two different statements:
+ *
+ *   `refuse`  OBJECTIVE, and approving WILL be refused by name. The narration
+ *             states written or numeric content while the scene is a diffusion
+ *             medium and declares nothing about where that content lives, or a
+ *             motion scene has no template. Shown in red, BEFORE the buttons,
+ *             so nobody presses Approve to find out.
+ *   `flag`    SUBJECTIVE, and blocks nothing whatsoever. The description names
+ *             no part of the working surface, or two scenes share a picture, or
+ *             no rationale was recorded. Shown in amber, as information.
+ *
+ * ⛔ THE FLAGS ARE NOT A VERDICT AND THIS COMPONENT MUST NEVER RENDER THEM AS
+ * ONE. There is no count-of-problems badge on the Approve button, no disabled
+ * state driven by flags, and no wording that implies the storyboard is bad. The
+ * human gate is the judge of everything subjective; this is the evidence, laid
+ * out so it can be judged.
+ *
+ * Scenes that pass are summarised as a count rather than listed. A reviewer
+ * needs to know the check ran over all of them — a panel that renders nothing
+ * when everything passes cannot be told from one that never ran.
+ */
+function CompletenessPanel({
+  items,
+}: {
+  items: SceneCompleteness[];
+}): React.ReactElement | null {
+  if (!items || items.length === 0) return null;
+
+  const refusals = items.filter((c) => c.severity === "refuse");
+  const flags = items.filter((c) => c.severity === "flag");
+  const clean = items.length - refusals.length - flags.length;
+
+  return (
+    <div className="mt-4 rounded-lg border border-amber-300 bg-white/70 p-3 dark:border-amber-700 dark:bg-gray-900/50">
+      <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+        Does each visual depict its narration?
+      </p>
+      <p className="mt-1 text-xs text-amber-800/80 dark:text-amber-300/80">
+        {items.length} scene{items.length === 1 ? "" : "s"} checked ·{" "}
+        {clean} depict{clean === 1 ? "s" : ""} · {flags.length} flagged ·{" "}
+        {refusals.length} would be refused
+      </p>
+
+      {refusals.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold text-red-800 dark:text-red-300">
+            Approving is refused until these are fixed
+          </p>
+          <ul className="mt-1 space-y-2">
+            {refusals.map((c) => (
+              <li
+                key={`refuse-${c.scene_index}`}
+                className="rounded border border-red-300 bg-red-50 p-2 text-xs text-red-900 dark:border-red-800 dark:bg-red-950/40 dark:text-red-200"
+              >
+                <strong>
+                  Scene {c.scene_index} · {c.media_type}
+                </strong>
+                <span className="ml-2 rounded bg-red-200 px-1 py-0.5 text-[10px] font-semibold uppercase dark:bg-red-900">
+                  {c.verdict}
+                </span>
+                <p className="mt-1">{c.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {flags.length > 0 && (
+        <div className="mt-3">
+          <p className="text-xs font-semibold text-amber-900 dark:text-amber-300">
+            Worth a look — these block nothing, and the judgement is yours
+          </p>
+          <ul className="mt-1 space-y-2">
+            {flags.map((c) => (
+              <li
+                key={`flag-${c.scene_index}`}
+                className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+              >
+                <strong>
+                  Scene {c.scene_index} · {c.media_type}
+                </strong>
+                <span className="ml-2 rounded bg-amber-200 px-1 py-0.5 text-[10px] font-semibold uppercase dark:bg-amber-900">
+                  {c.verdict}
+                </span>
+                <p className="mt-1">{c.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function GateReviewPanel({
   projectId,
@@ -142,6 +241,10 @@ export default function GateReviewPanel({
                 : ""}
               {state.note ? ` — “${state.note}”` : ""}
             </p>
+          )}
+
+          {gate === "storyboard" && (
+            <CompletenessPanel items={state.completeness ?? []} />
           )}
 
           {canDecide ? (

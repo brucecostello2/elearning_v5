@@ -62,6 +62,8 @@ class StoryboardService:
         effects: Optional[List[str]] = None,
         timing_offset_ms: Optional[int] = None,
         generation_params: Optional[Dict[str, Any]] = None,
+        media_rationale: Optional[str] = None,
+        text_carried_by: Optional[str] = None,
     ) -> StoryboardScene:
         """Create or REPLACE the scene at this index (WP-43 D-2 fields included).
 
@@ -109,6 +111,9 @@ class StoryboardService:
             "effects": effects,
             "timing_offset_ms": timing_offset_ms,
             "generation_params": generation_params,
+            # WP-IVGS-10 (migration 0045). v7's per-scene content contract.
+            "media_rationale": media_rationale,
+            "text_carried_by": text_carried_by,
         }
 
         if existing is not None:
@@ -149,6 +154,12 @@ class StoryboardService:
         "effects",
         "timing_offset_ms",
         "generation_params",
+        # WP-IVGS-10. v7's declarations are editable at the gate for the same
+        # reason every other scene field is: the reviewer is the judge, and a
+        # reviewer who can see a flag but not answer it has been shown a
+        # problem and denied the fix.
+        "media_rationale",
+        "text_carried_by",
     )
 
     async def update_scene(

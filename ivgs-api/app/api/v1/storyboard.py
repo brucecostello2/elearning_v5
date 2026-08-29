@@ -90,6 +90,11 @@ async def create_scene(
         effects=data.effects,
         timing_offset_ms=data.timing_offset_ms,
         generation_params=data.generation_params,
+        # WP-IVGS-10. v7 emits these; the route accepts them so that a
+        # storyboard authored under v7 arrives complete rather than being
+        # reconstructed afterwards.
+        media_rationale=data.media_rationale,
+        text_carried_by=data.text_carried_by,
     )
     # WP-38 / ORCH-5. Nothing advanced projects.state when a stage completed:
     # the only writers were trigger_pipeline (DRAFT -> TRANSCRIPT_REFINEMENT) and

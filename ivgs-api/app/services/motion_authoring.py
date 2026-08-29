@@ -83,11 +83,16 @@ def template_catalogue() -> Dict[str, Dict[str, Any]]:
     list of what the templates are would be a second definition, and the
     renderer would keep drawing from the first one.
     """
-    from shared.motion.templates import template_names, template_spec
+    from shared.motion.templates import (
+        param_kinds,
+        template_names,
+        template_spec,
+    )
 
     return {
         name: {
             "params": dict(template_spec(name)["params"]),
+            "kinds": param_kinds(name),
             "describes": template_spec(name)["describes"],
         }
         for name in template_names()
@@ -137,10 +142,28 @@ def build_prompt(
        BY INDEX and explicitly marked as context-for-operands-only: the scene's
        own words remain the sole authority on WHICH STEP this is.
     """
+    from shared.motion.templates import PHASES
+
+    #: A parameter is shown to the model with the SHAPE it actually takes.
+    #: ⛔ Every parameter used to be rendered `<int>`, `label` included, and the
+    #: live consequence is on project c12fa967 scene 1: `{"label": 0}`, a
+    #: caption written as the integer zero because the prompt said it was one.
+    #: The kinds come from the templates' own signatures (`param_kinds`), so a
+    #: parameter cannot be advertised as one type and implemented as another.
+    placeholder = {
+        "int": "<int>",
+        "text": "<short word>",
+        "choice": " | ".join(f'"{v}"' for v in PHASES),
+    }
+
     cat = template_catalogue()
     lines = []
     for name, spec in sorted(cat.items()):
-        params = ", ".join(f'"{p}": <int>' for p in sorted(spec["params"]))
+        kinds = spec.get("kinds", {})
+        params = ", ".join(
+            f'"{p}": {placeholder.get(kinds.get(p, "int"), "<int>")}'
+            for p in sorted(spec["params"])
+        )
         lines.append(f'  {{"template": "{name}", {params}}}')
         lines.append(f"      {spec['describes']}")
         for pname, meaning in sorted(spec["params"].items()):
@@ -207,6 +230,27 @@ CHOOSE THE TEMPLATE FROM WHAT THE WORDS DESCRIBE:
 "step" COUNTS FROM THE UNITS DIGIT OF THE MULTIPLIER: step 0 is the multiplier's
 ones digit, step 1 is its tens digit. Narration that says "multiplying by the
 ones digit" is step 0; "now the tens digit" is step 1.
+
+"phase" IS READ FROM THE WORDS, NEVER CALCULATED. "step" says WHICH multiplier
+digit; "phase" says HOW FAR THROUGH THAT DIGIT'S ROW {here} gets, and a lesson
+usually takes two scenes over one row. Decide it from {here}'s own sentence:
+
+  the words write a digit and CARRY, and announce no result for the row
+      -> "start"    (its first column only; the row is left incomplete)
+  the words continue a row already begun and ANNOUNCE its result
+    - "our first answer is 92", "that gives us 230"
+      -> "complete" (opens with that first column already drawn, finishes the
+                     row)
+  one sentence really does walk the whole row start to finish, or the scene is
+  a recap of a completed row
+      -> "full"
+
+⛔ THIS WAS MEASURED. Before "phase" existed, scenes 2 and 3 of project
+9c29b1d1 rendered the IDENTICAL animation, and so did scenes 4 and 5: four
+scenes, two pictures. The child heard "write the 2 and carry the 1" over a
+picture that had already written the answer, then heard the answer over that
+same picture again. Choosing "full" for a scene that only carries reproduces
+exactly that, and it is refused.
 
 THE PARAMETERS ARE THE LESSON'S WHOLE NUMBERS, NOT THE DIGITS THIS STEP
 MULTIPLIES. A narration reading "multiply 6 times 7" inside a lesson working
@@ -386,14 +430,32 @@ def producible_numbers(spec: Dict[str, Any]) -> "set[int]":
     def digits(n: int) -> "list[int]":
         return [int(c) for c in str(abs(int(n)))][::-1]  # units first, as the renderer
 
+    # WP-IVGS-10. `phase` NARROWS WHAT A TEMPLATE PRODUCES, AND THAT IS THE
+    # POINT OF IT. `column_multiplication_step(23, 14, step=0)` reaches 92 at
+    # `phase="full"` and reaches only 2-carry-1 at `phase="start"`, because the
+    # row is deliberately left half written. A producibility set computed
+    # without the phase would let a `start` scene sit under narration announcing
+    # the row's answer -- exactly the class of contradiction assertion 2b
+    # exists to refuse. Absent or "full" reproduces the pre-phase set exactly.
+    phase = str(spec.get("phase", "full") or "full").strip().lower()
+
     if name == "column_multiplication_step":
         a, b, step = int(spec["top"]), int(spec["bottom"]), int(spec["step"])
         db = digits(b)
         step = max(0, min(step, len(db) - 1))
         multiplier = db[step]
-        out |= {a, b, multiplier, a * multiplier, a * multiplier * (10 ** step)}
+        da = digits(a)
+        # `start` writes the first column only, so the row's total is never on
+        # screen; `complete` and `full` both finish the row.
+        first_only = phase == "start" and len(da) > 1
+        if not first_only:
+            out |= {a, b, multiplier, a * multiplier, a * multiplier * (10 ** step)}
+        else:
+            out |= {a, b, multiplier}
         carry = 0
-        for d in digits(a):
+        for i, d in enumerate(da):
+            if first_only and i > 0:
+                break
             total = d * multiplier + carry
             out |= {d, d * multiplier, total, total % 10}
             carry = total // 10
@@ -401,10 +463,13 @@ def producible_numbers(spec: Dict[str, Any]) -> "set[int]":
                 out.add(carry)
     elif name == "column_addition_carry":
         a, b = int(spec["top"]), int(spec["bottom"])
-        out |= {a, b, a + b}
         da, db = digits(a), digits(b)
+        first_only = phase == "start" and max(len(da), len(db)) > 1
+        out |= {a, b} if first_only else {a, b, a + b}
         carry = 0
         for i in range(max(len(da), len(db))):
+            if first_only and i > 0:
+                break
             total = (da[i] if i < len(da) else 0) + (db[i] if i < len(db) else 0) + carry
             out |= {total, total % 10}
             carry = total // 10
@@ -532,6 +597,59 @@ def verify_spec_against_narration(
                     f"would work a different digit from the one the learner "
                     f"hears named. Refused rather than rendered."
                 )
+
+    # 5. THE PHASE THE WORDS DESCRIBE (WP-IVGS-10, RC-O10).
+    #
+    # ⛔ ASSERTIONS 1-4 ARE UNCHANGED BY THIS PACKAGE, byte for byte. This is an
+    # addition, and it exists because `phase` is a new parameter: a guard that
+    # cannot see a parameter cannot refuse a spec that gets it wrong, and RC-O10
+    # was opened precisely because two consecutive scenes rendered the same
+    # picture. Adding the parameter without adding its assertion would move the
+    # defect from "the template cannot tell these apart" to "the template can
+    # and nothing checks whether it did".
+    #
+    # Two mechanical facts, and it fires only when the words state one of them:
+    #
+    #   * A scene that ANNOUNCES the row's answer -- "our first answer is 92" --
+    #     has finished the row. It cannot be `phase="start"`, which by
+    #     construction leaves the row incomplete. (Assertion 2b already catches
+    #     this now that producibility is phase-aware; this states it in words a
+    #     reader can act on rather than as an unreachable number.)
+    #   * A scene that CARRIES with nothing else after it -- "write the 2 and
+    #     carry the 1" and no announced total -- is the beginning of a row, not
+    #     the whole of it. `phase="full"` there draws the answer before the
+    #     narration reaches it, which is the RC-O10 defect seen from the other
+    #     side.
+    #
+    # Silence is not evidence. A narration that states neither is left alone.
+    if name in ("column_multiplication_step", "column_addition_carry"):
+        phase = str(spec.get("phase", "full") or "full").strip().lower()
+        announces = any(
+            any(w in sentence.lower() for w in _ANSWER_WORDS)
+            and narration_numbers(sentence)
+            for sentence in re.split(r"(?<=[.!?])\s+", narration or "")
+        )
+        if announces and phase == "start":
+            raise MotionAuthoringError(
+                f"{where}: the narration announces this row's result, so the "
+                f"scene finishes the row — but phase='start' writes only its "
+                f"first column and deliberately leaves it incomplete. The "
+                f"learner would hear the answer over a picture that does not "
+                f"contain it. Use phase='complete' (the first column already "
+                f"written by the previous scene) or 'full'. Refused rather "
+                f"than rendered."
+            )
+        carries = any(w in words for w in _CARRY_WORDS)
+        if carries and not announces and phase == "full":
+            raise MotionAuthoringError(
+                f"{where}: the narration writes a digit and carries, and "
+                f"announces no result — that is the BEGINNING of a row — but "
+                f"phase='full' draws the whole row, so the answer appears "
+                f"before the words reach it and the next scene has nothing "
+                f"left to show. That is RC-O10, the defect this parameter "
+                f"exists to close. Use phase='start'. Refused rather than "
+                f"rendered."
+            )
 
     # 3. OPERAND GROUNDING. Every literal number in the params must be spoken
     #    somewhere real — this scene, or the surrounding scenes that establish

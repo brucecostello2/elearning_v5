@@ -7,9 +7,23 @@ INSTRUCTIONS:
 Generate a JSON array of scene objects from the transcript. Each scene must include:
 - "scene_index": Sequential integer starting from 1
 - "narration_text": The narration spoken during this scene
-- "visual_description": Detailed description of the visual to be generated
-- "media_type": One of "image", "video_clip", or "animation"
+- "visual_description": What is SHOWN in this scene, in what state, changing how
+- "media_type": One of "image", "video_clip", "animation" or "motion_graphics"
 - "duration_seconds": Duration for this scene
+- "media_rationale": ONE LINE saying why that media_type for this scene (RULE 9)
+
+and, depending on what the scene's content is (RULE 1-EXTENDED):
+- "generation_params": REQUIRED for a "motion_graphics" scene — the template
+  and its parameters (RULE 8). Absent for every other media_type.
+- "text_carried_by": REQUIRED, with the value "narration", for a scene whose
+  narration states written or numeric content while the scene keeps a
+  diffusion media_type. Absent otherwise.
+
+⛔ "media_type" HAS FOUR VALUES AND THIS LINE USED TO LIST THREE. Measured in
+the tree 2026-08-28: v6 introduced "motion_graphics" in RULE 2 and RULE 8 and
+left this field list saying "image, video_clip, or animation" four rules above
+them. A model reading its own output contract first, as models do, was told the
+fourth value does not exist before it was told to choose it.
 
 {% if project_description %}
 PROJECT BRIEF:
@@ -88,6 +102,70 @@ numeral: "the leftmost column", "a single carry mark above the second column
 from the right", "the first of two partial-product rows", "one digit wider".
 Use those. The composition overlay puts the actual numbers in, in a real font,
 in a later stage.
+
+RULE 1-EXTENDED — WRITTEN OR NUMERIC CONTENT IS NEVER DELEGATED TO DIFFUSION
+This is the rule the rest of this prompt has been missing, and the defect it
+closes is the general one behind every unusable draft this pipeline has
+produced. RULE 1 governs the DESCRIPTION. It has never governed the MEDIA-TYPE
+CHOICE — so a scene whose content IS written or numeric could still be handed to
+an image model, and RULE 1 then forbade its description from mentioning the very
+thing the scene teaches. The scene was left with nothing to depict, and "a hand,
+a pencil, warm lighting" is what nothing-to-depict looks like.
+
+MEASURED LIVE, project 9c29b1d1, 2026-08-28, scene 1:
+  narration : "First, we set up the problem. WRITE THE NUMBERS on top and
+               underneath, making sure the ones digits LINE UP and the tens
+               digits line up. DRAW A LINE underneath."
+  visual    : "A hand holding a pencil, poised over a blank sheet of lined
+               paper with a ruler and a soft pink pencil case nearby, warm and
+               gentle lighting"
+Every content-critical referent — the two numbers, their alignment, the line —
+is absent. The same measurement over eighteen scenes of the earlier reference
+run found SEVENTEEN in that state.
+
+SO, BEFORE YOU CHOOSE A MEDIA TYPE, CLASSIFY THE SCENE'S CONTENT:
+
+  A. Does this scene's narration state WRITTEN TEXT OR NUMERALS as its content?
+     Numbers spoken, digits written, a result announced, words quoted, something
+     put on a page. If yes, this scene is CONTENT-BEARING and one of exactly two
+     things must be true of it:
+
+       (i)  it is "motion_graphics", with "generation_params" naming a template
+            and its parameters (RULE 8). A renderer draws those digits in a real
+            font and cannot misspell them; and
+
+       (ii) OR it keeps a diffusion media_type ("image", "video_clip",
+            "animation") AND YOU DECLARE, on the scene, "text_carried_by":
+            "narration" — meaning the written content is carried by the SPOKEN
+            words while the picture depicts the NON-TEXT SITUATION around them.
+
+     THERE IS NO THIRD ANSWER, and silence is not one. A content-bearing scene
+     with a diffusion media_type and no declaration is REFUSED BY NAME at the
+     storyboard gate. The refusal is not about the medium — it is about the
+     ambiguity: nobody reading that row can tell whether the numbers were meant
+     to be in the picture or in the words, so nobody can tell whether the
+     picture is wrong.
+
+  B. Is the content something OTHER than written text or numerals — a situation,
+     a person, an object, a place, a mood, a physical action? Then choose freely
+     under RULE 2 and declare nothing.
+
+AND (ii) IS A DECLARATION, NOT A LOOPHOLE. Declaring it does not license a digit
+in the description; RULE 1 still applies in full, and a declared scene whose
+description names a numeral or asks for "the calculations", "the equation" or
+"the steps written" is refused exactly as an undeclared one is. What the
+declaration buys is the right to describe the SITUATION — the child at the desk,
+the hand about to begin, the finished page being held up — while the narration
+says the numbers out loud.
+
+  - WRONG: media_type "image", narration "write 23 on top and 14 underneath",
+    no declaration, visual "a hand poised over a blank sheet of paper"
+  - RIGHT: media_type "motion_graphics", generation_params
+    {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+     "step": 0, "phase": "start"}
+  - RIGHT: media_type "image", text_carried_by "narration", visual "a child at
+    a desk turning a freshly ruled page towards the camera, the working surface
+    empty below a single ruled horizontal line, warm lamp from the left"
 
 RULE 2 — CHOOSE media_type DELIBERATELY, SCENE BY SCENE
 media_type is a DECISION you make for each scene against the criteria below.
@@ -183,6 +261,47 @@ narration, and put all three answers in the description:
 A blank sheet is only correct for a scene whose narration is about a blank
 sheet. Every later scene has MORE on the page than the one before it: the
 working accumulates, and the pictures must show it accumulating.
+
+STAGING MAY REMAIN. CONTENT IS MANDATORY. This is v7's amendment to RULE 5 and
+it is the operator's ruling of 2026-08-28 in one line: *the visual layer is
+being authored as aesthetic staging, not as content.* The desk, the lamp, the
+palette, the over-the-shoulder framing — keep all of it. It is what makes the
+lesson look like one place rather than a slide deck. But a description made ONLY
+of those things has described the room and not the lesson, and this pipeline has
+now measured that outcome twice over thirty-two scenes.
+
+So every description answers, IN THIS ORDER, and the first three are not
+optional:
+
+  1. WHAT IS SHOWN — the referents this scene's narration actually names.
+     Objects, the working surface, the person, the thing being counted.
+  2. IN WHAT STATE — how much is already there. Which rows are written, whether
+     the line is ruled yet, whether the answer row is still empty, whether a
+     carry mark is sitting above a column, whether the placeholder is in place.
+  3. CHANGING HOW — what is different at the end of this scene from the
+     beginning of it. For a still this is the state the moment freezes; for a
+     clip it is what moves; for a build it is what accumulates.
+  4. AND THEN the staging: framing, light, palette, the clear space the overlay
+     will occupy.
+
+THE DELETION TEST, IN ITS SECOND FORM. RULE 1 asks you to delete every digit and
+check the description survives. Now delete every piece of STAGING — every
+mention of lighting, palette, mood, furniture, framing and camera — and check
+that what remains still says what this scene teaches. If deleting the staging
+empties it, you described the room.
+
+  - WRONG: "A hand holding a pencil, poised over a blank sheet of lined paper
+    with a ruler and a soft pink pencil case nearby, warm and gentle lighting"
+    (delete the staging and NOTHING is left; measured live, project 9c29b1d1
+    scene 1, over narration that says to write the numbers, line up the ones
+    digits and draw a line)
+  - RIGHT: "Two numbers stand one above the other on lined paper, the upper row
+    one digit wider than the lower, their right-hand edges flush; a freshly
+    ruled horizontal line runs beneath both and the answer row under it is
+    still empty. A hand rests a pencil at the right-hand end of the ruled line.
+    Over-the-shoulder framing, warm desk lamp from the left, upper right third
+    kept clear for the overlay."
+    (delete the staging and the whole lesson step survives)
 
 RULE 6 — NO TWO SCENES MAY SHARE A VISUAL, AND NONE MAY BE STOCK PHOTOGRAPHY
 Measured on a real run of this pipeline (project 14f71729, 2026-08-26,
@@ -299,21 +418,58 @@ Choose from EXACTLY these four templates and use their parameter names verbatim:
       A two-digit number separates into its tens and its units and recombines.
       For a scene teaching what the digits in a number MEAN.
 
-  {"template": "column_addition_carry", "top": 27, "bottom": 15}
+  {"template": "column_addition_carry", "top": 27, "bottom": 15,
+   "phase": "full"}
       Two rows sum; where a column exceeds nine the carry appears above the
       next column and travels there. For a scene teaching carrying.
+      "phase" works exactly as it does for the multiplication template.
 
-  {"template": "column_multiplication_step", "top": 23, "bottom": 14, "step": 0}
+  {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+   "step": 0, "phase": "start"}
       ONE partial product, written digit by digit, with its carry travelling.
       "step" is which multiplier digit this scene works: 0 = the units digit,
       1 = the tens digit (which writes its placeholder zero first). Give each
       step its OWN scene rather than crowding them into one.
+      "phase" is HOW FAR THROUGH THAT ROW this scene gets — see below.
 
   {"template": "highlight_and_hold", "top": 23, "bottom": 14, "column": 0,
    "label": "units"}
       The working, with one column emphasised while the narration refers to it.
       "column" counts from the right: 0 = units, 1 = tens. For a recap or a
       checking scene.
+
+
+"phase" — WHICH PART OF THE ROW THIS SCENE WRITES, AND IT IS REQUIRED ON BOTH
+COLUMN TEMPLATES. A lesson takes two scenes over one row, and before this
+parameter existed both scenes rendered the whole row: measured on project
+9c29b1d1, scenes 2 and 3 produced the IDENTICAL animation, and so did 4 and 5.
+The child heard "write the 2 and carry the 1" over a picture that had already
+written the answer, and then heard the answer over the same picture again.
+
+  "start"     THIS SCENE BEGINS THE ROW. Its first column is written, its carry
+              travels, and the row is deliberately left INCOMPLETE. Choose it
+              when the narration writes a digit and carries WITHOUT announcing
+              the row's answer: "multiply 4 times 3, write the 2 underneath and
+              carry the 1 above the tens column."
+  "complete"  THIS SCENE FINISHES THE ROW. It opens with that first column
+              already on the page — drawn, not re-animated, because the
+              previous scene put it there — and writes the rest. Choose it when
+              the narration continues an already-begun row and ANNOUNCES its
+              result: "and 4 times 2 is 8, add the carried 1: our first answer
+              is 92."
+  "full"      THE WHOLE ROW IN ONE SCENE, beginning to end. Correct only when a
+              single scene's narration really does walk the entire row without a
+              scene break — a recap, or a short lesson that does not split it.
+
+READ THE NARRATION, NOT THE ARITHMETIC. "phase" is not something to calculate:
+it is stated by the words. Announces a result -> "complete" (or "full" if this
+scene also began the row). Carries with no result announced -> "start". A scene
+that does both, in one breath -> "full".
+
+⛔ AND THE PHASE IS CHECKED. A scene announcing a result under "start" is
+refused by name — "start" cannot draw that number — and a scene that only
+carries, under "full", is refused too, because it shows the learner the answer
+before the narration reaches it.
 
 RULES FOR THESE PARAMETERS:
 
@@ -329,6 +485,33 @@ RULES FOR THESE PARAMETERS:
   - Do NOT invent template names or parameter names. A template this list does
     not contain does not exist, and a scene naming one cannot be rendered.
 
+RULE 9 — RECORD WHY YOU CHOSE THAT MEDIUM, IN ONE LINE
+Every scene carries "media_rationale": one sentence naming the CONTENT
+CLASSIFICATION that decided its media_type. Not what the scene is about — why
+this medium and not another.
+
+MEDIA TYPE IS DERIVED, NOT PREFERRED. RULE 1-EXTENDED classifies the content and
+RULE 2 picks the medium that content allows; the rationale is you showing that
+work. WP-64 made the choice deliberate and WP-68 gave it a fourth option, and
+neither asked you to say why — so a wrong choice and a right one have looked
+identical on the row ever since, and the human reviewing the storyboard has had
+nothing to read.
+
+One line, and it must name the reason rather than restate the scene:
+
+  - RIGHT: "motion_graphics: the narration writes a digit and carries it, which
+    is numeric content and must be drawn rather than generated."
+  - RIGHT: "image with text_carried_by narration: the numbers are spoken, and
+    what the picture must show is a page that is still empty."
+  - RIGHT: "video_clip: the hand sweeping down the column is only legible while
+    it moves; a frozen frame loses the sweep."
+  - WRONG: "This scene shows the multiplication." (says nothing about the
+    choice)
+  - WRONG: "It looks better as a video." (taste, not classification)
+
+Keep it under a line. It is read by a human at the review gate, beside the
+scene, and a paragraph there is a paragraph nobody reads.
+
 Visual guidelines:
 - Visual descriptions should be detailed enough for AI image generation
 - Maintain visual consistency across scenes (style, color palette) while the
@@ -342,7 +525,15 @@ Visual guidelines:
 - Be distinguishable from every other scene's, including any scene that
   revisits an earlier step (RULE 6)
 - For a "motion_graphics" scene, be accompanied by a "generation_params" object
-  naming one of the four templates and its parameters (RULE 8)
+  naming one of the four templates and its parameters, INCLUDING "phase" on the
+  two column templates (RULE 8)
+- Say WHAT IS SHOWN, IN WHAT STATE and CHANGING HOW before any staging, and
+  survive the deletion of the staging (RULE 5)
+- Carry "text_carried_by": "narration" whenever the scene's narration states
+  written or numeric content and the media_type is a diffusion one
+  (RULE 1-EXTENDED) - and remember that declaring it never licenses a digit
+- Carry a one-line "media_rationale" naming the classification that decided the
+  medium (RULE 9)
 
 TRANSCRIPT:
 {{ combined_transcript }}

@@ -193,7 +193,58 @@ CHANGE_NOTE = (
     "silently rendered as an image, and the Media Type dropdown deliberately "
     "does not offer this value - WP-64 removed one advertising a pathway that "
     "did not exist and adding it back early would be the same defect. "
-    "v5 stays readable, inactive."
+    "WP-IVGS-10 Task 2 publishes this as v7, on the operator's ruling of "
+    "2026-08-28: THE STORYBOARD'S VISUAL LAYER IS AUTHORED AS AESTHETIC "
+    "STAGING, NOT CONTENT. Measured the same day over both stored "
+    "storyboards with the classifier that now runs at the gate "
+    "(app/services/storyboard_completeness.py): the reference run c12fa967 is "
+    "17 of 18 scenes DELEGATES-TO-WRONG-MEDIUM, and 9c29b1d1 is 8 of 14 - and "
+    "in 9c29b1d1 every one of the six scenes that DEPICTS is a motion scene "
+    "WP-IVGS-09f authored, so EVERY visual the storyboard model itself wrote "
+    "is a delegation or a generic. The operator's own example: scene 1's "
+    "narration says 'write the numbers on top and underneath, making sure the "
+    "ones digits line up ... draw a line underneath' and its visual is 'a hand "
+    "holding a pencil, poised over a blank sheet of lined paper with a ruler "
+    "and a soft pink pencil case nearby, warm and gentle lighting'. "
+    "v7 adds RULE 1-EXTENDED, which is the general rule the motion-params saga "
+    "(WP-IVGS-09b..09f) was one measurable instance of. RULE 1 has always "
+    "governed the DESCRIPTION and never the MEDIA-TYPE CHOICE, so a scene "
+    "whose content IS written or numeric could still be handed to diffusion, "
+    "and RULE 1 then forbade its description from naming the thing the scene "
+    "teaches - leaving nothing to depict, which is what 'a hand, a pencil, "
+    "warm lighting' is. v7 classifies the content FIRST and derives the medium "
+    "from it: content-bearing scenes are either motion_graphics with a "
+    "template (RULE 8) or diffusion WITH an explicit "
+    "text_carried_by='narration' declaration, and there is no third answer. "
+    "The declaration is a COLUMN (migration 0045), not a phrase in the prose, "
+    "because every previous attempt to state something about a visual inside "
+    "the visual's own text has had to be recovered by a regular expression "
+    "afterwards. Declaring never licenses a digit: RULE 1 still refuses a "
+    "declared scene whose description names a numeral or asks for 'the "
+    "calculations'. "
+    "v7 also amends RULE 5 - STAGING MAY REMAIN, CONTENT IS MANDATORY, with a "
+    "second deletion test (delete the staging; does the lesson step survive?) "
+    "and the WHAT IS SHOWN / IN WHAT STATE / CHANGING HOW ordering - and adds "
+    "RULE 9, one line per scene recording the classification that decided its "
+    "medium (migration 0045's media_rationale). A wrong media choice and a "
+    "right one have looked identical on the row since WP-64 made the choice "
+    "deliberate. "
+    "AND RULE 8 GAINS 'phase' (WP-IVGS-10 Task 4, executing RC-O10). Measured "
+    "on 9c29b1d1: scenes 2 and 3 rendered the IDENTICAL animation and so did 4 "
+    "and 5, because the template took only (top, bottom, step) and step names "
+    "WHICH MULTIPLIER DIGIT, never HOW FAR THROUGH THAT DIGIT'S ROW. 'start' "
+    "writes the row's first column and leaves it incomplete, 'complete' opens "
+    "with that column already drawn and finishes the row, 'full' is the whole "
+    "row and is BYTE-IDENTICAL to what the templates produced before phases "
+    "existed. The narration states the phase in words - announces a result -> "
+    "complete, carries with no result -> start - so it is read, not "
+    "calculated, and the WP-IVGS-09f guard refuses both wrong ways round. "
+    "THE FIELD LIST AT THE TOP IS ALSO CORRECTED: it said media_type was 'One "
+    "of image, video_clip, or animation' while RULE 2 and RULE 8 three rules "
+    "below offered motion_graphics, so the first thing the model read about "
+    "its own output contract said the fourth value does not exist. "
+    "EVERY WP-63/WP-64/WP-65/WP-68 GATE PHRASE SURVIVES and RULE 1 IS "
+    "TIGHTENED, NOT TRADED. v6 stays readable, inactive."
 )
 
 #: The binding contract, as phrases that must be present. A prompt missing
@@ -249,6 +300,39 @@ V6_PHRASES = (
     'RULE 8 — A "motion_graphics" SCENE IS STRUCTURED DATA',
     '"animation" AND "motion_graphics" ARE NOT INTERCHANGEABLE',
     "MUST be the numbers this lesson actually uses",
+)
+
+#: WP-IVGS-10 Task 2. v7's three amendments, gated for the reason every phrase
+#: here is gated: a template that has lost them publishes cleanly, runs cleanly,
+#: and goes straight back to authoring the visual layer as staging.
+#:
+#: RULE 1-EXTENDED is the load-bearing one. Without it RULE 1 governs only the
+#: DESCRIPTION, a scene whose content is written or numeric can still be handed
+#: to diffusion, and RULE 1 then forbids its description from naming the thing
+#: the scene teaches -- which is exactly how "a hand, a pencil, warm lighting"
+#: became the house style over thirty-two measured scenes.
+V7_PHRASES = (
+    "RULE 1-EXTENDED — WRITTEN OR NUMERIC CONTENT IS NEVER DELEGATED TO DIFFUSION",
+    "THERE IS NO THIRD ANSWER",
+    '"text_carried_by": "narration"',
+    "STAGING MAY REMAIN. CONTENT IS MANDATORY.",
+    "WHAT IS SHOWN",
+    "IN WHAT STATE",
+    "CHANGING HOW",
+    "RULE 9 — RECORD WHY YOU CHOSE THAT MEDIUM, IN ONE LINE",
+    "MEDIA TYPE IS DERIVED, NOT PREFERRED",
+    '"phase" — WHICH PART OF THE ROW THIS SCENE WRITES',
+)
+
+#: WP-IVGS-10. The four media types, in the OUTPUT CONTRACT at the top of the
+#: template rather than only in RULE 2. v6 introduced `motion_graphics` in
+#: RULE 2 and RULE 8 and left the field list three rules above them saying
+#: "image, video_clip, or animation" -- so the first thing the model read about
+#: its own output said the fourth value does not exist.
+FIELD_LIST_PHRASES = (
+    'One of "image", "video_clip", "animation" or "motion_graphics"',
+    '"media_rationale"',
+    '"text_carried_by"',
 )
 
 #: RULE 1 must survive. It is the older rule and it is the one measured twice.
@@ -342,6 +426,33 @@ async def main() -> None:
             "is a value the model can choose and never populate."
         )
 
+    missing = [p for p in V7_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template has lost the WP-IVGS-10 Task 2 amendments: missing "
+            f"{missing!r}. These are v7 and they are the operator's ruling of "
+            "2026-08-28 -- that the visual layer is authored as aesthetic "
+            "staging rather than content. MEASURED over both stored "
+            "storyboards on 2026-08-28: of 18 scenes in the reference run "
+            "17 delegated written or numeric content to a diffusion medium, "
+            "and of 14 scenes in 9c29b1d1 eight did, while EVERY scene the "
+            "model itself authored as a visual was a delegation or generic. "
+            "RULE 1-EXTENDED is the one that must not be dropped: without it "
+            "RULE 1 governs the description and nothing governs the CHOICE, "
+            "so a scene whose content is written or numeric still reaches an "
+            "image model and its description is then forbidden from naming "
+            "what the scene teaches."
+        )
+    missing = [p for p in FIELD_LIST_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template's OUTPUT CONTRACT does not offer what its rules ask "
+            f"for: missing {missing!r}. A field list that omits a media type "
+            "RULE 2 tells the model to choose, or a field the gate refuses "
+            "without, is a contract that contradicts its own rules -- and the "
+            "model reads the contract first."
+        )
+
     # A prompt that offers a template the renderer does not serve produces a
     # scene that cannot be rendered at all -- checked against the module rather
     # than against a list in this script, so the two cannot drift.
@@ -362,10 +473,34 @@ async def main() -> None:
             "structured data the model has no vocabulary for."
         )
 
+    # WP-IVGS-10. EVERY PARAMETER THE RENDERER DECLARES MUST BE NAMED IN THE
+    # PROMPT. Checked against the module for the same reason the template names
+    # are: `phase` was added to two templates by Task 4, and a prompt that never
+    # mentions it produces specs without it -- which `parse_and_validate`
+    # refuses at authoring time, one stage too late and with a message about a
+    # missing parameter rather than about a prompt that never asked for one.
+    from shared.motion.templates import template_spec as _spec
+
+    unnamed = sorted(
+        {
+            param
+            for name in _template_names()
+            for param in _spec(name)["params"]
+            if f'"{param}"' not in text
+        }
+    )
+    if unnamed:
+        _fail(
+            f"the templates declare parameter(s) {unnamed} that this prompt "
+            f"never names, so the model cannot supply them and every spec it "
+            f"returns will be refused for omitting one. Name them in RULE 8."
+        )
+
     print(
-        "contract : OK (RULE 0, RULE 2, RULE 5, RULE 6, RULE 7 and RULE 8 "
-        "present, RULE 1 intact, WP-65 v5 and WP-68 v6 amendments present, "
-        f"{len(offered)} motion templates all served)"
+        "contract : OK (RULE 0, RULE 1-EXTENDED, RULE 2, RULE 5, RULE 6, "
+        "RULE 7, RULE 8 and RULE 9 present, RULE 1 intact, WP-65 v5, WP-68 v6 "
+        "and WP-IVGS-10 v7 amendments present, output contract offers all four "
+        f"media types, {len(offered)} motion templates all served)"
     )
     print()
 

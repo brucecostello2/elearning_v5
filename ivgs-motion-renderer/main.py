@@ -126,8 +126,13 @@ logger = structlog.get_logger(__name__)
 #: than documented: a parameter outside this set is refused by name, so a
 #: storyboard that invents one is told, instead of having it silently ignored
 #: while a picture comes back that does not reflect it.
+#
+# WP-IVGS-10 Task 4 adds `phase`, executing RC-O10. It is a template parameter
+# like any other and is refused for a template that does not declare it, by the
+# `extra` check below -- this set is the OUTER gate (the capability contract),
+# `template_spec` is the inner one (what this template takes).
 _ACCEPTED_PARAMS = frozenset(
-    {"template", "number", "top", "bottom", "step", "column", "label"}
+    {"template", "number", "top", "bottom", "step", "column", "label", "phase"}
 )
 
 #: Filled in at build time by the Dockerfile (see `ARG IVGS_BUILD_REF`), the

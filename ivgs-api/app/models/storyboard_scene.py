@@ -71,6 +71,20 @@ class StoryboardScene(Base):
     generation_params: Mapped[Optional[dict]] = mapped_column(
         JSONB, nullable=True,
     )
+    # ── WP-IVGS-10, v7's per-scene content contract; migration 0045 ──
+    # `media_rationale` is RULE 9: one line on why THIS medium for THIS scene.
+    # `text_carried_by` is RULE 1-EXTENDED's declaration: when the narration's
+    # content is written or numeric and the scene keeps a diffusion medium, the
+    # storyboard must SAY that the words carry the text and the picture carries
+    # the situation. A declaration a machine has to infer from prose is not a
+    # declaration -- this repository has measured that mistake three times -- so
+    # it is a column with one legal value, checked in the database.
+    media_rationale: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True,
+    )
+    text_carried_by: Mapped[Optional[str]] = mapped_column(
+        String(16), nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

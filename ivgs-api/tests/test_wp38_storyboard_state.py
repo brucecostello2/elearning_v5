@@ -24,12 +24,27 @@ SERVICE_HEADERS = {"Authorization": f"Bearer {settings.IVGS_SERVICE_TOKEN}"}
 
 
 def _scene(idx: int) -> dict:
+    """WP-IVGS-10: a v7-valid scene. THE FIXTURE CHANGED, NOT THE ASSERTIONS.
+
+    This file is about `projects.state` advancing when a scene is persisted.
+    But `narration {idx}` contains a NUMERAL, and v7's RULE 1-EXTENDED refuses
+    a diffusion scene whose narration states numeric content while the row
+    declares nothing about where that content lives. The refusal is correct;
+    the fixture was a storyboard v7 will not release, so it now carries the
+    declaration a real scene like this would.
+    """
     return {
         "scene_index": idx,
         "narration_text": f"narration {idx}",
-        "visual_description": f"visual {idx}",
+        # ⚠ NO NUMERAL IN THIS PROSE -- see the note in test_wp62_gates.py.
+        "visual_description": (
+            "a working surface with a partial-product row already written "
+            "above a ruled horizontal line, the answer row still empty"
+        ),
         "media_type": "image",
         "duration_seconds": 10.0,
+        "text_carried_by": "narration",
+        "media_rationale": "image with text_carried_by narration: the number is spoken.",
     }
 
 

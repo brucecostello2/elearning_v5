@@ -120,10 +120,16 @@ class TestNothingIsInventedOnTheModelSBehalf:
     def test_a_code_fence_is_tolerated(self):
         """The common, harmless deviation. Tolerated because it changes nothing
         about what was asked for — unlike everything below."""
+        # WP-IVGS-10 added `phase` to both column templates, and
+        # `parse_and_validate` requires every declared parameter -- so this
+        # fixture gains one. The test's subject is unchanged: it is about the
+        # code fence being stripped, not about the parameter list.
         out = parse_and_validate(
-            '```json\n{"template": "column_addition_carry", "top": 27, "bottom": 15}\n```'
+            '```json\n{"template": "column_addition_carry", "top": 27, '
+            '"bottom": 15, "phase": "full"}\n```'
         )
         assert out["template"] == "column_addition_carry"
+        assert out["phase"] == "full"
 
     def test_a_numeric_string_is_coerced_but_a_word_is_not(self):
         assert parse_and_validate(
@@ -343,13 +349,40 @@ AS_SHIPPED = {
 }
 
 #: What the narrations actually describe.
+# ⛔ WP-IVGS-10 (RC-O10). THESE SIX SPECS NOW CARRY A PHASE, AND FOUR OF THEM
+# ARE WHY THE PARAMETER EXISTS.
+#
+# RC-O10 was opened by this very file's subject matter: scenes 2 and 3 shared
+# `(23, 14, step=0)` and scenes 4 and 5 shared `(23, 14, step=1)`, so each pair
+# rendered the IDENTICAL animation. `step` names WHICH multiplier digit; it has
+# never named HOW FAR THROUGH that digit's row a scene gets, and a lesson takes
+# two scenes over one row.
+#
+# The phase is read from each scene's own words, per the same 09f rule the rest
+# of this file tests:
+#     2  writes a digit and carries, announces nothing  -> "start"
+#     3  continues that row and announces 92            -> "complete"
+#     4  starts the next row with the placeholder zero  -> "start"
+#     5  continues it and announces 230                 -> "complete"
+#     7  one sentence adds and announces 322            -> "full"
+#     10 continues a row and announces 640              -> "complete"
+#
+# ⚠ SCENE 2 WOULD NOW BE REFUSED WITHOUT ITS PHASE, and that is the new
+# assertion working, not a regression: `full` under narration that only carries
+# draws the answer before the words reach it.
 CORRECT = {
-    2: {"template": "column_multiplication_step", "top": 23, "bottom": 14, "step": 0},
-    3: {"template": "column_multiplication_step", "top": 23, "bottom": 14, "step": 0},
-    4: {"template": "column_multiplication_step", "top": 23, "bottom": 14, "step": 1},
-    5: {"template": "column_multiplication_step", "top": 23, "bottom": 14, "step": 1},
-    7: {"template": "column_addition_carry", "top": 230, "bottom": 92},
-    10: {"template": "column_multiplication_step", "top": 32, "bottom": 21, "step": 1},
+    2: {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+        "step": 0, "phase": "start"},
+    3: {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+        "step": 0, "phase": "complete"},
+    4: {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+        "step": 1, "phase": "start"},
+    5: {"template": "column_multiplication_step", "top": 23, "bottom": 14,
+        "step": 1, "phase": "complete"},
+    7: {"template": "column_addition_carry", "top": 230, "bottom": 92,
+        "phase": "full"},
+    10: {"template": "column_multiplication_step", "top": 32, "bottom": 21,
+         "step": 1, "phase": "complete"},
 }
 
 
@@ -400,11 +433,37 @@ class TestTheGuardDoesNotRefuseCorrectSpecs:
 
     def test_scenes_4_and_5_were_ALREADY_right_and_stay_accepted(self):
         """Two of the six were correct. Re-authoring them would have been
-        churn, and refusing them would have been a false positive."""
-        assert AS_SHIPPED[4] == CORRECT[4]
-        assert AS_SHIPPED[5] == CORRECT[5]
+        churn, and refusing them would have been a false positive.
+
+        ⚠ AMENDED BY WP-IVGS-10, AND THE AMENDMENT IS THE POINT OF RC-O10.
+        This used to assert ``AS_SHIPPED[4] == CORRECT[4]``. It cannot any
+        more: the shipped specs are `(23, 14, step=1)` for BOTH scenes, so they
+        rendered the identical animation — which is exactly what RC-O10 was
+        opened for, on these two scenes. What was true and remains true is that
+        the guard does not REFUSE them: they are not provably inconsistent with
+        their narration, only indistinguishable from each other, and the guard
+        has never claimed to answer the second question.
+
+        So both halves are asserted separately: still accepted, and now
+        differentiated by a phase the shipped specs did not carry.
+        """
+        # Still accepted, exactly as before — no false positive was introduced.
         _check(4, AS_SHIPPED[4])
         _check(5, AS_SHIPPED[5])
+
+        # ...and the operands and step are untouched by v7.
+        for index in (4, 5):
+            for key in ("template", "top", "bottom", "step"):
+                assert AS_SHIPPED[index][key] == CORRECT[index][key]
+
+        # ⛔ RC-O10, as one assertion: the shipped pair could not be told apart,
+        # and the v7 pair renders two different pictures.
+        assert AS_SHIPPED[4] == AS_SHIPPED[5], (
+            "the shipped specs for scenes 4 and 5 were identical — that is the "
+            "defect RC-O10 recorded"
+        )
+        assert CORRECT[4] != CORRECT[5]
+        assert (CORRECT[4]["phase"], CORRECT[5]["phase"]) == ("start", "complete")
 
 
 class TestWhatTheGuardCanAndCannotSee:

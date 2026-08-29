@@ -51,6 +51,32 @@ export interface GateState {
   /** Words, not a boolean. "approved, but the artifact has changed since"
    *  and "never approved" are different situations. */
   reason: string;
+  /** WP-IVGS-10 Task 3. Per-scene completeness, storyboard gate only.
+   *
+   *  Every scene appears, not only the failing ones: a list showing only
+   *  problems cannot be told from a list that was never computed. `severity`
+   *  is the load-bearing field — `refuse` means approving will be refused by
+   *  name, `flag` blocks nothing and is the reviewer's to judge. */
+  completeness?: SceneCompleteness[];
+  completeness_refusals?: number;
+  completeness_flags?: number;
+}
+
+export interface SceneCompleteness {
+  scene_index: number;
+  media_type: string;
+  /** DEPICTS | GENERIC | DELEGATES-TO-WRONG-MEDIUM */
+  verdict: string;
+  /** ok | flag | refuse */
+  severity: string;
+  reason: string;
+  referents: {
+    numerals: string[];
+    written: string[];
+    quoted: string[];
+    changes: string[];
+  };
+  depicted: string[];
 }
 
 export interface ProjectProgress {

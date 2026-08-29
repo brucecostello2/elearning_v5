@@ -26,6 +26,10 @@ MAX_EFFECT_NAME = 64
 # +/- 60 seconds. A timing offset is a nudge against the narration; anything
 # larger is a duration change or a reorder, and both have their own controls.
 MAX_TIMING_OFFSET_MS = 60_000
+# WP-IVGS-10. A rationale is one line. The cap is generous enough for a real
+# sentence and small enough that a model which starts writing an essay into the
+# column is refused rather than storing one.
+MAX_MEDIA_RATIONALE = 500
 
 
 #: WP-68. Re-exported from ONE definition (`shared.models.enums.MEDIA_TYPES`),
@@ -34,6 +38,11 @@ MAX_TIMING_OFFSET_MS = 60_000
 #: had to be added in three places, and missing the third let a row be written
 #: that could not be read back.
 from shared.models.enums import MEDIA_TYPES  # noqa: E402
+
+#: WP-IVGS-10. Read from the completeness module rather than restated, for the
+#: same reason MEDIA_TYPES is: three literal lists is how a fourth value gets
+#: added to two of them.
+from app.services.storyboard_completeness import TEXT_CARRIERS  # noqa: E402
 
 
 class SceneCreate(BaseModel):
@@ -67,6 +76,45 @@ class SceneCreate(BaseModel):
         default=None,
         description="Per-scene generation overrides (seed, steps, guidance...).",
     )
+
+    # ── WP-IVGS-10, v7's per-scene content contract (migration 0045) ──
+    media_rationale: Optional[str] = Field(
+        default=None, max_length=MAX_MEDIA_RATIONALE,
+        description=(
+            "v7 RULE 9: one line saying why THIS media_type for THIS scene. "
+            "Free text, read by a human at the storyboard gate."
+        ),
+    )
+    text_carried_by: Optional[str] = Field(
+        default=None,
+        description=(
+            "v7 RULE 1-EXTENDED. Set to 'narration' to DECLARE that this "
+            "scene's written or numeric content is carried by the spoken "
+            "narration while the visual depicts the non-text situation. The "
+            "only alternative answer is to author the scene as "
+            "motion_graphics with a template. Absent means no declaration."
+        ),
+    )
+
+    @field_validator("text_carried_by")
+    @classmethod
+    def validate_text_carried_by(cls, v: Optional[str]) -> Optional[str]:
+        """Refuse an unknown carrier rather than storing it.
+
+        The database CHECK would refuse it too, but as a 500 out of the driver.
+        A declaration whose value nobody recognises is worse than no
+        declaration: it looks like an answer at the gate and satisfies nothing.
+        """
+        if v is None:
+            return v
+        cleaned = v.strip().lower()
+        if cleaned not in TEXT_CARRIERS:
+            raise ValueError(
+                f"text_carried_by must be one of: {', '.join(TEXT_CARRIERS)}. "
+                f"It is a declaration that the narration carries this scene's "
+                f"written content, not free text."
+            )
+        return cleaned
 
     @field_validator("effects")
     @classmethod
@@ -193,6 +241,45 @@ class SceneUpdate(BaseModel):
         description="Per-scene generation overrides (seed, steps, guidance...).",
     )
 
+    # ── WP-IVGS-10, v7's per-scene content contract (migration 0045) ──
+    media_rationale: Optional[str] = Field(
+        default=None, max_length=MAX_MEDIA_RATIONALE,
+        description=(
+            "v7 RULE 9: one line saying why THIS media_type for THIS scene. "
+            "Free text, read by a human at the storyboard gate."
+        ),
+    )
+    text_carried_by: Optional[str] = Field(
+        default=None,
+        description=(
+            "v7 RULE 1-EXTENDED. Set to 'narration' to DECLARE that this "
+            "scene's written or numeric content is carried by the spoken "
+            "narration while the visual depicts the non-text situation. The "
+            "only alternative answer is to author the scene as "
+            "motion_graphics with a template. Absent means no declaration."
+        ),
+    )
+
+    @field_validator("text_carried_by")
+    @classmethod
+    def validate_text_carried_by(cls, v: Optional[str]) -> Optional[str]:
+        """Refuse an unknown carrier rather than storing it.
+
+        The database CHECK would refuse it too, but as a 500 out of the driver.
+        A declaration whose value nobody recognises is worse than no
+        declaration: it looks like an answer at the gate and satisfies nothing.
+        """
+        if v is None:
+            return v
+        cleaned = v.strip().lower()
+        if cleaned not in TEXT_CARRIERS:
+            raise ValueError(
+                f"text_carried_by must be one of: {', '.join(TEXT_CARRIERS)}. "
+                f"It is a declaration that the narration carries this scene's "
+                f"written content, not free text."
+            )
+        return cleaned
+
     @field_validator("effects")
     @classmethod
     def validate_effects(cls, v: Optional[List[str]]) -> Optional[List[str]]:
@@ -260,6 +347,11 @@ class SceneResponse(BaseModel):
     effects: Optional[List[str]] = None
     timing_offset_ms: Optional[int] = None
     generation_params: Optional[Dict[str, Any]] = None
+    # WP-IVGS-10: on the response because the gate UI shows them beside the
+    # completeness flags, and because a declaration nobody can read back is not
+    # auditable.
+    media_rationale: Optional[str] = None
+    text_carried_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

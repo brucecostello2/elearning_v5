@@ -1,0 +1,156 @@
+[
+    {
+        "media_type": "image",
+        "scene_index": 0,
+        "narration_text": "Let's learn how to multiply two-digit numbers. We'll break it down into simple steps. By the end, you'll be able to solve problems like 23 times 14 on your own.",
+        "media_rationale": "image with text_carried_by narration: the sum is spoken, and what the picture must show is a page that has not been written on yet.",
+        "text_carried_by": "narration",
+        "duration_seconds": 10,
+        "generation_params": null,
+        "visual_description": "A child at a desk turning a fresh sheet of lined paper towards the camera; the working surface is entirely empty, with no ruled line and no rows written yet. Soft pink pencil case and a stuffed rabbit at the edge of the desk, warm lamp from the left, upper right third kept clear for the overlay."
+    },
+    {
+        "media_type": "image",
+        "scene_index": 1,
+        "narration_text": "First, we set up the problem. We write 23 on top and 14 underneath, making sure the numbers line up.",
+        "media_rationale": "image with text_carried_by narration: the two numbers are spoken; the picture carries the LAYOUT they are written into.",
+        "text_carried_by": "narration",
+        "duration_seconds": 8,
+        "generation_params": null,
+        "visual_description": "Over-the-shoulder view of two rows standing one above the other on lined paper, their right-hand edges flush so the columns align, the upper row one digit wider than the lower and a multiplication sign to the left of it; a freshly ruled horizontal line runs beneath both and the answer row under it is still empty. A child's hand rests a pencil at the right-hand end of that ruled line. Warm desk lamp from the left, upper right third kept clear for the overlay."
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 2,
+        "narration_text": "Now, let's multiply. We start with the ones digit of the bottom number, which is 4. Multiply 23 by 4.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 12,
+        "generation_params": {
+            "top": 23,
+            "step": 0,
+            "phase": "start",
+            "bottom": 14,
+            "template": "column_multiplication_step"
+        },
+        "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the right-hand end of a two-row column layout on lined paper, with the upper row one digit wider than the lower, a freshly ruled horizontal line beneath both, and the answer row still empty, warm desk lamp from the left"
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 3,
+        "narration_text": "First, 4 times 3 is 12, so we write down 2 and carry the 1. Then, 4 times 2 is 8, and adding the carried 1 gives us 9. So, our first answer is 92.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 15,
+        "generation_params": {
+            "top": 23,
+            "step": 0,
+            "phase": "complete",
+            "bottom": 14,
+            "template": "column_multiplication_step"
+        },
+        "visual_description": "The carry travelling from the units column to the tens column, with the partial product rows accumulating on the lined paper, warm desk lamp from the left"
+    },
+    {
+        "media_type": "video_clip",
+        "scene_index": 4,
+        "narration_text": "Next, we multiply 23 by the tens digit, which is 10. We put a zero in the ones place to remind us we're multiplying by tens.",
+        "media_rationale": "video_clip with text_carried_by narration: the placeholder being set down before the row begins is only legible while it moves; the numbers themselves are spoken.",
+        "text_carried_by": "narration",
+        "duration_seconds": 8,
+        "generation_params": null,
+        "visual_description": "Begins holding on the completed first partial-product row above the ruled line, the answer row beneath it still empty. The hand then moves in from the right and sets the pencil down at the rightmost position of a new, second row, pausing there. Static locked-off camera throughout, tilted slightly down onto the page; ends holding on the new row with only its rightmost position marked and the rest of it empty. Warm desk lamp from the left."
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 5,
+        "narration_text": "Then, we multiply 23 by 10, which equals 230.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 10,
+        "generation_params": {
+            "top": 23,
+            "step": 1,
+            "phase": "complete",
+            "bottom": 14,
+            "template": "column_multiplication_step"
+        },
+        "visual_description": "The second partial product row being written on the lined paper, with the first row's partial product still visible, warm desk lamp from the left"
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 6,
+        "narration_text": "Now, we add the two answers: 92 plus 230 equals 322. So, 23 times 14 equals 322.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 12,
+        "generation_params": {
+            "top": 92,
+            "phase": "full",
+            "bottom": 230,
+            "template": "column_addition_carry"
+        },
+        "visual_description": "The two partial product rows being added together on the lined paper, with the answer row filling in, warm desk lamp from the left"
+    },
+    {
+        "media_type": "image",
+        "scene_index": 7,
+        "narration_text": "Let's try another example: 32 times 21. We follow the same steps.",
+        "media_rationale": "image with text_carried_by narration: a second worked example opens; the operands are spoken and the picture shows a page returned to its empty state.",
+        "text_carried_by": "narration",
+        "duration_seconds": 8,
+        "generation_params": null,
+        "visual_description": "A second sheet of lined paper laid beside the first, whose completed working is visible at the edge of frame with every row filled beneath its ruled line. The new sheet carries a fresh two-row column layout, right edges flush, a ruled horizontal line beneath both and the answer row still empty. Warm lamp from the left, soft pink eraser at the corner."
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 8,
+        "narration_text": "First, multiply 32 by the ones digit, 1, to get 32. Then, multiply 32 by the tens digit, 20, to get 640.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 15,
+        "generation_params": {
+            "top": 32,
+            "step": 1,
+            "phase": "full",
+            "bottom": 21,
+            "template": "column_multiplication_step"
+        },
+        "visual_description": "The two partial product rows being written on the lined paper, with the first row's partial product still visible, warm desk lamp from the left"
+    },
+    {
+        "media_type": "motion_graphics",
+        "scene_index": 9,
+        "narration_text": "Finally, add the two answers: 32 plus 640 equals 672. So, 32 times 21 equals 672.",
+        "media_rationale": null,
+        "text_carried_by": null,
+        "duration_seconds": 12,
+        "generation_params": {
+            "top": 32,
+            "phase": "full",
+            "bottom": 640,
+            "template": "column_addition_carry"
+        },
+        "visual_description": "The two partial product rows being added together on the lined paper, with the answer row filling in, warm desk lamp from the left"
+    },
+    {
+        "media_type": "image",
+        "scene_index": 10,
+        "narration_text": "To multiply two-digit numbers, remember four key steps: First, multiply by the ones digit. Next, start a new line with a zero when multiplying by the tens digit. Then, multiply by the tens digit. Finally, add the two answers together.",
+        "media_rationale": "image: a recap of a completed method; nothing needs to be seen changing, so a still is the honest answer.",
+        "text_carried_by": null,
+        "duration_seconds": 15,
+        "generation_params": null,
+        "visual_description": "The finished page seen flat from above: both partial-product rows written above the ruled line, the placeholder in position at the foot of the second row, and the answer row beneath the line completely filled. A pencil lies across the margin. This is the fullest the working surface gets in the lesson. Warm lamp from the left, soft pink background at the edges."
+    },
+    {
+        "media_type": "image",
+        "scene_index": 11,
+        "narration_text": "With practice, multiplying two-digit numbers becomes easier. Just remember to check your work, line up your numbers correctly, and don't forget that important zero when multiplying by the tens digit. You've just learned how to multiply two-digit numbers.",
+        "media_rationale": "image: a closing beat with no written content of its own; the child and the completed page are the subject.",
+        "text_carried_by": null,
+        "duration_seconds": 12,
+        "generation_params": null,
+        "visual_description": "The same child, now holding the completed page up towards the camera with both hands, the working visible across it: two partial-product rows above the ruled line and a full answer row beneath. She is smiling. The desk behind her is clear except for the stuffed rabbit; warm lamp from the left, soft pink background."
+    }
+]

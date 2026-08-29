@@ -166,6 +166,70 @@ TemplateFn = Callable[..., TemplateRender]
 _TEMPLATES: dict[str, dict[str, Any]] = {}
 
 
+# ---------------------------------------------------------------------------
+# PHASE -- WP-IVGS-10 Task 4, executing RC-O10
+# ---------------------------------------------------------------------------
+#
+# ⛔ THE DEFECT RC-O10 RECORDED, IN ITS OWN WORDS: *"Scenes 2 and 3 render the
+# identical animation; so do 4 and 5. One multiplier digit of one sum, and the
+# template takes only (top, bottom, step) -- it cannot separate 'write the 2,
+# carry the 1' from '...so our first answer is 92'."*
+#
+# Measured on project 9c29b1d1 and read by eye in the WP-IVGS-09f report: four
+# scenes, two pictures. The narration walks four sub-steps and the animation
+# repeats twice, so a child following the words sees the same thing said twice
+# and the lesson's second half of each row is never shown being written.
+#
+# `step` says WHICH MULTIPLIER DIGIT this scene works. It has never said HOW FAR
+# THROUGH that digit's row the scene has got, and those are two different
+# questions -- one scene begins the row, the next completes it.
+#
+# So a phase, and deliberately only three values. A phase per column would be a
+# parameter the storyboard model has to count with, and counting is what
+# WP-IVGS-09f measured it doing badly; "did this scene begin the row or finish
+# it" is a question the narration answers in words.
+#
+#   "full"      every column, beginning to end. THE DEFAULT, and byte-identical
+#               to what this module produced before phases existed -- pinned by
+#               test, because every banked frame and every rendered asset on the
+#               fleet was produced without a phase and must not move.
+#   "start"     the FIRST column only: it is written, its carry travels, and the
+#               row is left INCOMPLETE. The picture for "multiply 4 times 3,
+#               write the 2, carry the 1".
+#   "complete"  the first column is ALREADY THERE when the scene opens -- drawn,
+#               not animated -- and the remaining columns are written. The
+#               picture for "...and 4 times 2 is 8, plus the carry: our first
+#               answer is 92".
+#
+# The two phases are complementary by construction: `start` animates column 0
+# and `complete` pre-draws it, so the second scene opens on exactly the page the
+# first scene closed on. That is the property a lesson needs and the one the
+# single-picture version could not have.
+PHASE_FULL = "full"
+PHASE_START = "start"
+PHASE_COMPLETE = "complete"
+PHASES = (PHASE_FULL, PHASE_START, PHASE_COMPLETE)
+
+
+def _phase(value: Any) -> str:
+    """Validate a phase, or refuse by name.
+
+    Refused rather than defaulted, for the reason every refusal in this stack is
+    refused: a phase silently coerced to "full" renders the whole row under
+    narration that describes half of it, which is a confident, legible, wrong
+    picture -- and no quality gate downstream reads it (WP62-L7).
+    """
+    text = PHASE_FULL if value is None else str(value).strip().lower()
+    if text not in PHASES:
+        raise ValueError(
+            f"phase {value!r} does not exist; the phases are {list(PHASES)}. "
+            f"'full' draws the whole row, 'start' writes its first column and "
+            f"leaves it incomplete, 'complete' opens with that column already "
+            f"written and finishes the row."
+        )
+    return text
+
+
 def template(name: str, *, params: dict[str, str], describes: str):
     """Declare a template and what its parameters mean."""
 
@@ -178,6 +242,36 @@ def template(name: str, *, params: dict[str, str], describes: str):
 
 def template_names() -> tuple[str, ...]:
     return tuple(sorted(_TEMPLATES))
+
+
+def param_kinds(name: str) -> dict[str, str]:
+    """``{parameter: "int" | "text" | "choice"}`` for one template.
+
+    Read from the FUNCTION'S OWN SIGNATURE rather than declared a second time,
+    so a parameter cannot be documented as one type and implemented as another.
+
+    ⛔ WHY THIS EXISTS, MEASURED 2026-08-28. `motion_authoring.build_prompt`
+    rendered every parameter to the model as ``"<name>": <int>``, including
+    ``label``, which is a WORD. The live evidence is on project c12fa967 scene
+    1, whose stored spec reads ``{"template": "highlight_and_hold", "top": 23,
+    "bottom": 14, "column": 0, "label": 0}`` -- the model was told the caption
+    was an integer and duly wrote zero, and the frame drew "0" beneath the sum.
+    A prompt that misdescribes its own contract gets exactly what it asked for.
+    `phase` would have inherited the same defect on the day it was added.
+    """
+    import inspect
+
+    spec = template_spec(name)
+    kinds: dict[str, str] = {}
+    for param in spec["params"]:
+        default = inspect.signature(spec["fn"]).parameters[param].default
+        if param == "phase":
+            kinds[param] = "choice"
+        elif isinstance(default, str):
+            kinds[param] = "text"
+        else:
+            kinds[param] = "int"
+    return kinds
 
 
 def template_spec(name: str) -> dict[str, Any]:
@@ -263,17 +357,28 @@ def place_value_split(number: int = 23) -> TemplateRender:
 
 @template(
     "column_addition_carry",
-    params={"top": "the upper addend", "bottom": "the lower addend"},
+    params={
+        "top": "the upper addend",
+        "bottom": "the lower addend",
+        "phase": (
+            "how far through the sum this scene gets: 'full' the whole sum, "
+            "'start' the units column only, 'complete' the rest of it with the "
+            "units column already written"
+        ),
+    },
     describes=(
         "Two rows sum, and where a column exceeds nine the carry APPEARS ABOVE "
         "THE NEXT COLUMN and travels there, which is the step a still cannot "
         "show."
     ),
 )
-def column_addition_carry(top: int = 27, bottom: int = 15) -> TemplateRender:
+def column_addition_carry(
+    top: int = 27, bottom: int = 15, phase: str = PHASE_FULL
+) -> TemplateRender:
     a, b = abs(int(top)), abs(int(bottom))
     da, db = _digits(a), _digits(b)
     ncols = max(len(da), len(db))
+    ph = _phase(phase)
 
     static = [
         DrawOp(Op.TEXT, text=str(d), x=col_x(i), y=row_y(0), role="digit")
@@ -287,7 +392,18 @@ def column_addition_carry(top: int = 27, bottom: int = 15) -> TemplateRender:
                x2=ORIGIN_X + 60, y2=row_y(1) + 80, role="rule"),
     ]
 
-    frames: list[Frame] = _hold(static, 20)
+    # WP-IVGS-10 (RC-O10). WHICH COLUMNS THIS PHASE ANIMATES, AND WHICH IT OPENS
+    # WITH ALREADY WRITTEN. `full` is the whole loop and is unchanged; `start`
+    # animates the units column alone; `complete` pre-draws it and animates the
+    # rest, so it opens on exactly the page `start` closed on.
+    total_cols = ncols + 1
+    if ph == PHASE_START:
+        prefill_upto, animate_upto = 0, min(1, total_cols)
+    elif ph == PHASE_COMPLETE:
+        prefill_upto, animate_upto = min(1, total_cols), total_cols
+    else:
+        prefill_upto, animate_upto = 0, total_cols
+
     answer: list[DrawOp] = []
     # THE CARRY MUST PERSIST ONCE IT LANDS. A first draft drew the carry only
     # while it was travelling, so by the time the next column was highlighted
@@ -298,7 +414,34 @@ def column_addition_carry(top: int = 27, bottom: int = 15) -> TemplateRender:
     # more convincingly than a still would.
     landed_carries: list[DrawOp] = []
     carry = 0
-    for col in range(ncols + 1):
+
+    # A PREFILLED COLUMN IS DRAWN, NOT ANIMATED, AND IT IS ON THE PAGE BEFORE
+    # THE OPENING HOLD. Same arithmetic, same placement, no frames of its own:
+    # `complete` opens on exactly the page `start` closed on, because the
+    # previous scene is what put those marks there. Computed before the hold so
+    # the scene's very first frame already shows them -- animating them again
+    # would tell the child the column is being worked twice.
+    for col in range(prefill_upto):
+        da_i = da[col] if col < len(da) else 0
+        db_i = db[col] if col < len(db) else 0
+        total = da_i + db_i + carry
+        digit, new_carry = total % 10, total // 10
+        is_overflow = col >= ncols
+        if not (is_overflow and digit == 0 and not new_carry):
+            answer.append(
+                DrawOp(Op.TEXT, text=str(digit), x=col_x(col), y=row_y(2),
+                       role="digit")
+            )
+        if new_carry:
+            landed_carries.append(
+                DrawOp(Op.TEXT, text=str(new_carry), x=col_x(col + 1),
+                       y=row_y(0) - 80, size=34, role="carry")
+            )
+        carry = new_carry
+
+    frames: list[Frame] = _hold(static + answer + landed_carries, 20)
+
+    for col in range(prefill_upto, animate_upto):
         da_i = da[col] if col < len(da) else 0
         db_i = db[col] if col < len(db) else 0
         total = da_i + db_i + carry
@@ -360,7 +503,8 @@ def column_addition_carry(top: int = 27, bottom: int = 15) -> TemplateRender:
         for k in range(25)
     ]
     return TemplateRender(
-        template="column_addition_carry", params={"top": a, "bottom": b},
+        template="column_addition_carry",
+        params={"top": a, "bottom": b, "phase": ph},
         frames=tuple(Frame(i, f.ops) for i, f in enumerate(frames)),
     )
 
@@ -371,20 +515,29 @@ def column_addition_carry(top: int = 27, bottom: int = 15) -> TemplateRender:
         "top": "the multiplicand",
         "bottom": "the multiplier",
         "step": "which multiplier digit this scene works, 0 = units",
+        "phase": (
+            "how far through THAT digit's row this scene gets: 'full' the whole "
+            "row, 'start' its first column only (written, carried, row left "
+            "incomplete), 'complete' the rest of the row with that first column "
+            "already written"
+        ),
     },
     describes=(
         "One partial product written digit by digit, with the carry travelling "
         "to the next column. ONE STEP PER SCENE, so a storyboard can give each "
-        "step its own scene instead of one crowded picture."
+        "step its own scene instead of one crowded picture -- and, since "
+        "WP-IVGS-10, one PHASE per scene, so beginning the row and finishing it "
+        "are two different pictures rather than the same one twice."
     ),
 )
 def column_multiplication_step(
-    top: int = 23, bottom: int = 14, step: int = 0
+    top: int = 23, bottom: int = 14, step: int = 0, phase: str = PHASE_FULL
 ) -> TemplateRender:
     a, b = abs(int(top)), abs(int(bottom))
     da, db = _digits(a), _digits(b)
     step = max(0, min(int(step), len(db) - 1))
     multiplier = db[step]
+    ph = _phase(phase)
 
     static = [
         DrawOp(Op.TEXT, text=str(d), x=col_x(i), y=row_y(0), role="digit")
@@ -399,21 +552,71 @@ def column_multiplication_step(
                x2=ORIGIN_X + 60, y2=row_y(1) + 80, role="rule"),
     ]
 
-    frames: list[Frame] = _hold(static, 18)
+    # WP-IVGS-10 (RC-O10). WHICH COLUMNS OF THIS ROW THE SCENE WRITES.
+    #
+    # `step` names the multiplier digit; it has never named how far along the
+    # row the scene gets, and a lesson takes two scenes over one row: "multiply
+    # 4 times 3, write the 2, carry the 1" and then "4 times 2 is 8, plus the
+    # carry -- our first answer is 92". Before this, both scenes rendered the
+    # whole row, so the child saw the answer before the words reached it and
+    # then saw it again.
+    ncols = len(da)
+    if ph == PHASE_START:
+        prefill_upto, animate_upto = 0, min(1, ncols)
+    elif ph == PHASE_COMPLETE:
+        prefill_upto, animate_upto = min(1, ncols), ncols
+    else:
+        prefill_upto, animate_upto = 0, ncols
+
     # the placeholder zeros this step needs, written first
-    partial: list[DrawOp] = [
+    zeros: list[DrawOp] = [
         DrawOp(Op.TEXT, text="0", x=col_x(z), y=row_y(2), role="digit")
         for z in range(step)
     ]
-    if partial:
-        frames += [Frame(len(frames) + k, tuple(static + partial))
-                   for k in range(12)]
+    partial: list[DrawOp] = []
 
     # See column_addition_carry: a carry that vanishes once it has travelled
     # teaches the wrong thing. It stays above the column it landed on.
     landed_carries: list[DrawOp] = []
     carry = 0
-    for i, d in enumerate(da):
+
+    # PREFILLED COLUMNS ARE DRAWN, NOT ANIMATED, and they are on the page before
+    # the opening hold -- `complete` opens on exactly the page `start` closed
+    # on. Animating them again would say the column is being worked twice.
+    for i in range(prefill_upto):
+        total = da[i] * multiplier + carry
+        digit, new_carry = total % 10, total // 10
+        if i == 0:
+            partial.extend(zeros)
+        partial.append(
+            DrawOp(Op.TEXT, text=str(digit), x=col_x(i + step), y=row_y(2),
+                   role="digit")
+        )
+        if new_carry:
+            landed_carries.append(
+                DrawOp(Op.TEXT, text=str(new_carry), x=col_x(i + 1),
+                       y=row_y(0) - 80, size=34, role="carry")
+            )
+        carry = new_carry
+
+    frames: list[Frame] = _hold(static + partial + landed_carries, 18)
+
+    # ⛔ THE PLACEHOLDER ZERO GETS ITS OWN BEAT ONLY WHEN THIS SCENE WRITES IT,
+    # AND THAT DISTINCTION IS WHY `partial` STARTS EMPTY ABOVE. A first cut here
+    # seeded `partial` with the zeros before the opening hold, which meant the
+    # zero was on screen from frame 0 instead of appearing after eighteen frames
+    # -- and `full` at step=1 changed digest while keeping the same frame COUNT,
+    # so only an op-level comparison caught it. `full` and `start` must be
+    # byte-identical to what this module produced before phases existed;
+    # `complete` opens with the zero already there because the scene before it
+    # put it there.
+    if zeros and prefill_upto == 0:
+        partial.extend(zeros)
+        frames += [Frame(len(frames) + k, tuple(static + partial))
+                   for k in range(12)]
+
+    for i in range(prefill_upto, animate_upto):
+        d = da[i]
         total = d * multiplier + carry
         digit, new_carry = total % 10, total // 10
 
@@ -450,7 +653,12 @@ def column_multiplication_step(
             )
         carry = new_carry
 
-    if carry:
+    # THE FINAL CARRY BECOMES A DIGIT ONLY WHEN THE ROW IS FINISHED. In `start`
+    # the row is deliberately incomplete -- the carry is sitting above the next
+    # column waiting for the next scene, which is the whole picture that scene
+    # is for -- so writing the leading digit here would finish a row the words
+    # have not finished.
+    if carry and animate_upto >= ncols:
         partial.append(
             DrawOp(Op.TEXT, text=str(carry), x=col_x(len(da) + step),
                    y=row_y(2), role="digit")
@@ -462,7 +670,7 @@ def column_multiplication_step(
 
     return TemplateRender(
         template="column_multiplication_step",
-        params={"top": a, "bottom": b, "step": step},
+        params={"top": a, "bottom": b, "step": step, "phase": ph},
         frames=tuple(Frame(i, f.ops) for i, f in enumerate(frames)),
     )
 

@@ -125,6 +125,24 @@ class GateStatus:
     #: approved" are different situations and an operator must be able to tell
     #: them apart from the payload alone.
     reason: str = ""
+    #: WP-IVGS-10 Task 3. Per-scene completeness, STORYBOARD GATE ONLY. Every
+    #: scene appears, not only the failing ones: a reviewer needs to know the
+    #: check ran over all fourteen, and a list that shows only problems cannot
+    #: be told from a list that was never computed.
+    #:
+    #: ⛔ THE SEVERITIES ARE NOT DECORATION. `refuse` entries are the objective
+    #: limb and approving WILL be refused by name; `flag` entries are the
+    #: subjective ones and block nothing at all. The human gate stays the judge
+    #: of everything subjective -- this field exists so the judge can see.
+    completeness: List[Dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def would_refuse(self) -> List[Dict[str, Any]]:
+        return [c for c in self.completeness if c.get("severity") == "refuse"]
+
+    @property
+    def soft_flags(self) -> List[Dict[str, Any]]:
+        return [c for c in self.completeness if c.get("severity") == "flag"]
 
     def as_dict(self) -> Dict[str, Any]:
         return {
@@ -137,6 +155,9 @@ class GateStatus:
             "decided_by_name": self.decided_by_name,
             "note": self.note,
             "reason": self.reason,
+            "completeness": self.completeness,
+            "completeness_refusals": len(self.would_refuse),
+            "completeness_flags": len(self.soft_flags),
         }
 
 
@@ -357,9 +378,54 @@ class GateService:
             .limit(1)
         )
 
+    async def storyboard_completeness(self, project_id: UUID) -> List[Dict[str, Any]]:
+        """Every scene's completeness verdict, computed fresh, WRITING NOTHING.
+
+        WP-IVGS-10 Task 3. Read on the gate's read path, so it must not write:
+        the scenes are overlaid IN MEMORY with the fields Stage 2 authored and
+        then dropped in transit (`storyboard_reconcile`, and see that module for
+        why they are dropped), because a reviewer must be shown the storyboard
+        the model actually wrote rather than the subset that survived the POST.
+        The persisting half of that recovery runs on the DECISION path, which is
+        a POST.
+
+        Returns ``[]`` for a project with no scenes rather than raising: a gate
+        whose artifact does not exist has nothing to be complete or incomplete
+        about, and ``status`` reports that separately as ``ABSENT``.
+        """
+        from app.services.storyboard_completeness import assess_storyboard
+        from app.services.storyboard_reconcile import overlay_authored_fields
+
+        rows = list(
+            (
+                await self.db.scalars(
+                    select(StoryboardScene)
+                    .where(StoryboardScene.project_id == project_id)
+                    .order_by(StoryboardScene.scene_index)
+                )
+            ).all()
+        )
+        if not rows:
+            return []
+        views = await overlay_authored_fields(self.db, project_id, rows)
+        # `authoring_will_run=True`: this is the REVIEW, and approving runs
+        # `_author_missing_motion_specs` before it runs the enforcement check.
+        # A motion scene with no template yet is therefore information, not a
+        # blocker, and saying otherwise would be the one kind of falsehood this
+        # panel must never tell.
+        return [
+            a.as_dict()
+            for a in assess_storyboard(views, authoring_will_run=True)
+        ]
+
     async def status(self, project_id: UUID, gate: str) -> GateStatus:
         """One gate's current state, recomputed from the artifact every time."""
         current = await self.artifact_version(project_id, gate)
+        completeness = (
+            await self.storyboard_completeness(project_id)
+            if gate == GATE_STORYBOARD
+            else []
+        )
         upstream_now = (
             await self.draft_upstream_version(project_id)
             if gate == GATE_DRAFT
@@ -369,6 +435,7 @@ class GateService:
 
         if current == ABSENT:
             return GateStatus(
+                completeness=completeness,
                 gate=gate,
                 artifact_version=current,
                 approved=False,
@@ -386,6 +453,7 @@ class GateService:
 
         if latest is None:
             return GateStatus(
+                completeness=completeness,
                 gate=gate, artifact_version=current, approved=False, open=True,
                 reason="awaiting review: no decision has been recorded",
             )
@@ -404,6 +472,7 @@ class GateService:
                 + (" (against an earlier version)" if stale_artifact else "")
             )
             return GateStatus(
+                completeness=completeness,
                 gate=gate, artifact_version=current, approved=False, open=True,
                 decision=latest.decision, decided_at=latest.decided_at,
                 decided_by_name=latest.decided_by_name, note=latest.note,
@@ -412,6 +481,7 @@ class GateService:
 
         if stale_artifact:
             return GateStatus(
+                completeness=completeness,
                 gate=gate, artifact_version=current, approved=False, open=True,
                 decision=latest.decision, decided_at=latest.decided_at,
                 decided_by_name=latest.decided_by_name, note=latest.note,
@@ -423,6 +493,7 @@ class GateService:
             )
         if stale_upstream:
             return GateStatus(
+                completeness=completeness,
                 gate=gate, artifact_version=current, approved=False, open=True,
                 decision=latest.decision, decided_at=latest.decided_at,
                 decided_by_name=latest.decided_by_name, note=latest.note,
@@ -440,6 +511,7 @@ class GateService:
             )
 
         return GateStatus(
+            completeness=completeness,
             gate=gate, artifact_version=current, approved=True, open=False,
             decision=latest.decision, decided_at=latest.decided_at,
             decided_by_name=latest.decided_by_name, note=latest.note,

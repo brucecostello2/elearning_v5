@@ -15,13 +15,39 @@ output is quoted.
 
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1451** | **0** | 0 | 0 | 1449 + **2** (WP-IVGS-09d scene-aware upload) |
-| `ivgs-workers` | **939** | 18 | 48 | 15 | 930 + **9** (WP-IVGS-09d scene-scoped dedup) |
+| `ivgs-api` | **1545** | **0** | 0 | 0 | 1451 + **23** (WP-IVGS-09f, never rowed) + **71** (WP-IVGS-10) |
+| `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10** (WP-IVGS-10 media taxonomy) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2663** | **45** | **65** | **45** | 2652 / 45 (WP-IVGS-09c) |
+| **Total** | **2767** | **45** | **65** | **45** | 2663 + **104** (WP-IVGS-09f's 23 + WP-IVGS-10's 81) |
+
+**Updated 2026-08-29 by WP-IVGS-10.** `ivgs-api` **1451 -> 1545** and `ivgs-workers`
+**939 -> 949**. **No failure row moved in any tree.**
+
+⛔ **AND THE api DELTA IS +94, NOT +71, BECAUSE THIS TABLE WAS ONE PACKAGE STALE.**
+WP-IVGS-09f added 23 tests and updated its own report but not this row, so the figure carried
+here was WP-IVGS-09d's. 1451 + 23 + 71 = **1545**, and the arithmetic reconciles exactly. A
+baseline that is only updated by some packages is worse than one nobody trusts, because the
+next package reads the gap as a regression — which is precisely what happened for ten minutes
+this session.
+
+The 71 are `test_wpivgs10_completeness.py` (18), `test_wpivgs10_phase.py` (24),
+`test_wpivgs10_prompt_v7.py` (19) and `test_wpivgs10_reconcile_and_gate.py` (13, one of them
+covering two frozen-body characterisations). The 10 are
+`ivgs-workers/tests/test_wpivgs10_media_taxonomy.py`.
+
+⛔ **THE TEST DATABASE MUST NOW BE AT MIGRATION `0045`** (was 0044). Migration 0045 adds
+`storyboard_scenes.media_rationale` and `.text_carried_by`; without it every scene SELECT
+raises, because the ORM maps both columns.
+
+⚠ **TWO PYTEST RUNS AGAINST ONE TEST DATABASE PRODUCE FALSE FAILURES, and they look exactly
+like a regression.** The `db_session` fixture `TRUNCATE`s every table after every test, so a
+concurrent run destroys the other's rows mid-test. Measured this session: seven failures in
+`test_bug_004`, `test_bug_009` and `test_checkpoint_api` that had passed minutes earlier and
+passed again once the orphan was killed. **`ps aux | grep pytest` before believing a new
+failure** — a tool timeout does not always kill the process it timed out on.
 
 **Updated 2026-08-28 by WP-IVGS-09d.** `ivgs-api` 1449 -> **1451** (+2, scene-aware upload) and
 `ivgs-workers` 930 -> **939** (+9, scene-scoped dedup key and the DLQ payload).
