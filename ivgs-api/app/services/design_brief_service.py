@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.design_brief import StoryboardDesignBrief
 from app.models.project import Project
+from shared.design.evidence import derive_evidence_map
 from app.models.storyboard_scene import StoryboardScene
 from shared.models.enums import (
     BLOOM_LEVELS,
@@ -121,17 +122,29 @@ class DesignBriefService:
             await self.db.refresh(brief)
             return brief
 
+        outcomes_from_project = await self._outcomes_from_the_project(
+            project_id, payload.get("outcome_notes") or {},
+        )
         brief = StoryboardDesignBrief(
             project_id=project_id,
             job_id=_as_uuid(payload.get("job_id")),
             is_active=True,
             # ⛔ THE OUTCOMES COME FROM THE OPERATOR'S OWN COLUMN, NOT FROM THE
             # MODEL. WP-IVGS-12b, RC-Q9. See `_outcomes_from_the_project`.
-            outcomes=await self._outcomes_from_the_project(
-                project_id, payload.get("outcome_notes") or {},
-            ),
+            outcomes=outcomes_from_project,
             dropped_beats=payload.get("dropped_beats") or [],
-            evidence_map=payload.get("evidence_map") or {},
+            # ⛔ WP-IVGS-12d: RE-DERIVED HERE, not taken from the payload. The
+            # worker derives it too, but it has no outcome-id list at capture
+            # time, so its keys are whatever the scenes happened to cite. This
+            # derivation is keyed by the OPERATOR's ids, so an outcome no scene
+            # assesses gets an explicit `[]` — which is the finding the gate
+            # refuses on, and it must not be missing merely because no scene
+            # mentioned it.
+            evidence_map=derive_evidence_map(
+                payload.get("scenes") or [],
+                [o["id"] for o in outcomes_from_project],
+            ),
+            assessment_plan=payload.get("assessment_plan") or {},
             intent=payload.get("intent"),
             raw_contract=payload.get("raw_contract"),
             scene_designs=payload.get("scenes") or [],

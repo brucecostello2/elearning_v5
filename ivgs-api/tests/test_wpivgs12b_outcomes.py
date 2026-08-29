@@ -66,7 +66,16 @@ class TestTheModelCannotWriteOutcomeText:
         blob = json.dumps(s)
         assert '"text"' not in blob
 
-    def test_serves_outcomes_and_evidence_map_are_closed_to_the_real_ids(self):
+    def test_serves_outcomes_and_the_plan_are_closed_to_the_real_ids(self):
+        """RC-Q9's cure — the model may cite only ids CODE assigned.
+
+        ⛔ RE-AIMED BY 12d, NOT WEAKENED. This asserted the closure on
+        `evidence_map`, which the model no longer emits at all (contract-4
+        derives it from the scenes). The same closure is asserted on
+        `assessment_plan`, which is the field that replaced it as the model's
+        per-outcome commitment — and the risk is identical: a model that can
+        invent an outcome id can invent an outcome.
+        """
         import sys
         sys.path.insert(0, str(REPO / "ivgs-workers"))
         from design_core.contract import design_contract_schema
@@ -74,8 +83,9 @@ class TestTheModelCannotWriteOutcomeText:
         s = design_contract_schema(outcome_ids=ids)
         scene = s["properties"]["scenes"]["items"]
         assert scene["properties"]["serves_outcomes"]["items"]["enum"] == ids
-        assert s["properties"]["evidence_map"]["required"] == ids
-        assert s["properties"]["evidence_map"]["additionalProperties"] is False
+        assert "evidence_map" not in s["properties"]
+        assert s["properties"]["assessment_plan"]["required"] == ids
+        assert s["properties"]["assessment_plan"]["additionalProperties"] is False
         assert s["properties"]["outcome_notes"]["required"] == ids
 
     def test_every_array_is_bounded(self):

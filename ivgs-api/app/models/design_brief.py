@@ -75,7 +75,27 @@ class StoryboardDesignBrief(Base):
     #: Foundation §1 stage 2 is "determine acceptable evidence", and it is a
     #: different question from "which scenes serve this outcome". The gate asks
     #: both and can fail on either.
+    #:
+    #: ⛔ WP-IVGS-12d: THIS IS DERIVED, NOT AUTHORED. Until contract-4 the model
+    #: emitted it and it disagreed with the model's own scenes in every
+    #: generation of three (RC-Q9c). It is now computed from
+    #: `serves_outcomes` + `instructional_event` by
+    #: `shared.design.evidence.derive_evidence_map`, so it is a CACHE of the
+    #: scenes rather than a second opinion about them. A reader who doubts it
+    #: can recompute it from `scene_designs`.
     evidence_map: Mapped[dict] = mapped_column(
+        JSONB, nullable=False, server_default=text("'{}'::jsonb"),
+    )
+    #: {outcome_id: {evidence_kind, learner_does}} — what the model promised
+    #: would PROVE each outcome, written BEFORE it designed a single scene.
+    #:
+    #: ⛳ THE ORDER IS THE POINT AND IT IS ENFORCED BY THE DECODER, not by the
+    #: prompt: `assessment_plan` is the FIRST property of contract-4's schema,
+    #: and declaration order was measured to bind generation order on the
+    #: pinned engine (WP-IVGS-12d Task 1, both directions, against an explicit
+    #: prompt instruction to emit scenes first). Foundation §1's sequence,
+    #: made mechanical. `PLAN_ENTRY_UNREALIZED` checks the design against it.
+    assessment_plan: Mapped[dict] = mapped_column(
         JSONB, nullable=False, server_default=text("'{}'::jsonb"),
     )
     #: The stage-1 extraction artifact the design consumed: beats with spans,

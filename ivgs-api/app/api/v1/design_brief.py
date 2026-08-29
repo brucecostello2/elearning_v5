@@ -171,7 +171,11 @@ async def get_design_review(
     findings, rows = review(
         scenes=scenes,
         outcomes=brief.outcomes or [],
-        evidence_map=brief.evidence_map or {},
+        # ⛔ WP-IVGS-12d: the evidence map is NOT passed. `review` derives it
+        # from these scene ROWS, which is the live state a reviewer is editing
+        # — `brief.evidence_map` was derived at capture and goes stale the
+        # moment someone changes a scene's event at the gate.
+        assessment_plan=brief.assessment_plan or {},
         dropped_beats=brief.dropped_beats or [],
         source_text=source_text,
         # The belt: what the operator actually typed, so a future regression

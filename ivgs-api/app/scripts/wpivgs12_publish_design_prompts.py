@@ -75,13 +75,33 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     "{{ o.id }} — {{ o.text }}",
     "outcome_notes",
     "proposed_refinement",
-    # ⛔ WP-IVGS-12c. The evidence rule became STRUCTURE (contract-3 requires a
-    # key per outcome holding ≥1 scene) and a HARD REFUSAL (a named scene must
-    # itself declare the outcome and a practice/assess event). A prompt that
-    # does not state the rule leaves the model judged on a contract nobody told
-    # it about, so these are gated like every other load-bearing phrase.
-    "EVERY SCENE YOU NAME IS READ BACK AGAINST ITS OWN TWO DECLARATIONS",
-    "`practice` or `assess`",
+    # ⛔ WP-IVGS-12d REPLACES 12c's TWO PHRASES HERE, with the reason recorded
+    # rather than the entries quietly deleted — the same discipline 12b used
+    # when it dropped v1's transcription phrases.
+    #
+    # 12c gated "EVERY SCENE YOU NAME IS READ BACK AGAINST ITS OWN TWO
+    # DECLARATIONS" and "`practice` or `assess`", because the model wrote
+    # `evidence_map` and the gate refused it when the named scenes disagreed.
+    # IT DISAGREED ANYWAY, on every outcome of every generation (RC-Q9c): asked
+    # to assemble a list its own scenes already implied, the model assembled it
+    # wrongly. **The model is not asked any more.** `evidence_map` is gone from
+    # contract-4 and CODE derives it from `serves_outcomes` +
+    # `instructional_event`. Gating an instruction about naming scenes in a
+    # field that no longer exists would refuse every correct v4.
+    #
+    # What replaces it is the ORDER: the model commits to the evidence before
+    # any scene exists, because `assessment_plan` is the schema's first property
+    # and declaration order was measured to bind generation order.
+    "DESIGN THE ASSESSMENT FIRST, THEN THE ARC THAT REALIZES IT",
+    "assessment_plan",
+    "evidence_kind",
+    "learner_does",
+    # Foundation §2's fading pattern, named as the shape practice takes. It is
+    # the answer to "what does an `apply` outcome's evidence look like", and
+    # without it the plan has a kind and no form.
+    "THE FADING SEQUENCE",
+    "a COMPLETE worked example",
+    "an INDEPENDENT problem",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
@@ -100,6 +120,26 @@ TARGETS: Sequence[Tuple[str, str, Tuple[str, ...], str]] = (
         "storyboard_generation_system",
         "storyboard_design_system.j2",
         DESIGN_PHRASES,
+        "WP-IVGS-12d. BACKWARD DESIGN BECOMES THE EMISSION ORDER, closing "
+        "RC-Q9c. The design instruction now matches the contract it is judged "
+        "against: the model writes `assessment_plan` FIRST — for each outcome, "
+        "the evidence_kind (practice|assess) and one concrete sentence on what "
+        "the LEARNER does to prove it — and only then designs the scene arc "
+        "that realizes it. This is enforced by the decoder and not by this "
+        "text: `assessment_plan` is the first property of the contract-4 "
+        "schema, and schema declaration order was MEASURED to bind generation "
+        "order on the pinned engine, in both directions, against a prompt "
+        "explicitly ordering the model to emit `scenes` first. `properties` "
+        "order controls; `required` order does not. AND THE MODEL IS NO LONGER "
+        "ASKED FOR `evidence_map` AT ALL: it emitted one that contradicted its "
+        "own scenes in three generations of three (RC-Q9c), so code derives it "
+        "from serves_outcomes + instructional_event instead — 12b's principle, "
+        "never ask the model to assemble what code can compute. Three refusals "
+        "were deleted and one added: PLAN_ENTRY_UNREALIZED, which checks the "
+        "finished design against the promise the model made before it had a "
+        "lesson to rationalise from. Foundation §2's fading sequence (complete "
+        "worked example -> faded -> independent) is named as the shape practice "
+        "takes for an apply-level outcome. "
         "WP-IVGS-12 Task 3 (Phase 1, the Design Core). The stage-2 SYSTEM "
         "prompt, written FROM the Instructional Design Foundation §1-§4 and "
         "published into a lineage for the first time. Stage 2 stops being an "

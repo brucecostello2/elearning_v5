@@ -40,7 +40,9 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from shared.design.evidence import derive_evidence_map
 from shared.models.enums import (
+    ASSESSING_EVENTS,
     BLOOM_LEVELS,
     INSTRUCTIONAL_EVENTS,
     MEDIA_TYPES,
@@ -57,7 +59,13 @@ from shared.models.enums import (
 #: array. Every outcome id is a REQUIRED key (measured enforced) holding
 #: 1..`MAX_EVIDENCE_SCENES` scene indices, so "this outcome is assessed by
 #: nothing" stops being an emittable sentence. RC-Q9b.
-CONTRACT_VERSION = "design-contract-3"
+#:
+#: **-4, WP-IVGS-12d:** backward design becomes the EMISSION ORDER. A new
+#: `assessment_plan` is declared FIRST and is therefore generated before any
+#: scene exists (declaration order measured to BIND — see below); and
+#: `evidence_map` is GONE from the model's schema, because code derives it from
+#: the scenes' own declarations. RC-Q9c.
+CONTRACT_VERSION = "design-contract-4"
 
 #: The one supported mechanism, measured. See the module docstring.
 MECHANISM_JSON_SCHEMA = "json_schema"
@@ -122,6 +130,35 @@ MAX_DROPPED_BEATS = 40
 # — which is what `EVIDENCE_MAP_DISAGREES` is for, and past that, the reviewer.
 MIN_EVIDENCE_SCENES = 1
 MAX_EVIDENCE_SCENES = 4
+
+#: How much room the model gets to say what the learner will DO to prove one
+#: outcome. Bounded because every string in a grammar-constrained emission is a
+#: place the decoder can run, and `maxLength` is the string-shaped `maxItems`.
+MAX_LEARNER_DOES_CHARS = 300
+
+# ⛔ WP-IVGS-12d. SCHEMA DECLARATION ORDER BINDS GENERATION ORDER — MEASURED,
+# IN BOTH DIRECTIONS, AGAINST AN EXPLICIT PROMPT INSTRUCTION TO DO OTHERWISE.
+#
+# This is the whole foundation of `assessment_plan`. Foundation §1 says decide
+# the evidence BEFORE designing instruction; that is only true of the model if
+# the decoder makes it true, because a plan the model may write last is a plan
+# it rationalises from scenes it has already designed.
+#
+#   A  properties [plan, scenes], prompt DEMANDS scenes first -> emitted PLAN first
+#   B  properties [scenes, plan], prompt DEMANDS plan   first -> emitted SCENES first
+#   C  properties [scenes, plan] with required [plan, scenes] -> emitted SCENES first
+#
+# A and B disagree with the prompt in OPPOSITE directions, so the result is the
+# grammar and not the model's own preference for writing scenes first — which is
+# the confound 12c's observation could not exclude. C settles which list rules:
+# **`properties` order controls; `required` order does not.** That retroactively
+# explains 12c, where `outcome_notes` was first in `required` and emitted LAST.
+#
+# ⚠ SO THE ORDER OF THE `properties` DICT BELOW IS LOAD-BEARING AND IS NOT
+# STYLE. Moving `assessment_plan` down this file silently converts a commitment
+# into a rationalisation, and nothing in a test that only checks membership
+# would notice. `test_wpivgs12d_assessment_plan` asserts the position.
+PLAN_IS_DECLARED_FIRST = "assessment_plan"
 
 
 def _nullable(*types: str) -> List[str]:
@@ -206,6 +243,68 @@ def _outcome_notes_schema(outcome_ids: Sequence[str]) -> Dict[str, Any]:
         "properties": {oid: per_outcome for oid in outcome_ids},
         "required": list(outcome_ids),
         "additionalProperties": False,
+    }
+
+
+def _assessment_plan_schema(outcome_ids: Sequence[str]) -> Dict[str, Any]:
+    """Foundation §1 stage 2, made into a thing the model must write FIRST.
+
+    ⛔ THIS IS DECLARED BEFORE `scenes` AND THAT IS THE ENTIRE POINT. Declaration
+    order binds generation order on the pinned engine (measured, both
+    directions), so every token of this object is produced while the scene list
+    is still empty. The model commits to what would PROVE each outcome before it
+    has a lesson to rationalise from.
+
+    RC-Q9c is why. Asked for the evidence AFTER the scenes, the model wrote
+    plausible scene indices that its own scenes contradicted, three generations
+    running. Asked BEFORE, it has nothing to point at and must say what the
+    learner will DO — and `design_review` then checks the design against that
+    promise instead of checking a claim against itself.
+
+    Per-outcome REQUIRED keys with `additionalProperties: false` is the
+    construct measured ENFORCED in 12c, reused rather than re-invented.
+    """
+    entry = {
+        "type": "object",
+        "properties": {
+            "evidence_kind": {
+                "type": "string",
+                "enum": sorted(ASSESSING_EVENTS),
+                "description": (
+                    "`practice` — the learner attempts it with support; "
+                    "`assess` — the learner performs it first, unaided. Pick "
+                    "the one you will actually build a scene for: a scene "
+                    "declaring THIS event and serving THIS outcome must exist, "
+                    "and the gate refuses the design when it does not."
+                ),
+            },
+            "learner_does": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": MAX_LEARNER_DOES_CHARS,
+                "description": (
+                    "One sentence, concrete: what the LEARNER does that would "
+                    "prove this outcome. 'Multiplies 34 by 21 unaided and "
+                    "checks the placeholder zero', not 'understands "
+                    "multiplication'. You are writing the assessment before "
+                    "the lesson, which is the order this works in."
+                ),
+            },
+        },
+        "required": ["evidence_kind", "learner_does"],
+        "additionalProperties": False,
+    }
+    return {
+        "type": "object",
+        "properties": {oid: dict(entry) for oid in outcome_ids},
+        "required": list(outcome_ids),
+        "additionalProperties": False,
+        "description": (
+            "BEFORE YOU DESIGN ANY SCENE: for each outcome, what will the "
+            "learner DO to prove it? One entry per outcome id, no exceptions. "
+            "Every entry must then be realized by a scene that serves that "
+            "outcome and declares that exact instructional_event."
+        ),
     }
 
 
@@ -389,33 +488,10 @@ def design_contract_schema(
             "items": {"type": "string"},
         }
 
-    # ⛔ WP-IVGS-12c. One key per outcome, ALL required, and each array bounded
-    # 1..MAX_EVIDENCE_SCENES. `[]` is now ungrammatical, so the model cannot
-    # emit "nothing assesses this" — RC-Q9b's dominant shape. Both constructs
-    # were measured on the pinned engine under a prompt ordering them broken;
-    # see the MIN/MAX_EVIDENCE_SCENES block above for the verdicts and for the
-    # whitespace hang the lower bound makes reachable.
-    evidence_array = {
-        "type": "array",
-        "minItems": MIN_EVIDENCE_SCENES,
-        "maxItems": MAX_EVIDENCE_SCENES,
-        "items": {"type": "integer", "minimum": 0},
-    }
-    evidence = (
-        {
-            "type": "object",
-            "properties": {oid: dict(evidence_array) for oid in ids},
-            "required": ids,
-            "additionalProperties": False,
-        }
-        if ids
-        # No ids means the operator stated no outcomes, so there is nothing to
-        # key by and nothing to require. The gate says the outcomes were never
-        # stated; `design_review` carries the whole weight on this path, and
-        # says so by name.
-        else {"type": "object", "additionalProperties": dict(evidence_array)}
-    )
-
+    # ⛔ THE ORDER OF THIS DICT IS THE CONTRACT, NOT THE FORMATTING.
+    # `properties` order binds generation order (measured, WP-IVGS-12d), so
+    # `assessment_plan` sitting at the top is what makes it a COMMITMENT rather
+    # than a rationalisation. Do not reorder for tidiness.
     properties: Dict[str, Any] = {
         "scenes": {
             "type": "array",
@@ -444,31 +520,25 @@ def design_contract_schema(
                 "spans and HARD-REFUSES that claim when it is false."
             ),
         },
-        "evidence_map": {
-            **evidence,
-            "description": (
-                "outcome id -> the scene_index values that ASSESS it. One "
-                "entry per outcome and AT LEAST ONE SCENE EACH — there is no "
-                "way to write 'nothing assesses this', because a design in "
-                "which nothing does is not finished. Serving is not evidence: "
-                "Foundation §1 stage 2 is a separate question and the gate "
-                "asks it separately. Every scene you name here is CHECKED "
-                "against its own declarations: it must list this outcome in "
-                "its `serves_outcomes` and its `instructional_event` must be "
-                "`practice` or `assess`. Naming a scene that does neither is "
-                "refused at the gate."
-            ),
-        },
         "design_notes": {
             "type": "string",
             "description": "One short paragraph: the arc, and why it is this arc.",
         },
     }
-    required = ["scenes", "dropped_beats", "evidence_map", "design_notes"]
+    required = ["scenes", "dropped_beats", "design_notes"]
 
     if ids:
         properties["outcome_notes"] = _outcome_notes_schema(ids)
         required.insert(0, "outcome_notes")
+        # ⛔ WP-IVGS-12d. REBUILT SO `assessment_plan` IS THE FIRST PROPERTY.
+        # A dict preserves insertion order and `properties` order is what the
+        # decoder follows, so this rebuild — not a mutation of the existing
+        # dict — is what puts the plan ahead of `scenes` in the emission.
+        properties = {"assessment_plan": _assessment_plan_schema(ids), **properties}
+        required.insert(0, "assessment_plan")
+    # With no ids there is no plan to require: the operator stated no outcomes,
+    # so there is nothing to promise evidence FOR. `design_review` says the
+    # outcomes were never stated and carries the whole weight on that path.
 
     return {
         "type": "object",
@@ -542,11 +612,12 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
     # carries per-outcome notes, or scenes that declare what they serve.
     # Anything else is a storyboard from an older prompt and is left alone.
     has_notes = isinstance(raw.get("outcome_notes"), dict) and raw["outcome_notes"]
+    has_plan = isinstance(raw.get("assessment_plan"), dict) and raw["assessment_plan"]
     declares = any(
         isinstance(s, dict) and s.get("serves_outcomes")
         for s in scenes
     )
-    if not (has_notes or declares):
+    if not (has_notes or has_plan or declares):
         return None
 
     scene_rows: List[Dict[str, Any]] = []
@@ -579,6 +650,15 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
                 row["scene_origin"] = None
         scene_rows.append(row)
 
+    # The evidence derivation reads `serves_outcomes` + `instructional_event`,
+    # and `scene_rows` carries both — including for a scene whose provenance was
+    # downgraded to UNDECLARED above, which is right: a badly-sourced scene that
+    # genuinely assesses still assesses.
+    scenes_for_evidence = scene_rows
+
+    plan = raw.get("assessment_plan")
+    plan = plan if isinstance(plan, dict) else {}
+
     return {
         "contract_version": CONTRACT_VERSION,
         # ⛔ NO `outcomes` KEY. The model does not emit outcome text any more
@@ -586,7 +666,18 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
         # by code and merges these notes onto it by id.
         "outcome_notes": raw.get("outcome_notes") or {},
         "dropped_beats": raw.get("dropped_beats") or [],
-        "evidence_map": raw.get("evidence_map") or {},
+        # ⛔ WP-IVGS-12d. NOT `raw.get("evidence_map")` — THE MODEL NO LONGER
+        # EMITS ONE. It is DERIVED from the scenes the model declared, by the
+        # one shared function the gate also uses, so the stored map and the
+        # gate's live computation cannot drift. A derived map cannot disagree
+        # with the scenes: RC-Q9c's whole failure mode is unrepresentable
+        # rather than merely detected.
+        #
+        # ⚠ Derived from the RAW scenes and keyed by whatever they cite, because
+        # the worker has no outcome-id list at this point; the API re-derives it
+        # against the operator's real ids when it stores the brief.
+        "evidence_map": derive_evidence_map(scenes_for_evidence),
+        "assessment_plan": plan,
         "design_notes": raw.get("design_notes") or "",
         "scenes": scene_rows,
         "raw_contract": raw,

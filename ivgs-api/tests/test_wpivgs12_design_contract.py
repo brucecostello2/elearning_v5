@@ -229,8 +229,15 @@ class TestTheAlignmentTriad:
             _scene(1, instructional_event="guide"),
             _scene(2, instructional_event="assess"),
         ]
-        findings, _ = review(scenes=scenes, outcomes=[OUTCOME],
-                             evidence_map={"LO-1": [2]})
+        findings, _ = review(
+            scenes=scenes, outcomes=[OUTCOME],
+            # ⛔ RE-AIMED AGAIN BY 12d. 12c passed an `evidence_map` here
+            # because the MODEL wrote one and a clean design had to carry a
+            # truthful copy. The model no longer writes one — code derives it
+            # from these scenes — so what a clean design must now carry is a
+            # PLAN the scenes keep, and scene 2 is what keeps it.
+            assessment_plan={"LO-1": {"evidence_kind": "assess",
+                                      "learner_does": "multiplies unaided"}})
         refusals, _ = split(findings)
         assert refusals == [], [f.code for f in refusals]
 

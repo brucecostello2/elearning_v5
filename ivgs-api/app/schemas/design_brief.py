@@ -26,7 +26,11 @@ class DesignBriefIngest(BaseModel):
     prompt_fingerprint: Optional[str] = None
     outcomes: Optional[List[Dict[str, Any]]] = None
     dropped_beats: Optional[List[Dict[str, Any]]] = None
+    #: DERIVED by the worker from the scenes (contract-4); the API re-derives
+    #: it against the operator's real ids rather than trusting this.
     evidence_map: Optional[Dict[str, List[int]]] = None
+    #: The model's pre-scene commitment: {outcome_id: {evidence_kind, learner_does}}.
+    assessment_plan: Optional[Dict[str, Any]] = None
     design_notes: Optional[str] = None
     #: Parsed per-scene declarations. Absent on a stage-1 intent post.
     scenes: Optional[List[Dict[str, Any]]] = None
@@ -46,6 +50,7 @@ class DesignBriefResponse(BaseModel):
     outcomes: List[Dict[str, Any]] = Field(default_factory=list)
     dropped_beats: List[Dict[str, Any]] = Field(default_factory=list)
     evidence_map: Dict[str, Any] = Field(default_factory=dict)
+    assessment_plan: Dict[str, Any] = Field(default_factory=dict)
     scene_designs: List[Dict[str, Any]] = Field(default_factory=list)
     intent: Optional[Dict[str, Any]] = None
     contract_version: Optional[str] = None
