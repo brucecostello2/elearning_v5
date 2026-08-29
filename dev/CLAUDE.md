@@ -59,6 +59,13 @@ equivalents are §12 and §1. Nothing here overrides §1: **Claude commits and H
       appeared and are not yours** rather than silently leaving them. **Never stage another
       agent's files.** State the held count as the number the operator's count-gated push block
       will check.
+      ⛔ **THE HELD COUNT IS WRITTEN FROM `git rev-list --count origin/main..HEAD` AT CLOSE, AFTER
+      A `git fetch` — never carried forward from the previous board, from your own report, or from
+      the number of commits you made.** The operator pushes mid-session and `origin/main` moves
+      under you. **Made a rule 2026-08-29 (WP-IVGS-12c) after the FOURTH stale-held incident**, and
+      the fourth was the worst kind: the board itself claimed one commit held when the true count
+      was zero, so a session that trusted the board would have inherited the error rather than
+      merely repeating it. Measure the ref, not the memory.
 
    ⛔ **And one thing that belongs at the START but is listed here because that is where it
    bites: verify the package's own factual premises before acting on them** — ownership, paths,

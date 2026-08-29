@@ -6,24 +6,27 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.37.1-outcomes-by-code`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.37.2-evidence-by-structure`, frontend `v5.37.0-design-core`
 
-⛔ **WP-IVGS-12c IS COMMITTED AND NOT LIVE.** The running images are contract-2
-and system prompt v2; 12c's `evidence_map` bound and promoted refusal are in the
-tree only. No deploy grant was in the order. See report §12c.7.
+✅ **WP-IVGS-12c IS LIVE.** Nodes 01-04 rebuilt, banked with digest sidecars,
+loaded from the artifact store and deployed under §6.1a; **all four worker
+containers on ONE image ID, `sha256:f08df6a8e843…`, identical to the banked
+`.digest`.** `storyboard_generation_system` **v3** published after the deploy,
+v2 preserved inactive. `CONTRACT_VERSION = design-contract-3` and the promoted
+refusal were read back out of the RUNNING containers. Report §12c.9.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.37.1-outcomes-by-code`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.1-outcomes-by-code`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.1-outcomes-by-code`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.1-outcomes-by-code`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.37.2-evidence-by-structure`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.2-evidence-by-structure`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.2-evidence-by-structure`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.2-evidence-by-structure`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
 
 ⛳ **All four worker containers compared by IMAGE ID, not by tag** —
-`sha256:6f5bcf93…` on nodes 01-04. ⛔ **This is now the rule, not a nicety:**
+`sha256:f08df6a8e843…` on nodes 01-04, matching the banked `.digest`. ⛔ **This is now the rule, not a nicety:**
 RC-Q8 is closed, artifacts carry a `.digest` sidecar, and a different digest
 under the same tag REFUSES — but `verify-deployed-image.sh` still compares tags,
 so the cross-node ID comparison is what actually catches a stale roll-out.
@@ -38,7 +41,8 @@ acceptance needs the GPU fleet must not assume overnight availability.**
 ## In flight
 
 **WP-IVGS-12 + 12b + 12c — Phase 1 of the recovery plan, the DESIGN CORE.**
-**1 commit held, none pushed by me.**
+**2 commits held, none pushed by me** — measured with
+`git rev-list --count origin/main..HEAD` at close, which is now a §0 rule.
 
 ### 12b — outcomes cannot be paraphrased, artifacts cannot lie
 
@@ -142,7 +146,11 @@ Measured at the start of this package from the remote-tracking ref:
 the 1 the previous board claimed and not the 3 the WP-IVGS-11 report declared —
 the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 
-**Held now: ONE commit — WP-IVGS-12c. Nothing else.**
+**Held now: TWO commits — WP-IVGS-12c's code (`dd27799`, tagged
+`v5.37.2-evidence-by-structure`) and its deploy/close-out commit. Nothing else.**
+⚠ **Two, not one**, because the deploy order arrived after the first was made and
+tagged; amending a tagged commit to keep a tidy count would have been worse. The
+push block expects 2.
 
 ⚠ **AND THE LINE ABOVE THIS ONE WAS STALE WHEN 12c OPENED.** The board said
 "Held now: ONE commit — `2b867b0`, WP-IVGS-12b"; `git fetch` then
@@ -151,17 +159,21 @@ the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 ref at close, never carried forward from the commit you made, and never trusted
 from the previous board** — the same discipline this section has now had to
 relearn four times, and the fourth time it was the board's own claim that was
-wrong rather than a report's.
+wrong rather than a report's. ✅ **It is now a rule** — `dev/CLAUDE.md` §0
+CLOSE OUT item 5: the held count is written from
+`git rev-list --count origin/main..HEAD` after a `git fetch`, never carried
+forward.
 
 ⚠ **AN IMAGE TAG IS NOT A GIT TAG, and this package adds a second edge to that
 rule: A TAG IS NOT AN IMAGE EITHER (RC-Q8).** `v5.37.0-design-core` names the
 deployed images; the git tag of the same name is created below as the coherent
 set.
 
-⛔ **AND 12c ADDS A THIRD EDGE: `v5.37.2-evidence-by-structure` IS A GIT TAG WITH
-NO IMAGE BEHIND IT.** No deploy was authorized, so no image of that name was
-built and none is running. The tag names the source; the fleet names
-`v5.37.1-outcomes-by-code`. **Do not read the git tag as a deployment.**
+⛳ **12c is the first release where the git tag and the image tag name the same
+bytes and it was PROVEN rather than assumed:** the running API reports
+`IVGS_BUILD_SHA=dd277998…`, which is the commit `v5.37.2-evidence-by-structure`
+points at. **That is a check, not a convention** — it stays true only for as long
+as someone measures it.
 
 ---
 
@@ -171,31 +183,27 @@ built and none is running. The tag names the source; the fleet names
 |---|---|
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
-| ↳ same file, **§12c** | RC-Q9b closed by structure (`evidence_map` required 1..4 per id) with `EVIDENCE_MAP_DISAGREES` promoted to a hard refusal; required-keys and `additionalProperties` measured ENFORCED, `contains` HTTP 400, a new `minItems` whitespace hang found; **acceptance still NOT met — RC-Q9c**; ⛔ **NOT deployed and NOT published — no deploy grant was in the order** |
+| ↳ same file, **§12c** | RC-Q9b closed by structure (`evidence_map` required 1..4 per id) with `EVIDENCE_MAP_DISAGREES` promoted to a hard refusal; required-keys and `additionalProperties` measured ENFORCED, `contains` HTTP 400, a new `minItems` whitespace hang found; **acceptance still NOT met — RC-Q9c**; ✅ **deployed to nodes 01-04 and prompt v3 published** (§12c.9) |
 
 ---
 
 ## Next, in order
 
-1. ⛔ **THE 12c DEPLOY + PUBLISH, THEN THE OPERATOR'S WATCH.** 12c is committed
-   and **not live** — the fleet is still on `v5.37.1-outcomes-by-code`
-   (contract-2, system prompt v2), so a browser opened now shows 12b's
-   behaviour. Rebuild api + workers to `v5.37.2-evidence-by-structure`, deploy
-   nodes 01-04 under §6.1a, **then** run the prompt publisher — in that order,
-   because publishing v3 against contract-2 workers would tell the model the
-   schema forbids what it still permits. Block in report §12c.7
-2. ⛔ **THE OPERATOR'S WATCH** — a project of theirs through the v8 gate. ⚠ The
-   rendered panel is described in the report from the live payload and the
-   component source, **not from a browser**; how it LOOKS is unverified
-3. ⛔ **THE RULING ON RC-Q9c** — the residue above. R1 and R2 may be one defect
+1. ⛔ **THE OPERATOR'S WATCH — a project of theirs through the v8 gate**, and the
+   fleet is now carrying the code to watch: contract-3 and prompt v3 are live
+   (§12c.9). ⚠ **Expect refusals** — the acceptance measured 5, 6, 5 and the gate
+   now REFUSES what it used to flag. ⚠ The rendered panel is described in the
+   report from the live payload and the component source, **not from a browser**;
+   how it LOOKS is still unverified, and this watch is what closes that
+2. ⛔ **THE RULING ON RC-Q9c** — the residue above. R1 and R2 may be one defect
    or two, and telling them apart means changing something and re-running, which
    is the tuning this package was told not to do
-4. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
+3. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
    loud. Contaminates any regenerate-on-the-same-project gate reading
-5. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
+4. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
    transcript; the "is this a transcript at all" check does not exist
-6. **Recovery-plan Phase 3** (RC-C + RC-E's UX half), then Phase 4, 5, 6
-7. **RUN-2 / M3.3** — unchanged, and still gated on a correct run
+5. **Recovery-plan Phase 3** (RC-C + RC-E's UX half), then Phase 4, 5, 6
+6. **RUN-2 / M3.3** — unchanged, and still gated on a correct run
 
 ---
 
@@ -205,8 +213,6 @@ built and none is running. The tag names the source; the fleet names
   RC-Q9b are both CLOSED by structure. The designer names non-assessing scenes as
   evidence (R1) and assesses LO-2/LO-3 with nothing (R2), three runs. **Rowed
   with the evidence, not built** — RC-P14-class, and no prompt was fitted to it
-- ⛔ **THE 12c DEPLOY GRANT.** The code is committed and not live; the order was
-  silent on deploying and §1 says silence does not authorize one
 - ⛔ **RC-Q12 — the other nine per-stage LLM knobs** and every future schema: an
   unbounded array is a runaway, and `uniqueItems` is unavailable
 - ⛔ **RC-Q4 — per-scene presenter selection does not exist** and Foundation §4

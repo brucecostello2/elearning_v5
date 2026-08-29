@@ -1231,11 +1231,13 @@ closes are above. Commit and HOLD.**
 |---|---|
 | **Done** | `evidence_map` is schema-required per LO id and bounded **1..4** — "nothing assesses this" is no longer an emittable sentence; `EVIDENCE_MAP_DISAGREES` **promoted FLAG → HARD REFUSAL** with the two halves reported separately; the prompt states the rule the gate enforces; 18 new tests, one re-aimed |
 | ⛔ **ACCEPTANCE: NOT MET, AND THE REASON MOVED AGAIN** | ✅ zero invented ids, ✅ all three outcomes verbatim, ✅ `outcome_notes` 3/3, ✅ **zero empty evidence arrays** (12b had them every generation), ✅ drops declared. ⛔ **hard refusals 5, 6, 5.** The residue is `EVIDENCE_MAP_DISAGREES` ×3 every generation and `OUTCOME_UNASSESSED` on LO-2/LO-3 — **rowed as RC-Q9c, not tuned** |
-| ⛔ **NOT DEPLOYED, AND NOT PUBLISHED** | The order is silent on deploying and `dev/CLAUDE.md` §1 is explicit that silence does not authorize one. **The fleet still runs `v5.37.1-outcomes-by-code` — contract-2, system prompt v2.** The deploy/publish block is §12c.7, beside the push block |
-| **Held** | **1 commit**, this one, measured from the remote-tracking ref at close |
+| ✅ **DEPLOYED AND PUBLISHED** | On the operator's grant of 2026-08-29, after the rest of this section was written. **Nodes 01-04 on `v5.37.2-evidence-by-structure`, all four worker containers on ONE image ID matching the bank**; `storyboard_generation_system` **v3** published, v2 preserved inactive. Every verification line in §12c.9 |
+| **Held** | **2 commits** — 12c's code, and the deploy/close-out commit. `git rev-list --count origin/main..HEAD` at close |
 
 **Verified live:** every probe against the pinned engine; three end-to-end
-generations on node-02; both full suites baselined by stash-and-rerun.
+generations on node-02; both full suites baselined by stash-and-rerun; the
+deploy, by image ID on four nodes and by reading `CONTRACT_VERSION` and the
+promoted refusal out of the RUNNING containers.
 ⛔ **Still NOT verified:** the rendered gate panel in a browser (unchanged from
 §Z and §12b.7), and that any of this improves a video.
 
@@ -1331,8 +1333,9 @@ Same script (the operator's 3,172-byte multiplication lesson), same three ABCD
 outcomes, production parameters (`temperature 0.3`, `top_p 0.9`,
 `max_tokens 8192`), three consecutive generations on the pinned engine.
 
-⚠ **Run on a harness, not through the fleet, and this is why:** no deploy was
-authorized (§12c.0). The harness renders the user template from the seed —
+⚠ **Run on a harness, not through the fleet, and this is why:** the acceptance
+ran BEFORE the deploy grant arrived (§12c.9); the fleet then received exactly
+the code the harness had exercised. The harness renders the user template from the seed —
 **verified byte-identical to the active DB row `storyboard_generation` v9** — and
 the system template from the seed, which is byte-for-byte what the publisher
 would publish as v3; it builds the schema from `design_core.contract` and scores
@@ -1434,23 +1437,32 @@ prove the outcome, which is RC-Q9b in a unit test. It now carries the map a clea
 design has to carry, naming the `assess` scene that agrees with it. **Same risk,
 new shape. Not weakened.**
 
-## 12c.7 The tree, the deploy the operator must run, and the push block
+## 12c.7 The tree and the push block
 
-**Held: 1 commit. Nothing pushed by me. Working tree clean. No frozen stage body
+**Held: 2 commits. Nothing pushed by me. Working tree clean. No frozen stage body
 was touched.**
 
-⛔ **THE CODE IS NOT LIVE.** The fleet runs `v5.37.1-outcomes-by-code`, which is
-contract-2 and system prompt v2 — so a browser opened now shows 12b's behaviour,
-not 12c's. Deploying needs an image rebuild (the schema is in the workers image,
-the seed prompt in the API image) and then the publisher, **in that order**:
-publishing prompt v3 against contract-2 workers would tell the model the schema
-forbids an empty array while it still permits one.
+    dd27799  fix(wp-ivgs-12c): an outcome's evidence cannot be empty, and
+             cannot lie about the scenes
+    <2nd>    chore(wp-ivgs-12c): deploy v5.37.2, publish prompt v3, and the
+             held-count becomes a rule
+
+**Tagged `v5.37.2-evidence-by-structure`** on `dd27799` — the commit the deployed
+images actually carry, read back as `IVGS_BUILD_SHA=dd277998…` from inside the
+running container rather than inferred.
+
+⚠ **TWO COMMITS, NOT ONE, AND THE COUNT SAYS SO.** §1 asks for one commit per
+package unless the order says otherwise. The deploy order arrived after the first
+commit was made and tagged, and its work — the deploy record and the new §0 rule
+— is a different concern from the contract change. **Amending a tagged commit to
+preserve a tidy count would have been the worse answer**, and hiding the second
+commit is precisely what the count-gated block exists to catch.
 
 ```
-# node-01, as the operator — DEPLOY, then PUBLISH, then PUSH.
+# node-01, as the operator
 cd /opt/ivgs
-EXPECTED=1
-ACTUAL=$(git log --oneline origin/main..HEAD | wc -l)
+EXPECTED=2
+ACTUAL=$(git rev-list --count origin/main..HEAD)
 if [ "$ACTUAL" -ne "$EXPECTED" ]; then
   echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
   git log --oneline origin/main..HEAD
@@ -1459,14 +1471,10 @@ else
 fi
 ```
 
-The rebuild/redeploy of api + workers to `v5.37.2-evidence-by-structure` across
-nodes 01-04 under §6.1a, and then
-
-    sudo docker exec -i ivgs-fastapi python -m app.scripts.wpivgs12_publish_design_prompts
-
-which publishes `storyboard_generation_system` **v3** and no-ops the other, are
-**the operator's to run** — no deploy grant was in the order. ⚠ Read §12c.4
-before any of it: **the acceptance still does not reach zero hard refusals.**
+⛔ **Read §12c.4 before pushing.** The code is deployed and v3 is published, so
+the behaviour it describes is live on the fleet whether or not these commits are
+pushed. **The acceptance still does not reach zero hard refusals**, and RC-Q9c is
+the reason.
 
 ## 12c.8 What I did not verify — 12c's additions to §Z
 
@@ -1474,10 +1482,13 @@ before any of it: **the acceptance still does not reach zero hard refusals.**
    findings generically by `severity` (`DesignBriefPanel.tsx:124`), so the
    promotion needs no frontend change — **read from the component source, not
    from a screen.**
-2. ⛔ **The acceptance through the real pipeline.** It ran on a harness for want
-   of a deploy grant. The capture observer and the storage round-trip were not
-   re-exercised; 12c did not change them, and that is an argument, not a
-   measurement.
+2. ⛔ **The acceptance through the real pipeline.** It ran on a harness, before
+   the deploy grant arrived, and it was NOT re-run through the fleet afterwards —
+   re-running it would have been three more generations of the same script, which
+   is the evidence base the ruling told me not to build on. The capture observer
+   and the storage round-trip were not re-exercised; 12c did not change them, and
+   that is an argument, not a measurement. **The operator's watch is what closes
+   this**, and the fleet is now carrying the code it will watch.
 3. ⛔ **The whitespace hang under production conditions.** It was produced only
    by a prompt explicitly ordering `[]`. Three real generations did not reach it.
    **That is three runs, not a proof**, and WP-37's check is the net under it.
@@ -1487,3 +1498,77 @@ before any of it: **the acceptance still does not reach zero hard refusals.**
    the tuning the ruling forbids against this evidence.
 5. **`structured_outputs` as a fallback for required-keys.** Measured under
    `response_format: json_schema` only — the same gap 12b left for the enum.
+
+## 12c.9 THE DEPLOY, EXECUTED — every verification line
+
+Granted by the operator 2026-08-29, after §12c.1–12c.8 were written. Ordered
+rebuild → deploy → verify by image ID → publish, and run in that order.
+
+**BUILT** on node-01 from `dd27799`, both images carrying their own identity:
+
+    ivgs-api      sha256:2785faf86ac9f41347bceed8685cc149b0d981636c19bd2652424e7ca329620e
+    ivgs-workers  sha256:f08df6a8e843bd25dbe37c49eabdbe33843420d377585d466ce92c52a068dc3c
+
+**BANKED** with the RC-Q8 digest sidecar, both `registered in MANIFEST.txt`:
+
+    brucecostello2_ivgs-api_v5.37.2-evidence-by-structure.tar.zst      + .digest
+    brucecostello2_ivgs-workers_v5.37.2-evidence-by-structure.tar.zst  + .digest
+
+**LOADED** on nodes 02/03/04 from the shared artifact store — `Loaded image:`
+three times. GHCR was not on the path (§6.1).
+
+**DEPLOYED** under §6.1a, stderr never redirected, and ⛳ **it earned its keep
+twice inside ten minutes:**
+
+  * `no such service: api` — node-01's service is `fastapi-backend`. A silent
+    no-op exiting 0 is exactly what §6.1a exists to prevent, and it did.
+  * `grep: ivgs-infra/.env: No such file or directory`, three times — an `ssh`
+    block with no `cd`, the second shape §6.1a records. ⚠ **And I re-sent the
+    same broken command twice before fixing it**, which is worth recording: the
+    guard caught the defect every time and the operator's time was still spent
+    on it. Fixed with ABSOLUTE PATHS rather than a `cd` a later edit can drop.
+
+**VERIFIED, seven containers, every line from `verify-deployed-image.sh`:**
+
+    DEPLOY VERIFIED [local]        ivgs-fastapi                 -> ivgs-api:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [local]        ivgs-celery-default          -> ivgs-workers:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [local]        ivgs-celery-composition      -> ivgs-workers:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [local]        ivgs-celery-beat             -> ivgs-workers:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [192.168.1.91] ivgs-celery-node02           -> ivgs-workers:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [192.168.1.92] ivgs-cogvideox-worker-node03 -> ivgs-workers:v5.37.2-evidence-by-structure
+    DEPLOY VERIFIED [192.168.1.93] ivgs-celery-node04           -> ivgs-workers:v5.37.2-evidence-by-structure
+
+⛳ **AND BY IMAGE ID, WHICH IS THE CHECK THAT ACTUALLY CATCHES A STALE ROLL-OUT**
+(RC-Q8 — `verify-deployed-image.sh` compares TAGS). All four worker containers:
+
+    node-01 · node-02 · node-03 · node-04   sha256:f08df6a8e843…
+    banked .digest                          sha256:f08df6a8e843…   ✅ identical
+
+**RC-P19 — the image is not the process.** All seven `(healthy)` once the
+healthchecks settled; `/api/v1/health` returns 200 with
+`"version":"v5.37.2-evidence-by-structure"`, database, redis and seaweedfs all
+connected. ⚠ The health path is `/api/v1/health`; plain `/health` answers 404,
+which reads like a dead API and is not one.
+
+**PUBLISHED, after the deploy and not before** — publishing v3 against contract-2
+workers would have told the model the schema forbids what it still permitted:
+
+    storyboard_generation_system: published v3 (9217 chars, sha256 1bac03c3c9761abf…), superseding v2
+    transcript_refinement_system: v1 is already this exact text — no-op, nothing published.
+
+Lineage checked in the database: **v3 active, v2 and v1 inactive, exactly ONE
+active row**, and the new rule present in the published text. Rollback is one
+UPDATE.
+
+**AND THE LIVE CODE WAS READ BACK OUT OF THE RUNNING CONTAINERS**, because a
+verified tag proves which bytes are there and not what they do:
+
+    ivgs-celery-default   CONTRACT_VERSION = design-contract-3
+                          evidence_map required = ['LO-1','LO-2','LO-3']
+                          LO-2 bound = {"type":"array","minItems":1,"maxItems":4,…}
+    ivgs-fastapi          a map naming a `present` scene -> ('refuse', 'EVIDENCE_MAP_DISAGREES')
+
+⚠ **WHAT THE DEPLOY DOES NOT CHANGE: the acceptance verdict.** §12c.4 stands —
+5, 6, 5 hard refusals, RC-Q9c rowed and not tuned. **The fleet now refuses those
+designs where it used to flag them**, which is the promotion reaching production,
+not the criterion being met.
