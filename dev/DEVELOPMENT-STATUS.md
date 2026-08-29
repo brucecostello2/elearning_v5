@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b + 12c, the Design Core)
+# IVGS Development Status — 2026-08-29 (WP-IVGS-12 + 12b + 12c + 12d, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,27 +6,30 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.37.2-evidence-by-structure`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.37.3-plan-before-scenes`, frontend `v5.37.0-design-core`
 
-✅ **WP-IVGS-12c IS LIVE.** Nodes 01-04 rebuilt, banked with digest sidecars,
+✅ **WP-IVGS-12d IS LIVE.** Nodes 01-04 rebuilt, banked with digest sidecars,
 loaded from the artifact store and deployed under §6.1a; **all four worker
-containers on ONE image ID, `sha256:f08df6a8e843…`, identical to the banked
-`.digest`.** `storyboard_generation_system` **v3** published after the deploy,
-v2 preserved inactive. `CONTRACT_VERSION = design-contract-3` and the promoted
-refusal were read back out of the RUNNING containers. Report §12c.9.
+containers on ONE image ID, `sha256:d25feffc9741…`, identical to the banked
+`.digest`.** Migration **0051** applied to production ahead of the new API
+(additive; **0 existing briefs**, the operator's 4 projects untouched).
+`storyboard_generation_system` **v4** published after the deploy, v3 preserved
+inactive. `CONTRACT_VERSION = design-contract-4`, the property order
+`['assessment_plan', 'scenes', …]` and `PLAN_ENTRY_UNREALIZED` were read back
+out of the RUNNING containers. Report §12d.4.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.37.2-evidence-by-structure`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.2-evidence-by-structure`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.2-evidence-by-structure`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.2-evidence-by-structure`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.37.3-plan-before-scenes`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.3-plan-before-scenes`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.3-plan-before-scenes`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.3-plan-before-scenes`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
 
 ⛳ **All four worker containers compared by IMAGE ID, not by tag** —
-`sha256:f08df6a8e843…` on nodes 01-04, matching the banked `.digest`. ⛔ **This is now the rule, not a nicety:**
+`sha256:d25feffc9741…` on nodes 01-04, matching the banked `.digest`. ⛔ **This is now the rule, not a nicety:**
 RC-Q8 is closed, artifacts carry a `.digest` sidecar, and a different digest
 under the same tag REFUSES — but `verify-deployed-image.sh` still compares tags,
 so the cross-node ID comparison is what actually catches a stale roll-out.
@@ -40,9 +43,9 @@ acceptance needs the GPU fleet must not assume overnight availability.**
 
 ## In flight
 
-**WP-IVGS-12 + 12b + 12c — Phase 1 of the recovery plan, the DESIGN CORE.**
+**WP-IVGS-12 + 12b + 12c + 12d — Phase 1 of the recovery plan, the DESIGN CORE.**
 **2 commits held, none pushed by me** — measured with
-`git rev-list --count origin/main..HEAD` at close, which is now a §0 rule.
+`git rev-list --count origin/main..HEAD` at close, per the §0 rule 12c added.
 
 ### 12b — outcomes cannot be paraphrased, artifacts cannot lie
 
@@ -56,6 +59,52 @@ VERBATIM. **`outcomes[]` is gone from the model's schema**; it emits
 pinned engine. **Three consecutive generations: all three outcomes verbatim
 every time, zero invented ids, zero drift.** Compare 12a: two of three, reworded,
 every time.
+
+### 12d — backward design becomes the emission order
+
+✅ **RC-Q9c CLOSED STRUCTURALLY (12d, on the operator's ruling), AND THE CLOSURE
+IS A DELETION.** ⛳ **MEASURED FIRST, and it is the fact everything rests on:
+schema DECLARATION ORDER BINDS GENERATION ORDER** on the pinned engine — probed
+in BOTH directions against a prompt explicitly ordering the model to emit
+`scenes` first, so it is the grammar and not a model preference. **`properties`
+order controls; `required` order does not**, which retroactively explains 12c's
+`outcome_notes` being first in `required` and emitted last.
+
+So contract-4 declares **`assessment_plan` FIRST** — per-outcome
+`{evidence_kind, learner_does}` — and the model commits to what would PROVE each
+outcome while the scene list is still empty. And **`evidence_map` is GONE from
+the model's schema**: code derives it from `serves_outcomes` +
+`instructional_event` in one shared function both trees import. A derived map
+cannot disagree with the scenes, so **THREE REFUSALS WERE DELETED**
+(`EVIDENCE_MAP_DISAGREES`, `_PHANTOM_SCENE`, `_NAMES_NOTHING` — the last was
+`OUTCOME_UNASSESSED` under a second name) and **one added**:
+`PLAN_ENTRY_UNREALIZED`. ⛳ **Removing three refusals and adding one is not
+loosening the gate** — it removes the ones measuring the model's bookkeeping
+instead of its design. Migration **0051**, both directions exercised.
+
+⛔ **RC-Q9d — THE PLAN IS PRIOR, HONEST, STABLE, AND NON-CAUSAL.** 6, 6, 2 hard
+refusals. **What worked:** the plan is emitted first in all three generations,
+carries one correct entry per outcome every time, and is **byte-identical across
+all three** — asked before it has a lesson, the model answers well and stably.
+⛔ **Then the scenes ignore it, and one number carries it: across three
+generations and 36 scenes the model wrote `assess` ZERO times**, while planning
+an `assess` for LO-1 and LO-3 in every one.
+
+  * **R3** — gens 1 and 2 contain **no application scene at all** (hook /
+    present / guide / transfer). A correct assessment plan, then a lecture.
+  * **R4** — gen 3 *did* build five `practice` scenes, so every outcome is
+    served and assessed; its only refusals are the two outcomes that were
+    promised `assess` and got `practice`. **The fading sequence stops one step
+    short: supported attempt, never the unaided one.**
+  * ⚠ **THE FACT THE RULING NEEDS, against my own result:** if
+    `PLAN_ENTRY_UNREALIZED` matched *any* assessing event rather than the exact
+    kind, **gen 3 would have scored ZERO refusals** and the run would read
+    6, 6, 0. **I did not make that change** — loosening the last check between
+    me and a green number is the definition of tuning to the metric. The
+    operator's ruling, with the number on the record.
+  * ⚠ **And an observation against my own prompt:** application-bearing
+    generations went 2-of-3 under v3 to **1-of-3** under v4, which is the
+    opposite of the intended direction. n=3, no control, **not iterated on.**
 
 ✅ **RC-Q9b CLOSED STRUCTURALLY, WITH THE BELT PROMOTED (12c, on the operator's
 ruling).** `evidence_map` is schema-**required** per LO id and bounded **1..4**, so
@@ -140,17 +189,24 @@ real defects — a good trade.**
 
 ## Last pushed
 
-**`68698db`** — `fix(wp-ivgs-12b): outcomes cannot be paraphrased, artifacts cannot lie`, pushed by the operator between 12b and 12c.
+**`809fdbb`** — `chore(wp-ivgs-12c): deploy v5.37.2…`, pushed by the operator between 12c and 12d.
 Measured at the start of this package from the remote-tracking ref:
 `origin/main` and local `HEAD` were **equal**, so the held count was **0**, not
 the 1 the previous board claimed and not the 3 the WP-IVGS-11 report declared —
 the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 
-**Held now: TWO commits — WP-IVGS-12c's code (`dd27799`, tagged
-`v5.37.2-evidence-by-structure`) and its deploy/close-out commit. Nothing else.**
-⚠ **Two, not one**, because the deploy order arrived after the first was made and
-tagged; amending a tagged commit to keep a tidy count would have been worse. The
-push block expects 2.
+**Held now: TWO commits — WP-IVGS-12d's code (`5e179ee`, tagged
+`v5.37.3-plan-before-scenes`) and this report/board commit. Nothing else.**
+⚠ **Two, not one, and for a reason worth keeping:** the code is committed and
+tagged BEFORE the images are built, so the deployed image's `IVGS_BUILD_SHA`
+names a real commit that exists; the acceptance result can only be written after.
+Amending a tagged commit to keep a tidy count would break that. **The push block
+expects 2**, measured with `git rev-list --count`.
+
+✅ **AND THE §0 RULE 12c ADDED WAS USED FOR THE FIRST TIME AND WORKED.** At
+12d's start `git rev-list --count origin/main..HEAD` measured **0** — the
+operator had pushed both 12c commits — where the previous board's text would
+have implied 2. Measured, not inherited.
 
 ⚠ **AND THE LINE ABOVE THIS ONE WAS STALE WHEN 12c OPENED.** The board said
 "Held now: ONE commit — `2b867b0`, WP-IVGS-12b"; `git fetch` then
@@ -169,11 +225,13 @@ rule: A TAG IS NOT AN IMAGE EITHER (RC-Q8).** `v5.37.0-design-core` names the
 deployed images; the git tag of the same name is created below as the coherent
 set.
 
-⛳ **12c is the first release where the git tag and the image tag name the same
-bytes and it was PROVEN rather than assumed:** the running API reports
-`IVGS_BUILD_SHA=dd277998…`, which is the commit `v5.37.2-evidence-by-structure`
-points at. **That is a check, not a convention** — it stays true only for as long
-as someone measures it.
+⛳ **12c and 12d both prove the git tag and the image tag name the same bytes
+rather than assuming it:** the running API reports `IVGS_BUILD_SHA=5e179ee…`,
+which is the commit `v5.37.3-plan-before-scenes` points at. **That is a check,
+not a convention** — it stays true only for as long as someone measures it, and
+12d nearly lost it: the first API build was stamped `PENDING-12d` because the
+image was built before the commit existed. Rebuilt from the real SHA rather than
+shipped with a placeholder.
 
 ---
 
@@ -183,21 +241,24 @@ as someone measures it.
 |---|---|
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
+| ↳ same file, **§12d** | declaration order MEASURED to bind generation order; `assessment_plan` declared first, `evidence_map` removed and derived in code; **three refusals deleted, one added**; migration 0051; prompt v4; deployed to nodes 01-04; **acceptance still NOT met — RC-Q9d**, the plan is prior and stable but non-causal |
 | ↳ same file, **§12c** | RC-Q9b closed by structure (`evidence_map` required 1..4 per id) with `EVIDENCE_MAP_DISAGREES` promoted to a hard refusal; required-keys and `additionalProperties` measured ENFORCED, `contains` HTTP 400, a new `minItems` whitespace hang found; **acceptance still NOT met — RC-Q9c**; ✅ **deployed to nodes 01-04 and prompt v3 published** (§12c.9) |
 
 ---
 
 ## Next, in order
 
-1. ⛔ **THE OPERATOR'S WATCH — a project of theirs through the v8 gate**, and the
-   fleet is now carrying the code to watch: contract-3 and prompt v3 are live
-   (§12c.9). ⚠ **Expect refusals** — the acceptance measured 5, 6, 5 and the gate
-   now REFUSES what it used to flag. ⚠ The rendered panel is described in the
-   report from the live payload and the component source, **not from a browser**;
-   how it LOOKS is still unverified, and this watch is what closes that
-2. ⛔ **THE RULING ON RC-Q9c** — the residue above. R1 and R2 may be one defect
-   or two, and telling them apart means changing something and re-running, which
-   is the tuning this package was told not to do
+1. ⛔ **THE RULING ON RC-Q9d, AND ONE PART OF IT IS A YES/NO** — should
+   `PLAN_ENTRY_UNREALIZED` match the exact `evidence_kind` (as shipped) or any
+   assessing event? The exact match is what makes the promise mean anything; it
+   is also the only thing standing between generation 3 and zero refusals. Then
+   the substance: the model plans `assess` and never builds one, 36 scenes
+   running
+2. ⛔ **THE OPERATOR'S WATCH — a project of theirs through the v8 gate**, and the
+   fleet is carrying contract-4 and prompt v4 (§12d.4). ⚠ **Expect refusals** —
+   the acceptance measured 6, 6, 2. ⚠ The rendered panel is described from the
+   live payload and the component source, **not from a browser**; how it LOOKS
+   is still unverified, and this watch is what closes that
 3. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
    loud. Contaminates any regenerate-on-the-same-project gate reading
 4. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
@@ -209,10 +270,16 @@ as someone measures it.
 
 ## Open operator decisions
 
-- ⛔ **RC-Q9c — the evidence CLAIM is now forced and still wrong.** RC-Q9 and
-  RC-Q9b are both CLOSED by structure. The designer names non-assessing scenes as
-  evidence (R1) and assesses LO-2/LO-3 with nothing (R2), three runs. **Rowed
-  with the evidence, not built** — RC-P14-class, and no prompt was fitted to it
+- ⛔ **RC-Q9d — the plan is prior, honest, stable and NON-CAUSAL.** RC-Q9, Q9b
+  and Q9c are all CLOSED by structure. The model plans the assessment correctly
+  before any scene exists and then does not build it: **`assess` written zero
+  times across three generations and 36 scenes.** Two residues (R3 no
+  application at all; R4 the fading sequence stopping at `practice`). **Rowed
+  with the evidence, not built** — and the exact-kind-match question is a
+  yes/no in "Next, in order" #1
+- ⛔ **RC-Q9c is CLOSED** — the model is no longer asked to author `evidence_map`
+  at all, so R1 (naming non-assessing scenes) is unrepresentable rather than
+  refused. R2 survives inside RC-Q9d
 - ⛔ **RC-Q12 — the other nine per-stage LLM knobs** and every future schema: an
   unbounded array is a runaway, and `uniqueItems` is unavailable
 - ⛔ **RC-Q4 — per-scene presenter selection does not exist** and Foundation §4

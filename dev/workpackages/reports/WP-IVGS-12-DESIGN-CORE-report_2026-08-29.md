@@ -1572,3 +1572,288 @@ verified tag proves which bytes are there and not what they do:
 5, 6, 5 hard refusals, RC-Q9c rowed and not tuned. **The fleet now refuses those
 designs where it used to flag them**, which is the promotion reaching production,
 not the criterion being met.
+
+---
+---
+
+# §12d — WP-IVGS-12d: backward design becomes the emission order
+
+**2026-08-29 · same package lineage, appended here because the RC-Q rows it
+closes are above. Commit and HOLD.**
+
+## 12d.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| **Done** | Declaration order MEASURED to bind generation order; `assessment_plan` declared FIRST (contract-4); `evidence_map` REMOVED from the model's schema and derived in code; **three refusals deleted, one added**; migration 0051 both directions; prompt v4 published; nodes 01-04 on `v5.37.3-plan-before-scenes` verified by image ID |
+| ⛔ **ACCEPTANCE: NOT MET — 6, 6, 2** | ✅ ids verbatim 3/3, zero invented, drops honest 1/1/1, **plan carries one correct entry per outcome in all three**. ⛔ **The plan is prior, honest, stable — and NON-CAUSAL.** Rowed as **RC-Q9d**, prompt NOT iterated |
+| **Held** | **2 commits** — the code, and this report/board commit. `git rev-list --count origin/main..HEAD` at close |
+
+**Verified live:** the order probe; three generations on node-02; both suites
+baselined; the deploy by image ID on four nodes; migration 0051 up AND down;
+`CONTRACT_VERSION`, the property order and `PLAN_ENTRY_UNREALIZED` read out of
+the RUNNING containers. ⛔ **Still NOT verified:** the rendered gate panel in a
+browser, and that any of this improves a video.
+
+## 12d.1 TASK 1 — the measurement everything rests on
+
+`assessment_plan` is only Foundation §1's sequence if the model must write it
+**before** it has scenes. If the decoder lets the model choose, the plan is a
+rationalisation of a lesson already designed and the package is theatre. So this
+was measured before anything was built, and it was the declared stop-condition.
+
+12c had *observed* the emission order matching the `properties` dict on three
+contracts — but that observation has two candidate causes (the grammar, or the
+model simply preferring to write scenes first) and could not separate them.
+**The probe separates them by disagreeing with the prompt in both directions.**
+
+| probe | schema | prompt demands | emitted | verdict |
+|---|---|---|---|---|
+| **A** | `properties [plan, scenes]` | **scenes first** | `[assessment_plan, scenes]` | ✅ schema wins |
+| **B** | `properties [scenes, plan]` | **plan first** | `[scenes, assessment_plan]` | ✅ schema wins |
+| **C** | `properties [scenes, plan]`, `required [plan, scenes]` | plan first | `[scenes, assessment_plan]` | **`properties` rules** |
+
+✅ **DECLARATION ORDER BINDS, IN BOTH DIRECTIONS, AGAINST AN EXPLICIT PROMPT
+INSTRUCTION.** A and B fail in opposite directions, so this is the grammar and
+not a model preference wearing the grammar's coat.
+
+⛳ **And C settles which list controls: `properties`, not `required`.** That
+retroactively explains 12c, where `outcome_notes` was FIRST in `required` and
+emitted LAST — a detail that looked like noise and was the rule.
+
+⚠ **So the order of the `properties` dict is now load-bearing code.** Moving
+`assessment_plan` down the file would silently convert a commitment into a
+rationalisation, and no membership check would notice. A test asserts its
+POSITION.
+
+## 12d.2 TASK 2 — design-contract-4
+
+**(a) `assessment_plan`, required, declared first.** Per-outcome required keys
+with `additionalProperties: false` — 12c's measured-enforced construct, reused
+rather than re-invented — each entry `{evidence_kind: practice|assess,
+learner_does: <300 chars}`. `learner_does` is bounded because RC-Q12 applies to
+strings as much as arrays.
+
+**(b) `evidence_map` REMOVED from the model's schema.** 12b's principle one layer
+up: *never ask the model to assemble what code can compute.* The map is derived
+from `serves_outcomes` + `instructional_event` by `shared.design.evidence`, one
+function imported by both the worker's parse and the gate so they cannot drift.
+
+⛳ **A DERIVED MAP CANNOT DISAGREE WITH THE SCENES — the failure is
+unrepresentable, not merely detected — SO THREE REFUSALS WERE DELETED:**
+
+| deleted | why it is now meaningless |
+|---|---|
+| `EVIDENCE_MAP_DISAGREES` | nothing left to disagree; the map **is** the scenes |
+| `EVIDENCE_MAP_PHANTOM_SCENE` | a derived index came from a scene by construction |
+| `EVIDENCE_MAP_NAMES_NOTHING` | it was `OUTCOME_UNASSESSED` under a second name |
+
+`OUTCOME_UNASSESSED` is the one true check, computed from the derived map. ⛳ **A
+package that removes three refusals and adds one is not loosening the gate** — it
+is removing the ones that measured the model's bookkeeping instead of its design.
+The `review()` signature no longer accepts an `evidence_map` at all, so the gate
+recomputes from the live scene rows a reviewer is editing rather than from a
+value derived at capture.
+
+**(c) `PLAN_ENTRY_UNREALIZED`, the one refusal added.** Every plan entry must be
+realized by ≥1 scene serving that outcome and declaring that **exact**
+`evidence_kind`, and the refusal names the outcome, the kind and the promise.
+
+⚠ **EXACT, NOT "ANY ASSESSING EVENT", AND THIS IS A CHOICE WITH A COST — SEE
+§12d.5.** A `practice` scene does not keep an `assess` promise. Both are in
+`ASSESSING_EVENTS`, so `OUTCOME_UNASSESSED` is silent on that case: this refusal
+is the only thing that notices a design quietly downgrading what it promised the
+learner would do unaided.
+
+**Migration 0051** adds `assessment_plan`, additive, `'{}'::jsonb` default, **both
+directions exercised** on the test database — and it deliberately does **not**
+rewrite existing briefs: a contract-3 brief's model-authored map is the evidence
+that RC-Q9c happened, and normalising it away would destroy the record. A test
+asserts the migration contains no `UPDATE`.
+
+## 12d.3 TASK 3 — prompt v4, and the two phrases dropped
+
+The instruction now matches the contract: write the assessment first, then the
+arc that realizes it; each entry is a `evidence_kind` and one concrete sentence
+on what the LEARNER does. Foundation §2's fading pattern is named as the shape
+practice takes for an `apply` outcome — **complete worked example → faded →
+independent** — with step 3 identified as what an `assess` entry means.
+
+⚠ **TWO 12c GATE PHRASES WERE DROPPED, AUDITED IN THE PUBLISHER RATHER THAN
+QUIETLY DELETED** (12b's discipline): `"EVERY SCENE YOU NAME IS READ BACK AGAINST
+ITS OWN TWO DECLARATIONS"` and ``"`practice` or `assess`"``. Both instructed the
+model about naming scenes inside `evidence_map`, **a field that no longer
+exists**; gating them would refuse every correct v4. Six phrases replace them.
+Every other v8/v3 phrase survives and is still gated — audited one by one.
+
+## 12d.4 TASK 4 — the deploy, and the acceptance
+
+**DEPLOYED** `v5.37.3-plan-before-scenes`, ordered build → bank → load →
+migrate → deploy → verify → publish.
+
+    ivgs-api      sha256:ba4160c62b91…      ivgs-workers  sha256:d25feffc9741…
+
+Seven containers `DEPLOY VERIFIED`; **all four worker containers on
+`sha256:d25feffc9741…`, identical to the banked `.digest`**; all seven healthy;
+`/api/v1/health` reports `v5.37.3-plan-before-scenes`. Migration 0051 applied to
+production ahead of the new API — additive, so safe under the old code — with
+**0 existing briefs** and the operator's **4 projects untouched**.
+`storyboard_generation_system` **v4** published AFTER the deploy, v3 preserved
+inactive, exactly one active row. Read back out of the running containers:
+`design-contract-4`, property order `['assessment_plan', 'scenes', …]`,
+`evidence_map` absent, and the API answering `PLAN_ENTRY_UNREALIZED`.
+
+⚠ **§6.1a earned its keep again** — `couldn't find env file: /root/.env` on
+node-02, an ssh block with no `cd`. **And again I re-sent the identical command
+twice before fixing it**, exactly as in 12c; the guard caught it every time and
+the repetition was still mine. Fixed with `--project-directory` and absolute
+paths, which removes the dependency on cwd rather than restoring it.
+
+### The three generations
+
+| | gen 1 | gen 2 | gen 3 |
+|---|---|---|---|
+| scenes | 10 | 9 | 17 |
+| outcomes verbatim | ✅ 3/3 | ✅ 3/3 | ✅ 3/3 |
+| **invented ids** | **NONE** | **NONE** | **NONE** |
+| **plan entries** | **3/3** | **3/3** | **3/3** |
+| plan emitted FIRST | ✅ | ✅ | ✅ |
+| `dropped_beats` | 1 | 1 | 1 |
+| **derived evidence** | **all empty** | **all empty** | LO-1 `[11,12,14,15]`, LO-2 `[11,13]`, LO-3 `[11]` |
+| `practice` / `assess` scenes | **0 / 0** | **0 / 0** | **5 / 0** |
+| **hard refusals** | **6** | **6** | **2** |
+| ↳ `OUTCOME_UNASSESSED` | 3 | 3 | 0 |
+| ↳ `PLAN_ENTRY_UNREALIZED` | 3 | 3 | 2 |
+
+## 12d.5 ⛔ RC-Q9d — THE PLAN IS PRIOR, HONEST, STABLE, AND NON-CAUSAL
+
+**What the mechanism achieved, and it is not nothing.** The plan is emitted
+first in all three generations, confirming Task 1 at production scale. It carries
+one entry per outcome, every time. The `learner_does` sentences are concrete and
+correct — *"Multiplies two 2-digit numbers using the standard column algorithm,
+producing both partial products with correct carries"* — and the plan is **byte
+identical across all three generations**. Asked before it has a lesson, the model
+answers well and answers stably.
+
+⛔ **AND THEN THE SCENES DO NOT FOLLOW IT.** One number carries the finding:
+
+> **Across three generations and 36 scenes, the model wrote `assess` ZERO
+> times** — while planning an `assess` for LO-1 and LO-3 in every single one.
+
+Two residues:
+
+**R3 — the plan does not cause the arc.** Generations 1 and 2 contain **no
+application scene at all**: hook, present, guide, transfer, and nothing else.
+`MERRILL_NO_APPLICATION` fired on both. The model wrote a correct assessment plan
+and then designed a lecture, in full view of its own plan.
+
+**R4 — the fading sequence stops one step short.** Generation 3 *did* build the
+application arc — five `practice` scenes — so every outcome is served and
+assessed and `OUTCOME_UNASSESSED` is silent. Its only refusals are the two
+outcomes whose plan promised `assess` and received `practice`. **The design gets
+the learner to a supported attempt and never to the unaided one.** That is
+exactly the third step of the pattern v4 names, and it is a real pedagogical gap,
+not a bookkeeping one.
+
+⚠ **THE FACT THE RULING NEEDS, STATED AGAINST MY OWN RESULT.** If
+`PLAN_ENTRY_UNREALIZED` matched *any* assessing event instead of the exact kind,
+**generation 3 would have scored ZERO hard refusals** and the acceptance would
+read 6, 6, 0. I am not making that change. The strictness was specified, it is
+what makes the promise mean anything, and loosening a check because it is the
+last thing between me and a green number is the definition of tuning to the
+metric. **It is the operator's ruling, and the number it would produce is on the
+record so the ruling can be made with it.**
+
+⚠ **AND ONE OBSERVATION AGAINST MY OWN PROMPT.** Application-bearing generations
+went from 2-of-3 under v3 to **1-of-3** under v4. The v4 system prompt is 1,309
+characters longer. That may be noise at n=3 and I will not claim otherwise — but
+it is the opposite of the intended direction and it is recorded rather than
+omitted. **I did not iterate the prompt against it**, per the standing rule and
+the order's explicit instruction to stop here.
+
+⛔ **ROWED AS RC-Q9d. STOPPING FOR THE RULING**, as Task 4 directs.
+
+## 12d.6 Tests — zero new failures, four files re-aimed
+
+| tree | baseline | with 12d | verdict |
+|---|---|---|---|
+| `ivgs-api` | 1632 passed, 0 failed | **1650 passed, 0 failed** | ✅ green |
+| `ivgs-workers` | 18 failed, 987 passed, 48 skipped, 15 errors | **identical** | ✅ zero new |
+
+`test_wpivgs12d_assessment_plan.py` — **23 new tests**: the plan's POSITION (not
+its membership); required-keys, closed `evidence_kind`, bounded `learner_does`;
+no plan when there are no ids, so no unsatisfiable grammar; RC-Q12's array guard
+re-run; the worker parse **ignoring a model-emitted `evidence_map` while keeping
+it visible in `raw_contract`**; `review()` having no such parameter; both halves
+of the realization check; the exact-kind case that `OUTCOME_UNASSESSED` cannot
+see; migration 0051 containing no `UPDATE`; the prompt/publisher agreeing; and
+**two round-trip tests that store a contract-4 emission in the database and read
+it back through the gate** (see §12d.8 item 2).
+
+**Four existing files re-aimed, none weakened.** `test_wpivgs12c_evidence.py` was
+largely rewritten — its subject was a model-authored map — and **the risk behind
+each deleted assertion is re-asserted at the new shape**, with a test that walks
+the derived map back to the scenes it came from, and one asserting the three
+deleted codes no longer construct a `Finding` (a deletion nobody can see is a
+deletion that comes back). Two more asserted `evidence_map` in the schema and now
+assert the same closure on `assessment_plan`.
+
+## 12d.7 The tree and the push block
+
+**Held: 2 commits. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched.**
+
+    5e179ee  feat(wp-ivgs-12d): backward design becomes the emission order
+    <2nd>    docs(wp-ivgs-12d): the acceptance, RC-Q9d, and the board
+
+**Tagged `v5.37.3-plan-before-scenes`** on `5e179ee` — the commit the deployed
+images carry, read back as `IVGS_BUILD_SHA` from the running container.
+
+⚠ Two commits again, and for the same honest reason as 12c: the code was
+committed and tagged before the images were built, so the deployed image names a
+real commit; the acceptance result could only be written after. **The block
+expects 2, measured with `git rev-list --count`** — §0's new rule, used here for
+the first time.
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=2
+ACTUAL=$(git rev-list --count origin/main..HEAD)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main && git push origin v5.37.3-plan-before-scenes
+fi
+```
+
+⛔ **Read §12d.5 before pushing.** The code is deployed and v4 is published, so
+this behaviour is live whether or not these commits are pushed.
+
+## 12d.8 What I did not verify — 12d's additions to §Z
+
+1. ⛔ **The rendered gate panel, still.** No browser was driven. The panel renders
+   findings generically by `severity`, so the deleted and added codes need no
+   frontend change — **read from the component source, not from a screen.**
+2. ⚠ **The acceptance through the real pipeline** — harness again, for the reason
+   §12c.8 gives: re-running it through the fleet would be three more generations
+   of the same script. ✅ **But the storage half of this caveat is now CLOSED
+   rather than flagged.** 12d changed `parse_contract` and the ingest, which
+   made "the round-trip was not re-exercised" too weak to leave standing, so a
+   real contract-4 emission is now driven through the worker's parse, the API's
+   service and the gate **against the database**: the plan persists, the stored
+   `evidence_map` is `{"LO-1": [2], "LO-2": [3]}` — derived and keyed by the
+   operator's ids — the outcome text survives verbatim, and a broken promise
+   still comes back as `PLAN_ENTRY_UNREALIZED` from a STORED brief rather than
+   only from a hand-built dict. ⛳ **Writing it caught my own wrong assumption
+   about the data** — I asserted `outcomes[].text` still carried the `"LO-1: "`
+   marker; it does not, the marker is carried separately so the parse stays
+   reversible. **What remains unexercised is the HTTP ingest route and the
+   capture observer**, neither of which 12d changed.
+3. ⛔ **Whether R3 and R4 are one defect or two.** Distinguishing them means
+   changing something and re-running — the tuning the ruling forbids.
+4. ⛔ **Whether the longer v4 prompt caused the arc regression.** n=3, no control.
+5. **The `minItems` whitespace corridor** is unchanged and unexercised; contract-4
+   has no `minItems` array left in `assessment_plan`, but `scenes` and
+   `source_refs` still carry one.

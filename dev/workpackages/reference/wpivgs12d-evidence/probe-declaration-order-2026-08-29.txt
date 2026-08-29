@@ -1,0 +1,23 @@
+==========================================================================
+TASK 1 — does schema declaration order BIND generation order?
+==========================================================================
+
+[A] properties [assessment_plan, scenes]; prompt DEMANDS scenes first
+   200 in 10s   EMITTED ORDER: ['assessment_plan', 'scenes']
+
+[B] properties [scenes, assessment_plan]; prompt DEMANDS plan first
+   200 in 10s   EMITTED ORDER: ['scenes', 'assessment_plan']
+
+[C] properties [scenes, plan] but required [plan, scenes]; prompt DEMANDS plan first
+   200 in 10s   EMITTED ORDER: ['scenes', 'assessment_plan']
+
+==========================================================================
+VERDICT
+==========================================================================
+  A schema wins over a scenes-first order : True
+  B schema wins over a plan-first order   : True
+  C the controlling list is              : PROPERTIES
+
+  ✅ DECLARATION ORDER BINDS, IN BOTH DIRECTIONS, AGAINST THE PROMPT.
+     `assessment_plan` declared first is emitted before any scene
+     exists — Foundation §1's sequence, enforced by the decoder.

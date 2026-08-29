@@ -313,3 +313,132 @@ class TestTheStorageAndThePrompt:
                 / "storyboard_design_system.j2").read_text()
         assert "DESIGN THE ASSESSMENT FIRST, THEN THE ARC THAT REALIZES IT" in DESIGN_PHRASES
         assert not [p for p in DESIGN_PHRASES if p not in text]
+
+
+class TestTheContractFourRoundTrip:
+    """⛔ THE GAP §12d.8 WOULD OTHERWISE HAVE ONLY FLAGGED.
+
+    12d changed `parse_contract` AND the ingest, so "the storage round-trip was
+    not re-exercised" is a weaker caveat here than it was in 12c — weak enough
+    that flagging it instead of closing it would be a choice, not a limit. This
+    drives a real contract-4 emission through the worker's parse, the API's
+    service and the gate, against the database, in one pass.
+    """
+
+    async def test_a_contract_four_emission_survives_parse_store_and_gate(
+        self, db_session,
+    ):
+        import uuid as _uuid
+        from app.models.project import Project
+        from app.services.design_brief_service import DesignBriefService
+        from app.services.design_review import review, split
+
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.contract import parse_contract
+
+        outcomes_text = "LO-1: compute the product.\nLO-2: explain the zero."
+        project = Project(id=_uuid.uuid4(), name="12d round trip", state="DRAFT",
+                          learning_outcomes=outcomes_text)
+        db_session.add(project)
+        await db_session.flush()
+
+        emission = {
+            "assessment_plan": {
+                "LO-1": {"evidence_kind": "assess",
+                         "learner_does": "multiplies 34 by 21 unaided"},
+                "LO-2": {"evidence_kind": "practice",
+                         "learner_does": "explains the placeholder zero"},
+            },
+            "scenes": [
+                {"scene_index": 1, "serves_outcomes": ["LO-1", "LO-2"],
+                 "instructional_event": "present", "bloom_level": "understand",
+                 "provenance": {"origin": "designed", "rationale": "framing"}},
+                {"scene_index": 2, "serves_outcomes": ["LO-1"],
+                 "instructional_event": "assess", "bloom_level": "apply",
+                 "provenance": {"origin": "designed", "rationale": "the check"}},
+                {"scene_index": 3, "serves_outcomes": ["LO-2"],
+                 "instructional_event": "practice", "bloom_level": "understand",
+                 "provenance": {"origin": "designed", "rationale": "the attempt"}},
+            ],
+            "dropped_beats": [], "design_notes": "an arc",
+            "outcome_notes": {"LO-1": {"bloom_level": "apply", "measurable": True,
+                                       "proposed_refinement": None},
+                              "LO-2": {"bloom_level": "understand", "measurable": True,
+                                       "proposed_refinement": None}},
+        }
+        payload = parse_contract(emission)
+        assert payload is not None
+        assert payload["contract_version"] == "design-contract-4"
+
+        brief = await DesignBriefService(db_session).record(project.id, payload)
+
+        # ── it is IN THE DATABASE, not merely in the object we just built ──
+        await db_session.refresh(brief)
+        assert brief.assessment_plan["LO-1"]["evidence_kind"] == "assess"
+        assert brief.assessment_plan["LO-2"]["learner_does"] == (
+            "explains the placeholder zero")
+        # keyed by the OPERATOR's ids and derived, not authored
+        assert brief.evidence_map == {"LO-1": [2], "LO-2": [3]}
+        # ── the operator's words, verbatim, still (RC-Q9 regression) ──
+        # `text` is the outcome WITHOUT its "LO-n: " marker — the marker is
+        # carried separately so `reconstruct(parse(x)) == x`. Asserting
+        # `source` as well pins both halves of that, which is what makes the
+        # 12b byte-compare belt meaningful.
+        assert [o["text"] for o in brief.outcomes] == [
+            "compute the product.", "explain the zero."]
+        assert [o["source"] for o in brief.outcomes] == [
+            "LO-1: compute the product.", "LO-2: explain the zero."]
+        assert all(o["authored_by"] == "operator" for o in brief.outcomes)
+
+        # ── and the gate reads it clean ──
+        findings, rows = review(
+            scenes=payload["scenes"], outcomes=brief.outcomes,
+            assessment_plan=brief.assessment_plan,
+            learning_outcomes=outcomes_text)
+        refusals, _ = split(findings)
+        assert refusals == [], [f.code for f in refusals]
+        assert {r.outcome_id: r.assessed_by for r in rows} == {
+            "LO-1": [2], "LO-2": [3]}
+
+    async def test_a_broken_promise_survives_the_round_trip_as_a_refusal(
+        self, db_session,
+    ):
+        """The same path with the assess scene downgraded to practice. If the
+        refusal only fires on hand-built dicts and not on a stored brief, the
+        check is decorative."""
+        import uuid as _uuid
+        from app.models.project import Project
+        from app.services.design_brief_service import DesignBriefService
+        from app.services.design_review import review, split
+
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.contract import parse_contract
+
+        project = Project(id=_uuid.uuid4(), name="12d broken promise",
+                          state="DRAFT", learning_outcomes="LO-1: compute it.")
+        db_session.add(project)
+        await db_session.flush()
+
+        payload = parse_contract({
+            "assessment_plan": {"LO-1": {"evidence_kind": "assess",
+                                         "learner_does": "unaided"}},
+            "scenes": [
+                {"scene_index": 1, "serves_outcomes": ["LO-1"],
+                 "instructional_event": "guide", "bloom_level": "apply",
+                 "provenance": {"origin": "designed", "rationale": "r"}},
+                {"scene_index": 2, "serves_outcomes": ["LO-1"],
+                 "instructional_event": "practice", "bloom_level": "apply",
+                 "provenance": {"origin": "designed", "rationale": "r"}},
+            ],
+            "dropped_beats": [], "design_notes": "n",
+            "outcome_notes": {"LO-1": {"bloom_level": "apply", "measurable": True,
+                                       "proposed_refinement": None}},
+        })
+        brief = await DesignBriefService(db_session).record(project.id, payload)
+        await db_session.refresh(brief)
+        assert brief.evidence_map == {"LO-1": [2]}
+
+        findings, _ = review(scenes=payload["scenes"], outcomes=brief.outcomes,
+                             assessment_plan=brief.assessment_plan)
+        refusals, _ = split(findings)
+        assert [f.code for f in refusals] == ["PLAN_ENTRY_UNREALIZED"]

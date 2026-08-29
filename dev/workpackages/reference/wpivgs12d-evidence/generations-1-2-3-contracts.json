@@ -1,0 +1,1304 @@
+[
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "Human or social moment: the welcome",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 50,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A two-row column layout on lined paper, the upper row one digit wider than the lower, a multiplication sign to the left of the lower row, a ruled horizontal line beneath both and the answer row still empty",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration writes the numbers and the problem setup",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 100,
+              "end": 200,
+              "quote": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "A hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line and the answer row beneath it is still empty; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 25,
+        "media_rationale": "Numeric content: the narration writes a digit and carries it",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "complete"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 200,
+              "end": 300,
+              "quote": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9.",
+        "visual_description": "The pencil tip resting back at the head of the first partial-product row while the completed answer row sits beneath the ruled line",
+        "media_type": "motion_graphics",
+        "duration_seconds": 25,
+        "media_rationale": "Numeric content: the narration writes a digit and adds it",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 300,
+              "end": 400,
+              "quote": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Now we need to multiply by the 1 in 14. But there\u2019s something very important to remember. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A hand holding a pencil, poised over a blank sheet of lined paper with a ruler and a soft pink pencil case nearby, warm and gentle lighting",
+        "media_type": "image",
+        "duration_seconds": 15,
+        "media_rationale": "Human or social moment: the explanation",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 400,
+              "end": 500,
+              "quote": "Now we need to multiply by the 1 in 14. But there\u2019s something very important to remember. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line. This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "A two-row column layout on lined paper, the upper row one digit wider than the lower, a multiplication sign to the left of the lower row, a ruled horizontal line beneath both and the answer row still empty, with a zero in the ones place",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration writes the placeholder zero",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 500,
+              "end": 600,
+              "quote": "So before we start, put a zero in the ones place on our new answer line. This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Now multiply 1 times 3. 1 times 3 equals 3. Write down 3. Then multiply 1 times 2. 1 times 2 equals 2. Write down 2.",
+        "visual_description": "The pencil tip resting back at the head of the second partial-product row while the completed answer row sits beneath the ruled line",
+        "media_type": "motion_graphics",
+        "duration_seconds": 25,
+        "media_rationale": "Numeric content: the narration writes a digit",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 600,
+              "end": 700,
+              "quote": "Now multiply 1 times 3. 1 times 3 equals 3. Write down 3. Then multiply 1 times 2. 1 times 2 equals 2. Write down 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "We have two answers: 92 and 230. Now add them together.",
+        "visual_description": "A two-row column layout on lined paper, the upper row one digit wider than the lower, a multiplication sign to the left of the lower row, a ruled horizontal line beneath both and the answer row still empty",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration adds the two answers",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 92,
+          "bottom": 230,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 700,
+              "end": 800,
+              "quote": "We have two answers: 92 and 230. Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3.",
+        "visual_description": "The pencil tip resting back at the head of the answer row while the completed answer sits beneath the ruled line",
+        "media_type": "motion_graphics",
+        "duration_seconds": 25,
+        "media_rationale": "Numeric content: the narration writes the final answer",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 92,
+          "bottom": 230,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 800,
+              "end": 900,
+              "quote": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "Our final answer is 322.",
+        "visual_description": "A completed two-row column layout on lined paper, the upper row one digit wider than the lower, a multiplication sign to the left of the lower row, a ruled horizontal line beneath both and the answer row filled",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "Human or social moment: the conclusion",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 900,
+              "end": 1000,
+              "quote": "Our final answer is 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 1000,
+          "end": 1200,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The second worked example was not included in the design.",
+        "reason": "The second worked example was not necessary to achieve the learning outcomes."
+      }
+    ],
+    "design_notes": "The lesson follows the four-step trick for multiplying two-digit numbers: multiply by the ones digit, start the next line with a zero, multiply by the tens digit, and add the two answers together. The design uses a combination of motion graphics and images to illustrate the steps and provide a clear visual representation of the process.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "Human or social moment: the welcome",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 60,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "Two numbers stand one above the other on lined paper, the upper row one digit wider than the lower, their right-hand edges flush; a freshly ruled horizontal line runs beneath both and the answer row under it is still empty.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the numbers are written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 120,
+              "end": 240,
+              "quote": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line and the answer row beneath it is still empty; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the multiplication result is written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "complete"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 240,
+              "end": 360,
+              "quote": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9.",
+        "visual_description": "The hand moves to the next column, writing the 9; the first partial-product row is now complete, with the carried 1 above the tens column; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the multiplication result is written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "complete"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 360,
+              "end": 480,
+              "quote": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Now we need to multiply by the tens digit. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10. So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "The hand writes a zero in the ones place of the new answer line; the first partial-product row is still visible above the ruled line; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the placeholder zero is written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 480,
+              "end": 600,
+              "quote": "Now we need to multiply by the tens digit. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10. So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Then multiply 1 times 3. 1 times 3 equals 3. Write down 3. Next, multiply 1 times 2. 1 times 2 equals 2. Write down 2.",
+        "visual_description": "The hand writes the 3 and the 2 in the correct columns; the second partial-product row is now complete; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the multiplication results are written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "complete"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 600,
+              "end": 720,
+              "quote": "Then multiply 1 times 3. 1 times 3 equals 3. Write down 3. Next, multiply 1 times 2. 1 times 2 equals 2. Write down 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "We have two answers: 92 and 230. Now add them together.",
+        "visual_description": "The hand holds a pencil over the two partial-product rows; the answer row is still empty; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the addition is performed",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 92,
+          "bottom": 230,
+          "phase": "full"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 720,
+              "end": 840,
+              "quote": "We have two answers: 92 and 230. Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3.",
+        "visual_description": "The hand writes the 2 and the 3 in the correct columns; the answer row is now complete; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the addition result is written on the page",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 92,
+          "bottom": 230,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 840,
+              "end": 960,
+              "quote": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "So our final answer is: 23 times 14 equals 322.",
+        "visual_description": "The completed working, with the final answer visible; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "Human or social moment: the closing recap",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 960,
+              "end": 1080,
+              "quote": "So our final answer is: 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 1080,
+          "end": 1200,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The second worked example is not included in the design.",
+        "reason": "The design focuses on the first worked example and does not include the second one for brevity."
+      }
+    ],
+    "design_notes": "The lesson follows the standard column multiplication algorithm, with a focus on the key steps of multiplying by the ones and tens digits, and adding the partial products. The design includes a mix of presentation, guidance, and practice, with an emphasis on applying the algorithm to solve a problem. The lesson concludes with a recap of the key steps and a final answer.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "Human or social moment: the welcome",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 50,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "Two numbers stand one above the other on lined paper, the upper row one digit wider than the lower, their right-hand edges flush; a freshly ruled horizontal line runs beneath both and the answer row under it is still empty. A hand rests a pencil at the right-hand end of the ruled line.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration writes a digit and carries it, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 50,
+              "end": 150,
+              "quote": "Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line and the answer row beneath it is still empty; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 25,
+        "media_rationale": "Numeric content: the narration writes a digit and carries it, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "complete"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 150,
+              "end": 250,
+              "quote": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9.",
+        "visual_description": "The hand moves to the tens column and writes the 9; the answer row beneath the ruled line is still empty except for the 9 in the tens column; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit and carries it, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 250,
+              "end": 350,
+              "quote": "Next, multiply 4 times 2. 4 times 2 equals 8. But remember, we carried a 1. So we add it: 8 plus 1 equals 9. Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Now we need to multiply by the 1 in 14. But there\u2019s something very important to remember. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A hand holding a pencil, poised over a blank area of the working surface, with a faint outline of a zero in the ones place; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "Human or social moment: the explanation of the placeholder zero",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 350,
+              "end": 450,
+              "quote": "Now we need to multiply by the 1 in 14. But there\u2019s something very important to remember. That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line. This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "The hand writes a zero in the ones place of the new answer line; the working surface now shows two partial-product rows and the start of the third; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_split",
+          "number": 10
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 450,
+              "end": 550,
+              "quote": "So before we start, put a zero in the ones place on our new answer line. This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Now multiply 1 times 3. 1 times 3 equals 3. Write down 3. Then multiply 1 times 2. 1 times 2 equals 2. Write down 2.",
+        "visual_description": "The hand writes the 3 and the 2 in the correct positions on the working surface; the working surface now shows three partial-product rows; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 550,
+              "end": 650,
+              "quote": "Now multiply 1 times 3. 1 times 3 equals 3. Write down 3. Then multiply 1 times 2. 1 times 2 equals 2. Write down 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "We have two answers: 92 and 230. Now add them together.",
+        "visual_description": "The working surface shows the two partial-product rows and the answer row; the hand holds a pencil, poised over the answer row; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 15,
+        "media_rationale": "Human or social moment: the setup for the addition",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 650,
+              "end": 750,
+              "quote": "We have two answers: 92 and 230. Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3.",
+        "visual_description": "The hand performs the addition, writing the 2 and the 3 in the correct positions on the answer row; the working surface now shows the completed answer; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 92,
+          "bottom": 230,
+          "phase": "full"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 750,
+              "end": 850,
+              "quote": "2 plus 0 equals 2. 9 plus 3 equals 12. Write down 2 and carry the 1. Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "Our final answer is 322. So 23 times 14 equals 322.",
+        "visual_description": "The completed working surface, with the final answer highlighted; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 15,
+        "media_rationale": "Human or social moment: the conclusion",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 850,
+              "end": 950,
+              "quote": "Our final answer is 322. So 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "Let\u2019s try another one. Let\u2019s practice with 32 times 21.",
+        "visual_description": "A new working surface, with 32 on top and 21 underneath; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 15,
+        "media_rationale": "Human or social moment: the introduction to the practice problem",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 950,
+              "end": 1050,
+              "quote": "Let\u2019s try another one. Let\u2019s practice with 32 times 21."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Start with the ones digit, which is 1. 1 times 2 equals 2. 1 times 3 equals 3. So our first answer is 32.",
+        "visual_description": "The hand performs the multiplication, writing the 2 and the 3 in the correct positions on the working surface; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 32,
+          "bottom": 21,
+          "step": 0,
+          "phase": "full"
+        },
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1050,
+              "end": 1150,
+              "quote": "Start with the ones digit, which is 1. 1 times 2 equals 2. 1 times 3 equals 3. So our first answer is 32."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Now move to the tens digit, which is 2. Remember, because we\u2019re multiplying by the tens digit, start by putting down a zero.",
+        "visual_description": "The hand writes a zero in the ones place of the new answer line; the working surface now shows two partial-product rows and the start of the third; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_split",
+          "number": 20
+        },
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1150,
+              "end": 1250,
+              "quote": "Now move to the tens digit, which is 2. Remember, because we\u2019re multiplying by the tens digit, start by putting down a zero."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "2 times 2 equals 4. 2 times 3 equals 6. That gives us 640.",
+        "visual_description": "The hand performs the multiplication, writing the 4 and the 6 in the correct positions on the working surface; the working surface now shows three partial-product rows; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 32,
+          "bottom": 21,
+          "step": 1,
+          "phase": "full"
+        },
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1250,
+              "end": 1350,
+              "quote": "2 times 2 equals 4. 2 times 3 equals 6. That gives us 640."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "Now add 32 and 640. 32 plus 640 equals 672.",
+        "visual_description": "The hand performs the addition, writing the 6 and the 7 in the correct positions on the answer row; the working surface now shows the completed answer; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "Numeric content: the narration writes a digit, which is numeric content and must be drawn rather than generated.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_addition_carry",
+          "top": 32,
+          "bottom": 640,
+          "phase": "full"
+        },
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1350,
+              "end": 1450,
+              "quote": "Now add 32 and 640. 32 plus 640 equals 672."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So 32 times 21 equals 672.",
+        "visual_description": "The completed working surface, with the final answer highlighted; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 15,
+        "media_rationale": "Human or social moment: the conclusion",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1450,
+              "end": 1550,
+              "quote": "So 32 times 21 equals 672."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "The four-step trick: multiply by the ones digit, start the next line with a zero, multiply by the tens digit, and add the two answers together.",
+        "visual_description": "A summary of the working surface, with the four steps highlighted; warm desk lamp from the left, upper right third of the sheet kept clear for the overlay",
+        "media_type": "image",
+        "duration_seconds": 30,
+        "media_rationale": "Human or social moment: the summary",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1550,
+              "end": 1650,
+              "quote": "The four-step trick: multiply by the ones digit, start the next line with a zero, multiply by the tens digit, and add the two answers together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 1650,
+          "end": 1750,
+          "quote": "If you make a mistake, don\u2019t worry. Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit."
+        },
+        "summary": "This section was dropped because it was deemed unnecessary for the lesson.",
+        "reason": "Unnecessary for the lesson"
+      }
+    ],
+    "design_notes": "The lesson follows a linear structure, starting with an introduction to the concept of multiplying two-digit numbers, followed by a step-by-step guide on how to perform the multiplication. The lesson then provides practice problems for the learner to apply their knowledge, and finally, a summary of the four-step trick to reinforce the learning. The media types were chosen based on the content and the instructional event, with motion graphics used for numeric content, images used for human or social moments, and animations used for transformations. The visual descriptions were written to be detailed and specific, with a focus on the working surface and the steps being performed. The narration was written to be clear and concise, with a focus on guiding the learner through the lesson.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  }
+]
