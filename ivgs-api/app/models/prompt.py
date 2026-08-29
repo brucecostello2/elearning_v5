@@ -16,6 +16,8 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import UUID, ENUM as PG_ENUM
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from shared.models.enums import PROMPT_TYPES
+
 from shared.database import Base
 
 
@@ -38,19 +40,25 @@ class Prompt(Base):
         nullable=True,
     )
     prompt_type: Mapped[str] = mapped_column(
-        PG_ENUM("master", "transcript_refinement", "storyboard_generation",
-                "image_generation", "video_generation", "animation_generation",
-                "tts_voice", "talking_head", "composition", "translation",
-                # WP-64 Task 3, migration 0038. Not a pipeline stage: the Edit
-                # Scene modal's "Adapt description for this medium" action.
-                # The label MUST be listed here as well as in the database
-                # type -- SQLAlchemy validates the value it READS against this
-                # tuple, so a row carrying a label the ORM does not know raises
-                # LookupError on every SELECT of the table, not just on insert.
-                "scene_media_adaptation",
-                name="prompt_type", create_type=False),
+        # ⛔ THE VALUES COME FROM ONE LIST NOW, AND THEY DID NOT BEFORE.
+        # This tuple was typed out by hand. Migration 0047 (WP-IVGS-12) added
+        # `transcript_refinement_system` and `storyboard_generation_system` to
+        # the PostgreSQL type and NOT here, and the very next SELECT that
+        # touched one of those rows raised
+        #     LookupError: 'storyboard_generation_system' is not among the
+        #     defined enum values.
+        # — which is precisely what the comment below has warned about since
+        # WP-64, and it still happened, because a warning is not a mechanism.
+        # `MediaType` was moved to a shared list for the same reason after the
+        # same failure (see storyboard_scene.py). This is that fix, here.
+        #
+        # The label MUST be known to the ORM as well as to the database type:
+        # SQLAlchemy validates the value it READS against this tuple, so a row
+        # carrying a label the ORM does not know raises on every SELECT of the
+        # table, not just on insert.
+        PG_ENUM(*PROMPT_TYPES, name="prompt_type", create_type=False),
         nullable=False,
-        doc="PostgreSQL ENUM prompt_type — 11 values (WP-64, 0038)",
+        doc=f"PostgreSQL ENUM prompt_type: {', '.join(PROMPT_TYPES)}",
     )
     prompt_text: Mapped[str] = mapped_column(Text, nullable=False)
     version: Mapped[int] = mapped_column(Integer, nullable=False)

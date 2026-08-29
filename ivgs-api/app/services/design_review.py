@@ -53,6 +53,20 @@ MAX_SENTENCES_PRESENT_GUIDE = 2
 #: whitespace and connective tissue between spans, not a lost beat.
 MIN_GAP_CHARS = 120
 
+#: WP-IVGS-12b Task 1(d). A single contiguous uncovered stretch this large is a
+#: BEAT, not connective tissue — the acceptance run's was 2,658 characters,
+#: three times running, with `dropped_beats` empty every time.
+#:
+#: ⛳ WHY THIS ONE HARD-REFUSES WHERE THE ATTRIBUTION FLAG DOES NOT. The worry
+#: that keeps gap attribution soft is the model's span ARITHMETIC — an
+#: off-by-twenty on one offset should not refuse a sound design. That worry does
+#: not touch this check: `dropped_beats == []` is the model's own CLAIM that it
+#: used everything, the uncovered length is measured BY CODE against the
+#: uploaded text, and the two cannot both be true. Silence is the defect class,
+#: and an empty array asserting completeness over a 400-character hole is the
+#: purest form of it.
+HARD_GAP_CHARS = 400
+
 
 @dataclass
 class Finding:
@@ -98,11 +112,13 @@ def review(
     evidence_map: Optional[Dict[str, Any]] = None,
     dropped_beats: Optional[Sequence[Dict[str, Any]]] = None,
     source_text: str = "",
+    learning_outcomes: str = "",
 ) -> Tuple[List[Finding], List["OutcomeRow"]]:
     """Assess one design. Writes nothing, reads nothing but its arguments."""
     evidence_map = evidence_map or {}
     dropped_beats = list(dropped_beats or [])
     findings: List[Finding] = []
+    findings.extend(_outcomes_are_the_operators(learning_outcomes, outcomes))
 
     indices = {int(_scene_field(s, "scene_index", i) or 0)
                for i, s in enumerate(scenes)}
@@ -348,6 +364,53 @@ def review(
     return findings, rows
 
 
+def _outcomes_are_the_operators(
+    learning_outcomes: str, outcomes: Sequence[Dict[str, Any]],
+) -> List[Finding]:
+    """THE BELT. Do the brief's outcomes still say what the operator typed?
+
+    WP-IVGS-12b Task 1(d). ⛳ **WITH THE STRUCTURAL FIX IN PLACE THIS CANNOT
+    FAIL**, because `DesignBriefService._outcomes_from_the_project` builds the
+    list from `projects.learning_outcomes` and the model never sees the text.
+    It exists so that if anyone ever routes outcome text back through a model
+    again — a v10 prompt, a migration, a well-meant refactor — **RC-Q9 comes
+    back LOUD instead of silently redrawing the gate's matrix against a
+    paraphrase.** A check that can only fire on a regression is the point of it.
+    """
+    if not learning_outcomes.strip():
+        return []
+    from shared.design.outcomes import is_faithful, parse_outcomes
+
+    expected = parse_outcomes(learning_outcomes)
+    if len(expected) != len(outcomes):
+        return [Finding(
+            REFUSE, "OUTCOMES_COUNT_DRIFTED",
+            f"the operator wrote {len(expected)} learning outcome(s) and this "
+            f"brief carries {len(outcomes)}. An outcome that vanishes between "
+            "the form field and the design is the RC-Q9 defect returning.",
+            detail={"operator": len(expected), "brief": len(outcomes)},
+        )]
+    drifted = [
+        {"id": e["id"], "operator": e["text"], "brief": str(b.get("text") or "")}
+        for e, b in zip(expected, outcomes)
+        if str(b.get("text") or "") != e["text"]
+    ]
+    if drifted:
+        return [Finding(
+            REFUSE, "OUTCOMES_TEXT_DRIFTED",
+            "the brief's outcome text is not what the operator typed. It is "
+            "never rewritten in place — a refinement is PROPOSED beside it.",
+            outcome_id=drifted[0]["id"], detail={"drifted": drifted},
+        )]
+    if not is_faithful(learning_outcomes, expected):          # pragma: no cover
+        return [Finding(
+            FLAG, "OUTCOMES_PARSE_NOT_REVERSIBLE",
+            "the outcome parser could not reconstruct the operator's text "
+            "byte for byte, so the comparison above is weaker than it looks.",
+        )]
+    return []
+
+
 def _coverage_gaps(
     scenes: Sequence[Any],
     dropped_beats: Sequence[Dict[str, Any]],
@@ -370,7 +433,7 @@ def _coverage_gaps(
             spans.append((int(span.get("start") or 0), int(span.get("end") or 0)))
     if not spans:
         return [Finding(
-            FLAG, "NO_SOURCE_COVERAGE",
+            REFUSE if not dropped_beats else FLAG, "NO_SOURCE_COVERAGE",
             "not one scene names a span of the uploaded script and not one "
             "beat is declared dropped. Either the design ignored the script "
             "entirely or it did not say what it used.",
@@ -388,12 +451,25 @@ def _coverage_gaps(
     findings: List[Finding] = []
     cursor = 0
     for start, end in merged + [[len(source_text), len(source_text)]]:
-        if start - cursor >= MIN_GAP_CHARS:
+        gap = start - cursor
+        if gap >= MIN_GAP_CHARS:
             text = source_text[cursor:start].strip()
+            # Task 1(d). An empty `dropped_beats` is the model CLAIMING it used
+            # everything. Code has just measured a hole. Both cannot be true,
+            # and the emptiness is not subject to the span-arithmetic doubt that
+            # keeps attribution soft — see HARD_GAP_CHARS.
+            hard = gap >= HARD_GAP_CHARS and not dropped_beats
             findings.append(Finding(
-                FLAG, "UNDECLARED_SCRIPT_GAP",
-                f"{start - cursor} characters of the uploaded script are used "
-                "by no scene and declared in no dropped_beat.",
+                REFUSE if hard else FLAG,
+                "UNDECLARED_GAP_WITH_NO_DROPS" if hard else "UNDECLARED_SCRIPT_GAP",
+                (
+                    f"{gap} characters of the uploaded script are used by no "
+                    "scene, and dropped_beats is EMPTY — which claims nothing "
+                    "was dropped. Declare what you left out and why."
+                ) if hard else (
+                    f"{gap} characters of the uploaded script are used by no "
+                    "scene and declared in no dropped_beat."
+                ),
                 detail={"start": cursor, "end": start,
                         "text": text[:400] + ("…" if len(text) > 400 else "")},
             ))

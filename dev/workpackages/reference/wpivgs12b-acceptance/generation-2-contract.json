@@ -1,0 +1,237 @@
+{
+  "scenes": [
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Introduction to the lesson topic"
+      },
+      "bloom_level": "remember",
+      "scene_index": 1,
+      "signal_spec": null,
+      "narration_text": "Welcome to our lesson on double-digit multiplication. Today, we're going to learn how to multiply two numbers with two digits each.",
+      "media_rationale": "Human moment: the welcome and introduction to the lesson.",
+      "serves_outcomes": [
+        "LO-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A warm and inviting classroom with a teacher standing in front of a clean, empty whiteboard, smiling at the camera.",
+      "instructional_event": "hook"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 120,
+            "quote": "Let's start with an example. We want to multiply 23 by 14.",
+            "start": 0,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "understand",
+      "scene_index": 2,
+      "signal_spec": null,
+      "narration_text": "Let's start with an example. We want to multiply 23 by 14. First, we need to set up the problem by writing the numbers on top of each other.",
+      "media_rationale": "Content is setting up the problem, which is a static concept.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, poised over a blank sheet of lined paper with a ruler and a soft pink pencil case nearby, warm and gentle lighting. The paper has two numbers, one above the other, with a multiplication sign to the left.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 240,
+            "quote": "Next, we multiply the numbers. We start by multiplying 23 by 4, which gives us 92.",
+            "start": 120,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 3,
+      "signal_spec": null,
+      "narration_text": "Next, we multiply the numbers. We start by multiplying 23 by 4, which gives us 92.",
+      "media_rationale": "Numeric content: the narration writes a digit and carries it, which must be drawn.",
+      "serves_outcomes": [
+        "LO-3"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": {
+        "top": 23,
+        "step": 0,
+        "phase": "start",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line and the answer row beneath it is still empty. The hand is pointing to the first partial product.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 360,
+            "quote": "Then, we multiply 23 by 10, which gives us 230.",
+            "start": 240,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 4,
+      "signal_spec": null,
+      "narration_text": "Then, we multiply 23 by 10, which gives us 230.",
+      "media_rationale": "Numeric content: the narration writes a digit and carries it, which must be drawn.",
+      "serves_outcomes": [
+        "LO-3"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": {
+        "top": 23,
+        "step": 1,
+        "phase": "complete",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; the first partial-product row is already written above a ruled horizontal line, the second partial-product row is being written, and the answer row beneath it is still empty. The hand is pointing to the second partial product.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 480,
+            "quote": "Finally, we add the two partial products together to get our final answer.",
+            "start": 360,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 5,
+      "signal_spec": null,
+      "narration_text": "Finally, we add the two partial products together to get our final answer.",
+      "media_rationale": "Numeric content: the narration writes a digit and carries it, which must be drawn.",
+      "serves_outcomes": [
+        "LO-3"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": {
+        "top": 92,
+        "phase": "full",
+        "bottom": 230,
+        "template": "column_addition_carry"
+      },
+      "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line, and the answer row beneath it is being written. The hand is pointing to the answer.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Practice problem for the learner"
+      },
+      "bloom_level": "apply",
+      "scene_index": 6,
+      "signal_spec": null,
+      "narration_text": "Now it's your turn to try. Multiply 17 by 25.",
+      "media_rationale": "Content is a practice problem, which is a static concept.",
+      "serves_outcomes": [
+        "LO-3"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A blank sheet of lined paper with a ruler and a soft pink pencil case nearby, warm and gentle lighting. The paper has two numbers, one above the other, with a multiplication sign to the left.",
+      "instructional_event": "practice"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Feedback on the learner's practice problem"
+      },
+      "bloom_level": "apply",
+      "scene_index": 7,
+      "signal_spec": null,
+      "narration_text": "Check your answer to see if you got it correct.",
+      "media_rationale": "Human moment: the learner checking their answer.",
+      "serves_outcomes": [
+        "LO-3"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "Over-the-shoulder view of a hand holding a pencil, pointing to the answer on a completed worksheet.",
+      "instructional_event": "feedback"
+    }
+  ],
+  "design_notes": "The lesson starts with an introduction to the topic, followed by a worked example. The learner is then given a practice problem to try, and finally, they receive feedback on their answer. The lesson is designed to take the learner through the process of double-digit multiplication, from setting up the problem to checking their answer.",
+  "evidence_map": {
+    "LO-1": [
+      1
+    ],
+    "LO-2": [
+      2
+    ],
+    "LO-3": [
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "dropped_beats": [
+    {
+      "span": {
+        "end": 600,
+        "quote": "Let's review what we've learned today.",
+        "start": 480,
+        "transcript_id": null
+      },
+      "reason": "Not necessary for the lesson",
+      "summary": "Introduction to the review section"
+    }
+  ],
+  "outcome_notes": {
+    "LO-1": {
+      "measurable": true,
+      "bloom_level": "remember",
+      "proposed_refinement": null
+    },
+    "LO-2": {
+      "measurable": true,
+      "bloom_level": "understand",
+      "proposed_refinement": null
+    },
+    "LO-3": {
+      "measurable": true,
+      "bloom_level": "apply",
+      "proposed_refinement": null
+    }
+  }
+}

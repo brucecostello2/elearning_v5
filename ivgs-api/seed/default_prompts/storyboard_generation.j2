@@ -17,12 +17,15 @@ compress to reach a number.
 INSTRUCTIONS:
 Emit ONE JSON OBJECT — not a bare array — with these members:
 
-- "outcomes": the learning outcomes, each with the owner's text copied VERBATIM,
-  a bloom_level, an ABCD breakdown, `measurable`, and a `proposed_refinement`
-  that is null when measurable and an ABCD rewrite when it is not.
+- "outcome_notes": one entry per outcome id from your system instructions —
+  its bloom_level, whether the OWNER'S wording is measurable, and an ABCD
+  `proposed_refinement` when it is not. ⛔ **You do not write outcome TEXT.**
+  It is taken from the course owner's own field after you finish.
 - "scenes": the scene array, described below.
 - "dropped_beats": every span of the script that no scene uses, each with its
-  reason. An empty array is a claim that you used everything.
+  reason. ⛔ **An empty array is a CLAIM that you used everything, and it is
+  CHECKED**: the gate measures the script against your spans and REFUSES the
+  design when a stretch of it is covered by no scene and declared in no drop.
 - "evidence_map": outcome id -> the scene_index values that ASSESS it.
 - "design_notes": one short paragraph — the arc, and why it is this arc.
 
@@ -581,9 +584,12 @@ OUTPUT: JSON array of scene objects.
 RULE 10 — EVERY SCENE DECLARES WHAT IT TEACHES AND WHAT JOB IT DOES
 Three fields, on every scene, and none of them is optional.
 
-  "serves_outcomes" — the ids of the outcomes this scene serves. AT LEAST ONE.
-    A scene that serves nothing is decoration, and the answer to decoration is
-    to cut the scene, not to invent an outcome for it.
+  "serves_outcomes" — the ids of the outcomes this scene serves. AT LEAST ONE,
+    and ONLY ids that appear in your system instructions. A scene that serves
+    nothing is decoration, and the answer to decoration is to cut the scene,
+    not to invent an outcome for it. ⛔ **YOU CANNOT INVENT AN ID: the output
+    format admits the real ones and nothing else**, so a scene you cannot
+    attribute to a stated outcome is a scene that should not exist.
 
   "instructional_event" — the job this scene performs, one of:
     "hook", "objective", "recall_prior", "present", "guide",
@@ -627,8 +633,11 @@ teacher's at the gate. An unmarked rewrite is a worse failure than a clumsy one.
 ⛔ AND EVERY BEAT YOU DO NOT USE GOES IN "dropped_beats", WITH ITS REASON.
 Dropping is a design decision and you are allowed to make it. Silent loss is the
 one thing you may not do — it is the defect this entire contract exists to
-remove. The gate compares your spans against the script and shows the reviewer
-any stretch that no scene used and no drop declared.
+remove. The gate compares your spans against the script, shows the reviewer any
+stretch that no scene used, and ⛔ **REFUSES THE DESIGN OUTRIGHT when a
+substantial stretch is uncovered and "dropped_beats" is empty.** An empty array
+is you saying "I used all of it", and that is a claim a machine checks against
+the script itself. If you left the second worked example out, SAY SO.
 
 RULE 12 — DURATION DERIVES FROM THE DESIGN
 Estimate each scene from its own narration at roughly 150 spoken words per

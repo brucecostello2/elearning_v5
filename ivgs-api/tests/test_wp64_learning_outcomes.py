@@ -340,15 +340,18 @@ class TestTheCarrierAndItsDelimiter:
             REPO / "ivgs-api" / "seed" / "default_prompts"
             / "storyboard_design_system.j2"
         ).read_text(encoding="utf-8")
-        assert "{{ learning_outcomes }}" in system, (
-            "the system prompt no longer interpolates the outcomes; they would "
-            "vanish from the model's view with nothing failing"
-        )
+        # ⛔ RE-AIMED BY WP-IVGS-12b (RC-Q9). The sentinel used to be `{{ learning_outcomes }}` — the raw text went into the prompt and the model was asked to transcribe it. It returned two of three, reworded, three runs. The text is not round-tripped through a model at all now: code parses it, the prompt shows ID and TEXT so the model can CITE an id, and the schema closes `serves_outcomes` to those ids. The assertion moves to what must not drift NOW — the text AND the ids must reach the rendered prompt, because a model that never sees an id cannot cite one and the grammar admits nothing else.
+        from shared.design.outcomes import parse_outcomes
+
+        assert "{{ o.id }} — {{ o.text }}" in system
         env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
-        with_them = env.from_string(system).render(learning_outcomes=OUTCOMES)
-        without = env.from_string(system).render(learning_outcomes="")
-        assert OUTCOMES in with_them
-        assert OUTCOMES not in without
+        parsed = parse_outcomes(OUTCOMES)
+        with_them = env.from_string(system).render(
+            learning_outcomes=OUTCOMES, outcomes=parsed)
+        without = env.from_string(system).render(learning_outcomes="", outcomes=[])
+        for o in parsed:
+            assert o["text"] in with_them
+            assert o["id"] in with_them
         assert "NO LEARNING OUTCOMES WERE STATED" in without
 
     def test_the_fold_is_retired_and_nothing_calls_it(self, orchestrator):

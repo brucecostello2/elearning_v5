@@ -339,6 +339,17 @@ V7_PHRASES = (
     '"phase" — WHICH PART OF THE ROW THIS SCENE WRITES',
 )
 
+#: WP-IVGS-12b. v9 removes outcome TEXT from what the model produces and makes
+#: the empty-drops claim checkable. Gated for the usual reason: a template that
+#: loses them publishes cleanly, runs cleanly, and goes straight back to a
+#: design whose spine is a paraphrase (RC-Q9).
+V9_PHRASES = (
+    '"outcome_notes": one entry per outcome id',
+    "You do not write outcome TEXT",
+    "YOU CANNOT INVENT AN ID",
+    "REFUSES THE DESIGN OUTRIGHT when a",
+)
+
 #: WP-IVGS-12 Task 3. v8's Design Contract rules, gated for the reason every
 #: phrase here is gated: a template that has lost them publishes cleanly, runs
 #: cleanly, and goes straight back to sequencing a paraphrase.
@@ -517,6 +528,18 @@ async def main() -> None:
                 f"the template renders only {len(_rendered)} characters "
                 f"{_label} — a guard has swallowed most of the prompt."
             )
+
+    missing = [p for p in V9_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template has lost the WP-IVGS-12b amendments: missing "
+            f"{missing!r}. v9 is RC-Q9's structural cure: the model does not "
+            "emit outcome TEXT at all, because asked to transcribe three ABCD "
+            "outcomes it returned two, reworded, three times running, and no "
+            "prompt wording fixed it. If this template starts asking for "
+            "outcome text again, the design's spine is a paraphrase and the "
+            "gate's whole matrix is drawn against it."
+        )
 
     missing = [p for p in V8_PHRASES if p not in text]
     if missing:

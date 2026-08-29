@@ -150,6 +150,29 @@ class PromptType(str, enum.Enum):
     #: read and edit, never written to the scene by the endpoint itself.
     SCENE_MEDIA_ADAPTATION = "scene_media_adaptation"
 
+    # ⛔ WP-IVGS-12b, AND THIS IS WP-68's DEFECT REPEATING — MEASURED, NOT
+    # THEORISED. Migration 0047 added these two members to the PostgreSQL type
+    # and WP-IVGS-12 did not add them HERE. The INSERT succeeded, the rows were
+    # published, and the very next SELECT that touched one raised
+    #     LookupError: 'storyboard_generation_system' is not among the defined
+    #     enum values. Enum name: prompt_type.
+    # exactly as `MediaType`'s docstring in `storyboard_scene.py` says it will:
+    # "the row was written and could not be read back". The list is load-bearing
+    # ON READ.
+    #
+    # ⚠ It went unnoticed for one package because nothing read those rows back
+    # through the ORM until 12b's publisher looked for a version to supersede.
+    # The orchestrator reaches them through the API's own filtered query, which
+    # is why the WP-IVGS-12 acceptance run still worked.
+    TRANSCRIPT_REFINEMENT_SYSTEM = "transcript_refinement_system"
+    STORYBOARD_GENERATION_SYSTEM = "storyboard_generation_system"
+
+
+#: ONE list, the way MEDIA_TYPES is one list. `Prompt.prompt_type` typed its
+#: members out by hand and WP-IVGS-12 added two to the database without adding
+#: them here — the exact WP-68 shape, and the column's own comment predicted it.
+PROMPT_TYPES: tuple[str, ...] = tuple(p.value for p in PromptType)
+
 
 # ── §4.1 Table 4: asset_type ─────────────────────────────────────────
 

@@ -1,0 +1,233 @@
+{
+  "scenes": [
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "The lesson needs an introduction to set the stage for the learner."
+      },
+      "bloom_level": "remember",
+      "scene_index": 1,
+      "signal_spec": null,
+      "narration_text": "Welcome to our lesson on double-digit multiplication. Today, we're going to learn how to multiply two numbers with two digits each.",
+      "media_rationale": "image: the scene is a human moment, introducing the lesson and the teacher.",
+      "serves_outcomes": [
+        "LO-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A warm and inviting classroom with a teacher standing in front of a clean, empty whiteboard, smiling at the camera.",
+      "instructional_event": "hook"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 120,
+            "quote": "Let's start with an example. We want to multiply 23 by 14.",
+            "start": 0,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 2,
+      "signal_spec": null,
+      "narration_text": "Let's start with an example. We want to multiply 23 by 14. To do this, we need to set up the problem by writing the numbers on top of each other, with the ones digits lined up.",
+      "media_rationale": "motion_graphics: the narration sets up the problem, which is numeric content that must be drawn.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 15,
+      "generation_params": {
+        "top": 23,
+        "step": 0,
+        "phase": "start",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "A two-row column layout on lined paper, the upper row one digit wider than the lower, their right-hand edges flush; a freshly ruled horizontal line runs beneath both and the answer row under it is still empty. A hand rests a pencil at the right-hand end of the ruled line.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 240,
+            "quote": "Next, we multiply the top number by the ones digit of the bottom number, which is 4.",
+            "start": 120,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 3,
+      "signal_spec": null,
+      "narration_text": "Next, we multiply the top number by the ones digit of the bottom number, which is 4. We write the result below the line.",
+      "media_rationale": "video_clip: the hand is moving and writing, which is only legible while it moves.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": null,
+      "visual_description": "Over-the-shoulder view of a hand resting a pencil tip at the foot of a two-row column addition on lined paper; both partial-product rows are already written above a ruled horizontal line and the answer row beneath it is still empty. The hand begins to write the first partial product.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 360,
+            "quote": "Then, we multiply the top number by the tens digit of the bottom number, which is 10.",
+            "start": 240,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 4,
+      "signal_spec": null,
+      "narration_text": "Then, we multiply the top number by the tens digit of the bottom number, which is 10. We write the result below the previous partial product, making sure to line up the digits correctly.",
+      "media_rationale": "video_clip: the hand is moving and writing, which is only legible while it moves.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": null,
+      "visual_description": "The hand writes the second partial product, with a placeholder zero in the tens column, below the first partial product; the answer row is still empty.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 480,
+            "quote": "Finally, we add the two partial products together to get the final answer.",
+            "start": 360,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 5,
+      "signal_spec": null,
+      "narration_text": "Finally, we add the two partial products together to get the final answer.",
+      "media_rationale": "video_clip: the hand is moving and writing, which is only legible while it moves.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": null,
+      "visual_description": "The hand adds the two partial products, writing the final answer in the answer row.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "The learner needs to practice what they've learned."
+      },
+      "bloom_level": "apply",
+      "scene_index": 6,
+      "signal_spec": null,
+      "narration_text": "Let's practice what we've learned. Can you multiply 25 by 17?",
+      "media_rationale": "motion_graphics: the learner is practicing, which requires a numeric problem to be posed and solved.",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 30,
+      "generation_params": {
+        "top": 25,
+        "label": "units",
+        "bottom": 17,
+        "column": 0,
+        "template": "highlight_and_hold"
+      },
+      "visual_description": "A blank worksheet with a multiplication problem written on it, and a pencil lying next to it.",
+      "instructional_event": "practice"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "The lesson needs a conclusion to reinforce what the learner has learned."
+      },
+      "bloom_level": "remember",
+      "scene_index": 7,
+      "signal_spec": null,
+      "narration_text": "Great job! Let's review what we've learned today.",
+      "media_rationale": "image: the scene is a human moment, reviewing what the learner has learned.",
+      "serves_outcomes": [
+        "LO-1",
+        "LO-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A completed worksheet with the multiplication problem solved, and a pencil lying next to it.",
+      "instructional_event": "assess"
+    }
+  ],
+  "design_notes": "The design follows a scaffolding approach, starting with an introduction and a worked example, followed by practice and assessment. The media type is chosen deliberately for each scene, based on the content and the learning outcomes. The design aims to provide a clear and concise lesson on double-digit multiplication, with opportunities for practice and review.",
+  "evidence_map": {
+    "LO-1": [
+      1,
+      7
+    ],
+    "LO-2": [
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "LO-3": []
+  },
+  "dropped_beats": [
+    {
+      "span": {
+        "end": 500,
+        "quote": "This is the end of the lesson.",
+        "start": 480,
+        "transcript_id": null
+      },
+      "reason": "The conclusion is not necessary for the design.",
+      "summary": "The script ends with a conclusion that is not used in the design."
+    }
+  ],
+  "outcome_notes": {
+    "LO-1": {
+      "measurable": true,
+      "bloom_level": "remember",
+      "proposed_refinement": null
+    },
+    "LO-2": {
+      "measurable": true,
+      "bloom_level": "apply",
+      "proposed_refinement": null
+    },
+    "LO-3": {
+      "measurable": false,
+      "bloom_level": "analyze",
+      "proposed_refinement": "ABC"
+    }
+  }
+}

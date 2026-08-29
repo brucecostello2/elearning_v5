@@ -95,6 +95,65 @@ def arm(*, task_name: str, task_input: Any) -> None:
     })
 
 
+def outcome_ids_for_current_project() -> list:
+    """This project's outcome ids, parsed BY CODE from what the operator typed.
+
+    WP-IVGS-12b. They close the contract schema's `serves_outcomes`,
+    `evidence_map` and `outcome_notes`, so the model cannot cite an outcome
+    that does not exist and cannot leave one unmentioned.
+
+    ⚠ Returns [] on any failure — an unreachable API, a project with no
+    outcomes — and the schema then degrades to an open string rather than an
+    unsatisfiable empty enum. A design without the closed set is worse than one
+    with it; a design that cannot be generated at all is worse than both.
+    """
+    state = _armed.get()
+    if not state or not state.get("project_id"):
+        return []
+    try:
+        from config import WorkerConfig
+
+        config = WorkerConfig()
+        with httpx.Client(
+            timeout=config.pipeline_api.timeout_seconds,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            # ⛔ `/design-outcomes`, NOT `/projects/{id}`. The latter takes
+            # `get_current_user` and answers a service token with 401, so this
+            # returned [] every time, the enum never armed, and the model went
+            # straight back to inventing ids — measured on 12b's first run.
+            resp = client.get(
+                f"{config.pipeline_api.full_base_url}"
+                f"/projects/{state['project_id']}/design-outcomes"
+            )
+        if resp.status_code != 200:
+            logger.warning(
+                "design_contract_outcome_ids_http",
+                project_id=state["project_id"],
+                status_code=resp.status_code,
+                detail=(
+                    "the schema will NOT be closed to real outcome ids; the "
+                    "model may invent them and the gate will refuse the scenes"
+                ),
+            )
+            return []
+        ids = [str(i) for i in ((resp.json() or {}).get("outcome_ids") or [])]
+        logger.info(
+            "design_contract_outcome_ids_resolved",
+            project_id=state["project_id"],
+            ids=ids,
+        )
+        return ids
+    except Exception as exc:                                     # noqa: BLE001
+        logger.warning(
+            "design_contract_outcome_ids_unavailable",
+            project_id=state.get("project_id"),
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
+        return []
+
+
 def disarm() -> None:
     """Called from ``task_postrun``. A stage that produced no contract is not an
     error — a v7 storyboard produces none — but it IS worth one line, because

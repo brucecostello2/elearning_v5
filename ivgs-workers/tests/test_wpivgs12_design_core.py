@@ -96,19 +96,27 @@ class TestTheSchema:
         assert sourced["properties"]["source_refs"]["minItems"] == 1
         assert "rewrite_of" in sourced["required"]
 
-    def test_measurable_and_a_refinement_cannot_both_be_asserted(self):
-        """MEASURED: with these as independent members the model returned
-        `measurable: true` AND a non-null refinement for both outcomes. The
-        `oneOf` makes the contradiction ungrammatical."""
+    def test_the_model_emits_no_outcome_text_at_all(self):
+        """⛔ RE-AIMED BY WP-IVGS-12b, AND THE OLD ASSERTION IS OBSOLETE BY
+        CONSTRUCTION. v8 made `measurable: true` with a non-null refinement
+        ungrammatical via a `oneOf`. Right fix, wrong problem: the model was
+        still writing the outcome TEXT, and it paraphrased it — two of three,
+        reworded, three runs (RC-Q9). `outcomes[]` is gone from the schema
+        entirely, so the contradiction that `oneOf` guarded cannot arise: the
+        model asserts nothing about text it does not write. It emits
+        `outcome_notes` keyed by ids CODE assigned.
+        """
         from design_core.contract import design_contract_schema
-        branches = design_contract_schema()["properties"]["outcomes"]["items"]["oneOf"]
-        assert len(branches) == 2
-        true_branch = next(b for b in branches
-                           if b["properties"]["measurable"]["enum"] == [True])
-        false_branch = next(b for b in branches
-                            if b["properties"]["measurable"]["enum"] == [False])
-        assert true_branch["properties"]["proposed_refinement"]["type"] == "null"
-        assert false_branch["properties"]["proposed_refinement"]["type"] == "string"
+
+        s = design_contract_schema(outcome_ids=["LO-1", "LO-2"])
+        assert "outcomes" not in s["properties"]
+        notes = s["properties"]["outcome_notes"]
+        assert notes["required"] == ["LO-1", "LO-2"]
+        assert notes["additionalProperties"] is False
+        per = notes["properties"]["LO-1"]
+        assert sorted(per["required"]) == ["bloom_level", "measurable",
+                                           "proposed_refinement"]
+        assert "text" not in per["properties"]
 
 
 # ---------------------------------------------------------------------------

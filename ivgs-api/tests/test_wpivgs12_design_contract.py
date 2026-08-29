@@ -346,13 +346,21 @@ class TestTheBriefLineage:
             "scene_index": 0, "instructional_event": "warmup",
             "bloom_level": "synthesise", "serves_outcomes": ["LO-1"],
         })
-        assert "instructional_event" not in cleaned
-        assert "bloom_level" not in cleaned
+        # ⛔ RE-AIMED BY WP-IVGS-12b. `_clean` writes the declaration WHOLE —
+        # every field, None where absent — because omitting keys merged into
+        # whatever the PREVIOUS generation left on the row and produced a stale
+        # sourced/designed pair the XOR refused, costing a whole brief. So
+        # "dropped" now means "set to None", not "absent from the dict".
+        assert cleaned["instructional_event"] is None
+        assert cleaned["bloom_level"] is None
         assert cleaned["serves_outcomes"] == ["LO-1"]
 
     async def test_sourced_without_refs_is_dropped_to_undeclared(self, db_session):
         """Mirrors migration 0048's CHECK. The validator then names the scene."""
         from app.services.design_brief_service import _clean
-        assert _clean({"scene_origin": "sourced", "source_refs": []}) == {}
-        assert _clean({"scene_origin": "designed",
-                       "source_refs": [{"start": 0}]}) == {"scene_origin": "designed"}
+        undeclared = _clean({"scene_origin": "sourced", "source_refs": []})
+        assert undeclared["scene_origin"] is None
+        assert undeclared["source_refs"] is None
+        designed = _clean({"scene_origin": "designed", "source_refs": [{"start": 0}]})
+        assert designed["scene_origin"] == "designed"
+        assert designed["source_refs"] is None

@@ -62,8 +62,19 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     "DO NOT MERELY SHRINK THE SCRIPT TO FIT A RUNTIME",
     "A DESIGN THAT NEVER LEAVES EVENTS 1-5 IS A LECTURE, NOT A LESSON",
     "DURATION IS AN OUTPUT OF YOUR DESIGN, NEVER AN INPUT TO IT",
-    "COPY EACH ONE INTO `outcomes[].text` EXACTLY AS WRITTEN",
-    "{{ learning_outcomes }}",
+    # ⛔ WP-IVGS-12b REPLACES TWO PHRASES HERE, with the reason recorded rather
+    # than the entries quietly deleted. v1 gated "COPY EACH ONE INTO
+    # `outcomes[].text` EXACTLY AS WRITTEN" and "{{ learning_outcomes }}",
+    # because the model was asked to transcribe the owner's outcomes. IT DID
+    # NOT: three consecutive generations returned two of three, reworded, and
+    # marked them measurable (RC-Q9). The model is not asked any more — code
+    # parses `projects.learning_outcomes`, the ids close the schema's enums, and
+    # the text is injected server-side. Gating a transcription instruction that
+    # must no longer exist would refuse every correct v2.
+    "YOU DO NOT WRITE THE OUTCOMES AND YOU CANNOT CHANGE THEM",
+    "{{ o.id }} — {{ o.text }}",
+    "outcome_notes",
+    "proposed_refinement",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
@@ -163,16 +174,32 @@ def _gate(prompt_type: str, text: str, phrases: Sequence[str]) -> None:
             _fail(f"{prompt_type}: renders EMPTY for {label}")
 
     if prompt_type == "storyboard_generation_system":
+        from shared.design.outcomes import parse_outcomes
+
+        raw = "LO-1: SENTINEL-OUTCOME-ONE.\nLO-2: SENTINEL-OUTCOME-TWO."
+        parsed = parse_outcomes(raw)
         with_outcomes = _JINJA.from_string(text).render(
-            learning_outcomes="SENTINEL-OUTCOME", source_kind="uploaded")
+            learning_outcomes=raw, outcomes=parsed, source_kind="uploaded")
         without = _JINJA.from_string(text).render(
-            learning_outcomes="", source_kind="uploaded")
-        if "SENTINEL-OUTCOME" not in with_outcomes:
-            _fail(
-                f"{prompt_type}: the learning outcomes do not reach the rendered "
-                "prompt. This is the whole point of the change (P2.66) and it "
-                "would fail silently — the model would simply design without them."
-            )
+            learning_outcomes="", outcomes=[], source_kind="uploaded")
+        # The outcomes must reach the model...
+        for sentinel in ("SENTINEL-OUTCOME-ONE", "SENTINEL-OUTCOME-TWO"):
+            if sentinel not in with_outcomes:
+                _fail(
+                    f"{prompt_type}: {sentinel} does not reach the rendered "
+                    "prompt. It would fail silently — the model would design "
+                    "without the outcome and nothing would say so."
+                )
+        # ...and so must the IDS, because the schema's enum is built from them
+        # and a prompt that shows text without ids gives the model nothing it
+        # is allowed to cite.
+        for oid in ("LO-1", "LO-2"):
+            if oid not in with_outcomes:
+                _fail(
+                    f"{prompt_type}: the outcome id {oid} does not reach the "
+                    "prompt. The schema closes `serves_outcomes` to these ids; "
+                    "a model that never sees them cannot cite one."
+                )
         if "SENTINEL-OUTCOME" in without:
             _fail(f"{prompt_type}: renders an outcome that was not supplied")
 

@@ -1001,3 +1001,218 @@ Stated plainly, per `dev/CLAUDE.md` §12.
    through the pipeline.
 7. **The 0046 `source_text` recovery from SeaweedFS.** Named as the only route
    for pre-0046 originals; **no such script was written or run.**
+
+---
+---
+
+# §12b — WP-IVGS-12b: outcomes cannot be paraphrased, artifacts cannot lie
+
+**2026-08-29 · same package lineage, appended here because the RC-Q rows it
+closes are above. Commit and HOLD.**
+
+## 12b.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| **Done** | RC-Q9 cured STRUCTURALLY; RC-Q8 closed with a digest rule; migrations 0050; v9 + system prompt v2 published; images rebuilt, re-banked and the fleet reconciled BY DIGEST; register and board updated |
+| ⛔ **ACCEPTANCE: PARTLY MET** | ✅ all three outcomes verbatim, every generation. ✅ **zero invented ids**, every generation. ✅ drops now declared. ⛔ **zero hard refusals STILL NOT MET — 3, 2, 2** — but for a *different* reason: **RC-Q9b**, the designer serves an outcome and never assesses it |
+| **Held** | **1 commit** — `2b867b0`, this one. ⚠ I first wrote "2": WP-IVGS-12's `cead433` was held when 12b began and the operator pushed it mid-session (`git reflog show origin/main`: `cead433 update by push`). Measured from the remote-tracking ref at close |
+
+**Verified live:** every probe; the migration; the digest refusal, twice; three
+generations end to end; the fleet compared by image ID. ⛔ **Still NOT verified:**
+the rendered gate panel in a browser (unchanged from §Z), and that any of this
+improves a video.
+
+## 12b.1 Task 1 — RC-Q9 cured by removing the question
+
+**The model is no longer asked to transcribe what the database holds.**
+
+- `shared/design/outcomes.py` parses `projects.learning_outcomes` into stable
+  positional ids `LO-1..n`. **Reversibility is the contract** —
+  `reconstruct(parse(x)) == x.strip()` over an 11-case corpus (LO-prefixed,
+  numbered, bulleted, unmarked, wrapped, blank-separated, empty). Without it the
+  byte-compare belt would compare against a normalisation.
+  ⛳ One corpus case changed the design: three UNMARKED lines collapsed into one
+  outcome under the continuation rule — the same silent-loss shape. If nothing
+  in the text carries a marker, every non-empty line is its own outcome.
+- **`outcomes[]` is gone from the model's schema.** It emits `outcome_notes`, an
+  OBJECT keyed by the real ids — `required` forces one entry per outcome and
+  `additionalProperties:false` forbids an invented one. An array would have let
+  it emit two for LO-1 and none for LO-3: the same failure in a new hat.
+- **Foundation §2 survives (ruling 1c):** `proposed_refinement` is proposed
+  *against an id*, beside text the model never touched.
+- `DesignBriefService._outcomes_from_the_project` injects the operator's words
+  with `authored_by: "operator"` and merges the notes by id.
+
+### 12b.1.1 The measurement Task 1(b) was gated on
+
+Per-request enums differ on every call and cannot ride a cached grammar, so
+strict-mode on a fixed schema does not imply them. Probed first:
+
+| construct | verdict |
+|---|---|
+| per-request `enum` | ✅ **ENFORCED** — given ids `["LO-1"]` and *ordered in the prompt* to serve LO-1, LO-2 and LO-3, the model emitted **LO-1 only** |
+| `maxItems` | ✅ **ENFORCED**, string-enum and object arrays alike |
+| `minItems` with no max | ⛔ **RUNAWAY** — `["LO-1","LO-3","LO-3",…]` to the token limit, `finish_reason=length` |
+| `uniqueItems` | ⛔ **HTTP 400** `Grammar error: Unimplemented keys: ["uniqueItems"]` |
+
+⛔ **THE RUNAWAY IS A LIVE HAZARD IN THE v8 CONTRACT WP-IVGS-12 SHIPPED** —
+`serves_outcomes`, `source_refs` and `scenes` all had `minItems` and no maximum.
+It happened to terminate. **Every array now carries a `maxItems`** (RC-Q12).
+
+⛳ **And note the contrast with RC-Q1:** an unimplemented GRAMMAR key is refused
+**loudly**; an unknown BODY member is discarded **silently**. Two failure modes,
+one engine, and only one of them tells you.
+
+### 12b.1.2 Task 1(d) — the belt, and the emptiness refusal
+
+`OUTCOMES_COUNT_DRIFTED` / `OUTCOMES_TEXT_DRIFTED` **cannot fire** with the
+structural fix in place. They exist so that if anyone routes outcome text back
+through a model — a v10 prompt, a refactor — **RC-Q9 returns LOUD instead of
+silently redrawing the matrix against a paraphrase.**
+
+`UNDECLARED_GAP_WITH_NO_DROPS` is a **hard refusal** at ≥400 uncovered
+characters with `dropped_beats == []`. ⛳ **The span-arithmetic doubt that keeps
+attribution soft does not touch it:** the empty array is the model's own CLAIM
+that it used everything, the hole is measured **by code**, and both cannot be
+true. With drops declared, a residual gap stays a flag.
+
+## 12b.2 Task 2 — RC-Q8, and why the digest is a sidecar
+
+**Argued from every consumer**, because the WP-58 one-definition rule is the
+point: `artifact_path_for`/`artifact_require` resolve from an image REF and
+nothing else — that IS the deploy contract, since a remote node has the tag,
+lacks the image, and the artifact exists to carry the image it lacks.
+Digest-in-name would force every deploy caller to know the digest before it
+could find the file; `check-image-artifacts.sh` pins the name shape and would go
+red for every artifact ever banked; `tests_system/test_wp58_retention.py`
+asserts that exact output and is doing its job.
+
+**So the name is unchanged and the fix is in the SKIP LOGIC, which is where the
+defect was.** New `image_local_digest` / `artifact_digest_path_for` /
+`artifact_banked_digest`; a `.digest` sidecar per save; `image:<digest>` in
+MANIFEST rows; **a different digest under the same tag REFUSES, naming both** —
+proven twice live, once on my own rebuild. A present artifact with **no**
+recorded digest is **re-saved, not adopted**: stamping a digest onto unverified
+bytes would make a lie checkable, which is worse than the bug. The checker
+reports artifacts without a digest (93 of 95) and **does not fail** — a
+permanently-red gate is the mistake its own header records WP-56 closing.
+
+**Which digest won, and why.** For `v5.37.0-design-core`: **`sha256:e9c1001a…`**
+— the only build carrying the RC-Q7 timeout fix, the bytes all four nodes ran,
+and the bytes in the bank. ⛳ **Proven by round-trip:** `docker load` of the
+banked artifact restored `e9c1001a` under that tag after a same-tag rebuild had
+pruned it locally. `aa89c778` predates the fix and is retired. The fleet then
+moved to **`v5.37.1-outcomes-by-code` / `sha256:6f5bcf93…` on all four nodes,
+verified by IMAGE ID**.
+
+## 12b.3 The acceptance — three consecutive generations
+
+Same script, same three ABCD outcomes, same flow.
+
+| | gen 1 | gen 2 | gen 3 |
+|---|---|---|---|
+| outcomes present, **verbatim** | ✅ 3/3 | ✅ 3/3 | ✅ 3/3 |
+| **invented ids** | **NONE** | **NONE** | **NONE** |
+| `outcome_notes` entries | 3 | 3 | 3 |
+| scenes | 12 | 7 | 7 |
+| sourced scenes | 12 | 4 | 4 |
+| `dropped_beats` | 0 | 1 | 1 |
+| arc reaches application | ✅ | ✅ | ✅ |
+| **hard refusals** | **3** | **2** | **2** |
+
+✅ **RC-Q9 IS CURED AND THE PROOF IS THE ABSENCE OF DRIFT.** Three generations,
+zero paraphrases, zero dropped outcomes, zero invented ids. The belt never fired
+because it cannot. Compare 12a: **2 of 3 outcomes, reworded, every time.**
+
+⛔ **THE CRITERION IS STILL NOT MET, AND THE REASON MOVED — RC-Q9b.** The
+dominant refusal is now **`OUTCOME_UNASSESSED`**: the designer serves an outcome
+and never has a scene assess it. Generation 3 also left **LO-3 unserved
+entirely**. `EVIDENCE_MAP_DISAGREES` flagged on nearly every outcome of every
+generation — the model fills `evidence_map` with a claim its own scene events do
+not support.
+
+⛳ **This is a better failure than RC-Q9 was.** The gate now refuses for a real
+pedagogical reason, measured against the operator's own words, instead of
+drawing a matrix over a paraphrase. But it is a failure, and I did not iterate
+the prompt against it — RC-P2/RC-P14's restraint, and structural options exist
+(derive `evidence_map` from the scenes, losing the cross-check; or close it so
+an outcome with no assessing scene is ungrammatical). **Rowed as RC-Q9b; the
+ruling is the operator's.**
+
+## 12b.4 Four defects found on the way, all mine, all fixed
+
+| # | what | how it surfaced |
+|---|---|---|
+| **a** | **The enum never armed.** The worker read `GET /projects/{id}`, which takes `get_current_user` and answers a service token **401**; `outcome_ids_for_current_project` returns `[]` on any error *by design*, so the schema degraded to an open string and every scene cited an invented `outcome_1`. New `GET /projects/{id}/design-outcomes` under `get_service_or_user`, returning the PARSE so worker and API share one function | the stored brief cited `outcome_1/2/3` while `outcomes[]` was already correct |
+| **b** | **`PromptType` in the database and not in the ORM.** 0047 added two members; `prompt.py` typed its tuple by hand. Rows published, then `LookupError` on the next SELECT — **WP-68's defect, and that column's own comment had warned of it since WP-64.** Fixed the way `MediaType` was: `PROMPT_TYPES`, one list. **A warning is not a mechanism** (RC-Q11) | 12b's publisher looking for a version to supersede |
+| **c** | **A merged declaration left a stale `source_refs`.** Gen 1 left scene 6 `sourced` with refs; gen 2 called it `designed`; the update set the origin and left the refs → CHECK violation → the whole brief lost. `_clean` now writes the declaration **whole**, which also clears leftovers of a design that no longer exists | the XOR constraint, doing its job |
+| **d** | ⛔ **The same constraint, the opposite error: it REFUSED a legal row.** SQLAlchemy's JSONB defaults to `none_as_null=False`, so an explicit Python `None` is written as JSON `null`; `source_refs IS NULL` is FALSE for that, so `designed` could never match — and the DETAIL line printed `null`, reading as perfectly legal. **Both halves fixed:** `none_as_null=True` on the four design columns, and migration **0050** so the CHECK treats SQL NULL, jsonb `null` and `[]` alike | reproduced directly: SQL NULL accepted, `'null'::jsonb` refused, same row otherwise |
+
+⛳ **(c) and (d) are the same constraint failing in opposite directions, and both
+were caught by it rather than by a reviewer.** 0048's first draft accepted the
+row it exists to refuse (`FALSE OR FALSE OR NULL` is NULL); 0050 stops it
+refusing one it should accept. The constraint has now been wrong twice and
+caught two real defects — a good trade.
+
+## 12b.5 Six existing tests re-aimed, none weakened
+
+`test_wp63_storyboard_prompt`, `test_wp64_learning_outcomes`, `test_wp64_media`,
+and three of my own from 12a. All asserted the 12a architecture: the sentinel
+`{{ learning_outcomes }}`, the `measurable`/`refinement` `oneOf`, and `_clean`
+omitting absent keys. Each now asserts the **same risk at the new shape** — that
+the text **and the ids** reach the rendered prompt (a model that cannot see an
+id cannot cite one, and the grammar admits nothing else); that the schema
+carries no outcome text at all; that a dropped field is `None` rather than
+absent, which is what CLEARS a stale declaration.
+
+## 12b.6 The tree, and the operator's push block
+
+**Held: 1 commit. Nothing pushed by me. Working tree clean.**
+
+    2b867b0  fix(wp-ivgs-12b): outcomes cannot be paraphrased, artifacts
+             cannot lie
+
+**Tagged `v5.37.1-outcomes-by-code`**, verified on HEAD. ⚠ `v5.37.0-design-core`
+is on `cead433`, which the operator pushed during this session.
+
+**No frozen stage body was touched** — asserted file by file across all nine, and
+a test still pins `FREEZE EXCEPTION #2` at exactly two occurrences. **No files
+appeared that are not mine.** `ivgs-infra/.env` was edited (three tag variables)
+and is gitignored; the same edit was made on nodes 02, 03 and 04.
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=1
+ACTUAL=$(git log --oneline origin/main..HEAD | wc -l)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main && git push origin v5.37.1-outcomes-by-code
+fi
+```
+
+⛔ **Read §12b.3 before pushing.** The code is deployed and v9 is published, so
+the behaviour described there is live on the fleet whether or not this commit is
+pushed. **The acceptance still does not reach zero hard refusals**, and RC-Q9b is
+the reason.
+
+## 12b.7 What I did not verify — 12b's additions to §Z
+
+1. ⛔ **The rendered gate panel, still.** Unchanged from §Z: no browser was
+   driven. The design brief now shows the operator's own outcome text verbatim,
+   which is the thing most worth looking at, and **it has been verified only in
+   the payload.**
+2. ⛔ **`structured_outputs` as a fallback for the per-request enum.** The enum
+   was measured under `response_format: json_schema` only.
+3. ⛔ **The other 93 artifacts.** Their digests are unrecorded and their
+   provenance unprovable; the checker reports them and nothing re-banks them
+   until someone calls `save-image-artifact.sh` for that reference.
+4. ⛔ **That RC-Q9b is only a prompt problem.** I did not test whether closing
+   `evidence_map` structurally would fix it — that is the ruling I am stopping
+   for, and guessing at its outcome here would pre-empt it.
+5. **The 0050 downgrade path was not exercised** against a database containing
+   jsonb-`null` rows. The docstring states the normalising UPDATE it needs; I
+   ran the upgrade on production and the test database, not the downgrade.

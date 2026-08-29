@@ -1073,8 +1073,15 @@ def on_task_prerun(
                 design_contract_schema,
                 response_format_for,
             )
+            # WP-IVGS-12b: the schema is built PER REQUEST from THIS project's
+            # outcome ids, so `serves_outcomes`, `evidence_map` and
+            # `outcome_notes` are closed to outcomes that actually exist. The
+            # ids come from code parsing `projects.learning_outcomes` — never
+            # from the model, which is RC-Q9's whole cure.
             set_response_format_override(
-                response_format_for(design_contract_schema())
+                response_format_for(design_contract_schema(
+                    outcome_ids=_design_capture.outcome_ids_for_current_project(),
+                ))
             )
         else:
             set_response_format_override(None)

@@ -55,6 +55,12 @@ allowlisted() {
 bad=0
 checked=0
 skipped=0
+# WP-IVGS-12b (RC-Q8). An artifact's identity is its NAME plus the image digest
+# recorded beside it. Reported, NOT failed: every artifact banked before this
+# rule has no sidecar, and a permanently-red gate trains people to ignore CI --
+# which is the mistake this script's own header records WP-56 closing. The
+# count is the work list; `save-image-artifact.sh` re-banks one on next call.
+undigested=0
 while IFS= read -r f; do
     base="$(basename "$f")"
     if allowlisted "$base"; then
@@ -62,6 +68,13 @@ while IFS= read -r f; do
         continue
     fi
     checked=$((checked + 1))
+    if [ ! -s "${f%.tar.*}.digest" ]; then
+        undigested=$((undigested + 1))
+        echo "NO DIGEST RECORDED: $base"
+        echo "  Its provenance cannot be proved, so a rebuild under the same"
+        echo "  tag could ship these bytes while this host runs different ones"
+        echo "  (RC-Q8). Re-bank: sudo scripts/save-image-artifact.sh <image-ref>"
+    fi
     if ! [[ "$base" =~ $CONFORMING ]]; then
         bad=$((bad + 1))
         {
@@ -74,6 +87,10 @@ while IFS= read -r f; do
         } >&2
     fi
 done < <(find "$STORE" -maxdepth 1 -type f \( -name '*.tar.zst' -o -name '*.tar.gz' \) 2>/dev/null | sort)
+
+if [ "$undigested" -gt 0 ]; then
+    echo "NOTE: ${undigested} of ${checked} artifacts have no recorded image digest (RC-Q8). Not a failure yet."
+fi
 
 if [ "$bad" -gt 0 ]; then
     echo "FAIL: ${bad} of ${checked} artifacts do not follow the naming convention" >&2

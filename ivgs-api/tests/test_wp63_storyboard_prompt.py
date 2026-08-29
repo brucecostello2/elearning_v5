@@ -931,12 +931,18 @@ class TestTheTemplateCarriesTheContract:
             repo / "ivgs-api" / "seed" / "default_prompts"
             / "storyboard_design_system.j2"
         ).read_text(encoding="utf-8")
-        assert "{{ learning_outcomes }}" in system
+        # ⛔ RE-AIMED BY WP-IVGS-12b (RC-Q9). The sentinel used to be `{{ learning_outcomes }}` — the raw text went into the prompt and the model was asked to transcribe it. It returned two of three, reworded, three runs. The text is not round-tripped through a model at all now: code parses it, the prompt shows ID and TEXT so the model can CITE an id, and the schema closes `serves_outcomes` to those ids. The assertion moves to what must not drift NOW — the text AND the ids must reach the rendered prompt, because a model that never sees an id cannot cite one and the grammar admits nothing else.
+        from shared.design.outcomes import parse_outcomes
+
+        assert "{{ o.id }} — {{ o.text }}" in system
         env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
-        assert "SENTINEL-OUTCOME" in env.from_string(system).render(
-            learning_outcomes="SENTINEL-OUTCOME")
+        raw = "LO-1: SENTINEL-OUTCOME-ONE.\nLO-2: SENTINEL-OUTCOME-TWO."
+        rendered = env.from_string(system).render(
+            learning_outcomes=raw, outcomes=parse_outcomes(raw))
+        for token in ("SENTINEL-OUTCOME-ONE", "SENTINEL-OUTCOME-TWO", "LO-1", "LO-2"):
+            assert token in rendered, token
         assert "SENTINEL-OUTCOME" not in env.from_string(system).render(
-            learning_outcomes="")
+            learning_outcomes="", outcomes=[])
 
 
 # ---------------------------------------------------------------------------

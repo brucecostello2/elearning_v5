@@ -38,7 +38,7 @@ the field it finds hardest, which here is always the one that matters
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from shared.models.enums import (
     BLOOM_LEVELS,
@@ -48,13 +48,37 @@ from shared.models.enums import (
 
 #: Bumped when the SHAPE changes, not when the prompt does. Stored on the brief
 #: so a reader knows which parse produced the row they are looking at.
-CONTRACT_VERSION = "design-contract-1"
+#:
+#: **-2, WP-IVGS-12b:** the model no longer emits outcome TEXT at all. It cites
+#: ids that CODE assigned from `projects.learning_outcomes`, closed by a
+#: per-request enum, and may only PROPOSE a refinement against one. RC-Q9.
+CONTRACT_VERSION = "design-contract-2"
 
 #: The one supported mechanism, measured. See the module docstring.
 MECHANISM_JSON_SCHEMA = "json_schema"
 #: Measured equivalent on the same engine; kept so a future engine that drops
 #: `response_format` support has a named path rather than an improvised one.
 MECHANISM_STRUCTURED_OUTPUTS = "structured_outputs"
+
+# ⛔ EVERY ARRAY IN THIS SCHEMA CARRIES A `maxItems`, AND IT IS NOT TIDINESS.
+#
+# MEASURED 2026-08-29 against the pinned engine: an array with `minItems` and NO
+# maximum gives grammar-constrained decoding an infinite LEGAL continuation, and
+# the model takes it — `"serves_outcomes": ["LO-1", "LO-3", "LO-3", "LO-3", …]`
+# until the token budget dies, `finish_reason=length`, nothing parseable. The
+# enum was honoured perfectly the whole time; membership was never the problem.
+# `maxItems` IS compiled into the grammar (measured, on string-enum arrays and
+# object arrays alike) and it stops it dead.
+#
+# ⚠ `uniqueItems` IS NOT: the engine answers HTTP 400
+# `Grammar error: Unimplemented keys: ["uniqueItems"]`. ⛳ Note the CONTRAST with
+# `guided_json`, which it accepts with 200 and discards — an unimplemented
+# GRAMMAR key is refused loudly, an unknown BODY member is dropped silently.
+# Two failure modes, one engine, and only one of them tells you.
+MAX_SCENES = 40
+MAX_SOURCE_REFS_PER_SCENE = 8
+MAX_DROPPED_BEATS = 40
+MAX_EVIDENCE_SCENES = MAX_SCENES
 
 
 def _nullable(*types: str) -> List[str]:
@@ -89,87 +113,56 @@ def _span_schema() -> Dict[str, Any]:
     }
 
 
-def _outcome_schema() -> Dict[str, Any]:
-    """One learning outcome, ABCD-checked. Foundation §2.
+def _outcome_notes_schema(outcome_ids: Sequence[str]) -> Dict[str, Any]:
+    """What the model may say ABOUT an outcome — never what the outcome IS.
 
-    ⛔ ``text`` IS THE OPERATOR'S OWN WORDS AND IS COPIED, NEVER EDITED. If the
-    outcome is not measurable, the refinement goes in ``proposed_refinement``
-    for approval AT THE GATE. The Foundation is explicit: never silently
-    substitute, and never design against fog.
+    ⛔ THE OUTCOME TEXT IS NOT IN THIS SCHEMA AND THAT IS THE WHOLE POINT.
+    RC-Q9: asked to transcribe three ABCD outcomes, the model returned two,
+    reworded, three times running, and marked them measurable. No prompt fixed
+    it and no schema could, because a paraphrase is a valid string. So the text
+    is injected server-side from `projects.learning_outcomes` and the model gets
+    the ids only.
 
-    ⛳ THE ``oneOf`` IS THERE BECAUSE THE FIRST PROBE EARNED IT. With
-    ``measurable`` and ``proposed_refinement`` as independent members, the model
-    returned ``measurable: true`` AND a non-null refinement for both outcomes —
-    a self-contradiction the gate would then have shown the operator as a
-    refinement to approve for an outcome that needed none. Splitting them into
-    two mutually exclusive branches makes the contradiction ungrammatical
-    instead of merely discouraged, using the construct probe 0(c) measured
-    working. Evidence: `design-contract-probe-2026-08-29.txt`.
+    An OBJECT keyed by the real ids rather than an array of {id, …}: `required`
+    then forces exactly one entry per outcome and `additionalProperties: false`
+    forbids an invented one. An array would let the model emit two entries for
+    LO-1 and none for LO-3 — which is the failure being removed, in a new hat.
+
+    Foundation §2 survives intact (ruling 1c): an unmeasurable outcome still
+    gets an ABCD refinement PROPOSED for approval. It is proposed AGAINST an id,
+    beside text the model never touched, so the gate can show the operator's
+    words and the proposal side by side and the operator decides.
     """
-    common = {
-        "id": {
-            "type": "string",
-            "description": "Stable handle, e.g. LO-1. Scenes cite this.",
-        },
-        "text": {
-            "type": "string",
-            "description": "The operator's outcome, VERBATIM. Never reworded here.",
-        },
-        "bloom_level": {"type": "string", "enum": list(BLOOM_LEVELS)},
-        "abcd": {
-            "type": "object",
-            "properties": {
-                "audience": {"type": _nullable("string")},
-                "behavior": {"type": _nullable("string")},
-                "condition": {"type": _nullable("string")},
-                "degree": {"type": _nullable("string")},
+    per_outcome = {
+        "type": "object",
+        "properties": {
+            "bloom_level": {"type": "string", "enum": list(BLOOM_LEVELS)},
+            "measurable": {
+                "type": "boolean",
+                "description": (
+                    "Does the OPERATOR's own wording state an observable "
+                    "behaviour? You are judging their text, not writing it."
+                ),
             },
-            "required": ["audience", "behavior", "condition", "degree"],
-            "additionalProperties": False,
+            "proposed_refinement": {
+                "type": _nullable("string"),
+                "description": (
+                    "An ABCD rewrite PROPOSED for the operator to approve when "
+                    "`measurable` is false — Audience, Behavior, Condition, "
+                    "Degree. Null when it is already measurable. It is NEVER "
+                    "applied; the design is made against the operator's words "
+                    "as they stand."
+                ),
+            },
         },
+        "required": ["bloom_level", "measurable", "proposed_refinement"],
+        "additionalProperties": False,
     }
     return {
-        "oneOf": [
-            {
-                "type": "object",
-                "properties": {
-                    **common,
-                    "measurable": {"type": "boolean", "enum": [True]},
-                    "proposed_refinement": {
-                        "type": "null",
-                        "description": (
-                            "The operator's own text already states an "
-                            "observable behaviour. There is nothing to propose "
-                            "and proposing anyway wastes the reviewer's "
-                            "attention on a decision that is not theirs to make."
-                        ),
-                    },
-                },
-                "required": ["id", "text", "measurable", "bloom_level", "abcd",
-                             "proposed_refinement"],
-                "additionalProperties": False,
-            },
-            {
-                "type": "object",
-                "properties": {
-                    **common,
-                    "measurable": {"type": "boolean", "enum": [False]},
-                    "proposed_refinement": {
-                        "type": "string",
-                        "minLength": 1,
-                        "description": (
-                            "An ABCD rewrite PROPOSED for the operator to "
-                            "approve — Audience, Behavior, Condition, Degree. "
-                            "It is NOT applied. The design proceeds against the "
-                            "operator's text until the gate says otherwise."
-                        ),
-                    },
-                },
-                "required": ["id", "text", "measurable", "bloom_level", "abcd",
-                             "proposed_refinement"],
-                "additionalProperties": False,
-            },
-        ]
+        "type": "object",
+        "properties": {oid: per_outcome for oid in outcome_ids},
+        "required": list(outcome_ids),
+        "additionalProperties": False,
     }
 
 
@@ -188,6 +181,7 @@ def _provenance_branches() -> List[Dict[str, Any]]:
                 "source_refs": {
                     "type": "array",
                     "minItems": 1,
+                    "maxItems": MAX_SOURCE_REFS_PER_SCENE,
                     "items": _span_schema(),
                     "description": "Spans of the uploaded script this scene works from.",
                 },
@@ -240,7 +234,9 @@ def _provenance_branches() -> List[Dict[str, Any]]:
     ]
 
 
-def _scene_schema(*, media_types: Tuple[str, ...]) -> Dict[str, Any]:
+def _scene_schema(
+    *, media_types: Tuple[str, ...], outcome_ids: Sequence[str],
+) -> Dict[str, Any]:
     return {
         "type": "object",
         "properties": {
@@ -290,10 +286,12 @@ def _scene_schema(*, media_types: Tuple[str, ...]) -> Dict[str, Any]:
             "serves_outcomes": {
                 "type": "array",
                 "minItems": 1,
-                "items": {"type": "string"},
+                "maxItems": max(1, len(outcome_ids)),
+                "items": {"type": "string", "enum": list(outcome_ids)},
                 "description": (
-                    "Outcome ids. A scene that serves nothing is decoration and "
-                    "is cut — Foundation §1's alignment triad."
+                    "Outcome ids, from the closed set above and no other. A "
+                    "scene that serves nothing is decoration and is cut — "
+                    "Foundation §1's alignment triad."
                 ),
             },
             "provenance": {"oneOf": _provenance_branches()},
@@ -317,63 +315,108 @@ def _scene_schema(*, media_types: Tuple[str, ...]) -> Dict[str, Any]:
 
 def design_contract_schema(
     *,
+    outcome_ids: Optional[Sequence[str]] = None,
     media_types: Optional[Tuple[str, ...]] = None,
     min_scenes: int = 2,
 ) -> Dict[str, Any]:
-    """The whole contract: project-level members plus the scene array."""
+    """The whole contract, built PER REQUEST from this project's outcome ids.
+
+    ``outcome_ids`` come from `shared.design.outcomes.parse_outcomes` over
+    `projects.learning_outcomes` — never from the model. They close
+    `serves_outcomes`, `evidence_map` and `outcome_notes`, so a scene cannot
+    cite an outcome that does not exist and no outcome can be left unmentioned.
+
+    ⚠ A per-request enum differs on every call and so cannot ride any cached
+    grammar. **Measured enforced** on the pinned engine before this was built:
+    given ids [LO-1] and told in the prompt to serve LO-1, LO-2 and LO-3, the
+    model emitted LO-1 only.
+
+    With no ids — a project whose operator wrote no outcomes — the enum would be
+    empty and the grammar unsatisfiable, so the contract degrades to an open
+    string and the gate says the outcomes were never stated.
+    """
+    ids = list(outcome_ids or [])
+    scene = _scene_schema(
+        media_types=tuple(media_types or MEDIA_TYPES), outcome_ids=ids,
+    )
+    if not ids:
+        # No closed set to enforce. Keep the field, drop the enum, keep a bound.
+        scene["properties"]["serves_outcomes"] = {
+            "type": "array", "minItems": 1, "maxItems": 8,
+            "items": {"type": "string"},
+        }
+
+    evidence = (
+        {
+            "type": "object",
+            "properties": {
+                oid: {
+                    "type": "array",
+                    "maxItems": MAX_EVIDENCE_SCENES,
+                    "items": {"type": "integer", "minimum": 0},
+                }
+                for oid in ids
+            },
+            "required": ids,
+            "additionalProperties": False,
+        }
+        if ids
+        else {"type": "object", "additionalProperties": {
+            "type": "array", "maxItems": MAX_EVIDENCE_SCENES,
+            "items": {"type": "integer", "minimum": 0}}}
+    )
+
+    properties: Dict[str, Any] = {
+        "scenes": {
+            "type": "array",
+            "minItems": min_scenes,
+            "maxItems": MAX_SCENES,
+            "items": scene,
+        },
+        "dropped_beats": {
+            "type": "array",
+            "maxItems": MAX_DROPPED_BEATS,
+            "items": {
+                "type": "object",
+                "properties": {
+                    "span": _span_schema(),
+                    "summary": {"type": "string"},
+                    "reason": {"type": "string"},
+                },
+                "required": ["span", "summary", "reason"],
+                "additionalProperties": False,
+            },
+            "description": (
+                "Every stretch of the script that no scene uses. Dropping is a "
+                "design decision; SILENT loss is the defect class this contract "
+                "exists to remove. An empty array is a CLAIM that you used "
+                "everything, and the gate measures the script against your "
+                "spans and HARD-REFUSES that claim when it is false."
+            ),
+        },
+        "evidence_map": {
+            **evidence,
+            "description": (
+                "outcome id -> the scene_index values that ASSESS it. Serving "
+                "is not evidence: Foundation §1 stage 2 is a separate question "
+                "and the gate asks it separately."
+            ),
+        },
+        "design_notes": {
+            "type": "string",
+            "description": "One short paragraph: the arc, and why it is this arc.",
+        },
+    }
+    required = ["scenes", "dropped_beats", "evidence_map", "design_notes"]
+
+    if ids:
+        properties["outcome_notes"] = _outcome_notes_schema(ids)
+        required.insert(0, "outcome_notes")
+
     return {
         "type": "object",
-        "properties": {
-            "outcomes": {
-                "type": "array",
-                "minItems": 1,
-                "items": _outcome_schema(),
-            },
-            "scenes": {
-                "type": "array",
-                "minItems": min_scenes,
-                "items": _scene_schema(
-                    media_types=tuple(media_types or MEDIA_TYPES),
-                ),
-            },
-            "dropped_beats": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "span": _span_schema(),
-                        "summary": {"type": "string"},
-                        "reason": {"type": "string"},
-                    },
-                    "required": ["span", "summary", "reason"],
-                    "additionalProperties": False,
-                },
-                "description": (
-                    "Every beat of the script that no scene uses. Dropping is a "
-                    "design decision; SILENT loss is the defect class this "
-                    "contract exists to remove. An empty array is a claim that "
-                    "nothing was dropped, and the validator checks it."
-                ),
-            },
-            "evidence_map": {
-                "type": "object",
-                "description": (
-                    "outcome id -> the scene_index values that ASSESS it. "
-                    "Serving is not evidence: Foundation §1 stage 2 is a "
-                    "separate question and the gate asks it separately."
-                ),
-                "additionalProperties": {
-                    "type": "array",
-                    "items": {"type": "integer", "minimum": 0},
-                },
-            },
-            "design_notes": {
-                "type": "string",
-                "description": "One short paragraph: the arc, and why it is this arc.",
-            },
-        },
-        "required": ["outcomes", "scenes", "dropped_beats", "evidence_map",
-                     "design_notes"],
+        "properties": properties,
+        "required": required,
         "additionalProperties": False,
     }
 
@@ -439,14 +482,14 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
     if not isinstance(scenes, list):
         return None
     # The discriminator: a v7 storyboard also has `scenes`. A DESIGN contract
-    # has outcomes, or scenes that declare what they serve. Anything else is a
-    # storyboard from an older prompt and is left alone.
-    has_outcomes = isinstance(raw.get("outcomes"), list) and raw["outcomes"]
+    # carries per-outcome notes, or scenes that declare what they serve.
+    # Anything else is a storyboard from an older prompt and is left alone.
+    has_notes = isinstance(raw.get("outcome_notes"), dict) and raw["outcome_notes"]
     declares = any(
         isinstance(s, dict) and s.get("serves_outcomes")
         for s in scenes
     )
-    if not (has_outcomes or declares):
+    if not (has_notes or declares):
         return None
 
     scene_rows: List[Dict[str, Any]] = []
@@ -481,7 +524,10 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
 
     return {
         "contract_version": CONTRACT_VERSION,
-        "outcomes": raw.get("outcomes") or [],
+        # ⛔ NO `outcomes` KEY. The model does not emit outcome text any more
+        # (RC-Q9); the API fills `outcomes` from `projects.learning_outcomes`
+        # by code and merges these notes onto it by id.
+        "outcome_notes": raw.get("outcome_notes") or {},
         "dropped_beats": raw.get("dropped_beats") or [],
         "evidence_map": raw.get("evidence_map") or {},
         "design_notes": raw.get("design_notes") or "",

@@ -111,31 +111,36 @@ tells you what was expected, not what you must hit. **If serving the outcomes
 properly takes longer than the target, design it properly and let it run long.**
 Cutting a worked example to reach a number is the failure, not the overrun.
 
-{% if learning_outcomes %}
+{% if outcomes %}
 ## THE LEARNING OUTCOMES FOR THIS COURSE, AUTHORED BY THE COURSE OWNER
 
-{{ learning_outcomes }}
+These are the owner's own words. Each has a fixed id. **Cite the ids.**
 
-Read these before you choose a single scene. Every rule above is judged against
-them.
+{% for o in outcomes %}  {{ o.id }} — {{ o.text }}
+{% endfor %}
+Read them before you choose a single scene. Every rule above is judged against
+them, and the ids above are the ONLY ones you may use.
 
-⛔ COPY EACH ONE INTO `outcomes[].text` EXACTLY AS WRITTEN. You never edit the
-owner's words. If an outcome is not measurable — "understand multiplication"
-names no observable behaviour — you set `measurable: false` and put an
-ABCD-shaped rewrite in `proposed_refinement` for the owner to APPROVE at the
-gate: Audience, Behavior, Condition, Degree. *"Given two 2-digit numbers (C),
-the learner (A) will compute their product using the standard column algorithm
-(B) with correct partial products and carries (D)."*
-**You then design against the owner's words as they stand, not against your
-proposal.** The proposal is a question you are asking, not a decision you have
-taken.
+⛔ **YOU DO NOT WRITE THE OUTCOMES AND YOU CANNOT CHANGE THEM.** Their text is
+not part of your output at all — it is taken from the course owner's own field
+and put into the design after you finish. You could not reword one if you tried.
+
+**What you DO say about them, in `outcome_notes`, one entry per id:**
+
+  `bloom_level`          the level the OWNER'S verb puts it at
+  `measurable`           does the OWNER'S wording state an observable
+                         behaviour? You are judging their text, not writing it
+  `proposed_refinement`  when `measurable` is false, an ABCD rewrite PROPOSED
+                         for the owner to approve — Audience, Behavior,
+                         Condition, Degree. Null when it is already measurable.
+                         **It is a question you are asking, not a decision you
+                         have taken**, and the design you build is against the
+                         owner's words as they stand.
 {% else %}
 ## NO LEARNING OUTCOMES WERE STATED
 
-The course owner supplied none. DERIVE them from the script and the brief, and
-mark every one you derive `measurable: false` with your ABCD proposal in
-`proposed_refinement`, so the reviewer knows these are yours and not theirs.
-Do not mention their absence anywhere in a scene.
+The course owner supplied none, so there are no ids to cite. Design from the
+script and the brief, and say nothing about the absence in any scene.
 {% endif %}
 
 ## OUTPUT

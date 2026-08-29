@@ -1,0 +1,29 @@
+[
+    {
+        "id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "source": "LO-1: Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "authored_by": "operator",
+        "bloom_level": "remember",
+        "proposed_refinement": null
+    },
+    {
+        "id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "source": "LO-2: Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "authored_by": "operator",
+        "bloom_level": "apply",
+        "proposed_refinement": null
+    },
+    {
+        "id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "source": "LO-3: Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": false,
+        "authored_by": "operator",
+        "bloom_level": "analyze",
+        "proposed_refinement": "ABC"
+    }
+]

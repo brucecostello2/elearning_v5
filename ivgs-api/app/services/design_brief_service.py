@@ -27,6 +27,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.design_brief import StoryboardDesignBrief
+from app.models.project import Project
 from app.models.storyboard_scene import StoryboardScene
 from shared.models.enums import (
     BLOOM_LEVELS,
@@ -124,7 +125,11 @@ class DesignBriefService:
             project_id=project_id,
             job_id=_as_uuid(payload.get("job_id")),
             is_active=True,
-            outcomes=payload.get("outcomes") or [],
+            # ⛔ THE OUTCOMES COME FROM THE OPERATOR'S OWN COLUMN, NOT FROM THE
+            # MODEL. WP-IVGS-12b, RC-Q9. See `_outcomes_from_the_project`.
+            outcomes=await self._outcomes_from_the_project(
+                project_id, payload.get("outcome_notes") or {},
+            ),
             dropped_beats=payload.get("dropped_beats") or [],
             evidence_map=payload.get("evidence_map") or {},
             intent=payload.get("intent"),
@@ -153,6 +158,45 @@ class DesignBriefService:
             len(brief.dropped_beats or []),
         )
         return brief
+
+    async def _outcomes_from_the_project(
+        self, project_id: UUID, notes: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """The outcomes, parsed from `projects.learning_outcomes` BY CODE.
+
+        ⛔ THIS IS THE STRUCTURAL CURE FOR RC-Q9 AND IT IS WHY THE MODEL IS NO
+        LONGER ASKED. Three consecutive generations transcribed three ABCD
+        outcomes as two, reworded, and marked them measurable. A prompt cannot
+        fix it and a JSON Schema cannot either, because a paraphrase is a valid
+        string. So the text is never round-tripped through the model: code reads
+        the column the operator typed into, assigns stable ids, and the model's
+        `outcome_notes` — a Bloom level, a measurability judgment, an optional
+        ABCD proposal — are merged onto it BY ID.
+
+        The operator's words land in `text` untouched. A refinement lands in
+        `proposed_refinement` beside them and is never applied (ruling 1c).
+        """
+        from shared.design.outcomes import parse_outcomes
+
+        project = await self.db.scalar(
+            select(Project).where(Project.id == project_id)
+        )
+        raw = getattr(project, "learning_outcomes", None) if project else None
+        outcomes: List[Dict[str, Any]] = []
+        for parsed in parse_outcomes(raw):
+            note = notes.get(parsed["id"]) if isinstance(notes, dict) else None
+            note = note if isinstance(note, dict) else {}
+            outcomes.append({
+                "id": parsed["id"],
+                # VERBATIM. The one field the model has no way to touch.
+                "text": parsed["text"],
+                "source": parsed["source"],
+                "bloom_level": note.get("bloom_level"),
+                "measurable": bool(note.get("measurable", True)),
+                "proposed_refinement": note.get("proposed_refinement"),
+                "authored_by": "operator",
+            })
+        return outcomes
 
     async def apply_scene_design(
         self, project_id: UUID, scene_design: Dict[str, Any],
@@ -214,12 +258,29 @@ def _as_uuid(value: Any) -> Optional[UUID]:
 
 
 def _clean(scene_design: Dict[str, Any]) -> Dict[str, Any]:
-    """Keep only known fields carrying values the CHECK constraints allow."""
-    out: Dict[str, Any] = {}
+    """One scene's declarations, WHOLE — every field, with None where absent.
+
+    ⛔ IT WRITES ALL SEVEN OR NONE, AND THAT WAS EARNED BY A CHECK VIOLATION.
+    The first draft omitted absent fields, so an UPDATE merged into whatever the
+    PREVIOUS generation had left on the row. Measured on 12b's acceptance run:
+    generation 1 left scene 6 `sourced` with `source_refs`; generation 2 called
+    it `designed`; the update set `scene_origin='designed'` and left the old
+    refs behind, and PostgreSQL refused the row —
+
+        new row for relation "storyboard_scenes" violates check constraint
+        "ck_storyboard_scenes_source_xor_designed"
+
+    — which cost the whole brief, because the ingest is one transaction.
+
+    ⛳ THE CONSTRAINT WAS RIGHT AND THE WRITER WAS WRONG, which is the good way
+    round: the XOR caught a stale declaration that a merge would otherwise have
+    left readable and false. Writing the declaration whole also clears the
+    leftovers of a design that no longer exists — the RC-Q10 problem, for the
+    fields this package owns.
+    """
+    out: Dict[str, Any] = {field: None for field in SCENE_DESIGN_FIELDS}
     for field in SCENE_DESIGN_FIELDS:
-        if field not in scene_design:
-            continue
-        value = scene_design[field]
+        value = scene_design.get(field)
         if value is None:
             continue
         if field == "instructional_event" and value not in INSTRUCTIONAL_EVENTS:
@@ -234,13 +295,15 @@ def _clean(scene_design: Dict[str, Any]) -> Dict[str, Any]:
         if field == "serves_outcomes" and not isinstance(value, list):
             continue
         out[field] = value
-    # The XOR, mirrored from the CHECK so a bad pair is dropped rather than
-    # aborting the write. `sourced` with no usable refs is NOT a source claim.
-    origin = out.get("scene_origin")
-    refs = out.get("source_refs")
+
+    # The XOR, mirrored from the CHECK so a bad pair is neutralised here rather
+    # than aborting the transaction that is storing an otherwise good brief.
+    # `sourced` with no usable refs is not a source claim; `designed` never
+    # carries refs, and saying so EXPLICITLY is what clears a stale pair.
+    origin, refs = out["scene_origin"], out["source_refs"]
     if origin == "sourced" and not (isinstance(refs, list) and refs):
-        out.pop("scene_origin", None)
-        out.pop("source_refs", None)
+        out["scene_origin"] = None
+        out["source_refs"] = None
     if origin == "designed":
-        out.pop("source_refs", None)
+        out["source_refs"] = None
     return out

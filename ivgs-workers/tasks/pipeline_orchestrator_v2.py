@@ -1219,6 +1219,10 @@ def _build_stage_input(
                 "storyboard_generation_system",
                 config,
                 learning_outcomes=context.get("learning_outcomes", ""),
+                # WP-IVGS-12b: the SAME parse that builds the schema's enum, so
+                # the ids the prompt shows the model and the ids the grammar
+                # will accept cannot disagree. One parse, in `shared.design`.
+                outcomes=_parsed_outcomes(context.get("learning_outcomes", "")),
             ),
         }
 
@@ -1269,6 +1273,27 @@ def _build_stage_input(
         }
 
     return base_input
+
+
+def _parsed_outcomes(raw: str) -> List[Dict[str, Any]]:
+    """The operator's outcomes with stable ids, parsed BY CODE.
+
+    ⛔ RC-Q9. The model used to be asked to transcribe these and returned two of
+    three, reworded, three times running. It is not asked any more: it is GIVEN
+    them with ids, it may only cite the ids (closed by a per-request enum), and
+    the text is injected server-side. Same function feeds the prompt and the
+    schema so the two cannot drift.
+    """
+    try:
+        from shared.design.outcomes import parse_outcomes
+
+        return parse_outcomes(raw)
+    except Exception as exc:                                     # noqa: BLE001
+        logger.warning(
+            "outcome_parse_failed",
+            error_type=type(exc).__name__, error=str(exc),
+        )
+        return []
 
 
 def _resolve_system_prompt(

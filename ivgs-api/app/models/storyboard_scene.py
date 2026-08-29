@@ -98,7 +98,27 @@ class StoryboardScene(Base):
     #
     # Outcome ids this scene serves, ≥1 once a design brief exists. Serving is
     # not evidence — `evidence_map` on the brief answers the other half.
-    serves_outcomes: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # ⛔ `none_as_null=True` ON EVERY DESIGN JSONB COLUMN, AND IT IS LOAD-BEARING.
+    # SQLAlchemy's JSON/JSONB default is `none_as_null=False`: a Python `None`
+    # is written as the JSON value `null`, NOT as SQL NULL. Measured 2026-08-29
+    # when WP-IVGS-12b started writing the declaration WHOLE (explicit None for
+    # absent fields) instead of omitting keys —
+    #     new row ... violates check constraint
+    #     "ck_storyboard_scenes_source_xor_designed"
+    # on a row whose source_refs printed as `null` in the DETAIL and looked
+    # perfectly legal. `source_refs IS NULL` is FALSE for jsonb 'null', so the
+    # `designed` branch could never match. Two spellings of "nothing", one of
+    # which the constraint cannot see.
+    #
+    # Migration 0050 hardens the CHECK as well, because rows may already carry
+    # jsonb 'null' and a constraint that distinguishes two spellings of absence
+    # is a trap whatever the writer does. This is the writer half.
+    #
+    # ⚠ SCOPED TO THE DESIGN COLUMNS. `effects` and `generation_params` predate
+    # this package and their existing behaviour is not changed on a hunch.
+    serves_outcomes: Mapped[Optional[list]] = mapped_column(
+        JSONB(none_as_null=True), nullable=True,
+    )
     # One of INSTRUCTIONAL_EVENTS (Gagné, Foundation §3). Complementary to
     # `scene_kind`, not a duplicate of it: AD-09's `intro`/`outro` are template
     # shapes, this is the instructional job the scene performs.
@@ -109,7 +129,9 @@ class StoryboardScene(Base):
     bloom_level: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
     # [{transcript_id, start, end}] — character spans of `transcripts.source_text`,
     # NOT of `refined_text`. See the note on that column.
-    source_refs: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    source_refs: Mapped[Optional[list]] = mapped_column(
+        JSONB(none_as_null=True), nullable=True,
+    )
     # `sourced` | `designed` — SCENE_ORIGINS. The XOR against `source_refs` is a
     # CHECK constraint (ck_storyboard_scenes_source_xor_designed), so it is the
     # database that refuses a scene claiming both or claiming neither, rather
@@ -119,11 +141,15 @@ class StoryboardScene(Base):
     # under R1a. Marking is mandatory and the original travels with the mark:
     # the ruling is that silent loss is the defect class, so an unmarked rewrite
     # is worse than a bad one.
-    rewrite_of: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    rewrite_of: Mapped[Optional[dict]] = mapped_column(
+        JSONB(none_as_null=True), nullable=True,
+    )
     # Optional. Mayer signalling (Foundation §4): what to highlight and when,
     # e.g. the carry digit at the word "carry". This is what the motion
     # template's `phase` mechanism exists to execute.
-    signal_spec: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    signal_spec: Mapped[Optional[dict]] = mapped_column(
+        JSONB(none_as_null=True), nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

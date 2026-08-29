@@ -244,8 +244,16 @@ class TestTheOutcomesCarrier:
             / "storyboard_design_system.j2"
         ).read_text(encoding="utf-8")
         env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
-        assert "SENTINEL-OUTCOME" in env.from_string(system).render(
-            learning_outcomes="SENTINEL-OUTCOME")
+        # ⛔ RE-AIMED BY WP-IVGS-12b (RC-Q9): the model is no longer given the
+        # raw text to transcribe — it is given ID and TEXT and may only cite the
+        # id, which the schema closes by a per-request enum. Both must arrive.
+        from shared.design.outcomes import parse_outcomes
+
+        raw = "LO-1: SENTINEL-OUTCOME."
+        rendered = env.from_string(system).render(
+            learning_outcomes=raw, outcomes=parse_outcomes(raw))
+        assert "SENTINEL-OUTCOME" in rendered
+        assert "LO-1" in rendered
 
     def test_the_orchestrator_no_longer_folds_them_into_the_description(self):
         """Retired, not deleted: the function is the record of what the

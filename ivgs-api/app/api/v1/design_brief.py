@@ -49,6 +49,39 @@ async def _require_project(project_id: UUID, user: User, db: AsyncSession):
     return project
 
 
+@router.get(
+    "/design-outcomes",
+    summary="This project's learning outcomes, parsed into stable ids",
+)
+async def get_design_outcomes(
+    project_id: UUID,
+    current_user: User = Depends(get_service_or_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """The outcome ids the Design Contract's schema is closed to.
+
+    ⛔ A SEPARATE ROUTE, AND `get_service_or_user`, BECAUSE THE WORKER IS THE
+    CALLER. WP-IVGS-12b's first acceptance run armed no enum at all and every
+    scene cited an invented `outcome_1`: the worker had been reading
+    `GET /projects/{id}`, which takes `get_current_user` and answers a service
+    token with 401. The failure was silent by design — `outcome_ids_for_current_project`
+    returns [] on any error so a design can still be generated — so the schema
+    quietly degraded to an open string and the model went back to inventing ids.
+
+    It returns the PARSE, not the raw text, so the ids the worker closes the
+    grammar with and the ids the API later stores are produced by one function.
+    """
+    project = await _require_project(project_id, current_user, db)
+    from shared.design.outcomes import parse_outcomes
+
+    parsed = parse_outcomes(getattr(project, "learning_outcomes", None))
+    return {
+        "project_id": str(project_id),
+        "outcome_ids": [o["id"] for o in parsed],
+        "outcomes": parsed,
+    }
+
+
 @router.post(
     "/design-brief",
     response_model=DesignBriefResponse,
@@ -134,12 +167,16 @@ async def get_design_review(
     )).scalars().all())
     source_text = "\n\n".join(t.source_text or "" for t in source_rows).strip()
 
+    project = await _require_project(project_id, current_user, db)
     findings, rows = review(
         scenes=scenes,
         outcomes=brief.outcomes or [],
         evidence_map=brief.evidence_map or {},
         dropped_beats=brief.dropped_beats or [],
         source_text=source_text,
+        # The belt: what the operator actually typed, so a future regression
+        # that routes outcome text back through a model is loud (RC-Q9).
+        learning_outcomes=getattr(project, "learning_outcomes", "") or "",
     )
     refusals, flags = split(findings)
 
