@@ -31,7 +31,7 @@ import os
 import ssl
 import sys
 from datetime import timedelta
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 from celery import Celery, signals
 from celery.app.task import Task as CeleryTask
@@ -622,6 +622,116 @@ def collect_task_time_limits(app: Celery) -> Dict[str, int]:
     return limits
 
 
+def apply_declared_time_limits(app: Celery) -> Dict[str, Tuple[int, int]]:
+    """Push AD-05's declared per-stage Celery limits onto the live task objects.
+
+    ⛔ WHY THIS EXISTS. `temporal_pipeline/policies.py` has carried a
+    `celery_soft_time_limit_s` / `celery_time_limit_s` pair per stage since
+    WP-41, and until 2026-08-29 those numbers were a TRANSCRIPTION of what each
+    decorator said — a mirror with no authority. The consequence was measured
+    the hard way: Appendix C declares **300 s** for `generate_storyboard` and
+    the decorator said **120**, so the stage ran at 2.5x under its own policy
+    for months, and the operator's golden run died at exactly 120 s with the
+    vLLM engine still generating (project 4ca0d5c5, job 213171b5).
+
+    A policy nothing applies is a document, not a policy. This makes the table
+    the ONE definition: the decorator literals in the stage bodies still exist
+    and are now inert, overridden here.
+
+    ⛳ AND IT IS A WRAP, NOT AN EDIT. The limits live in decorators inside the
+    eight FROZEN stage task bodies (`dev/CLAUDE.md` §3). Changing
+    `soft_time_limit=120` in `stage2_storyboard.py` would have been a third
+    edit site in a file under a two-site freeze exception. `task_annotations`
+    reaches the same task objects from outside, which is exactly the seam §3
+    sanctions — and it fixes every stage at once instead of one literal at a
+    time.
+
+    Returns what it applied, so a caller can log it and a test can assert it
+    rather than trusting the call happened.
+    """
+    # ⛔ ANCHOR THE IMPORT TO THIS FILE, NOT TO THE WORKING DIRECTORY.
+    #
+    # Measured 2026-08-29, and it took the workers down on all four nodes for
+    # four minutes before it was understood: `cd /app && python -c "import
+    # temporal_pipeline"` SUCCEEDS, and `cd /app && celery -A celery_app worker`
+    # FAILS with `No module named 'temporal_pipeline'`. `python -c` puts the cwd
+    # on `sys.path` as `''`; a console-script entry point puts the SCRIPT's
+    # directory (`/usr/local/bin`) there instead, and Celery's `-A` resolution
+    # only fixes the path far enough to import the app module itself.
+    #
+    # So every verification I ran through `python -c` passed and the thing that
+    # actually runs failed. `temporal_pipeline` sits beside this file; deriving
+    # the location from `__file__` is true in both contexts and in the tests.
+    import os as _os
+
+    _here = _os.path.dirname(_os.path.abspath(__file__))
+    if _here not in sys.path:
+        sys.path.insert(0, _here)
+
+    from temporal_pipeline.policies import ALL_POLICIES
+
+    # ⛔ FORCE THE TASK MODULES IN FIRST — the same guard, for the same reason,
+    # as `collect_task_time_limits` below. Until the loader has run, `app.tasks`
+    # is empty, every `app.tasks.get(name)` returns None, and the live-object
+    # update below does nothing while still returning a full `applied` dict.
+    # That is a silent no-op that reports success, and it is what this call
+    # did the first time it was tested outside a worker.
+    try:
+        app.loader.import_default_modules()
+    except Exception:  # pragma: no cover - a broken task module surfaces elsewhere
+        logger.exception("declared time limits could not import task modules")
+
+    applied: Dict[str, Tuple[int, int]] = {}
+    annotations = dict(app.conf.task_annotations or {})
+    for policy in ALL_POLICIES:
+        soft = policy.celery_soft_time_limit_s
+        hard = policy.celery_time_limit_s
+        if soft is None or hard is None:
+            # Stage 4 declares neither and inherits the app default, which is
+            # deliberate (see its policy row). Annotating it with None would
+            # override the default with nothing.
+            continue
+        if soft >= hard:
+            # Refused rather than applied. A soft limit at or above the hard one
+            # never fires, so the task is killed with no chance to clean up and
+            # the failure arrives as a worker-lost rather than as a stage error.
+            raise ValueError(
+                f"policy {policy.activity!r} declares soft_time_limit={soft} >= "
+                f"time_limit={hard}; the soft limit would never fire"
+            )
+        annotations[policy.celery_task_name] = {
+            "soft_time_limit": soft,
+            "time_limit": hard,
+        }
+        applied[policy.celery_task_name] = (soft, hard)
+
+    app.conf.task_annotations = annotations
+
+    # Celery applies annotations when a task class is built. Every stage task is
+    # already registered by the time this runs, so the live objects are updated
+    # directly too — otherwise the change would take effect only for tasks
+    # registered afterwards, which is none of them.
+    missing = []
+    for name, (soft, hard) in applied.items():
+        task = app.tasks.get(name)
+        if task is None:
+            missing.append(name)
+            continue
+        task.soft_time_limit = soft
+        task.time_limit = hard
+    if missing:
+        # A policy naming a task that is not registered is a policy that cannot
+        # be enforced. Raised, not warned: this function's whole purpose is that
+        # the declared numbers reach the running worker, and a caller that gets
+        # a populated `applied` dict back has been told they did.
+        raise ValueError(
+            f"declared time limits name {len(missing)} task(s) that are not "
+            f"registered on this app: {sorted(missing)}. The policy cannot be "
+            f"applied, and reporting success would be worse than refusing."
+        )
+    return applied
+
+
 def assert_visibility_timeout_covers_time_limits(app: Celery) -> None:
     """Startup gate. Reads the live app's transport options and task registry."""
     transport_options = app.conf.broker_transport_options or {}
@@ -669,6 +779,29 @@ def on_celeryd_after_setup(sender: Any = None, instance: Any = None, **kwargs: A
     catch it and the worker actually stops.
     """
     app = getattr(instance, "app", None) or celery_app
+
+    # ⛳ APPLY THE DECLARED POLICY BEFORE THE GATE CHECKS IT, so the invariant is
+    # asserted against the limits the worker will actually enforce rather than
+    # against the decorator literals the policy overrides. Doing it the other
+    # way round would prove the invariant for numbers that are about to change.
+    try:
+        applied = apply_declared_time_limits(app)
+        import structlog
+
+        structlog.get_logger("ivgs.worker.init").info(
+            "declared_time_limits_applied",
+            count=len(applied),
+            source="temporal_pipeline.policies (AD-05 Appendix C)",
+            limits={k.replace("tasks.", ""): v for k, v in sorted(applied.items())},
+        )
+    except Exception as exc:  # noqa: BLE001
+        # NOT swallowed: a policy this worker cannot apply is a worker running
+        # limits nobody declared, which is the condition that killed the
+        # operator's golden run. Refuse to start, loudly, as the gate below does.
+        print(f"FATAL: declared time limits could not be applied: {exc}",
+              file=sys.stderr, flush=True)
+        raise SystemExit(1) from exc
+
     try:
         assert_visibility_timeout_covers_time_limits(app)
     except VisibilityTimeoutError as exc:

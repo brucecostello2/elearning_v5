@@ -3207,3 +3207,98 @@ must be reachable from the synonym table**.
 model — not the authoring path — emitted `phase: "start"` for the scene that writes a digit and
 carries, and `phase: "complete"` for the scene that announces that row's answer. **The model
 read the phase off the narration exactly as RULE 8 asks**, at birth, with no guard involved.
+
+## P.8 — RC-P17: the operator's golden run, killed at 120s by a policy nothing applied
+
+**RC-P17 — CLOSED for stage 2. The table below is OPEN as rows.**
+
+⛔ **THE DEFECT.** Project `4ca0d5c5`, job `213171b5`, task `a34a33ab`:
+`SoftTimeLimitExceeded` at **exactly 120 s** during `vllm_storyboard_request_starting`
+(binding `llama-3.3-70b-storyboard`, endpoint `http://vllm:8000`, tier `prototype`).
+
+⛳ **MEASURED FIRST, AND IT WAS NOT ENDPOINT RESOLUTION.** node-02's `ivgs-vllm-primary` log for
+the **03:48-03:54 window** — a bounded grep, not a tail — shows the request arrived and was
+being served:
+
+```
+03:49:38.877  POST /v1/chat/completions HTTP/1.1  200 OK
+03:49:45      Avg prompt throughput: 809.8 tok/s   Running: 1 reqs   <- v7 prefill
+03:49:45 .. 03:51:35   ~20 tok/s continuously,     Running: 1 reqs   <- ~110 s
+03:51:45      Running: 0 reqs, KV cache 0.0%
+```
+
+**The client gave up at 120 s while the engine was mid-generation.** v7's prompt is ~9,900
+input tokens and the 02:22 v7 re-proof completed at **~110 s** — the margin was already gone,
+and the operator's slightly longer transcript simply crossed the wire.
+
+⛔ **THE REAL DEFECT IS ONE LAYER UP: `temporal_pipeline/policies.py` HAS DECLARED 300 s FOR
+THIS ACTIVITY SINCE WP-41, AND NOTHING APPLIED IT.** Its `celery_*` fields were a
+transcription of what each decorator said — *"so a reviewer can check the translation"* — which
+made the table an accurate mirror with no authority. Stage 2 ran at **2.5× under its own
+declared policy** for months and no check could notice, because the only numbers in force were
+the decorator literals the table was copying.
+
+**FIXED AS ONE MECHANISM, AND AS A WRAP.** `celery_app.apply_declared_time_limits` pushes every
+policy row onto the live task objects through `task_annotations` at worker init, ahead of the
+P0.1 gate so the invariant is asserted against the limits actually enforced. The decorator
+literals still exist and are now inert. ⛳ **It had to be a wrap**: those literals sit in
+decorators inside the eight FROZEN stage bodies, and editing `stage2_storyboard.py:548` would
+have been a third edit site in a file under a two-site freeze exception.
+
+**Stage 2 is now soft 270 / hard 300.** Hard is Appendix C's `start_to_close_s` exactly, so
+`test_start_to_close_is_never_below_todays_hard_limit` still holds; soft leaves the same 30 s
+cleanup margin stage 1 has always had. **P0.1 is untouched**: 300 ≪ `visibility_timeout=7200`,
+and the longest hard limit on the fleet is still 3900.
+
+### RC-P18 — every stage's LIVE limit against its declared policy
+
+**Read off the live task objects after the mechanism runs. These are ROWS, NOT FIXES**, per the
+order: *"any other stage sitting under its declared policy is a row, not a fix, today."*
+
+| activity | queue | live soft | live hard | Appendix C `start_to_close` | verdict |
+|---|---|---|---|---|---|
+| `refine_transcript` | gpu_llm | 120s | 150s | 300s | ⚠ **under by 150s** (50% of policy) |
+| `generate_storyboard` | gpu_llm | 270s | 300s | 300s | ✅ **at policy** |
+| `render_scene_image` | gpu_image | 1800s | 2100s | 2700s | ⚠ under by 600s (78%) |
+| `render_scene_video` | gpu_video | 3600s | 3900s | 5400s | ⚠ under by 1500s (72%) |
+| `render_scene_animation` | gpu_animation | 3600s | 3900s | 4200s | ⚠ under by 300s (93%) |
+| `build_composition_manifest` | default | — | — (app default 3600) | 600s | ⓘ declares neither; inherits the app default |
+| `generate_voiceover` | gpu_tts | 900s | 1200s | 1800s | ⚠ under by 600s (67%) |
+| `render_talking_head` | gpu_talking_head | 3600s | 3900s | 5400s | ⚠ under by 1500s (72%) |
+| `assemble_prototype_draft` | composition | 900s | 960s | 1800s | ⚠ under by 840s (53%) |
+| `render_final` | composition | 1800s | 1860s | 3600s | ⚠ under by 1740s (52%) |
+| `acquire_gpu_reservation` | default | — | — (app default 3600) | 60s | ⓘ inherits the app default |
+| `release_gpu_reservation` | default | — | — (app default 3600) | 60s | ⓘ inherits the app default |
+
+⛔ **NINE OF TEN STAGE ACTIVITIES SIT UNDER THEIR DECLARED POLICY, and `refine_transcript` is
+the one to watch.** It is the OTHER `gpu_llm` stage, on the same engine, at **50% of policy** —
+the identical shape that killed stage 2, one stage earlier in the same pipeline. It has not
+failed yet because transcript refinement's prompt did not grow when v7 grew the storyboard's.
+
+⚠ **`build_composition_manifest` inherits the app default of 3600 s against a declared 600 s** —
+the only row that is over rather than under, and it is over by six times. Not a safety problem
+(nothing forces a manifest build to take an hour) but it means a wedged manifest occupies a
+worker slot for an hour before anything notices.
+
+**None of these is fixed today.** Widening a limit is cheap to type and changes how long a
+wedged task holds a GPU; each wants its own measurement, the way stage 2's came from a live log.
+
+## P.9 — RC-P19 and the deploy that took the fleet down
+
+| id | state |
+|---|---|
+| **RC-P19** | ⓘ **OPEN, NEW. `DEPLOY VERIFIED` PROVES THE IMAGE, NOT THAT THE PROCESS STAYS UP.** `scripts/verify-deployed-image.sh` reads `.Config.Image` and stops there. Measured 2026-08-29: **six containers reported `DEPLOY VERIFIED` while four of them were restart-looping**, and the fleet was down for four minutes before anyone looked at `docker ps`. §6.1a says to assert the running image after a deploy; asserting the running PROCESS is a separate check nothing performs. Related to RC-P11 (the same script reports an unreachable host as a missing container) |
+| **RC-P20** | ⓘ **NEW, and it is a lesson about verification rather than a code defect.** `cd /app && python -c "import temporal_pipeline"` SUCCEEDS; `cd /app && celery -A celery_app worker` FAILS with `No module named 'temporal_pipeline'`. `python -c` puts the cwd on `sys.path` as `''`; a console-script entry point puts the SCRIPT's directory there, and Celery's `-A` only fixes the path far enough to import the app module. **Every pre-deploy check went through `python -c` and all of them passed while the thing that actually runs died.** A check that does not use the production entry point can only prove things about a context nobody uses. Fixed by anchoring the import to `celery_app.__file__`; pinned by `test_the_policy_import_does_not_depend_on_the_WORKING_DIRECTORY` |
+
+⚠ **RC-P16 HAS NOW BEEN HIT TWICE**, and the second time it blocked the operator's own recovery:
+a soft-time-limit kill leaves the job row `running`, and `POST /jobs/{id}/resume` refuses any
+job that is not `failed`. So the defect blocked the only sanctioned remedy for itself. One row
+was marked terminal by hand to permit the re-run, recorded in the report §B.5.
+
+⛳ **And one thing that WORKED and is worth recording, because the trap table predicts otherwise.**
+`dev/CLAUDE.md` warns that resume computes the wrong stage — `CheckpointService`'s `stage_order`
+is in SPEC names while checkpoints are written in WORKER names, so three of eight resume from
+the stage that just completed. **`transcript_refinement` is one of the five that DO match**:
+`_next_stage_after('transcript_refinement')` returns `storyboard_generation`, verified before
+dispatching. The trap is real and it is not universal; which half you are in is checkable in
+one call.

@@ -16,12 +16,12 @@ output is quoted.
 | Tree | passed | failed | skipped | errors | Was |
 |---|---|---|---|---|---|
 | `ivgs-api` | **1553** | **0** | 0 | 0 | 1451 + **23** (WP-IVGS-09f, never rowed) + **79** (WP-IVGS-10) |
-| `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10** (WP-IVGS-10 media taxonomy) |
+| `ivgs-workers` | **965** | 18 | 48 | 15 | 939 + **10** (media taxonomy) + **16** (declared time limits) |
 | `ivgs-scheduler` | **52** | **15** | 0 | 0 | 46 / 15 (WP-IVGS-06) |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | 4 errors (never ran) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | — *(new tree, WP-IVGS-09)* |
 | `tests_system` | **193** | 12 | 15 | 30 | 165 (WP-63) |
-| **Total** | **2775** | **45** | **65** | **45** | 2663 + **112** (WP-IVGS-09f's 23 + WP-IVGS-10's 89) |
+| **Total** | **2791** | **45** | **65** | **45** | 2663 + **128** (WP-IVGS-09f's 23 + WP-IVGS-10's 105) |
 
 **Updated 2026-08-29 by WP-IVGS-10.** `ivgs-api` **1451 -> 1545** and `ivgs-workers`
 **939 -> 949**. **No failure row moved in any tree.**
@@ -33,9 +33,19 @@ baseline that is only updated by some packages is worse than one nobody trusts, 
 next package reads the gap as a regression — which is precisely what happened for ten minutes
 this session.
 
+⛔ **A THIRD FAILURE ROW MOVED AND WAS RESTORED — `ivgs-workers` 18 -> 19 -> 18, again.**
+`test_wp41_policies.py::TestAgainstTheLiveTasks::test_retry_and_timeout_constants_match`
+compared `policies.py`'s `celery_*` fields against the DECORATOR literals — a copy against its
+original, which passes for as long as somebody keeps the copy current and did NOT catch stage 2
+running at 120 s while the same file declared 300. Since `apply_declared_time_limits` makes the
+policy the SOURCE, the class now applies it first (as `on_worker_init` does) and asserts against
+the task as the worker has it. ⚠ That also removed a test-ORDER dependence: the function mutates
+the shared `celery_app`, so those assertions had silently depended on file ordering.
+
 The 79 are `test_wpivgs10_completeness.py` (18), `test_wpivgs10_phase.py` (24),
 `test_wpivgs10_prompt_v7.py` (19) and `test_wpivgs10_stage2_delivery_and_gate.py` (18). The 10
-are `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py`.
+are `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py`, plus **16** in
+`ivgs-workers/tests/test_wpivgs10_declared_time_limits.py`.
 
 ⛔ **TWO FAILURE ROWS MOVED DURING THIS PACKAGE AND BOTH WERE MINE. Both are fixed and both
 are recorded, because each was a way of being wrong that will recur.**

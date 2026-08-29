@@ -5,8 +5,14 @@ AD-05 §9 is explicit that spec Table 6-4's per-stage attempts and backoff
 "map directly and are **preserved as values**, not redesigned." So each row
 below carries BOTH numbers:
 
-  * ``celery_*`` — what the decorator says at HEAD, read off the source, so a
-    reviewer can check the translation instead of trusting it;
+  * ``celery_*`` — **the DECLARED Celery limits, and since 2026-08-29 the
+    APPLIED ones.** They used to be a transcription of what each decorator
+    said at HEAD, kept so a reviewer could check the translation. That made
+    this table a mirror with no authority, and stage 2 spent months at 120 s
+    while this file declared 300: the mirror was accurate and the policy was
+    not enforced. ``celery_app.apply_declared_time_limits`` now pushes these
+    two numbers onto the live task objects through ``task_annotations``, so
+    the decorator's literals are inert and THIS is the one definition;
   * everything else — the declarative policy the activity actually gets.
 
 Two translations are not identity, and both are stated rather than smuggled:
@@ -126,6 +132,36 @@ REFINE_TRANSCRIPT = ActivityPolicy(
     heartbeat_s=30,
 )
 
+# ⛔ WIDENED 2026-08-29 (WP-IVGS-10 addendum). THE OPERATOR'S GOLDEN RUN DIED
+# HERE, AT EXACTLY 120 s, WITH THE ENGINE STILL GENERATING.
+#
+# Project 4ca0d5c5, job 213171b5, task a34a33ab: `SoftTimeLimitExceeded` during
+# `vllm_storyboard_request_starting`. Measured on node-02's vLLM log for the
+# 03:48-03:54 window — not a tail — the request ARRIVED and was BEING SERVED:
+#
+#   03:49:38  POST /v1/chat/completions  200 OK
+#   03:49:45  Avg prompt throughput 809.8 tok/s, Running: 1 reqs   <- prefill
+#   03:49:45..03:51:35  ~20 tok/s continuously, Running: 1 reqs    <- ~110 s
+#   03:51:45  Running: 0 reqs, KV cache 0.0%
+#
+# So this was never endpoint resolution. **The client gave up at 120 s while
+# the server was mid-generation.** v7's prompt is ~9,900 input tokens against
+# v6's, and the 02:22 v7 re-proof completed at ~110 s — the margin was already
+# gone; the operator's slightly longer transcript simply crossed the wire.
+#
+# THE NUMBERS COME FROM APPENDIX C, NOT FROM THE FAILURE. `start_to_close_s`
+# has declared **300 s** for this activity since AD-05 Draft 2; the Celery
+# decorator has said 120/150 since long before v7. The stage was running at
+# 2.5x under its own declared policy and nobody had noticed, because nothing
+# APPLIED the policy — see `celery_app.apply_declared_time_limits`.
+#
+# Hard = 300 exactly, so Celery's ceiling converges on Appendix C's rather than
+# overshooting it: `test_start_to_close_is_never_below_todays_hard_limit`
+# asserts `start_to_close_s >= celery_time_limit_s`, and it still holds. Soft =
+# 270 leaves the same 30 s cleanup margin stage 1 has always had (120 -> 150).
+# 300 is far below `broker_visibility_timeout=7200`, so P0.1's invariant is
+# untouched and `assert_visibility_timeout_covers_time_limits` proves it at
+# every worker start.
 GENERATE_STORYBOARD = ActivityPolicy(
     activity="generate_storyboard",
     label=PipelineStage.STORYBOARD_GENERATION.value,
@@ -133,8 +169,8 @@ GENERATE_STORYBOARD = ActivityPolicy(
     celery_task_name="tasks.stage2_storyboard.generate_storyboard_task",
     celery_max_retries=4,
     celery_retry_delay_s=IVGS_BASE_RETRY_DELAY_S,
-    celery_soft_time_limit_s=120,
-    celery_time_limit_s=150,
+    celery_soft_time_limit_s=270,
+    celery_time_limit_s=300,
     start_to_close_s=5 * 60,
     heartbeat_s=30,
 )

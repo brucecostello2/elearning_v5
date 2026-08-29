@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-29 (WP-IVGS-10)
+# IVGS Development Status — 2026-08-29 (WP-IVGS-10 + addendum 2)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,14 +6,14 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — coherent at `v5.35.0-rule8-at-birth`
+## Fleet — api `v5.34.1-v7-contract`, workers `v5.36.1-stage2-limits`
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api + workers `v5.35.0-rule8-at-birth`**; frontend + `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.35.0-rule8-at-birth`**; vLLM pinned `sha256:3dbe092e…` | ⚠ one stage-2 run hit `SoftTimeLimitExceeded` — RC-P16 |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.35.0-rule8-at-birth`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **produced a BLANK clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.35.0-rule8-at-birth`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **workers `v5.36.1-stage2-limits`**; api `v5.35.0-rule8-at-birth`; frontend + `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.36.1-stage2-limits`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 now soft **270** / hard **300** (was 120/150) — RC-P17 |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.36.1-stage2-limits`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **produced a BLANK clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.36.1-stage2-limits`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS this package — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer. RTX 5080 16 GB | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
@@ -30,7 +30,53 @@ from the tracked tree would otherwise have silently un-pinned both engines.
 
 ## In flight
 
-**WP-IVGS-10 + the ruling round.** **2 commits held, none pushed.**
+**WP-IVGS-10 + the ruling round + addendum 2.** **1 commit held, none pushed by me — the operator pushed the first two during the session.**
+
+### Addendum 2 — the operator's golden run, killed at 120 s
+
+⛔ **A POLICY NOTHING APPLIED.** Project `4ca0d5c5`, job `213171b5`:
+`SoftTimeLimitExceeded` at exactly 120 s. ⛳ **Measured first, and it was NOT endpoint
+resolution** — node-02's vLLM log for the bounded 03:48-03:54 window shows the request accepted
+at 03:49:38, prefilled at 809.8 tok/s, and generating at ~20 tok/s continuously until 03:51:35.
+**The client gave up while the engine was mid-generation.**
+
+The real defect was one layer up: **`policies.py` has declared 300 s for that activity since
+WP-41 and nothing applied it.** Its `celery_*` fields were a transcription of the decorator —
+an accurate mirror with no authority — so stage 2 ran at **2.5× under its own declared policy**
+and no check could notice. `celery_app.apply_declared_time_limits` now pushes every policy row
+onto the live tasks via `task_annotations` at worker init, ahead of the P0.1 gate. **Stage 2 is
+soft 270 / hard 300**, hard being Appendix C's number exactly. ⛳ **A wrap, not an edit** — those
+literals sit in frozen stage bodies, and touching `stage2_storyboard.py:548` would have been a
+third edit site in a file under a two-site exception.
+
+⛔ **RC-P18 — 9 of 10 stage activities sit UNDER their declared policy.** `refine_transcript` is
+at **50%**: the other `gpu_llm` stage, same engine, the identical shape one stage earlier.
+**Rows, not fixes**, per the order.
+
+⛔ **AND I TOOK THE WORKERS DOWN ON ALL FOUR NODES FOR FOUR MINUTES.**
+`cd /app && python -c "import temporal_pipeline"` succeeds; `celery -A celery_app worker` fails
+with `No module named 'temporal_pipeline'` — a console-script entry point puts the SCRIPT's
+directory on `sys.path`, not the cwd. **Every pre-deploy check I ran went through `python -c`,
+a different door from the one production uses, so all of them passed.** Reverted to the last
+good tag first, found the cause with a probe running the real worker command, then fixed it by
+anchoring the import to `__file__`. ⓘ **`DEPLOY VERIFIED` did not catch it either — it asserts
+the running IMAGE, not that the process stays up. RC-P19.**
+
+⛳ **THE OPERATOR'S RUN IS AT THE STORYBOARD GATE.** Resumed through the normal path
+(`POST /jobs/213171b5/resume` → `resume_from_stage=storyboard_generation`, verified before
+dispatch because the known resume mis-computation does NOT bite `transcript_refinement`).
+**Stage 2 took 55 s. 8 scenes, job success**, and scene 6 landed with a `column_addition_carry`
+template from Stage 2 — RULE 8 at birth on the operator's own project.
+
+⚠ **ONE DATA WRITE, AND ONLY ONE**: job `213171b5` was stranded `running` (RC-P16), and
+`/resume` refuses a non-failed job, so the defect blocked its own remedy. That row was marked
+terminal with an error message naming why. **No scene, transcript, asset, gate or project row
+was touched. No approval.** For information: the gate reports **6 refusals and 1 flag** — that
+is RC-P14 unchanged, and the decisions are the operator's.
+
+---
+
+**WP-IVGS-10 + the ruling round.**
 
 ### The rulings, executed
 
@@ -155,8 +201,8 @@ WP-59 flow** — 60 rows, 27 files, nothing else touched.
 
 ## Last pushed
 
-**`ab5d874`** — `docs(amendments): AD-07 v1.3 and AD-10 v1.1 ratified by operator
-2026-08-28`. Measured from the remote-tracking ref and its reflog at the close of this
+**`03adc02`** — `fix(wp-ivgs-10): RULE 8 works at birth — freeze exception #2, and RC-J10
+closed`, pushed by the operator during the session, along with `8661b11` before it. Measured from the remote-tracking ref and its reflog at the close of this
 package: `origin/main` and local `HEAD` were **equal** before this package's commit, so
 **everything through WP-IVGS-09f was already pushed** and the held count was **0**, not 1.
 
@@ -164,7 +210,11 @@ package: `origin/main` and local `HEAD` were **equal** before this package's com
 four packages: 09b, 09c, 09d, 09e and 09f are all on the remote. The operator also pushed two
 AD-07/AD-10 amendment commits *during* this session, which moved `HEAD` under it.
 
-**Held now: WP-IVGS-10's TWO commits — the package, and the ruling round — and nothing else.**
+**Held now: ONE commit — `3190f29`, addendum 2. Nothing else.**
+
+⚠ **Measured from the remote-tracking ref at close, not carried forward.** `origin/main` moved
+to **`03adc02`** mid-session: the operator pushed `8661b11` (the package) and `03adc02` (the
+ruling round) themselves. Arithmetic on the previous board row would have said 3.
 
 ⚠ **This row was wrong once and is worth remembering.** It read *"Last pushed `75762b8`"* with
 *"WP-IVGS-08 — 9 commits held, none pushed"* above it, while `origin/main` was already at
@@ -183,7 +233,7 @@ package's board.**
 2. ⛔ **RUN-2** — banks the Temporal golden run that M3.3-R4 replays against. It is the gate
    on the largest single block in the register — **20 carried-v3.1 rows are VERIFY-AT-RUN-2**,
    plus P1.4h and P1.4q, with **P2.46** as the one bounded sweep afterwards
-3. **Push** — count-gated block in the WP-IVGS-10 report **§A.7** (expected: **2**; §11's block said 1 and is superseded)
+3. **Push** — count-gated block in the WP-IVGS-10 report **§B.7** (expected: **1**; §11 and §A.7 are superseded)
 3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
    first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
 4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward
@@ -207,6 +257,14 @@ package's board.**
   run is not a false-positive rate
 - ⚠ **RC-P3 — a blank clip recorded as a successful render** (scene 4, stddev 0.45 against
   95.8). A fabricated absence of the WP-57/60 class
+- ⛔ **RC-P18 — 9 of 10 stage activities run UNDER their declared Appendix C policy**, now that
+  the policy is actually applied. `refine_transcript` at **50%** is the same shape that killed
+  stage 2, one stage earlier in the same pipeline. Rows, not fixes, per the order — each wants
+  its own measurement
+- ⚠ **RC-P16 — a soft-time-limit kill strands the job row `running`**, which then blocks BOTH
+  `/resume` and WP-59 deletion. Hit twice; the second time it blocked the operator's own recovery
+- ⓘ **RC-P19 — `DEPLOY VERIFIED` proves the IMAGE, not that the process stays up.** Six
+  containers reported VERIFIED while four were restart-looping
 
 - ⛔ **P1.0a IS REVERSED (RC-L6).** `falling_back_to_sadtalker` fired live 2026-08-28 20:03 — the
   hardcoded fallback is alive in the frozen stage-6 body (`talking_head_task.py:792-794`). Its
@@ -253,7 +311,7 @@ packages.
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
 | `ivgs-api` | **1553** | **0** | 0 | 0 | 1451 + **23** (09f, never rowed) + **79** (WP-IVGS-10) |
-| `ivgs-workers` | **949** | 18 | 48 | 15 | 939 + **10**; the row moved to 19 mid-package and is **restored** |
+| `ivgs-workers` | **965** | 18 | 48 | 15 | 939 + **26**; the row moved to 19 **twice** and is **restored** both times |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
 | `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
 | `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |

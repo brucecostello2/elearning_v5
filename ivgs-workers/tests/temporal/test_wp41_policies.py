@@ -56,6 +56,36 @@ def live_task(module: str, attribute: str):
     return getattr(importlib.import_module(module), attribute)
 
 
+@pytest.fixture(scope="module", autouse=True)
+def _policy_applied():
+    """⛔ APPLY THE DECLARED POLICY FIRST, AS `on_worker_init` DOES.
+
+    AMENDED 2026-08-29 (WP-IVGS-10 addendum), and the amendment is the point of
+    the change it follows.
+
+    This class reads numbers off the live task objects, and until now the
+    `celery_*` fields in `policies.py` were a TRANSCRIPTION of the decorator
+    literals — so comparing them was comparing a copy with its original, and it
+    passed for as long as somebody kept the copy up to date. It did not catch
+    stage 2 running at 120 s while the same file declared 300, because both
+    numbers agreed with each other and neither agreed with AD-05.
+
+    `policies.py` is now the SOURCE: `celery_app.apply_declared_time_limits`
+    pushes it onto the live tasks through `task_annotations` at worker init, and
+    the decorator literals are inert. So this class must assert against the task
+    as the WORKER has it, not as the decorator declared it — which means running
+    the same application step the worker runs.
+
+    ⚠ It also removes a test-ORDER dependence. `apply_declared_time_limits`
+    mutates the shared `celery_app`, so whether these assertions passed depended
+    on whether `test_wpivgs10_declared_time_limits.py` had run first. Applying
+    here explicitly makes this file true on its own.
+    """
+    from celery_app import apply_declared_time_limits, celery_app
+
+    return apply_declared_time_limits(celery_app)
+
+
 @pytest.mark.parametrize(
     "policy, module, attribute",
     LIVE_TASKS,

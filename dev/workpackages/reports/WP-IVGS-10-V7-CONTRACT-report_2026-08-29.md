@@ -884,3 +884,201 @@ The storyboard now arrives with its motion templates and phases already authored
 fixed and proven. What they will still meet is a handful of content-bearing diffusion scenes
 the model did not declare, refused by name at the gate, and image scenes that attempt digits.
 Neither is a transport defect any more; both are prompt-compliance, and both are rowed.
+
+---
+---
+
+# ADDENDUM 2 — the operator's golden run, killed at 120 s
+
+**Defect report received 2026-08-29.** Project `4ca0d5c5`, job `213171b5`, task `a34a33ab`:
+`SoftTimeLimitExceeded` at exactly 120 s during `vllm_storyboard_request_starting`.
+
+## §B.1 TASK 1 — measured before touching, and it was NOT endpoint resolution
+
+**(a) Where the 120 s came from.** `ivgs-workers/tasks/stage2_storyboard.py:548-549` —
+`soft_time_limit=120, time_limit=150`, decorator literals. The full per-stage table as
+deployed is §B.3.
+
+**(b) ⛳ THE DECISIVE CHECK: vLLM received the request and was serving it.** node-02's
+`ivgs-vllm-primary`, bounded to the **03:48-03:54 window** as the order required — not a tail:
+
+```
+03:49:38.877  POST /v1/chat/completions HTTP/1.1  200 OK
+03:49:45      Avg prompt throughput: 809.8 tok/s   Running: 1 reqs   <- v7 prefill
+03:49:45 .. 03:51:35   ~20 tok/s continuously,     Running: 1 reqs   <- ~110 s of generation
+03:51:45      Running: 0 reqs, KV cache 0.0%
+```
+
+**The client gave up at 120 s while the engine was mid-generation.** So the fix is limits, not
+endpoint resolution, and I did not stop. v7's prompt is ~9,900 input tokens and the 02:22
+re-proof completed at **~110 s** — the margin was already gone before the operator's run.
+
+## §B.2 TASK 2 — the real defect was one layer up
+
+⛔ **`temporal_pipeline/policies.py` has declared `start_to_close_s = 300` for this activity
+since WP-41, and nothing applied it.** Its `celery_*` fields were, by their own docstring, a
+transcription of what each decorator said *"so a reviewer can check the translation"* — an
+accurate mirror with **no authority**. Stage 2 therefore ran at **2.5× under its own declared
+policy** for months, and no check could notice, because the only numbers in force were the
+literals the table was copying.
+
+**Fixed as ONE MECHANISM.** `celery_app.apply_declared_time_limits` pushes every policy row
+onto the live task objects via `task_annotations` at worker init, **ahead of the P0.1 gate** so
+the invariant is asserted against the limits actually enforced. The decorator literals still
+exist and are now inert.
+
+⛳ **And it had to be a wrap, not an edit.** Those limits live in decorators inside the eight
+FROZEN stage bodies. Changing `stage2_storyboard.py:548` would have been a **third edit site**
+in a file under a two-site freeze exception — the thing the previous ruling said to STOP for.
+`task_annotations` reaches the same objects from outside and fixes every stage at once.
+
+**Stage 2 is now soft 270 / hard 300.**
+
+| choice | why |
+|---|---|
+| hard = **300** | Appendix C's `start_to_close_s` exactly, so Celery's ceiling converges on the declared policy rather than overshooting it. `test_start_to_close_is_never_below_todays_hard_limit` asserts `start_to_close_s >= celery_time_limit_s` and still holds |
+| soft = **270** | soft < hard, with the same 30 s cleanup margin stage 1 has always had (120 → 150) |
+| P0.1 | 300 ≪ `broker_visibility_timeout=7200`; the longest hard limit on the fleet is still 3900. `assert_visibility_timeout_covers_time_limits` proves it at every worker start |
+
+## §B.3 ⛔ EVERY STAGE'S LIVE LIMIT AGAINST APPENDIX C — ROWS, NOT FIXES
+
+Read off the live task objects after the mechanism runs. **RC-P18** in the register.
+
+| activity | queue | live soft | live hard | Appendix C | verdict |
+|---|---|---|---|---|---|
+| `refine_transcript` | gpu_llm | 120s | 150s | 300s | ⚠ **under by 150s (50%)** |
+| `generate_storyboard` | gpu_llm | 270s | 300s | 300s | ✅ **at policy** |
+| `render_scene_image` | gpu_image | 1800s | 2100s | 2700s | ⚠ under by 600s (78%) |
+| `render_scene_video` | gpu_video | 3600s | 3900s | 5400s | ⚠ under by 1500s (72%) |
+| `render_scene_animation` | gpu_animation | 3600s | 3900s | 4200s | ⚠ under by 300s (93%) |
+| `build_composition_manifest` | default | — | — (app default 3600) | 600s | ⓘ inherits the default — **6× OVER** |
+| `generate_voiceover` | gpu_tts | 900s | 1200s | 1800s | ⚠ under by 600s (67%) |
+| `render_talking_head` | gpu_talking_head | 3600s | 3900s | 5400s | ⚠ under by 1500s (72%) |
+| `assemble_prototype_draft` | composition | 900s | 960s | 1800s | ⚠ under by 840s (53%) |
+| `render_final` | composition | 1800s | 1860s | 3600s | ⚠ under by 1740s (52%) |
+
+⛔ **NINE OF TEN SIT UNDER THEIR DECLARED POLICY, and `refine_transcript` is the one to
+watch**: the OTHER `gpu_llm` stage, same engine, **50% of policy** — the identical shape that
+killed stage 2, one stage earlier in the same pipeline. It has not failed only because
+transcript refinement's prompt did not grow when v7 grew the storyboard's.
+
+**None is fixed today**, per the order. Widening a limit changes how long a wedged task holds a
+GPU; each wants its own measurement, the way stage 2's came from a live log.
+
+## §B.4 ⛔ I TOOK THE WORKERS DOWN ON ALL FOUR NODES FOR FOUR MINUTES
+
+**The mechanism was verified clean and then killed every worker it was deployed to.**
+
+```
+cd /app && python -c "import temporal_pipeline"        -> SUCCEEDS
+cd /app && celery -A celery_app worker                  -> No module named 'temporal_pipeline'
+```
+
+`python -c` puts the cwd on `sys.path` as `''`; a console-script entry point puts the
+**script's** directory there instead, and Celery's `-A` resolution only fixes the path far
+enough to import the app module itself. **Every verification I ran went through `python -c` —
+a different door from the one production uses — so all of them passed.**
+
+`DEPLOY VERIFIED` did not catch it either: it asserts the running **image**, not that the
+process stays up. Six containers reported VERIFIED while four were restart-looping.
+
+**Response: reverted all four nodes to `v5.35.0-rule8-at-birth` first**, confirmed healthy,
+then found the cause with a probe running the *real* `celery -A celery_app worker` command, and
+only then fixed it. The import is now anchored to `celery_app.__file__`, which is true in both
+contexts. `test_the_policy_import_does_not_depend_on_the_WORKING_DIRECTORY` pins the anchoring.
+
+⚠ **The lesson is the shape, not the module.** A pre-deploy check that does not run the
+production entry point can only prove things about a context nobody uses.
+
+## §B.5 TASK 3 — the operator's run resumed, and it reached the gate
+
+**Deployed `v5.36.1-stage2-limits`** to all four nodes, artifact path via
+`scripts/save-image-artifact.sh`. Verified two ways this time: the image AND the process.
+`stage2_storyboard.generate_storyboard_task": [270, 300]` appears in the init log of the
+running node-02 worker, with zero FATALs.
+
+⚠ **ONE DATA WRITE, AND IT IS THE ONLY ONE.** Job `213171b5` was stranded `running` — the
+soft-kill path does not mark the row terminal (**RC-P16**) — and `POST /jobs/{id}/resume`
+refuses any job not `failed`, so the sanctioned action was blocked by the defect itself. I set
+that one row to `failed` with an `error_message` naming why and under what authority. **No
+scene, transcript, asset, gate or project row was touched.**
+
+Then the normal path: `POST /jobs/213171b5/resume`.
+
+⛳ **The known resume mis-computation did not bite here.** `dev/CLAUDE.md` warns that
+`CheckpointService`'s `stage_order` is in SPEC names while checkpoints are written in WORKER
+names, so three of eight resume from the stage that just completed. `transcript_refinement` is
+one of the five that DO match: `_next_stage_after('transcript_refinement')` →
+**`storyboard_generation`**, checked before dispatching rather than after.
+
+| | |
+|---|---|
+| resumed from | `storyboard_generation` |
+| new job | `40cae5da-ea7a-495c-b4da-0c36d189983d` — **success** |
+| stage 2 duration | **55 s** (04:17:45 → 04:18:40), against the old 120 s limit and the new 270 s |
+| result | **8 scenes; project at the storyboard gate** |
+| motion at birth | scene 6 landed with `column_addition_carry` from Stage 2 — RULE 8 working on the operator's own project |
+
+**I stopped there. No approval, no edits.** For information only, the gate reports **6 refusals
+and 1 flag** — five content-bearing diffusion scenes with no declaration, and scene 7 whose
+description asks for a "multiplication problem". That is **RC-P14**, unchanged: the transport
+works, the model's compliance is inconsistent. The decisions are the operator's.
+
+## §B.6 Tests and push
+
+| Tree | final | baseline | delta |
+|---|---|---|---|
+| `ivgs-api` | **1553 P / 0 F** | 1553 | ✅ byte-identical |
+| `ivgs-workers` | **965 P / 18 F** / 48 S / 15 E | 949 / 18 | **+16, failure row restored** |
+| `ivgs-scheduler` | 52 P / 15 F | 52 / 15 | ✅ |
+| `ivgs-backup-worker` | 4 P / 0 F | 4 P | ✅ |
+| `ivgs-motion-renderer` | 24 P / 2 S | 24 / 2 | ✅ |
+| `tests_system` | 193 P / 12 F | 193 / 12 | ✅ |
+
+**ZERO NEW FAILURES.**
+
+⚠ **One existing test was EDITED and it was not weakened —
+`test_wp41_policies.py::TestAgainstTheLiveTasks`.** It compared
+`policy.celery_soft_time_limit_s` against the decorator's literal, which was comparing a copy
+with its original: it passed for as long as somebody kept the copy current, and it did **not**
+catch stage 2 running at 120 s while the same file declared 300, because both numbers agreed
+with each other and neither agreed with AD-05. The policy is now the SOURCE, so the class
+applies it first — as `on_worker_init` does — and asserts against the task **as the worker has
+it**. ⚠ That also removed a test-ORDER dependence: `apply_declared_time_limits` mutates the
+shared `celery_app`, so these assertions had silently depended on whether the new WP-IVGS-10
+file ran first. Verified in isolation as well as in the tree.
+
+## §B.7 ⛔ PUSH — count-gated, superseding §11 and §A.7
+
+⚠ **THE FIGURE IS 1, NOT 3, AND I ALMOST WROTE 3.** `origin/main` moved to **`03adc02`**
+during this session — **the operator pushed `8661b11` and `03adc02` themselves**. Measured from
+the remote-tracking ref and its reflog at the close of this addendum, which is the discipline
+this board's own "Last pushed" row exists to enforce after getting it wrong once. Carrying
+forward "2 held + 1 new = 3" would have produced a block that refuses on a correct tree.
+
+**Held: 1 — `3190f29` alone. Nothing has been pushed by me.**
+
+```bash
+# node-01. Refuses unless EXACTLY ONE commit is held.
+cd /opt/ivgs
+git fetch origin
+HELD=$(git rev-list --count origin/main..HEAD)
+if [ "$HELD" -ne 1 ]; then
+  echo "REFUSED: expected 1 held commit, found $HELD. Do not push."
+else
+  git log --oneline origin/main..HEAD
+  echo "--- 1 commit as expected; pushing"
+  git push origin main
+fi
+```
+
+## §B.8 Open after this addendum
+
+| id | state |
+|---|---|
+| **RC-P17** | ✅ **CLOSED for stage 2** — 270/300 applied and live; the operator's run reached the gate in 55 s |
+| **RC-P18** | ⛔ **OPEN — 9 of 10 stage activities sit under their declared policy.** `refine_transcript` at 50% is the same shape one stage earlier. Rows, not fixes, per the order |
+| **RC-P16** | ⛔ **OPEN** — a soft-kill strands the job row `running`, which then blocks both resume and WP-59 deletion. Hit twice now |
+| **RC-P19** | ⓘ **NEW** — `DEPLOY VERIFIED` asserts the running IMAGE, not that the process stays up. Six containers reported VERIFIED while four were restart-looping |
+| **RC-P14 / RC-P2 / RC-P3 / RC-P11 / RC-P15** | ⛔ unchanged, open |
+| **RC-N10** | ⓘ the DLQ 405 fired again on this failure, as the defect report noted |
