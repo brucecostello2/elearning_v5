@@ -6,6 +6,74 @@ safely without breaking anything.
 **Repo:** brucecostello2/elearning_v5 at /opt/ivgs
 **Companion:** MBCP (brucecostello2/MBCP), read-only clone at /opt/MBCP
 
+## 0. Standing rules — session close-out and start-up
+
+**Ported from MBCP `dev/CLAUDE.md` §0 (commit `654b7c5`, 2026-08-28) by WP-IVGS-11, 2026-08-29.**
+MBCP cured a disease this repo has too: **its own board has been measurably wrong three times
+about the same row**, most recently claiming a held hygiene commit that never existed. Each time
+the truth lived in reports and the index lied.
+
+⚠ **The numbers 5 and 6 are MBCP's and are kept deliberately**, so that
+*"read `dev/CLAUDE.md`, then follow §0 rule 6"* means the same thing in both repos. MBCP's rules
+1-4 are MBCP-local (its report path, its `ci.sh` gate) and are **not** ported — this repo's
+equivalents are §12 and §1. Nothing here overrides §1: **Claude commits and HOLDS, never pushes.**
+
+5. **Closing a session — run this unprompted.** Triggered by any of: your package is complete,
+   the operator says **`CLOSE OUT`**, or you are running out of room. ⛔ **Do not wait to be
+   asked. Being asked is the failure this rule exists to remove.**
+
+   1. **Get the evidence out of scratch.** Any frame strip, probe script, screenshot, query output
+      or capture your argument rests on: **commit it, or declare it lost by name in the report.**
+      Nothing outside `/opt/ivgs` survives the session. ⛔ *"The numbers are quoted in the report"*
+      is **not** sufficient — a reader who cannot see what you saw cannot check you. **Curate, do
+      not dump:** keep an album roughly in line with the ones already under
+      `dev/workpackages/reference/`, and say what you left out. **A documentation-only package
+      usually has nothing here — say that, and move on.**
+   2. **Index it.** Add the report — path and a one-line verdict — to **your session's section of
+      the board, `dev/DEVELOPMENT-STATUS.md`**, under a `## Reports filed this session` heading.
+      Create the heading if the session has none. ⚠ **Key it to the SESSION, not to today's date**
+      — a session that runs past midnight otherwise splits its own index across two headings.
+      ⛔ **Do not put a count in the heading**; the next person to follow this step makes it wrong.
+      **A report nobody can find is a report nobody reads.**
+      ⚠ **KNOWN DIVERGENCE FROM MBCP, flagged not silently patched (WP-IVGS-11).** MBCP indexes
+      into `dev/workorders/WORK_PACKAGES.md`, which **accumulates**. This repo's board is a
+      one-page snapshot **rewritten every package** (§12a), and `dev/workpackages/WP-QUEUE.md` —
+      the nearest ledger by name — is a sequencing document that stops at WP-24 and carries no
+      report index. **So a row written here survives only until the next package rewrites the
+      board; the durable index remains `ls dev/workpackages/reports/` plus git history.** Whether
+      this repo should gain a real accumulating index is an **operator ruling**, not an agent's to
+      take: creating one would edit a workpackage file, which WP-IVGS-11 §3 forbids.
+   3. **Banner what you superseded.** If a finding of yours contradicts a work package, an
+      amendment or an earlier report, **put a banner at the top of that file.** ⛔ **A superseded
+      instruction gets implemented as written.** If the file is not yours to edit — another
+      agent's, or one you cannot write — **say so in your report, name the file and the stale
+      text, and flag it to the operator.** Never edit around it silently. ⚠ **"Cannot write" is
+      the wrong test** — the question is whether the file is *someone else's live work*, not
+      whether the bits are writable. If a root-owned file legitimately needs a banner, use an
+      assert-guarded replace and **check the ownership is unchanged afterwards.**
+   4. **Write `STATE AT SESSION END`** at the top of your report: what is done, what you were
+      mid-way through, **every way the work package is now stale**, and anything you learned that
+      is not yet written down anywhere.
+   5. **Declare the tree** — in the report *and* in your closing message: what you committed, what
+      is **held** (§1: it is always held), what is dirty and whose it is. ⚠ **Name files that
+      appeared and are not yours** rather than silently leaving them. **Never stage another
+      agent's files.** State the held count as the number the operator's count-gated push block
+      will check.
+
+   ⛔ **And one thing that belongs at the START but is listed here because that is where it
+   bites: verify the package's own factual premises before acting on them** — ownership, paths,
+   counts, tags, "X is at Y". **Where the package and the machine disagree, the machine wins and
+   the package is a bug** (§4). Say which premises you checked. ⚠ **An image tag is not a git
+   tag.** `v5.31.0-hygiene`, `v5.34.1-v7-contract` and `v5.36.1-stage2-limits` all name deployed
+   images and **none of them exists as a git tag** — check with `git tag --list`, never infer.
+
+6. **Starting a session — read in this order.** `dev/CLAUDE.md` (**§3 never-touch**, **§4 ground
+   truth**, **§7 known traps**) → **`dev/DEVELOPMENT-STATUS.md` — the board; start here, not with
+   the package** → the most recent `STATE AT SESSION END` in `dev/workpackages/reports/` →
+   **your work package last, and with suspicion.** ⛔ **Work packages carry superseded text;
+   reports carry what was measured. Where they disagree, the report wins and the package is a
+   bug.** Where a document and the machine disagree, the machine wins and both are bugs (§4).
+
 ## 1. Authority
 
 **Amended 2026-08-29 by operator ruling, closing ledger RC-J10.** The previous

@@ -210,7 +210,26 @@ package: `origin/main` and local `HEAD` were **equal** before this package's com
 four packages: 09b, 09c, 09d, 09e and 09f are all on the remote. The operator also pushed two
 AD-07/AD-10 amendment commits *during* this session, which moved `HEAD` under it.
 
-**Held now: ONE commit — `3190f29`, addendum 2. Nothing else.**
+**Held now: ONE commit — `70058b9`, addendum 2. Nothing else.**
+
+⚠ **THIS ROW NAMED A DANGLING COMMIT AND WP-IVGS-11's CLOSE OUT CAUGHT IT.** It read
+*"`3190f29`, addendum 2"*. The **count was right and the SHA was wrong**: `3190f29` was
+**amended** into `70058b9` when the `__file__` import anchor and its test were added, and
+`git merge-base --is-ancestor 3190f29 HEAD` says it is **not on the branch at all**. The
+reflog shows the amend directly. **A held SHA is read from `git log origin/main..HEAD` at
+close, never carried forward from the commit you first made** — the same discipline this
+section already applies to push counts, applied one level down.
+
+⚠ **AND AN IMAGE TAG IS NOT A GIT TAG.** Three tag-shaped strings on this board name deployed
+images and **exist as no git tag**: `v5.31.0-hygiene`, `v5.34.1-v7-contract`,
+`v5.36.1-stage2-limits`. Verified with `git tag --list`. This is the same class as the
+`v5.31.0-hygiene` finding that opened WP-IVGS-11.
+
+⛔ **UNTAGGED, AND THE TAG IS THE OPERATOR'S TO CREATE — NOT CREATED HERE.** `f61029b`
+(`fix(wp-ivgs-09e): the mpeg4 was never ours - pin the encode, and the draft exists`,
+2026-08-28) carries **no git tag**, and it is the commit that pins the draft encode. `8661b11`
+and `08521bd` are likewise untagged. `v5.34.0-v7-contract` and `v5.35.0-rule8-at-birth` **both
+point at `03adc02`** — two tags, one commit.
 
 ⚠ **Measured from the remote-tracking ref at close, not carried forward.** `origin/main` moved
 to **`03adc02`** mid-session: the operator pushed `8661b11` (the package) and `03adc02` (the
@@ -222,6 +241,21 @@ ruling round) themselves. Arithmetic on the previous board row would have said 3
 even agree with each other: `75762b8..8e3b829` is **12** commits, not 9. **A push count is
 measured from the remote-tracking ref and its reflog, never carried forward from the last
 package's board.**
+
+---
+
+## Reports filed this session
+
+Per `dev/CLAUDE.md` §0 rule 5 step 2 (ported by WP-IVGS-11). ⚠ **This board is a snapshot and is
+rewritten every package**, so these rows do not accumulate — the durable index is
+`ls dev/workpackages/reports/` plus git history. Whether this repo gains a real accumulating
+index is an open operator ruling (see §0 rule 5 step 2).
+
+| report | verdict |
+|---|---|
+| `reports/WP-IVGS-10-V7-CONTRACT-report_2026-08-29.md` | the package body — v7 published, RULE 8 at birth, stage-2 limits applied |
+| `reports/WP-IVGS-10-SEAM-ANSWERS-report_2026-08-29.md` | ANSWERS ONLY. Q3 client sizes from the WP-67 registry; **RC-D10 settled — the button is not superseded**; D-4 measured, **no rename** |
+| `reports/WP-IVGS-11-SESSION-PROTOCOL-report_2026-08-29.md` | close-out / start-up protocol ported to `dev/CLAUDE.md` §0; board corrected; `CLOSE OUT` run on this session |
 
 ---
 
