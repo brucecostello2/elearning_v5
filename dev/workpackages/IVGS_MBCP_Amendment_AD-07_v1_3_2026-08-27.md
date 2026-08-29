@@ -1,6 +1,6 @@
 # AD-07 v1.3 — The Brief and the Scene Contract
 ## Joint Functional Specification Amendment: IVGS v5 + MBCP
-### Ratified v1.0 2026-08-21 · v1.1 2026-08-27 00:22 · v1.2 2026-08-27 · **Revised v1.3 2026-08-27**
+### Ratified v1.0 2026-08-21 · v1.1 2026-08-27 00:22 · v1.2 2026-08-27 · **v1.3 2026-08-27 — RATIFIED by the operator 2026-08-28**
 
 > **NARROW DIFF, by the convention v1.2 set for itself.** This revision replaces **§4.7 in full**,
 > adds **§4.7.6**, and amends **§5.4** and **§6.4**. **Everything else — §§1, 2, 2.1a, 3, 4.1–4.6a,
@@ -388,4 +388,4 @@ joint contract** (§4.7.0a), the **`driving_mode` recording requirement** (§4.7
 IVGS's `av_drift_seconds`** (§4.7.3a), the **output-geometry recording requirement** (§4.7.4), and
 the **deferral of presenter identity to AD-09.4.3** (§4.7.6).*
 
-***v1.3 awaits ratification.***
+***v1.3 RATIFIED by the operator, 2026-08-28. The five decisions above require their own Appendix-G rows — MBCP-side documentation task, ledgered.***

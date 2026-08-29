@@ -1,6 +1,6 @@
 # AD-10 v1.1 — Model Transport
 ## Amendment: the engine field, value domains, and the output capability envelope
-### Supersedes v1.0 for §3.1 only · 2026-08-27 · **Awaiting ratification**
+### Supersedes v1.0 for §3.1 only · 2026-08-27 · **RATIFIED by the operator 2026-08-28**
 
 > **NARROW DIFF.** This revision replaces **§3.1** and adds **§3.1a** and **§3.1b**. Every other
 > section of v1.0 — §1, §2, §3.2–§3.4, §4, §5, §6 — carries unchanged and is not restated.
@@ -148,6 +148,6 @@ a render does not honour it.**
 
 ---
 
-*v1.1 supersedes v1.0 for §3.1 only. Ratification records three operator decisions requiring their
-own Appendix-G rows: the **`engine` envelope field**, the **value-domain rule** (§3.1a), and the
-**output capability envelope** (§3.1b).*
+*v1.1 supersedes v1.0 for §3.1 only. **RATIFIED 2026-08-28.** The three operator decisions — the
+**`engine` envelope field**, the **value-domain rule** (§3.1a), and the **output capability
+envelope** (§3.1b) — require their own Appendix-G rows: MBCP-side documentation task, ledgered.*
