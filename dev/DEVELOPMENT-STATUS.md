@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-29 (WP-IVGS-10 + addendum 2)
+# IVGS Development Status — 2026-08-29 (WP-IVGS-12, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,337 +6,198 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api `v5.34.1-v7-contract`, workers `v5.36.1-stage2-limits`
+## Fleet — api / workers / frontend all `v5.37.0-design-core`
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **workers `v5.36.1-stage2-limits`**; api `v5.35.0-rule8-at-birth`; frontend + `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.36.1-stage2-limits`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 now soft **270** / hard **300** (was 120/150) — RC-P17 |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.36.1-stage2-limits`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **produced a BLANK clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.36.1-stage2-limits`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none — `/v1/models` **200** |
-| **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS this package — not contacted** |
-| **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer. RTX 5080 16 GB | — | not contacted |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api, frontend, workers `v5.37.0-design-core`**; `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.37.0-design-core`**; vLLM pinned `sha256:3dbe092e…` | ✅ stage 2 client timeout now **240 s**, derived from the 270/300 policy — RC-Q7 |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.37.0-design-core`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.37.0-design-core`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
+| **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
 
-⛳ **`ivgs-motion-renderer` is the first new service on the fleet since the scheduler.**
-CPU-only, no weights, no GPU, published on `192.168.1.90:8500`. `/healthz` answers **503
-degraded**, not 200, when its pinned font or ffmpeg is missing.
+⛳ **All four worker containers were compared by IMAGE ID, not by tag** —
+`sha256:e9c1001a…` on nodes 01-04 — because of RC-Q8 below.
 
-⚠ **The vLLM digest pin lived only on the nodes until today** — the tracked compose files had
-no `VLLM_IMAGE_DIGEST` at all (**RC-J4**). Brought into the repository this package; a redeploy
-from the tracked tree would otherwise have silently un-pinned both engines.
+⛔ **RC-I4 IS CLOSED: the cause of the coordinated reboots is a NIGHTLY OPERATOR
+POWER-DOWN.** It fired again this session — nodes 02/03/04/05/06 all gone inside
+a 33-second window at 05:38:58 UTC, restored ~11:20. **Any package whose
+acceptance needs the GPU fleet must not assume overnight availability.**
 
 ---
 
 ## In flight
 
-**WP-IVGS-10 + the ruling round + addendum 2.** **1 commit held, none pushed by me — the operator pushed the first two during the session.**
+**WP-IVGS-12 — Phase 1 of the recovery plan, the DESIGN CORE.**
+**1 commit held, nothing pushed.**
 
-### Addendum 2 — the operator's golden run, killed at 120 s
+### What it is
 
-⛔ **A POLICY NOTHING APPLIED.** Project `4ca0d5c5`, job `213171b5`:
-`SoftTimeLimitExceeded` at exactly 120 s. ⛳ **Measured first, and it was NOT endpoint
-resolution** — node-02's vLLM log for the bounded 03:48-03:54 window shows the request accepted
-at 03:49:38, prefilled at 809.8 tok/s, and generating at ~20 tok/s continuously until 03:51:35.
-**The client gave up while the engine was mid-generation.**
+The storyboard stops being a sequenced paraphrase and becomes an instructional
+design. Stage 2 executes backward design; every scene declares the outcomes it
+serves, the Gagné event it performs, its Bloom level and where its material came
+from; the gate renders that as a **design review** and checks it mechanically.
 
-The real defect was one layer up: **`policies.py` has declared 300 s for that activity since
-WP-41 and nothing applied it.** Its `celery_*` fields were a transcription of the decorator —
-an accurate mirror with no authority — so stage 2 ran at **2.5× under its own declared policy**
-and no check could notice. `celery_app.apply_declared_time_limits` now pushes every policy row
-onto the live tasks via `task_annotations` at worker init, ahead of the P0.1 gate. **Stage 2 is
-soft 270 / hard 300**, hard being Appendix C's number exactly. ⛳ **A wrap, not an edit** — those
-literals sit in frozen stage bodies, and touching `stage2_storyboard.py:548` would have been a
-third edit site in a file under a two-site exception.
+⛔ **AND THE AUDIT'S OWN MECHANISM WAS A NO-OP.** The recovery plan prescribes
+vLLM `guided_json`. **Measured against the pinned engine: HTTP 200, silently
+discarded** — output byte-identical to an unconstrained call, and still 200 when
+handed `{"type":"not_a_json_type"}` or the bare integer `12345`. So does
+`guided_choice`, and so does a field name invented for the test. ✅ **The
+mechanism of record, ruled and measured ENFORCING on the real 7.9 kB contract:
+`response_format: {"type":"json_schema","strict":true}`.** No digest change.
+**RC-Q1 rows it as a trap for every future structured-output call.**
 
-⛔ **RC-P18 — 9 of 10 stage activities sit UNDER their declared policy.** `refine_transcript` is
-at **50%**: the other `gpu_llm` stage, same engine, the identical shape one stage earlier.
-**Rows, not fixes**, per the order.
+⛔ **THE UPLOADED SCRIPT WAS BEING DESTROYED IN PLACE, AND THAT IS WHY NOBODY
+EVER COMPARED OUTPUT TO INPUT.** One 3,172-byte upload sits in three of the
+operator's projects as **1,866 / 1,851 / 1,615** characters of `refined_text` —
+three paraphrases, no original, because stage 1 reads that column and writes its
+output back into it. Migration **0046** adds `source_text`, written once by the
+upload path. ⛔ **Pre-0046 originals are UNRECOVERABLE from the database
+(RC-Q2)** — do not go looking for a column; there is none and there never was.
 
-⛔ **AND I TOOK THE WORKERS DOWN ON ALL FOUR NODES FOR FOUR MINUTES.**
-`cd /app && python -c "import temporal_pipeline"` succeeds; `celery -A celery_app worker` fails
-with `No module named 'temporal_pipeline'` — a console-script entry point puts the SCRIPT's
-directory on `sys.path`, not the cwd. **Every pre-deploy check I ran went through `python -c`,
-a different door from the one production uses, so all of them passed.** Reverted to the last
-good tag first, found the cause with a probe running the real worker command, then fixed it by
-anchoring the import to `__file__`. ⓘ **`DEPLOY VERIFIED` did not catch it either — it asserts
-the running IMAGE, not that the process stays up. RC-P19.**
+### ⛔ ACCEPTANCE: NOT MET, and deliberately not chased
 
-⛳ **THE OPERATOR'S RUN IS AT THE STORYBOARD GATE.** Resumed through the normal path
-(`POST /jobs/213171b5/resume` → `resume_from_stage=storyboard_generation`, verified before
-dispatch because the known resume mis-computation does NOT bite `transcript_refinement`).
-**Stage 2 took 55 s. 8 scenes, job success**, and scene 6 landed with a `column_addition_carry`
-template from Stage 2 — RULE 8 at birth on the operator's own project.
+Three consecutive generations on the operator's real script and three genuine
+ABCD outcomes:
 
-⚠ **ONE DATA WRITE, AND ONLY ONE**: job `213171b5` was stranded `running` (RC-P16), and
-`/resume` refuses a non-failed job, so the defect blocked its own remedy. That row was marked
-terminal with an error message naming why. **No scene, transcript, asset, gate or project row
-was touched. No approval.** For information: the gate reports **6 refusals and 1 flag** — that
-is RC-P14 unchanged, and the decisions are the operator's.
+| | gen 1 | gen 2 | gen 3 |
+|---|---|---|---|
+| structurally valid contract | ✅ | ✅ | ✅ |
+| arc reaches application (Merrill) | ✅ | ✅ | ✅ |
+| **hard refusals** | **1** | **1** | **1** |
+| outcomes emitted (3 supplied) | **2** | **2** | **2** |
+| `dropped_beats` | 0 | 0 | 0 |
+| rewrites marked | 0 | 0 | 0 |
 
----
+⛔ **RC-Q9 — THE DESIGNER PARAPHRASES THE OPERATOR'S OUTCOMES AND DROPS ONE.**
+*"Given two 2-digit numbers written in column form, the learner will compute
+their product using the standard column algorithm…"* came back as **"The learner
+can multiply two double-digit numbers."**, marked `measurable: true` with no
+refinement proposed. **LO-3 vanished and was not declared dropped.** The prompt
+says COPY EXACTLY; the schema cannot enforce it because a paraphrase is a valid
+string; **and the gate shows nothing wrong, because the matrix is drawn against
+the paraphrase.** RC-P14's shape at the outcome layer, and worse — the outcomes
+are the spine everything aligns to. **The check that would catch it is cheap and
+does not exist**: compare `outcomes[]` against `projects.learning_outcomes`.
+**ROWED, NOT BUILT** — three runs is a measurement, and the ruling is the
+operator's.
 
-**WP-IVGS-10 + the ruling round.**
+⛳ **What DID work, and v7 could not do at all:** both worked examples present,
+9 of 13 scenes DEPICTS with real motion templates on the first gate reading, and
+an arc that reaches `practice` / `assess` / `feedback` every time.
 
-### The rulings, executed
+### Three defects the acceptance run found, all mine, all fixed
 
-⛔ **FREEZE EXCEPTION #2 — GRANTED AND EXECUTED. RC-P1 CLOSED.** Two sites in
-`stage2_storyboard.py`; the diff is three keyword arguments and four lines, everything else
-comment. **It did not need a third site**, and a test asserts the marker appears exactly twice
-so a future third edit under the same banner fails. The operator's reasoning is recorded
-verbatim in the report, the register and both sites: **the golden bank is not yet taken, so
-this is the only cheap moment — banking through the old body would enshrine the
-params-dropping defect as the behaviour M3.3 activities must reproduce to pass conformance.**
+- **`design_core` invisible to the worker** — `python3 -c` said `ok`, the worker
+  said `No module named`. **The WP-IVGS-10 addendum's two-doors defect,
+  repeating.** ⚠ A module-level `sys.path` anchor did NOT suffice; the
+  `__file__` anchor inside the handler did, and **I cannot explain why** — the
+  diagnostic is now permanent.
+- **`contract_version VARCHAR(16)` against a 17-character value** — every ingest
+   500'd. Migration **0049**. ⛳ Found because the capture **raises instead of
+  swallowing**, and **thirteen scenes still landed**, which is the eager flush
+  earning its keep by accident.
+- **The design review assumed nested `generation_params.params`** — the real
+  shape is flat, and it refused seven sound motion scenes. Now checked against
+  the renderer's own `template_spec`.
 
-⛳ **RULE 8 AT BIRTH IS PROVEN.** Four model-authored motion scenes landed in the database with
-template, params **and phase**, read out before any approval ran; `_author_missing_motion_specs`
-would author **zero**. The checkpoint went from **8 keys to 11**. ⛳ **And the model read the
-PHASE off the narration itself** — `start` for the scene that carries, `complete` for the scene
-that announces the row's answer — with no guard involved. RC-P8 gets an unaided confirmation.
+### ⛔ RC-Q8 — a deploy trap that `DEPLOY VERIFIED` cannot see
 
-⚠ **The wrapper is DELETED, not dormant.** A recovery path beside a working delivery path makes
-the two indistinguishable, and the re-proof had to tell them apart.
-
-⛔ **RC-P14, NEW AND OPEN — the ruling's last criterion is NOT met.** Hard refusals on content
-scenes did not reach zero: **5 of 14**. RC-P1 fixed the transport; it did not make the model
-comply. Two runs of the FIXED body on one transcript declared `text_carried_by` on **10 of 13**
-and then **2 of 14**. The gate refused exactly the ambiguous scenes and nothing else — what is
-unreliable is the storyboard, not the machinery.
-
-⛔ **RC-P15, NEW.** Three v7 runs on one transcript chose **5, then 0, then 4** motion scenes.
-The zero run declared the escape hatch on ten scenes instead: declaring is cheaper than
-authoring a template. **This is the strongest argument yet for RC-P2**, which measured that
-escape unsafe for maths.
-
-✅ **RC-J10 CLOSED.** `dev/CLAUDE.md` §1 rewritten — Claude commits and HOLDS, never pushes;
-operator holds sole push/merge; deploys nodes 01-04 only on an active grant. §3 amended too,
-so the file no longer says *"editing is not [allowed]"* about a body that visibly carries two
-sanctioned edits.
-
-✅ **`c12fa967` RESOLVED — operator scene re-render.** ⛔ **M3.3-R4 RE-ANCHORED: the conformance
-target is the forthcoming operator-run v7 golden project pinned to its BANKED ARTIFACTS**, not
-live rows. A banked artifact cannot be edited; a row can, and this one was.
-
-⛔ **TWO FAILURE ROWS MOVED MID-PACKAGE AND BOTH WERE MINE.** `ivgs-workers` 18→19: adding the
-enum made `test_media_branch_table_covers_every_media_type` do its job for the first time, and
-**the Temporal shadow DAG had no motion branch while the live orchestrator has routed that
-media type since WP-IVGS-09** — M3.3-R3 would have realized a pipeline that silently dropped
-every motion scene. `tests_system` 12→13: I banked two images with hand-rolled artifact names
-instead of `scripts/save-image-artifact.sh`, reproducing a mistake that script's own header
-records from 2026-08-25. Both fixed; both rows back at baseline.
-
----
-
-**WP-IVGS-10 (the body of the package)** — the visual description must depict the narration.
-
-⛔ **THE OPERATOR'S DIAGNOSIS, MEASURED.** Classified with the module that now runs at the
-gate: the reference run `c12fa967` is **16 of 18** scenes DELEGATES-TO-WRONG-MEDIUM (**17 of
-18** as it was banked — the one exception is a row flipped by hand that night), and the
-operator's `9c29b1d1` is **8 of 14**. ⛔ **And all six of `9c29b1d1`'s DEPICTS are motion
-scenes WP-IVGS-09f authored — so every visual the storyboard MODEL itself wrote is a
-delegation or a generic, 0 of 8.**
-
-✅ **v7 PUBLISHED** (`6907e7b1`, `sha256 fa9ae1c0…`; v6 preserved inactive, rollback is one
-UPDATE). **RULE 1-EXTENDED** pushes RULE 1 upstream: RULE 1 has always governed the
-DESCRIPTION and never the MEDIA-TYPE CHOICE, so a scene whose content IS written or numeric
-still reached diffusion — and RULE 1 then forbade its description from naming the thing the
-scene teaches. **Nothing to depict is what "a hand, a pencil, warm lighting" is.** Two
-sanctioned answers, and no third. Plus **RULE 5 amended** (*staging may remain, content is
-mandatory*) and **RULE 9** (one line per scene on why this medium). Every WP-63/64/65/68 gate
-phrase survives, pinned by a parameterised test.
-
-✅ **RC-O10 CLOSED.** Both column templates take a `phase`. `full` is **byte-identical** to
-the pre-phase renderer — five ops-digests pinned, and an intermediate cut moved two of them
-while keeping the frame COUNT identical, so only an op-level comparison caught it. Verified on
-real frames: scene 2 ends at the carry and the `2`, scene 3 opens on that exact page and ends
-at `92`. **Two pictures where there was one, twice.**
-
-✅ **The gate validator.** Hard refusal on the objective limb only (`409
-STORYBOARD_INCOMPLETE`, every failing scene named once); soft flags per scene in the gate
-panel; **no prompt loops**; one assessment feeds both surfaces.
-
-⛔ **RC-P1 — RULE 8 HAS NEVER WORKED AT BIRTH, AND IT GATES THIS PACKAGE'S OWN ACCEPTANCE.**
-`stage2_storyboard.py` loses v7's three fields **twice**: `_validate_storyboard_json:315-324`
-is an explicit eight-keyword constructor that drops every extra key *before the checkpoint is
-written* (`extra="allow"` keeps keys that are SUPPLIED, and none are), and
-`_save_storyboard_scenes:434-440` then POSTs five of the eight survivors. **Both are inside a
-frozen stage body.** ⚠ This report's first draft asserted only the second, inferred from the
-model config; the run disproved it. **Consequence: `text_carried_by` and `media_rationale`
-cannot reach the database, so the gate refuses every content-bearing diffusion scene and the
-reviewer answers each by hand — which is what happened on the acceptance run.**
-
-⛔ **RC-P2 — RULE 1's FOUNDING PREMISE DOES NOT HOLD, and this is the finding that governs
-the operator's watch.** Four of five image scenes drew digits from descriptions containing
-none: scene 1 rendered **`23 = 14`**, scenes 7 and 10 pages of invented arithmetic, and scene
-11 printed **the description's own vocabulary as worksheet headings** — *"Partial product
-rows"*, *"Full Answer row:"*. The only clean image is the only one whose surface was described
-as **EMPTY**. RULE 1 can stop you ASKING for digits; it cannot stop the model DRAWING them. A
-v8 amendment is proposed and **deliberately not implemented** — one run is not a
-false-positive rate.
-
-⛔ **RC-P3 — a BLANK clip recorded as a successful render.** Scene 4's `video_clip`: 720×480,
-48 frames, 889,012 bytes, `success`, composed into the draft, and flat. Greyscale stddev
-**0.45–0.53** at five sample points against **95.8** for a real image.
-
-✅ **RC-P4 CLOSED — Stage 2 could not RECEIVE the media type it was told to choose.** WP-68
-added `motion_graphics` everywhere except `MediaType` in the workers. Nothing met the gap
-because nothing had tried; **this package's acceptance run was the first time a storyboard
-model ever chose the value**, and one such scene failed the entire storyboard.
-
-⛳ **The acceptance run reached a draft.** 12 scenes, **five chosen `motion_graphics` by the
-model**, six templates + phases authored from the narrations at approval through the 09f
-guard, draft `0b64b812`, **12/12 composed**, and the Task-1 table re-run: **12 DEPICTS, 0
-GENERIC, 0 DELEGATES.** Storyboard and twelve frames banked at
-`dev/workpackages/reference/wpivgs10-v7-fixture/`; **the project was then DELETED through the
-WP-59 flow** — 60 rows, 27 files, nothing else touched.
-
-⛔ **WAITING ON THE OPERATOR:**
-
-1. ⛔ **RC-P1 — sanction the two-line frozen-body edit, or accept hand-answering at the gate.**
-   Their acceptance watch meets this either way.
-2. ⛔ **RC-P2 — rule on the v8 "empty surface only" amendment.**
-3. **The Model Store APPROVE click** for `maths-motion` (carried from WP-IVGS-09).
+`save-image-artifact.sh` skips the save when an artifact of that name exists,
+**and the name comes from the TAG**. A tag rebuilt mid-session re-saves nothing,
+`docker load` restores the OLD image under the same tag, and
+`verify-deployed-image.sh` says VERIFIED. Measured: node-01 on `e9c1001a` while
+02/03/04 ran `aa89c778` under the identical tag. ⚠ The script printed
+`artifact already present, skipping save`; **I tailed past it.**
+**Comparing `.Image` IDs across nodes is the only check that catches this.**
 
 ---
 
 ## Last pushed
 
-**`03adc02`** — `fix(wp-ivgs-10): RULE 8 works at birth — freeze exception #2, and RC-J10
-closed`, pushed by the operator during the session, along with `8661b11` before it. Measured from the remote-tracking ref and its reflog at the close of this
-package: `origin/main` and local `HEAD` were **equal** before this package's commit, so
-**everything through WP-IVGS-09f was already pushed** and the held count was **0**, not 1.
+**`af0c6a1`** — `docs(wp-ivgs-11): port the close-out / start-up protocol…`.
+Measured at the start of this package from the remote-tracking ref:
+`origin/main` and local `HEAD` were **equal**, so the held count was **0**, not
+the 1 the previous board claimed and not the 3 the WP-IVGS-11 report declared —
+the operator pushed `70058b9`, `a6bb30c` and `af0c6a1` after that report closed.
 
-⚠ **The row this replaces said "Held now: WP-IVGS-09b's single commit"**, and it was stale by
-four packages: 09b, 09c, 09d, 09e and 09f are all on the remote. The operator also pushed two
-AD-07/AD-10 amendment commits *during* this session, which moved `HEAD` under it.
+**Held now: ONE commit — this package's. Nothing else.**
 
-**Held now: ONE commit — `70058b9`, addendum 2. Nothing else.**
-
-⚠ **THIS ROW NAMED A DANGLING COMMIT AND WP-IVGS-11's CLOSE OUT CAUGHT IT.** It read
-*"`3190f29`, addendum 2"*. The **count was right and the SHA was wrong**: `3190f29` was
-**amended** into `70058b9` when the `__file__` import anchor and its test were added, and
-`git merge-base --is-ancestor 3190f29 HEAD` says it is **not on the branch at all**. The
-reflog shows the amend directly. **A held SHA is read from `git log origin/main..HEAD` at
-close, never carried forward from the commit you first made** — the same discipline this
-section already applies to push counts, applied one level down.
-
-⚠ **AND AN IMAGE TAG IS NOT A GIT TAG.** Three tag-shaped strings on this board name deployed
-images and **exist as no git tag**: `v5.31.0-hygiene`, `v5.34.1-v7-contract`,
-`v5.36.1-stage2-limits`. Verified with `git tag --list`. This is the same class as the
-`v5.31.0-hygiene` finding that opened WP-IVGS-11.
-
-⛔ **UNTAGGED, AND THE TAG IS THE OPERATOR'S TO CREATE — NOT CREATED HERE.** `f61029b`
-(`fix(wp-ivgs-09e): the mpeg4 was never ours - pin the encode, and the draft exists`,
-2026-08-28) carries **no git tag**, and it is the commit that pins the draft encode. `8661b11`
-and `08521bd` are likewise untagged. `v5.34.0-v7-contract` and `v5.35.0-rule8-at-birth` **both
-point at `03adc02`** — two tags, one commit.
-
-⚠ **Measured from the remote-tracking ref at close, not carried forward.** `origin/main` moved
-to **`03adc02`** mid-session: the operator pushed `8661b11` (the package) and `03adc02` (the
-ruling round) themselves. Arithmetic on the previous board row would have said 3.
-
-⚠ **This row was wrong once and is worth remembering.** It read *"Last pushed `75762b8`"* with
-*"WP-IVGS-08 — 9 commits held, none pushed"* above it, while `origin/main` was already at
-`8e3b829` and its reflog showed three `update by push` entries that day. The two figures did not
-even agree with each other: `75762b8..8e3b829` is **12** commits, not 9. **A push count is
-measured from the remote-tracking ref and its reflog, never carried forward from the last
-package's board.**
+⚠ **AN IMAGE TAG IS NOT A GIT TAG, and this package adds a second edge to that
+rule: A TAG IS NOT AN IMAGE EITHER (RC-Q8).** `v5.37.0-design-core` names the
+deployed images; the git tag of the same name is created below as the coherent
+set.
 
 ---
 
 ## Reports filed this session
 
-Per `dev/CLAUDE.md` §0 rule 5 step 2 (ported by WP-IVGS-11). ⚠ **This board is a snapshot and is
-rewritten every package**, so these rows do not accumulate — the durable index is
-`ls dev/workpackages/reports/` plus git history. Whether this repo gains a real accumulating
-index is an open operator ruling (see §0 rule 5 step 2).
-
 | report | verdict |
 |---|---|
-| `reports/WP-IVGS-10-V7-CONTRACT-report_2026-08-29.md` | the package body — v7 published, RULE 8 at birth, stage-2 limits applied |
-| `reports/WP-IVGS-10-SEAM-ANSWERS-report_2026-08-29.md` | ANSWERS ONLY. Q3 client sizes from the WP-67 registry; **RC-D10 settled — the button is not superseded**; D-4 measured, **no rename** |
-| `reports/WP-IVGS-11-SESSION-PROTOCOL-report_2026-08-29.md` | close-out / start-up protocol ported to `dev/CLAUDE.md` §0; board corrected; `CLOSE OUT` run on this session |
+| `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 
 ---
 
 ## Next, in order
 
-1. ⛔ **THE OPERATOR'S ACCEPTANCE WATCH** — a fresh project on v7, watched end to end. ⛔ **Read
-   RC-P1 and RC-P2 first**: the gate WILL refuse every content-bearing diffusion scene until
-   RC-P1 is ruled on, and the image scenes WILL attempt digits until RC-P2 is
-2. ⛔ **RUN-2** — banks the Temporal golden run that M3.3-R4 replays against. It is the gate
-   on the largest single block in the register — **20 carried-v3.1 rows are VERIFY-AT-RUN-2**,
-   plus P1.4h and P1.4q, with **P2.46** as the one bounded sweep afterwards
-3. **Push** — count-gated block in the WP-IVGS-10 report **§B.7** (expected: **1**; §11 and §A.7 are superseded)
-3. **MBCP session** *(independent of the rest)*: engine-values query → WO-MBCP-01 → re-send →
-   first weight fetch. Gates **P2.10**, RC-G9, RC-D1/D2/D3/D9/D10
-4. **P2.46** — the RUN-2 residue sweep. One pass, one verdict per row, nothing carried forward
-5. **Post-RUN-2 fix batch** — **P2.38** (`output_fps`: wire it or answer 400)
-6. **M3.3 window** — runway R1…R5. **R3 carries P1.0a's cross-check line**: no hardcoded
-   SadTalker fallback survives stage-6 activity realization
+1. ⛔ **THE OPERATOR'S RULING ON RC-Q9** — the outcomes are paraphrased and one is
+   dropped, reproducibly. Validator check, prompt change, or both. **Nothing
+   downstream is worth watching until the spine is the operator's own words**
+2. ⛔ **THE OPERATOR'S WATCH** — a project of theirs through the v8 gate. ⚠ The
+   rendered panel is described in the report from the live payload and the
+   component source, **not from a browser**; how it LOOKS is unverified
+3. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
+   loud. Contaminates any regenerate-on-the-same-project gate reading
+4. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
+   transcript; the "is this a transcript at all" check does not exist
+5. **Recovery-plan Phase 3** (RC-C + RC-E's UX half), then Phase 4, 5, 6
+6. **RUN-2 / M3.3** — unchanged, and still gated on a correct run
 
 ---
 
 ## Open operator decisions
 
-- ✅ *(ruled 2026-08-29)* **RC-P1 — freeze exception #2 granted and executed. CLOSED.** RULE 8
-  now works at birth: four model-authored motion scenes landed with template, params and phase,
-  zero post-hoc authoring
-- ⛔ **RC-P14 — the declaration is transportable but not reliably emitted.** 10 of 13 on one
-  run, 2 of 14 on the next, 5 hard refusals. Prompt compliance, not transport. **Belongs with
-  RC-P2 as v8 input**; not implemented, on the same endorsed restraint
-- ⛔ **RC-P2 — the v8 "empty surface only" amendment.** Four of five image scenes drew digits
-  from digit-free descriptions. Proposed: a diffusion scene may depict a working surface only
-  in its EMPTY state; anything already written is `motion_graphics`. **Not implemented** — one
-  run is not a false-positive rate
-- ⚠ **RC-P3 — a blank clip recorded as a successful render** (scene 4, stddev 0.45 against
-  95.8). A fabricated absence of the WP-57/60 class
-- ⛔ **RC-P18 — 9 of 10 stage activities run UNDER their declared Appendix C policy**, now that
-  the policy is actually applied. `refine_transcript` at **50%** is the same shape that killed
-  stage 2, one stage earlier in the same pipeline. Rows, not fixes, per the order — each wants
-  its own measurement
-- ⚠ **RC-P16 — a soft-time-limit kill strands the job row `running`**, which then blocks BOTH
-  `/resume` and WP-59 deletion. Hit twice; the second time it blocked the operator's own recovery
-- ⓘ **RC-P19 — `DEPLOY VERIFIED` proves the IMAGE, not that the process stays up.** Six
-  containers reported VERIFIED while four were restart-looping
-
-- ⛔ **P1.0a IS REVERSED (RC-L6).** `falling_back_to_sadtalker` fired live 2026-08-28 20:03 — the
-  hardcoded fallback is alive in the frozen stage-6 body (`talking_head_task.py:792-794`). Its
-  removal is now an **M3.3-R3 edit row**, not a cross-check line
-- ⛔ **node-04 headroom (RC-L7, AD-08).** LatentSync OOM'd with 4.31 MiB free while
-  `ivgs-vllm-midsize` held 92.5 GB resident. **A reservation was acquired — reservations do not
-  evict.** Stacking on node-04 is the live problem and it is AD-08's to answer
-- ✅ *(settled 2026-08-28)* the queue drain and the counter row — **P2.39 CLOSED, P2.47 opened**
-- ⛔ **.96 admin access method** — needed by M3.3-R2 (namespace creation)
-- ✅ *(ruled 2026-08-29)* **RC-J10 CLOSED** — §1 amended: Claude commits and HOLDS, never
-  pushes; operator holds sole push/merge; deploys nodes 01-04 on an active grant only
+- ⛔ **RC-Q9 — outcomes paraphrased, one dropped, three times out of three.** The
+  headline. Rowed, not built
+- ⛔ **RC-Q4 — per-scene presenter selection does not exist** and Foundation §4
+  assumes it. `talking_head` stays out of `media_type` (ruled); whether to BUILD
+  per-scene presenter choice is open. Phase-5 candidate
+- ⛔ **RC-Q8 — the artifact/tag staleness trap.** Fix the script, or add the
+  cross-node image-ID comparison to §6.1a, or both
+- ⛔ **RC-Q3 — the missing "is this a transcript at all" check**
+- ⛔ **RC-P2 — the v8 "empty surface only" amendment.** Still not implemented
+- ⛔ **RC-P14 — `text_carried_by` transportable but not reliably emitted.** Same
+  family as RC-Q9, one layer down
+- ⚠ **RC-P3 — a blank clip recorded as a successful render**
+- ⛔ **RC-P18 / RC-Q7 — stage activities under their declared policy.** Stage 2's
+  CLIENT timeout is fixed and derived; **the other nine stages still share one
+  120 s knob** and none has been measured against its own policy
+- ⚠ **RC-P16 — a soft-limit kill strands the job row `running`**, blocking both
+  `/resume` and WP-59 deletion. Hit again this session
+- ⓘ **RC-P19 — `DEPLOY VERIFIED` proves the image, not that the process stays up**
+- ⛔ **P1.0a IS REVERSED (RC-L6)** — the hardcoded SadTalker fallback is alive in
+  the frozen stage-6 body. An M3.3-R3 edit row
+- ⛔ **node-04 headroom (RC-L7, AD-08)**
+- ⛔ **.96 admin access method** — needed by M3.3-R2
 - **MBCP session booking** — gates RC-G9, RC-D1/D2/D3/D9/D10
-- **Postgres history**: the pre-rotation password is dead but remains in git history; no
-  rewrite proposed
 
 ---
 
 ## Gates
 
-Authority: **`OUTSTANDING_WORK.md`** — the P0–P3 register plus §RECONCILIATION (`RC-*`), the
-**M3.3 GATE TABLE** (§RC-F, §RC-I.1) and **§RC-J** (this package).
+Authority: **`OUTSTANDING_WORK.md`** — the P0–P3 register plus §RECONCILIATION
+(`RC-*`), the **M3.3 GATE TABLE** and **§RC-Q** (this package).
 
 | Metric | Count |
 |---|---|
-| Rows total (P0–P3) | **78** — unchanged. WP-IVGS-10's findings are rowed in **§RC-P** (RC-P0…RC-P13), which is a reconciliation section, not the P0–P3 register |
+| Rows total (P0–P3) | **78** — unchanged. This package's findings are rowed in **§RC-Q** (RC-Q1…RC-Q10), a reconciliation section |
 | **P0 open** | **0** |
-| ⛔ **NEEDS-RULING** | **0** — was **41**. §RC-H3 is **RULED IN FULL** |
-| Closed / archived / dropped by the rulings | **12** (P1.0a, P1.0b, P1.4, P1.4f, P1.5a, P1.5b, P1.6, P2.2, P2.35, P2.37, **P2.39 — drained**, and P2.1's decision restored) |
-| Gated by the rulings | **7** (P1.4h, P1.4q, P1.4r, P1.7, P2.1, P2.5, P2.10) |
+| ⛔ **NEEDS-RULING** | **0** in the P0–P3 register; **§RC-Q carries 5 open operator items** (Q3, Q4, Q8, Q9, Q10) |
+| ✅ **CLOSED THIS PACKAGE** | **P2.66** (the outcomes hand-off — a real end-to-end path, no frozen edit), **RC-I4** (nightly power-down) |
 | **VERIFY-AT-RUN-2** | **20** — P2.12 through P2.31, contiguous |
-| Reclassified FIX | **1** (P2.38) |
-| Operator-attended, now done | **1** (P2.39 — drained on the GO; **P2.47** opened from what the drain showed) |
-
-⚠ **§RC-H3 said its carried block was "20 of the 41" while enumerating 18.** P2.15 and P2.29
-were inside the stated range and outside the list. The ruling is on the contiguous range, so
-the block is genuinely 20 and the count reconciles. **21 rows also had no `**Status:**` line at
-all** and now do — which is why the register's counts have been hard to reconcile across
-packages.
+| WP-00 swallowed-failure register | **20 instances** — #20 added this package |
 
 ---
 
@@ -344,51 +205,44 @@ packages.
 
 | Tree | passed | failed | skipped | errors | vs baseline |
 |---|---|---|---|---|---|
-| `ivgs-api` | **1553** | **0** | 0 | 0 | 1451 + **23** (09f, never rowed) + **79** (WP-IVGS-10) |
-| `ivgs-workers` | **965** | 18 | 48 | 15 | 939 + **26**; the row moved to 19 **twice** and is **restored** both times |
+| `ivgs-api` | **1579** | **0** | 0 | 0 | 1553 + **26** (WP-IVGS-12) |
+| `ivgs-workers` | **983** | 18 | 52 | 15 | 965 + **18**; failures **identical** |
 | `ivgs-scheduler` | **52** | 15 | 0 | 0 | ✅ byte-identical |
-| `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with the three extra env vars** (RC-J8) |
-| `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ⟵ **NEW TREE** |
+| `ivgs-backup-worker` | **4** | **0** | 0 | 0 | ✅ — **only with RC-J8's three env vars** |
+| `ivgs-motion-renderer` | **24** | **0** | 2 | 0 | ✅ byte-identical |
 | `tests_system` | **193** | 12 | 15 | 30 | ✅ byte-identical |
 
-✅ **ZERO NEW FAILURES**, five times — WP-IVGS-09, 09b, 09c, 09d and WP-IVGS-10.
+✅ **ZERO NEW FAILURES**, six times — WP-IVGS-09, 09b, 09c, 09d, WP-IVGS-10 and
+WP-IVGS-12. **Two full-suite runs, as the order allows, and no more.**
 
-⛔ **AND THE api ROW WAS ONE PACKAGE STALE.** WP-IVGS-09f added 23 tests and never updated it,
-so the +94 above reads as unexplained unless you know that: 1451 + 23 + 71 = **1545**, exactly.
-A baseline only some packages update is worse than one nobody trusts — the next package reads
-the gap as a regression, which is what happened here for ten minutes.
+⚠ **THE TEST DATABASE AND PRODUCTION MUST NOW BE AT `0049`** (was 0045). 0046
+adds `transcripts.source_text` + `.source_kind`; 0047 adds two `prompt_type`
+members; 0048 adds seven `storyboard_scenes` columns, four CHECKs and
+`storyboard_design_briefs`; 0049 widens `contract_version` to 64. **All four are
+applied to production**, additive, and the `refined_text` content digest across
+every existing transcript is **byte-identical before and after**.
 
-⚠ **TWO PYTEST RUNS AGAINST ONE TEST DATABASE PRODUCE FALSE FAILURES.** The `db_session`
-fixture `TRUNCATE`s every table after every test. Measured this session: seven failures that
-had passed minutes earlier and passed again once an orphaned run was killed. **`ps aux | grep
-pytest` before believing a new failure** — a tool timeout does not always kill the process it
-timed out on.
+⚠ **Five existing test files were RE-AIMED and none was weakened.** All five
+pinned the outcomes delimiter, which P2.66 retired; each now asserts the same
+risk at the new path — that the system prompt actually interpolates
+`{{ learning_outcomes }}`, proved with a sentinel. ⛳ **They caught a real defect
+within minutes:** editing RULE 0 swallowed an `{% endif %}`, every phrase gate
+still passed, and it would have failed Stage 2 for every project at once. **A
+render gate is now part of the publisher.**
 
-⚠ **Five existing test files were EDITED and none was weakened.** `test_wpivgs09c`'s `CORRECT`
-map gained phases — the change IS RC-O10, since the shipped specs for scenes 4 and 5 were
-identical — and three gate fixtures became v7-valid storyboards after RULE 1-EXTENDED
-correctly refused narrations reading `f"Scene {i}"`.
-
-⛔ **The test database must now be at migration `0045`** (was 0044). 0045 adds
-`storyboard_scenes.media_rationale` and `.text_carried_by`; without it every scene SELECT
-raises, because the ORM maps both columns. **Production is at 0045 too** — applied this
-package, additive, two nullable columns, **zero existing rows altered** (verified: 0 of 38).
+⚠ **`ps aux | grep pytest` BEFORE BELIEVING A NEW FAILURE.** A stale monitor
+shell from a previous session was still waiting on pytest when this one started.
 
 ---
 
 ## Temporal / M3.3
 
-Server **1.29.7 live on 192.168.1.96** (gRPC `:7233` from node-01, UI `:8080`; **node-01 root
-ssh not authorized — admin method TBD, operator input**).
+Server **1.29.7 live on 192.168.1.96**. `ivgs-workers/temporal_pipeline/` is the
+WP-41 shadow, deliberately unwired. **Runway M3.3-R1…R5 unchanged.**
 
-`ivgs-workers/temporal_pipeline/` is the **WP-41 shadow**: **4,384 lines, 11 modules**, AD-05
-Draft 2 shape. ⛔ **Deliberately unwired**: stub activities, and `temporalio` is absent from the
-image requirements.
-
-**Runway = M3.3-R1…R5**: dependency → worker service/infra → real activities *(the frozen-body
-edits execute here)* → conformance replay vs the RUN-2 bank → cutover.
-
-⚠ **M3.3-R3 gains work from this package.** `tasks/motion_graphics_task.py` is a **ninth stage
-body** and needs an activity wrapper like the other eight. It was written to be wrapped: it is
-idempotent by params-hash dedup, takes no GPU reservation, and every failure is a returned
-result rather than an exception that would strand a join.
+⛳ **M3.3 GAINS THE EASY HALF OF THIS PACKAGE.** Every wrapper here — the capture
+seam, the response-format override, the instructional-header table — exists in
+the shape it does *because* the eight stage bodies are frozen. When they become
+activities, the Design Contract can travel through stage 2 directly, and
+**RC-Q6's shortfall (a table keyed by scene number rather than one pre-selected
+block) closes with one line in each of three bodies.**

@@ -228,6 +228,54 @@ class VLLMResponse:
         return self.choices[0].finish_reason if self.choices else None
 
 
+# ---------------------------------------------------------------------------
+# WP-IVGS-12 — two seams the frozen stage bodies cannot reach through
+# ---------------------------------------------------------------------------
+#
+# The eight stage task bodies are frozen (AD-05 §8). Stage 2 must, from this
+# package on, (a) constrain its output against the Design Contract schema and
+# (b) let that contract reach the database — and its call site passes neither a
+# response_format nor anything else new. Rather than edit a frozen body or
+# monkey-patch one at runtime, the client grows two small, explicit seams that
+# an owned module arms. Both default to exactly the previous behaviour, so a
+# worker with nothing registered behaves byte-for-byte as before.
+
+#: Callables invoked with (content, model) for every successful chat response.
+#: Registered by `design_core.capture` at worker init. ⚠ An observer MUST NOT
+#: raise: this list is walked inside the request path of every LLM stage, and a
+#: capture problem is never a reason to fail a render. The loop enforces it.
+RESPONSE_OBSERVERS: List[Any] = []
+
+#: Optional override for `chat_json`'s response_format, keyed by nothing —
+#: there is one LLM call in flight per task process at a time. Set to a
+#: `{"type": "json_schema", ...}` member to constrain the next `chat_json`;
+#: cleared by the arming module when the stage ends.
+#:
+#: ⛔ DO NOT PUT `guided_json` HERE. It is what the recovery plan prescribes,
+#: it returns HTTP 200 on the pinned engine, and it does nothing at all —
+#: measured 2026-08-29, see `design_core/contract.py`. `response_format` with a
+#: `json_schema` is the mechanism that was measured to ENFORCE.
+_RESPONSE_FORMAT_OVERRIDE: Dict[str, Any] = {}
+
+
+def set_response_format_override(value: Optional[Dict[str, Any]]) -> None:
+    """Arm (or clear) the response_format `chat_json` will use next."""
+    _RESPONSE_FORMAT_OVERRIDE.clear()
+    if value:
+        _RESPONSE_FORMAT_OVERRIDE.update(value)
+
+
+def _notify_observers(content: str, model: str) -> None:
+    for observer in list(RESPONSE_OBSERVERS):
+        try:
+            observer(content, model=model)
+        except Exception:                                    # noqa: BLE001
+            logger.warning(
+                "vllm_response_observer_failed",
+                extra={"observer": getattr(observer, "__name__", repr(observer))},
+            )
+
+
 class VLLMClient(LLMProvider):
     """
     vLLM implementation of the LLMProvider interface (spec 19.1).
@@ -438,7 +486,12 @@ class VLLMClient(LLMProvider):
                     timeout=req_timeout,
                 )
                 response.raise_for_status()
-                return self._parse_response(response.json())
+                parsed = self._parse_response(response.json())
+                # WP-IVGS-12. One line, on the success path only, so the Design
+                # Contract can leave a frozen stage body without the body
+                # changing. Never raises — see `_notify_observers`.
+                _notify_observers(parsed.content or "", parsed.model or "")
+                return parsed
             except httpx.TimeoutException as exc:
                 last_error = exc
                 logger.warning("vLLM timeout", extra={"url": url, "error": str(exc)})
@@ -586,7 +639,13 @@ class VLLMClient(LLMProvider):
             base_url=base_url,
             max_tokens=max_tokens,
             temperature=temperature,
-            response_format={"type": "json_object"},
+            # WP-IVGS-12. Was the literal `{"type": "json_object"}`, which
+            # MEASURED as shape-only: the probe's closed enum was violated on
+            # the very first try (`verdict: "GAMMA"`). When an owned module has
+            # armed a schema, use it; otherwise this is unchanged.
+            response_format=(
+                dict(_RESPONSE_FORMAT_OVERRIDE) or {"type": "json_object"}
+            ),
             timeout=timeout,
         )
 

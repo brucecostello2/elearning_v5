@@ -31,10 +31,13 @@ Media Generation Routing (Table 6-1):
 
 from __future__ import annotations
 
+import hashlib
+import os
 from typing import Any, Dict, List, Optional
 
 import httpx
 import structlog
+from jinja2 import BaseLoader, Environment
 
 from celery_app import IVGSBaseTask, celery_app
 from config import WorkerConfig
@@ -1181,17 +1184,42 @@ def _build_stage_input(
     }
 
     if stage == PipelineStage.TRANSCRIPT_REFINEMENT.value:
-        return {**base_input, "transcripts": _fetch_transcripts(base_input["project_id"], config)}
+        transcripts = _fetch_transcripts(base_input["project_id"], config)
+        # ── WP-IVGS-12 Task 2: extraction, or refinement, decided by evidence ──
+        # An UPLOADED script is a finished script and is EXTRACTED, never
+        # rewritten. A GENERATED transcript is raw material and keeps the
+        # pre-existing refine-for-readability behaviour, unchanged. The switch
+        # reads `transcripts.source_kind` (migration 0046) and nothing else —
+        # not a heuristic, not the presence of an asset id, which
+        # `ON DELETE SET NULL` can clear.
+        kinds = {t.get("source_kind") for t in transcripts if t.get("source_kind")}
+        source_kind = "uploaded" if "uploaded" in kinds else "generated"
+        return {
+            **base_input,
+            "transcripts": transcripts,
+            **_resolve_system_prompt(
+                "transcript_refinement_system",
+                config,
+                learning_outcomes=context.get("learning_outcomes", ""),
+                source_kind=source_kind,
+            ),
+        }
 
     elif stage == PipelineStage.STORYBOARD_GENERATION.value:
         refined = (previous_output or {}).get("refined_transcripts", [])
+        # ── WP-IVGS-12, ruling R1b — LEDGER P2.66 CLOSED ──
+        # `project_description` is handed over EXACTLY AS THE PROJECT WROTE IT.
+        # The delimited-block fold is gone; the outcomes now travel as a real
+        # Jinja variable into a versioned SYSTEM prompt. See
+        # `_resolve_system_prompt` for the argument from code.
         return {
             **base_input,
-            "project_description": _description_with_outcomes(
-                base_input["project_description"],
-                context.get("learning_outcomes", ""),
-            ),
             "refined_transcripts": refined,
+            **_resolve_system_prompt(
+                "storyboard_generation_system",
+                config,
+                learning_outcomes=context.get("learning_outcomes", ""),
+            ),
         }
 
     elif stage == PipelineStage.COMPOSITION_MANIFEST.value:
@@ -1243,6 +1271,131 @@ def _build_stage_input(
     return base_input
 
 
+def _resolve_system_prompt(
+    prompt_type: str,
+    config: WorkerConfig,
+    **variables: Any,
+) -> Dict[str, Any]:
+    """Resolve a VERSIONED system prompt and render it. WP-IVGS-12.
+
+    ⛳ WHY THE SYSTEM SLOT IS THE ONE THAT WORKS, ARGUED FROM CODE.
+    `stage2_storyboard._resolve_prompts` (:86-111) resolves in this order:
+
+        system_prompt = task_input.system_prompt          <-- FIRST, and ours
+        if not system_prompt: system_prompt = _load_template("stage2_system.j2")
+        api_sys, api_user = _resolve_prompts_from_api(...)
+        if api_sys:  system_prompt = api_sys              <-- never fires
+        if api_user: user_template = api_user             <-- ALWAYS fires
+
+    `_resolve_prompts_from_api` returns `(None, text)` by construction and says
+    so in its own docstring (:151-153): a `prompts` row carries exactly one
+    text, so the API can only supply the USER half. That is the split the
+    operator directed be closed. The mirror-image trick does NOT work on the
+    user half, because the API fetch overwrites `task_input.user_prompt_template`
+    unconditionally — which is exactly why the SYSTEM slot is the one to use.
+    Stage 1's resolver has the same shape.
+
+    Returns `{}` when nothing is published, so the stage falls back to its `.j2`
+    file exactly as it always has — the right behaviour for a worker whose API
+    is briefly unreachable. That fallback is no longer INVISIBLE: whichever
+    prompt actually won is fingerprinted below and travels in the job context.
+    """
+    text = _fetch_active_prompt(prompt_type, config)
+    fingerprint = ""
+    if text:
+        fingerprint = f"{prompt_type}:db:sha256={_sha(text)[:16]}"
+    else:
+        # The file the frozen body would load. Fingerprinted so a run that used
+        # it is distinguishable from a run that used a published row — the
+        # operator's second option, kept because it is what makes the first one
+        # auditable.
+        path = os.path.join(
+            config.prompt_template_dir,
+            "stage2_system.j2" if prompt_type.startswith("storyboard")
+            else "stage1_system.j2",
+        )
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                fingerprint = f"{prompt_type}:file:sha256={_sha(handle.read())[:16]}"
+        except OSError:
+            fingerprint = f"{prompt_type}:unresolved"
+        logger.warning(
+            "system_prompt_not_published",
+            prompt_type=prompt_type,
+            detail=(
+                "no active row; the stage will load its .j2 from the image. "
+                "Learning outcomes CANNOT reach the model on this path."
+            ),
+            fingerprint=fingerprint,
+        )
+        return {"prompt_fingerprint": fingerprint}
+
+    try:
+        rendered = _JINJA.from_string(text).render(**variables)
+    except Exception as exc:                                     # noqa: BLE001
+        # ⛔ NOT SWALLOWED INTO A SILENT FALLBACK. A system prompt that fails to
+        # render is a published row with a bug in it, and running the stage on
+        # the .j2 instead would hide it behind output that looks fine.
+        logger.error(
+            "system_prompt_render_failed",
+            prompt_type=prompt_type,
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
+        raise
+
+    logger.info(
+        "system_prompt_resolved",
+        prompt_type=prompt_type,
+        chars=len(rendered),
+        fingerprint=fingerprint,
+        carries_outcomes=bool(variables.get("learning_outcomes")),
+    )
+    return {"system_prompt": rendered, "prompt_fingerprint": fingerprint}
+
+
+def _fetch_active_prompt(prompt_type: str, config: WorkerConfig) -> str:
+    """The active GLOBAL row for a prompt type, or "" when none is published."""
+    try:
+        with httpx.Client(
+            timeout=config.pipeline_api.timeout_seconds,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            resp = client.get(
+                f"{config.pipeline_api.full_base_url}/prompts",
+                params={"prompt_type": prompt_type, "is_active": "true"},
+            )
+        if resp.status_code != 200:
+            return ""
+        payload = resp.json()
+        rows = payload if isinstance(payload, list) else payload.get("data", [])
+        # Exact type match only. IVGS-0.4: the endpoint once ignored the filter
+        # and the LAST enum member won, which is how the translation template
+        # came to stand in for stage 1's.
+        for row in rows:
+            if isinstance(row, dict) and row.get("prompt_type") == prompt_type:
+                return row.get("prompt_text") or ""
+        return ""
+    except Exception as exc:                                     # noqa: BLE001
+        logger.warning(
+            "system_prompt_fetch_failed",
+            prompt_type=prompt_type,
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
+        return ""
+
+
+def _sha(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+#: One environment, built once. `undefined` is Jinja's default so an unset
+#: variable renders empty rather than raising -- which is what the `{% if %}`
+#: branches in both system templates expect.
+_JINJA = Environment(loader=BaseLoader(), keep_trailing_newline=True)
+
+
 #: WP-64 Task 6(c). The delimiter the storyboard prompt's RULE 0 looks for.
 #: The template quotes these two lines VERBATIM, and
 #: `tests/test_wp64_learning_outcomes.py` asserts the two copies are identical
@@ -1253,6 +1406,25 @@ OUTCOMES_CLOSE = "=== END LEARNING OUTCOMES ==="
 
 
 def _description_with_outcomes(description: str, outcomes: str) -> str:
+    """⛔ RETIRED BY WP-IVGS-12. NOT CALLED BY THE PIPELINE ANY MORE.
+
+    Kept, not deleted, for one reason: `tests/test_wp64_learning_outcomes.py`
+    asserts that this function's delimiters are byte-identical to the ones the
+    published prompt looks for, and that assertion was RIGHT for as long as the
+    block was the carrier. Deleting the function would delete the record of what
+    the fallback was and why, which is the history the next reader needs to
+    understand why P2.66 sat open for three packages.
+
+    ⛳ WHAT REPLACED IT. `_resolve_system_prompt` renders a VERSIONED system
+    prompt with `learning_outcomes` as a first-class Jinja variable and hands it
+    to the stage in `task_input.system_prompt` — a field the frozen body already
+    honours AHEAD of its `.j2` file (`stage2_storyboard.py:86-101`). The reason
+    the fold existed at all was that `_render_user_prompt`'s variable list is
+    fixed at nine names inside a frozen body; the SYSTEM slot has no such cage,
+    and nobody had noticed. No frozen edit, no delimiter, no drift.
+
+    The original docstring follows.
+    """
     """Fold the project's learning outcomes into the STORYBOARD stage's
     ``project_description``, under an explicit delimiter.
 
@@ -1875,7 +2047,15 @@ def _fetch_transcripts(
                         "id": str(t.get("id", "")),
                         "project_id": str(t.get("project_id", "")),
                         "sequence_order": t.get("sequence_order", 0),
-                        "original_text": t.get("refined_text") or "",
+                        # WP-IVGS-12: prefer the IMMUTABLE upload when the
+                        # row has one. `refined_text` is overwritten in place
+                        # by stage 1, so on a re-run it is a paraphrase of a
+                        # paraphrase; `source_text` is what was uploaded.
+                        "original_text": (
+                            t.get("source_text") or t.get("refined_text") or ""
+                        ),
+                        "source_text": t.get("source_text") or "",
+                        "source_kind": t.get("source_kind") or "",
                         "language_code": t.get("language_code") or "en-US",
                     }
                     for t in items

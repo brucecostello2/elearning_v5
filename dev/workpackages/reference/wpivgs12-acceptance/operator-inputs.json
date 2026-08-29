@@ -1,0 +1,8 @@
+{
+  "name": "WP-IVGS-12 acceptance — double-digit multiplication",
+  "description": "A short lesson for 8-to-10-year-olds who can already multiply single digits and understand tens and units, but have never multiplied two two-digit numbers. Warm, encouraging, conversational. The learner should finish able to do one themselves, unaided.",
+  "target_audience": "children aged 8-10",
+  "language_code": "en-US",
+  "max_runtime_seconds": 300,
+  "learning_outcomes": "LO-1: Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.\nLO-2: Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.\nLO-3: Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero."
+}

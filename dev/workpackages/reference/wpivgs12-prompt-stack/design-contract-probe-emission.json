@@ -1,0 +1,183 @@
+{
+  "outcomes": [
+    {
+      "id": "LO-1",
+      "text": "Given two 2-digit numbers, the learner will compute their product using the standard column algorithm with correct partial products and carries.",
+      "measurable": true,
+      "bloom_level": "apply",
+      "abcd": {
+        "audience": "9-year-olds",
+        "behavior": "compute",
+        "condition": "given two 2-digit numbers",
+        "degree": "correct partial products and carries"
+      },
+      "proposed_refinement": "Given two 2-digit numbers, the learner will compute their product using the standard column algorithm with correct partial products and carries, in 3 attempts or less."
+    },
+    {
+      "id": "LO-2",
+      "text": "The learner will explain why a placeholder zero is written in the second row.",
+      "measurable": true,
+      "bloom_level": "analyze",
+      "abcd": {
+        "audience": "9-year-olds",
+        "behavior": "explain",
+        "condition": "why a placeholder zero is written in the second row",
+        "degree": "correct explanation"
+      },
+      "proposed_refinement": "The learner will explain why a placeholder zero is written in the second row, using the term 'placeholder' and 'tens digit'."
+    }
+  ],
+  "scenes": [
+    {
+      "scene_index": 1,
+      "narration_text": "Introduction to two-digit multiplication",
+      "visual_description": "A friendly instructor appears on screen with a whiteboard behind them.",
+      "media_type": "video_clip",
+      "duration_seconds": 10,
+      "media_rationale": "To introduce the topic and grab the learner's attention.",
+      "text_carried_by": "narration",
+      "generation_params": {
+        "style": "friendly",
+        "pace": "medium"
+      },
+      "instructional_event": "guide",
+      "bloom_level": "remember",
+      "serves_outcomes": [
+        "LO-1"
+      ],
+      "provenance": {
+        "origin": "designed",
+        "rationale": "To introduce the topic and grab the learner's attention."
+      },
+      "signal_spec": {
+        "cue": "Let's learn how to multiply two-digit numbers.",
+        "response": "Learner pays attention to the instructor."
+      }
+    },
+    {
+      "scene_index": 2,
+      "narration_text": "Step-by-step explanation of the standard column algorithm",
+      "visual_description": "The instructor writes 23 above 14 on the whiteboard, lining up the ones.",
+      "media_type": "animation",
+      "duration_seconds": 30,
+      "media_rationale": "To demonstrate the standard column algorithm step-by-step.",
+      "text_carried_by": "narration",
+      "generation_params": {
+        "style": "step-by-step",
+        "pace": "slow"
+      },
+      "instructional_event": "present",
+      "bloom_level": "apply",
+      "serves_outcomes": [
+        "LO-1"
+      ],
+      "provenance": {
+        "origin": "designed",
+        "rationale": "To demonstrate the standard column algorithm step-by-step."
+      },
+      "signal_spec": {
+        "cue": "First multiply 4 by 3, which is 12 \u2014 write the 2, carry the 1.",
+        "response": "Learner understands the first step of the algorithm."
+      }
+    },
+    {
+      "scene_index": 3,
+      "narration_text": "Explanation of the placeholder zero",
+      "visual_description": "The instructor puts a zero as a placeholder in the second row.",
+      "media_type": "animation",
+      "duration_seconds": 15,
+      "media_rationale": "To explain the purpose of the placeholder zero.",
+      "text_carried_by": "narration",
+      "generation_params": {
+        "style": "explanatory",
+        "pace": "medium"
+      },
+      "instructional_event": "present",
+      "bloom_level": "analyze",
+      "serves_outcomes": [
+        "LO-2"
+      ],
+      "provenance": {
+        "origin": "designed",
+        "rationale": "To explain the purpose of the placeholder zero."
+      },
+      "signal_spec": {
+        "cue": "put a zero as a placeholder",
+        "response": "Learner understands the purpose of the placeholder zero."
+      }
+    },
+    {
+      "scene_index": 4,
+      "narration_text": "Guided practice",
+      "visual_description": "The instructor asks the learner to try another example: 32 times 21.",
+      "media_type": "video_clip",
+      "duration_seconds": 20,
+      "media_rationale": "To provide guided practice for the learner.",
+      "text_carried_by": "narration",
+      "generation_params": {
+        "style": "guiding",
+        "pace": "medium"
+      },
+      "instructional_event": "guide",
+      "bloom_level": "apply",
+      "serves_outcomes": [
+        "LO-1"
+      ],
+      "provenance": {
+        "origin": "designed",
+        "rationale": "To provide guided practice for the learner."
+      },
+      "signal_spec": {
+        "cue": "You do the first row this time.",
+        "response": "Learner attempts to apply the standard column algorithm."
+      }
+    }
+  ],
+  "dropped_beats": [
+    {
+      "span": {
+        "transcript_id": "script",
+        "start": 0,
+        "end": 10,
+        "quote": "Let's learn how to multiply two-digit numbers."
+      },
+      "summary": "Introduction to the topic",
+      "reason": "covered in scene 1"
+    },
+    {
+      "span": {
+        "transcript_id": "script",
+        "start": 10,
+        "end": 50,
+        "quote": "Take 23 times 14. Write 23 above 14, lining up the ones."
+      },
+      "summary": "Step-by-step explanation of the standard column algorithm",
+      "reason": "covered in scene 2"
+    },
+    {
+      "span": {
+        "transcript_id": "script",
+        "start": 50,
+        "end": 70,
+        "quote": "Now the tens digit: put a zero as a placeholder, then 1 times 3 is 3, and 1 times 2 is 2, giving 230."
+      },
+      "summary": "Explanation of the placeholder zero",
+      "reason": "covered in scene 3"
+    },
+    {
+      "span": {
+        "transcript_id": "script",
+        "start": 70,
+        "end": 100,
+        "quote": "Let's try another: 32 times 21. You do the first row this time."
+      },
+      "summary": "Guided practice",
+      "reason": "covered in scene 4"
+    }
+  ],
+  "evidence_map": {
+    "LO-1": [],
+    "LO-2": []
+  },
+  "design_notes": "The script provides a clear step-by-step explanation of the standard column algorithm and guided practice for the learner. The design includes four scenes, each serving specific outcomes and instructional events. The media types and generation parameters are chosen to support the instructional events and outcomes."
+}

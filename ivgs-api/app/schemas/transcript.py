@@ -18,6 +18,13 @@ class TranscriptResponse(BaseModel):
     sequence_order: int
     original_asset_id: Optional[UUID] = None
     refined_text: Optional[str] = None
+    # ── WP-IVGS-12, migration 0046 ──
+    # ⛔ `refined_text` IS NOT THE UPLOAD once a run has happened: stage 1
+    # PATCHes its paraphrase over it. `source_text` is the extraction as
+    # uploaded, written once and never by a stage, and it is what the Design
+    # Contract's character spans index into.
+    source_text: Optional[str] = None
+    source_kind: Optional[str] = None
     language_code: Optional[str] = None
     created_at: datetime
     updated_at: datetime

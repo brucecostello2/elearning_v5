@@ -1,0 +1,13 @@
+== A. is the legacy field read at all? ==
+  guided_json=<nonsense schema>    http=200 ACCEPTED  out='GAMMA.'
+  guided_json=<not even a dict>    http=200 ACCEPTED  out='GAMMA.'
+  guided_choice=<closed list>      http=200 ACCEPTED  out='GAMMA.'
+  nonexistent_field_control        http=200 ACCEPTED  out='GAMMA.'
+
+== B. json_schema on a realistic Design-Contract shape ==
+  http=200 PARSED  finish_reason=stop  scenes=2 outcomes=1
+    media_type       -> ['image', 'image']   (asked for 'hologram')
+    instructional_ev -> ['present', 'practice']   (asked for 'warmup')
+    provenance keys  -> [['source_refs'], ['source_refs']]
+    extra scene keys -> []   (asked for 'notes')
+    serves_outcomes  -> [['add-2-digit-numbers'], ['add-2-digit-numbers']]

@@ -36,6 +36,24 @@ class Transcript(Base):
         nullable=True,
     )
     refined_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # ── WP-IVGS-12, migration 0046 ──
+    # ⛔ `refined_text` IS NOT THE UPLOAD. The upload path writes the extracted
+    # file text here (`transcript_service.py:157`) and Stage 1 then PATCHes its
+    # paraphrase over the top of it (`stage1_transcript.py:241`), so on any
+    # project that has run once, the operator's script is gone. Measured on one
+    # 3,172-byte upload: 1,866 / 1,851 / 1,615 chars across three projects.
+    #
+    # `source_text` is the extraction as uploaded and is written ONCE, by the
+    # upload path only. It is what the Design Contract's `source_refs`
+    # character spans index into — a span offset is meaningless against a string
+    # that is rewritten between the write and the read — and it is what the gate
+    # shows beside a rewrite under ruling R1a.
+    source_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    # `uploaded` | `generated` | `unknown` — TRANSCRIPT_SOURCE_KINDS, checked in
+    # the database. Task 2's mode switch reads this and nothing else.
+    source_kind: Mapped[Optional[str]] = mapped_column(
+        String(16), nullable=True,
+    )
     language_code: Mapped[Optional[str]] = mapped_column(
         String(10), nullable=True,
     )

@@ -891,27 +891,52 @@ class TestTheTemplateCarriesTheContract:
         assert "DO NOT invent outcomes" in text
         assert "mention their absence" in text
 
-    def test_the_delimiter_matches_the_orchestrator_byte_for_byte(self, text):
+    def test_the_outcomes_carrier_is_the_system_prompt_variable(self, text):
         """The one way this feature fails silently.
 
-        The orchestrator writes the outcomes between these two lines because
-        the frozen stage body cannot be given a variable of its own (P2.66).
-        If the writer and the reader drift, the model is handed a block it was
-        never told to look for: no error, no log line, outcomes ignored.
+    ⛔ **RE-AIMED BY WP-IVGS-12, 2026-08-29 — P2.66 IS CLOSED AND THE CARRIER
+    IS GONE.** The delimiter WAS the one way this failed silently, for exactly
+    as long as the orchestrator wrote a block and RULE 0 read it. Migration 0047
+    gives the SYSTEM prompt its own lineage and the orchestrator renders it with
+    `learning_outcomes` as a first-class Jinja variable — a route that needed no
+    frozen edit because `task_input.system_prompt` is honoured AHEAD of the
+    `.j2` and is filled by `_build_stage_input`, which is not frozen.
+
+    So the two delimiter lines are DELIBERATELY ABSENT from the template, and
+    the constants stay in the orchestrator unused, pinned below, because a
+    half-removed carrier is worse than either state. **The silent-failure risk
+    is re-aimed, not dropped:** what must not drift now is the system prompt's
+    interpolation of the variable, and that is asserted here end to end.
         """
         open_line = "=== LEARNING OUTCOMES (authored by the course owner) ==="
         close_line = "=== END LEARNING OUTCOMES ==="
-        assert open_line in text
-        assert close_line in text
+        # GONE from the template, on purpose. A prompt still hunting for a block
+        # nobody writes reads its absence as "the outcomes were not stated".
+        assert open_line not in text
+        assert close_line not in text
 
+        repo = Path(__file__).resolve().parents[2]
         source = (
-            Path(__file__).resolve().parents[2]
-            / "ivgs-workers"
-            / "tasks"
-            / "pipeline_orchestrator_v2.py"
+            repo / "ivgs-workers" / "tasks" / "pipeline_orchestrator_v2.py"
         ).read_text(encoding="utf-8")
+        # The constants stay, byte-identical, and nothing calls the fold.
         assert f'OUTCOMES_OPEN = "{open_line}"' in source
         assert f'OUTCOMES_CLOSE = "{close_line}"' in source
+        assert source.count("_description_with_outcomes(") == 1
+
+        # And the carrier that REPLACED them must actually carry.
+        from jinja2 import BaseLoader, Environment
+
+        system = (
+            repo / "ivgs-api" / "seed" / "default_prompts"
+            / "storyboard_design_system.j2"
+        ).read_text(encoding="utf-8")
+        assert "{{ learning_outcomes }}" in system
+        env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
+        assert "SENTINEL-OUTCOME" in env.from_string(system).render(
+            learning_outcomes="SENTINEL-OUTCOME")
+        assert "SENTINEL-OUTCOME" not in env.from_string(system).render(
+            learning_outcomes="")
 
 
 # ---------------------------------------------------------------------------

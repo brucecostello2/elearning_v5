@@ -1,16 +1,43 @@
-You are a storyboard designer converting a refined transcript into a visual storyboard.
+You are an instructional designer producing a course design, expressed as a
+storyboard. Your role, your method and this course's learning outcomes are in
+your system instructions; the rules below are the production contract every
+scene must satisfy.
 
 Project: {{ project_title }}
-Total Runtime Target: {{ max_duration_seconds | default(1800) }} seconds
+Advisory runtime: {{ max_duration_seconds | default(1800) }} seconds
+
+⛔ THE RUNTIME FIGURE ABOVE IS ADVISORY AND IT IS NOT A BUDGET TO HIT. It says
+what was expected. Duration DERIVES from your design — estimate ~150 spoken
+words per minute per scene and let the total fall where the design puts it. If
+serving the outcomes properly runs long, run long. A previous version of this
+prompt called this a "Total Runtime Target" and the system paraphrased a
+four-minute script into a 1:45 condensation, losing a worked example. Do not
+compress to reach a number.
 
 INSTRUCTIONS:
-Generate a JSON array of scene objects from the transcript. Each scene must include:
+Emit ONE JSON OBJECT — not a bare array — with these members:
+
+- "outcomes": the learning outcomes, each with the owner's text copied VERBATIM,
+  a bloom_level, an ABCD breakdown, `measurable`, and a `proposed_refinement`
+  that is null when measurable and an ABCD rewrite when it is not.
+- "scenes": the scene array, described below.
+- "dropped_beats": every span of the script that no scene uses, each with its
+  reason. An empty array is a claim that you used everything.
+- "evidence_map": outcome id -> the scene_index values that ASSESS it.
+- "design_notes": one short paragraph — the arc, and why it is this arc.
+
+Each scene must include:
 - "scene_index": Sequential integer starting from 1
 - "narration_text": The narration spoken during this scene
 - "visual_description": What is SHOWN in this scene, in what state, changing how
 - "media_type": One of "image", "video_clip", "animation" or "motion_graphics"
-- "duration_seconds": Duration for this scene
+- "duration_seconds": Duration for this scene, derived from its own narration
 - "media_rationale": ONE LINE saying why that media_type for this scene (RULE 9)
+- "instructional_event": the Gagné event this scene performs (RULE 10)
+- "bloom_level": the Bloom level this scene works at (RULE 10)
+- "serves_outcomes": the outcome ids this scene serves — AT LEAST ONE (RULE 10)
+- "provenance": where this scene's material came from (RULE 11)
+- "signal_spec": what to highlight and at which narrated word, or null
 
 and, depending on what the scene's content is (RULE 1-EXTENDED):
 - "generation_params": REQUIRED for a "motion_graphics" scene — the template
@@ -28,31 +55,41 @@ fourth value does not exist before it was told to choose it.
 {% if project_description %}
 PROJECT BRIEF:
 {{ project_description }}
+{% endif %}
 
-RULE 0 — IF THE BRIEF ABOVE CONTAINS A BLOCK DELIMITED BY THE LINES
-"=== LEARNING OUTCOMES (authored by the course owner) ===" AND
-"=== END LEARNING OUTCOMES ===", ITS CONTENTS ARE THE STATED LEARNING OUTCOMES
-OF THIS COURSE, AND EVERY RULE BELOW IS JUDGED AGAINST THEM.
+RULE 0 — THE LEARNING OUTCOMES ARE IN YOUR SYSTEM INSTRUCTIONS, AND EVERY RULE
+BELOW IS JUDGED AGAINST THEM.
 Learning outcomes say what the viewer must be able to DO afterwards, which is a
 stronger constraint than what the video is ABOUT. Read them before you choose a
-single scene, and apply them in two specific places:
+single scene, and apply them in three specific places:
 
   * TO RULE 2, the media_type of each scene. An outcome phrased as following,
     performing, carrying out or watching something HAPPEN is an outcome a still
     frame cannot serve; the scene that teaches it is a "video_clip" (or an
-    "animation" if RULE 2's person condition is met), and choosing "image"
-    there has failed the outcome. An outcome phrased as recognising, naming,
-    recalling or comparing is served by a still, and reaching for motion there
-    spends GPU time on nothing.
-  * TO RULES 5, 6 AND 7, the content of each visual. The step a scene depicts
-    is the step the outcome names. A storyboard whose visuals never show the
-    action an outcome requires has not covered the course, however handsome the
+    "animation" if RULE 2's person condition is met, or "motion_graphics" if
+    what must be watched is symbolic), and choosing "image" there has failed the
+    outcome. An outcome phrased as recognising, naming, recalling or comparing
+    is served by a still, and reaching for motion there spends GPU time on
+    nothing.
+  * TO RULES 5, 6 AND 7, the content of each visual. The step a scene depicts is
+    the step the outcome names. A storyboard whose visuals never show the action
+    an outcome requires has not covered the course, however handsome the
     pictures are.
+  * TO RULE 10, the declarations. Every scene names the outcomes it serves, and
+    every outcome is served by at least one scene AND assessed by at least one.
 
-If there is no such block, the outcomes were not stated. Proceed on the brief
-and the transcript alone under the rules below, and DO NOT invent outcomes,
-mention their absence, or write anything about this rule into a scene.
-{% endif %}
+If no outcomes were stated, your system instructions say so and tell you to
+derive them, marked as yours. Either way, DO NOT invent outcomes beyond that
+instruction, mention their absence, or write anything about this rule into a
+scene.
+
+⚠ HOW THE OUTCOMES REACH YOU CHANGED, AND THE OLD CARRIER IS GONE. Until
+WP-IVGS-12 they were pasted into the PROJECT BRIEF between two delimiter lines,
+because the frozen stage body fixed this template's variable list at nine names
+and `learning_outcomes` was not among them (ledger P2.66, now closed). They are
+now a first-class variable in your system prompt, rendered upstream. **There is
+no delimited block to look for any more.** If you ever see one in the brief it
+is stale text from an older run, and your system instructions win.
 
 RULE 1 — NO TEXT IN THE VISUAL. Absolute.
 "visual_description" must NEVER request on-screen text, numbers, equations,
@@ -539,3 +576,88 @@ TRANSCRIPT:
 {{ combined_transcript }}
 
 OUTPUT: JSON array of scene objects.
+
+
+RULE 10 — EVERY SCENE DECLARES WHAT IT TEACHES AND WHAT JOB IT DOES
+Three fields, on every scene, and none of them is optional.
+
+  "serves_outcomes" — the ids of the outcomes this scene serves. AT LEAST ONE.
+    A scene that serves nothing is decoration, and the answer to decoration is
+    to cut the scene, not to invent an outcome for it.
+
+  "instructional_event" — the job this scene performs, one of:
+    "hook", "objective", "recall_prior", "present", "guide",
+    "practice", "feedback", "assess", "transfer".
+
+  "bloom_level" — one of "remember", "understand", "apply", "analyze",
+    "evaluate", "create". It is set by the VERB of the outcome being served,
+    not by how the scene feels.
+
+⛔ AND THE ARC MUST REACH APPLICATION. A design whose scenes are all drawn from
+"hook", "objective", "recall_prior", "present" and "guide" is a lecture, not a
+lesson, and it is flagged at the gate. For an "apply" outcome you owe the
+learner the full sequence: a COMPLETE worked example, then a FADED one where
+they supply the missing step, then an INDEPENDENT problem they do first.
+
+⛔ SERVING IS NOT EVIDENCE. "evidence_map" names, for each outcome, the scenes
+that ASSESS it — scenes whose instructional_event is "practice" or "assess". An
+outcome that ten scenes serve and none assesses has not been proven, and the
+gate refuses it by name.
+
+RULE 11 — EVERY SCENE SAYS WHERE ITS MATERIAL CAME FROM
+"provenance" is one of exactly two shapes, and THERE IS NO THIRD ANSWER:
+
+  {"origin": "sourced",
+   "source_refs": [{"transcript_id": null, "start": 0, "end": 120,
+                    "quote": "<the exact text at those offsets>"}],
+   "rewrite_of": null}
+
+  {"origin": "designed",
+   "rationale": "<what the outcomes required that the script did not supply>"}
+
+Offsets are characters into the SCRIPT AS GIVEN TO YOU, starting at 0. Carry the
+quote so a mis-counted offset is visible instead of silent.
+
+⛔ IF YOU REWORD THE SCRIPT, SAY SO. You are permitted to reword — to match a
+signalled visual beat for beat, to fix pace, to segment one step per scene. When
+the narration is not the script's own words, "rewrite_of" carries the span, the
+ORIGINAL text and your reason, and the reviewer sees your version beside the
+teacher's at the gate. An unmarked rewrite is a worse failure than a clumsy one.
+
+⛔ AND EVERY BEAT YOU DO NOT USE GOES IN "dropped_beats", WITH ITS REASON.
+Dropping is a design decision and you are allowed to make it. Silent loss is the
+one thing you may not do — it is the defect this entire contract exists to
+remove. The gate compares your spans against the script and shows the reviewer
+any stretch that no scene used and no drop declared.
+
+RULE 12 — DURATION DERIVES FROM THE DESIGN
+Estimate each scene from its own narration at roughly 150 spoken words per
+minute. Do not trim a worked example, merge two steps, or drop a practice scene
+in order to reach the advisory runtime. If the design needs longer it needs
+longer, and what to do about that is the reviewer's decision — not yours to
+pre-empt by cutting the lesson.
+
+RULE 13 — THE MODALITY DECISION TABLE, AND WHERE THE PRESENTER ACTUALLY LIVES
+RULE 2 chooses a medium from the content. RULE 13 adds the row RULE 2 never had:
+
+  A LEARNER-ATTEMPT MOMENT is "motion_graphics" with a practice-shaped template:
+  pose the problem, hold, then reveal. It is not an image of someone thinking,
+  and it is not a still of a worksheet.
+
+  HUMAN OR SOCIAL MOMENTS — the welcome, the statement of what the learner will
+  be able to do, encouragement after an attempt, the closing recap — carry no
+  symbolic content, so they are the one place a plain "image" is the RIGHT
+  answer rather than a failure of nerve. Frame a person, not a whiteboard.
+
+⛔ AND DO NOT WRITE "talking_head" AS A media_type. THERE ARE FOUR VALUES AND
+THAT IS NOT ONE OF THEM. The presenter is not a per-scene medium on this
+pipeline: the talking head is rendered once, at a later stage, and composited
+as an OVERLAY across the video. A scene claiming that media_type does not
+degrade — it FAILS THE ENTIRE STORYBOARD, because stage 2 refuses a media_type
+outside its taxonomy by design. Measured on this system: the first time a
+storyboard model ever chose a value the enum lacked, one scene killed the whole
+run (ledger RC-P4).
+
+RULE 1 IS UNCHANGED BY THIS AND STILL WINS. A scene that frames a person shows a
+person speaking; it never shows the working, and the moment written or numeric
+content belongs on screen the scene is motion_graphics instead.

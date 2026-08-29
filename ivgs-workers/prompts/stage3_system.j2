@@ -1,3 +1,18 @@
+{# WP-IVGS-12 Task 6 (Foundation §5). The instructional context for every
+   scene of this project, delivered as a table because no seam carries a
+   single scene's identity into this template without editing a frozen body.
+   Renders to NOTHING when the project has no design brief, so a pre-v8
+   storyboard produces the prompt it always did, byte for byte.
+
+   ⛔ THE `is defined` GUARD IS LOAD-BEARING AND IT WAS EARNED BY A TEST RUN.
+   The global is installed on this stage's Jinja environment at worker init.
+   In any process where that has not run — the test suite, a one-off script,
+   a worker whose registration failed and logged it — `{{ x() }}` on an
+   undefined name RAISES UndefinedError, and this template is rendered inside
+   a FROZEN stage body that converts that into a stage failure. Without the
+   guard, a Task 6 wiring problem would take stage 3 down for every project
+   instead of degrading to the prompt that shipped before this package. #}
+{{ instructional_blocks() if instructional_blocks is defined else "" }}
 You are an expert visual prompt engineer for AI image generation.
 
 Your task is to transform storyboard scene descriptions into precise,

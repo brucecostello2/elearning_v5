@@ -1,0 +1,220 @@
+{
+  "scenes": [
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Introduction to the lesson topic."
+      },
+      "bloom_level": "remember",
+      "scene_index": 1,
+      "signal_spec": null,
+      "narration_text": "Welcome to our lesson on double-digit multiplication. Today, we're going to learn how to multiply two double-digit numbers.",
+      "media_rationale": "Human moment: the welcome and introduction.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1",
+        "WP-IVGS-12-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A warm and inviting classroom with a teacher standing in front of a clean whiteboard, smiling at the camera.",
+      "instructional_event": "hook"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 120,
+            "quote": "Let's start with an example. Suppose we want to multiply 23 and 14.",
+            "start": 0,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "understand",
+      "scene_index": 2,
+      "signal_spec": null,
+      "narration_text": "Let's start with an example. Suppose we want to multiply 23 and 14. We'll begin by writing the numbers on top of each other, with the multiplicand on top and the multiplier on the bottom.",
+      "media_rationale": "Content is numeric, but the focus is on the setup, not the calculation.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, poised over a blank sheet of lined paper, with a ruler and a soft pink pencil case nearby.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 240,
+            "quote": "Next, we'll multiply the multiplicand by the ones digit of the multiplier, which is 4.",
+            "start": 120,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 3,
+      "signal_spec": null,
+      "narration_text": "Next, we'll multiply the multiplicand by the ones digit of the multiplier, which is 4. We'll write the result below the line.",
+      "media_rationale": "The motion of the pencil is inherent to the step.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": null,
+      "visual_description": "A hand moving a pencil down the ones column, with the numbers and line visible on the paper.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 360,
+            "quote": "Now, let's multiply the multiplicand by the tens digit of the multiplier, which is 10.",
+            "start": 240,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 4,
+      "signal_spec": null,
+      "narration_text": "Now, let's multiply the multiplicand by the tens digit of the multiplier, which is 10. We'll write the result below the previous one, with a placeholder zero in the ones place.",
+      "media_rationale": "The motion of the pencil is inherent to the step.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 25,
+      "generation_params": null,
+      "visual_description": "A hand moving a pencil down the tens column, with the numbers, line, and placeholder zero visible on the paper.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "video_clip",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 480,
+            "quote": "Finally, let's add the two partial products together to get our final answer.",
+            "start": 360,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 5,
+      "signal_spec": null,
+      "narration_text": "Finally, let's add the two partial products together to get our final answer.",
+      "media_rationale": "The motion of the pencil is inherent to the step.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": null,
+      "visual_description": "A hand moving a pencil across the paper, adding the numbers together.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Practice exercise for the learner."
+      },
+      "bloom_level": "apply",
+      "scene_index": 6,
+      "signal_spec": null,
+      "narration_text": "Let's practice multiplying two double-digit numbers on our own.",
+      "media_rationale": "Learner-attempt moment: the practice exercise.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 30,
+      "generation_params": {
+        "top": 23,
+        "label": "units",
+        "bottom": 14,
+        "column": 0,
+        "template": "highlight_and_hold"
+      },
+      "visual_description": "A blank sheet of lined paper with a pencil and a ruler nearby, and a gentle prompt on the screen to try the multiplication.",
+      "instructional_event": "practice"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Closing recap and reminder of the key concept."
+      },
+      "bloom_level": "remember",
+      "scene_index": 7,
+      "signal_spec": null,
+      "narration_text": "Remember, the key to multiplying double-digit numbers is to break it down into smaller parts and use the standard algorithm.",
+      "media_rationale": "Human moment: the closing recap and reminder.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1",
+        "WP-IVGS-12-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A teacher standing in front of a whiteboard with a diagram of the standard algorithm, and a gentle smile.",
+      "instructional_event": "transfer"
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "WP-IVGS-12-1",
+      "abcd": {
+        "degree": "accurately",
+        "audience": "8-10 year olds",
+        "behavior": "multiply two double-digit numbers",
+        "condition": "using the standard algorithm"
+      },
+      "text": "The learner can multiply two double-digit numbers.",
+      "measurable": true,
+      "bloom_level": "apply",
+      "proposed_refinement": null
+    },
+    {
+      "id": "WP-IVGS-12-2",
+      "abcd": {
+        "degree": "clearly",
+        "audience": "8-10 year olds",
+        "behavior": "explain the concept of place value",
+        "condition": "in the context of multiplication"
+      },
+      "text": "The learner can explain the concept of place value in multiplication.",
+      "measurable": true,
+      "bloom_level": "understand",
+      "proposed_refinement": null
+    }
+  ],
+  "design_notes": "The lesson follows a gradual release of responsibility model, where the teacher models the multiplication process, then guides the learner through it, and finally has the learner practice on their own. The lesson ends with a recap and reminder of the key concept, to reinforce the learner's understanding and application of the standard algorithm.",
+  "evidence_map": {
+    "WP-IVGS-12-1": [
+      6
+    ],
+    "WP-IVGS-12-2": []
+  },
+  "dropped_beats": []
+}

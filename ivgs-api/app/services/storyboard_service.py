@@ -12,6 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.storyboard_scene import StoryboardScene
+from app.services.design_brief_service import SCENE_DESIGN_FIELDS
 from app.models.render_job import RenderJob
 from app.services.regeneration import (
     RegenerationError,
@@ -64,6 +65,7 @@ class StoryboardService:
         generation_params: Optional[Dict[str, Any]] = None,
         media_rationale: Optional[str] = None,
         text_carried_by: Optional[str] = None,
+        design: Optional[Dict[str, Any]] = None,
     ) -> StoryboardScene:
         """Create or REPLACE the scene at this index (WP-43 D-2 fields included).
 
@@ -116,6 +118,36 @@ class StoryboardService:
             "text_carried_by": text_carried_by,
         }
 
+        # ── WP-IVGS-12: the scene carries its design declarations FROM BIRTH ──
+        #
+        # The Design Contract reaches the API BEFORE any scene row exists —
+        # `design_core.capture` flushes it the moment the model's response is
+        # parsed, because `_save_storyboard_scenes` swallows a non-2xx and a
+        # brief written first survives scenes that never land. So the
+        # declarations for THIS scene are looked up off the active brief by
+        # scene_index as the scene arrives, rather than back-filled afterwards.
+        #
+        # ⛳ NOT AN OPTIMISATION — A CORRECTNESS POINT. The frozen stage body
+        # dispatches `handle_stage_completion` immediately after the last scene
+        # POSTs, and that opens the review gate. A back-fill racing that
+        # dispatch would show the operator a gate with no design on it, some of
+        # the time, which is worse than never having one.
+        #
+        # Silent and free when there is no brief: pre-v8 storyboards get {}.
+        from app.services.design_brief_service import DesignBriefService
+
+        pending = await DesignBriefService(self.db).pending_design_for(
+            project_id, scene_index,
+        )
+        fields.update(pending)
+        # An explicit `design=` from the caller WINS over the brief: the gate's
+        # editor and any future whole-storyboard write are correcting what the
+        # brief said, and a lookup that overrode them would silently undo the
+        # reviewer.
+        for name, value in (design or {}).items():
+            if name in SCENE_DESIGN_FIELDS and value is not None:
+                fields[name] = value
+
         if existing is not None:
             for name, value in fields.items():
                 setattr(existing, name, value)
@@ -160,6 +192,17 @@ class StoryboardService:
         # problem and denied the fix.
         "media_rationale",
         "text_carried_by",
+        # WP-IVGS-12. The Design Contract's declarations are editable at the
+        # gate for exactly the reason the v7 pair are: the reviewer is the
+        # judge. A reviewer who can see "scene 7 serves no outcome" and cannot
+        # answer it has been shown a problem and denied the fix.
+        "serves_outcomes",
+        "instructional_event",
+        "bloom_level",
+        "source_refs",
+        "scene_origin",
+        "rewrite_of",
+        "signal_spec",
     )
 
     async def update_scene(

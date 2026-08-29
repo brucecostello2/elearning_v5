@@ -20,9 +20,27 @@ to the orchestrator and are folded into `project_description` there, between two
 explicit delimiter lines, FOR THE STORYBOARD BRANCH ONLY. The real fix -- a
 `learning_outcomes` template variable -- is ledgered P2.65b/P2.66.
 
-These tests gate the three things that can silently break that arrangement:
-the field must reach the dispatch, the fold must be storyboard-only, and the
-delimiter must not drift from the one the prompt reads.
+⛔ **SUPERSEDED IN PART BY WP-IVGS-12, 2026-08-29 — P2.66 IS CLOSED AND THE
+FOLD IS RETIRED.** The paragraph above describes the FALLBACK and it was
+accurate while the fallback was the carrier. It is no longer the carrier.
+
+⛳ The cage was only ever on the USER template. `_resolve_prompts`
+(`stage2_storyboard.py:86-111`) reads `task_input.system_prompt` FIRST and falls
+back to its `.j2`; `_resolve_prompts_from_api` returns `(None, user_text)` by
+construction so the API branch never overrides it; and
+`StoryboardGenerationInput.system_prompt` is filled by `_build_stage_input`,
+which is NOT a frozen body and set neither prompt field. So migration 0047 gives
+the SYSTEM prompt its own version lineage and the orchestrator renders it with
+`learning_outcomes` as a first-class Jinja variable. No frozen edit was needed
+and none was made.
+
+**These tests are RE-AIMED, NOT WEAKENED.** They still gate the same three
+risks, at the new path: the field must reach the dispatch (unchanged, and those
+tests are untouched); the outcomes must reach the MODEL (now asserted through
+the rendered system prompt instead of through a delimiter); and the frozen
+render call must still be untouched — that assertion is unchanged and is now
+worth MORE, because it is the proof this package took the wrapper rather than
+the edit.
 """
 from __future__ import annotations
 
@@ -300,34 +318,68 @@ class TestTheCarrierAndItsDelimiter:
     def template(self) -> str:
         return TEMPLATE.read_text(encoding="utf-8")
 
-    def test_the_delimiters_are_identical_in_both_files(
-        self, orchestrator, template,
-    ):
-        """THE ONE WAY THIS FEATURE FAILS SILENTLY.
+    def test_the_outcomes_reach_the_model_through_the_system_prompt(self):
+        """THE ONE WAY THIS FEATURE FAILS SILENTLY, AT THE NEW PATH.
 
-        The orchestrator writes the outcomes between these two lines; RULE 0
-        tells the model to look for them. If they drift, the model is handed a
-        block it was never told to read: no error, no log line, outcomes
-        ignored, everything green.
+        RE-AIMED BY WP-IVGS-12. It used to be a delimiter drift: the orchestrator
+        wrote the outcomes between two lines and RULE 0 told the model to look
+        for them, so if the two copies diverged the model was handed a block it
+        was never told to read — no error, no log line, outcomes ignored,
+        everything green.
+
+        The same risk exists at the new path in a different shape: the SYSTEM
+        template could stop interpolating the variable, and the outcomes would
+        simply not be in the prompt while every test about dispatch still
+        passed. So this asserts the whole way through — the variable is in the
+        template, and a rendered prompt CONTAINS the outcomes given to it and
+        does NOT contain outcomes that were not.
         """
-        open_line = "=== LEARNING OUTCOMES (authored by the course owner) ==="
-        close_line = "=== END LEARNING OUTCOMES ==="
-        assert f'OUTCOMES_OPEN = "{open_line}"' in orchestrator
-        assert f'OUTCOMES_CLOSE = "{close_line}"' in orchestrator
-        assert open_line in template
-        assert close_line in template
+        from jinja2 import BaseLoader, Environment
 
-    def test_the_fold_is_storyboard_only(self, orchestrator):
-        """Every other stage receives project_description as the project wrote
-        it, so `stage3_system.j2` does not silently gain a block of pedagogy."""
-        assert orchestrator.count("_description_with_outcomes(") == 2, (
-            "one definition and exactly one call site"
+        system = (
+            REPO / "ivgs-api" / "seed" / "default_prompts"
+            / "storyboard_design_system.j2"
+        ).read_text(encoding="utf-8")
+        assert "{{ learning_outcomes }}" in system, (
+            "the system prompt no longer interpolates the outcomes; they would "
+            "vanish from the model's view with nothing failing"
+        )
+        env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
+        with_them = env.from_string(system).render(learning_outcomes=OUTCOMES)
+        without = env.from_string(system).render(learning_outcomes="")
+        assert OUTCOMES in with_them
+        assert OUTCOMES not in without
+        assert "NO LEARNING OUTCOMES WERE STATED" in without
+
+    def test_the_fold_is_retired_and_nothing_calls_it(self, orchestrator):
+        """P2.66 CLOSED. The function is KEPT as the record of what the
+        fallback was — deleting it would delete the explanation of why the
+        ledger row sat open for three packages — but it must have no call site,
+        or the outcomes would arrive twice and by two different routes."""
+        assert orchestrator.count("_description_with_outcomes(") == 1, (
+            "the definition and NOTHING else; a call site means the retired "
+            "fold is still folding"
         )
         storyboard_branch = orchestrator[
             orchestrator.index("elif stage == PipelineStage.STORYBOARD_GENERATION.value:"):
             orchestrator.index("elif stage == PipelineStage.COMPOSITION_MANIFEST.value:")
         ]
-        assert "_description_with_outcomes(" in storyboard_branch
+        assert "_description_with_outcomes(" not in storyboard_branch
+        assert "storyboard_generation_system" in storyboard_branch, (
+            "the storyboard branch must resolve the versioned system prompt"
+        )
+
+    def test_the_delimiters_are_kept_identical_for_the_record(
+        self, orchestrator,
+    ):
+        """The constants stay, byte-identical to what they always were.
+
+        Nothing reads them any more, and that is exactly why they are pinned:
+        a half-removed carrier — constants gone, a stale block still being
+        written somewhere — is worse than either state.
+        """
+        assert 'OUTCOMES_OPEN = "=== LEARNING OUTCOMES (authored by the course owner) ==="' in orchestrator
+        assert 'OUTCOMES_CLOSE = "=== END LEARNING OUTCOMES ==="' in orchestrator
 
     def test_the_frozen_render_call_is_untouched(self):
         """AD-05 section 8. The nine names are still the nine names; if a tenth
@@ -349,51 +401,35 @@ class TestTheCarrierAndItsDelimiter:
 
 
 class TestRule0DegradesSilently:
+    """RE-AIMED BY WP-IVGS-12. v8's RULE 0 is unconditional — the outcomes are
+    in the system prompt now, so the user template no longer guards RULE 0
+    behind `{% if project_description %}` and no longer looks for a block."""
+
     @pytest.fixture(scope="class")
     def template(self) -> str:
         return TEMPLATE.read_text(encoding="utf-8")
 
-    def test_the_block_disappears_without_a_description(self, template):
-        """Rendered with an empty project_description, RULE 0 is not in the
-        prompt at all — no heading, no placeholder, nothing to reason about."""
+    def test_the_brief_block_disappears_without_a_description(self, template):
         from jinja2 import Template
 
         rendered = Template(template).render(
             project_title="p", project_description="",
             max_duration_seconds=300, combined_transcript="t",
         )
-        # The heading itself, not the substring: RULE 2 cross-references
-        # "RULE 0's learning outcomes", and that line is outside the guard and
-        # is meant to survive.
-        assert "RULE 0 —" not in rendered
-        assert "=== LEARNING OUTCOMES" not in rendered
         assert "PROJECT BRIEF:" not in rendered
         # ...and the rest of the prompt is intact.
         assert "EVERY VISUAL MUST DEPICT ITS OWN SCENE'S STEP" in rendered
         assert "CHOOSE media_type DELIBERATELY" in rendered
 
-    def test_the_block_appears_with_the_outcomes_in_it(self, template):
-        from jinja2 import Template
+    def test_no_delimited_block_is_looked_for_any_more(self, template):
+        """The two delimiter lines are GONE from the template, deliberately.
+        Nothing writes them, and a prompt still hunting for a block nobody
+        writes would read its absence as 'the outcomes were not stated'."""
+        assert "=== LEARNING OUTCOMES (authored by the course owner) ===" not in template
+        assert "=== END LEARNING OUTCOMES ===" not in template
+        assert "There is\nno delimited block to look for any more." in template
 
-        folded = (
-            "A short lesson on long multiplication.\n\n"
-            "=== LEARNING OUTCOMES (authored by the course owner) ===\n"
-            f"{OUTCOMES}\n"
-            "=== END LEARNING OUTCOMES ==="
-        )
-        rendered = Template(template).render(
-            project_title="p", project_description=folded,
-            max_duration_seconds=300, combined_transcript="t",
-        )
-        assert "RULE 0" in rendered
-        assert "follow the carrying step as it happens" in rendered
-        assert "=== END LEARNING OUTCOMES ===" in rendered
-
-    def test_a_description_with_no_block_still_gets_rule_0s_instructions(
-        self, template,
-    ):
-        """And RULE 0 tells the model what to do about that: proceed, and say
-        nothing about it."""
+    def test_rule_0_still_forbids_inventing_outcomes(self, template):
         from jinja2 import Template
 
         rendered = Template(template).render(
@@ -401,5 +437,6 @@ class TestRule0DegradesSilently:
             project_description="A short lesson on long multiplication.",
             max_duration_seconds=300, combined_transcript="t",
         )
-        assert "If there is no such block" in rendered
+        assert "RULE 0 —" in rendered
+        assert "THE LEARNING OUTCOMES ARE IN YOUR SYSTEM INSTRUCTIONS" in rendered
         assert "DO NOT invent outcomes" in rendered

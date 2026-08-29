@@ -227,3 +227,120 @@ class FailureCategory(str, enum.Enum):
     CONFIG = "config"
     EXTERNAL = "external"
     RESOURCE = "resource"
+
+
+# ── WP-IVGS-12: the Design Core vocabularies ─────────────────────────
+#
+# Migrations 0046 and 0048 create CHECK constraints from these exact tuples,
+# the ORM types them, the API schemas validate against them, the worker's
+# Design Contract JSON Schema closes its enums with them, and the published
+# stage-2 prompt lists them to the model. ONE list, six readers.
+#
+# ⛔ THE PRECEDENT IS WP-68's, AND IT COST AN ACCEPTANCE RUN. `motion_graphics`
+# was added to the PostgreSQL type and not to the Python list, so the INSERT
+# succeeded and every subsequent SELECT raised. A vocabulary that lives in two
+# places is a vocabulary that will disagree with itself. These are NOT enum
+# classes: they map onto VARCHAR + CHECK, not onto PostgreSQL ENUM types,
+# because a CHECK is alterable in an ordinary migration and a PG enum is not,
+# and these vocabularies are young.
+
+
+class InstructionalEvent(str, enum.Enum):
+    """Gagné's Nine Events of Instruction — the scene-sequence skeleton.
+
+    Instructional Design Foundation §3. Declaration order IS arc order and is
+    load-bearing: the Merrill cross-check asks whether a design ever leaves the
+    first five (a storyboard that never reaches `practice`/`assess` is a
+    lecture, not a lesson), and that question is answered by INDEX.
+    """
+
+    HOOK = "hook"                    # 1 gain attention
+    OBJECTIVE = "objective"          # 2 inform objectives
+    RECALL_PRIOR = "recall_prior"    # 3 stimulate recall of prior learning
+    PRESENT = "present"              # 4 present content
+    GUIDE = "guide"                  # 5 provide guidance
+    PRACTICE = "practice"            # 6 elicit practice
+    FEEDBACK = "feedback"            # 7 provide feedback
+    ASSESS = "assess"                # 8 assess
+    TRANSFER = "transfer"            # 9 enhance retention and transfer
+
+
+INSTRUCTIONAL_EVENTS: tuple[str, ...] = tuple(
+    e.value for e in InstructionalEvent
+)
+
+#: Events 1-5. A design whose scenes are drawn entirely from this set has
+#: demonstrated without ever applying — Merrill's application principle
+#: unmet. Foundation §3. Held as a frozenset so the validator's question is a
+#: set operation and not a slice nobody re-checks after the enum grows.
+DEMONSTRATION_EVENTS: frozenset[str] = frozenset(INSTRUCTIONAL_EVENTS[:5])
+
+#: Events 6-8. At least one of these must appear, and at least one must be
+#: reachable from every outcome, or the outcome has no evidence.
+APPLICATION_EVENTS: frozenset[str] = frozenset(INSTRUCTIONAL_EVENTS[5:8])
+
+#: The subset that ASSESSES. Serving an outcome is not evidence for it;
+#: Foundation §1 stage 2 ("determine acceptable evidence") is the whole point
+#: of separating these two questions, and the gate asks them separately.
+ASSESSING_EVENTS: frozenset[str] = frozenset({"practice", "assess"})
+
+
+class BloomLevel(str, enum.Enum):
+    """Bloom's taxonomy as revised (Anderson & Krathwohl). Foundation §2.
+
+    Ascending. The level is set by the outcome's BEHAVIOR VERB and it dictates
+    both the instruction and the evidence — `apply` is the level that activates
+    the worked-example effect (worked → faded → independent), which is what the
+    multiplication script already embodies.
+    """
+
+    REMEMBER = "remember"
+    UNDERSTAND = "understand"
+    APPLY = "apply"
+    ANALYZE = "analyze"
+    EVALUATE = "evaluate"
+    CREATE = "create"
+
+
+BLOOM_LEVELS: tuple[str, ...] = tuple(b.value for b in BloomLevel)
+
+
+class SceneOrigin(str, enum.Enum):
+    """Foundation §6's ``source_refs[] XOR origin:"designed"``.
+
+    SOURCED   the scene works from named character spans of the uploaded
+              script — verbatim, or reworded under R1a with `rewrite_of`
+              naming the span it reworded.
+    DESIGNED  material the integrated intent required and the script lacked.
+              Legitimate and expected; it is silence that is the defect class,
+              not invention.
+    """
+
+    SOURCED = "sourced"
+    DESIGNED = "designed"
+
+
+SCENE_ORIGINS: tuple[str, ...] = tuple(o.value for o in SceneOrigin)
+
+
+class TranscriptSourceKind(str, enum.Enum):
+    """Where a transcript row's text came from. Migration 0046.
+
+    Task 2's mode switch reads this and nothing else: an UPLOADED script is
+    EXTRACTED (beats, spans, events — extraction, not rewriting), a GENERATED
+    transcript keeps the pre-existing refine-for-readability behaviour.
+
+    UNKNOWN is a real answer and is used honestly: rows whose
+    ``original_asset_id`` was cleared by ``ON DELETE SET NULL`` have no evidence
+    left, and guessing would put the wrong stage-1 mode on the operator's own
+    history.
+    """
+
+    UPLOADED = "uploaded"
+    GENERATED = "generated"
+    UNKNOWN = "unknown"
+
+
+TRANSCRIPT_SOURCE_KINDS: tuple[str, ...] = tuple(
+    k.value for k in TranscriptSourceKind
+)

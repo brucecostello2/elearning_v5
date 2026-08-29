@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { apiClient } from "@/lib/api-client";
 import { useAssets } from "@/hooks/useAssets";
 import { useStoryboard } from "@/hooks/useStoryboard";
+import DesignBriefPanel from "@/components/project/DesignBriefPanel";
 import { useAssetObjectUrl } from "@/hooks/useAssetMedia";
 import { assetRenderKind } from "@/lib/media";
 import { sceneBadge, sceneTitle } from "@/lib/scenes";
@@ -242,6 +243,17 @@ export default function GateReviewPanel({
               {state.note ? ` — “${state.note}”` : ""}
             </p>
           )}
+
+          {/*
+            WP-IVGS-12 Task 5. THE DESIGN BRIEF SITS ABOVE THE COMPLETENESS
+            PANEL, and the order is the argument: the brief asks whether the
+            COURSE is designed — every outcome served and assessed, every beat
+            sourced or dropped with a reason, every rewrite shown beside the
+            script's own words — and the panel beneath asks whether each visual
+            depicts its own narration. The second question does not arise until
+            the first is answered, so it is not the first thing on the screen.
+          */}
+          {gate === "storyboard" && <DesignBriefPanel projectId={projectId} />}
 
           {gate === "storyboard" && (
             <CompletenessPanel items={state.completeness ?? []} />

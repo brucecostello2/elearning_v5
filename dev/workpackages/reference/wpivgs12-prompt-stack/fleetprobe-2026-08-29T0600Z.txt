@@ -1,0 +1,10 @@
+192.168.1.90  icmp=UP  22=OPEN 8000=---- 
+192.168.1.91  icmp=--  22=---- 8000=---- arp=INCOMPLETE
+192.168.1.92  icmp=--  22=---- 8000=---- arp=INCOMPLETE
+192.168.1.93  icmp=--  22=---- 8000=---- arp=INCOMPLETE
+192.168.1.94  icmp=--  22=---- 8000=---- arp=INCOMPLETE
+192.168.1.95  icmp=--  22=---- 8000=---- arp=INCOMPLETE
+192.168.1.96  icmp=UP  22=OPEN 8000=---- arp=DELAY
+192.168.1.7   icmp=UP  22=OPEN 8000=---- arp=REACHABLE
+192.168.1.51  icmp=UP  22=OPEN 8000=OPEN arp=DELAY
+192.168.1.1   icmp=UP  22=OPEN 8000=---- arp=REACHABLE

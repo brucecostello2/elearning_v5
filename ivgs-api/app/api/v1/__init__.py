@@ -18,6 +18,7 @@ from app.api.v1.assets import project_router as project_assets_router
 from app.api.v1.assets import asset_router as assets_router
 from app.api.v1.transcripts import router as transcripts_router
 from app.api.v1.storyboard import router as storyboard_router
+from app.api.v1.design_brief import router as design_brief_router
 from app.api.v1.languages import router as languages_router
 from app.api.v1.jobs import project_job_router, job_router
 
@@ -92,6 +93,7 @@ api_v1_router.include_router(projects_router, prefix="/projects", tags=["Project
 api_v1_router.include_router(project_assets_router)  # prefix built into router
 api_v1_router.include_router(transcripts_router)      # prefix built into router
 api_v1_router.include_router(storyboard_router)       # prefix built into router
+api_v1_router.include_router(design_brief_router)      # /projects/{id}/design-brief|design-review (WP-IVGS-12)
 api_v1_router.include_router(languages_router)         # prefix built into router
 api_v1_router.include_router(project_job_router)       # prefix built into router
 api_v1_router.include_router(model_selections_router)  # prefix built into router

@@ -173,6 +173,26 @@ PROJECT_CATEGORIES: tuple[Category, ...] = (
         count_sql="SELECT count(*) FROM storyboard_scenes WHERE project_id = :project_id",
     ),
     Category(
+        key="storyboard_design_briefs",
+        label="Design briefs",
+        detail=(
+            "The instructional design behind each storyboard: the learning "
+            "outcomes, the beats consciously dropped, the evidence map and the "
+            "model's own emission. One row per generation, superseded ones "
+            "included."
+        ),
+        # storyboard_design_briefs_project_id_fkey. WP-IVGS-12, migration 0048.
+        # ⛳ FOUND BY `test_every_project_fk_table_is_in_the_map` WITHIN MINUTES
+        # OF THE TABLE EXISTING — the same test that caught
+        # `prompt_tag_associations`. A project FK that nobody adds here deletes
+        # silently under a category the operator was never shown a count for.
+        cascade="cascade",
+        count_sql=(
+            "SELECT count(*) FROM storyboard_design_briefs "
+            "WHERE project_id = :project_id"
+        ),
+    ),
+    Category(
         key="transcripts",
         label="Transcripts",
         detail="Uploaded source transcripts and their refined text.",

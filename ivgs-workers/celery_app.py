@@ -34,6 +34,32 @@ from datetime import timedelta
 from typing import Any, Dict, Optional, Tuple
 
 from celery import Celery, signals
+
+# ⛔ ANCHOR THIS DIRECTORY ON sys.path AT IMPORT, NOT INSIDE ONE FUNCTION.
+#
+# WP-IVGS-12, and it is the SECOND time this bit. WP-IVGS-10's addendum took the
+# workers down on all four nodes for four minutes: `cd /app && python3 -c
+# "import temporal_pipeline"` SUCCEEDS while `celery -A worker worker` FAILS with
+# `No module named …`, because `python -c` puts the cwd on sys.path as `''` and a
+# console-script entry point puts the SCRIPT's directory (`/usr/local/bin`) there
+# instead. That fix anchored ONE import inside `apply_declared_time_limits`.
+#
+# It bit again the moment this package's `worker_init` handler imported
+# `design_core`: measured on the first deploy of v5.37.0-design-core —
+# `design_contract_observer_registration_failed … No module named 'design_core'`
+# in the container's own log, while `docker exec … python3 -c "import
+# design_core"` printed `ok`. THE SAME TWO DOORS, THE SAME DISAGREEMENT.
+#
+# Anchoring at module scope fixes the CLASS rather than the instance: every
+# sibling package beside this file — `design_core`, `temporal_pipeline`, `tasks`,
+# `clients` — resolves the same way under both entry points, and the next handler
+# that imports one does not have to know this history.
+import os as _os
+import sys as _sys
+
+_HERE = _os.path.dirname(_os.path.abspath(__file__))
+if _HERE not in _sys.path:
+    _sys.path.insert(0, _HERE)
 from celery.app.task import Task as CeleryTask
 from celery.schedules import crontab
 from kombu import Exchange, Queue
@@ -853,6 +879,68 @@ def on_worker_init(sender: Any = None, **kwargs: Any) -> None:
         queues=[q.name for q in (sender.app.conf.task_queues or [])],
     )
 
+    # ── WP-IVGS-12: register the Design Contract observer ──
+    # The seam that lets the contract leave a FROZEN stage body without the
+    # body changing and without a runtime monkey-patch (ruling R5; the route
+    # was approved by the operator 2026-08-29, so no exception #3 was asked
+    # for). `design_core.capture` is armed per task by `on_task_prerun` below.
+    #
+    # ⚠ Import inside the function, like everything else in this handler: the
+    # worker's console-script entry point puts the SCRIPT's directory on
+    # sys.path and not the cwd, which is how WP-IVGS-10's addendum took four
+    # nodes down for four minutes. A module-level import here would be
+    # evaluated by every process that touches celery_app, including ones that
+    # have no business loading httpx.
+    try:
+        # Belt and braces with the module-level anchor above: the same
+        # `__file__` derivation `apply_declared_time_limits` uses, applied here
+        # too, so this handler cannot depend on import ORDER to have a path.
+        import os as _o
+        import sys as _s
+
+        _d = _o.path.dirname(_o.path.abspath(__file__))
+        if _d not in _s.path:
+            _s.path.insert(0, _d)
+
+        from clients.vllm_client import RESPONSE_OBSERVERS
+        from design_core import capture as _design_capture
+
+        if _design_capture.observe not in RESPONSE_OBSERVERS:
+            RESPONSE_OBSERVERS.append(_design_capture.observe)
+        slog.info("design_contract_observer_registered")
+
+        # ── WP-IVGS-12 Task 6: the instructional header on every per-scene
+        # generation prompt (Foundation §5). Two documented Jinja APIs, no
+        # monkey-patching: a global for the stages whose system prompt is a
+        # FILE this package can edit, and a preprocess Extension for the one
+        # whose template is a constant inside a frozen body.
+        from design_core import headers as _headers
+
+        from tasks.stage3_images import jinja_env as _s3_env
+        from tasks.stage5_voiceover import jinja_env as _s5_env
+        from tasks.video_generation_task import jinja_env as _vid_env
+
+        _headers.install(_s3_env)                       # stage3_system.j2
+        _headers.install(_s5_env)                       # stage4_system.j2
+        _headers.install(_vid_env, preprocess=True)     # frozen module constant
+        slog.info("instructional_headers_installed", environments=3)
+    except Exception as exc:                                    # noqa: BLE001
+        # Non-fatal, and loud. A worker that cannot capture design contracts
+        # must still render; a worker that fails to say so is the RC-E class.
+        # ⛔ THE DIAGNOSTIC IS PART OF THE FIX. The first deploy of this package
+        # logged `No module named 'design_core'` while `docker exec … python3 -c
+        # "import design_core"` printed `ok`, and the message alone could not
+        # tell those two apart. sys.path and the traceback are what distinguish
+        # "the package is missing" from "this process cannot see it".
+        slog.error(
+            "design_contract_observer_registration_failed",
+            error_type=type(exc).__name__,
+            error=str(exc),
+            sys_path=list(_sys.path[:6]),
+            anchor=_HERE,
+            exc_info=True,
+        )
+
 
 @signals.worker_ready.connect
 def on_worker_ready(sender: Any = None, **kwargs: Any) -> None:
@@ -950,6 +1038,53 @@ def on_task_prerun(
     if kwargs and "job_id" in kwargs:
         structlog.contextvars.bind_contextvars(job_id=kwargs["job_id"])
 
+    # ── WP-IVGS-12 ──
+    # Arm the Design Contract capture with the ids off this task's own payload,
+    # and — for stage 2 only — arm the constrained-decoding schema that
+    # `chat_json` will use. Stage 2's frozen body passes no response_format and
+    # cannot be made to; this is where the schema is chosen instead.
+    try:
+        from design_core import capture as _design_capture
+
+        task_name = sender.name if sender else ""
+        payload = None
+        if args:
+            payload = args[0]
+        elif kwargs:
+            payload = kwargs.get("task_input_dict")
+        _design_capture.arm(task_name=task_name, task_input=payload)
+
+        # Task 6: the header table is project-level, so every media stage can
+        # arm it — not only the two the contract capture listens for.
+        from design_core import headers as _headers
+
+        _ctx = payload.get("job_context") if isinstance(payload, dict) else None
+        _pid = ""
+        if isinstance(_ctx, dict):
+            _pid = str(_ctx.get("project_id") or "")
+        if not _pid and isinstance(payload, dict):
+            _pid = str(payload.get("project_id") or "")
+        _headers.arm(_pid)
+
+        from clients.vllm_client import set_response_format_override
+
+        if task_name == _design_capture.STORYBOARD_TASK:
+            from design_core.contract import (
+                design_contract_schema,
+                response_format_for,
+            )
+            set_response_format_override(
+                response_format_for(design_contract_schema())
+            )
+        else:
+            set_response_format_override(None)
+    except Exception:                                           # noqa: BLE001
+        # Never block a task on the capture layer. The stage runs unconstrained
+        # and unobserved, which is exactly what it did before this package.
+        structlog.get_logger("ivgs.task.prerun").warning(
+            "design_contract_arm_failed", exc_info=True,
+        )
+
 
 @signals.task_postrun.connect
 def on_task_postrun(
@@ -963,6 +1098,21 @@ def on_task_postrun(
     import structlog
     slog = structlog.get_logger("ivgs.task.postrun")
     slog.info("task_completed", state=state, task_name=sender.name if sender else "unknown")
+    # WP-IVGS-12. Disarm before the context is cleared. `disarm` also logs
+    # `design_contract_absent` when stage 2 finished without emitting one —
+    # "the gate shows no brief" and "stage 2 ran a pre-v8 prompt" look
+    # identical from outside and have different fixes.
+    try:
+        from clients.vllm_client import set_response_format_override
+        from design_core import capture as _design_capture
+
+        from design_core import headers as _headers
+
+        _design_capture.disarm()
+        _headers.disarm()
+        set_response_format_override(None)
+    except Exception:                                           # noqa: BLE001
+        pass
     structlog.contextvars.clear_contextvars()
 
 

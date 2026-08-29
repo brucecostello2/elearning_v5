@@ -1,0 +1,350 @@
+{
+  "scenes": [
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Introduction to the lesson, setting the stage for the learner."
+      },
+      "bloom_level": "remember",
+      "scene_index": 1,
+      "signal_spec": null,
+      "narration_text": "Welcome to this lesson on double-digit multiplication. Today, we're going to learn how to multiply two numbers with two digits each.",
+      "media_rationale": "Human moment: introduction to the lesson.",
+      "serves_outcomes": [
+        "outcome_1",
+        "outcome_2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A warm and welcoming classroom with a teacher standing in front of a clean whiteboard.",
+      "instructional_event": "hook"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 120,
+            "quote": "Let's start with an example. Suppose we want to multiply 23 and 14.",
+            "start": 0,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "understand",
+      "scene_index": 2,
+      "signal_spec": null,
+      "narration_text": "Let's start with an example. Suppose we want to multiply 23 and 14. We'll begin by writing the numbers on top of each other, with the ones digits lined up.",
+      "media_rationale": "Content is numeric, but the focus is on the setup, not the calculation.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, writing two numbers on a piece of lined paper, with the ones digits aligned.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 180,
+            "quote": "Next, we'll multiply the numbers in each place value position.",
+            "start": 120,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 3,
+      "signal_spec": null,
+      "narration_text": "Next, we'll multiply the numbers in each place value position. We'll start with the ones digits.",
+      "media_rationale": "Focus is on the explanation of the process, not the calculation itself.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, pointing to the ones digits of the two numbers on the lined paper.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 240,
+            "quote": "Now, let's calculate the product of the ones digits.",
+            "start": 180,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 4,
+      "signal_spec": null,
+      "narration_text": "Now, let's calculate the product of the ones digits. 3 times 4 is 12.",
+      "media_rationale": "Numeric content, calculation needs to be shown step-by-step.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 8,
+      "generation_params": {
+        "top": 23,
+        "step": 0,
+        "phase": "start",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "A motion graphics animation of the calculation, with the numbers and symbols appearing on screen.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 300,
+            "quote": "We'll write the 2 in the ones place and carry the 1 to the tens place.",
+            "start": 240,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 5,
+      "signal_spec": null,
+      "narration_text": "We'll write the 2 in the ones place and carry the 1 to the tens place.",
+      "media_rationale": "Numeric content, calculation needs to be shown step-by-step.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 8,
+      "generation_params": {
+        "top": 23,
+        "step": 0,
+        "phase": "complete",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "A motion graphics animation of writing the 2 and carrying the 1.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 360,
+            "quote": "Now, let's multiply the tens digits.",
+            "start": 300,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 6,
+      "signal_spec": null,
+      "narration_text": "Now, let's multiply the tens digits. 20 times 10 is 200, and 20 times 4 is 80.",
+      "media_rationale": "Numeric content, calculations need to be shown step-by-step.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 12,
+      "generation_params": {
+        "top": 23,
+        "step": 1,
+        "phase": "full",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "A motion graphics animation of the calculations, with the numbers and symbols appearing on screen.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 420,
+            "quote": "Finally, let's add up the partial products.",
+            "start": 360,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 7,
+      "signal_spec": null,
+      "narration_text": "Finally, let's add up the partial products. 200 + 80 + 12 is 292.",
+      "media_rationale": "Numeric content, calculation needs to be shown step-by-step.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": {
+        "top": 200,
+        "phase": "full",
+        "bottom": 92,
+        "template": "column_addition_carry"
+      },
+      "visual_description": "A motion graphics animation of the addition, with the numbers and symbols appearing on screen.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 480,
+            "quote": "And that's the result of multiplying 23 and 14.",
+            "start": 420,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 8,
+      "signal_spec": null,
+      "narration_text": "And that's the result of multiplying 23 and 14. The answer is 322.",
+      "media_rationale": "Human moment: conclusion of the example.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 8,
+      "generation_params": null,
+      "visual_description": "A completed multiplication problem on lined paper, with the answer highlighted.",
+      "instructional_event": "assess"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Practice problem for the learner to try."
+      },
+      "bloom_level": "apply",
+      "scene_index": 9,
+      "signal_spec": null,
+      "narration_text": "Now it's your turn to try. Multiply 17 and 25.",
+      "media_rationale": "Learner-attempt moment: practice problem.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A blank piece of lined paper with a pencil lying next to it.",
+      "instructional_event": "practice"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Encouragement during practice."
+      },
+      "bloom_level": "apply",
+      "scene_index": 10,
+      "signal_spec": null,
+      "narration_text": "Take your time, and remember to line up the numbers correctly.",
+      "media_rationale": "Human moment: encouragement during practice.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 8,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, pointing to the lined paper.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Conclusion of practice."
+      },
+      "bloom_level": "apply",
+      "scene_index": 11,
+      "signal_spec": null,
+      "narration_text": "When you're finished, check your answer to make sure it's correct.",
+      "media_rationale": "Human moment: conclusion of practice.",
+      "serves_outcomes": [
+        "outcome_1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 8,
+      "generation_params": null,
+      "visual_description": "A completed multiplication problem on lined paper, with the answer highlighted.",
+      "instructional_event": "feedback"
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "outcome_1",
+      "abcd": {
+        "degree": "accurately",
+        "audience": "8-10 year olds",
+        "behavior": "multiply two double-digit numbers",
+        "condition": "using the standard multiplication algorithm"
+      },
+      "text": "The learner will be able to multiply two double-digit numbers.",
+      "measurable": true,
+      "bloom_level": "apply",
+      "proposed_refinement": null
+    },
+    {
+      "id": "outcome_2",
+      "abcd": {
+        "degree": "clearly",
+        "audience": "8-10 year olds",
+        "behavior": "explain the concept of place value",
+        "condition": "in the context of multiplication"
+      },
+      "text": "The learner will be able to explain the concept of place value in multiplication.",
+      "measurable": true,
+      "bloom_level": "understand",
+      "proposed_refinement": null
+    }
+  ],
+  "design_notes": "This lesson is designed to introduce double-digit multiplication to 8-10 year olds. The lesson starts with an introduction and an example, followed by a practice problem for the learner to try. The lesson concludes with feedback and encouragement. The media types used are image, motion graphics, and video clip, chosen based on the content and the instructional event. The lesson is designed to be engaging and easy to follow, with a clear structure and concise language.",
+  "evidence_map": {
+    "outcome_1": [
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      11
+    ],
+    "outcome_2": [
+      2,
+      3,
+      6
+    ]
+  },
+  "dropped_beats": []
+}

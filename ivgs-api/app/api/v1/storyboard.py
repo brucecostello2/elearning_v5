@@ -33,6 +33,7 @@ from app.schemas.storyboard import (
     SceneUpdate,
 )
 from app.schemas.render_job import JobResponse
+from app.services.design_brief_service import SCENE_DESIGN_FIELDS
 from app.services.storyboard_service import StoryboardService
 from app.services.regeneration import RegenerationError
 from app.api.v1._dispatch_guards import already_running, gate_blocked
@@ -95,6 +96,21 @@ async def create_scene(
         # reconstructed afterwards.
         media_rationale=data.media_rationale,
         text_carried_by=data.text_carried_by,
+        # ── WP-IVGS-12 ──
+        # ⛔ BUILT FROM A SHARED TUPLE, NOT TYPED OUT. Every explicit keyword
+        # list above this line is the shape that produced RC-P1: v7 asked the
+        # model for three new fields, the two lists in the frozen stage body
+        # named five and eight, and not one of the three could reach the
+        # database for three days. A hand-maintained whitelist drops the field
+        # that was added last, which is always the field somebody is waiting on.
+        # `test_wpivgs12_design_contract.py` asserts that every SceneCreate
+        # field reaches a column, so a v9 field that nobody wires here FAILS A
+        # TEST instead of vanishing.
+        design={
+            name: getattr(data, name, None)
+            for name in SCENE_DESIGN_FIELDS
+            if getattr(data, name, None) is not None
+        },
     )
     # WP-38 / ORCH-5. Nothing advanced projects.state when a stage completed:
     # the only writers were trigger_pipeline (DRAFT -> TRANSCRIPT_REFINEMENT) and

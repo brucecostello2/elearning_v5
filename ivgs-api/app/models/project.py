@@ -121,6 +121,17 @@ class Project(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    # WP-IVGS-12. `lazy="select"` and NOT `selectin` like its siblings: a brief
+    # carries the whole raw model emission in `raw_contract`, and every project
+    # list endpoint would otherwise drag several kilobytes of JSONB per project
+    # into memory to render a name and a state.
+    design_briefs = relationship(
+        "StoryboardDesignBrief",
+        back_populates="project",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="StoryboardDesignBrief.created_at.desc()",
+    )
 
     def __repr__(self) -> str:
         return f"<Project id={self.id} name={self.name!r} state={self.state}>"

@@ -62,6 +62,14 @@ CONSUMERS = {
     "composition.j2": None,
     "translation.j2": None,
     "scene_media_adaptation.j2": None,
+    # ── WP-IVGS-12, migration 0047 ──
+    # The SYSTEM half of each stage prompt, now versioned like the user half.
+    # `None` because no WORKER stage fetches them: the ORCHESTRATOR resolves
+    # them and hands them to the stage in `task_input.system_prompt`, a field
+    # the frozen body already honours ahead of its own `.j2`. That is why the
+    # `only_stage1_and_stage2_fetch` test below is still true with these here.
+    "storyboard_design_system.j2": None,
+    "transcript_extraction_system.j2": None,
 }
 
 #: Seed templates read by something OTHER than a worker stage. WP-64.
@@ -224,10 +232,23 @@ class TestTheConsumerMapIsHonest:
         )
 
     def test_the_unconsumed_templates_are_recorded(self):
-        """Nine of eleven seeded types have no WORKER reader. Stated, not
-        hidden. (Was eight of ten until WP-64 added the eleventh.)"""
-        assert len(UNCONSUMED) == 9
+        """Eleven of thirteen seeded types have no WORKER reader. Stated, not
+        hidden. (Was eight of ten until WP-64 added the eleventh; nine of eleven
+        until WP-IVGS-12 added the two SYSTEM prompts.)
+
+        ⛳ THE TWO NEW ONES ARE "UNCONSUMED" IN A THIRD SENSE AND IT IS THE
+        INTERESTING ONE. `translation.j2` has no reader at all;
+        `scene_media_adaptation.j2` is read by the API. The system prompts ARE
+        read on every run — but by the ORCHESTRATOR, which resolves them from
+        the `prompts` table (migration 0047) and hands the text to the stage in
+        `task_input.system_prompt`. No worker stage fetches them, which is why
+        `test_only_stage1_and_stage2_fetch_prompts_from_the_api` is still true,
+        and it is also why no frozen body had to change to deliver them.
+        """
+        assert len(UNCONSUMED) == 11
         assert "translation.j2" in UNCONSUMED
+        assert "storyboard_design_system.j2" in UNCONSUMED
+        assert "transcript_extraction_system.j2" in UNCONSUMED
 
     def test_the_api_only_template_is_not_recorded_as_unread(self):
         """WP-64. `None` in CONSUMERS means "no worker", NOT "nobody".

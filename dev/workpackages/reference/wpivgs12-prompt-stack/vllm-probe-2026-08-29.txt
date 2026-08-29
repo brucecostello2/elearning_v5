@@ -1,0 +1,7 @@
+# probe target http://192.168.1.91:8000  model llama-3.3-70b
+baseline_none                http=200  ACCEPTED NOT-ENFORCED  not JSON: "After careful consideration of the given context, which in this case is nonexistent, I've come to a conclusion. Here's m"
+json_object                  http=200  ACCEPTED NOT-ENFORCED  enum violated: verdict='GAMMA'
+guided_json                  http=200  ACCEPTED NOT-ENFORCED  not JSON: "After careful consideration of the given context, which in this case is nonexistent, I've come to a conclusion. Here's m"
+guided_json_backend          http=200  ACCEPTED NOT-ENFORCED  not JSON: "After careful consideration of the given context, which in this case is nonexistent, I've come to a conclusion. Here's m"
+response_format_json_schema  http=200  ACCEPTED ENFORCED      {"verdict": "alpha", "count": 1}
+structured_outputs           http=200  ACCEPTED ENFORCED      {"verdict": "alpha", "count": 1}

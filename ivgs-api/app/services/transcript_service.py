@@ -159,6 +159,22 @@ class TranscriptService:
                 sequence_order=sequence_order,
                 original_asset_id=asset.id,
                 refined_text=extracted_text,
+                # ── WP-IVGS-12, migration 0046 ──
+                # THE SAME TEXT, IN TWO COLUMNS, ON PURPOSE. `refined_text` is
+                # what stage 1 reads and then OVERWRITES with its output
+                # (`stage1_transcript.py:208` then `:241`), so on any project
+                # that has run once the operator's uploaded script is gone.
+                # Measured on one 3,172-byte upload across three of the
+                # operator's own projects: 1,866 / 1,851 / 1,615 characters —
+                # three different paraphrases, and no copy of the original.
+                #
+                # `source_text` is written HERE, once, and by nothing else. It
+                # is what the Design Contract's `source_refs` character spans
+                # index into (an offset against a string that gets rewritten
+                # between the write and the read means nothing), and it is what
+                # the gate shows beside a rewrite under ruling R1a.
+                source_text=extracted_text,
+                source_kind="uploaded",
                 language_code=language_code,
             )
             self.db.add(transcript)

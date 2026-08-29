@@ -43,6 +43,7 @@ from shared.models.enums import MEDIA_TYPES  # noqa: E402
 #: same reason MEDIA_TYPES is: three literal lists is how a fourth value gets
 #: added to two of them.
 from app.services.storyboard_completeness import TEXT_CARRIERS  # noqa: E402
+from shared.models.enums import BLOOM_LEVELS, INSTRUCTIONAL_EVENTS  # noqa: E402
 
 
 class SceneCreate(BaseModel):
@@ -150,6 +151,46 @@ class SceneCreate(BaseModel):
             )
         return v
 
+    # ── WP-IVGS-12, the Design Contract (migration 0048) ──
+    # Accepted here so a scene can be created or corrected WITH its
+    # declarations by any caller — the gate's editor, a test, a future
+    # whole-storyboard write. The pipeline's own path does not use them: the
+    # frozen stage body POSTs five keys plus three, and the declarations
+    # arrive by the design-brief seam instead.
+    serves_outcomes: Optional[List[str]] = Field(
+        default=None,
+        description="Outcome ids this scene serves. At least one, once a design brief exists.",
+    )
+    instructional_event: Optional[str] = Field(
+        default=None,
+        description="Gagné event (Foundation §3): " + " | ".join(INSTRUCTIONAL_EVENTS),
+    )
+    bloom_level: Optional[str] = Field(
+        default=None,
+        description="Bloom level (Foundation §2): " + " | ".join(BLOOM_LEVELS),
+    )
+    source_refs: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description=(
+            "Character spans of transcripts.source_text this scene works from. "
+            "Of source_text, NOT refined_text — stage 1 overwrites the latter."
+        ),
+    )
+    scene_origin: Optional[str] = Field(
+        default=None,
+        description="'sourced' (with source_refs) XOR 'designed'. Enforced by CHECK.",
+    )
+    rewrite_of: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "{span, original, reason} when the narration was reworded. Ruling "
+            "R1a: rewriting is permitted, silence is not."
+        ),
+    )
+    signal_spec: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional Mayer signalling: {highlight, at_word}.",
+    )
 
 class SceneAdaptDescriptionRequest(BaseModel):
     """Body for POST /projects/{id}/scenes/{sid}/adapt-description. WP-64 Task 3.
@@ -314,6 +355,46 @@ class SceneUpdate(BaseModel):
             )
         return v
 
+    # ── WP-IVGS-12, the Design Contract (migration 0048) ──
+    # Accepted here so a scene can be created or corrected WITH its
+    # declarations by any caller — the gate's editor, a test, a future
+    # whole-storyboard write. The pipeline's own path does not use them: the
+    # frozen stage body POSTs five keys plus three, and the declarations
+    # arrive by the design-brief seam instead.
+    serves_outcomes: Optional[List[str]] = Field(
+        default=None,
+        description="Outcome ids this scene serves. At least one, once a design brief exists.",
+    )
+    instructional_event: Optional[str] = Field(
+        default=None,
+        description="Gagné event (Foundation §3): " + " | ".join(INSTRUCTIONAL_EVENTS),
+    )
+    bloom_level: Optional[str] = Field(
+        default=None,
+        description="Bloom level (Foundation §2): " + " | ".join(BLOOM_LEVELS),
+    )
+    source_refs: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description=(
+            "Character spans of transcripts.source_text this scene works from. "
+            "Of source_text, NOT refined_text — stage 1 overwrites the latter."
+        ),
+    )
+    scene_origin: Optional[str] = Field(
+        default=None,
+        description="'sourced' (with source_refs) XOR 'designed'. Enforced by CHECK.",
+    )
+    rewrite_of: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "{span, original, reason} when the narration was reworded. Ruling "
+            "R1a: rewriting is permitted, silence is not."
+        ),
+    )
+    signal_spec: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional Mayer signalling: {highlight, at_word}.",
+    )
 
 class SceneBatchRegenerateRequest(BaseModel):
     """Body of POST /api/v1/projects/{id}/scenes/batch-regenerate.
@@ -354,6 +435,48 @@ class SceneResponse(BaseModel):
     text_carried_by: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
+
+    # ── WP-IVGS-12, the Design Contract (migration 0048) ──
+    # Accepted here so a scene can be created or corrected WITH its
+    # declarations by any caller — the gate's editor, a test, a future
+    # whole-storyboard write. The pipeline's own path does not use them: the
+    # frozen stage body POSTs five keys plus three, and the declarations
+    # arrive by the design-brief seam instead.
+    serves_outcomes: Optional[List[str]] = Field(
+        default=None,
+        description="Outcome ids this scene serves. At least one, once a design brief exists.",
+    )
+    instructional_event: Optional[str] = Field(
+        default=None,
+        description="Gagné event (Foundation §3): " + " | ".join(INSTRUCTIONAL_EVENTS),
+    )
+    bloom_level: Optional[str] = Field(
+        default=None,
+        description="Bloom level (Foundation §2): " + " | ".join(BLOOM_LEVELS),
+    )
+    source_refs: Optional[List[Dict[str, Any]]] = Field(
+        default=None,
+        description=(
+            "Character spans of transcripts.source_text this scene works from. "
+            "Of source_text, NOT refined_text — stage 1 overwrites the latter."
+        ),
+    )
+    scene_origin: Optional[str] = Field(
+        default=None,
+        description="'sourced' (with source_refs) XOR 'designed'. Enforced by CHECK.",
+    )
+    rewrite_of: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description=(
+            "{span, original, reason} when the narration was reworded. Ruling "
+            "R1a: rewriting is permitted, silence is not."
+        ),
+    )
+    signal_spec: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Optional Mayer signalling: {highlight, at_word}.",
+    )
 
     model_config = ConfigDict(from_attributes=True)
 

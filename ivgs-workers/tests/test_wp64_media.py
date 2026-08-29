@@ -215,14 +215,43 @@ class TestTheOutcomesCarrier:
         assert _description_with_outcomes("", "") == ""
         assert _description_with_outcomes(None, None) == ""
 
-    def test_the_delimiter_matches_the_prompt_that_reads_it(self):
-        """THE ONE WAY THIS FAILS SILENTLY. The orchestrator writes the block;
-        RULE 0 of the storyboard prompt tells the model to look for it. Drift
-        between them produces no error and no log line — just outcomes that are
-        never read."""
+    def test_the_carrier_moved_to_the_system_prompt_and_the_block_is_gone(self):
+        """THE ONE WAY THIS FAILS SILENTLY — RE-AIMED BY WP-IVGS-12, 2026-08-29.
+
+        It used to be delimiter drift: the orchestrator wrote the block, RULE 0
+        told the model to look for it, and divergence produced no error and no
+        log line — just outcomes that were never read.
+
+        P2.66 IS CLOSED. The outcomes are a first-class Jinja variable in a
+        VERSIONED system prompt (migration 0047), handed to the stage in
+        `task_input.system_prompt` — which the frozen body honours ahead of its
+        own `.j2`, so no frozen edit was needed. The failure mode moved with the
+        carrier: what must not drift now is the interpolation, so that is what
+        is asserted, and the template must NOT still be hunting for a block
+        nobody writes.
+        """
         template = (
             REPO / "ivgs-api" / "seed" / "default_prompts"
             / "storyboard_generation.j2"
         ).read_text(encoding="utf-8")
-        assert OUTCOMES_OPEN in template
-        assert OUTCOMES_CLOSE in template
+        assert OUTCOMES_OPEN not in template
+        assert OUTCOMES_CLOSE not in template
+
+        from jinja2 import BaseLoader, Environment
+
+        system = (
+            REPO / "ivgs-api" / "seed" / "default_prompts"
+            / "storyboard_design_system.j2"
+        ).read_text(encoding="utf-8")
+        env = Environment(loader=BaseLoader(), keep_trailing_newline=True)
+        assert "SENTINEL-OUTCOME" in env.from_string(system).render(
+            learning_outcomes="SENTINEL-OUTCOME")
+
+    def test_the_orchestrator_no_longer_folds_them_into_the_description(self):
+        """Retired, not deleted: the function is the record of what the
+        fallback was. But nothing may call it, or the outcomes would arrive
+        twice by two routes."""
+        source = (
+            REPO / "ivgs-workers" / "tasks" / "pipeline_orchestrator_v2.py"
+        ).read_text(encoding="utf-8")
+        assert source.count("_description_with_outcomes(") == 1

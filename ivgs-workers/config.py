@@ -398,6 +398,45 @@ class WorkerConfig:
         scaled = 2048 + (scene_count * self.vllm.storyboard_tokens_per_scene)
         return max(floor, min(scaled, self.vllm.storyboard_max_tokens_cap))
 
+    #: Seconds of headroom between the LLM client giving up and Celery's soft
+    #: limit firing. The client must lose the race: a VLLMTimeoutError is a
+    #: named, retryable, logged failure, while SoftTimeLimitExceeded kills the
+    #: task mid-write and leaves the job row stranded `running` (RC-P16, which
+    #: then blocks both /resume and WP-59 deletion). 30s covers the checkpoint
+    #: write, the scene POSTs and the completion dispatch that follow the call.
+    STORYBOARD_CLIENT_TIMEOUT_HEADROOM_S = 30
+
+    def _storyboard_client_timeout(self) -> float:
+        """The stage-2 LLM client timeout, DERIVED from the declared policy.
+
+        Falls back to the shared knob only if the policy module cannot be read,
+        and says so rather than silently reverting to 120s -- which is the
+        value that produced `vLLM timeout: All vLLM endpoints timed out` four
+        times in a row on the first v8 run.
+        """
+        try:
+            # Imported lazily: `config` is loaded by modules that must not gain
+            # a hard dependency on the Temporal shadow package.
+            from temporal_pipeline.policies import ALL_POLICIES
+
+            soft = next(
+                p.celery_soft_time_limit_s for p in ALL_POLICIES
+                if p.celery_task_name
+                == "tasks.stage2_storyboard.generate_storyboard_task"
+            )
+        except Exception:                                        # noqa: BLE001
+            import logging
+
+            logging.getLogger("ivgs.config").warning(
+                "storyboard_client_timeout_policy_unreadable: falling back to "
+                "the shared vllm_timeout of %ss. A v8 Design Contract measured "
+                "169.3s on 2026-08-29, so this WILL time out.",
+                self.timeouts.vllm_timeout,
+            )
+            return float(self.timeouts.vllm_timeout)
+        return float(max(soft - self.STORYBOARD_CLIENT_TIMEOUT_HEADROOM_S,
+                         self.timeouts.vllm_timeout))
+
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
         if stage == "storyboard_generation":
@@ -409,7 +448,26 @@ class WorkerConfig:
             return _AttrDict({
                 "base_url": self.vllm.primary_base_url,
                 "model": self.vllm.primary_model,
-                "timeout": self.timeouts.vllm_timeout,
+                # ⛔ WP-IVGS-12. THE SHARED 120s KNOB IS SHORTER THAN THIS
+                # STAGE'S OWN DECLARED POLICY, AND IT KILLED THE FIRST
+                # ACCEPTANCE RUN.
+                #
+                # `self.timeouts.vllm_timeout` is 120s for every stage. Stage 2
+                # has declared soft 270 / hard 300 since WP-41, and WP-IVGS-10's
+                # addendum made the CELERY limits actually apply -- but the
+                # CLIENT timeout inside them was never reconciled with either.
+                # It did not matter while a v7 storyboard took 55s. It matters
+                # now: a v8 Design Contract is emitted under grammar-constrained
+                # decoding, and MEASURED 2026-08-29 on the operator's own script
+                # against the pinned engine it takes **169.3s** (11,914 prompt
+                # tokens, 3,238 completion tokens, finish_reason=stop, 9 scenes).
+                # Comfortably inside the policy. Nowhere near inside 120s.
+                #
+                # This is RC-P17's shape one layer down, so it is fixed the same
+                # way: DERIVED FROM THE DECLARED POLICY, not transcribed from it.
+                # A transcription is "an accurate mirror with no authority" and
+                # goes stale the first time the policy moves.
+                "timeout": self._storyboard_client_timeout(),
                 "max_tokens": self.vllm.storyboard_max_tokens,
                 "temperature": self.vllm.temperature,
                 "top_p": self.vllm.top_p,

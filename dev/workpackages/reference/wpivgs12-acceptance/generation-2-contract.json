@@ -1,0 +1,258 @@
+{
+  "scenes": [
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Introduction to the lesson."
+      },
+      "bloom_level": "remember",
+      "scene_index": 1,
+      "signal_spec": null,
+      "narration_text": "Welcome to our lesson on double-digit multiplication. Today, we will learn how to multiply two double-digit numbers.",
+      "media_rationale": "Human moment: introduction to the lesson.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1",
+        "WP-IVGS-12-2"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A warm and inviting classroom with a teacher standing in front of a clean whiteboard.",
+      "instructional_event": "hook"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 120,
+            "quote": "Let's start with an example. We want to multiply 23 and 14.",
+            "start": 0,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "understand",
+      "scene_index": 2,
+      "signal_spec": null,
+      "narration_text": "Let's start with an example. We want to multiply 23 and 14.",
+      "media_rationale": "Setup for the problem: written content will be carried by narration.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A hand holding a pencil, poised over a blank sheet of lined paper with a ruler and a soft pink pencil case nearby.",
+      "instructional_event": "present"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 240,
+            "quote": "First, we multiply the numbers in the ones place: 3 times 4 equals 12.",
+            "start": 120,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 3,
+      "signal_spec": null,
+      "narration_text": "First, we multiply the numbers in the ones place: 3 times 4 equals 12.",
+      "media_rationale": "Numeric content: multiplication of ones place.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": {
+        "top": 23,
+        "step": 0,
+        "phase": "start",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "A two-row column layout on lined paper, the upper row one digit wider than the lower, a multiplication sign to the left of the lower row, a ruled horizontal line beneath both, and the answer row still empty.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 360,
+            "quote": "Then, we multiply the numbers in the tens place: 20 times 14 equals 280.",
+            "start": 240,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 4,
+      "signal_spec": null,
+      "narration_text": "Then, we multiply the numbers in the tens place: 20 times 14 equals 280.",
+      "media_rationale": "Numeric content: multiplication of tens place.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 25,
+      "generation_params": {
+        "top": 23,
+        "step": 1,
+        "phase": "complete",
+        "bottom": 14,
+        "template": "column_multiplication_step"
+      },
+      "visual_description": "The same two-row column layout, with the first partial-product row already written above the ruled line, and the second partial-product row being written below it.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "motion_graphics",
+      "provenance": {
+        "origin": "sourced",
+        "rewrite_of": null,
+        "source_refs": [
+          {
+            "end": 480,
+            "quote": "Finally, we add the partial products together: 12 + 280 equals 292.",
+            "start": 360,
+            "transcript_id": null
+          }
+        ]
+      },
+      "bloom_level": "apply",
+      "scene_index": 5,
+      "signal_spec": null,
+      "narration_text": "Finally, we add the partial products together: 12 + 280 equals 292.",
+      "media_rationale": "Numeric content: addition of partial products.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 20,
+      "generation_params": {
+        "top": 12,
+        "phase": "full",
+        "bottom": 280,
+        "template": "column_addition_carry"
+      },
+      "visual_description": "The completed two-row column layout, with both partial-product rows written above the ruled line, and the answer row filled in below it.",
+      "instructional_event": "guide"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Conclusion of the example."
+      },
+      "bloom_level": "remember",
+      "scene_index": 6,
+      "signal_spec": null,
+      "narration_text": "So, the product of 23 and 14 is 322.",
+      "media_rationale": "Human moment: conclusion of the example.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A completed worksheet with the final answer highlighted.",
+      "instructional_event": "assess"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Setup for the practice problem."
+      },
+      "bloom_level": "apply",
+      "scene_index": 7,
+      "signal_spec": null,
+      "narration_text": "Now it's your turn to try. Multiply 17 and 25.",
+      "media_rationale": "Learner-attempt moment: setup for the practice problem.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": "narration",
+      "duration_seconds": 15,
+      "generation_params": null,
+      "visual_description": "A blank worksheet with a pencil and a ruler.",
+      "instructional_event": "practice"
+    },
+    {
+      "media_type": "image",
+      "provenance": {
+        "origin": "designed",
+        "rationale": "Conclusion of the practice problem."
+      },
+      "bloom_level": "remember",
+      "scene_index": 8,
+      "signal_spec": null,
+      "narration_text": "Check your answer.",
+      "media_rationale": "Human moment: conclusion of the practice problem.",
+      "serves_outcomes": [
+        "WP-IVGS-12-1"
+      ],
+      "text_carried_by": null,
+      "duration_seconds": 10,
+      "generation_params": null,
+      "visual_description": "A completed worksheet with the final answer highlighted.",
+      "instructional_event": "feedback"
+    }
+  ],
+  "outcomes": [
+    {
+      "id": "WP-IVGS-12-1",
+      "abcd": {
+        "degree": null,
+        "audience": null,
+        "behavior": "multiply two double-digit numbers",
+        "condition": null
+      },
+      "text": "The learner can multiply two double-digit numbers.",
+      "measurable": true,
+      "bloom_level": "apply",
+      "proposed_refinement": null
+    },
+    {
+      "id": "WP-IVGS-12-2",
+      "abcd": {
+        "degree": null,
+        "audience": null,
+        "behavior": "explain the process of double-digit multiplication",
+        "condition": null
+      },
+      "text": "The learner can explain the process of double-digit multiplication.",
+      "measurable": true,
+      "bloom_level": "understand",
+      "proposed_refinement": null
+    }
+  ],
+  "design_notes": "The lesson follows a scaffolding approach, starting with an introduction and a worked example, followed by a practice problem and feedback. The media types are chosen based on the content classification, with motion graphics used for numeric content and images used for human moments and setup. The lesson aims to reach the application level of Bloom's taxonomy, with the learner able to multiply two double-digit numbers and explain the process.",
+  "evidence_map": {
+    "WP-IVGS-12-1": [
+      3,
+      4,
+      5,
+      6
+    ],
+    "WP-IVGS-12-2": [
+      2,
+      3,
+      4,
+      5
+    ]
+  },
+  "dropped_beats": []
+}

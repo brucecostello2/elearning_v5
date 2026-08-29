@@ -201,8 +201,16 @@ class TestV5PreservesEveryEarlierContract:
         "WHAT MOVES, as a verb",
         "WHAT HAPPENS IN WHAT ORDER",
         "RULE 0 —",
-        "=== LEARNING OUTCOMES (authored by the course owner) ===",
-        "=== END LEARNING OUTCOMES ===",
+        # ⛔ THE TWO DELIMITER LINES WERE HERE AND ARE REMOVED BY WP-IVGS-12,
+        # 2026-08-29, with the reason recorded rather than the parameters
+        # quietly deleted. They were gated because the orchestrator wrote the
+        # outcomes between them; migration 0047 gives the SYSTEM prompt a
+        # version lineage and the outcomes are now a first-class Jinja variable
+        # there, so NOTHING WRITES A BLOCK ANY MORE and a prompt still hunting
+        # for one would read its absence as "no outcomes were stated". The
+        # replacement assertion — that the system prompt actually interpolates
+        # them — lives in test_wp63_storyboard_prompt.py, end to end.
+        "THE LEARNING OUTCOMES ARE IN YOUR SYSTEM INSTRUCTIONS",
         "DO NOT invent outcomes",
         "NO TEXT IN THE VISUAL",
         "must NEVER request on-screen text",

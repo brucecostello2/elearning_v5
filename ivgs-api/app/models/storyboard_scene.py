@@ -85,6 +85,45 @@ class StoryboardScene(Base):
     text_carried_by: Mapped[Optional[str]] = mapped_column(
         String(16), nullable=True,
     )
+    # ── WP-IVGS-12, THE DESIGN CONTRACT; migration 0048 ──
+    # Instructional Design Foundation §6. Each of these is a DECLARATION the
+    # designer makes and the gate checks; none is inferred from prose, for the
+    # reason 0045 already records — a declaration a machine must recover with a
+    # regular expression is not a declaration.
+    #
+    # ⚠ Foundation §6 also lists `modality_rationale`. IT IS NOT ADDED HERE: it
+    # is `media_rationale` above, created by 0045 for v7's RULE 9, which asks
+    # the identical question. One fact, one column. Flagged in the WP-IVGS-12
+    # report rather than resolved silently.
+    #
+    # Outcome ids this scene serves, ≥1 once a design brief exists. Serving is
+    # not evidence — `evidence_map` on the brief answers the other half.
+    serves_outcomes: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # One of INSTRUCTIONAL_EVENTS (Gagné, Foundation §3). Complementary to
+    # `scene_kind`, not a duplicate of it: AD-09's `intro`/`outro` are template
+    # shapes, this is the instructional job the scene performs.
+    instructional_event: Mapped[Optional[str]] = mapped_column(
+        String(16), nullable=True,
+    )
+    # One of BLOOM_LEVELS (Foundation §2). Set by the served outcome's verb.
+    bloom_level: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    # [{transcript_id, start, end}] — character spans of `transcripts.source_text`,
+    # NOT of `refined_text`. See the note on that column.
+    source_refs: Mapped[Optional[list]] = mapped_column(JSONB, nullable=True)
+    # `sourced` | `designed` — SCENE_ORIGINS. The XOR against `source_refs` is a
+    # CHECK constraint (ck_storyboard_scenes_source_xor_designed), so it is the
+    # database that refuses a scene claiming both or claiming neither, rather
+    # than whichever caller remembers to look.
+    scene_origin: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    # {transcript_id, start, end, original} when the narration was REWORDED
+    # under R1a. Marking is mandatory and the original travels with the mark:
+    # the ruling is that silent loss is the defect class, so an unmarked rewrite
+    # is worse than a bad one.
+    rewrite_of: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+    # Optional. Mayer signalling (Foundation §4): what to highlight and when,
+    # e.g. the carry digit at the word "carry". This is what the motion
+    # template's `phase` mechanism exists to execute.
+    signal_spec: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

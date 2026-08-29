@@ -19,6 +19,7 @@ from app.models.project import Project  # noqa: F401
 from app.models.asset import Asset  # noqa: F401
 from app.models.transcript import Transcript  # noqa: F401
 from app.models.storyboard_scene import StoryboardScene  # noqa: F401
+from app.models.design_brief import StoryboardDesignBrief  # noqa: F401
 from app.models.prompt import Prompt  # noqa: F401
 from app.models.prompt_tag import PromptTag, prompt_tag_associations  # noqa: F401
 from app.models.render_job import RenderJob  # noqa: F401

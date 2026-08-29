@@ -1,0 +1,11 @@
+full Design Contract schema: HTTP 200 in 72.8s finish_reason=stop completion_tokens=1533
+  outcomes=2 scenes=4 dropped_beats=4 evidence_map keys=['LO-1', 'LO-2']
+  events   : ['guide', 'present', 'present', 'guide']
+  media    : ['video_clip', 'animation', 'animation', 'video_clip']
+  serves   : [['LO-1'], ['LO-1'], ['LO-2'], ['LO-1']]
+  origins  : ['designed', 'designed', 'designed', 'designed']
+  rewrites marked: 0
+  outcome LO-1: measurable=True bloom=apply refinement=yes
+  outcome LO-2: measurable=True bloom=analyze refinement=yes
+  ⛳ enum violations=[] scenes with no serves_outcomes=[] extra keys=[]
+  emission banked at /opt/ivgs/dev/workpackages/reference/wpivgs12-prompt-stack/design-contract-probe-emission.json

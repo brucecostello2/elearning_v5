@@ -273,10 +273,25 @@ MEDIUM_PHRASES = (
 #: stage body cannot be given a template variable of its own. If the two copies
 #: drift, the model is handed a block it was never told to look for, and the
 #: outcomes are silently ignored while everything still runs green.
+#: ⚠ AMENDED BY WP-IVGS-12, AND TWO PHRASES ARE DELIBERATELY DROPPED.
+#: The two delimiter lines were gated because the orchestrator pasted the
+#: outcomes into `project_description` between exactly them, and a drift
+#: between the writer and the reader meant the model was handed a block it was
+#: never told to look for while everything still ran green.
+#:
+#: ⛳ THERE IS NO BLOCK ANY MORE. Migration 0047 gives the SYSTEM prompt its own
+#: version lineage, and the orchestrator renders it with `learning_outcomes` as
+#: a first-class Jinja variable — which is what ledger P2.66 asked for and what
+#: `_description_with_outcomes` was an explicitly-marked fallback for. Gating a
+#: delimiter that nothing writes any more would refuse every correct v8.
+#:
+#: The two phrases that are still TRUE are kept, and two v8 phrases replace the
+#: dropped pair: the model must still be told the outcomes govern every rule,
+#: and must still be forbidden from inventing them.
 OUTCOMES_PHRASES = (
     "RULE 0 —",
-    "=== LEARNING OUTCOMES (authored by the course owner) ===",
-    "=== END LEARNING OUTCOMES ===",
+    "THE LEARNING OUTCOMES ARE IN YOUR SYSTEM INSTRUCTIONS",
+    "There is\nno delimited block to look for any more.",
     "DO NOT invent outcomes",
 )
 
@@ -323,6 +338,29 @@ V7_PHRASES = (
     "MEDIA TYPE IS DERIVED, NOT PREFERRED",
     '"phase" — WHICH PART OF THE ROW THIS SCENE WRITES',
 )
+
+#: WP-IVGS-12 Task 3. v8's Design Contract rules, gated for the reason every
+#: phrase here is gated: a template that has lost them publishes cleanly, runs
+#: cleanly, and goes straight back to sequencing a paraphrase.
+#:
+#: RULE 12 is the load-bearing one and it is the audit's headline finding.
+#: v7 said "Total Runtime Target" at the top of the prompt and Stage 1's system
+#: prompt said "align with max_runtime_seconds", and between them a four-minute
+#: script became a 1:45 condensation with a worked example missing. Duration is
+#: an OUTPUT of a design. A prompt that reinstates a target reinstates the
+#: defect this entire package exists to remove.
+V8_PHRASES = (
+    "RULE 10 — EVERY SCENE DECLARES WHAT IT TEACHES AND WHAT JOB IT DOES",
+    "SERVING IS NOT EVIDENCE",
+    "RULE 11 — EVERY SCENE SAYS WHERE ITS MATERIAL CAME FROM",
+    "IF YOU REWORD THE SCRIPT, SAY SO",
+    'EVERY BEAT YOU DO NOT USE GOES IN "dropped_beats", WITH ITS REASON',
+    "RULE 12 — DURATION DERIVES FROM THE DESIGN",
+    "THE RUNTIME FIGURE ABOVE IS ADVISORY AND IT IS NOT A BUDGET TO HIT",
+    "THE ARC MUST REACH APPLICATION",
+    'DO NOT WRITE "talking_head" AS A media_type',
+)
+
 
 #: WP-IVGS-10. The four media types, in the OUTPUT CONTRACT at the top of the
 #: template rather than only in RULE 2. v6 introduced `motion_graphics` in
@@ -443,6 +481,61 @@ async def main() -> None:
             "image model and its description is then forbidden from naming "
             "what the scene teaches."
         )
+    # ⛔ IT MUST RENDER, IN EVERY BRANCH. ADDED BY WP-IVGS-12 BECAUSE THIS
+    # PUBLISHER HAD NO SUCH CHECK AND I BROKE THE TEMPLATE WITH IT MISSING.
+    # Editing RULE 0 swallowed the `{% endif %}` that closed
+    # `{% if project_description %}`, and every phrase gate above still passed:
+    # a substring check cannot see an unbalanced block. It was caught by a test
+    # two layers away, and without that test it would have published cleanly and
+    # raised `TemplateSyntaxError` inside a FROZEN stage body at run time —
+    # `_render_user_prompt` converts it to `ValueError("Jinja2 syntax error in
+    # storyboard prompt")` and Stage 2 dies for every project at once.
+    from jinja2 import BaseLoader as _BaseLoader, Environment as _Env
+
+    _env = _Env(loader=_BaseLoader(), keep_trailing_newline=True)
+    for _label, _desc in (("with a brief", "A short lesson."), ("with none", "")):
+        try:
+            _rendered = _env.from_string(text).render(
+                project_title="p",
+                project_description=_desc,
+                target_audience="general",
+                max_duration_seconds=300,
+                total_runtime_seconds=300,
+                combined_transcript="t",
+                transcript_count=1,
+                target_scene_count=None,
+                language_code="en-US",
+            )
+        except Exception as _exc:                                # noqa: BLE001
+            _fail(
+                f"the template does not RENDER {_label}: {type(_exc).__name__}: "
+                f"{_exc}. Stage 2 renders this inside a frozen body; a template "
+                "that raises there fails every project until it is rolled back."
+            )
+        if len(_rendered) < 10_000:
+            _fail(
+                f"the template renders only {len(_rendered)} characters "
+                f"{_label} — a guard has swallowed most of the prompt."
+            )
+
+    missing = [p for p in V8_PHRASES if p not in text]
+    if missing:
+        _fail(
+            "the template has lost the WP-IVGS-12 Design Core amendments: "
+            f"missing {missing!r}. These are v8 and they are Phase 1 of the "
+            "recovery plan -- the storyboard becomes an instructional DESIGN "
+            "rather than a sequenced script. RULE 12 is the one that must not "
+            "be dropped: v7 headed this prompt with a 'Total Runtime Target' "
+            "and Stage 1's system prompt said 'align with "
+            "max_runtime_seconds', and between them a four-minute script "
+            "became a 1:45 condensation with a worked example missing. "
+            "Duration is an OUTPUT of a design. RULE 10 and RULE 11 are the "
+            "declarations the gate checks mechanically -- every outcome served "
+            "AND assessed, every beat sourced or dropped-with-reason -- and a "
+            "prompt that stops asking for them produces a design brief with "
+            "nothing in it while the run still reports success."
+        )
+
     missing = [p for p in FIELD_LIST_PHRASES if p not in text]
     if missing:
         _fail(
