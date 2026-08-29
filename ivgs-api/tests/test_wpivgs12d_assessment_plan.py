@@ -307,6 +307,47 @@ class TestTheStorageAndThePrompt:
                 / "storyboard_design_system.j2").read_text()
         assert "evidence_map" not in text
 
+    def test_the_prompt_defines_the_two_evidence_kinds_OPERATIONALLY(self):
+        """WP-IVGS-12e. The measured defect was not refusal — the model planned
+        an `assess` every generation and wrote one ZERO times in 36 scenes
+        (RC-Q9d). A model that never emits an event it keeps promising does not
+        know what that event IS as a scene, so v5 states it: pose cold, hold,
+        reveal, whole procedure, after the practice. All four beats are gated,
+        because a later edit that drops one drops the repair."""
+        text = (REPO / "ivgs-api" / "seed" / "default_prompts"
+                / "storyboard_design_system.j2").read_text()
+        assert "THE LEARNER ATTEMPTS IT WITH SUPPORT VISIBLE" in text
+        assert "THE LEARNER PERFORMS IT UNAIDED" in text
+        for beat in ("POSE THE PROBLEM COLD", "HOLD — a silent attempt window",
+                     "REVEAL for self-check"):
+            assert beat in text, beat
+        assert "THE WHOLE PROCEDURE, NOT A" in text
+        assert "COMES AFTER THAT OUTCOME'S `practice`" in text
+
+    def test_v5_removed_nothing_that_v4_gated(self):
+        """⛔ 12e IS ADDITIVE AND THIS IS THE PROOF. Every phrase the publisher
+        gated before this package must still be present; the package earns its
+        keep by adding, not by trading one instruction away for another."""
+        from app.scripts.wpivgs12_publish_design_prompts import DESIGN_PHRASES
+        text = (REPO / "ivgs-api" / "seed" / "default_prompts"
+                / "storyboard_design_system.j2").read_text()
+        v4_phrases = [
+            "BACKWARD DESIGN, IN THIS ORDER", "DETERMINE ACCEPTABLE EVIDENCE",
+            "Every scene traces to an outcome, and every outcome has evidence",
+            "EVERY REWRITE IS MARKED", "EVERY BEAT YOU DO NOT USE IS DECLARED",
+            "SILENT LOSS IS THE ONE THING YOU MAY NOT DO",
+            "DO NOT MERELY SHRINK THE SCRIPT TO FIT A RUNTIME",
+            "A DESIGN THAT NEVER LEAVES EVENTS 1-5 IS A LECTURE, NOT A LESSON",
+            "DURATION IS AN OUTPUT OF YOUR DESIGN, NEVER AN INPUT TO IT",
+            "YOU DO NOT WRITE THE OUTCOMES AND YOU CANNOT CHANGE THEM",
+            "DESIGN THE ASSESSMENT FIRST, THEN THE ARC THAT REALIZES IT",
+            "THE FADING SEQUENCE", "a COMPLETE worked example",
+            "an INDEPENDENT problem", "evidence_kind", "learner_does",
+        ]
+        for phrase in v4_phrases:
+            assert phrase in text, f"v5 dropped a v4 phrase: {phrase!r}"
+            assert phrase in DESIGN_PHRASES, f"ungated: {phrase!r}"
+
     def test_the_publisher_gates_the_new_load_bearing_phrases(self):
         from app.scripts.wpivgs12_publish_design_prompts import DESIGN_PHRASES
         text = (REPO / "ivgs-api" / "seed" / "default_prompts"

@@ -102,6 +102,22 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     "THE FADING SEQUENCE",
     "a COMPLETE worked example",
     "an INDEPENDENT problem",
+    # ⛔ WP-IVGS-12e. NOTHING IS REMOVED HERE — this package is additive, and
+    # every 12d phrase above survives. What is added is the OPERATIONAL
+    # definition of the two evidence kinds, because the measured defect was not
+    # that the model refused to build an assessment: it planned one every time
+    # and then wrote `assess` ZERO times in 36 scenes across three generations
+    # (RC-Q9d), and twelve generations across four regimes showed the same hole.
+    # A model that never emits an event it keeps promising does not know what
+    # that event IS as a scene. Foundation §3 event 8 ("full second problem,
+    # learner-first"), §4's modality table ("pose the problem, hold, then
+    # reveal") and §2's fading sequence already define it; v5 states it where
+    # the model reads.
+    "THE LEARNER PERFORMS IT UNAIDED",
+    "POSE THE PROBLEM COLD",
+    "HOLD — a silent attempt window",
+    "REVEAL for self-check",
+    "THE ASSESS IS THE WHOLE PROCEDURE, NOT A\nFRAGMENT",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
