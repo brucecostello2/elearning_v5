@@ -1,0 +1,7 @@
+STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanical refusals — only judgment flags.
+
+1 scene(s) survived every exit and still delegate written or numeric content to a medium that cannot draw it:
+  scene 7 (MOTION_CONTRADICTS_NARRATION): the template contradicts this scene's own narration — scene 7: parameter bottom=280 appears nowhere in this scene's narration or its neighbours', so it was invented. Spoken numbers are [2, 3, 5, 10, 14, 17, 19, 23, 25, 32, 43, 50, 67]. Refused rather than rendered.
+      exits tried -> exit (a): scene 7: parameter bottom=42 appears nowhere in this scene's narration or its neighbours', so it was invented. Spoken numbers are [2, 3, 5, 10, 14, 17, 19, 23, 25, 32, 43, 50, 67]. Refused rather than rendered.  ||  exit (b): not applicable — this refusal is MOTION_CONTRADICTS_NARRATION, so the DESCRIPTION demands nothing and rewriting it would change nothing
+
+Regenerate the storyboard, or edit the named scenes and re-run. The gate's refusal machinery still stands behind this as the belt; this is the stage refusing to report success it did not have.

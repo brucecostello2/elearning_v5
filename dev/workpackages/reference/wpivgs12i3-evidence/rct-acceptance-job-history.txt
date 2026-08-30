@@ -1,0 +1,8 @@
+job_type|status|started_at|left
+transcript_refinement|success|2026-08-30 16:37:18.572823+00|
+storyboard_generation|success|2026-08-30 16:47:41.379072+00|
+storyboard_generation|success|2026-08-30 18:02:27.961286+00|
+storyboard_generation|failed|2026-08-30 18:16:11.145156+00|STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanica
+storyboard_generation|failed|2026-08-30 18:19:45.287683+00|STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanica
+storyboard_generation|failed|2026-08-30 18:23:49.299391+00|STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanica
+(6 rows)

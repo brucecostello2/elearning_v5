@@ -1,0 +1,8 @@
+STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanical refusals — only judgment flags.
+
+1 scene(s) survived every exit and still delegate written or numeric content to a medium that cannot draw it:
+  scene 4 (VISUAL_DEMANDS_ON_SCREEN_TEXT): the visual_description asks for on-screen text — ['3', '4'] — while the scene is 'animation', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).
+      exits tried -> exit (a): scene 4: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: 'For example, 3 x 4 means 3 groups of 4.'. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.
+      exit (b) forbidden: this is a 'present' scene over narration that states written or numeric content, so the written content IS the content (Foundation §4: on-screen text is for the worked math itself). Rewriting the description to remove it would delete the lesson and leave a picture that validates — the dilution the 2026-08-30 amendment forbids. This scene belongs to exit (a) or exit (c)
+
+Regenerate the storyboard, or edit the named scenes and re-run. The gate's refusal machinery still stands behind this as the belt; this is the stage refusing to report success it did not have.

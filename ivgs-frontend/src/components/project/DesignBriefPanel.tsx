@@ -128,6 +128,12 @@ interface SystemCorrectionRow {
   media_type_was: string;
   media_type_is: string;
   applied: boolean;
+  /** "a" author as motion graphics · "c" split · "b" redescribe · "none" */
+  exit_taken?: string;
+  redescribed_to?: string | null;
+  redescribe_forbidden_because?: string | null;
+  split_into?: number[];
+  split_partition?: { digit_sentences?: string[]; context_sentences?: string[] };
   template?: string | null;
   params?: Record<string, unknown>;
   original_visual_description?: string | null;
@@ -156,6 +162,11 @@ interface SystemCorrectionsRecord {
   judgment_before: number;
   repaired: number;
   repair_refused: number;
+  coverage_before?: number;
+  coverage_after?: number;
+  mechanical_after?: number;
+  /** RC-T2. Non-null means the stage was NOT approvable and the job failed. */
+  stage_failure?: string | null;
   corrections?: SystemCorrectionRow[];
 }
 
@@ -199,9 +210,36 @@ function SystemCorrections({
         {corrections.refusals_before === 1 ? "" : "s"} before the pass,{" "}
         {corrections.refusals_after} after ·{" "}
         {corrections.mechanical_before} mechanical ·{" "}
-        {corrections.judgment_before} judgment, left for you. Original visual
-        descriptions are preserved; nothing below was rewritten.
+        {corrections.judgment_before} judgment, left for you.
+        {typeof corrections.coverage_before === "number" &&
+        typeof corrections.coverage_after === "number" ? (
+          <>
+            {" "}
+            Script coverage {corrections.coverage_before} →{" "}
+            {corrections.coverage_after} characters
+            {corrections.coverage_after >= corrections.coverage_before
+              ? " (not lowered)"
+              : " ⛔ LOWERED — this is a stage failure"}
+            .
+          </>
+        ) : null}
       </div>
+
+      {/* ── RC-T2. The stage-complete invariant, when it broke ─────────────
+          The operator's principle: a correctly completed stage arrives at the
+          gate with ZERO mechanical refusals. If this is showing, the job was
+          failed and the storyboard is not ready — the gate is here to be
+          edited from, not approved. */}
+      {corrections.stage_failure ? (
+        <div className="mt-2 rounded border-2 border-red-500 bg-red-500/10 p-2">
+          <div className="text-[11px] font-semibold text-red-900 dark:text-red-200">
+            The storyboard stage was NOT approvable and the job was failed
+          </div>
+          <pre className="mt-1 whitespace-pre-wrap break-words text-[10px] text-red-900 dark:text-red-200">
+            {corrections.stage_failure}
+          </pre>
+        </div>
+      ) : null}
 
       {/* ── RC-S1. ROWS THAT WERE REMOVED, AND WHAT THEY SAID ──────────
           A scene that vanishes without a trace is the silent correction this
@@ -248,9 +286,15 @@ function SystemCorrections({
               <span className="font-mono text-[10px] opacity-60">
                 {c.refusal_code}
               </span>{" "}
-              — the repair was refused and the scene was left as{" "}
+              — every exit refused and the scene was left as{" "}
               <span className="font-mono">{c.media_type_was}</span>. Its original
-              refusal stands. Authoring said: {c.repair_error}
+              refusal stands. {c.repair_error}
+              {c.redescribe_forbidden_because ? (
+                <div className="mt-0.5">
+                  Rewriting the description was <strong>forbidden</strong>:{" "}
+                  {c.redescribe_forbidden_because}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -267,14 +311,53 @@ function SystemCorrections({
               <span className="font-mono text-[10px] opacity-60">
                 {c.refusal_code}
               </span>{" "}
-              — <span className="font-mono">{c.media_type_was}</span> →{" "}
-              <span className="font-mono">{c.media_type_is}</span>, drawn by{" "}
-              <span className="font-mono">{c.template ?? "—"}</span>
-              {c.params && Object.keys(c.params).length > 0
-                ? ` (${Object.entries(c.params)
-                    .map(([k, v]) => `${k}=${String(v)}`)
-                    .join(", ")})`
-                : ""}
+              {c.exit_taken === "c" ? (
+                <>
+                  {" "}
+                  — <strong>split</strong> into scenes{" "}
+                  <span className="font-mono">
+                    {(c.split_into ?? []).join(" + ")}
+                  </span>
+                  . The narration was partitioned at sentence boundaries; no
+                  word was changed.
+                  <div className="mt-0.5 rounded bg-black/5 p-1 dark:bg-white/5">
+                    <div>
+                      <em>context half:</em>{" "}
+                      {(c.split_partition?.context_sentences ?? []).join(" ")}
+                    </div>
+                    <div className="mt-0.5">
+                      <em>digit half (drawn):</em>{" "}
+                      {(c.split_partition?.digit_sentences ?? []).join(" ")}
+                    </div>
+                  </div>
+                </>
+              ) : c.exit_taken === "b" ? (
+                <>
+                  {" "}
+                  — <strong>description rewritten</strong> to stop asking for
+                  on-screen text; the medium and the narration are unchanged.
+                  <div className="mt-0.5 rounded bg-black/5 p-1 dark:bg-white/5">
+                    <div>
+                      <em>was:</em> {c.original_visual_description}
+                    </div>
+                    <div className="mt-0.5">
+                      <em>is:</em> {c.redescribed_to}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {" "}
+                  — <span className="font-mono">{c.media_type_was}</span> →{" "}
+                  <span className="font-mono">{c.media_type_is}</span>, drawn by{" "}
+                  <span className="font-mono">{c.template ?? "—"}</span>
+                  {c.params && Object.keys(c.params).length > 0
+                    ? ` (${Object.entries(c.params)
+                        .map(([k, v]) => `${k}=${String(v)}`)
+                        .join(", ")})`
+                    : ""}
+                </>
+              )}
             </li>
           ))}
         </ul>

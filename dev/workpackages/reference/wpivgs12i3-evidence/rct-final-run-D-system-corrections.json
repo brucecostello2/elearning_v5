@@ -1,0 +1,142 @@
+{
+    "pruned": [
+        {
+            "media_type": "motion_graphics",
+            "updated_at": "2026-08-30T18:23:04.085669+00:00",
+            "scene_index": 12,
+            "narration_text": "Can you identify the units and tens digits in the number 23?",
+            "serves_outcomes": [
+                "LO-2"
+            ],
+            "instructional_event": "practice"
+        },
+        {
+            "media_type": "image",
+            "updated_at": "2026-08-30T18:23:04.113697+00:00",
+            "scene_index": 13,
+            "narration_text": "Explain the difference between 5 units and 50 units.",
+            "serves_outcomes": [
+                "LO-2"
+            ],
+            "instructional_event": "assess"
+        },
+        {
+            "media_type": "motion_graphics",
+            "updated_at": "2026-08-30T18:23:04.139716+00:00",
+            "scene_index": 14,
+            "narration_text": "Let's try multiplying 23 by 14 manually using a pencil and paper.",
+            "serves_outcomes": [
+                "LO-3"
+            ],
+            "instructional_event": "guide"
+        },
+        {
+            "media_type": "motion_graphics",
+            "updated_at": "2026-08-30T18:23:04.171874+00:00",
+            "scene_index": 15,
+            "narration_text": "Let's try multiplying 23 by 14 manually using a pencil and paper.",
+            "serves_outcomes": [
+                "LO-3"
+            ],
+            "instructional_event": "practice"
+        },
+        {
+            "media_type": "motion_graphics",
+            "updated_at": "2026-08-30T18:23:04.202756+00:00",
+            "scene_index": 16,
+            "narration_text": "Multiply 93 and 19.",
+            "serves_outcomes": [
+                "LO-3"
+            ],
+            "instructional_event": "assess"
+        }
+    ],
+    "ran_at": "2026-08-30T18:26:14.670653+00:00",
+    "scenes": 12,
+    "repaired": 1,
+    "survivors": [
+        {
+            "code": "VISUAL_DEMANDS_ON_SCREEN_TEXT",
+            "reason": "the visual_description asks for on-screen text — ['67'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).",
+            "scene_index": 4
+        },
+        {
+            "code": "MOTION_CONTRADICTS_NARRATION",
+            "reason": "the template contradicts this scene's own narration — scene 6: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: \"Let's work through an example together.\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "scene_index": 6
+        }
+    ],
+    "corrections": [
+        {
+            "params": {
+                "number": 45
+            },
+            "applied": true,
+            "template": "place_value_split",
+            "exit_taken": "a",
+            "split_into": [
+            ],
+            "scene_index": 3,
+            "refusal_code": "VISUAL_DEMANDS_ON_SCREEN_TEXT",
+            "repair_error": null,
+            "media_type_is": "motion_graphics",
+            "media_type_was": "image",
+            "redescribed_to": null,
+            "refusal_reason": "the visual_description asks for on-screen text — ['45'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).",
+            "split_partition": {
+            },
+            "original_visual_description": "A number line with the number 45 highlighted and space for the learner to write their answer.",
+            "redescribe_forbidden_because": null
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "exit_taken": "none",
+            "split_into": [
+            ],
+            "scene_index": 4,
+            "refusal_code": "VISUAL_DEMANDS_ON_SCREEN_TEXT",
+            "repair_error": "exit (a): scene 4: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: 'Explain why 67 is not a multiple of 10.'. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "media_type_is": "image",
+            "media_type_was": "image",
+            "redescribed_to": null,
+            "refusal_reason": "the visual_description asks for on-screen text — ['67'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).",
+            "split_partition": {
+            },
+            "original_visual_description": "The number 67 with a blank space for the explanation.",
+            "redescribe_forbidden_because": "this is a 'assess' scene over narration that states written or numeric content, so the written content IS the content (Foundation §4: on-screen text is for the worked math itself). Rewriting the description to remove it would delete the lesson and leave a picture that validates — the dilution the 2026-08-30 amendment forbids. This scene belongs to exit (a) or exit (c)"
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "exit_taken": "none",
+            "split_into": [
+            ],
+            "scene_index": 6,
+            "refusal_code": "MOTION_CONTRADICTS_NARRATION",
+            "repair_error": "exit (a): scene 6: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: \"Let's work through an example together.\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.  ||  exit (b): not applicable — this refusal is MOTION_CONTRADICTS_NARRATION, so the DESCRIPTION demands nothing and rewriting it would change nothing",
+            "media_type_is": "motion_graphics",
+            "media_type_was": "motion_graphics",
+            "redescribed_to": null,
+            "refusal_reason": "the template contradicts this scene's own narration — scene 6: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: \"Let's work through an example together.\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "split_partition": {
+            },
+            "original_visual_description": "A teacher standing in front of a whiteboard with a worked example of multiplying two double-digit numbers.",
+            "redescribe_forbidden_because": null
+        }
+    ],
+    "stage_failure": "STAGE NOT APPROVABLE. A completed storyboard stage must reach the gate with ZERO mechanical refusals — only judgment flags.\n\n2 scene(s) survived every exit and still delegate written or numeric content to a medium that cannot draw it:\n  scene 4 (VISUAL_DEMANDS_ON_SCREEN_TEXT): the visual_description asks for on-screen text — ['67'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).\n      exits tried -> exit (a): scene 4: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: 'Explain why 67 is not a multiple of 10.'. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.\n      exit (b) forbidden: this is a 'assess' scene over narration that states written or numeric content, so the written content IS the content (Foundation §4: on-screen text is for the worked math itself). Rewriting the description to remove it would delete the lesson and leave a picture that validates — the dilution the 2026-08-30 amendment forbids. This scene belongs to exit (a) or exit (c)\n  scene 6 (MOTION_CONTRADICTS_NARRATION): the template contradicts this scene's own narration — scene 6: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: \"Let's work through an example together.\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.\n      exits tried -> exit (a): scene 6: template 'column_multiplication_step' needs narration about multiply/multiplying/times, and this scene's words contain none of them: \"Let's work through an example together.\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.  ||  exit (b): not applicable — this refusal is MOTION_CONTRADICTS_NARRATION, so the DESCRIPTION demands nothing and rewriting it would change nothing\n\nRegenerate the storyboard, or edit the named scenes and re-run. The gate's refusal machinery still stands behind this as the belt; this is the stage refusing to report success it did not have.",
+    "coverage_after": 120,
+    "refusals_after": 2,
+    "repair_refused": 2,
+    "coverage_before": 120,
+    "judgment_before": 0,
+    "refusals_before": 3,
+    "mechanical_after": 2,
+    "mechanical_before": 3,
+    "prune_skipped_because": null
+}

@@ -84,13 +84,21 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.storyboard_scene import StoryboardScene
+from app.services.design_review import covered_character_count
+from app.services.scene_split import (
+    Partition, child_events, partition_narration, split_durations,
+)
 from app.services.storyboard_completeness import (
     CODE_MOTION_CONTRADICTS_NARRATION,
     CODE_MOTION_WITHOUT_TEMPLATE,
     CODE_NARRATION_TEXT_UNDECLARED,
     CODE_VISUAL_DEMANDS_TEXT,
     SEV_REFUSE,
+    assess_scene,
     assess_storyboard,
+)
+from app.services.visual_redescribe import (
+    RedescribeRefused, redescribe_scene, redescription_is_legal,
 )
 
 logger = logging.getLogger(__name__)
@@ -138,12 +146,25 @@ class Correction:
     media_type_is: str
     #: True when the scene now carries a template and re-validates clean.
     applied: bool
+    #: WHICH EXIT TOOK IT. "a" author-as-motion-graphics, "c" scene split,
+    #: "b" redescribe, or "none" when all three refused. The ruled order is
+    #: a → c → b, and a reader must be able to see which one ran without
+    #: inferring it from the other fields.
+    exit_taken: str = "a"
     template: Optional[str] = None
     params: Dict[str, Any] = field(default_factory=dict)
     #: ⛳ PRESERVED, NEVER REWRITTEN, and recorded so the reviewer can see that.
     original_visual_description: Optional[str] = None
     #: Set only when authoring refused. Both errors are named, per the ruling.
     repair_error: Optional[str] = None
+    #: Exit (b): the description as it now reads. The original is above.
+    redescribed_to: Optional[str] = None
+    #: Exit (b), when it was not even attempted: WHY the amendment forbade it.
+    redescribe_forbidden_because: Optional[str] = None
+    #: Exit (c): the child scene's index and the sentence partition, shown so a
+    #: reviewer can check that no word moved and none was lost.
+    split_into: List[int] = field(default_factory=list)
+    split_partition: Dict[str, Any] = field(default_factory=dict)
 
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -191,12 +212,103 @@ class RepairPass:
     #: "I could not tell whether there was a surplus" are different facts and a
     #: reviewer must be able to tell them apart.
     prune_skipped_because: Optional[str] = None
+    #: RC-T2. Characters of the uploaded script the design accounts for, before
+    #: and after this pass. A DROP is a stage failure — see `stage_failure`.
+    coverage_before: int = 0
+    coverage_after: int = 0
+    #: RC-T2. Mechanical refusals still standing after all three exits ran.
+    #: The invariant is that this is ZERO.
+    mechanical_after: int = 0
+    #: RC-T2. The surviving refusals THEMSELVES, read off the re-validation.
+    #:
+    #: ⛔ NOT DERIVED FROM `corrections`, AND THAT WAS A DEFECT MEASURED ON THE
+    #: ACCEPTANCE RUN. The first cut counted survivors as "corrections that did
+    #: not apply", which misses a scene that was never a correction's subject at
+    #: all — and it printed a failure saying "1 scene(s) survived" above an
+    #: empty list. A message that states a count it cannot name is worse than no
+    #: message. These come from the assessment, so the count and the names are
+    #: one fact.
+    survivors: List[Dict[str, Any]] = field(default_factory=list)
+
+    def stage_failure(self) -> Optional[str]:
+        """⛔ THE STAGE-COMPLETE INVARIANT (RC-T2). None means approvable.
+
+        The operator's principle, 2026-08-30: **a correctly completed storyboard
+        stage arrives at the gate with ZERO mechanical refusals — only judgment
+        flags.** So a surviving mechanical refusal is not a gate finding to be
+        rendered in red and shrugged at; it is a STAGE FAILURE, and it says so
+        with every scene named and every exit's own sentence quoted.
+
+        ⛳ AND FIDELITY IS PART OF THE SAME INVARIANT. A pass that lowered
+        script coverage bought its clean gate by deleting content, which is the
+        dilution the amendment forbids. Both conditions are checked here so
+        neither can be satisfied at the other's expense.
+        """
+        problems: List[str] = []
+        if self.coverage_after < self.coverage_before:
+            problems.append(
+                f"the repair pass LOWERED script coverage from "
+                f"{self.coverage_before} to {self.coverage_after} characters. A "
+                f"repair may never buy a clean gate by losing content "
+                f"(operator ruling, 2026-08-30)."
+            )
+        tried = {c.scene_index: c for c in self.corrections if not c.applied}
+        if self.survivors or self.mechanical_after > 0:
+            lines = []
+            for survivor in self.survivors:
+                index = survivor.get("scene_index")
+                line = (
+                    f"  scene {index} ({survivor.get('code')}): "
+                    f"{survivor.get('reason')}"
+                )
+                correction = tried.get(index)
+                if correction is not None:
+                    line += (
+                        f"\n      exits tried -> "
+                        f"{correction.repair_error or 'none recorded'}"
+                    )
+                    if correction.redescribe_forbidden_because:
+                        line += (
+                            f"\n      exit (b) forbidden: "
+                            f"{correction.redescribe_forbidden_because}"
+                        )
+                else:
+                    line += (
+                        "\n      no exit was attempted for this scene — it was "
+                        "not among the refusals the pass set out to repair, "
+                        "which means it appeared or changed during the pass"
+                    )
+                lines.append(line)
+            problems.append(
+                f"{self.mechanical_after or len(self.survivors)} scene(s) "
+                f"survived every exit and still delegate written or numeric "
+                f"content to a medium that cannot draw it:\n"
+                + ("\n".join(lines) if lines else
+                   "  (the re-validation reported none by name — this is itself "
+                   "a defect in the pass and must be investigated)")
+            )
+        if not problems:
+            return None
+        return (
+            "STAGE NOT APPROVABLE. A completed storyboard stage must reach the "
+            "gate with ZERO mechanical refusals — only judgment flags.\n\n"
+            + "\n\n".join(problems)
+            + "\n\nRegenerate the storyboard, or edit the named scenes and "
+            "re-run. The gate's refusal machinery still stands behind this as "
+            "the belt; this is the stage refusing to report success it did not "
+            "have."
+        )
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "ran_at": self.ran_at,
             "pruned": [p.as_dict() for p in self.pruned],
             "prune_skipped_because": self.prune_skipped_because,
+            "coverage_before": self.coverage_before,
+            "coverage_after": self.coverage_after,
+            "mechanical_after": self.mechanical_after,
+            "survivors": list(self.survivors),
+            "stage_failure": self.stage_failure(),
             "scenes": self.scenes,
             "refusals_before": self.refusals_before,
             "refusals_after": self.refusals_after,
@@ -320,6 +432,172 @@ async def prune_scenes_not_in_design(
     return pruned, None
 
 
+
+class SceneSplitRefused(RuntimeError):
+    """The split could not be made, and the sentence says why."""
+
+
+async def _split_scene(
+    db: AsyncSession,
+    *,
+    project_id: UUID,
+    parent: StoryboardScene,
+    part: Partition,
+    project: Any,
+    context_scenes: List[Any],
+) -> int:
+    """Exit (c). Cut one scene in two and author the digit half. Returns the
+    child's `scene_index`.
+
+    ⛔ THE ORDER OF WRITES MATTERS AND IS NOT INTERCHANGEABLE.
+
+      1. **Author the digit child's template FIRST, before any row moves.** If
+         the authoring refuses, this function raises and nothing has been
+         written — the storyboard is exactly as it was and the caller records a
+         refusal naming both exits. Renumbering first and failing second would
+         leave the storyboard shuffled by a repair that did not happen.
+      2. Shift every later scene up by one, **descending**, so no two rows hold
+         one index even transiently.
+      3. Insert the child immediately after its parent.
+      4. ⛳ **Rewrite the ACTIVE BRIEF's `scene_designs` to match.** This is not
+         bookkeeping, it is load-bearing: RC-S1's `prune_scenes_not_in_design`
+         deletes any row the design of record does not contain, so a child that
+         is not added to the contract would be **deleted by the very next pass**
+         — and every later scene's design entry would point at the wrong row.
+    """
+    from app.services.motion_authoring import author_params_for_scene
+    from app.services.design_brief_service import DesignBriefService
+
+    if not part.is_mixed:                    # pragma: no cover - caller checks
+        raise SceneSplitRefused("the narration does not mix content and context")
+
+    # 1. the digit child's template, before anything moves.
+    spec = await author_params_for_scene(
+        db,
+        project_id=project_id,
+        narration=part.digit_text,
+        visual_description=parent.visual_description or "",
+        project_name=(getattr(project, "name", "") or ""),
+        project_description=(getattr(project, "description", "") or ""),
+        scene_index=parent.scene_index,
+        context_scenes=context_scenes,
+    )
+
+    parent_index = parent.scene_index
+    child_index = parent_index + 1
+    context_event, digit_event = child_events(parent.instructional_event)
+    context_seconds, digit_seconds = split_durations(
+        parent.duration_seconds, part,
+    )
+
+    # 2. make room, descending.
+    later = [
+        r for r in await _rows(db, project_id) if r.scene_index > parent_index
+    ]
+    for row in sorted(later, key=lambda r: r.scene_index, reverse=True):
+        row.scene_index += 1
+
+    # 3. the parent keeps the CONTEXT half and its medium; the child takes the
+    #    digits and is drawn.
+    parent.narration_text = part.context_text
+    parent.instructional_event = context_event
+    parent.duration_seconds = context_seconds
+
+    child = StoryboardScene(
+        project_id=project_id,
+        scene_index=child_index,
+        narration_text=part.digit_text,
+        # ⛳ The parent's description travels with the child unchanged. The
+        # renderer draws from the template and never reads it, and rewriting it
+        # here would be exit (b) smuggled in under exit (c).
+        visual_description=parent.visual_description,
+        media_type=REPAIR_MEDIUM,
+        generation_params=spec,
+        duration_seconds=digit_seconds,
+        instructional_event=digit_event,
+        # BOTH children, unchanged — this is what makes the spans reunite.
+        serves_outcomes=list(parent.serves_outcomes or []),
+        bloom_level=parent.bloom_level,
+        text_carried_by=parent.text_carried_by,
+        media_rationale=(
+            f"split from scene {parent_index} by the auto-repair pass: this "
+            f"half is digit work and is drawn from a template, so the numerals "
+            f"cannot be misspelled"
+        ),
+        # ⛔ THE CHILD INHERITS ITS PARENT'S PROVENANCE EXACTLY, AND THIS WAS A
+        # DESIGN ERROR CAUGHT BY MIGRATION 0048's XOR CONSTRAINT RATHER THAN BY
+        # ME. The first cut marked every child `designed` while still copying
+        # the parent's `source_refs`, and the database refused it:
+        # `ck_storyboard_scenes_source_xor_designed` says a designed scene
+        # carries no spans and a sourced scene carries at least one.
+        #
+        # ⛳ THE CONSTRAINT WAS RIGHT AND THE CODE WAS WRONG. A split MOVES
+        # sentences; it does not write them. The digit half of a `sourced`
+        # scene's narration came from the uploaded script exactly as much as the
+        # parent's did, so calling the child `designed` would claim this pass
+        # invented words it only relocated — and would drop the spans, which is
+        # the fidelity loss RC-T2 exists to forbid. The child is therefore
+        # `sourced` with the parent's spans when the parent was, and `designed`
+        # with no spans when the parent was, in both cases carrying the parent's
+        # own rationale plus a note that a split happened.
+        scene_origin=parent.scene_origin,
+        source_refs=(
+            [dict(r) for r in (parent.source_refs or [])]
+            if (parent.scene_origin or "") == "sourced" else None
+        ),
+        designed_rationale=(
+            (
+                (parent.designed_rationale or "")
+                + (" " if parent.designed_rationale else "")
+                + f"Split from scene {parent_index} by WP-IVGS-12i3 exit (c): "
+                f"the scene mixed context with digit work and one medium could "
+                f"not serve both. The narration was partitioned at sentence "
+                f"boundaries by code; no word was changed."
+            ).strip()
+            if (parent.scene_origin or "") == "designed" else None
+        ),
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(child)
+    await db.flush()
+
+    # 4. the design of record must contain the child, or the prune eats it.
+    service = DesignBriefService(db)
+    brief = await service.get_active(project_id)
+    if brief is None:
+        raise SceneSplitRefused(
+            "there is no active design brief to record the new scene on, and a "
+            "child absent from the design of record would be pruned by the very "
+            "next pass"
+        )
+    designs = [dict(d) for d in (brief.scene_designs or []) if isinstance(d, dict)]
+    for design in designs:
+        index = design.get("scene_index")
+        if isinstance(index, int) and index > parent_index:
+            design["scene_index"] = index + 1
+    parent_design = next(
+        (d for d in designs if d.get("scene_index") == parent_index), {},
+    )
+    child_design = dict(parent_design)
+    child_design.update({
+        "scene_index": child_index,
+        "instructional_event": digit_event,
+        "scene_origin": child.scene_origin,
+        "source_refs": child.source_refs,
+        "designed_rationale": child.designed_rationale,
+        "narration_text": part.digit_text,
+    })
+    if parent_design:
+        parent_design["instructional_event"] = context_event
+        parent_design["narration_text"] = part.context_text
+    designs.append(child_design)
+    designs.sort(key=lambda d: d.get("scene_index", 0))
+    brief.scene_designs = designs
+    await db.flush()
+    return child_index
+
+
 async def auto_repair_storyboard(
     db: AsyncSession, project_id: UUID, project: Any = None,
 ) -> RepairPass:
@@ -356,6 +634,159 @@ async def auto_repair_storyboard(
             continue
         was = row.media_type or "image"
         original_visual = row.visual_description
+
+        def _survives(exits: str, forbidden: Optional[str] = None) -> None:
+            corrections.append(Correction(
+                scene_index=row.scene_index,
+                refusal_code=a.code, refusal_reason=a.reason,
+                media_type_was=was, media_type_is=was,
+                applied=False, exit_taken="none",
+                original_visual_description=original_visual,
+                repair_error=exits,
+                redescribe_forbidden_because=forbidden,
+            ))
+            logger.warning(
+                "auto_repair_refused project=%s scene=%s code=%s exits=%s",
+                project_id, row.scene_index, a.code, exits,
+            )
+
+        async def _try_redescribe(after: str) -> bool:
+            """Exit (b). Returns True when it was applied.
+
+            ⛔ NARROWED BY THE AMENDMENT OF 2026-08-30: legal ONLY where the
+            on-screen text is incidental to the scene's declared purpose. The
+            legality test reads the design contract — `instructional_event` and
+            `media_rationale` — and is applied BEFORE any model is called, so a
+            content scene is never even offered for rewriting.
+            """
+            legal, why = redescription_is_legal(
+                instructional_event=row.instructional_event,
+                narration_text=row.narration_text,
+                media_rationale=row.media_rationale,
+            )
+            if not legal:
+                _survives(after, forbidden=why)
+                return False
+            if a.code != CODE_VISUAL_DEMANDS_TEXT:
+                _survives(
+                    f"{after}  ||  exit (b): not applicable — this refusal is "
+                    f"{a.code}, so the DESCRIPTION demands nothing and "
+                    f"rewriting it would change nothing"
+                )
+                return False
+            try:
+                rewritten = await redescribe_scene(
+                    db, project_id=project_id,
+                    narration=row.narration_text or "",
+                    visual_description=original_visual or "",
+                    scene_index=row.scene_index,
+                )
+            except Exception as red_exc:
+                if not isinstance(red_exc, RedescribeRefused):
+                    logger.warning(
+                        "redescribe_call_failed project=%s scene=%s error=%s",
+                        project_id, row.scene_index, red_exc,
+                    )
+                _survives(f"{after}  ||  exit (b): {red_exc}")
+                return False
+            row.visual_description = rewritten
+            corrections.append(Correction(
+                scene_index=row.scene_index,
+                refusal_code=a.code, refusal_reason=a.reason,
+                media_type_was=was, media_type_is=was,
+                applied=True, exit_taken="b",
+                original_visual_description=original_visual,
+                redescribed_to=rewritten,
+                repair_error=after,
+            ))
+            logger.info(
+                "auto_repair_redescribed project=%s scene=%s",
+                project_id, row.scene_index,
+            )
+            return True
+
+        # ── THE RULED ORDER, AND ITS GUARDS ARE CONDITIONS, NOT JUST SEQUENCE ─
+        #
+        #   (a) author the whole scene as motion_graphics WHERE THE TEMPLATE
+        #       FITS THE WHOLE NARRATION
+        #   (c) SPLIT WHERE THE NARRATION MIXES CONTENT AND CONTEXT
+        #   (b) redescribe ONLY WHERE THE TEXT DEMAND IS INCIDENTAL
+        #
+        # ⛔ SO A MIXED NARRATION GOES STRAIGHT TO (c), AND THIS IS A CORRECTION
+        # TO THIS PASS'S FIRST CUT. That version attempted (a) first and fell
+        # through to (c) only when authoring REFUSED — but on the operator's own
+        # opener, *"Hi! Today… That might sound tricky, but don't worry… By the
+        # end, you'll be able to solve a problem like 23 times 14 all by
+        # yourself"*, exit (a) SUCCEEDS: the words contain "multiply", 23 and 14,
+        # so a `column_multiplication_step` is authored and the guard passes it.
+        # The result would be a warm welcome to an anxious nine-year-old
+        # rendered as an animated column sum. That is precisely the failure the
+        # amendment describes, reached by a repair that reported success.
+        #
+        # "Fits the whole narration" is the test, and a narration that mixes a
+        # welcome with an operand does not meet it.
+        part = partition_narration(row.narration_text)
+        if part.is_mixed:
+            try:
+                child_index = await _split_scene(
+                    db, project_id=project_id, parent=row, part=part,
+                    project=project, context_scenes=context_scenes,
+                )
+            except (MotionAuthoringError, SceneSplitRefused) as split_exc:
+                await _try_redescribe(f"exit (c): {split_exc}")
+                continue
+            corrections.append(Correction(
+                scene_index=row.scene_index,
+                refusal_code=a.code, refusal_reason=a.reason,
+                media_type_was=was, media_type_is=was,
+                applied=True, exit_taken="c",
+                original_visual_description=original_visual,
+                split_into=[row.scene_index, child_index],
+                split_partition=part.as_dict(),
+            ))
+            logger.info(
+                "auto_repair_split project=%s parent=%s child=%s "
+                "digit_sentences=%s context_sentences=%s",
+                project_id, row.scene_index, child_index,
+                len(part.digit_sentences), len(part.context_sentences),
+            )
+
+            # ── THE CONTEXT PARENT IS RE-EXAMINED ONCE, AND THIS IS NOT A LOOP.
+            #
+            # ⛔ MEASURED ON THE ACCEPTANCE RUN, 2026-08-30, AND IT IS THE ONE
+            # THING THE SPLIT DOES NOT FINISH BY ITSELF. Scene 6 narrated *"Do
+            # not worry, this is easier than it looks. Now multiply 4 times 3…"*
+            # under the description *"A worksheet showing the multiplication
+            # problem and the calculations."* The split moved the digits out of
+            # the NARRATION and left the DESCRIPTION still demanding them, so the
+            # parent went on refusing and the stage failed over a scene the pass
+            # had just repaired.
+            #
+            # ⛳ THE PARENT'S INPUTS CHANGED, so re-examining it is not a retry
+            # of anything: the legality test now reads a narration that states
+            # no written or numeric content at all, which is precisely the case
+            # where a leftover text demand IS incidental. One further exit-(b)
+            # call for the parent, at most, and never a second attempt at the
+            # same call with the same inputs.
+            parent_now = assess_scene(
+                scene_index=row.scene_index,
+                media_type=row.media_type,
+                narration_text=row.narration_text,
+                visual_description=row.visual_description,
+                generation_params=row.generation_params,
+                text_carried_by=row.text_carried_by,
+                media_rationale=row.media_rationale,
+                context_text=" ".join(t or "" for _, t in context_scenes),
+            )
+            if parent_now.severity == SEV_REFUSE and is_mechanical(parent_now.code):
+                a, original_visual = parent_now, row.visual_description
+                await _try_redescribe(
+                    f"exit (c) split this scene at {row.scene_index}; its "
+                    f"description still asked for text afterwards"
+                )
+            continue
+
+        # ── EXIT (a): the template fits the whole narration ──────────────────
         row.media_type = REPAIR_MEDIUM
         try:
             spec = await author_params_for_scene(
@@ -369,22 +800,11 @@ async def auto_repair_storyboard(
                 context_scenes=context_scenes,
             )
         except MotionAuthoringError as exc:
-            # ⛔ THE ORIGINAL REFUSAL STANDS, AND THE SCENE GOES BACK.
+            # ⛔ THE SCENE GOES BACK FIRST, ALWAYS — leaving the flip in place
+            # would replace one honest refusal with a different one this pass
+            # created.
             row.media_type = was
-            corrections.append(Correction(
-                scene_index=row.scene_index,
-                refusal_code=a.code,
-                refusal_reason=a.reason,
-                media_type_was=was,
-                media_type_is=was,
-                applied=False,
-                original_visual_description=original_visual,
-                repair_error=str(exc),
-            ))
-            logger.warning(
-                "auto_repair_refused project=%s scene=%s code=%s error=%s",
-                project_id, row.scene_index, a.code, exc,
-            )
+            await _try_redescribe(f"exit (a): {exc}")
             continue
 
         row.generation_params = spec
@@ -395,6 +815,7 @@ async def auto_repair_storyboard(
             media_type_was=was,
             media_type_is=REPAIR_MEDIUM,
             applied=True,
+            exit_taken="a",
             template=spec.get("template"),
             params={k: v for k, v in spec.items() if k != "template"},
             original_visual_description=original_visual,
@@ -413,11 +834,17 @@ async def auto_repair_storyboard(
     after_rows = await _rows(db, project_id)
     after = assess_storyboard(after_rows, authoring_will_run=False)
 
+    after_refusals = [a for a in after if a.severity == SEV_REFUSE]
     result = RepairPass(
         ran_at=datetime.now(timezone.utc).isoformat(),
-        scenes=len(rows),
+        scenes=len(after_rows),
         refusals_before=len(refusals),
-        refusals_after=len([a for a in after if a.severity == SEV_REFUSE]),
+        refusals_after=len(after_refusals),
+        mechanical_after=len([a for a in after_refusals if is_mechanical(a.code)]),
+        survivors=[
+            {"scene_index": a.scene_index, "code": a.code, "reason": a.reason}
+            for a in after_refusals if is_mechanical(a.code)
+        ],
         mechanical_before=len(mechanical),
         judgment_before=len(judgment),
         repaired=len([c for c in corrections if c.applied]),
@@ -432,6 +859,32 @@ async def auto_repair_storyboard(
         result.judgment_before, result.repaired, result.repair_refused,
     )
     return result
+
+
+
+async def _fidelity_inputs(
+    db: AsyncSession, project_id: UUID,
+) -> "tuple[str, List[Dict[str, Any]]]":
+    """The uploaded script and the design's declared drops, for the coverage
+    measurement.
+
+    ⛳ `source_text` and NOT `refined_text`, for RC-Q2's reason: stage 1 PATCHes
+    its own output over `refined_text`, so a span offset means nothing against
+    it. The same column `design_review` measures against, so the number this
+    pass reports and the number the gate reports cannot disagree.
+    """
+    from app.models.transcript import Transcript
+    from app.services.design_brief_service import DesignBriefService
+
+    rows = list((await db.scalars(
+        select(Transcript)
+        .where(Transcript.project_id == project_id)
+        .order_by(Transcript.sequence_order)
+    )).all())
+    source_text = "\n\n".join(t.source_text or "" for t in rows).strip()
+    brief = await DesignBriefService(db).get_active(project_id)
+    dropped = list(brief.dropped_beats or []) if brief is not None else []
+    return source_text, dropped
 
 
 async def repair_and_declare(
@@ -456,9 +909,21 @@ async def repair_and_declare(
     # assess what is actually there.
     pruned, skipped = await prune_scenes_not_in_design(db, project_id)
 
+    # RC-T2. Fidelity is measured on the way IN and on the way OUT, over the
+    # same script and the same merge the gate uses. A pass that lowers it has
+    # traded content for a clean gate.
+    source_text, dropped = await _fidelity_inputs(db, project_id)
+    coverage_before = covered_character_count(
+        await _rows(db, project_id), dropped, source_text,
+    )
+
     result = await auto_repair_storyboard(db, project_id, project)
     result.pruned = pruned
     result.prune_skipped_because = skipped
+    result.coverage_before = coverage_before
+    result.coverage_after = covered_character_count(
+        await _rows(db, project_id), dropped, source_text,
+    )
 
     brief = await DesignBriefService(db).get_active(project_id)
     if brief is None:

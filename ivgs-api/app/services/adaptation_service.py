@@ -253,6 +253,7 @@ async def _call_model(
     model: str,
     max_tokens: int | None = None,
     temperature: float | None = None,
+    response_format: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     """One chat completion. Raises on anything that is not a usable answer.
 
@@ -271,6 +272,18 @@ async def _call_model(
         "max_tokens": ceiling,
         "temperature": TEMPERATURE if temperature is None else temperature,
     }
+    # WP-IVGS-12i3. GRAMMAR-CONSTRAINED DECODING, OPT-IN AND OMITTED BY DEFAULT
+    # so every existing caller's request body is byte-for-byte what it was.
+    #
+    # ⛔ THE ONLY MECHANISM THAT WORKS ON THIS FLEET IS `response_format` WITH
+    # `json_schema`. RC-Q1, measured 2026-08-29 against the pinned engine:
+    # `guided_json` is accepted with HTTP 200 and SILENTLY IGNORED, as is every
+    # unknown top-level body member — so a caller that reaches for it reports
+    # success forever and constrains nothing. `design_core.contract.
+    # response_format_for` refuses the legacy names by name; this is the API
+    # side of the same rule, and callers here build the same shape.
+    if response_format is not None:
+        body["response_format"] = response_format
     url = f"{endpoint}/v1/chat/completions"
     try:
         async with httpx.AsyncClient(timeout=REQUEST_TIMEOUT_SECONDS) as client:

@@ -394,7 +394,58 @@ _CARRY_WORDS = ("carry", "carried", "carrying")
 #: Words that mean "this scene announces a result".
 _ANSWER_WORDS = ("answer", "total", "altogether")
 #: Words that mean "a number is being split into tens and units".
-_PLACE_WORDS = ("place value", "tens place", "ones place", "means 10", "split")
+#:
+#: ⛳ WIDENED BY WP-IVGS-12i3, RC-T3, 2026-08-30 — MEASURED, NOT TUNED.
+#:
+#: THE DEFECT. Scenes 9 and 10 of the acceptance design narrate *"Can you
+#: identify the unit numbers and 10's in the number 45?"* — a place-value
+#: question in the operator's own words — and the guard refused
+#: `place_value_split` for them, because it required the token "place" to be
+#: adjacent to the place's name. The repair pass then had no exit for a scene
+#: whose content genuinely is a place-value split.
+#:
+#: THE TEST THE ORDER SETS: widen where the term is FOUNDATION-GENERAL, refuse
+#: where it would be SCRIPT-SPECIFIC. The Foundation names these places itself,
+#: in `Instructional_Design_Foundation_for_IVGS_2026-08-29.md` §3, the Gagné
+#: event-3 row:
+#:
+#:     | 3 | Stimulate recall of prior learning | `recall_prior` |
+#:       ones/tens place value; single-digit facts |
+#:
+#: "ones", "tens" and "unit" (the primary-classroom synonym for "ones", and the
+#: word the operator's own LO-2 uses) are the NAMES OF THE PLACES in general
+#: decimal vocabulary, not this script's coinage. They are added.
+#:
+#: ⛔ WHAT IS DELIBERATELY *NOT* ADDED, AND WHY EACH WOULD BE THE TUNING THIS
+#: ORDER FORBIDS:
+#:   * "digit"/"digits" — already in `_MULT_WORDS`, and adding it here would
+#:     make nearly every arithmetic narration eligible for `place_value_split`.
+#:     A necessary condition that everything satisfies is not a check.
+#:   * "number"/"numbers" — the same objection, stronger.
+#:   * "45", "10's", or any literal from the acceptance script — script-specific
+#:     by definition. Refused.
+#:   * "hundreds"/"thousands" — the same decimal-place family and defensible on
+#:     principle, but the Foundation does not name them and no run in this
+#:     repository has yet produced one. Adding vocabulary on speculation is the
+#:     tuning the order forbids. **Widen when a measurement produces one.**
+#:
+#: ⚠ AND THE HONEST COST, STATED. This is a NECESSARY condition, so widening it
+#: makes the check weaker: "now multiply by the tens digit" would now also
+#: satisfy `place_value_split`. That is a real loss and it is accepted because
+#: the alternative is refusing a scene for using the Foundation's own words.
+#: Assertion 2 below — producibility — is unaffected and still catches a spec
+#: pointed at the wrong numbers.
+#:
+#: ⚠ MATCHING IS PLAIN SUBSTRING (`w in words`, line ~511), unchanged. The three
+#: added terms were checked against that: "ones" also occurs inside "phones",
+#: "bones", "zones"; "tens" inside "listens", "tense"; "unit" inside "unite".
+#: None of those is plausible in the narration of a maths scene whose spec the
+#: model has already chosen as a place-value split, and changing the matcher to
+#: be word-bounded would alter every template's behaviour, not this one's.
+_PLACE_WORDS = (
+    "place value", "tens place", "ones place", "means 10", "split",
+    "ones", "tens", "unit",
+)
 #: Words that mean "a multiplication step is being worked".
 _MULT_WORDS = ("multiply", "multiplying", "times", "digit", "placeholder", "zero")
 

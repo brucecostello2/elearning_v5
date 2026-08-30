@@ -489,7 +489,36 @@ def handle_stage_completion(
         # remove mechanical noise from a human's screen; it is not permitted to
         # become a new way for a storyboard to fail to arrive.
         if completed_stage == PipelineStage.STORYBOARD_GENERATION.value:
-            _auto_repair_storyboard(project_id, config, log)
+            stage_failure = _auto_repair_storyboard(project_id, config, log)
+            if stage_failure:
+                # ⛔ WP-IVGS-12i3, RC-T2. THE STAGE-COMPLETE INVARIANT.
+                #
+                # Operator's principle, 2026-08-30: **a correctly completed
+                # storyboard stage arrives at the gate with ZERO mechanical
+                # refusals — only judgment flags.** A scene that survived all
+                # three exits is not a red row for a reviewer to work around; it
+                # is the stage reporting success it did not have.
+                #
+                # ⛳ THE ROWS ARE LEFT EXACTLY WHERE THEY ARE, deliberately. The
+                # operator's remedy is to regenerate OR to edit the named
+                # scenes, and deleting the storyboard would remove the second
+                # option. What changes is the JOB: it is failed, loudly, with
+                # every scene and every exit's own refusal sentence in the
+                # message — so the Jobs tab and the gate agree that this
+                # storyboard is not ready, instead of a green job sitting beside
+                # a gate full of red.
+                log.error(
+                    "storyboard_stage_not_approvable",
+                    completed_stage=completed_stage,
+                )
+                update_job_status(job_id, "failed", error_message=stage_failure)
+                return {
+                    "job_id": job_id,
+                    "action": "stage_failed",
+                    "completed_stage": completed_stage,
+                    "reason": "mechanical_refusals_survived_repair",
+                    "message": stage_failure,
+                }
 
         gate_status = _determine_gate_status(completed_stage)
         log.info(
@@ -2168,7 +2197,7 @@ def _fetch_transcripts(
 
 def _auto_repair_storyboard(
     project_id: str, config: WorkerConfig, log: Any,
-) -> None:
+) -> Optional[str]:
     """Ask the API to repair every mechanical refusal, and DECLARE the result.
 
     WP-IVGS-12i RC-R4. The work is the API's — the authoring primitive, the
@@ -2183,12 +2212,16 @@ def _auto_repair_storyboard(
     not seconds. A short timeout here would abandon a pass that was working and
     leave the declaration unwritten while the repairs were still being committed.
 
-    ⛔ EVERY FAILURE IS LOGGED AND SWALLOWED, and this is the one place in this
-    package where that is right rather than the eighteenth entry in the swallow
-    register: the caller's next action is to open a gate that is already
-    correct. What must never be swallowed is a REPAIR THAT FAILED, and it is
-    not — `storyboard_repair` writes a correction row naming both errors, and
-    the gate renders it.
+    ⛔ A TRANSPORT FAILURE IS LOGGED AND SWALLOWED — the pass could not run, and
+    the gate that opens is the one that would have opened before this package
+    existed, refusals intact and honest. ⛳ **A STAGE-COMPLETE FAILURE IS NOT
+    SWALLOWED AND IS THE RETURN VALUE** (RC-T2): when scenes survive every exit,
+    this returns the message and the caller fails the job with it. The two are
+    different facts — "I could not check" and "I checked and it is not
+    approvable" — and collapsing them would let a broken repair service present
+    as a clean storyboard.
+
+    Returns the stage-failure message, or None when the stage is approvable.
     """
     try:
         with httpx.Client(
@@ -2205,19 +2238,24 @@ def _auto_repair_storyboard(
                 status_code=resp.status_code,
                 body=resp.text[:500],
             )
-            return
+            return None
         data = resp.json()
         log.info(
             "auto_repair_pass_complete",
             scenes=data.get("scenes"),
             refusals_before=data.get("refusals_before"),
             refusals_after=data.get("refusals_after"),
+            mechanical_after=data.get("mechanical_after"),
             repaired=data.get("repaired"),
             repair_refused=data.get("repair_refused"),
             judgment=data.get("judgment_before"),
+            pruned=len(data.get("pruned") or []),
+            coverage=f"{data.get('coverage_before')}->{data.get('coverage_after')}",
         )
+        return data.get("stage_failure") or None
     except Exception as exc:
         log.warning("auto_repair_call_failed", error=str(exc))
+    return None
 
 
 def _fetch_project_scenes(

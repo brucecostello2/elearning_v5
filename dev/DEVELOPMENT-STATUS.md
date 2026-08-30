@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12i2, the Design Core)
+# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12i3, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,7 +6,23 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — node-01 api `v5.40.1-rcs-batch`, frontend `v5.40.0-rcs-batch`, workers `v5.39.0-auto-repair`
+## Fleet — node-01 api `v5.41.3-rct-parent-repair`, frontend + workers `v5.41.0-rct-exits`
+
+✅ **WP-IVGS-12i3 — STAGE-COMPLETE MEANS APPROVABLE.** Operator ruling: a correctly completed
+storyboard stage reaches the gate with **ZERO mechanical refusals — only judgment flags**; and its
+amendment: **content must not be lost, dilution to pass validation is worse than a refusal.** The
+repair pass now has three exits, and their ruled order is a set of CONDITIONS: **(a)** author as
+motion graphics where the template fits the WHOLE narration; **(c)** SPLIT where the narration mixes
+content and context; **(b)** redescribe only where the text demand is incidental, proven from the
+scene's own event and rationale. ⛔ A scene surviving all three **fails the stage loudly** — the job
+is failed with every scene and every exit's sentence named — and **a coverage drop is itself a stage
+failure** (measured 40→40, 120→120, 170→170, never lowered). RC-T3 widened the place-value lexicon
+on the Foundation's own words (*"ones/tens place value"*, §3) and **refused to widen for `digit`,
+`number` or any script literal**. ⛔ **RC-T4 rows the same gap in the multiplication lexicon,
+deliberately NOT patched** — `x` cannot be a substring token and tuning on one failed generation is
+what the order forbids. ⛔ **RC-T5: four generations, ONE approvable and three stage-failed** — not a
+regression, since those same storyboards previously reached the gate as green jobs carrying red
+refusals. Ledger: `OUTSTANDING_WORK.md` §12i-watch3.
 
 ✅ **WP-IVGS-12i2 — THE RC-S BATCH.** ⛳ **RC-S1: the second assessment was a GHOST.** The active
 contract emits per-LO assess exactly once; rows 17 and 18 were left behind by the previous
@@ -669,6 +685,7 @@ shipped with a placeholder.
 
 | report | verdict |
 |---|---|
+| `dev/workpackages/reports/WP-IVGS-12i3-RCT-EXITS-report_2026-08-30.md` | ✅ three exits built, ruled order corrected from attempts to conditions; ✅ RC-T2 invariant enforced incl. coverage non-regression; ✅ RC-T3 lexicon widened on the Foundation's citation, 2 of 3 residue scenes rescued; ⛔ RC-T4 and RC-T5 rowed — one generation of four is approvable, and the stage now says so |
 | `dev/workpackages/reports/WP-IVGS-12i2-RCS-BATCH-report_2026-08-30.md` | ✅ RC-S1 fixed at cause and proven over two real regenerations; ✅ RC-S2(a) loophole closed, both live designs now refuse; ⓘ RC-S2(b) full input → variance, rowed; ✅ RC-S4 equation lint hard, method-prose half rowed to L7; ✅ RC-S3 belt widened, flag-level |
 | `dev/workpackages/reports/WP-IVGS-12i-AUTO-REPAIR-report_2026-08-30.md` | ✅ RC-R4 built and proven in the live pipeline (3 of 8 repaired, 5 refused honestly); ⛔ RC-R1 was an HTTP 500, now a named 409, button disabled at nonzero; ✅ RC-R2 built — including the one-click the order believed existed and which never did; ⓘ RC-R3(a)/(b) and RC-R5 rowed, nothing built |
 

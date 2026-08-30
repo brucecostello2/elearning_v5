@@ -1020,6 +1020,45 @@ def _coverage_gaps(
 
 
 
+def covered_character_count(
+    scenes: Sequence[Any],
+    dropped_beats: Sequence[Dict[str, Any]],
+    source_text: str,
+) -> int:
+    """How many characters of the uploaded script this design accounts for.
+
+    WP-IVGS-12i3, RC-T2. The repair pass measures this BEFORE and AFTER itself
+    and **a drop is a stage failure**: a repair that lowers fidelity has traded
+    content for a green gate, which is the dilution the 2026-08-30 amendment
+    forbids. Exit (c) is designed so this cannot fall — both children inherit
+    the parent's `source_refs`, so their union is the parent's set — and this
+    function is how that is verified rather than trusted.
+
+    Counts used spans and declared drops alike, merged, exactly as
+    `_coverage_gaps` does; sharing the merge is the point, because a second
+    implementation could report coverage the gate does not agree with.
+    """
+    if not source_text:
+        return 0
+    spans: List[Tuple[int, int]] = []
+    for scene in scenes:
+        for ref in (_scene_field(scene, "source_refs") or []):
+            if isinstance(ref, dict):
+                spans.append((int(ref.get("start") or 0), int(ref.get("end") or 0)))
+    for beat in dropped_beats or []:
+        span = beat.get("span") if isinstance(beat, dict) else None
+        if isinstance(span, dict):
+            spans.append((int(span.get("start") or 0), int(span.get("end") or 0)))
+    merged: List[List[int]] = []
+    for start, end in sorted((max(0, a), min(len(source_text), b))
+                             for a, b in spans if b > a):
+        if merged and start <= merged[-1][1]:
+            merged[-1][1] = max(merged[-1][1], end)
+        else:
+            merged.append([start, end])
+    return sum(end - start for start, end in merged)
+
+
 def _missing_motion_params(template: str, params: Dict[str, Any]) -> Optional[List[str]]:
     """Parameters the renderer declares and this scene has not supplied.
 
