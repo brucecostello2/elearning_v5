@@ -534,6 +534,130 @@ class TestCallTwoFailureIsNeverSilent:
 
 
 # ---------------------------------------------------------------------------
+# RC-Q13 — the declared budget, ruled up to meet the measured work
+# ---------------------------------------------------------------------------
+
+class TestTheRuledTimeoutCoversTheMeasurement:
+    """⛔ OPERATOR RULING, 2026-08-30, ON THE MEASUREMENT TABLE.
+
+    Thirteen stage-2 generations against the pinned engine, from 12g's banked
+    run logs and 12h's own: 135, 281, 366, 395, 427, 457, 476, 477, 488, 491,
+    503, 526, 564 seconds. Against the previous soft 270 / hard 300, ten
+    exceeded the derived 240 s client budget and eight exceeded the hard limit —
+    a state stage 2 had been deployed in since design-contract-5, unseen because
+    no storyboard job has gone through the real Celery task since then.
+
+    ⛳ These tests pin the ruling to the MEASUREMENT rather than to the number,
+    so a later edit that lowers the budget fails here naming what it would break.
+    """
+
+    #: The banked distribution. ⛔ Not a summary of it — a later package that
+    #: measures more generations appends, and the assertions follow.
+    MEASURED_WALL_CLOCK_S = (135, 281, 366, 395, 427, 457, 476,
+                             477, 488, 491, 503, 526, 564)
+
+    def _policy(self):
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from temporal_pipeline.policies import ALL_POLICIES
+
+        return next(
+            p for p in ALL_POLICIES
+            if p.celery_task_name == "tasks.stage2_storyboard.generate_storyboard_task"
+        )
+
+    def _config(self):
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        import os
+
+        for key, value in (("VLLM_PRIMARY_URL", "http://vllm.invalid"),
+                           ("VLLM_SECONDARY_URL", "http://vllm.invalid"),
+                           ("VLLM_MIDSIZE_URL", "http://vllm.invalid")):
+            os.environ.setdefault(key, value)
+        from config import WorkerConfig
+
+        return WorkerConfig()
+
+    def test_the_declared_soft_limit_covers_every_measurement(self):
+        policy = self._policy()
+        worst = max(self.MEASURED_WALL_CLOCK_S)
+        assert policy.celery_soft_time_limit_s > worst, (
+            f"the declared soft limit {policy.celery_soft_time_limit_s}s no "
+            f"longer covers the largest MEASURED stage-2 generation ({worst}s). "
+            "RC-Q13 was ruled on that distribution; lowering the limit "
+            "reintroduces a defect that shipped undetected for two packages."
+        )
+
+    def test_the_derived_client_budget_covers_every_measurement(self):
+        """⛔ THE BUDGET THAT ACTUALLY BITES IS THE DERIVED ONE, NOT THE
+        DECLARED ONE. The client loses the race by 30 s deliberately, so the
+        number to check against the measurement is `soft - headroom`."""
+        config = self._config()
+        worst = max(self.MEASURED_WALL_CLOCK_S)
+        assert config._storyboard_client_timeout() > worst
+
+    def test_the_client_still_loses_the_race_to_the_soft_limit(self):
+        """RC-P16. A `VLLMTimeoutError` is named, retryable and logged; a
+        `SoftTimeLimitExceeded` kills the task mid-write and strands the job row
+        `running`, which then blocks both /resume and WP-59 deletion."""
+        policy, config = self._policy(), self._config()
+        assert config._storyboard_client_timeout() < policy.celery_soft_time_limit_s
+
+    def test_both_calls_fit_inside_one_derived_budget(self):
+        """The two calls share ONE Celery task and ONE soft limit. A split whose
+        parts sum past the budget is not a split."""
+        config = self._config()
+        call_1, call_2 = config.storyboard_call_timeouts()
+        assert call_1 + call_2 <= config._storyboard_client_timeout()
+
+    def test_each_call_has_headroom_over_its_own_measured_maximum(self):
+        """⛔ THE SHARE MOVED FROM 0.25 TO 0.15 BECAUSE ITS JUSTIFICATION
+        EXPIRED, and this is what makes that reviewable rather than a taste.
+
+        Measured, six generations of each: call 1 peaks at 526 s and call 2 at
+        41 s. At 0.25 the ruled budget would hand call 2 218 s for a 41 s call
+        while leaving call 1 only 1.24x its measured maximum.
+        """
+        config = self._config()
+        call_1, call_2 = config.storyboard_call_timeouts()
+        assert call_1 >= 526 * 1.3, f"call 1 has only {call_1 / 526:.2f}x headroom"
+        assert call_2 >= 41 * 2.0, f"call 2 has only {call_2 / 41:.2f}x headroom"
+
+    def test_start_to_close_is_not_left_below_the_new_hard_limit(self):
+        """⛔ FORCED BY AN INVARIANT THIS TREE ALREADY ASSERTS. Appendix C's 5 m
+        was above the old 300 s hard limit and is below the new 960 s one;
+        leaving it would enshrine, as the Temporal migration's conformance
+        target, an activity timeout that kills work Celery now allows."""
+        policy = self._policy()
+        assert policy.start_to_close_s >= policy.celery_time_limit_s
+        assert policy.heartbeat_s < policy.start_to_close_s
+
+    def test_the_hard_limit_stays_far_under_the_visibility_timeout(self):
+        """⛳ THE CHECK THE RULING ASKED FOR, MADE HERE AS WELL AS AT WORKER
+        STARTUP. A hard `time_limit` reaching `broker_visibility_timeout` means
+        the broker re-delivers a task that is still running and it executes
+        twice (`dev/CLAUDE.md` §7)."""
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from temporal_pipeline.policies import ALL_POLICIES
+
+        config = self._config()
+        visibility = config.broker_visibility_timeout
+        assert self._policy().celery_time_limit_s < visibility
+        # ...and the ruling did not make stage 2 the tallest row either.
+        tallest = max(p.celery_time_limit_s or 0 for p in ALL_POLICIES)
+        assert tallest < visibility
+        assert self._policy().celery_time_limit_s < tallest
+
+    def test_the_measurement_is_recorded_beside_the_constant(self):
+        """A budget nobody can re-argue is a budget the next package guesses at.
+        The ruling requires the table cited where the number lives."""
+        source = (REPO / "ivgs-workers" / "temporal_pipeline"
+                  / "policies.py").read_text(encoding="utf-8")
+        assert "RC-Q13" in source
+        for sample in ("135", "526", "564"):
+            assert sample in source, f"{sample}s is not quoted beside the constant"
+
+
+# ---------------------------------------------------------------------------
 # THE PROMPTS — the drops are moves, and the moves are proved
 # ---------------------------------------------------------------------------
 

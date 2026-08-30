@@ -213,10 +213,10 @@ ____________ TestValidatorIntegration.test_caption_full_validation _____________
 tests/test_quality_validator.py:455: in test_caption_full_validation
     assert report.validation_duration_s > 0
 E   AssertionError: assert 0.0 > 0
-E    +  where 0.0 = QualityReport(asset_id='cap-test', asset_type=<AssetType.CAPTION: 'caption'>, project_id='proj-test', scene_id='scene-...0.0, content_hash='3cc3b99298a2a7d12b16bc4accf2f6434bc68c86b5ee3ce305e5a9e708fe54e5', file_path='/tmp/tmp5le9an0d.srt').validation_duration_s
+E    +  where 0.0 = QualityReport(asset_id='cap-test', asset_type=<AssetType.CAPTION: 'caption'>, project_id='proj-test', scene_id='scene-...0.0, content_hash='3cc3b99298a2a7d12b16bc4accf2f6434bc68c86b5ee3ce305e5a9e708fe54e5', file_path='/tmp/tmptzi_r6cm.srt').validation_duration_s
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 06:33:02 [info     ] quality_validation_start       asset_id=cap-test asset_type=caption project_id=proj-test
-2026-08-30 06:33:02 [info     ] quality_validation_complete    asset_id=cap-test asset_type=caption decision=rejected elapsed_s=0.0 metric_count=1 project_id=proj-test safety_score=0.99
+2026-08-30 10:53:39 [info     ] quality_validation_start       asset_id=cap-test asset_type=caption project_id=proj-test
+2026-08-30 10:53:39 [info     ] quality_validation_complete    asset_id=cap-test asset_type=caption decision=rejected elapsed_s=0.0 metric_count=1 project_id=proj-test safety_score=0.99
 ____________ TestAttemptRecording.test_record_attempt_creates_entry ____________
 tests/test_retry_engine.py:212: in test_record_attempt_creates_entry
     record = await retry_engine.record_attempt(
@@ -246,7 +246,7 @@ tasks/stage1_transcript.py:506: in _run_refinement
     raise ValueError('badly formed hexadecimal UUID string')
 E   ValueError: badly formed hexadecimal UUID string
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 06:33:02 [info     ] stage1_starting                job_id=job-111-222-333 project_id=proj-aaa-bbb-ccc stage=stage1 transcript_count=2
+2026-08-30 10:53:39 [info     ] stage1_starting                job_id=job-111-222-333 project_id=proj-aaa-bbb-ccc stage=stage1 transcript_count=2
 ________________ TestStage2Integration.test_full_task_execution ________________
 tests/test_stage2.py:603: in test_full_task_execution
     result = generate_storyboard_task(sample_task_input)
@@ -264,7 +264,7 @@ tasks/stage2_storyboard.py:621: in _run_storyboard_generation
     raise ValueError('badly formed hexadecimal UUID string')
 E   ValueError: badly formed hexadecimal UUID string
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 06:33:02 [info     ] stage2_starting                job_id=job-222-333-444 project_id=proj-aaa-bbb-ccc stage=stage2 transcript_count=2
+2026-08-30 10:53:39 [info     ] stage2_starting                job_id=job-222-333-444 project_id=proj-aaa-bbb-ccc stage=stage2 transcript_count=2
 _____________ TestStage6Input.test_requires_at_least_one_audio_ref _____________
 tests/test_talking_head_task.py:139: in test_requires_at_least_one_audio_ref
     with pytest.raises(Exception):
@@ -366,4 +366,4 @@ ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_pending_assets_
 ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_empty_project_cannot_advance
 ERROR tests/test_quality_gate.py::TestAssetRegistration::test_register_asset_adds_to_pending
 ERROR tests/test_quality_gate.py::TestGateHistory::test_history_recorded - Mo...
-===== 18 failed, 979 passed, 48 skipped, 18 warnings, 15 errors in 36.82s ======
+===== 18 failed, 979 passed, 48 skipped, 18 warnings, 15 errors in 35.14s ======

@@ -467,7 +467,7 @@ belongs.
 | Stage | Registered name (file:line) | Queue | Today's limits | Proposed activity | Timeouts / heartbeat | Idempotency key |
 |---|---|---|---|---|---|---|
 | 1 | `tasks.stage1_transcript.refine_transcript_task` (`stage1_transcript.py:430`) | `gpu_llm` | retries 4, soft 120, hard 150 | `refine_transcript(TranscriptRefinementInput) -> RefinedTranscript` | s2c 5 m, hb 30 s | `(job_id, "s1")` |
-| 2 | `tasks.stage2_storyboard.generate_storyboard_task` (`stage2_storyboard.py:451`) | `gpu_llm` | retries 4, soft 120, hard 150 | `generate_storyboard(StoryboardGenerationInput) -> Storyboard` | s2c 5 m, hb 30 s | `(job_id, "s2")` |
+| 2 | `tasks.stage2_storyboard.generate_storyboard_task` (`stage2_storyboard.py:543`) | `gpu_llm` | ⛔ **retries 4, soft 900, hard 960 — RULED 2026-08-30, see below** | `generate_storyboard(StoryboardGenerationInput) -> Storyboard` | ⛔ **s2c 30 m**, hb 30 s | `(job_id, "s2")` |
 | 3 | `tasks.stage3_images.generate_scene_images_task` (`stage3_images.py:560`) | `gpu_image` | retries 2, soft 1800, hard 2100 | `render_scene_image(Stage3Input, scene_index) -> SceneMedia` | s2c 45 m, hb 60 s | `(job_id, "s3", scene_index)` |
 | 3 | `tasks.video_generation_task.generate_video_clips` (`video_generation_task.py:440`) | `gpu_video` | retries 2, soft 3600, hard **3900** (**D1**) | `render_scene_video(VideoGenerationInput, scene_index) -> SceneMedia` | s2c 90 m, hb 60 s | `(job_id, "s3v", scene_index)` |
 | 4 | `tasks.stage4_manifest.build_composition_manifest` (`stage4_manifest.py:83`) | `default` | retries 2, delay 30 | `build_composition_manifest(job_id, project_id) -> Manifest` | s2c 10 m, hb 30 s | `(job_id, "s4")` — manifest is locked server-side |
@@ -476,6 +476,52 @@ belongs.
 | 7 | `tasks.prototype_draft_task.assemble_prototype_draft` ⚠ **mismatch** (`stage7_prototype_draft.py:311`) | `composition` | retries 2, delay 30, soft 900, hard 960 | `assemble_prototype_draft(Stage7Input) -> Draft` | s2c 30 m, hb 60 s | `(job_id, "s7")` |
 | 8 | `tasks.final_render_task.render_final` ⚠ **mismatch** (`stage8_final_render.py:342`) | `composition` | retries 2 | `plan_segments` → `render_segment`* → `concat_and_finalize` | s2c 60 m/segment, hb 60 s | `(job_id, "s8", segment_index)` |
 | — | `gpu_utils.acquire_gpu_reservation` (`:126`) / `release_gpu_reservation` (`:211`) | per stage | — | bracketing activities, release in `finally` | s2c 60 s, no hb | reservation id |
+
+### ⛔ STAGE 2's ROW IS AMENDED BY OPERATOR RULING — RC-Q13, 2026-08-30
+
+**Ruled by the operator on the measurement table, not raised until a run passed.**
+The distinction is the ruling: a limit moved until failures stop is tuning; a
+limit moved to cover a distribution somebody measured is a policy. This is that
+distribution — every stage-2 generation this project has recorded against the
+pinned engine, thirteen of them, from WP-IVGS-12g's banked run logs and
+WP-IVGS-12h's own:
+
+    135  281  366  395  427  457  476  477  488  491  503  526  564   seconds
+
+⛔ **AGAINST THE PREVIOUS DECLARATION OF soft 270 / hard 300, TEN OF THIRTEEN
+EXCEED THE DERIVED 240 s CLIENT BUDGET AND EIGHT EXCEED THE HARD LIMIT.** Stage 2
+had been deployed in that state since `design-contract-5` and it never surfaced,
+because **no storyboard job has gone through the real Celery task since then** —
+every acceptance in the WP-IVGS-12 lineage calls node-02 directly from a harness
+with a 1,200 s timeout (12g §12g.13 item 2; 12h §12h.15 item 2).
+
+| | was | is |
+|---|---|---|
+| `celery_soft_time_limit_s` | 270 | **900** — 1.6x the largest measurement (564 s) |
+| `celery_time_limit_s` | 300 | **960** — the same 60 s soft-to-hard gap stage 7 uses |
+| `start_to_close_s` | 5 m | **30 m** — forced: `test_start_to_close_is_never_below_todays_hard_limit` requires `s2c >= time_limit`, and 30 m is what this table already gives stage 7, the only other row at soft 900 / hard 960 |
+| derived client budget | 240 s | **870 s** (`soft - 30`, so the client loses the race), split **740 / 130** across design-contract-7's two calls |
+
+⛳ **THE VISIBILITY-TIMEOUT INVARIANT IS UNDISTURBED, AND IT WAS CHECKED RATHER
+THAN ASSUMED.** `IVGS_BROKER_VISIBILITY_TIMEOUT` is **7,200 s**, and
+`celery_app.assert_visibility_timeout_covers_time_limits` aborts worker startup
+if any hard `time_limit` reaches it. **960 ≪ 7,200**, and the table's largest hard
+limit is still stage 3's video row at 3,900 — which is what set 7,200 in the first
+place. A hard limit crossing the visibility timeout is the "long tasks can execute
+twice" trap (`dev/CLAUDE.md` §7); this is nowhere near it.
+
+⚠ **AND THIS ROW'S "TODAY'S LIMITS" COLUMN WAS ALREADY STALE BEFORE THE RULING.**
+It read *"soft 120, hard 150"* — the stage decorator's literals — while
+`temporal_pipeline/policies.py` declared 270/300 and, since 2026-08-29,
+`apply_declared_time_limits` has made the policy file the one definition that
+actually reaches the task. The decorator's literals are inert. The `file:line`
+reference was stale too (`:451` is now `_save_storyboard_scenes`; the decorator is
+at `:543`). Both corrected here.
+
+⛔ **`policies.py` IS THE ONE PLACE. This table is the record of the ruling, not a
+second source** — that is the whole lesson of the 120-vs-300 incident above.
+
+---
 
 *\* one child workflow per segment (§5.4). `services/segment_planner.py` (264
 lines) is preserved as-is and called from `plan_segments`.*

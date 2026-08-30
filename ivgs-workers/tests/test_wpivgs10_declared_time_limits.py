@@ -39,22 +39,42 @@ def _applied():
 
 
 def test_stage2_carries_its_declared_limit_and_not_the_decorator_literal():
-    """⛔ THE ONE THAT WOULD HAVE SAVED THE GOLDEN RUN."""
+    """⛔ THE ONE THAT WOULD HAVE SAVED THE GOLDEN RUN.
+
+    ⚠ RE-AIMED BY WP-IVGS-12h (RC-Q13), AND THE CLAIM IS UNCHANGED AND BETTER
+    MADE. This asserted the literals `270` and `300`, which was a SECOND COPY of
+    the policy table inside a test whose entire subject is that a second copy
+    goes stale — and it did, the moment the operator ruled the budget up to
+    900/960. The claim was never about the number: it is that the task carries
+    the DECLARED limit rather than the decorator's inert literal. So it now reads
+    the declaration, and asserts against the decorator instead.
+    """
     task = celery_app.tasks["tasks.stage2_storyboard.generate_storyboard_task"]
-    assert task.soft_time_limit == 270
-    assert task.time_limit == 300
+    assert task.soft_time_limit == GENERATE_STORYBOARD.celery_soft_time_limit_s
+    assert task.time_limit == GENERATE_STORYBOARD.celery_time_limit_s
+    # ⛔ AND IT IS NOT THE DECORATOR'S, which is the half that names the defect.
+    # `stage2_storyboard.py:548-549` still says 120/150 and is inert.
+    assert task.soft_time_limit != 120
+    assert task.time_limit != 150
 
 
 def test_stage2_has_real_margin_over_the_observed_generation_time():
     """The measurement, as a number rather than a hope.
 
-    The v7 re-proof completed at ~110 s and the operator's run was still
-    generating at 120 s. 270 s of soft budget is a bit over twice the longest
-    run actually observed. This asserts the margin exists; it is not a claim
-    that 270 is provably enough forever.
+    ⛔ RE-AIMED BY WP-IVGS-12h (RC-Q13), AND THE OLD NUMBER WAS STALE BY FOUR
+    TIMES. This read `observed_longest_s = 130` — the v7 re-proof's ~110 s and
+    the operator's run still generating at 120 s. **A design-contract-6 or -7
+    generation takes 135-564 s**, measured across thirteen generations against
+    the pinned engine (12g's banked run logs and 12h's own). A margin test
+    calibrated on 130 s asserted nothing about the work the stage actually does.
+
+    ⛳ The operator ruled the declared budget up to soft 900 on that
+    distribution. This asserts the margin over the MEASURED maximum, which is
+    what makes it a policy rather than a raise-to-pass; it is not a claim that
+    900 is provably enough forever.
     """
-    observed_longest_s = 130
-    assert GENERATE_STORYBOARD.celery_soft_time_limit_s >= 2 * observed_longest_s
+    observed_longest_s = 564
+    assert GENERATE_STORYBOARD.celery_soft_time_limit_s > observed_longest_s
 
 
 @pytest.mark.parametrize(

@@ -545,13 +545,30 @@ class WorkerConfig:
     #: this the split is not a split, it is a rounding error.
     ASSESSMENT_CALL_MIN_TIMEOUT_S = 45
 
-    #: The fraction of the derived stage budget call 2 is given. Call 2 emits
-    #: ~500 tokens against call 1's ~9,000, so a proportional split would give it
-    #: about 5%. It gets 25% because per-token throughput is not the whole cost —
-    #: a second request pays prefill and queueing again — and because starving
+    #: The fraction of the derived stage budget call 2 is given.
+    #:
+    #: ⛔ 0.25 UNTIL RC-Q13 WAS RULED, AND THE REASON IT MOVED IS THAT ITS OWN
+    #: JUSTIFICATION EXPIRED. The 25% was picked before either call had been
+    #: measured, and it was argued from a premise the ruling removed: *"starving
     #: the call that fixes RC-Q9g to buy call 1 forty more seconds is the wrong
-    #: trade when call 1 is already over budget (see the ⛔ note below).
-    ASSESSMENT_CALL_BUDGET_SHARE = 0.25
+    #: trade WHEN CALL 1 IS ALREADY OVER BUDGET."* Call 1 is no longer over
+    #: budget, so the trade is now the other way round and 25% is simply
+    #: mis-sized against six measurements of each call:
+    #:
+    #:     call 1   280, 366, 458, 476, 488, 526 s      max 526
+    #:     call 2    36,  36,  36,  37,  38,  41 s      max  41
+    #:
+    #: At the ruled budget, 0.25 would hand call 2 **218 s for a 41 s call**
+    #: while leaving call 1 652 s — 1.24x its measured maximum — so a longer
+    #: script would fail call 1 with a third of the budget sitting unspent in a
+    #: share nothing can use. **0.15 gives call 2 ~131 s (3.2x its measured max)
+    #: and call 1 ~739 s (1.4x its measured max)**, which is real headroom on
+    #: both sides rather than generosity on one.
+    #:
+    #: ⚠ IT IS STILL A FRACTION AND NOT A MEASURED CONSTANT, deliberately. A
+    #: literal 131 would go stale the moment the declared budget moves again;
+    #: this tracks it. The floor above catches the small-budget case.
+    ASSESSMENT_CALL_BUDGET_SHARE = 0.15
 
     def storyboard_call_timeouts(self) -> Tuple[float, float]:
         """``(call_1, call_2)`` client timeouts, DERIVED — never transcribed.
@@ -563,28 +580,28 @@ class WorkerConfig:
         layer along again — a transcription is an accurate mirror with no
         authority and goes stale the first time the policy moves.
 
-        ⛔ AND THE DERIVATION EXPOSES A CONFLICT THIS PACKAGE DID NOT CREATE AND
-        DOES NOT RESOLVE. AD-05 declares stage 2 at soft 270 / hard 300, so the
-        whole client budget is 240 s. WP-IVGS-12g's own banked run logs report
-        the wall clock of seven design-contract-6 generations against the pinned
-        engine:
+        ⛳ RC-Q13 IS RULED AND THE BUDGET NOW COVERS THE MEASURED WORK. WP-IVGS-12h
+        measured thirteen stage-2 generations at 135-564 s against a declared
+        soft 270 / hard 300, so ten exceeded the derived 240 s client budget and
+        eight exceeded the Celery hard limit — a state stage 2 had been deployed
+        in since design-contract-5 without anyone seeing it, because no
+        storyboard job has gone through the real Celery task since then. The
+        operator ruled the declared budget up to **soft 900 / hard 960** on that
+        table (the measurement is quoted beside the constant in
+        `temporal_pipeline/policies.py`), and this function follows it because it
+        DERIVES rather than transcribes.
 
-            135 s   281 s (B2)   395 s   427 s   477 s   491 s   503 s
-
-        **Five of seven exceed the 240 s client budget and four exceed the 300 s
-        Celery hard limit.** 12g did not see it because — as its own §12g.13
-        item 2 records — not one generation went through the real stage: the
-        harness calls node-02 directly with a 1,200 s timeout. So contract-6 as
-        deployed would time out in production on most jobs while its acceptance
-        passed, and contract-7 inherits that, unchanged, plus a second call.
-
-        ⚠ RAISING THE DECLARED LIMITS IS NOT TAKEN HERE. The numbers are AD-05's
-        conformance table and `celery_app.apply_declared_time_limits` makes them
-        the ONE definition that reaches the running tasks — which is exactly why
-        moving them is an operator ruling and not a config edit. Rowed as
-        **RC-Q13** in the WP-IVGS-12h report with the measurement. What this
-        function does is split the budget it is given, honestly, so that when the
-        limit does move both calls move with it.
+        ⚠ AND THE DERIVED CLIENT BUDGET IS 870, NOT 900, WHICH IS SAID PLAINLY.
+        The ruling names "stage-2 client budget 900 s"; deriving from a soft
+        limit of 900 gives `900 - 30 = 870`, because
+        `STORYBOARD_CLIENT_TIMEOUT_HEADROOM_S` is what makes the CLIENT lose the
+        race. That is not a rounding choice — a `VLLMTimeoutError` is a named,
+        retryable, logged failure while `SoftTimeLimitExceeded` kills the task
+        mid-write and strands the job row `running` (RC-P16, which then blocks
+        both /resume and WP-59 deletion). Setting the client to a literal 900
+        against a soft limit of 900 would tie that race. **If the operator wants
+        the client at exactly 900, the declared soft limit is 930 and this
+        function needs no change** — which is the point of deriving it.
         """
         total = self._storyboard_client_timeout()
         call_2 = max(

@@ -622,8 +622,29 @@ shipped with a placeholder.
   6 generations, and B2's collapsed LO-3 goes from containment 1.000 to 0.556.
   Quotes at §12h.10. **The remaining decisions are RC-Q13 and RC-Q9h below.**
 
-- ⛔ **RC-Q13, NEW — THE DECLARED STAGE-2 TIMEOUT IS SHORTER THAN THE WORK, AND
-  IT IS DEPLOYED.** AD-05 declares `generate_storyboard` at soft **270** / hard
+- ✅ **RC-Q13 — RULED AND ENCODED, 2026-08-30. Closed by this session.**
+  **Operator ruling: the declared budget rises to meet the measured work —
+  soft 900 / hard 960, and it is a ruling against the 13-generation table, not a
+  raise-to-pass.** Encoded in ONE place, `temporal_pipeline/policies.py`, with
+  the measurement quoted beside the constant;
+  `celery_app.apply_declared_time_limits` is what carries it to the live tasks,
+  so no decorator and no frozen body was touched. Derived client budget **870 s**
+  (`soft - 30`, so the client keeps losing the race — RC-P16), split **740 / 130**
+  across contract-7's two calls. ⛔ **`start_to_close_s` 5 m → 30 m, forced**:
+  `test_start_to_close_is_never_below_todays_hard_limit` requires
+  `s2c >= time_limit`, and 30 m is what this table already gives stage 7, the only
+  other row at soft 900 / hard 960. ⛳ **Visibility-timeout invariant checked, not
+  assumed**: 960 ≪ `IVGS_BROKER_VISIBILITY_TIMEOUT` 7,200, and the table's tallest
+  hard limit is still stage 3's video row at 3,900. AD-05 Appendix C's stage-2 row
+  is annotated with the ruling — ⚠ and it was *already* stale before it, reading
+  the decorator's inert "soft 120, hard 150" against a policy file declaring
+  270/300. ⚠ **One discrepancy stated rather than silently resolved:** the ruling
+  names a client budget of 900 s; deriving from soft 900 gives **870**. Setting
+  the client to a literal 900 against a soft limit of 900 would tie the race the
+  headroom exists to decide. **If 900 is wanted literally, the declared soft limit
+  is 930 and no code changes.** §12h.16
+
+- ⓘ **RC-Q13 AS 12h FIRST STATED IT — kept for the lineage.** AD-05 declares `generate_storyboard` at soft **270** / hard
   **300**; `config._storyboard_client_timeout()` derives **240 s** from it and
   12h splits that 180/60 across the two calls. **Measured wall clock, 13
   generations across 12g's banked logs and 12h's own: 135, 281, 366, 395, 427,
@@ -637,7 +658,43 @@ shipped with a placeholder.
   reaches the tasks, so raising them is a change to a **declared conformance
   target for the Temporal migration** — the operator's, not an agent's. §12h.6
 
-- ⚠ **RC-Q9h, NEW — THE DUPLICATE MOVED ONE LAYER IN.** LO-1's **two practice
+- ⚠ **RC-Q14, NEW — `test_wp60_orphan_guard.py` IS FLAKY IN BOTH TREES, AND IT
+  FALSIFIES A CLAIM 12f AND 12g BOTH MADE.** Registered by operator ruling,
+  2026-08-30. Both packages reported *"failures (18) and errors (15) are identical
+  in every run, which is the comparison that matters."* **It does not survive
+  repetition.** Measured this session, same environment, same credential:
+
+  | run | tree | result |
+  |---|---|---|
+  | whole suite | 12h | **19** failed — `proof_2_a_cross_project_shared_object_survives` |
+  | whole suite | 12h | **20** failed — `proof_1_a_library_reference_survives_the_sweep`, `proof_3_a_genuine_orphan_is_quarantined` |
+  | whole suite | **BASELINE at `eafbf9f`** | **18** failed |
+  | whole suite | **BASELINE at `eafbf9f`** | **20** failed |
+  | that file alone | BASELINE | 1 failed, then 1 failed, then **9 passed** |
+  | that file alone | 12h | 2 failed, then **9 passed** |
+
+  ⛳ **PRE-EXISTING AND NOT 12h's** — the baseline worktree does the same thing,
+  and nothing in the package touches orphan cleanup or SeaweedFS. A *different
+  subset* fails each time, which is the signature of shared state or test order,
+  not of a real regression. ⛔ **The consequence for every future package: the
+  workers baseline is "18 plus a flaky file", not 18, and a comparison by COUNT
+  can silently pass a real regression or fail a clean tree.** 12h compared the
+  sorted FAILED/ERROR lists **by name** with that file isolated, and both trees
+  came out identical. **Diagnosing the flake itself is not scheduled.**
+
+- ⚠ **RC-Q9h — REGISTERED, SCHEDULED FOR 12i, NOT A BLOCKER. Operator ruling,
+  2026-08-30.** **Disposition: the belt widens to practice-vs-practice, per LO, in
+  WP-IVGS-12i.** `shared.design.duplication` already computes the comparison — it
+  is anchored on the assessment because WP-IVGS-12h's order scoped it there, and
+  widening a hard refusal on my own judgment was not mine to take. ⛳ **And it is
+  not a blocker because the GATE ALREADY SHOWS IT**, verified against the running
+  API rather than assumed: `_arc_row` carries `instructional_event` and
+  `narration_text` for every scene, so a doubled practice appears in the design
+  review as **two `practice` rows on the same outcome with the same narration**,
+  side by side, where a reviewer sees it. The belt would make it refuse; the
+  reviewer can already see it.
+
+- ⓘ **RC-Q9h AS 12h FOUND IT — the evidence, kept.** LO-1's **two practice
   scenes are the same sentence** in 4 of 6 generations: *"Now it's your turn to
   try. Multiply 34 by 21 using the standard column algorithm."*, twice. It is
   RC-Q9g's exact mechanism inside a single section — `practice_scenes` is bounded

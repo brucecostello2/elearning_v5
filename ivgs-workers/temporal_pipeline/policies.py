@@ -162,6 +162,46 @@ REFINE_TRANSCRIPT = ActivityPolicy(
 # 300 is far below `broker_visibility_timeout=7200`, so P0.1's invariant is
 # untouched and `assert_visibility_timeout_covers_time_limits` proves it at
 # every worker start.
+# ⛔ RC-Q13 — THE DECLARED BUDGET RISES TO MEET THE MEASURED WORK.
+# Operator ruling, 2026-08-30, on the WP-IVGS-12h measurement table below.
+#
+# ⛳ AND IT IS A RULING AGAINST THE TABLE, NOT A RAISE-TO-PASS. The distinction
+# matters and is the reason the numbers are quoted here rather than cited: a
+# limit moved until a run stops failing is tuning; a limit moved to cover a
+# distribution somebody measured is a policy. This is the distribution, every
+# stage-2 generation this project has recorded against the pinned engine —
+# thirteen of them, from WP-IVGS-12g's banked run logs and WP-IVGS-12h's own:
+#
+#     135  281  366  395  427  457  476  477  488  491  503  526  564   seconds
+#     └ min                                                        max ┘
+#
+#   design-contract-6 (12g, 7 gens)   135, 281, 395, 427, 477, 491, 503
+#   design-contract-7 (12h, 6 gens)   280, 366, 458, 476, 488, 526   ← call 1
+#                                      36,  36,  36,  37,  38,  41   ← call 2
+#
+# ⛔ AGAINST THE OLD DECLARATION OF soft 270 / hard 300, TEN OF THIRTEEN EXCEED
+# THE DERIVED 240 s CLIENT BUDGET AND EIGHT EXCEED THE HARD LIMIT. Stage 2 has
+# been deployed in that state since design-contract-5 and it never surfaced,
+# because no storyboard job has gone through the real Celery task since then —
+# every acceptance in this lineage calls node-02 directly from a harness with a
+# 1,200 s timeout (WP-IVGS-12g §12g.13 item 2, WP-IVGS-12h §12h.15 item 2).
+#
+# ⚠ THE TWO-CALL SPLIT IS NOT THE CAUSE AND THE NUMBERS SAY SO. Call 2 costs
+# 36-41 s against a call 1 of 280-526 s — 7-13% — on a budget that was already
+# exceeded by 100% before the split existed.
+#
+# **soft 900 / hard 960.** 900 is 1.6x the largest measurement (564 s) and 1.7x
+# the largest single call (526 s), so the margin is over the MEASURED maximum
+# and not over its mean. 960 keeps the 60 s soft-to-hard gap this table uses at
+# stage 7, which is the only other row with a soft limit in this range.
+#
+# ⛳ AND THE VISIBILITY-TIMEOUT INVARIANT IS NOT DISTURBED, WHICH IS CHECKED AND
+# NOT ASSUMED: `IVGS_BROKER_VISIBILITY_TIMEOUT` is 7,200 s and
+# `assert_visibility_timeout_covers_time_limits` aborts worker startup if any
+# hard `time_limit` reaches it. 960 << 7,200, and it is still far below stage 3's
+# video row at 3,900 which set that 7,200 in the first place. A task whose hard
+# limit crossed the visibility timeout would be re-delivered and executed twice
+# (§7 "Long tasks can execute twice"); this one is nowhere near it.
 GENERATE_STORYBOARD = ActivityPolicy(
     activity="generate_storyboard",
     label=PipelineStage.STORYBOARD_GENERATION.value,
@@ -169,9 +209,23 @@ GENERATE_STORYBOARD = ActivityPolicy(
     celery_task_name="tasks.stage2_storyboard.generate_storyboard_task",
     celery_max_retries=4,
     celery_retry_delay_s=IVGS_BASE_RETRY_DELAY_S,
-    celery_soft_time_limit_s=270,
-    celery_time_limit_s=300,
-    start_to_close_s=5 * 60,
+    celery_soft_time_limit_s=900,
+    celery_time_limit_s=960,
+    # ⛔ 5 MINUTES BECOMES 30, AND THAT IS FORCED BY AN INVARIANT THIS TREE
+    # ALREADY ASSERTS, not chosen alongside the ruling.
+    # `test_start_to_close_is_never_below_todays_hard_limit` requires
+    # `start_to_close_s >= celery_time_limit_s`; Appendix C's 5 m was above the
+    # old 300 s hard limit and is below the new 960 s one. Leaving it would
+    # enshrine, as the Temporal migration's conformance target, an activity
+    # timeout that kills work the Celery task is now allowed to finish —
+    # exactly the mirror-with-no-authority defect this file's docstring exists
+    # to describe.
+    #
+    # ⛳ 30 MINUTES IS THE TABLE'S OWN ANSWER FOR THIS PAIR. Stage 7 is the only
+    # other row declaring soft 900 / hard 960, and Appendix C gives it `s2c
+    # 30 m`. Matching it keeps the widening consistent with §9's "a long render
+    # is *long*, not suspicious" rather than inventing a ratio.
+    start_to_close_s=30 * 60,
     heartbeat_s=30,
 )
 
