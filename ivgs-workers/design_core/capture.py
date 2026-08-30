@@ -100,6 +100,23 @@ def arm(*, task_name: str, task_input: Any) -> None:
     })
 
 
+def outcomes_for_current_project() -> list:
+    """This project's PARSED outcomes — ``[{id, text, source, marker}]``.
+
+    WP-IVGS-12h. Call 2 needs the outcome TEXT, not just the ids: it authors the
+    independent attempt with no lesson in front of it, and *"LO-2"* is not a
+    brief. `/design-outcomes` has returned the whole parse since 12b — the same
+    `shared.design.outcomes.parse_outcomes` output the API stores — so this is
+    one round trip, not a second endpoint.
+
+    ⛔ THE TEXT COMES FROM THE DATABASE AND NEVER FROM THE MODEL. RC-Q9 is why:
+    asked to transcribe three ABCD outcomes the model returned two, reworded,
+    three generations running. Call 2 is a new place that could have quietly
+    reintroduced it by passing call 1's `outcome_notes` along instead.
+    """
+    return _fetch_outcomes()[1]
+
+
 def outcome_ids_for_current_project() -> list:
     """This project's outcome ids, parsed BY CODE from what the operator typed.
 
@@ -112,9 +129,14 @@ def outcome_ids_for_current_project() -> list:
     unsatisfiable empty enum. A design without the closed set is worse than one
     with it; a design that cannot be generated at all is worse than both.
     """
+    return _fetch_outcomes()[0]
+
+
+def _fetch_outcomes():
+    """``(ids, parsed)`` from `/design-outcomes`, or ``([], [])`` on any failure."""
     state = _armed.get()
     if not state or not state.get("project_id"):
-        return []
+        return [], []
     try:
         from config import WorkerConfig
 
@@ -141,14 +163,16 @@ def outcome_ids_for_current_project() -> list:
                     "model may invent them and the gate will refuse the scenes"
                 ),
             )
-            return []
-        ids = [str(i) for i in ((resp.json() or {}).get("outcome_ids") or [])]
+            return [], []
+        payload = resp.json() or {}
+        ids = [str(i) for i in (payload.get("outcome_ids") or [])]
+        parsed = [o for o in (payload.get("outcomes") or []) if isinstance(o, dict)]
         logger.info(
             "design_contract_outcome_ids_resolved",
             project_id=state["project_id"],
             ids=ids,
         )
-        return ids
+        return ids, parsed
     except Exception as exc:                                     # noqa: BLE001
         logger.warning(
             "design_contract_outcome_ids_unavailable",
@@ -156,10 +180,92 @@ def outcome_ids_for_current_project() -> list:
             error_type=type(exc).__name__,
             error=str(exc),
         )
-        return []
+        return [], []
 
 
-def transform_document(document: Any) -> Any:
+async def _author_assessments_if_needed(
+    state: Dict[str, Any], document: Dict[str, Any],
+) -> Dict[str, Any]:
+    """CALL 2, or a documented reason not to make it. WP-IVGS-12h.
+
+    ⛔ THE THREE CASES IT DECLINES ARE ALL "THIS IS NOT A CONTRACT-7 EMISSION",
+    and none of them is a contract-7 failure:
+
+      already present   a stored contract-5/6 brief being re-merged, or a
+                        replayed document. Call 2 has already happened or was
+                        never needed; making it again would author a second
+                        assessment layer over the top of one that exists.
+      no practice layer a v7 storyboard or a pre-contract-5 emission. There is
+                        no design here to attach assessments to.
+      no outcomes       the operator stated none, so `design_contract_schema`
+                        built no evidence layer and there is nothing to assess.
+
+    ⚠ EVERY OTHER PATH MAKES THE CALL, AND A FAILURE OF IT FAILS THE JOB. There
+    is deliberately no "call 2 was unreachable so we shipped call 1" branch.
+    """
+    if isinstance(document.get("assessment_scenes"), dict) and document["assessment_scenes"]:
+        return document
+    practice = document.get("practice_scenes")
+    if not isinstance(practice, dict) or not practice:
+        return document
+
+    from design_core.assessment_call import (
+        AssessmentCallFailed, author_assessments,
+    )
+    from clients.vllm_client import DocumentTransformFatal
+
+    outcomes = outcomes_for_current_project()
+    if not outcomes:
+        # ⚠ NOT SILENT. Without outcomes call 2 has no brief, and the design
+        # ships with a practice layer and no assessments — which is a real,
+        # visible defect the gate will report as unassessed outcomes. It is not
+        # made fatal because the same [] is returned when the API is briefly
+        # unreachable, and killing a storyboard over a transient 500 is worse
+        # than a design a reviewer can see is incomplete.
+        logger.warning(
+            "assessment_call_skipped_no_outcomes",
+            project_id=state.get("project_id"),
+            job_id=state.get("job_id"),
+            detail=(
+                "no outcome ids resolved, so no assessments can be authored. "
+                "The gate will report every outcome unassessed."
+            ),
+        )
+        return document
+
+    from config import WorkerConfig
+
+    try:
+        section = await author_assessments(
+            raw_contract=document,
+            outcomes=outcomes,
+            config=WorkerConfig(),
+        )
+    except AssessmentCallFailed as exc:
+        logger.error(
+            "assessment_call_failed",
+            project_id=state.get("project_id"),
+            job_id=state.get("job_id"),
+            error=str(exc),
+        )
+        raise DocumentTransformFatal(
+            f"design-contract-7 call 2 (assessment authoring) failed and the "
+            f"storyboard will NOT be shipped without its independent attempts: "
+            f"{exc}"
+        ) from exc
+
+    out = dict(document)
+    out["assessment_scenes"] = section
+    logger.info(
+        "assessment_call_stitched",
+        project_id=state.get("project_id"),
+        job_id=state.get("job_id"),
+        outcomes=list(section.keys()),
+    )
+    return out
+
+
+async def transform_document(document: Any) -> Any:
     """The merged sequence, handed to the frozen stage body.
 
     WP-IVGS-12f. Armed as `clients.vllm_client`'s document transform for the
@@ -191,12 +297,38 @@ def transform_document(document: Any) -> Any:
     `designed_assessments` still has to merge for stored briefs — three names
     where 12f had one, and a second copy of that list in this module is how a
     contract-7 would silently stop transforming while every test still passed.
+
+    ⛔ WP-IVGS-12h. IT NOW MAKES THE SECOND ENGINE CALL BEFORE IT MERGES, AND
+    THAT IS THE PACKAGE. Under contract-7 call 1 emits no `assessment_scenes` at
+    all — the key is not in its schema and probe F1 measured that the model
+    cannot put it back when ordered to. So this function stitches:
+
+        call 1's document  ->  author the assessments (call 2)  ->  merge  ->
+        the frozen stage body
+
+    ⛳ THE MERGE ITSELF IS UNTOUCHED AND THE PLACEMENT LAW IS UNCHANGED. Call 2's
+    section is written into the document under the same key contract-6 used, so
+    `shared.design.merge` inserts each practice after the last present/guide
+    serving its outcome and each assessment after that practice, outcome-major,
+    exactly as before. The split changed WHERE the assessment was written, not
+    where it goes.
+
+    ⚠ AND CALL 2's FAILURE IS FATAL, BY CONSTRUCTION, NOT BY ACCIDENT. Every
+    other failure in this module is swallowed — it is an observer beside a
+    working pipeline. This one is not: shipping call 1's document alone would be
+    a storyboard with a practice for every outcome and no independent attempt
+    anywhere, reported SUCCESS. `AssessmentCallFailed` is re-raised as
+    `DocumentTransformFatal`, which the seam alone re-raises, and the stage fails
+    with the reason in `output.errors`.
     """
     state = _armed.get()
     if not state or state.get("stage") != "storyboard":
         return document
     if not isinstance(document, dict):
         return document
+
+    document = await _author_assessments_if_needed(state, document)
+
     sections = [
         name for name in (*EVIDENCE_SECTIONS, LEGACY_SECTION)
         if isinstance(document.get(name), dict) and document[name]

@@ -1,0 +1,165 @@
+# How to Multiply Double-Digit Numbers
+
+Hi! Today, we’re going to learn how to multiply **two-digit numbers**.
+
+That might sound tricky, but don’t worry. We’re going to break it into small, easy steps.
+
+By the end, you’ll be able to solve a problem like **23 times 14** all by yourself.
+
+Ready? Let’s begin!
+
+## Step 1: Set Up the Problem
+
+Our problem is:
+
+**23 times 14.**
+
+Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.
+
+So, the 3 is above the 4, and the 2 is above the 1.
+
+Draw a line underneath.
+
+Now we’re ready to multiply.
+
+## Step 2: Multiply by the Ones Digit
+
+We start with the **4** in 14.
+
+First, multiply 4 times 3.
+
+**4 times 3 equals 12.**
+
+Write the 2 underneath the ones column, and carry the 1 above the tens column.
+
+Next, multiply 4 times 2.
+
+**4 times 2 equals 8.**
+
+But remember, we carried a 1.
+
+So we add it:
+
+**8 plus 1 equals 9.**
+
+Write down the 9.
+
+Our first answer is **92**.
+
+Great! That means 23 times 4 equals 92.
+
+## Step 3: Multiply by the Tens Digit
+
+Now we need to multiply by the **1** in 14.
+
+But there’s something very important to remember.
+
+That 1 isn’t really just 1.
+
+Because it’s in the tens place, it means **10**.
+
+So before we start, put a **zero** in the ones place on our new answer line.
+
+This zero is a placeholder. It reminds us that we’re multiplying by tens.
+
+Now multiply 1 times 3.
+
+**1 times 3 equals 3.**
+
+Write down 3.
+
+Then multiply 1 times 2.
+
+**1 times 2 equals 2.**
+
+Write down 2.
+
+Our second answer is **230**.
+
+That makes sense, because 23 times 10 equals 230.
+
+## Step 4: Add the Two Answers
+
+We’re almost finished!
+
+We have two answers:
+
+**92**
+
+and
+
+**230.**
+
+Now add them together.
+
+2 plus 0 equals 2.
+
+9 plus 3 equals 12.
+
+Write down 2 and carry the 1.
+
+Then 1 plus 2 equals 3.
+
+Our final answer is:
+
+**322.**
+
+So:
+
+**23 times 14 equals 322.**
+
+Nice work!
+
+## Let’s Try Another One
+
+Let’s practice with:
+
+**32 times 21.**
+
+Write 32 on top and 21 underneath.
+
+Start with the ones digit, which is 1.
+
+1 times 2 equals 2.
+
+1 times 3 equals 3.
+
+So our first answer is **32**.
+
+Now move to the tens digit, which is 2.
+
+Remember, because we’re multiplying by the tens digit, start by putting down a zero.
+
+2 times 2 equals 4.
+
+2 times 3 equals 6.
+
+That gives us **640**.
+
+Now add:
+
+**32 plus 640 equals 672.**
+
+So:
+
+**32 times 21 equals 672.**
+
+## The Four-Step Trick
+
+Whenever you multiply two-digit numbers, remember these four steps:
+
+**One:** Multiply by the ones digit.
+
+**Two:** Start the next line with a zero.
+
+**Three:** Multiply by the tens digit.
+
+**Four:** Add the two answers together.
+
+That’s it!
+
+If you make a mistake, don’t worry. Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit.
+
+With a little practice, multiplying two-digit numbers gets much easier.
+
+Great job! You’ve just learned how to multiply two-digit numbers.

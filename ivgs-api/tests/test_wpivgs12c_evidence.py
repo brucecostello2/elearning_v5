@@ -42,13 +42,37 @@ def _contract():
     return contract
 
 
+_NARRATIONS = (
+    "Welcome back. Today we tackle something new.",
+    "Line the digits up in their columns, ones under ones.",
+    "Work out 71 times 36 on your own, then check it.",
+    "Notice what the placeholder zero is doing for us.",
+    "Try one more, and this time nothing is on screen to help.",
+)
+
+
 def _scene(idx, **kw):
+    # ⚠ RE-AIMED BY WP-IVGS-12h, AND NOTHING IS WEAKENED. Every scene this
+    # helper builds used to carry the identical narration `"One."`, which was
+    # harmless while nothing at the gate read narration. WP-IVGS-12h's
+    # `EVIDENCE_NEAR_DUPLICATE` does read it, and it correctly refuses a design
+    # whose `assess` scene says word for word what its `guide` scene said —
+    # which is what a fixture of identical strings is. The narration is now
+    # per-scene so the fixtures say what they always MEANT: three different
+    # scenes. Every assertion in this file is unchanged.
     base = {
         "scene_index": idx, "serves_outcomes": ["LO-1"],
         "instructional_event": "present", "bloom_level": "apply",
         "scene_origin": "designed", "source_refs": None, "rewrite_of": None,
         "media_type": "image", "media_rationale": "framing",
-        "generation_params": None, "narration_text": "One.",
+        "generation_params": None,
+        # ⚠ GENUINELY DIFFERENT SENTENCES AND NOT AN INDEX ON ONE TEMPLATE. The
+        # first attempt at this re-aim was `f"Scene {idx}: a distinct thing is
+        # said here."` and the belt refused THAT too, at containment 0.83 —
+        # correctly, because two sentences differing only in a number are two
+        # sentences differing only in a number. That is worth recording: the
+        # measure does not care that a human can see the index.
+        "narration_text": _NARRATIONS[idx % len(_NARRATIONS)],
         "signal_spec": None,
     }
     base.update(kw)

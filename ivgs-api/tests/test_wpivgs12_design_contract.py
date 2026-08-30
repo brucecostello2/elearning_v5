@@ -102,13 +102,31 @@ class TestNoFieldIsSilentlyDropped:
 # The design review — Task 5's two limbs
 # ---------------------------------------------------------------------------
 
+_NARRATIONS = (
+    "Welcome back. Today we tackle something new.",
+    "Line the digits up in their columns, ones under ones.",
+    "Work out 71 times 36 on your own, then check it.",
+    "Notice what the placeholder zero is doing for us.",
+    "Try one more, and this time nothing is on screen to help.",
+)
+
+
 def _scene(idx, **kw):
     base = {
         "scene_index": idx, "serves_outcomes": ["LO-1"],
         "instructional_event": "present", "bloom_level": "apply",
         "scene_origin": "designed", "source_refs": None, "rewrite_of": None,
         "media_type": "image", "media_rationale": "framing",
-        "generation_params": None, "narration_text": "One.",
+        # ⚠ RE-AIMED BY WP-IVGS-12h, AND NOTHING IS WEAKENED. Every scene this
+        # helper built carried the identical narration `"One."`, harmless while
+        # nothing at the gate read narration. `EVIDENCE_NEAR_DUPLICATE` does read
+        # it, and refuses a design whose `assess` scene says word for word what
+        # an earlier `present`/`guide` on the same outcome said — which is what a
+        # fixture of identical strings is. The narration is now per-scene so the
+        # fixtures say what they always MEANT: different scenes. No assertion in
+        # this file changed.
+        "generation_params": None,
+        "narration_text": _NARRATIONS[idx % len(_NARRATIONS)],
         "signal_spec": None,
     }
     base.update(kw)

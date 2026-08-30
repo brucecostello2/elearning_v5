@@ -70,11 +70,25 @@ CONSUMERS = {
     # `only_stage1_and_stage2_fetch` test below is still true with these here.
     "storyboard_design_system.j2": None,
     "transcript_extraction_system.j2": None,
+    # ── WP-IVGS-12h, migration 0053 ──
+    # ⛳ `None` FOR A THIRD REASON, AND IT IS A NEW ONE WORTH NAMING. This is
+    # design-contract-7's SECOND engine call, and no stage and no orchestrator
+    # renders it: `design_core.assessment_call` fetches the published row
+    # directly from inside the storyboard task's own LLM call. So it is not a
+    # worker-stage template and not an API-service template — it is read by the
+    # worker, in the middle of a stage, from the database. Recorded in
+    # NON_WORKER_CONSUMERS below so it does not sit in UNCONSUMED looking
+    # write-only, which is the mis-record this module exists to prevent.
+    "assessment_authoring_system.j2": None,
 }
 
 #: Seed templates read by something OTHER than a worker stage. WP-64.
 NON_WORKER_CONSUMERS = {
     "scene_media_adaptation.j2": "ivgs-api AdaptationService",
+    # WP-IVGS-12h. Fetched from the `prompts` table by
+    # `design_core.assessment_call._fetch_prompt` during stage 2's own LLM call,
+    # not rendered by any stage's prompt resolution.
+    "assessment_authoring_system.j2": "design_core.assessment_call (call 2)",
 }
 
 # One unmistakable sentinel per Jinja variable the workers bind.
@@ -245,8 +259,10 @@ class TestTheConsumerMapIsHonest:
         `test_only_stage1_and_stage2_fetch_prompts_from_the_api` is still true,
         and it is also why no frozen body had to change to deliver them.
         """
-        assert len(UNCONSUMED) == 11
+        # ⚠ 12 since WP-IVGS-12h added `assessment_authoring_system.j2`.
+        assert len(UNCONSUMED) == 12
         assert "translation.j2" in UNCONSUMED
+        assert "assessment_authoring_system.j2" in UNCONSUMED
         assert "storyboard_design_system.j2" in UNCONSUMED
         assert "transcript_extraction_system.j2" in UNCONSUMED
 

@@ -167,6 +167,13 @@ class PromptType(str, enum.Enum):
     TRANSCRIPT_REFINEMENT_SYSTEM = "transcript_refinement_system"
     STORYBOARD_GENERATION_SYSTEM = "storyboard_generation_system"
 
+    # ⛳ WP-IVGS-12h, ADDED IN THE SAME COMMIT AS MIGRATION 0053 — which is the
+    # whole point of the paragraph above. design-contract-7's SECOND engine call
+    # authors every outcome's independent attempt from the plan and a code-built
+    # practice summary, never seeing the practice wording, and it gets its own
+    # lineage so it can be rolled back without touching the design prompt.
+    ASSESSMENT_AUTHORING_SYSTEM = "assessment_authoring_system"
+
 
 #: ONE list, the way MEDIA_TYPES is one list. `Prompt.prompt_type` typed its
 #: members out by hand and WP-IVGS-12 added two to the database without adding

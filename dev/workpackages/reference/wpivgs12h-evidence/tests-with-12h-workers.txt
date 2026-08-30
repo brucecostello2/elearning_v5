@@ -1,0 +1,60 @@
+  /opt/ivgs/ivgs-workers/services/orphan_cleanup.py:845: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_creates_entry
+ivgs-workers/tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_with_traceback
+  /opt/ivgs/ivgs-workers/services/retry_engine.py:385: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_storage_urls_come_from_the_environment_not_from_node_01
+  ivgs-workers/tests/test_wp60_orphan_guard.py:354: PytestWarning: The test <Function test_storage_urls_come_from_the_environment_not_from_node_01> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_storage_urls_come_from_the_environment_not_from_node_01(monkeypatch):
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_an_explicit_url_still_wins_over_the_environment
+  ivgs-workers/tests/test_wp60_orphan_guard.py:375: PytestWarning: The test <Function test_an_explicit_url_still_wins_over_the_environment> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_explicit_url_still_wins_over_the_environment(monkeypatch):
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_the_service_defaults_to_dry_run
+  ivgs-workers/tests/test_wp60_orphan_guard.py:384: PytestWarning: The test <Function test_the_service_defaults_to_dry_run> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_service_defaults_to_dry_run():
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_exception_object
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_string_fields
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_all_failure_categories
+FAILED tests/test_dlq_service.py::TestDLQReplay::test_replay_message_dispatches_to_celery
+FAILED tests/test_dlq_service.py::TestDLQReplay::test_replay_with_queue_override
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_discard_message - ...
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_escalate_message
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_cannot_resolve_already_resolved
+FAILED tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_auto_replay_transient_within_1_hour
+FAILED tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_flag_stale_messages_over_24_hours
+FAILED tests/test_orphan_cleanup.py::TestScanType2::test_detects_missing_seaweedfs_files
+FAILED tests/test_orphan_cleanup.py::TestScanType3::test_detects_zero_reference_assets
+FAILED tests/test_quality_validator.py::TestValidatorIntegration::test_caption_full_validation
+FAILED tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_creates_entry
+FAILED tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_with_traceback
+FAILED tests/test_stage1.py::TestStage1Integration::test_full_task_execution
+FAILED tests/test_stage2.py::TestStage2Integration::test_full_task_execution
+FAILED tests/test_talking_head_task.py::TestStage6Input::test_requires_at_least_one_audio_ref
+ERROR tests/test_quality_gate.py::TestApprovedFlow::test_approved_asset_proceeds
+ERROR tests/test_quality_gate.py::TestApprovedFlow::test_approved_asset_added_to_approved_set
+ERROR tests/test_quality_gate.py::TestFlaggedFlow::test_flagged_asset_pauses
+ERROR tests/test_quality_gate.py::TestFlaggedFlow::test_flagged_asset_in_review_queue
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_first_rejection_triggers_regeneration
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_second_rejection_triggers_regeneration
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_third_rejection_escalates_to_dlq
+ERROR tests/test_quality_gate.py::TestHumanOverride::test_human_approve_override
+ERROR tests/test_quality_gate.py::TestHumanOverride::test_human_reject_override
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_all_approved_can_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_flagged_assets_block_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_pending_assets_block_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_empty_project_cannot_advance
+ERROR tests/test_quality_gate.py::TestAssetRegistration::test_register_asset_adds_to_pending
+ERROR tests/test_quality_gate.py::TestGateHistory::test_history_recorded - Mo...
+===== 18 failed, 988 passed, 48 skipped, 21 warnings, 15 errors in 37.69s ======

@@ -113,11 +113,27 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     # learner-first"), §4's modality table ("pose the problem, hold, then
     # reveal") and §2's fading sequence already define it; v5 states it where
     # the model reads.
+    # ⛔ WP-IVGS-12h DROPS FOUR OF 12e's FIVE PHRASES FROM **THIS** TUPLE AND
+    # THEY ARE NOT DELETED — THEY MOVED. design-contract-7 splits the design
+    # across two calls, and v8 of this prompt no longer authors the independent
+    # attempt: a second call against `assessment_authoring_system` does, from the
+    # plan and a code-built practice summary and WITHOUT the practice wording in
+    # front of it. The three-beat authoring recipe — `POSE THE PROBLEM COLD`,
+    # `HOLD — a silent attempt window`, `REVEAL for self-check`, `THE ASSESS IS
+    # THE WHOLE PROCEDURE, NOT A FRAGMENT` — is the instruction for writing that
+    # scene, so it now lives in ASSESSMENT_PHRASES below and is gated THERE,
+    # verbatim. Gating it here would refuse every correct v8.
+    #
+    # ⛳ AND `THE LEARNER PERFORMS IT UNAIDED` STAYS, WHICH IS THE LINE BETWEEN
+    # THE TWO. It is the DEFINITION of the `assess` kind, not the recipe for the
+    # scene, and call 1 still has to choose `evidence_kind` between `practice`
+    # and `assess` in the plan. A model that no longer knows what `assess` MEANS
+    # cannot write a plan worth answering — and the plan is the entire brief the
+    # second call works from.
+    #
+    # `test_v8_moved_and_did_not_lose` asserts every dropped phrase is present in
+    # the assessment tuple, so a "drop" that is really a deletion fails a test.
     "THE LEARNER PERFORMS IT UNAIDED",
-    "POSE THE PROBLEM COLD",
-    "HOLD — a silent attempt window",
-    "REVEAL for self-check",
-    "THE ASSESS IS THE WHOLE PROCEDURE, NOT A\nFRAGMENT",
     # ⛔ WP-IVGS-12f. NOTHING IS REMOVED HERE EITHER — every 12b/12d/12e phrase
     # above survives and a test asserts it. What is added is the sentence the
     # whole lineage turned out to be missing.
@@ -135,9 +151,20 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     # prompt says the same thing in words the model reads BEFORE the schema
     # forces it: the script is source material for the teaching, and the
     # assessments are the designer's own work.
-    "THE ASSESSMENTS ARE YOURS TO AUTHOR",
+    # ⛔ WP-IVGS-12h REPLACES 12f's HEADING PIN AND MOVES ITS FRESHNESS RULE.
+    # v7 headed the section *"THE SCRIPT IS SOURCE MATERIAL. THE ASSESSMENTS ARE
+    # YOURS TO AUTHOR — AND SO IS THE PRACTICE."* Under contract-7 the
+    # assessments are NOT this call's to author, so the heading is now *"THE
+    # SCRIPT IS SOURCE MATERIAL. THE PRACTICE IS YOURS TO AUTHOR."* — 12f's claim
+    # kept for the half that is still true, and gated on the new words rather
+    # than on words that must no longer appear.
+    #
+    # `POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED` moves to
+    # ASSESSMENT_PHRASES with the rest of the authoring instruction. It was never
+    # about the practice: a practice posed in fresh numbers with nothing on
+    # screen IS the assessment, which is the defect RC-Q9g measured.
+    "THE PRACTICE IS YOURS TO AUTHOR",
     "ONE ENTRY PER OUTCOME ID",
-    "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
     "AND YOU DO NOT PLACE THEM",
     # ⛔ WP-IVGS-12g REPLACES EXACTLY ONE PHRASE HERE — the only drop in the
     # package — with the reason recorded rather than the entry quietly deleted,
@@ -154,7 +181,13 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     # Everything else 12f, 12e, 12d and 12b gated is still above and still
     # required; `test_v7_removed_nothing_v6_gated` reads this tuple rather than
     # a second copy, so the two cannot drift.
-    "assessment_scenes",
+    # ⛔ WP-IVGS-12h DROPS `assessment_scenes`, WHICH 12g ADDED ONE PACKAGE AGO,
+    # AND IT IS THE SAME DROP FOR THE SAME REASON 12g DROPPED
+    # `designed_assessments`: THE KEY IS NOT IN THIS CALL'S SCHEMA ANY MORE.
+    # design-contract-7 removes it from `design_contract_schema` entirely, and
+    # probe F1 measured that the model CANNOT put it back when ordered to —
+    # `additionalProperties: false` at the contract's own top level. Gating a key
+    # that must no longer appear would refuse every correct v8.
     "practice_scenes",
     # ⛳ The 12g reversal, pinned because it is the one thing a later package
     # would be most tempted to "tidy" back to a pin. Origin is FREE in both
@@ -167,6 +200,33 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     # The expository/evidence split, in the words the model reads.
     "SO `scenes` IS THE EXPOSITORY ARC, AND ONLY THAT",
     "THE PRACTICE MUST NOT BE THE ASSESSMENT WEARING A LABEL",
+)
+
+#: ⛳ WP-IVGS-12h. THE CALL-2 PROMPT'S LOAD-BEARING CONTENT, AND FOUR OF THESE
+#: SIX ARE THE PHRASES DESIGN_PHRASES JUST DROPPED. That is not a coincidence and
+#: it is the check: a package that "moves" text has to prove the text arrived,
+#: and `test_v8_moved_and_did_not_lose` reads both tuples rather than a third
+#: copy of the list.
+#:
+#: The two that are new are the two the split itself creates. `YOU HAVE NOT BEEN
+#: GIVEN THE PRACTICE WORDING` is the mechanism stated to the model — it is told
+#: what it cannot see and why, so it does not fabricate a reference to it. And
+#: `THE FRESH THING IS THE CASE` is 12g's own finding turned into an
+#: instruction: *"where a FRESH NUMBER exists as an axis, the model
+#: differentiates; where the outcome is 'explain why' or 'check your work', it
+#: has no axis and writes the same sentence twice."* Two of the operator's three
+#: outcomes are of that kind, so the prompt names the non-numeric case explicitly
+#: instead of leaving "fresh numbers" to cover an outcome that has none.
+ASSESSMENT_PHRASES: Tuple[str, ...] = (
+    "THE LEARNER PERFORMS IT UNAIDED",
+    "POSE THE PROBLEM COLD",
+    "HOLD — a silent attempt window",
+    "REVEAL for self-check",
+    "THE ASSESS IS THE WHOLE PROCEDURE, NOT A\nFRAGMENT",
+    "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
+    "YOU HAVE NOT BEEN GIVEN THE PRACTICE WORDING",
+    "THE FRESH THING IS THE CASE",
+    "assessment_scenes",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
@@ -185,6 +245,27 @@ TARGETS: Sequence[Tuple[str, str, Tuple[str, ...], str]] = (
         "storyboard_generation_system",
         "storyboard_design_system.j2",
         DESIGN_PHRASES,
+        "WP-IVGS-12h. v8 — THE CALL-1 PROMPT, and what it no longer does. "
+        "design-contract-7 splits the design across two engine calls and this "
+        "prompt is call 1: the plan, the SUPPORTED practice, and the expository "
+        "arc. It no longer authors the independent attempt and `assessment_scenes` "
+        "is no longer a key it can emit — probe F1 measured that the model cannot "
+        "put it back when ordered to, because `additionalProperties: false` holds "
+        "at the contract's own top level. FOUR PHRASES MOVED OUT and none was "
+        "deleted: the three-beat authoring recipe (POSE COLD / HOLD / REVEAL) and "
+        "'THE ASSESS IS THE WHOLE PROCEDURE, NOT A FRAGMENT' are now gated on the "
+        "`assessment_authoring_system` template, verbatim, and a test reads both "
+        "tuples so a move that is really a loss fails. 'THE LEARNER PERFORMS IT "
+        "UNAIDED' STAYS here, because it is the definition of the kind and call 1 "
+        "still chooses `evidence_kind` in the plan — and that plan is the entire "
+        "brief the second call answers, which is what makes the split safe for "
+        "backward design. The heading becomes 'THE SCRIPT IS SOURCE MATERIAL. THE "
+        "PRACTICE IS YOURS TO AUTHOR.' WHY: RC-Q9g. Under contract-6, with the "
+        "assessment written first and sitting in context while the practice was "
+        "asked for, the model wrote the same scene twice — 9 of 15 outcome-pairs "
+        "verbatim identical across five generations, 2 more differing by a "
+        "'Let's practice' prefix, and v7 already contained the sentence "
+        "forbidding it. "
         "WP-IVGS-12g. THE EVIDENCE LAYER BECOMES STRUCTURAL, COMPLETELY, "
         "closing RC-Q9f in both limbs. `scenes` is stated to be the EXPOSITORY "
         "arc and nothing else — its instructional_event enum is narrowed to "
@@ -274,6 +355,45 @@ TARGETS: Sequence[Tuple[str, str, Tuple[str, ...], str]] = (
         "which is not frozen. No freeze exception was requested or needed.",
     ),
     (
+        "assessment_authoring_system",
+        "assessment_authoring_system.j2",
+        ASSESSMENT_PHRASES,
+        "WP-IVGS-12h. THE SECOND CALL'S SYSTEM PROMPT, v1 OF ITS OWN LINEAGE "
+        "(migration 0053), closing RC-Q9g. design-contract-7 splits the design "
+        "across two engine calls and this one authors every outcome's "
+        "INDEPENDENT ATTEMPT — from the outcomes, from the `assessment_plan` the "
+        "first call wrote before a single scene existed, and from a code-built "
+        "fact sheet of what each outcome's practice covered (the numbers it "
+        "used, the templates and phases it reached, how long it ran). It is NOT "
+        "given the practice narrations, the expository scenes, or the source "
+        "script. WHY THE CONTEXT AND NOT THE PROMPT: under contract-6 one call "
+        "wrote both kinds with `assessment_scenes` declared first, declaration "
+        "order binds generation order on this engine, and so the practice was "
+        "asked for with the assessment already in context — and came back as a "
+        "copy of it. 9 of 15 outcome-pairs verbatim identical across five "
+        "generations, 2 more differing only by a 'Let's practice' prefix, every "
+        "generation carrying at least one. v7 ALREADY said 'THE PRACTICE MUST "
+        "NOT BE THE ASSESSMENT WEARING A LABEL', in the model's own reading "
+        "order, before a single acceptance generation ran; it wrote it twice "
+        "anyway. Prompt emphasis was measured not to work, and reordering would "
+        "have traded backward design — 12d's measured, load-bearing property — "
+        "for a duplicate that would most likely reverse direction. So the calls "
+        "separate the kinds and this one cannot copy what it never sees. IT "
+        "CARRIES v5's OPERATIONAL DEFINITIONS VERBATIM: 'THE LEARNER PERFORMS IT "
+        "UNAIDED', the three beats POSE COLD / HOLD / REVEAL, and 'THE ASSESS IS "
+        "THE WHOLE PROCEDURE, NOT A FRAGMENT' — the words moved with the job, "
+        "they were not rewritten, and the publisher gates both tuples so a move "
+        "that is really a deletion fails. AND IT NAMES THE NON-NUMERIC CASE, "
+        "which is 12g's own finding made into an instruction: where a fresh "
+        "number exists the model differentiates, and where the outcome is "
+        "'explain why' or 'check your work' it has no axis and writes the same "
+        "sentence twice — so the prompt tells it the fresh thing is then the "
+        "CASE. There is NO file fallback for this prompt, deliberately: "
+        "`design_core.assessment_call` refuses rather than reaching for a "
+        "baked-in default, because the package's central claim must not be made "
+        "by an unversioned string.",
+    ),
+    (
         "transcript_refinement_system",
         "transcript_extraction_system.j2",
         EXTRACTION_PHRASES,
@@ -361,6 +481,47 @@ def _gate(prompt_type: str, text: str, phrases: Sequence[str]) -> None:
                 )
         if "SENTINEL-OUTCOME" in without:
             _fail(f"{prompt_type}: renders an outcome that was not supplied")
+
+    if prompt_type == "assessment_authoring_system":
+        # ⛔ THE ONE THING THIS PROMPT MUST NEVER DO IS SHOW THE PRACTICE, so the
+        # gate proves it cannot rather than trusting that it does not. The
+        # template is rendered with the practice, the scenes and the script all
+        # supplied as variables; if any of them reaches the output, some future
+        # edit has added a `{{ }}` that undoes the whole package — silently, and
+        # while every other test still passes, because the model would simply
+        # start copying again and the only symptom would be a duplicate.
+        leak_probe = {
+            "practice_scenes": "SENTINEL-PRACTICE-NARRATION",
+            "scenes": "SENTINEL-EXPOSITORY-SCENE",
+            "combined_transcript": "SENTINEL-SOURCE-SCRIPT",
+            "learning_outcomes": "SENTINEL-OUTCOME-TEXT",
+            "source_kind": "uploaded",
+        }
+        rendered = _JINJA.from_string(text).render(**leak_probe)
+        leaked = [k for k, v in leak_probe.items()
+                  if v.startswith("SENTINEL") and v in rendered]
+        if leaked:
+            _fail(
+                f"{prompt_type}: the template RENDERS {leaked} into the call-2 "
+                "prompt. design-contract-7's entire mechanism is that the "
+                "assessment author cannot see the practice, the scenes or the "
+                "script — RC-Q9g is what happens when it can. The user turn is "
+                "built in code by `design_core.assessment_call.build_user_message` "
+                "from three arguments, and this template must stay a static role "
+                "prompt."
+            )
+        if "{{" in text or "{%" in text.replace("{#", "").replace("#}", ""):
+            # A comment block is fine; a statement or an expression is not.
+            import re as _re
+
+            body = _re.sub(r"\{#.*?#\}", "", text, flags=_re.S)
+            if "{{" in body or "{%" in body:
+                _fail(
+                    f"{prompt_type}: the template contains Jinja statements or "
+                    "expressions outside its comment header. It is a STATIC role "
+                    "prompt by design — every fact call 2 receives is assembled "
+                    "in code, where what it does not include is auditable."
+                )
 
     if prompt_type == "transcript_refinement_system":
         uploaded = _JINJA.from_string(text).render(

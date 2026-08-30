@@ -1086,12 +1086,23 @@ def on_task_prerun(
         else:
             set_response_format_override(None)
 
-        # WP-IVGS-12f. The document transform that merges `designed_assessments`
+        # WP-IVGS-12f. The document transform that merges the evidence sections
         # into the scene sequence, so the frozen stage body writes scene rows
-        # for the assessments the model invented. Armed for the storyboard task
+        # for the assessments the model authored. Armed for the storyboard task
         # only; `transform_document` is itself a no-op for anything else, so
         # this is belt and braces on purpose — the seam is in the request path
         # of every LLM stage.
+        #
+        # ⛔ WP-IVGS-12h. THE SAME ONE LINE NOW ALSO CARRIES THE SECOND ENGINE
+        # CALL, and nothing here changed to make that true. `transform_document`
+        # became a coroutine and the seam awaits it, so contract-7's assessment
+        # authoring runs between call 1's parse and the frozen body seeing the
+        # document — inside this Celery task, under this soft time limit, with
+        # this job context armed. No new pipeline stage and no frozen-body edit.
+        # ⚠ A failure of that call raises `DocumentTransformFatal` out of the
+        # seam and fails the storyboard job by name; it is the one transform
+        # failure that is NOT swallowed, and `design_core.assessment_call`
+        # explains why a silent single-call fallback would be worse.
         from clients.vllm_client import set_document_transform
 
         set_document_transform(

@@ -156,9 +156,31 @@ def _emission(scenes=None, designed=None, plan_kind="assess"):
 SECTIONS = (("assessment_scenes", "assess"), ("practice_scenes", "practice"))
 
 
+def _owning_schema(section):
+    """The schema that OWNS one evidence section. WP-IVGS-12h.
+
+    ⛔ RE-AIMED, AND EVERY CLAIM BELOW IS UNCHANGED AND STILL MADE ABOUT BOTH
+    SECTIONS. design-contract-7 splits the emission across two engine calls
+    because RC-Q9g measured the practice and the assessment coming back as the
+    same scene written twice, 9 of 15 outcome-pairs verbatim, once the
+    assessment sat in context while the practice was asked for. So
+    `practice_scenes` is call 1's and `assessment_scenes` is call 2's — the
+    SHAPE of each is byte-for-byte what 12f and 12g pinned, which is the point:
+    this package changed the CALL, not the grammar.
+
+    Resolving the owner here rather than editing each assertion is what keeps
+    that honest — a package that quietly changed a section's bounds or pins
+    would still fail every test in this file.
+    """
+    contract = _contract()
+    if section == "assessment_scenes":
+        return contract.assessment_authoring_schema(outcome_ids=IDS)
+    return contract.design_contract_schema(outcome_ids=IDS)
+
+
 def _entry(section, oid):
     """The scene SCHEMA inside one section's per-outcome array."""
-    return (_contract().design_contract_schema(outcome_ids=IDS)
+    return (_owning_schema(section)
             ["properties"][section]["properties"][oid]["items"])
 
 
@@ -168,7 +190,7 @@ class TestTheExcerpterCannotDecline:
     def test_the_section_is_required_with_one_key_per_outcome(
         self, section, _event,
     ):
-        schema = _contract().design_contract_schema(outcome_ids=IDS)
+        schema = _owning_schema(section)
         assert section in schema["required"]
         block = schema["properties"][section]
         assert sorted(block["required"]) == sorted(IDS)
@@ -222,7 +244,7 @@ class TestTheExcerpterCannotDecline:
     @pytest.mark.parametrize("section,_event", SECTIONS)
     def test_every_array_is_bounded(self, section, _event):
         """RC-Q12. `minItems` with no maximum is a runaway on this engine."""
-        schema = _contract().design_contract_schema(outcome_ids=IDS)
+        schema = _owning_schema(section)
         per_outcome = schema["properties"][section]["properties"]["LO-1"]
         assert "maxItems" in per_outcome, f"{section} array is unbounded"
         for name, prop in per_outcome["items"]["properties"].items():
@@ -239,16 +261,28 @@ class TestTheExcerpterCannotDecline:
         membership check would notice — which is exactly what happened to
         `outcome_notes` in 12c.
 
-        ⛳ AND `assessment_scenes` COMES BEFORE `practice_scenes`, which reads
-        backwards on the page and is exactly right: backward design writes the
-        END of each outcome's fading sequence first, then the middle that leads
-        to it, then the beginning.
+        ⛳ 12g ADDED: "AND `assessment_scenes` COMES BEFORE `practice_scenes`,
+        which reads backwards on the page and is exactly right." ⛔ WP-IVGS-12h
+        REMOVES THAT SENTENCE AND THE REASON IS 12g's OWN CLOSING LINE — *"12g.9
+        is where that decision comes back with a bill."* It did: with the
+        assessment written first and sitting in context while the practice was
+        asked for, the model wrote the same scene twice in 9 of 15 outcome-pairs.
+        The two are no longer in one emission at all, so there is no order
+        between them to assert; what survives — and is what the claim was always
+        FOR — is that the plan is first and the evidence precedes the scenes.
+
+        ⛳ AND BACKWARD DESIGN IS STRONGER, NOT WEAKER: call 2 is briefed from
+        the plan and from nothing else, so the END of every outcome's fading
+        sequence is still written from a commitment made before a scene existed.
         """
         order = list(_contract().design_contract_schema(
             outcome_ids=IDS)["properties"])
-        assert order[:3] == ["assessment_plan", "assessment_scenes",
-                             "practice_scenes"]
+        assert order[:2] == ["assessment_plan", "practice_scenes"]
         assert order.index("practice_scenes") < order.index("scenes")
+        assert "assessment_scenes" not in order
+        # ...and it is call 2's only property, written from the plan above.
+        assert list(_contract().assessment_authoring_schema(
+            outcome_ids=IDS)["properties"]) == ["assessment_scenes"]
 
     def test_no_outcomes_means_nothing_to_force(self):
         """An empty required-key object is a grammar demanding a key set that
@@ -443,15 +477,28 @@ class TestThePromptAndTheStorage:
         refuse every correct v7. Every OTHER phrase 12f pinned is still here and
         still asserted, and `test_v7_removed_nothing_v6_gated` reads the
         publisher's own tuple so this list cannot silently shrink again.
+
+        ⚠ RE-AIMED AGAIN BY WP-IVGS-12h, AND ACROSS BOTH PROMPTS. 12f's claim —
+        the script is source material and the evidence is the designer's own
+        work — is now made twice, once per call, because the two kinds are
+        authored in two calls. So the phrases are asserted where the job they
+        describe actually happens, and NOT asserted where it does not: gating
+        `assessment_scenes` on the call-1 prompt would refuse every correct v8,
+        because the key is not in call 1's schema.
         """
         text = self._prompt()
-        for phrase in ("THE ASSESSMENTS ARE YOURS TO AUTHOR",
-                       "assessment_scenes",
+        assessment = (REPO / "ivgs-api" / "seed" / "default_prompts"
+                      / "assessment_authoring_system.j2").read_text(encoding="utf-8")
+        # CALL 1: the practice is its own work, and it does not place it.
+        for phrase in ("THE PRACTICE IS YOURS TO AUTHOR",
                        "practice_scenes",
                        "ONE ENTRY PER OUTCOME ID",
-                       "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
                        "AND YOU DO NOT PLACE THEM"):
             assert phrase in text, phrase
+        # CALL 2: the assessment is its own work, in fresh numbers.
+        for phrase in ("assessment_scenes",
+                       "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED"):
+            assert phrase in assessment, phrase
         assert "designed_assessments" not in text
 
     def test_the_publisher_gate_matches_the_shipped_prompt(self):
@@ -499,30 +546,42 @@ class TestThePromptAndTheStorage:
 
     def test_the_worker_transform_hands_the_merged_list_to_the_frozen_body(self):
         """Without this the assessment is designed, stored, reviewed — and never
-        rendered, because the frozen body builds rows from `scenes`."""
+        rendered, because the frozen body builds rows from `scenes`.
+
+        ⚠ RE-AIMED BY WP-IVGS-12h: `transform_document` is a COROUTINE now. The
+        seam gained one `await` so an armed transform can make the second engine
+        call between call 1's parse and the frozen body seeing the document. The
+        assertions are unchanged — this fixture already carries
+        `assessment_scenes`, so `_author_assessments_if_needed` declines (the
+        "already present" case) and no call is made.
+        """
+        import asyncio
+
         sys.path.insert(0, str(REPO / "ivgs-workers"))
         from design_core import capture
 
         capture._armed.set({"task_name": capture.STORYBOARD_TASK, "job_id": "j",
                             "project_id": "p", "stage": "storyboard", "seen": False})
         try:
-            out = capture.transform_document(_emission())
+            out = asyncio.run(capture.transform_document(_emission()))
             assert len(out["scenes"]) == 6
             assert sum(1 for s in out["scenes"]
                        if s["provenance"]["origin"] == "designed") == 3
             # Anything it does not recognise passes through untouched.
-            assert capture.transform_document({"scenes": []}) == {"scenes": []}
-            assert capture.transform_document("not a document") == "not a document"
+            assert asyncio.run(capture.transform_document({"scenes": []})) == {"scenes": []}
+            assert asyncio.run(capture.transform_document("not a document")) == "not a document"
         finally:
             capture._armed.set(None)
 
     def test_the_transform_is_inert_when_the_stage_is_not_storyboard(self):
+        import asyncio
+
         sys.path.insert(0, str(REPO / "ivgs-workers"))
         from design_core import capture
 
         capture._armed.set(None)
         emission = _emission()
-        assert capture.transform_document(emission) is emission
+        assert asyncio.run(capture.transform_document(emission)) is emission
 
 
 # ---------------------------------------------------------------------------

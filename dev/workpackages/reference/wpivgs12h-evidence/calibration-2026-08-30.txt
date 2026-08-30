@@ -1,0 +1,34 @@
+==============================================================================
+WP-IVGS-12h — the near-duplicate belt against 12g's banked emissions
+  limb A  containment >= 0.8
+  limb B  numerals equal AND containment >= 0.6
+==============================================================================
+source   gen  LO                      practice            worked example
+OP-runB  1    LO-1  REFUSE 0.636 no_fresh_axispass   0.182 -            
+OP-runB  1    LO-2  REFUSE 1.000 restates     pass   0.000 -            
+OP-runB  1    LO-3  REFUSE 1.000 restates     pass   0.000 -            
+OP-runB  2    LO-1  REFUSE 1.000 restates     pass   0.125 -            
+OP-runB  2    LO-2  REFUSE 1.000 restates     pass   0.364 -            
+OP-runB  2    LO-3  REFUSE 1.000 restates     pass   0.000 -            
+OP-runB  3    LO-1  pass   0.100 -            pass   0.200 -            
+OP-runB  3    LO-2  REFUSE 1.000 restates     pass   0.000 -            
+OP-runB  3    LO-3  REFUSE 0.900 restates     pass   0.000 -            
+OP-runA  2    LO-1  pass   0.600 -            pass   0.400 -            
+OP-runA  2    LO-2  REFUSE 1.000 restates     pass   0.000 -            
+OP-runA  2    LO-3  REFUSE 1.000 restates     pass   0.000 -            
+OP-runA  3    LO-1  pass   0.200 -            pass   0.200 -            
+OP-runA  3    LO-2  REFUSE 1.000 restates     pass   0.400 -            
+OP-runA  3    LO-3  REFUSE 1.000 restates     pass   0.000 -            
+B2       1    LO-1  pass   0.667 -            REFUSE 1.000 restates     
+B2       1    LO-2  pass   0.667 -            pass   0.667 -            
+B2       1    LO-3  REFUSE 1.000 restates     REFUSE 1.000 restates     
+==============================================================================
+practice limb: 13 REFUSE / 5 pass, of 18
+the two classes, practice limb, SPLIT BY LIMB — and they must be:
+  limb A REFUSE (restates)      : [0.9, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  limb B REFUSE (no fresh axis) : [0.636]
+  pass                          : [0.1, 0.2, 0.6, 0.667, 0.667]
+  ⛳ LIMB A MARGIN: pass tops out at 0.667, limb A floors at 0.900; threshold 0.8 sits between them
+  ⚠ LIMB B has no counter-example to separate FROM: every equal-numeral pair in the bank is a duplicate. Its floor 0.6 sits below the lowest it must catch (0.636) and is the WIDER of the two claims.
+==============================================================================
+⛳ CALIBRATION HELD — every banked row classifies as 12g's quotes say

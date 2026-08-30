@@ -1,0 +1,27 @@
+--- E1 call-2 document, every pin ordered broken
+    finish=stop  24.4s  prompt=144 completion=514  chars=1664 whitespace=513
+    top-level keys: ['assessment_scenes']
+    assessment_scenes keys: ['LO-1', 'LO-2', 'LO-3']
+      LO-1: n=1 events=['assess'] serves=[['LO-1']] origins=['designed']
+      LO-2: n=1 events=['assess'] serves=[['LO-2']] origins=['designed']
+      LO-3: n=1 events=['assess'] serves=[['LO-3']] origins=['designed']
+
+--- E2 call-2 ORDERED EMPTY (RC-Q12 corridor)
+    finish=stop  37.5s  prompt=97 completion=789  chars=2132 whitespace=278
+    top-level keys: ['assessment_scenes']
+    assessment_scenes keys: ['LO-1', 'LO-2', 'LO-3']
+      LO-1: n=1 events=['assess'] serves=[['LO-1']] origins=['sourced']
+      LO-2: n=1 events=['assess'] serves=[['LO-2']] origins=['sourced']
+      LO-3: n=1 events=['assess'] serves=[['LO-3']] origins=['sourced']
+
+--- F1 call-1 ordered to emit assessment_scenes
+    finish=stop  73.6s  prompt=114 completion=1542  chars=6002 whitespace=1640
+    top-level keys: ['assessment_plan', 'practice_scenes', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+    scenes[] events: ['present', 'present']
+
+--- F2 call-1 ordered to declare assess/practice in scenes[]
+    finish=stop  70.4s  prompt=103 completion=1478  chars=4481 whitespace=1368
+    top-level keys: ['assessment_plan', 'practice_scenes', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+    scenes[] events: ['present', 'present', 'present']
+
+banked -> /opt/ivgs/dev/workpackages/reference/wpivgs12h-evidence/probe12h.json

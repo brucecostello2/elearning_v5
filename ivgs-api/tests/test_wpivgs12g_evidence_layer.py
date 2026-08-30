@@ -73,13 +73,50 @@ OUTCOMES = [
 SECTIONS = (("assessment_scenes", "assess"), ("practice_scenes", "practice"))
 
 
+def _owning_schema(section):
+    """The schema that OWNS one evidence section. WP-IVGS-12h.
+
+    ⛔ RE-AIMED, AND EVERY CLAIM BELOW IS UNCHANGED AND STILL MADE ABOUT BOTH
+    SECTIONS. design-contract-7 splits the emission across two engine calls
+    because RC-Q9g measured the practice and the assessment coming back as the
+    same scene written twice, 9 of 15 outcome-pairs verbatim, once the
+    assessment sat in context while the practice was asked for. So
+    `practice_scenes` is call 1's and `assessment_scenes` is call 2's — the
+    SHAPE of each is byte-for-byte what 12f and 12g pinned, which is the point:
+    this package changed the CALL, not the grammar.
+
+    Resolving the owner here rather than editing each assertion is what keeps
+    that honest — a package that quietly changed a section's bounds or pins
+    would still fail every test in this file.
+    """
+    contract = _contract()
+    if section == "assessment_scenes":
+        return contract.assessment_authoring_schema(outcome_ids=IDS)
+    return contract.design_contract_schema(outcome_ids=IDS)
+
+
+_NARRATION = {
+    "practice": "Half of this working is filled in for {oid}. Supply the "
+                "missing partial product for 45 times 12.",
+    "assess": "Nothing on screen now: work out 71 times 36 from the start, "
+              "then check it yourself. ({oid})",
+}
+
+
 def _designed(oid, event, **kw):
     base = {
         "provenance": {"origin": "designed",
                        "rationale": "the script contains no unaided attempt"},
         "instructional_event": event,
         "serves_outcomes": [oid],
-        "narration_text": f"Now work out 45 times 12. ({oid}/{event})",
+        # ⚠ RE-AIMED BY WP-IVGS-12h, AND NOTHING IS WEAKENED. This helper used
+        # to give BOTH kinds the same sentence — `f"Now work out 45 times 12.
+        # ({oid}/{event})"` — which differs between a practice and an assessment
+        # only in the parenthetical. `EVIDENCE_NEAR_DUPLICATE` scores that at
+        # 0.875 and refuses it, correctly: it is exactly RC-Q9g, in a fixture.
+        # The two kinds now say different things about different numbers, which
+        # is what a sound design does and what every assertion here assumed.
+        "narration_text": _NARRATION[event].format(oid=oid),
         "visual_description": "a blank column layout",
         "media_type": "image",
         "media_rationale": "an attempt moment",
@@ -196,7 +233,7 @@ class TestBothKindsAreForced:
 
     @pytest.mark.parametrize("section,event", SECTIONS)
     def test_the_section_is_required_for_every_outcome(self, section, event):
-        schema = _contract().design_contract_schema(outcome_ids=IDS)
+        schema = _owning_schema(section)
         assert section in schema["required"]
         block = schema["properties"][section]
         assert sorted(block["required"]) == sorted(IDS)
@@ -216,9 +253,12 @@ class TestBothKindsAreForced:
         of 1 would forbid what Foundation §2 prescribes.
         """
         c = _contract()
-        schema = c.design_contract_schema(outcome_ids=IDS)
-        a = schema["properties"]["assessment_scenes"]["properties"]["LO-1"]
-        p = schema["properties"]["practice_scenes"]["properties"]["LO-1"]
+        # ⚠ RE-AIMED BY WP-IVGS-12h: the two sections now live in two schemas,
+        # and the ASYMMETRY — which is the claim — is unchanged in both.
+        a = (c.assessment_authoring_schema(outcome_ids=IDS)
+             ["properties"]["assessment_scenes"]["properties"]["LO-1"])
+        p = (c.design_contract_schema(outcome_ids=IDS)
+             ["properties"]["practice_scenes"]["properties"]["LO-1"])
         assert (a["minItems"], a["maxItems"]) == (1, 1)
         assert (p["minItems"], p["maxItems"]) == (1, 2)
         assert c.ASSESSMENT_SCENES_PER_OUTCOME == 1
@@ -228,8 +268,16 @@ class TestBothKindsAreForced:
     def test_every_array_in_the_evidence_layer_carries_a_maximum(self):
         """RC-Q12. `minItems` with no maximum is a measured runaway on this
         engine: the enum was honoured perfectly while the array grew to the
-        token limit."""
-        schema = _contract().design_contract_schema(outcome_ids=IDS)
+        token limit.
+
+        ⚠ RE-AIMED BY WP-IVGS-12h TO WALK **BOTH** SCHEMAS. Contract-7 splits
+        the emission into two calls, so walking only the first would have
+        silently stopped checking the whole assessment layer — which is exactly
+        the shape of hole this test exists to close.
+        """
+        c = _contract()
+        schemas = [c.design_contract_schema(outcome_ids=IDS),
+                   c.assessment_authoring_schema(outcome_ids=IDS)]
 
         def walk(node, path):
             if isinstance(node, dict):
@@ -241,8 +289,14 @@ class TestBothKindsAreForced:
                 for i, v in enumerate(node):
                     walk(v, f"{path}[{i}]")
 
-        for section, _ in SECTIONS:
-            walk(schema["properties"][section], section)
+        for schema in schemas:
+            for section, _ in SECTIONS:
+                if section in schema["properties"]:
+                    walk(schema["properties"][section], section)
+        # ⛔ AND THE WALK MUST HAVE SEEN BOTH, or it is proving nothing.
+        seen = {section for schema in schemas for section, _ in SECTIONS
+                if section in schema["properties"]}
+        assert seen == {"assessment_scenes", "practice_scenes"}
 
     def test_every_string_in_the_evidence_layer_that_can_run_is_bounded(self):
         """⛳ 12f's NAMED RESIDUE, CLOSED — and only because 12g made it
@@ -274,15 +328,30 @@ class TestTheEmissionOrderIsBackwardDesign:
         independent attempt, then the supported attempt that leads to it, then
         the exposition that prepares both. The model poses the assessment while
         it has no worked example of its own to lift numbers out of.
+
+        ⛔ RE-AIMED BY WP-IVGS-12h, AND THE SENTENCE ABOVE IS WHY. 12g's own
+        closing line on this decision — *"12g.9 is where that decision comes
+        back with a bill"* — was paid: writing the assessment first put it in
+        context while the practice was asked for, and the model copied it in 9
+        of 15 outcome-pairs. The two sections are no longer in one emission, so
+        there is no order between them to assert. What the claim was always FOR
+        survives intact and is asserted here: the plan is first, and the evidence
+        precedes the exposition.
+
+        ⛳ AND THE ASSESSMENT IS STILL WRITTEN WITH NO WORKED EXAMPLE TO LIFT
+        FROM — more so. Call 2 is briefed from the plan and a code-built number
+        list, and never sees `scenes` at all.
         """
-        order = list(_contract().design_contract_schema(
-            outcome_ids=IDS)["properties"])
-        assert order[:4] == ["assessment_plan", "assessment_scenes",
-                             "practice_scenes", "scenes"]
+        c = _contract()
+        order = list(c.design_contract_schema(outcome_ids=IDS)["properties"])
+        assert order[:3] == ["assessment_plan", "practice_scenes", "scenes"]
+        assert "assessment_scenes" not in order
+        assert list(c.assessment_authoring_schema(
+            outcome_ids=IDS)["properties"]) == ["assessment_scenes"]
 
     @pytest.mark.parametrize("section,_event", SECTIONS)
     def test_the_model_is_never_asked_where_any_of_it_goes(self, section, _event):
-        entry = (_contract().design_contract_schema(outcome_ids=IDS)
+        entry = (_owning_schema(section)
                  ["properties"][section]["properties"]["LO-1"]["items"])
         assert "scene_index" not in entry["properties"]
         assert "scene_index" not in entry["required"]
@@ -301,7 +370,7 @@ class TestOriginIsFree:
         yet."* and it found that span and anchored to it in both runs. Pinning
         `origin: "designed"` would force an invented substitute for a real
         teacher's real practice item, plus a rationale asserting its absence."""
-        prov = (_contract().design_contract_schema(outcome_ids=IDS)
+        prov = (_owning_schema(section)
                 ["properties"][section]["properties"]["LO-1"]["items"]
                 ["properties"]["provenance"])
         assert sorted(b["properties"]["origin"]["enum"][0]
@@ -312,7 +381,7 @@ class TestOriginIsFree:
         """One `oneOf`, not a second copy — so migration 0048's CHECK constraint
         holds an evidence scene exactly as it holds an expository one."""
         c = _contract()
-        prov = (c.design_contract_schema(outcome_ids=IDS)
+        prov = (_owning_schema(section)
                 ["properties"][section]["properties"]["LO-1"]["items"]
                 ["properties"]["provenance"])
         assert prov["oneOf"] == c._provenance_branches()
@@ -615,13 +684,23 @@ class TestThePromptAndTheSeam:
         assert "designed_assessments" not in text
 
     def test_the_prompt_names_both_sections_and_the_free_origin(self):
+        """⚠ RE-AIMED BY WP-IVGS-12h ACROSS BOTH PROMPTS, CLAIM UNCHANGED. Each
+        section is named on the prompt of the call that writes it; `scenes` is
+        still declared the expository arc and only that, on call 1, and origin is
+        still free on both."""
         text = self._prompt()
-        for phrase in ("assessment_scenes", "practice_scenes",
+        assessment = (REPO / "ivgs-api" / "seed" / "default_prompts"
+                      / "assessment_authoring_system.j2").read_text(encoding="utf-8")
+        for phrase in ("practice_scenes",
                        "SO `scenes` IS THE EXPOSITORY ARC, AND ONLY THAT",
                        "THE PRACTICE MUST NOT BE THE ASSESSMENT WEARING A LABEL",
                        'origin: "sourced"', 'origin: "designed"',
                        "AND YOU DO NOT PLACE THEM"):
             assert phrase in text, phrase
+        assert "assessment_scenes" in assessment
+        # origin is free on call 2's prompt too, and stated as a real choice
+        for phrase in ('origin: "designed"', 'origin: "sourced"'):
+            assert phrase in assessment, phrase
 
     def test_the_prompt_renders_with_outcomes_and_without(self):
         """A template that raises at render time takes the stage down, and the
@@ -637,20 +716,31 @@ class TestThePromptAndTheSeam:
 
     def test_the_worker_transform_recognises_the_new_sections(self):
         """Without this the evidence is authored, stored, reviewed — and never
-        rendered, because the frozen body builds its rows from `scenes`."""
+        rendered, because the frozen body builds its rows from `scenes`.
+
+        ⚠ RE-AIMED BY WP-IVGS-12h: `transform_document` is a COROUTINE now, so
+        the seam can make contract-7's second engine call between call 1's parse
+        and the frozen body seeing the document. Every assertion is unchanged —
+        this fixture already carries `assessment_scenes`, so the orchestrator
+        declines (the "already present" case) and no call is made.
+        """
+        import asyncio
+
         sys.path.insert(0, str(REPO / "ivgs-workers"))
         from design_core import capture
 
         capture._armed.set({"task_name": capture.STORYBOARD_TASK, "job_id": "j",
                             "project_id": "p", "stage": "storyboard", "seen": False})
         try:
-            out = capture.transform_document(_emission())
+            out = asyncio.run(capture.transform_document(_emission()))
             assert len(out["scenes"]) == 9
             events = [s["instructional_event"] for s in out["scenes"]]
             assert events.count("practice") == 3 and events.count("assess") == 3
             # Anything it does not recognise passes through untouched.
-            assert capture.transform_document({"scenes": []}) == {"scenes": []}
-            assert capture.transform_document("not a document") == "not a document"
+            assert asyncio.run(
+                capture.transform_document({"scenes": []})) == {"scenes": []}
+            assert asyncio.run(
+                capture.transform_document("not a document")) == "not a document"
         finally:
             capture._armed.set(None)
 
@@ -665,7 +755,8 @@ class TestThePromptAndTheSeam:
         from design_core import capture
         from shared.design import merge
 
-        src = inspect.getsource(capture.transform_document)
+        src = (inspect.getsource(capture.transform_document)
+               + inspect.getsource(capture._author_assessments_if_needed))
         assert "EVIDENCE_SECTIONS" in src and "LEGACY_SECTION" in src
         assert '"designed_assessments"' not in src
         assert merge.EVIDENCE_SECTIONS == ("practice_scenes", "assessment_scenes")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import inspect
 import json
 import re
 import logging
@@ -290,11 +291,53 @@ def set_document_transform(fn: Optional[Any]) -> None:
         _DOCUMENT_TRANSFORM.append(fn)
 
 
-def _apply_document_transform(document: Any) -> Any:
+class DocumentTransformFatal(Exception):
+    """A transform failure the STAGE must see. WP-IVGS-12h.
+
+    ⛔ IT EXISTS BECAUSE THE SWALLOW BELOW IS CORRECT AND IS NOT CORRECT FOR
+    EVERYTHING. The transform seam is on the request path of every LLM stage, and
+    a bug in an observer-shaped module must never take a render down — that is
+    why `_apply_document_transform` catches `Exception` and returns the
+    untransformed document. WP-IVGS-12h makes the seam carry something else: the
+    SECOND ENGINE CALL that authors the assessments. A design missing every
+    assessment is not a degraded design, it is a different and much worse one,
+    and "call 2 failed so the storyboard shipped without any independent
+    attempt" is precisely the silent single-call fallback the order forbids.
+
+    ⛳ SO THE RULE IS: a transform that BREAKS is swallowed; a transform that
+    DELIBERATELY FAILS raises this and the stage fails with it, named. The frozen
+    stage body catches it in its broad `except Exception`, records the message in
+    `output.errors`, produces no scenes, and reports `StageStatus.FAILED` — a
+    loud, resumable failure of the storyboard job.
+    """
+
+
+async def _apply_document_transform(document: Any) -> Any:
+    """Apply the armed transform, awaiting it when it is a coroutine.
+
+    ⛳ WP-IVGS-12h WIDENED THIS BY ONE `await` AND NOTHING ELSE. A sync transform
+    behaves exactly as it did — the 12f path is untouched, and a worker with
+    nothing armed still runs byte-identical code. What the `await` buys is the
+    thing the two-call design needs: a transform may now make an engine call of
+    its own, inside the stage boundary, without a new pipeline stage and without
+    touching a frozen body.
+
+    ⚠ AND THE FOURTH SEAM IS STILL A SEAM AND NOT A PIPELINE. It runs inside
+    `chat_json`, after call 1's document is parsed and before the stage sees it,
+    so the whole two-call design lives in the same Celery task, under the same
+    soft time limit, with the same job context armed. `config.storyboard_call_
+    timeouts()` splits that one budget across the two calls rather than assuming
+    a second one exists.
+    """
     if not _DOCUMENT_TRANSFORM:
         return document
     try:
         result = _DOCUMENT_TRANSFORM[0](document)
+        if inspect.isawaitable(result):
+            result = await result
+    except DocumentTransformFatal:
+        # ⛔ NOT SWALLOWED. See the class docstring.
+        raise
     except Exception:                                        # noqa: BLE001
         logger.warning("vllm_document_transform_failed", exc_info=True)
         return document
@@ -715,11 +758,11 @@ class VLLMClient(LLMProvider):
 
         parsed = _extract_json_document(content)
         if parsed is not None:
-            return _apply_document_transform(parsed), response
+            return await _apply_document_transform(parsed), response
 
         try:
             parsed = json.loads(content)
-            return _apply_document_transform(parsed), response
+            return await _apply_document_transform(parsed), response
         except json.JSONDecodeError as exc:
             raise VLLMInvalidResponseError(
                 f"vLLM response is not valid JSON: {exc}",

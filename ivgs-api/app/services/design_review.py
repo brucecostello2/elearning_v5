@@ -146,6 +146,28 @@ and that the flag limb is where a reviewer's attention now has to go. Promoting
 `PRACTICE_NOT_PREPARED` remains an operator ruling and 12g does not take it
 either.
 
+⛳ WP-IVGS-12h ADDS THE REFUSAL THAT ANSWERS 12g's OWN CLOSING SENTENCE
+
+12g wrote of RC-Q9g: *"Two narrations being equal is a string comparison, and
+near-equality is a judgment. WP-IVGS-10's line holds: this is reviewer
+territory, not a hard refusal."* ⛔ **That sentence is superseded by this
+package, and by measurement rather than by preference.** Near-equality stopped
+being a judgment the moment it was calibrated: `EVIDENCE_NEAR_DUPLICATE` scores
+the assessment against its own practice and against the lesson's worked
+examples with a fixed formula and a fixed generic stoplist, and on 18 banked
+outcome-pairs from two scripts the duplicate class and the sound class separate
+0.667 | 0.900 with the threshold in the gap. A reviewer can act on *"LO-2's
+assessment repeats its practice word for word"* — which is WP-IVGS-10's test,
+and the reason the line is held rather than moved.
+
+⛳ AND IT IS THE FIRST HARD REFUSAL IN THREE PACKAGES THAT MEASURES THE DESIGN
+RATHER THAN THE GRAMMAR. The paragraph above says this gate's hard limb had
+become a check on the schema — three refusals unreachable by construction and
+the teaching question left to one flag. This one cannot be made unreachable by
+any grammar: two strings the same author wrote are two strings, and no decoder
+can be told to make them different. `shared.design.duplication` carries the
+measure, the thresholds and the argument for both.
+
 ⚠ WHAT IS DELIBERATELY A FLAG THOUGH IT LOOKS CHECKABLE
 
 Beat coverage. Every character of the uploaded script should be inside some
@@ -163,6 +185,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
+from shared.design.duplication import (
+    NEAR_DUPLICATE_CONTAINMENT,
+    NO_FRESH_AXIS_CONTAINMENT,
+    duplication_verdict,
+    explain as explain_duplication,
+)
 from shared.design.evidence import (
     derive_evidence_map,
     realizes,
@@ -464,6 +492,27 @@ def review(
                 detail={"assess_scene_indices": independent},
             ))
 
+        # ⛔ WP-IVGS-12h, RC-Q9g. THE CHECK THE GRAMMAR CANNOT MAKE.
+        # Contract-6 guaranteed both kinds EXIST and measured, five generations
+        # running, that the model filled both slots with the same sentence:
+        # 9 of 15 outcome-pairs verbatim identical, 2 more differing by a
+        # "Let's practice" prefix. Every schema-level check was correct and
+        # silent — both scenes are legally declared, both serve the outcome, one
+        # is `practice` and one is `assess`, and there is exactly one
+        # assessment, so `OUTCOME_ASSESSED_TWICE` rightly does not fire.
+        #
+        # ⛳ IT REFUSES RATHER THAN FLAGS, AND THAT IS WP-IVGS-10's LINE HELD,
+        # NOT CROSSED. 12g wrote that near-equality "is a judgment" and left it
+        # to the reviewer. It is not a judgment once it is MEASURED: the
+        # comparison is two strings the same author wrote, normalised by a fixed
+        # generic stoplist, scored by a fixed formula, against a threshold
+        # calibrated on 18 banked outcome-pairs where the two classes separate
+        # 0.667 | 0.900. A reviewer can act on "LO-2's assessment repeats its
+        # practice word for word"; that is the WP-IVGS-10 test and it passes it.
+        # What stays a judgment — and stays a FLAG — is whether a DIFFERENT
+        # assessment is a GOOD one.
+        findings.extend(_evidence_is_distinct(oid, scenes))
+
         # ── the promise, checked against the design that had to keep it ──
         findings.extend(_plan_is_realized(assessment_plan, oid, scenes))
         if not outcome.get("measurable", True):
@@ -515,6 +564,94 @@ def review(
     findings.extend(_coverage_gaps(scenes, dropped_beats, source_text))
 
     return findings, rows
+
+
+def _evidence_is_distinct(
+    oid: str, scenes: Sequence[Any],
+) -> List[Finding]:
+    """RC-Q9g. Is this outcome's assessment a different scene from its practice?
+
+    WP-IVGS-12h TASK 2. The measure, the two limbs and the calibration are all in
+    `shared.design.duplication`, imported here rather than restated — the API's
+    gate, the worker and the acceptance harness must not answer this three ways.
+
+    Anchored on the ASSESSMENT and compared against two sets:
+
+      * the outcome's `practice` scenes — the defect RC-Q9g names; and
+      * the `present`/`guide` scenes serving the same outcome, which are the
+        lesson's worked examples. ⛳ That limb earned its place before it
+        shipped: it catches script B2's LO-1, whose assessment *"Divide 432 by
+        10."* is byte-identical to its own `guide` scene, in a design 12g read
+        by hand and called correctly faded.
+
+    ⚠ The practice is NOT compared against the worked examples here. The scope
+    is the order's and it is the assessment; 12g's run A gen 2 quoted a practice
+    that IS the script's own worked example, and that case is a named residue in
+    the report rather than a check smuggled in under this one.
+    """
+    def _narration(scene: Any) -> str:
+        return str(_scene_field(scene, "narration_text") or "")
+
+    def _serving(scene: Any) -> bool:
+        return oid in [str(x) for x in (_scene_field(scene, "serves_outcomes") or [])]
+
+    indexed = [
+        (int(_scene_field(s, "scene_index", i) or 0), s)
+        for i, s in enumerate(scenes)
+    ]
+    assessments = [
+        (idx, s) for idx, s in indexed
+        if _scene_field(s, "instructional_event") == "assess" and _serving(s)
+    ]
+    others = [
+        (idx, s, "practice" if _scene_field(s, "instructional_event") == "practice"
+         else "worked example")
+        for idx, s in indexed
+        if _serving(s)
+        and _scene_field(s, "instructional_event") in ("practice", "present", "guide")
+    ]
+
+    findings: List[Finding] = []
+    for a_idx, assessment in assessments:
+        a_text = _narration(assessment)
+        if not a_text:
+            continue
+        for o_idx, other, kind in others:
+            o_text = _narration(other)
+            if not o_text:
+                continue
+            verdict = duplication_verdict(a_text, o_text)
+            if not verdict["duplicate"]:
+                continue
+            findings.append(Finding(
+                REFUSE, "EVIDENCE_NEAR_DUPLICATE",
+                f"scene {a_idx} is this outcome's independent attempt and "
+                f"scene {o_idx} is its {kind}, and "
+                f"{explain_duplication(verdict['limb'])} "
+                f"(containment {verdict['containment']:.2f} against a threshold "
+                f"of {NEAR_DUPLICATE_CONTAINMENT}"
+                + (f", and both use the numbers {verdict['assessment_numerals']}"
+                   if verdict["limb"] == "no_fresh_axis" else "")
+                + "). Foundation §2: the assessment is the END of the fading "
+                "sequence, not the middle of it repeated. Pose it cold, in "
+                "numbers this lesson has not worked.",
+                scene_index=a_idx,
+                outcome_id=oid,
+                detail={
+                    "assessment_scene_index": a_idx,
+                    "duplicate_of_scene_index": o_idx,
+                    "duplicate_of_kind": kind,
+                    "assessment_narration": a_text,
+                    "other_narration": o_text,
+                    "threshold": (
+                        NO_FRESH_AXIS_CONTAINMENT
+                        if verdict["limb"] == "no_fresh_axis"
+                        else NEAR_DUPLICATE_CONTAINMENT
+                    ),
+                    **verdict,
+                },
+            ))
+    return findings
 
 
 def _plan_is_realized(

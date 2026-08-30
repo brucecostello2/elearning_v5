@@ -39,13 +39,31 @@ def _contract():
     return contract
 
 
+_NARRATIONS = (
+    "Welcome back. Today we tackle something new.",
+    "Line the digits up in their columns, ones under ones.",
+    "Work out 71 times 36 on your own, then check it.",
+    "Notice what the placeholder zero is doing for us.",
+    "Try one more, and this time nothing is on screen to help.",
+)
+
+
 def _scene(idx, **kw):
     base = {
         "scene_index": idx, "serves_outcomes": ["LO-1"],
         "instructional_event": "present", "bloom_level": "apply",
         "scene_origin": "designed", "source_refs": None, "rewrite_of": None,
         "media_type": "image", "media_rationale": "framing",
-        "generation_params": None, "narration_text": "One.",
+        # ⚠ RE-AIMED BY WP-IVGS-12h, AND NOTHING IS WEAKENED. Every scene this
+        # helper built carried the identical narration `"One."`, harmless while
+        # nothing at the gate read narration. `EVIDENCE_NEAR_DUPLICATE` does read
+        # it, and refuses a design whose `assess` scene says word for word what
+        # an earlier `present`/`guide` on the same outcome said — which is what a
+        # fixture of identical strings is. The narration is now per-scene so the
+        # fixtures say what they always MEANT: different scenes. No assertion in
+        # this file changed.
+        "generation_params": None,
+        "narration_text": _NARRATIONS[idx % len(_NARRATIONS)],
         "signal_spec": None,
     }
     base.update(kw)
@@ -324,16 +342,42 @@ class TestTheStorageAndThePrompt:
         (RC-Q9d). A model that never emits an event it keeps promising does not
         know what that event IS as a scene, so v5 states it: pose cold, hold,
         reveal, whole procedure, after the practice. All four beats are gated,
-        because a later edit that drops one drops the repair."""
-        text = (REPO / "ivgs-api" / "seed" / "default_prompts"
-                / "storyboard_design_system.j2").read_text()
+        because a later edit that drops one drops the repair.
+
+        ⛳ RE-AIMED BY WP-IVGS-12h ACROSS **BOTH** PROMPTS, AND THE CLAIM IS
+        UNCHANGED AND UNWEAKENED. design-contract-7 splits the design across two
+        engine calls: call 1 writes the plan and the supported practice, call 2
+        authors the independent attempt from that plan without seeing the
+        practice. The three beats are the AUTHORING recipe for the `assess`
+        scene, so they moved with the job to `assessment_authoring_system` —
+        verbatim, which is what this now checks. The DEFINITIONS of both kinds
+        stay on call 1, because call 1 still chooses `evidence_kind` in the plan
+        and a model that does not know what `assess` means cannot write a plan
+        worth answering.
+
+        ⛔ THE TEST GOT STRICTER, NOT LOOSER: every beat is asserted to be in
+        exactly the prompt that needs it, so a package that "moves" text without
+        it arriving fails here as well as in `test_v8_moved_and_did_not_lose`.
+        """
+        seed = REPO / "ivgs-api" / "seed" / "default_prompts"
+        text = (seed / "storyboard_design_system.j2").read_text()
+        assessment = (seed / "assessment_authoring_system.j2").read_text()
+        # the DEFINITIONS of the two kinds: call 1, because the plan needs them
         assert "THE LEARNER ATTEMPTS IT WITH SUPPORT VISIBLE" in text
         assert "THE LEARNER PERFORMS IT UNAIDED" in text
+        # the AUTHORING recipe: call 2, where the scene is now written
         for beat in ("POSE THE PROBLEM COLD", "HOLD — a silent attempt window",
                      "REVEAL for self-check"):
-            assert beat in text, beat
-        assert "THE WHOLE PROCEDURE, NOT A" in text
-        assert "COMES AFTER THAT OUTCOME'S `practice`" in text
+            assert beat in assessment, beat
+            assert beat not in text, (
+                f"{beat!r} is still on the CALL-1 prompt, which no longer "
+                "authors the assessment"
+            )
+        assert "THE WHOLE PROCEDURE, NOT A" in assessment
+        assert "COMES AFTER THAT OUTCOME'S `practice`" in assessment
+        # ⛳ and call 1 still states the ORDER, because it designs the practice
+        # the assessment is placed after.
+        assert "`assess` SCENE IS PLACED AFTER THAT OUTCOME'S `practice`" in text
 
     def test_v5_removed_nothing_that_v4_gated(self):
         """⛔ 12e IS ADDITIVE AND THIS IS THE PROOF. Every phrase the publisher

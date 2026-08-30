@@ -38,6 +38,7 @@ the field it finds hardest, which here is always the one that matters
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from shared.design.evidence import derive_evidence_map
@@ -102,13 +103,50 @@ from shared.models.enums import (
 #: model to invent a worse substitute and call the script's own practice
 #: material absent. The grammar guarantees EXISTENCE; provenance stays honest,
 #: under the same `oneOf` XOR every other scene uses.
-CONTRACT_VERSION = "design-contract-6"
+#: **-7, WP-IVGS-12h:** THE CONTRACT IS SPLIT ACROSS TWO CALLS, and the split is
+#: the shape RC-Q9g's own diagnosis dictates. Contract-6 guaranteed both evidence
+#: kinds EXIST and measured what filling both slots in one emission produces: the
+#: practice and the assessment for the same outcome are the SAME SCENE, written
+#: twice — 9 of 15 outcome-pairs verbatim identical across five generations, 2
+#: more differing only by a *"Let's practice"* prefix.
+#:
+#: ⛔ THE MECHANISM IS 12g's OWN ORDERING DECISION, AND THE CURE IS TO REMOVE THE
+#: CONTEXT RATHER THAN TO REORDER IT. `assessment_scenes` was declared BEFORE
+#: `practice_scenes`, declaration order binds generation order (12d, measured
+#: both ways), so the model wrote the assessment and was then asked for a
+#: practice on the same outcome WITH THE ASSESSMENT ALREADY IN ITS CONTEXT — and
+#: copied it. Swapping the order would trade backward design, which 12d measured
+#: and which is load-bearing, for a duplicate that would very likely just reverse
+#: direction. Adding prompt emphasis was measured to do nothing: v7 already says
+#: *"THE PRACTICE MUST NOT BE THE ASSESSMENT WEARING A LABEL"*, in the model's
+#: own reading order, and was in place before a single acceptance generation ran.
+#:
+#: ⛳ SO THE CALLS SEPARATE THE KINDS AND THE SECOND CALL NEVER SEES WHAT IT MUST
+#: NOT COPY:
+#:
+#:   CALL 1  `design_contract_schema` — everything contract-6 emitted EXCEPT
+#:           `assessment_scenes`. The plan still comes first, the practice sits
+#:           adjacent to the script where support naturally lives, and `scenes`
+#:           keeps its narrowed seven-event enum.
+#:   CALL 2  `assessment_authoring_schema` — `assessment_scenes` alone, from an
+#:           input that is the OUTCOMES, the PLAN and a CODE-BUILT SUMMARY of
+#:           what each outcome's practice covered. Not the practice narrations.
+#:           Not `scenes`. **The model cannot copy what it never sees.**
+#:
+#: Both under `response_format: json_schema` with `strict: True`, the one
+#: mechanism measured to enforce on this engine. `shared.design.merge` stitches
+#: call 2's section into call 1's document and the placement law is unchanged.
+CONTRACT_VERSION = "design-contract-7"
 
 #: The one supported mechanism, measured. See the module docstring.
 MECHANISM_JSON_SCHEMA = "json_schema"
 #: Measured equivalent on the same engine; kept so a future engine that drops
 #: `response_format` support has a named path rather than an improvised one.
 MECHANISM_STRUCTURED_OUTPUTS = "structured_outputs"
+
+#: WP-IVGS-12h. Numerals, for `practice_summary` — the one axis 12g measured
+#: the model to differentiate on when it exists, and to collapse without.
+_NUMERAL_RE = re.compile(r"\d+(?:\.\d+)?")
 
 # ⛔ EVERY ARRAY IN THIS SCHEMA CARRIES A `maxItems`, AND IT IS NOT TIDINESS.
 #
@@ -835,21 +873,21 @@ def design_contract_schema(
         mt = tuple(media_types or MEDIA_TYPES)
         properties = {
             "assessment_plan": _assessment_plan_schema(ids),
-            "assessment_scenes": _evidence_section_schema(
-                ids, event="assess", media_types=mt,
-                min_items=ASSESSMENT_SCENES_PER_OUTCOME,
-                max_items=ASSESSMENT_SCENES_PER_OUTCOME,
-                description=(
-                    "THE INDEPENDENT ATTEMPT, ONE PER OUTCOME, AND THERE IS NO "
-                    "KEY YOU CAN LEAVE OUT. Exactly one scene each: the learner "
-                    "performs the outcome unaided. Pose the problem cold in "
-                    "fresh numbers the script never worked, hold while they "
-                    "attempt it, then reveal so they can mark their own work. "
-                    "You do NOT place these — each is inserted after that "
-                    "outcome's practice, so design it as the END of the fading "
-                    "sequence."
-                ),
-            ),
+            # ⛔ WP-IVGS-12h. `assessment_scenes` IS NOT HERE ANY MORE AND ITS
+            # ABSENCE IS THE PACKAGE. It is authored by a SECOND call against
+            # `assessment_authoring_schema`, from an input that carries the
+            # outcomes, the plan and a code-built summary of the practice — and
+            # not one word of the practice narrations themselves. See
+            # CONTRACT_VERSION's -7 note for the measurement that forced it.
+            #
+            # ⛳ AND BACKWARD DESIGN SURVIVES THE SPLIT, WHICH IS THE THING THAT
+            # HAD TO BE PROTECTED. The plan is still this schema's FIRST
+            # property, so the model still commits to what would prove each
+            # outcome before a scene exists (12d, measured in both directions).
+            # What moved is only WHERE the independent attempt gets written, and
+            # it is written from that same plan — call 2 receives the plan
+            # verbatim, so the promise the model made at the top of call 1 is
+            # the brief call 2 answers.
             "practice_scenes": _evidence_section_schema(
                 ids, event="practice", media_types=mt,
                 min_items=MIN_PRACTICE_SCENES_PER_OUTCOME,
@@ -862,13 +900,15 @@ def design_contract_schema(
                     "the fading needs a step between the complete worked "
                     "example and the independent one. You do NOT place these "
                     "either: each is inserted after the last scene that "
-                    "presents or guides its outcome."
+                    "presents or guides its outcome. You are NOT writing the "
+                    "unaided attempt here and you are not asked to: it is "
+                    "authored separately, from your plan, and it will be placed "
+                    "immediately after this scene. Leave the support ON."
                 ),
             ),
             **properties,
         }
         required.insert(0, "practice_scenes")
-        required.insert(0, "assessment_scenes")
         required.insert(0, "assessment_plan")
     # With no ids there is no plan to require: the operator stated no outcomes,
     # so there is nothing to promise evidence FOR — and nothing to force
@@ -890,6 +930,207 @@ def design_contract_schema(
         "properties": properties,
         "required": required,
         "additionalProperties": False,
+    }
+
+
+def assessment_authoring_schema(
+    *,
+    outcome_ids: Sequence[str],
+    media_types: Optional[Tuple[str, ...]] = None,
+) -> Dict[str, Any]:
+    """CALL 2. The independent attempts, and NOTHING else. WP-IVGS-12h.
+
+    ⛔ ONE TOP-LEVEL PROPERTY, AND THE NARROWNESS IS THE POINT. The whole reason
+    this call exists is that the model, holding a practice scene in context, was
+    measured to write it out again as the assessment. A second call that carried
+    `scenes`, or the practice narrations, or a `design_notes` field inviting it
+    to reflect on the lesson, would hand back the context the split removes. So
+    the emission is `assessment_scenes` and there is nothing else to emit.
+
+    ⛳ THE GRAMMAR IS CONTRACT-6's, UNCHANGED, DELIBERATELY. `_evidence_section_schema`
+    with `event="assess"` and bounds 1..1 is the same construct probed ENFORCED
+    in 12g (probes B1/B2/D) and shipped for a package; reusing it means this
+    package's new surface is the CALL, not the shape, and a difference measured
+    between contract-6 and contract-7 assessments is a difference in what the
+    model could SEE and not in what it was allowed to write.
+
+      instructional_event  enum ["assess"]   the section IS the kind
+      serves_outcomes      [enum [oid]]      one outcome, the one it proves
+      provenance           the ordinary XOR  — ORIGIN IS FREE (12g's reversal)
+      no `scene_index`     placement is `shared.design.merge`'s, after the
+                           outcome's practice, exactly as before
+
+    ⚠ ORIGIN STAYS FREE EVEN THOUGH CALL 2 CANNOT SEE THE SCRIPT, and that is not
+    an oversight. B1 measured the model finding a real *"Now you try… Work out 63
+    minus 48"* span and anchoring to it, which is legitimate evidence; pinning
+    `designed` would force an invented substitute. Call 2 will USUALLY answer
+    `designed` because it has no spans in front of it — but a pin is a claim
+    about what is TRUE, not about what is convenient, and `sourced` with a span
+    it cannot support is caught by migration 0048's CHECK and by the gate's
+    `UNDECLARED_ORIGIN` path rather than by a grammar that forbids honesty.
+    ⛳ Whether it in fact stops answering `sourced` is a MEASUREMENT this package
+    takes, not an assumption it makes: the acceptance reports the origin split.
+    """
+    ids = [str(o) for o in outcome_ids]
+    if not ids:
+        # No outcomes means no assessments to author and no enum to close. The
+        # caller must not make this call at all; returning an unsatisfiable
+        # grammar would be worse than saying so.
+        raise ValueError(
+            "assessment_authoring_schema requires at least one outcome id; a "
+            "project whose operator stated no outcomes has no second call."
+        )
+    mt = tuple(media_types or MEDIA_TYPES)
+    return {
+        "type": "object",
+        "properties": {
+            "assessment_scenes": _evidence_section_schema(
+                ids, event="assess", media_types=mt,
+                min_items=ASSESSMENT_SCENES_PER_OUTCOME,
+                max_items=ASSESSMENT_SCENES_PER_OUTCOME,
+                description=(
+                    "THE INDEPENDENT ATTEMPT, ONE PER OUTCOME, AND THERE IS NO "
+                    "KEY YOU CAN LEAVE OUT. Exactly one scene each: the learner "
+                    "performs the outcome UNAIDED. You have been given the "
+                    "outcomes, the evidence plan you wrote, and a factual "
+                    "summary of what each outcome's supported practice already "
+                    "covered — the numbers it used and how far it took the "
+                    "learner. You have NOT been given the practice wording and "
+                    "you do not need it: your job is to write the attempt that "
+                    "comes AFTER it. Pose the problem cold, in numbers this "
+                    "lesson has not worked, hold while the learner attempts it, "
+                    "then reveal so they can mark their own work. You do NOT "
+                    "place these — each is inserted immediately after its "
+                    "outcome's practice."
+                ),
+            ),
+        },
+        "required": ["assessment_scenes"],
+        "additionalProperties": False,
+    }
+
+
+#: WP-IVGS-12h. How many numerals the practice summary carries per outcome.
+#: Bounded for the same reason every array in this file is (RC-Q12), and small
+#: because the summary is a fact sheet and not a transcript: its purpose is to
+#: tell call 2 which numbers are SPENT, and a long tail of them would start to
+#: reconstruct the narration this split exists to withhold.
+MAX_SUMMARY_NUMERALS = 12
+
+
+def practice_summary(
+    raw_contract: Any, outcome_ids: Sequence[str],
+) -> Dict[str, Any]:
+    """CALL 2's input, BUILT BY CODE from call 1's document. WP-IVGS-12h.
+
+    ⛔ THIS FUNCTION IS THE SPLIT. Everything call 2 knows about the lesson comes
+    through here, so what it does NOT return matters more than what it does:
+
+        NOT the practice narrations      the string that was copied, five
+                                         generations running
+        NOT the worked-example narrations the script's own numbers, restated
+                                         with a practice label (12g run A gen 2)
+        NOT `scenes`                     the expository arc, which is where the
+                                         model found everything it anchored to
+
+    What it DOES return is a fact sheet per outcome — what the practice covered,
+    stated as data rather than as prose:
+
+        numbers_used    every numeral the practice narration and its
+                        `generation_params` contain. This is the AXIS. 12g
+                        measured the mechanism exactly: *"where a FRESH NUMBER
+                        exists as an axis, the model differentiates; where the
+                        outcome is 'explain why' or 'check your work', it has no
+                        axis and writes the same sentence twice."* Telling call 2
+                        which numbers are spent is the smallest possible input
+                        that lets it differentiate, and it cannot be copied as a
+                        sentence because it is a list of digits.
+        step_reached    how far the supported attempt took the learner: the
+                        template and phase the motion renderer was given, the
+                        Bloom level, how many practice scenes there were, and
+                        their total on-screen seconds.
+        media_type      so the assessment can choose its own modality knowingly.
+
+    ⛳ AND ONE LESSON-WIDE FIELD, `numbers_already_used`, WHICH GOES BEYOND THE
+    PER-OUTCOME SUMMARY THE ORDER SPECIFIES — stated plainly rather than folded
+    in. Without it "pose it in numbers this lesson has not worked" is
+    unenforceable at call 2, because call 2 never sees the script and so cannot
+    know what the script worked. It is the union of every numeral in call 1's
+    expository `scenes` and in every practice — code-built, digits only, and
+    incapable of carrying a copyable sentence. It is what makes the freshness
+    instruction mean something on the far side of the split.
+    """
+    ids = [str(o) for o in outcome_ids]
+    document = raw_contract if isinstance(raw_contract, dict) else {}
+    practices = document.get("practice_scenes")
+    practices = practices if isinstance(practices, dict) else {}
+
+    def _numerals(*parts: Any) -> List[str]:
+        found: List[str] = []
+        for part in parts:
+            for token in _NUMERAL_RE.findall(json.dumps(part, default=str)):
+                if token not in found:
+                    found.append(token)
+        return found
+
+    lesson: List[str] = []
+    for scene in (document.get("scenes") or []):
+        if not isinstance(scene, dict):
+            continue
+        for token in _numerals(scene.get("narration_text"),
+                               scene.get("generation_params")):
+            if token not in lesson:
+                lesson.append(token)
+
+    per_outcome: Dict[str, Any] = {}
+    for oid in ids:
+        entries = practices.get(oid)
+        entries = entries if isinstance(entries, list) else (
+            [entries] if isinstance(entries, dict) else []
+        )
+        numbers: List[str] = []
+        templates: List[str] = []
+        phases: List[str] = []
+        blooms: List[str] = []
+        media: List[str] = []
+        seconds = 0.0
+        for scene in entries:
+            if not isinstance(scene, dict):
+                continue
+            params = scene.get("generation_params")
+            params = params if isinstance(params, dict) else {}
+            for token in _numerals(scene.get("narration_text"), params):
+                if token not in numbers:
+                    numbers.append(token)
+                if token not in lesson:
+                    lesson.append(token)
+            for key, bucket in (("template", templates), ("phase", phases)):
+                value = params.get(key)
+                if isinstance(value, str) and value and value not in bucket:
+                    bucket.append(value)
+            for key, bucket in (("bloom_level", blooms), ("media_type", media)):
+                value = scene.get(key)
+                if isinstance(value, str) and value and value not in bucket:
+                    bucket.append(value)
+            try:
+                seconds += float(scene.get("duration_seconds") or 0)
+            except (TypeError, ValueError):
+                pass
+        per_outcome[oid] = {
+            "practice_scene_count": len(entries),
+            "numbers_used": numbers[:MAX_SUMMARY_NUMERALS],
+            "step_reached": {
+                "motion_templates": templates,
+                "motion_phases": phases,
+                "bloom_levels": blooms,
+                "total_seconds": round(seconds, 1),
+            },
+            "media_types": media,
+        }
+
+    return {
+        "per_outcome": per_outcome,
+        "numbers_already_used": lesson[:MAX_SUMMARY_NUMERALS * 4],
     }
 
 

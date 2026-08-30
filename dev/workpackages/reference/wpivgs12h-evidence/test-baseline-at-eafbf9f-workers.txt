@@ -1,0 +1,382 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.4, pluggy-1.6.0
+rootdir: /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f
+configfile: pyproject.toml
+plugins: timeout-2.3.1, anyio-4.13.0, asyncio-0.24.0
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, default_loop_scope=session
+collected 1067 items / 2 skipped
+
+tests/temporal/test_wp41_conformance.py ...................              [  1%]
+tests/temporal/test_wp41_dag.py .........................                [  4%]
+tests/temporal/test_wp41_idempotency.py ..................               [  5%]
+tests/temporal/test_wp41_payload_shapes.py ............................. [  8%]
+........................................                                 [ 12%]
+tests/temporal/test_wp41_policies.py ................................... [ 15%]
+                                                                         [ 15%]
+tests/test_composition.py ..........................                     [ 17%]
+tests/test_corruption.py ...........                                     [ 19%]
+tests/test_dlq_service.py FFFFFFFFFF..                                   [ 20%]
+tests/test_orphan_cleanup.py ....FF.                                     [ 20%]
+tests/test_quality_gate.py EEEEEEEEEEEEEEE                               [ 22%]
+tests/test_quality_validator.py ..........................F              [ 24%]
+tests/test_retention.py ...........                                      [ 25%]
+tests/test_retry_engine.py ...............FF                             [ 27%]
+tests/test_stage1.py ...................F                                [ 29%]
+tests/test_stage2.py ........................F                           [ 31%]
+tests/test_stage3.py ........                                            [ 32%]
+tests/test_stage4.py .....                                               [ 32%]
+tests/test_talking_head_task.py .F........                               [ 33%]
+tests/test_video_gen.py .............                                    [ 34%]
+tests/test_wp04_frame_align.py ......................................... [ 38%]
+..........                                                               [ 39%]
+tests/test_wp05_visibility_timeout.py ................                   [ 41%]
+tests/test_wp06_media_join.py sssssssssssssssssss                        [ 43%]
+tests/test_wp07_save_checkpoint_surfaces.py ....................         [ 44%]
+tests/test_wp08_gpu_reservations.py .................................... [ 48%]
+.................                                                        [ 49%]
+tests/test_wp27_stage7_raises.py ........                                [ 50%]
+tests/test_wp36_dlq_missing_ids.py .........                             [ 51%]
+tests/test_wp37_stage2_output.py ...........................             [ 53%]
+tests/test_wp39_heartbeat_schema.py ............                         [ 55%]
+tests/test_wp39_media_join.py sssssssssssssss                            [ 56%]
+tests/test_wp39_video_checkpoint.py ......                               [ 57%]
+tests/test_wp42_voice.py ........................ss....                  [ 59%]
+tests/test_wp44_animation_input_guard.py ..............                  [ 61%]
+tests/test_wp44_quality_gate.py .......................                  [ 63%]
+tests/test_wp44_storyboard_prompt_rules.py ............................. [ 66%]
+.................                                                        [ 67%]
+tests/test_wp44_video_validator.py ..sssss.s.ssss..                      [ 69%]
+tests/test_wp45_dedup_probe.py ....................                      [ 71%]
+tests/test_wp45_project_state.py ..............                          [ 72%]
+tests/test_wp46_animation.py ............................                [ 74%]
+tests/test_wp57_error_classification.py ............                     [ 76%]
+tests/test_wp58_failure_category.py .............                        [ 77%]
+tests/test_wp58_storyboard_budget.py .........                           [ 78%]
+tests/test_wp59_retention.py ...............                             [ 79%]
+tests/test_wp60_orphan_guard.py .........                                [ 80%]
+tests/test_wp61_schedules.py ...............                             [ 81%]
+tests/test_wp63_blank_check.py ...............                           [ 83%]
+tests/test_wp63_failure_attribution.py ..............                    [ 84%]
+tests/test_wp64_media.py ..................                              [ 86%]
+tests/test_wp67_animatediff.py ................                          [ 87%]
+tests/test_wp_ivgs_0_binding_honesty.py .......                          [ 88%]
+tests/test_wp_ivgs_0_job_context.py ......                               [ 88%]
+tests/test_wp_ivgs_0_prompt_type.py ............                         [ 90%]
+tests/test_wp_ivgs_0_seed_template_contract.py ..........                [ 91%]
+tests/test_wp_ivgs_0_tier.py ....                                        [ 91%]
+tests/test_wpivgs04_tts_runtime_builder.py .............                 [ 92%]
+tests/test_wpivgs06_speaker_reference.py .........                       [ 93%]
+tests/test_wpivgs07_dropped_params.py ........                           [ 94%]
+tests/test_wpivgs07_release_idempotence.py ......                        [ 94%]
+tests/test_wpivgs09d_scene_scoped_dedup.py .........                     [ 95%]
+tests/test_wpivgs10_declared_time_limits.py ................             [ 97%]
+tests/test_wpivgs10_media_taxonomy.py ..........                         [ 98%]
+tests/test_wpivgs12_design_core.py .....................                 [100%]
+
+==================================== ERRORS ====================================
+_______ ERROR at setup of TestApprovedFlow.test_approved_asset_proceeds ________
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestApprovedFlow.test_approved_asset_added_to_approved_set _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_________ ERROR at setup of TestFlaggedFlow.test_flagged_asset_pauses __________
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_____ ERROR at setup of TestFlaggedFlow.test_flagged_asset_in_review_queue _____
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestRejectedFlow.test_first_rejection_triggers_regeneration _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestRejectedFlow.test_second_rejection_triggers_regeneration _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+___ ERROR at setup of TestRejectedFlow.test_third_rejection_escalates_to_dlq ___
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_______ ERROR at setup of TestHumanOverride.test_human_approve_override ________
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+________ ERROR at setup of TestHumanOverride.test_human_reject_override ________
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+___ ERROR at setup of TestProjectGateReadiness.test_all_approved_can_advance ___
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestProjectGateReadiness.test_flagged_assets_block_advance _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestProjectGateReadiness.test_pending_assets_block_advance _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestProjectGateReadiness.test_empty_project_cannot_advance _
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+_ ERROR at setup of TestAssetRegistration.test_register_asset_adds_to_pending __
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+___________ ERROR at setup of TestGateHistory.test_history_recorded ____________
+tests/test_quality_gate.py:43: in fake_redis
+    from test_scheduler import FakeRedis
+E   ModuleNotFoundError: No module named 'test_scheduler'
+=================================== FAILURES ===================================
+_________ TestDLQEntryCreation.test_send_to_dlq_with_exception_object __________
+tests/test_dlq_service.py:97: in test_send_to_dlq_with_exception_object
+    entry = await dlq_service.send_to_dlq(
+services/dlq_service.py:254: in send_to_dlq
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+___________ TestDLQEntryCreation.test_send_to_dlq_with_string_fields ___________
+tests/test_dlq_service.py:121: in test_send_to_dlq_with_string_fields
+    entry = await dlq_service.send_to_dlq(
+services/dlq_service.py:254: in send_to_dlq
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+_________ TestDLQEntryCreation.test_send_to_dlq_all_failure_categories _________
+tests/test_dlq_service.py:142: in test_send_to_dlq_all_failure_categories
+    entry = await dlq_service.send_to_dlq(
+services/dlq_service.py:254: in send_to_dlq
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+____________ TestDLQReplay.test_replay_message_dispatches_to_celery ____________
+tests/test_dlq_service.py:183: in test_replay_message_dispatches_to_celery
+    result = await dlq_service.replay_message(
+services/dlq_service.py:293: in replay_message
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+________________ TestDLQReplay.test_replay_with_queue_override _________________
+tests/test_dlq_service.py:216: in test_replay_with_queue_override
+    await dlq_service.replay_message(request)
+services/dlq_service.py:293: in replay_message
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+___________________ TestDLQResolutions.test_discard_message ____________________
+tests/test_dlq_service.py:245: in test_discard_message
+    await dlq_service.discard_message(
+services/dlq_service.py:380: in discard_message
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+___________________ TestDLQResolutions.test_escalate_message ___________________
+tests/test_dlq_service.py:270: in test_escalate_message
+    await dlq_service.escalate_message(
+services/dlq_service.py:435: in escalate_message
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+___________ TestDLQResolutions.test_cannot_resolve_already_resolved ____________
+tests/test_dlq_service.py:296: in test_cannot_resolve_already_resolved
+    await dlq_service.discard_message(
+services/dlq_service.py:380: in discard_message
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+______ TestDLQPeriodicProcessing.test_auto_replay_transient_within_1_hour ______
+tests/test_dlq_service.py:329: in test_auto_replay_transient_within_1_hour
+    result = await dlq_service.process_pending_messages(
+services/dlq_service.py:652: in process_pending_messages
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+_______ TestDLQPeriodicProcessing.test_flag_stale_messages_over_24_hours _______
+tests/test_dlq_service.py:355: in test_flag_stale_messages_over_24_hours
+    result = await dlq_service.process_pending_messages()
+services/dlq_service.py:652: in process_pending_messages
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+______________ TestScanType2.test_detects_missing_seaweedfs_files ______________
+tests/test_orphan_cleanup.py:136: in test_detects_missing_seaweedfs_files
+    count = await orphan_service._scan_type2_db_without_seaweedfs(report)
+services/orphan_cleanup.py:724: in _scan_type2_db_without_seaweedfs
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+_______________ TestScanType3.test_detects_zero_reference_assets _______________
+tests/test_orphan_cleanup.py:167: in test_detects_zero_reference_assets
+    count = await orphan_service._scan_type3_zero_reference(report)
+services/orphan_cleanup.py:845: in _scan_type3_zero_reference
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+____________ TestValidatorIntegration.test_caption_full_validation _____________
+tests/test_quality_validator.py:455: in test_caption_full_validation
+    assert report.validation_duration_s > 0
+E   AssertionError: assert 0.0 > 0
+E    +  where 0.0 = QualityReport(asset_id='cap-test', asset_type=<AssetType.CAPTION: 'caption'>, project_id='proj-test', scene_id='scene-...0.0, content_hash='3cc3b99298a2a7d12b16bc4accf2f6434bc68c86b5ee3ce305e5a9e708fe54e5', file_path='/tmp/tmpaqdqrdth.srt').validation_duration_s
+----------------------------- Captured stdout call -----------------------------
+2026-08-30 04:58:20 [info     ] quality_validation_start       asset_id=cap-test asset_type=caption project_id=proj-test
+2026-08-30 04:58:20 [info     ] quality_validation_complete    asset_id=cap-test asset_type=caption decision=rejected elapsed_s=0.0 metric_count=1 project_id=proj-test safety_score=0.99
+____________ TestAttemptRecording.test_record_attempt_creates_entry ____________
+tests/test_retry_engine.py:212: in test_record_attempt_creates_entry
+    record = await retry_engine.record_attempt(
+services/retry_engine.py:385: in record_attempt
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+___________ TestAttemptRecording.test_record_attempt_with_traceback ____________
+tests/test_retry_engine.py:231: in test_record_attempt_with_traceback
+    record = await retry_engine.record_attempt(
+services/retry_engine.py:385: in record_attempt
+    async with self._db_session_factory() as session:
+E   TypeError: 'coroutine' object does not support the asynchronous context manager protocol
+________________ TestStage1Integration.test_full_task_execution ________________
+tests/test_stage1.py:604: in test_full_task_execution
+    result = refine_transcript_task(sample_task_input)
+/opt/ivgs/.venv/lib/python3.12/site-packages/celery/local.py:182: in __call__
+    return self._get_current_object()(*a, **kw)
+/opt/ivgs/.venv/lib/python3.12/site-packages/celery/app/task.py:411: in __call__
+    return self.run(*args, **kwargs)
+tasks/stage1_transcript.py:458: in refine_transcript_task
+    return asyncio.get_event_loop().run_until_complete(
+/usr/lib/python3.12/asyncio/base_events.py:687: in run_until_complete
+    return future.result()
+tasks/stage1_transcript.py:506: in _run_refinement
+    project_id=UUID(project_id),
+/usr/lib/python3.12/uuid.py:178: in __init__
+    raise ValueError('badly formed hexadecimal UUID string')
+E   ValueError: badly formed hexadecimal UUID string
+----------------------------- Captured stdout call -----------------------------
+2026-08-30 04:58:20 [info     ] stage1_starting                job_id=job-111-222-333 project_id=proj-aaa-bbb-ccc stage=stage1 transcript_count=2
+________________ TestStage2Integration.test_full_task_execution ________________
+tests/test_stage2.py:603: in test_full_task_execution
+    result = generate_storyboard_task(sample_task_input)
+/opt/ivgs/.venv/lib/python3.12/site-packages/celery/local.py:182: in __call__
+    return self._get_current_object()(*a, **kw)
+/opt/ivgs/.venv/lib/python3.12/site-packages/celery/app/task.py:411: in __call__
+    return self.run(*args, **kwargs)
+tasks/stage2_storyboard.py:571: in generate_storyboard_task
+    return asyncio.get_event_loop().run_until_complete(
+/usr/lib/python3.12/asyncio/base_events.py:687: in run_until_complete
+    return future.result()
+tasks/stage2_storyboard.py:621: in _run_storyboard_generation
+    project_id=UUID(project_id),
+/usr/lib/python3.12/uuid.py:178: in __init__
+    raise ValueError('badly formed hexadecimal UUID string')
+E   ValueError: badly formed hexadecimal UUID string
+----------------------------- Captured stdout call -----------------------------
+2026-08-30 04:58:20 [info     ] stage2_starting                job_id=job-222-333-444 project_id=proj-aaa-bbb-ccc stage=stage2 transcript_count=2
+_____________ TestStage6Input.test_requires_at_least_one_audio_ref _____________
+tests/test_talking_head_task.py:139: in test_requires_at_least_one_audio_ref
+    with pytest.raises(Exception):
+E   Failed: DID NOT RAISE <class 'Exception'>
+=============================== warnings summary ===============================
+../../../../../../../opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295
+../../../../../../../opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295
+../../../../../../../opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295
+../../../../../../../opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295
+  /opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.10/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+ivgs-workers/tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_exception_object
+ivgs-workers/tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_string_fields
+ivgs-workers/tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_all_failure_categories
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/dlq_service.py:254: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_dlq_service.py::TestDLQReplay::test_replay_message_dispatches_to_celery
+ivgs-workers/tests/test_dlq_service.py::TestDLQReplay::test_replay_with_queue_override
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/dlq_service.py:293: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_dlq_service.py::TestDLQResolutions::test_discard_message
+ivgs-workers/tests/test_dlq_service.py::TestDLQResolutions::test_cannot_resolve_already_resolved
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/dlq_service.py:380: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_dlq_service.py::TestDLQResolutions::test_escalate_message
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/dlq_service.py:435: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_auto_replay_transient_within_1_hour
+ivgs-workers/tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_flag_stale_messages_over_24_hours
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/dlq_service.py:652: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_orphan_cleanup.py::TestScanType2::test_detects_missing_seaweedfs_files
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/orphan_cleanup.py:724: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_orphan_cleanup.py::TestScanType3::test_detects_zero_reference_assets
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/orphan_cleanup.py:845: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_creates_entry
+ivgs-workers/tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_with_traceback
+  /tmp/claude-1002/-opt-ivgs/71b6a691-f202-44c8-96ba-de7e3aba308d/scratchpad/base-eafbf9f/ivgs-workers/services/retry_engine.py:385: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    async with self._db_session_factory() as session:
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_storage_urls_come_from_the_environment_not_from_node_01
+  ivgs-workers/tests/test_wp60_orphan_guard.py:354: PytestWarning: The test <Function test_storage_urls_come_from_the_environment_not_from_node_01> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_storage_urls_come_from_the_environment_not_from_node_01(monkeypatch):
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_an_explicit_url_still_wins_over_the_environment
+  ivgs-workers/tests/test_wp60_orphan_guard.py:375: PytestWarning: The test <Function test_an_explicit_url_still_wins_over_the_environment> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_an_explicit_url_still_wins_over_the_environment(monkeypatch):
+
+ivgs-workers/tests/test_wp60_orphan_guard.py::test_the_service_defaults_to_dry_run
+  ivgs-workers/tests/test_wp60_orphan_guard.py:384: PytestWarning: The test <Function test_the_service_defaults_to_dry_run> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    def test_the_service_defaults_to_dry_run():
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_exception_object
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_string_fields
+FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_all_failure_categories
+FAILED tests/test_dlq_service.py::TestDLQReplay::test_replay_message_dispatches_to_celery
+FAILED tests/test_dlq_service.py::TestDLQReplay::test_replay_with_queue_override
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_discard_message - ...
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_escalate_message
+FAILED tests/test_dlq_service.py::TestDLQResolutions::test_cannot_resolve_already_resolved
+FAILED tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_auto_replay_transient_within_1_hour
+FAILED tests/test_dlq_service.py::TestDLQPeriodicProcessing::test_flag_stale_messages_over_24_hours
+FAILED tests/test_orphan_cleanup.py::TestScanType2::test_detects_missing_seaweedfs_files
+FAILED tests/test_orphan_cleanup.py::TestScanType3::test_detects_zero_reference_assets
+FAILED tests/test_quality_validator.py::TestValidatorIntegration::test_caption_full_validation
+FAILED tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_creates_entry
+FAILED tests/test_retry_engine.py::TestAttemptRecording::test_record_attempt_with_traceback
+FAILED tests/test_stage1.py::TestStage1Integration::test_full_task_execution
+FAILED tests/test_stage2.py::TestStage2Integration::test_full_task_execution
+FAILED tests/test_talking_head_task.py::TestStage6Input::test_requires_at_least_one_audio_ref
+ERROR tests/test_quality_gate.py::TestApprovedFlow::test_approved_asset_proceeds
+ERROR tests/test_quality_gate.py::TestApprovedFlow::test_approved_asset_added_to_approved_set
+ERROR tests/test_quality_gate.py::TestFlaggedFlow::test_flagged_asset_pauses
+ERROR tests/test_quality_gate.py::TestFlaggedFlow::test_flagged_asset_in_review_queue
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_first_rejection_triggers_regeneration
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_second_rejection_triggers_regeneration
+ERROR tests/test_quality_gate.py::TestRejectedFlow::test_third_rejection_escalates_to_dlq
+ERROR tests/test_quality_gate.py::TestHumanOverride::test_human_approve_override
+ERROR tests/test_quality_gate.py::TestHumanOverride::test_human_reject_override
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_all_approved_can_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_flagged_assets_block_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_pending_assets_block_advance
+ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_empty_project_cannot_advance
+ERROR tests/test_quality_gate.py::TestAssetRegistration::test_register_asset_adds_to_pending
+ERROR tests/test_quality_gate.py::TestGateHistory::test_history_recorded - Mo...
+===== 18 failed, 988 passed, 48 skipped, 21 warnings, 15 errors in 37.77s ======

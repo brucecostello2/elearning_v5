@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def _env(key: str, default: Any = None, cast: type = str) -> Any:
@@ -169,15 +169,83 @@ class VLLMConfig:
     # chars ~ 150 tokens per scene.
     #
     # The cap exists because node-02 serves --max-model-len 32768 and the budget
-    # is OUTPUT only. Measured input is ~2,000 tokens; at 5x transcript length
-    # that is ~10,000, so 10,000 + 16,384 = 26,384 still fits. Asking for more
-    # output than the context can hold is refused by the server, which would
-    # turn a large course into a hard failure instead of a long one.
+    # is OUTPUT only. Asking for more output than the context can hold is refused
+    # by the server, which would turn a large course into a hard failure instead
+    # of a long one.
+    #
+    # ⛔ WP-IVGS-12h CORRECTS THIS COMMENT'S ARITHMETIC, WHICH WAS THE LAST PLACE
+    # THE STALE INPUT FIGURE STILL LIVED. It read: *"Measured input is ~2,000
+    # tokens; at 5x transcript length that is ~10,000, so 10,000 + 16,384 =
+    # 26,384 still fits."* Every number in that sentence is wrong now. 12g
+    # measured the real input at MEASURED_STAGE2_PROMPT_TOKENS below, and the
+    # honest arithmetic is:
+    #
+    #     14,861 + 16,384 = 31,245 against 32,768   ->   1,523 spare, not 6,384
+    #
+    # The cap still fits. It fits by 4.6% of the context rather than by 20%, and
+    # a "fivefold worst case" is no longer a worst case at all — it is 1.4x what
+    # was measured on a 3,008-byte script. `test_wp58_storyboard_budget` asserts
+    # the margin so the next prompt version that eats it fails a test.
     storyboard_tokens_per_scene: int = _env(
         "IVGS_VLLM_STORYBOARD_TOKENS_PER_SCENE", 400, int
     )
     storyboard_max_tokens_cap: int = _env(
         "IVGS_VLLM_STORYBOARD_MAX_TOKENS_CAP", 16384, int
+    )
+
+    # ── WP-IVGS-12h. THE MEASURED INPUT, AS ITS OWN ROW ──────────────────────
+    #
+    # ⛔ IT IS A CONSTANT AND NOT A COMMENT BECAUSE IT IS THE BINDING CONSTRAINT
+    # AND COMMENTS DO NOT GET ASSERTED. From WP-37 until 2026-08-30 the stage-2
+    # input was documented as "~2,000 tokens" in a comment, `test_wp58_storyboard
+    # _budget` guessed 10,000 as a FIVEFOLD worst case, and neither was ever
+    # measured. The real figure, reported by the engine on every one of seven
+    # design-contract-6 generations against the operator's own 3,008-byte
+    # script, is 14,861 — seven times the documented estimate. The stage-2 SYSTEM
+    # prompt alone went 7,788 -> 19,217 characters across v1..v7 while nothing
+    # watched.
+    #
+    #     input 14,861 + output floor 12,288 = 27,149   headroom 5,619
+    #     input 14,861 + output cap  16,384 = 31,245   headroom 1,523
+    #
+    # ⛳ IT IS **45% OF NODE-02's SERVING CONTEXT** and it is cited by both calls
+    # of the WP-IVGS-12h two-call design: call 1 pays it in full, and call 2's
+    # whole reason for being cheap is that it pays almost none of it.
+    #
+    # ⚠ MEASURED AGAINST ONE SCRIPT. A longer script raises this from the other
+    # end and eats the floor's headroom. The test that names that is the
+    # protection, and it converts a production truncation into a test failure —
+    # it does not prevent the squeeze.
+    measured_stage2_prompt_tokens: int = _env(
+        "IVGS_VLLM_MEASURED_STAGE2_PROMPT_TOKENS", 14861, int
+    )
+    serving_context_tokens: int = _env(
+        "IVGS_VLLM_SERVING_CONTEXT_TOKENS", 32768, int
+    )
+
+    # ── WP-IVGS-12h. THE SECOND CALL'S OUTPUT BUDGET ─────────────────────────
+    #
+    # ⛔ SIZED FROM MEASUREMENT, PER CALL, AS THE ORDER REQUIRES — and the two
+    # calls are not the same size by an order of magnitude, so one knob for both
+    # would be either a truncation or a waste.
+    #
+    # CALL 1 keeps `storyboard_max_tokens` unchanged at 12,288. It emits
+    # everything contract-6 emitted except the three assessment scenes. 12g
+    # measured contract-6's evidence layer at 3,954-4,399 characters for SIX
+    # evidence scenes, so the three that move to call 2 are ~2,000 characters
+    # ~ 500 tokens of a 9,264-9,753-token emission. Call 1 is ~5% smaller than
+    # the thing 12,288 was sized for; the floor is left alone rather than
+    # re-derived, because narrowing a budget to fit a measurement taken once is
+    # how 8,192 became a truncation.
+    #
+    # CALL 2 emits ONLY `assessment_scenes` — three full scene objects, ~2,000
+    # characters, ~500 tokens measured. 4,096 is EIGHT TIMES that, which is the
+    # same discipline WP-37 used when it set 8,192 at 4x the largest storyboard
+    # then known. It is deliberately not 12,288: an output budget is also a
+    # licence to ramble under grammar-constrained decoding (RC-Q12), and this
+    # call has exactly three bounded objects to produce.
+    storyboard_call2_max_tokens: int = _env(
+        "IVGS_VLLM_ASSESSMENT_CALL_MAX_TOKENS", 4096, int
     )
     temperature: float = _env("IVGS_VLLM_TEMPERATURE", 0.3, float)
     top_p: float = _env("IVGS_VLLM_TOP_P", 0.9, float)
@@ -471,6 +539,64 @@ class WorkerConfig:
             return float(self.timeouts.vllm_timeout)
         return float(max(soft - self.STORYBOARD_CLIENT_TIMEOUT_HEADROOM_S,
                          self.timeouts.vllm_timeout))
+
+    #: WP-IVGS-12h. The floor under call 2's share of the stage budget. A second
+    #: call that gets three seconds is a second call that always fails; below
+    #: this the split is not a split, it is a rounding error.
+    ASSESSMENT_CALL_MIN_TIMEOUT_S = 45
+
+    #: The fraction of the derived stage budget call 2 is given. Call 2 emits
+    #: ~500 tokens against call 1's ~9,000, so a proportional split would give it
+    #: about 5%. It gets 25% because per-token throughput is not the whole cost —
+    #: a second request pays prefill and queueing again — and because starving
+    #: the call that fixes RC-Q9g to buy call 1 forty more seconds is the wrong
+    #: trade when call 1 is already over budget (see the ⛔ note below).
+    ASSESSMENT_CALL_BUDGET_SHARE = 0.25
+
+    def storyboard_call_timeouts(self) -> Tuple[float, float]:
+        """``(call_1, call_2)`` client timeouts, DERIVED — never transcribed.
+
+        WP-IVGS-12h TASK 3. The two calls run inside ONE Celery task, under ONE
+        soft time limit, so they share ONE budget: whatever
+        `_storyboard_client_timeout` derives from AD-05's declared table. This
+        splits it; it does not invent a second one. RC-P17's discipline, one
+        layer along again — a transcription is an accurate mirror with no
+        authority and goes stale the first time the policy moves.
+
+        ⛔ AND THE DERIVATION EXPOSES A CONFLICT THIS PACKAGE DID NOT CREATE AND
+        DOES NOT RESOLVE. AD-05 declares stage 2 at soft 270 / hard 300, so the
+        whole client budget is 240 s. WP-IVGS-12g's own banked run logs report
+        the wall clock of seven design-contract-6 generations against the pinned
+        engine:
+
+            135 s   281 s (B2)   395 s   427 s   477 s   491 s   503 s
+
+        **Five of seven exceed the 240 s client budget and four exceed the 300 s
+        Celery hard limit.** 12g did not see it because — as its own §12g.13
+        item 2 records — not one generation went through the real stage: the
+        harness calls node-02 directly with a 1,200 s timeout. So contract-6 as
+        deployed would time out in production on most jobs while its acceptance
+        passed, and contract-7 inherits that, unchanged, plus a second call.
+
+        ⚠ RAISING THE DECLARED LIMITS IS NOT TAKEN HERE. The numbers are AD-05's
+        conformance table and `celery_app.apply_declared_time_limits` makes them
+        the ONE definition that reaches the running tasks — which is exactly why
+        moving them is an operator ruling and not a config edit. Rowed as
+        **RC-Q13** in the WP-IVGS-12h report with the measurement. What this
+        function does is split the budget it is given, honestly, so that when the
+        limit does move both calls move with it.
+        """
+        total = self._storyboard_client_timeout()
+        call_2 = max(
+            self.ASSESSMENT_CALL_MIN_TIMEOUT_S,
+            round(total * self.ASSESSMENT_CALL_BUDGET_SHARE),
+        )
+        # ⛔ CALL 1 IS NEVER GIVEN LESS THAN THE FLOOR THE SHARED KNOB GUARANTEES.
+        # If the declared budget were ever cut below the point where a split is
+        # meaningful, silently handing call 1 twenty seconds would turn a policy
+        # problem into an unexplained storyboard failure.
+        call_1 = max(float(self.timeouts.vllm_timeout), total - call_2)
+        return float(call_1), float(call_2)
 
     def get_vllm_config_for_stage(self, stage: str) -> Dict[str, Any]:
         """Get vLLM configuration appropriate for a pipeline stage."""
