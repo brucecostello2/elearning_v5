@@ -86,6 +86,58 @@ class TestTheUploadedScriptSurvives:
         assert "Hi there!" in updated.refined_text
         assert "Hi there!" not in MODEL_PARAPHRASE
 
+    async def test_an_operator_edit_writes_BOTH_fields(self, db_session):
+        """⛔ RC-Q18 RULING (2), OPERATOR, 2026-08-30. The edit is honoured AND
+        the invariant survives it.
+
+        12h-fix scoped the substitution to the worker so an operator's inline
+        correction was not discarded — which left `refined_text` and
+        `source_text` disagreeing after a human edit, so the design would read
+        one string while the coverage spans indexed into another. **That is
+        RC-Q15 with a person's hand on it.** On an uploaded row the operator is
+        editing THE SCRIPT, so both fields move together.
+        """
+        from app.services.transcript_service import TranscriptService
+
+        project, transcript = await _transcript(
+            db_session, source_kind="uploaded", source_text=OPERATOR_SCRIPT)
+        edit = OPERATOR_SCRIPT.replace("23 times 14", "23 times 15")
+        updated = await TranscriptService(db_session).update_transcript(
+            project_id=project.id, transcript_id=transcript.id,
+            refined_text=edit, by_service=False)
+
+        assert updated.refined_text == edit           # honoured
+        assert updated.source_text == edit            # and the script moved
+        assert updated.refined_text == updated.source_text   # invariant holds
+
+    async def test_an_operator_edit_to_a_GENERATED_row_leaves_source_alone(
+        self, db_session,
+    ):
+        """⚠ The generated path has no such identity to maintain — `source_text`
+        there is whatever the upload/ASR produced and `refined_text` is the
+        model's real work. Ruling (2) is scoped to uploaded rows."""
+        from app.services.transcript_service import TranscriptService
+
+        project, transcript = await _transcript(
+            db_session, source_kind="generated", source_text=OPERATOR_SCRIPT)
+        updated = await TranscriptService(db_session).update_transcript(
+            project_id=project.id, transcript_id=transcript.id,
+            refined_text="a refined narration", by_service=False)
+
+        assert updated.refined_text == "a refined narration"
+        assert updated.source_text == OPERATOR_SCRIPT
+
+    async def test_the_belt_no_longer_asks_who_wrote(self):
+        """⛳ Both paths maintain the invariant now, so the check that matters is
+        the invariant itself — on every uploaded row this function touches."""
+        import inspect
+
+        from app.services.transcript_service import TranscriptService
+
+        source = inspect.getsource(TranscriptService.update_transcript)
+        belt = source[source.index("RC-Q18 RULING (2): THE BELT"):]
+        assert "by_service" not in belt.split("raise RuntimeError")[0]
+
     async def test_a_human_edit_of_the_same_field_is_honoured(self, db_session):
         """⚠ THE SCOPING DECISION THE ORDER DID NOT COVER, PINNED SO IT IS NOT
         LOST. This endpoint is also how a person edits `refined_text` inline from
@@ -101,6 +153,10 @@ class TestTheUploadedScriptSurvives:
             refined_text="a deliberate human correction", by_service=False)
 
         assert updated.refined_text == "a deliberate human correction"
+        # ⛳ ...and RC-Q18 ruling (2) moved `source_text` with it, so the row is
+        # still self-consistent. The edit was not discarded and the invariant
+        # was not broken — which is the whole point of the ruling.
+        assert updated.source_text == "a deliberate human correction"
 
     async def test_the_generated_path_is_untouched_byte_for_byte(self, db_session):
         """A generated transcript IS raw material and refining it is right. The
@@ -309,3 +365,163 @@ class TestTheTaskIdWriteIsLoud:
         # it does not. A test that greps a docstring tests the prose.
         code = body[body.index('"""', body.index('"""') + 3) + 3:]
         assert "raise" not in code
+
+
+# ---------------------------------------------------------------------------
+# RC-Q18 ruling (1) — the design of record is the MERGED contract
+# ---------------------------------------------------------------------------
+
+class TestTheBriefIsTheMergedContract:
+    """⛔ MEASURED ON THE FIRST REAL PIPELINE RUN, 2026-08-30. The capture fired
+    on `RESPONSE_OBSERVERS`, inside `_chat_request`, on CALL 1's raw content —
+    before design-contract-7's second call exists. The stage received a correct
+    15-scene document; the brief carried 12 scene designs; `apply_scene_design`
+    back-filled 12 of 15; and the three assessments reached the gate with no
+    `instructional_event`, no `serves_outcomes` and no provenance, raising
+    **eleven hard refusals on a design that was otherwise sound.**
+
+    ⛳ Ruling (1): one artifact of record, assembled by code — the same law as
+    the derived `evidence_map` reading the merged sequence.
+    """
+
+    def _stitched(self):
+        """Call 1's document with call 2's section stitched in — exactly what
+        `transform_document` holds when it captures."""
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        ids = ["LO-1", "LO-2", "LO-3"]
+
+        def scene(oid, event, narration, expository=False):
+            base = {
+                "provenance": {"origin": "designed", "rationale": "r"},
+                "instructional_event": event, "serves_outcomes": [oid],
+                "narration_text": narration, "visual_description": "v",
+                "media_type": "image", "media_rationale": "m",
+                "duration_seconds": 20, "bloom_level": "apply",
+                "text_carried_by": None, "generation_params": None,
+                "signal_spec": None,
+            }
+            if expository:
+                base["scene_index"] = 0
+            return base
+
+        return {
+            "assessment_plan": {o: {"evidence_kind": "assess",
+                                    "learner_does": "does it"} for o in ids},
+            "practice_scenes": {o: [scene(o, "practice", f"practice {o}")]
+                                for o in ids},
+            "assessment_scenes": {o: [scene(o, "assess", f"assess {o}")]
+                                  for o in ids},
+            "outcome_notes": {o: {"bloom_level": "apply", "measurable": True,
+                                  "proposed_refinement": None} for o in ids},
+            "scenes": [scene(o, "present", f"teach {o}", expository=True)
+                       for o in ids],
+            "dropped_beats": [], "design_notes": "arc",
+        }
+
+    def test_the_brief_carries_every_assessment(self):
+        """⛔ THE DEFECT, PINNED: 12 designs for 15 rows becomes 9 for 9."""
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.contract import parse_contract
+
+        payload = parse_contract(self._stitched())
+        events = [s["instructional_event"] for s in payload["scenes"]]
+        assert len(payload["scenes"]) == 9
+        assert events.count("assess") == 3, events
+        assert events.count("practice") == 3, events
+        # every scene carries its declarations — the three that did not are what
+        # produced SCENE_NO_EVENT / SCENE_SERVES_NOTHING at the gate.
+        assert all(s["instructional_event"] for s in payload["scenes"])
+        assert all(s["serves_outcomes"] for s in payload["scenes"])
+
+    def test_the_capture_is_handed_the_stitched_document_not_the_merged_one(self):
+        """⛔ THE TRAP THIS RULING WALKS PAST, AND IT IS NOT COSMETIC.
+        `parse_contract` merges internally. Capturing `out` — whose `scenes` has
+        already been replaced by the merged list — would insert every practice
+        and assessment a SECOND time."""
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.contract import parse_contract
+        from shared.design.merge import merged_scene_sequence
+
+        stitched = self._stitched()
+        double = dict(stitched)
+        double["scenes"] = merged_scene_sequence(stitched)
+        assert len(parse_contract(double)["scenes"]) == 15   # the wrong answer
+        assert len(parse_contract(stitched)["scenes"]) == 9  # the right one
+
+        import inspect
+
+        from design_core import capture
+        src = inspect.getsource(capture.transform_document)
+        assert "_capture_design(state, document)" in src
+        assert src.index("_capture_design(state, document)") < src.index('out["scenes"] = merged')
+
+    def test_the_observer_no_longer_captures_the_storyboard(self):
+        """Two captures of one design is how 12c's three accounts of the
+        evidence map came to disagree."""
+        import inspect
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core import capture
+
+        src = inspect.getsource(capture.observe)
+        after_transcript = src[src.index('state["stage"] == "transcript"'):]
+        # ⚠ CODE ONLY. The branch is left as a documented no-op, and its comment
+        # names `parse_contract` while explaining why it no longer calls it — a
+        # test that greps prose tests the prose.
+        code = "\n".join(
+            line for line in after_transcript.splitlines()
+            if not line.strip().startswith("#")
+        )
+        assert "_post(" not in code
+        assert "parse_contract" not in code
+
+    def test_the_run_provenance_still_reaches_the_brief(self):
+        """⚠ `model` and `prompt_fingerprint` are observer ARGUMENTS, not
+        document fields, so the transform cannot see them. Moving the capture
+        would have silently dropped them from every brief."""
+        import inspect
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core import capture
+
+        observe = inspect.getsource(capture.observe)
+        assert 'state.setdefault("model_used"' in observe
+        assert 'state.setdefault("prompt_fingerprint"' in observe
+        cap = inspect.getsource(capture._capture_design)
+        assert 'payload["model_used"] = state.get("model_used")' in cap
+        assert 'payload["prompt_fingerprint"] = state.get("prompt_fingerprint")' in cap
+
+    def test_the_capture_is_non_fatal_but_call_two_still_is(self):
+        """The brief is bookkeeping beside a working pipeline; a missing
+        independent attempt is a different design. Those are different claims
+        and they keep different failure policies."""
+        import inspect
+        import sys
+        from pathlib import Path
+
+        REPO = Path(__file__).resolve().parents[2]
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core import capture
+
+        cap = inspect.getsource(capture._capture_design)
+        assert "except Exception" in cap and "raise" not in cap
+        orch = inspect.getsource(capture._author_assessments_if_needed)
+        assert "DocumentTransformFatal" in orch

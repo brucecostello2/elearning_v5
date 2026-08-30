@@ -269,6 +269,34 @@ class TranscriptService:
                     f"'uploaded' but has no source_text to substitute. Refusing "
                     f"to store the worker's placeholder as the script."
                 )
+            # ⛔ RC-Q18 RULING (2), OPERATOR, 2026-08-30. A HUMAN EDIT TO AN
+            # UPLOADED ROW WRITES **BOTH** FIELDS.
+            #
+            # 12h-fix scoped the substitution to the worker so an operator's
+            # inline correction at the gate was not silently discarded. That
+            # left the invariant half-true: after a human edit, `refined_text`
+            # and `source_text` disagreed, so the design read one string and the
+            # coverage spans indexed into another — the RC-Q15 defect with a
+            # person's hand on it instead of a model's.
+            #
+            # ⛳ THE RULING CLOSES IT WITHOUT TAKING THE EDIT AWAY: the operator
+            # is editing THE SCRIPT, so the script is what gets written. Both
+            # fields move together and the unification invariant — and the belt
+            # below — hold for EVERY editor rather than for one of them.
+            #
+            # ⚠ `source_text`'s "written ONCE, by the upload path only" comment
+            # in `models/transcript.py` is amended by this and says so.
+            if (not by_service
+                    and (transcript.source_kind or "") == "uploaded"):
+                transcript.source_text = refined_text
+                source_text = refined_text
+                logger.info(
+                    "RC-Q18 uploaded transcript edited by an operator: id=%s "
+                    "source_text moved with refined_text (%d bytes). The span "
+                    "offsets the design cites index into this text.",
+                    transcript_id, len(refined_text),
+                )
+
             if uploaded_by_worker:
                 if refined_text != source_text:
                     # ⛳ NOT A WARNING TO BE SCROLLED PAST. The paraphrase is the
@@ -298,14 +326,18 @@ class TranscriptService:
         # those two disagree. A silent mismatch here is exactly the failure this
         # whole ledger exists to remove — stage 2 would design from a summary
         # again and nothing would say so.
-        if (by_service
-                and (transcript.source_kind or "") == "uploaded"
+        # ⛳ RC-Q18 RULING (2): THE BELT NO LONGER ASKS WHO WROTE. Both paths now
+        # maintain the invariant — the worker's echo is replaced, an operator's
+        # edit moves both fields — so the check that matters is the invariant
+        # itself, on every uploaded row this function touches.
+        if ((transcript.source_kind or "") == "uploaded"
+                and refined_text is not None
                 and transcript.source_text
                 and transcript.refined_text != transcript.source_text):
             raise RuntimeError(
                 f"RC-Q15 BELT: transcript {transcript_id} is source_kind="
                 f"'uploaded' and its stored refined_text is NOT byte-identical "
-                f"to source_text after a service write "
+                f"to source_text after a write "
                 f"({len(transcript.refined_text or '')} vs "
                 f"{len(transcript.source_text)} bytes). The substitution did not "
                 f"take. Stage 2 would design from a paraphrase of the operator's "

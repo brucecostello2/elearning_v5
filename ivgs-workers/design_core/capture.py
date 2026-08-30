@@ -338,6 +338,32 @@ async def transform_document(document: Any) -> Any:
     merged = merged_scene_sequence(document)
     if not merged:
         return document
+
+    # ⛔ RC-Q18, OPERATOR RULING 2026-08-30: THE DESIGN OF RECORD IS THE MERGED
+    # CONTRACT, AND THE CAPTURE HAPPENS HERE.
+    #
+    # It used to happen in `observe`, on `RESPONSE_OBSERVERS`, which fires inside
+    # `_chat_request` on CALL 1's raw content — before call 2 exists. So the
+    # stage received a correct 15-scene document and the brief was parsed from
+    # call 1 alone and carried 12 scene designs. `apply_scene_design` matched by
+    # index and back-filled 12 of 15; the three assessments reached the gate with
+    # no `instructional_event`, no `serves_outcomes` and no provenance, and it
+    # raised ELEVEN hard refusals on a design that was otherwise sound. Measured
+    # on the first real pipeline run, 2026-08-30.
+    #
+    # ⛳ AND IT IS THE SAME LAW AS THE DERIVED EVIDENCE MAP: one artifact of
+    # record, assembled by code, read by everything. 12d took `evidence_map`
+    # away from the model because two accounts of one thing drift; this takes
+    # the BRIEF away from call 1 for the same reason.
+    #
+    # ⚠ `document` AND NOT `out`, AND THE DIFFERENCE IS NOT COSMETIC.
+    # `parse_contract` calls `merged_scene_sequence` itself. Handing it a
+    # document whose `scenes` ALREADY contains the evidence scenes would insert
+    # them a second time — the brief would carry every practice and assessment
+    # twice. It is given the STITCHED contract (call 1's expository `scenes`
+    # plus both evidence sections) and does the one merge.
+    _capture_design(state, document)
+
     out = dict(document)
     out["scenes"] = merged
     logger.info(
@@ -352,6 +378,37 @@ async def transform_document(document: Any) -> Any:
         merged_scenes=len(merged),
     )
     return out
+
+
+def _capture_design(state: Dict[str, Any], stitched: Dict[str, Any]) -> None:
+    """POST the merged contract as the design brief. RC-Q18.
+
+    ⚠ NON-FATAL, exactly as the observer it replaces was. This is bookkeeping
+    beside a working pipeline: if the API cannot be reached the storyboard must
+    still be produced, and the gate then says "the design exists and the brief
+    does not" rather than failing a render over a write. The ONE thing in this
+    module that IS fatal is a call-2 failure, and that is a different claim —
+    a design with no independent attempts is a different design, not a missing
+    record of one.
+    """
+    try:
+        payload = parse_contract(stitched)
+        if payload is None:
+            return
+        state["seen"] = True
+        payload["job_id"] = state.get("job_id") or None
+        payload["model_used"] = state.get("model_used")
+        payload["prompt_fingerprint"] = state.get("prompt_fingerprint")
+        _post(state["project_id"], payload)
+    except Exception as exc:                                     # noqa: BLE001
+        logger.warning(
+            "design_contract_capture_failed",
+            project_id=state.get("project_id"),
+            job_id=state.get("job_id"),
+            stage="storyboard",
+            error_type=type(exc).__name__,
+            error=str(exc),
+        )
 
 
 def disarm() -> None:
@@ -403,14 +460,34 @@ def observe(content: Any, *, model: str = "", prompt_fingerprint: str = "") -> N
         if state["stage"] == "transcript":
             _capture_intent(state, parsed)
             return
-        payload = parse_contract(parsed)
-        if payload is None:
-            return
-        state["seen"] = True
-        payload["job_id"] = state["job_id"] or None
-        payload["model_used"] = model or None
-        payload["prompt_fingerprint"] = prompt_fingerprint or None
-        _post(state["project_id"], payload)
+        # ⛔ RC-Q18. THE STORYBOARD BRIEF IS NO LONGER CAPTURED HERE, AND THIS
+        # BRANCH IS DELIBERATELY LEFT AS A NO-OP RATHER THAN DELETED.
+        #
+        # This observer fires inside `_chat_request`, on CALL 1's raw content,
+        # before design-contract-7's second call exists. Capturing here produced
+        # a brief that knew about 12 of 15 scenes and cost eleven false hard
+        # refusals at the gate. The capture moved to `transform_document`, which
+        # is the only place both calls have been stitched and merged.
+        #
+        # ⚠ IT IS ALSO WHERE CALL 2's OWN RESPONSE ARRIVES — call 2 is made from
+        # inside the transform, so this observer sees it too. `parse_contract`
+        # returns None for it (no `scenes` key), but relying on that would be
+        # relying on an accident.
+        #
+        # ⛳ WHAT IT STILL DOES, AND IT IS THE ONE THING ONLY IT CAN: it records
+        # the RUN PROVENANCE. `model` and `prompt_fingerprint` are arguments the
+        # LLM client passes to an observer and are not in the document, so the
+        # transform cannot see them. They are stashed on the armed state and
+        # `_capture_design` reads them back — otherwise moving the capture would
+        # have silently dropped `model_used` and `prompt_fingerprint` from every
+        # brief, which is the kind of quiet loss this lineage exists to remove.
+        #
+        # ⚠ CALL 1 ONLY. Call 2 arrives here second and must not overwrite the
+        # fingerprint of the call that produced the design's arc.
+        if isinstance(parsed, dict) and parsed.get("scenes") is not None:
+            state.setdefault("model_used", model or None)
+            state.setdefault("prompt_fingerprint", prompt_fingerprint or None)
+        return
     except Exception as exc:                                     # noqa: BLE001
         # NEVER raise into a stage. See the module docstring.
         logger.warning(

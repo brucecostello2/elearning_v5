@@ -43,8 +43,13 @@ class Transcript(Base):
     # project that has run once, the operator's script is gone. Measured on one
     # 3,172-byte upload: 1,866 / 1,851 / 1,615 chars across three projects.
     #
-    # `source_text` is the extraction as uploaded and is written ONCE, by the
-    # upload path only. It is what the Design Contract's `source_refs`
+    # `source_text` is the extraction as uploaded.
+    # ⛔ AMENDED BY RC-Q18 RULING (2), 2026-08-30: it was "written ONCE, by the
+    # upload path only", and it is now ALSO written when an operator edits an
+    # uploaded transcript's `refined_text` at the gate. The two move together,
+    # because on an uploaded row the operator is editing THE SCRIPT — and if
+    # they did not, the design would read one string while the spans indexed
+    # into another, which is RC-Q15 with a person's hand on it. It is what the Design Contract's `source_refs`
     # character spans index into — a span offset is meaningless against a string
     # that is rewritten between the write and the read — and it is what the gate
     # shows beside a rewrite under ruling R1a.
