@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12f, the Design Core)
+# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12g, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,7 +6,27 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.37.5-assessments-authored`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.37.7-evidence-structural`, frontend `v5.37.0-design-core`
+
+✅ **WP-IVGS-12g IS LIVE.** Nodes 01-04 rebuilt from `112831f`, banked with
+digest sidecars, loaded from the artifact store, deployed under §6.1a with the
+compose invocation derived from container labels (**two** `-f` files on
+node-01, not the three §6 describes — the machine wins). **All seven containers
+compared by IMAGE ID against the banked `.digest`** — api
+`sha256:46159712 5d4a…`, workers `sha256:439d9d7cf545…` on all four nodes,
+identical. **No migration: contract-6 adds no storage surface**, proved by a
+database round trip, and 0052 was NOT run down on production because its down
+direction drops a column that now holds rows. `storyboard_generation_system`
+**v7** published after the deploy, v6 preserved inactive, exactly one active
+row. `CONTRACT_VERSION = design-contract-6`, `scenes[]` narrowed to seven
+events, `storyboard_max_tokens` floor **12,288** — all read back out of the
+running containers.
+
+⛔ **THE FLEET RAN `v5.37.6` FOR ~20 MINUTES AND IS NOT ON IT.** The first
+acceptance run truncated a generation at the 8,192-token floor, so the floor
+moved and both images were rebuilt at `v5.37.7`. `v5.37.6` exists as a git tag
+and a banked artifact; **nothing should be deployed from it.**
+
 
 ✅ **THE 12e TAG SPLIT IS CLOSED.** 12f changed the worker-side parse, the client
 seam and `celery_app`'s arming alongside the API, so **both images rebuilt** and
@@ -395,6 +415,7 @@ shipped with a placeholder.
 |---|---|
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
+| ↳ same file, **§12g** | ⛳ **RC-Q9f CLOSED IN BOTH LIMBS by grammar** — **design-contract-6** forces BOTH evidence kinds in per-outcome sections (`assessment_scenes` exactly 1, `practice_scenes` 1..2) and narrows `scenes[]` to SEVEN events; **origin FREE in both** (12f's one reversal, on 12f's own B1 measurement); placement in Foundation §2's fading order; **no migration needed and that is a finding**; prompt v7 with one audited drop; probes measured NO HANG on either bounded shape; deployed to nodes 01-04 at `v5.37.7`, v7 published. ⛳ **0 refusals 3/3 where contract-5 refused 6/6 on a byte-identical plan**; 0 evidence events in `scenes[]` 3/3. ⛔ **acceptance STOPPED — RC-Q9g: the practice IS the assessment, written twice, 11 of 15 pairs verbatim**; the two-call escalation is the operator's. ⛔ Also: contract-6 truncated 1 generation in 3 at the 8,192 floor (raised to 12,288, measured) and **the stage-2 prompt is now 45% of node-02's serving context** |
 | ↳ same file, **§12f** | ⛳ **the 12e diagnosis overturned by a second script — the model WILL NOT invent, it CANNOT be out-competed**; **design-contract-5** forces one invented unaided scene per outcome and code places it; `const` probed, enforced, deliberately unused; migration 0052; prompt v6; **both images rebuilt, deployed to nodes 01-04, v6 published**; ⛳ **0 designed/0 assess in 83 → 10 designed/10 assess in 43**; ⛔ **acceptance NOT met — 1, 1, 1 twice over, RC-Q9f**, the plan's unforced kind |
 | ↳ same file, **§12e** | ruling recorded (exact kind match stands, a standing rule); prompt v5 additive with operational definitions of `practice`/`assess`; API rebuilt because the publisher reads the seed from the image; **acceptance NOT met — 6, 5, 6, `assess` still [0,0,0]** — and the census found the root cause: **0 `designed` scenes in 83 (RC-Q9e)** |
 | ↳ same file, **§12d** | declaration order MEASURED to bind generation order; `assessment_plan` declared first, `evidence_map` removed and derived in code; **three refusals deleted, one added**; migration 0051; prompt v4; deployed to nodes 01-04; **acceptance still NOT met — RC-Q9d**, the plan is prior and stable but non-causal |
@@ -404,27 +425,38 @@ shipped with a placeholder.
 
 ## Next, in order
 
-1. ⛔ **THE RULING ON RC-Q9f — WHETHER TO FORCE A `practice` SCENE TOO.**
-   Contract-5 forces the `assess` and every generation now has one; the plan's
-   OTHER kind is unforced and the model does not follow through on it, **six
-   times out of six with a byte-identical plan**. A second required per-outcome
-   object (a contract-6) is the same move that worked, and it is a structural
-   escalation, so it is the operator's. ⛔ **RC-Q9e IS CLOSED** — the two-call
-   split stays in reserve and is no longer the obvious next step
-2. ⛔ **THE DUPLICATE ASSESSMENT (RC-Q9f, second limb).** In four of six
-   generations the model also writes its own copy of the assessment into
-   `scenes[]` and the lesson poses it twice, adjacent. No check catches it —
-   both scenes are legally declared. Prompt, structure or gate: operator's call
+1. ⛔ **THE RULING ON RC-Q9g — THE TWO-CALL ESCALATION.** ✅ **RC-Q9f IS CLOSED,
+   both limbs**: contract-6 forces both evidence kinds and `scenes[]` can declare
+   neither, and the acceptance went **6 refusals in 6 generations → 0 in 3, on a
+   byte-identical plan**. ⛔ **What replaced it is that the practice and the
+   assessment are the SAME SCENE, written twice** — 11 of 15 outcome-pairs
+   verbatim identical, every generation affected, quoted in full at §12g.9. The
+   cause is 12g's own emission order (the assessment is written first and sits in
+   context while the practice is asked for). **A second call for the practice
+   layer, with the assessment supplied and the instruction to fade FROM it, is
+   the real answer and is the operator's to order.** ⚠ Swapping the declaration
+   order would trade 12d's measured backward-design property for a duplicate that
+   would probably just reverse direction; prompt emphasis is refused because
+   **v7 already says it** and said it before the run
+2. ⛔ **THE STAGE-2 PROMPT IS 45% OF THE SERVING CONTEXT, MEASURED.**
+   `prompt_tokens = 14,861` against node-02's 32,768 — where the code has claimed
+   *"input ~2,000"* since WP-37. Contract-6 truncated a generation at the 8,192
+   output floor; the floor is now 12,288 and headroom is 5,619. **A longer script
+   than the operator's 3,008-byte one eats it from the other end.** A test fails
+   when it goes, which converts a production truncation into a test failure —
+   it does not stop the squeeze. Cutting v7, raising `--max-model-len`, or
+   accepting a script-length limit is an operator decision
 3. ⛔ **NOT ONE GENERATION HAS GONE THROUGH THE REAL PIPELINE.** Every 12f number
    is the harness calling node-02 with the production modules. The document
    transform that carries a designed assessment into `storyboard_scenes` is
    proven by test and by reading the running containers, **never by a job.**
    This is the largest gap in the package and the cheapest thing to close
-4. ⛔ **THE OPERATOR'S WATCH — NOT YET, and for a NEW reason.** 12f is not a pass:
-   a real project through the gate is still **refused**, once per run, on LO-2.
-   ⚠ The rendered panel remains described from the payload and component source,
-   **not a browser** — and it now has a field (`designed_rationale`) and a scene
-   kind that have never been rendered at all
+4. ⛔ **THE OPERATOR'S WATCH — NOT YET, and for a NEW reason again.** 12g clears
+   the refusals (0, 0, 0) but ships a design in which most outcomes get the same
+   scene twice under two labels (RC-Q9g). ⚠ The rendered panel remains described
+   from the payload and component source, **not a browser** — and the arc it now
+   shows has a practice AND an assessment on every outcome, neither of which has
+   ever been rendered
 5. **RC-Q10** — a re-run leaves surplus scene rows and the design brief makes it
    loud. Contaminates any regenerate-on-the-same-project gate reading
 6. **RC-Q3 / WP-00 #20** — a 64-character chat refusal recorded as a refined
@@ -436,7 +468,23 @@ shipped with a placeholder.
 
 ## Open operator decisions
 
-- ⛔ **RC-Q9f, NEW — THE PLAN'S UNFORCED KIND, AND THE DUPLICATE.** Contract-5
+- ⛔ **RC-Q9g, NEW — THE PRACTICE IS THE ASSESSMENT, WRITTEN TWICE.** Contract-6
+  closed RC-Q9f in both limbs and the structural acceptance is met: **0 hard
+  refusals 3/3**, both evidence kinds present per outcome, 0 evidence events
+  inside the model's own `scenes[]`, every outcome served and assessed — against
+  contract-5's **6 refusals in 6 generations on the identical plan**. ⛔ **And in
+  11 of 15 outcome-pairs the practice narration and the assessment narration are
+  the same string.** No check catches it and none can at hard-refusal strength:
+  both scenes are legally declared, the kinds differ, and string similarity is a
+  judgment. ⛳ **B2 isolates the cause** — where a fresh number gives the model an
+  axis it differentiates properly, and even fades the scaffolding correctly
+  (*"Divide 234 by 10. Use the place-value shift method."* → *"Divide 432 by
+  10."*); where the outcome is *"explain why"* or *"check your work"* it has no
+  axis and writes the sentence twice. The operator's script has two such outcomes
+  of three. **The two-call escalation is the operator's to order.** Quotes at
+  §12g.9
+
+- ⛔ **RC-Q9f — CLOSED BY 12g. Kept for the record.** Contract-5
   forces an invented unaided `assess` per outcome and it works: **0 designed / 0
   assess in 83 → 10 designed / 10 assess in 43**, every outcome served AND
   assessed, six generations of six, fresh numbers, no degeneracy on the two tests

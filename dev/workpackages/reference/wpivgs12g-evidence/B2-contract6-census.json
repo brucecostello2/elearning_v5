@@ -1,0 +1,315 @@
+[
+  {
+    "gen": 1,
+    "label": "B2-contract6",
+    "scenes": 27,
+    "sourced": 18,
+    "designed": 9,
+    "assess": 3,
+    "practice": 3,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        18,
+        19
+      ],
+      "LO-2": [
+        21,
+        22
+      ],
+      "LO-3": [
+        24,
+        25
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "divides a whole number of up to four digits by 10 by shifting every digit one place to the right"
+      },
+      "LO-2": {
+        "evidence_kind": "assess",
+        "learner_does": "divides a whole number of up to four digits by 100 by shifting every digit two places to the right"
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "explains why the place-value shift is the reliable rule for dividing by 10 or 100"
+      }
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "practice",
+      "assess",
+      "guide",
+      "practice",
+      "assess",
+      "guide",
+      "practice",
+      "assess",
+      "transfer"
+    ],
+    "refusals": [
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "evidence_in_scenes": 0,
+    "per_lo": {
+      "LO-1": {
+        "practice": 1,
+        "assess": 1
+      },
+      "LO-2": {
+        "practice": 1,
+        "assess": 1
+      },
+      "LO-3": {
+        "practice": 1,
+        "assess": 1
+      }
+    },
+    "both_present": true,
+    "assessed_once": true,
+    "evidence_origins": [
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed"
+    ],
+    "practice_scenes": [
+      {
+        "scene_index": 18,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-1",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "motion_graphics: the learner must write the answer",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 234,
+          "shift": 1
+        },
+        "duration_seconds": 45,
+        "visual_description": "A page with the number 234 and a pencil.",
+        "narration_text": "Divide 234 by 10. Use the place-value shift method."
+      },
+      {
+        "scene_index": 21,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-2",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "motion_graphics: the learner must write the answer",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 753,
+          "shift": 2
+        },
+        "duration_seconds": 45,
+        "visual_description": "A page with the number 753 and a pencil.",
+        "narration_text": "Divide 753 by 100. Use the place-value shift method."
+      },
+      {
+        "scene_index": 24,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-3",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "image: the learner must explain",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A person speaking.",
+        "narration_text": "Explain why the place-value shift is the reliable rule for dividing by 10 or 100."
+      }
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 10 by shifting every digit one place to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          17,
+          18,
+          19,
+          26
+        ],
+        "assessed_by": [
+          18,
+          19
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 100 by shifting every digit two places to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          6,
+          7,
+          8,
+          9,
+          20,
+          21,
+          22,
+          26
+        ],
+        "assessed_by": [
+          21,
+          22
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given the claim that dividing by 10 means crossing off a zero, the learner will explain why the place-value shift is the reliable rule and the crossed-off zero is not.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          23,
+          24,
+          25,
+          26
+        ],
+        "assessed_by": [
+          24,
+          25
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 19,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-1",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "motion_graphics: the learner must write the answer",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 432,
+          "shift": 1
+        },
+        "duration_seconds": 30,
+        "visual_description": "A blank page with a pencil.",
+        "narration_text": "Divide 432 by 10."
+      },
+      {
+        "scene_index": 22,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-2",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "motion_graphics: the learner must write the answer",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 943,
+          "shift": 2
+        },
+        "duration_seconds": 30,
+        "visual_description": "A blank page with a pencil.",
+        "narration_text": "Divide 943 by 100."
+      },
+      {
+        "scene_index": 25,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain a practice item for LO-3",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "image: the learner must explain",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A person speaking.",
+        "narration_text": "Explain why the place-value shift is the reliable rule for dividing by 10 or 100."
+      }
+    ]
+  }
+]

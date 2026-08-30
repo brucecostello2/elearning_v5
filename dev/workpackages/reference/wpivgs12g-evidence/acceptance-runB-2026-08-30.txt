@@ -1,0 +1,161 @@
+==========================================================================
+CENSUS ACCEPT-contract6-runB   contract design-contract-6   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : dev/workpackages/reference/wpivgs12-acceptance/uploaded-script.txt  2974 chars
+system=19081 chars  user=42365 chars
+property order    : ['assessment_plan', 'assessment_scenes', 'practice_scenes', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+max_tokens        : 12288   (from the worker config, not a literal)
+==========================================================================
+--- ACCEPT-contract6-runB generation 1: 491s  finish=stop  prompt_tokens=14861 completion_tokens=9531
+    ⛔ evidence events INSIDE the model's own scenes[] = 0   (contract-6 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 1, "assess": 1}, "LO-2": {"practice": 1, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['designed', 'designed', 'sourced', 'sourced', 'designed', 'designed']
+    THE CENSUS  scenes=46  sourced=42  DESIGNED=4  assess=3  practice=3
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [39, 40], "LO-2": [42, 43], "LO-3": [44, 45]}
+    events: ['hook', 'objective', 'objective', 'hook', 'present', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'present', 'guide', 'guide', 'present', 'guide', 'present', 'hook', 'present', 'guide', 'present', 'guide', 'guide', 'present', 'present', 'present', 'practice', 'assess', 'hook', 'practice', 'assess', 'practice', 'assess']
+    >> scene 39 [practice] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to compute the product of two 2-digit numbers
+       NARRATION  : Multiply 43 by 25 using the standard column algorithm. You can use the workspace below to help you.
+       visual     : A blank worksheet with a multiplication problem
+    >> scene 40 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to compute the product of two 2-digit numbers
+       NARRATION  : Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.
+       visual     : A blank worksheet with a multiplication problem
+    >> scene 42 [practice] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "Why do we write a placeholder zero in the ones column?"}]
+       NARRATION  : Explain why we write a placeholder zero in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero
+    >> scene 43 [assess] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "Why do we write a placeholder zero in the ones column?"}]
+       NARRATION  : Explain why we write a placeholder zero in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero
+    >> scene 44 [practice] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem
+    >> scene 45 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem
+    HARD REFUSALS = 0    flags = 5
+        flag   scene 42       PRACTICE_NOT_PREPARED
+        flag   scene 43       PRACTICE_NOT_PREPARED
+        flag   scene 44       PRACTICE_NOT_PREPARED
+        flag   scene 45       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41] assessed=[39, 40]
+        LO-2: served=[0, 1, 2, 3, 30, 41, 42, 43] assessed=[42, 43]
+        LO-3: served=[0, 1, 2, 3, 30, 41, 44, 45] assessed=[44, 45]
+
+--- ACCEPT-contract6-runB generation 2: 477s  finish=stop  prompt_tokens=14861 completion_tokens=9264
+    ⛔ evidence events INSIDE the model's own scenes[] = 0   (contract-6 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 1, "assess": 1}, "LO-2": {"practice": 1, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['sourced', 'sourced', 'designed', 'designed', 'designed', 'designed']
+    THE CENSUS  scenes=46  sourced=42  DESIGNED=4  assess=3  practice=3
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [43, 44], "LO-2": [25, 26], "LO-3": [34, 35]}
+    events: ['hook', 'objective', 'objective', 'hook', 'present', 'guide', 'guide', 'hook', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'present', 'feedback', 'guide', 'present', 'guide', 'guide', 'guide', 'guide', 'practice', 'assess', 'guide', 'guide', 'guide', 'guide', 'present', 'feedback', 'hook', 'practice', 'assess', 'present', 'guide', 'guide', 'guide', 'guide', 'guide', 'present', 'practice', 'assess', 'feedback']
+    >> scene 25 [practice] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero.
+    >> scene 26 [assess] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero.
+    >> scene 34 [practice] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The outcome requires the learner to check their own work, which is not provided in the script.
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem.
+    >> scene 35 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The outcome requires the learner to check their own work, which is not provided in the script.
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem.
+    >> scene 43 [practice] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The outcome requires the learner to compute the product of two 2-digit numbers using the standard column algorithm, which is not provided in the script.
+       NARRATION  : Compute the product of 43 and 27 using the standard column algorithm.
+       visual     : A blank worksheet with a multiplication problem.
+    >> scene 44 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The outcome requires the learner to compute the product of two 2-digit numbers using the standard column algorithm, which is not provided in the script.
+       NARRATION  : Compute the product of 43 and 27 using the standard column algorithm.
+       visual     : A blank worksheet with a multiplication problem.
+    HARD REFUSALS = 0    flags = 3
+        flag   scene 34       PRACTICE_NOT_PREPARED
+        flag   scene 35       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 27, 28, 29, 30, 31, 32, 33, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45] assessed=[43, 44]
+        LO-2: served=[0, 1, 2, 3, 7, 20, 21, 22, 23, 24, 25, 26, 33] assessed=[25, 26]
+        LO-3: served=[0, 1, 2, 3, 7, 33, 34, 35] assessed=[34, 35]
+
+--- ACCEPT-contract6-runB generation 3: 503s  finish=stop  prompt_tokens=14861 completion_tokens=9753
+    ⛔ evidence events INSIDE the model's own scenes[] = 0   (contract-6 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 1, "assess": 1}, "LO-2": {"practice": 1, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['sourced', 'sourced', 'designed', 'designed', 'sourced', 'designed']
+    THE CENSUS  scenes=46  sourced=43  DESIGNED=3  assess=3  practice=3
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [44, 45], "LO-2": [4, 5], "LO-3": [6, 7]}
+    events: ['hook', 'objective', 'objective', 'hook', 'practice', 'assess', 'practice', 'assess', 'present', 'present', 'present', 'present', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'practice', 'assess']
+    >> scene 4 [practice] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Let's practice explaining why we write a placeholder zero in the ones column before multiplying by the tens digit.
+       visual     : a worksheet with a multiplication problem and a placeholder zero
+    >> scene 5 [assess] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Why do we write a placeholder zero in the ones column before multiplying by the tens digit?
+       visual     : a worksheet with a multiplication problem and a placeholder zero
+    >> scene 6 [practice] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work
+       NARRATION  : Let's practice checking our work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : a completed worksheet with a multiplication problem
+    >> scene 7 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : a completed worksheet with a multiplication problem
+    >> scene 44 [practice] origin=sourced serves=['LO-1'] media=motion_graphics 60s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "First, we set up the problem. WRITE THE NUMBERS on top and underneath, making sure the ones digits LINE UP and the tens digits line up. DRAW A LINE underneath."}]
+       NARRATION  : Let's practice multiplying two 2-digit numbers. Set up the problem by writing the numbers on top and underneath, making sure the ones digits line up and the tens digits line up. Draw a line underneath.
+       visual     : a blank worksheet with a multiplication problem
+    >> scene 45 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to perform the multiplication independently
+       NARRATION  : Now it's your turn! Multiply 43 by 27 using the standard column algorithm.
+       visual     : a blank worksheet with a multiplication problem
+    HARD REFUSALS = 0    flags = 5
+        flag   scene 4        PRACTICE_NOT_PREPARED
+        flag   scene 5        PRACTICE_NOT_PREPARED
+        flag   scene 6        PRACTICE_NOT_PREPARED
+        flag   scene 7        PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45] assessed=[44, 45]
+        LO-2: served=[0, 1, 2, 3, 4, 5] assessed=[4, 5]
+        LO-3: served=[0, 1, 2, 3, 6, 7] assessed=[6, 7]
+
+==========================================================================
+ACCEPT-contract6-runB TOTALS vs BOTH baselines
+   contract-4 (RC-Q9e, 6 gens): 83 scenes / 83 sourced / 0 designed / 0 assess
+   contract-5 (RC-Q9f run B, 3 gens): 43 / 33 / 10 / 10, 6 refusals in 6 gens
+  scenes  138   sourced 127   DESIGNED 11   assess 9   practice 9
+  hard refusals per generation: [0, 0, 0]
+  ⛔ evidence events in the model's own scenes[]: [0, 0, 0]   (contract-6 requires all 0)
+  per-LO practice AND assess present: [True, True, True]
+  exactly one assess per LO:          [True, True, True]
+==========================================================================

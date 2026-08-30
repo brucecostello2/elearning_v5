@@ -1,0 +1,40 @@
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[vllm-False]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[coqui-False]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[coqui-False]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[kokoro-False]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[kokoro-False]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[tts-False]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[tts-False]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[comfyui-True]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[comfyui-True]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[ollama-True]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[ollama-True]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[cogvideox-True]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[cogvideox-True]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_api_model_export.py::TestWpIvgs08DynamicallyLoadableIsSetNotDefaulted::test_the_class_boundary[latentsync-True]
+  ivgs-api/tests/test_api_model_export.py:641: PytestWarning: The test <Function test_the_class_boundary[latentsync-True]> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
+    @pytest.mark.parametrize("engine,expected", [
+
+ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template_survives_validation_into_the_scene_object
+ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template_survives_validation_into_the_scene_object
+ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template_survives_validation_into_the_scene_object
+ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template_survives_validation_into_the_scene_object
+  /opt/ivgs/.venv/lib/python3.12/site-packages/pydantic/_internal/_config.py:295: PydanticDeprecatedSince20: Support for class-based `config` is deprecated, use ConfigDict instead. Deprecated in Pydantic V2.0 to be removed in V3.0. See Pydantic V2 Migration Guide at https://errors.pydantic.dev/2.10/migration/
+    warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============== 1682 passed, 2355 warnings in 332.20s (0:05:32) ================

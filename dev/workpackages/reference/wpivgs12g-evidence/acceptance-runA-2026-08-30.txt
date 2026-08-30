@@ -1,0 +1,110 @@
+==========================================================================
+CENSUS ACCEPT-contract6   contract design-contract-6   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : dev/workpackages/reference/wpivgs12-acceptance/uploaded-script.txt  2974 chars
+system=19081 chars  user=42365 chars
+property order    : ['assessment_plan', 'assessment_scenes', 'practice_scenes', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+==========================================================================
+--- ACCEPT-contract6 generation 1: 427s  finish=length  prompt_tokens=14861 completion_tokens=8192
+    TRUNCATED - chars=28977 whitespace=3070
+--- ACCEPT-contract6 generation 2: 135s  finish=stop  prompt_tokens=14861 completion_tokens=2647
+    ⛔ evidence events INSIDE the model's own scenes[] = 0   (contract-6 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 1, "assess": 1}, "LO-2": {"practice": 1, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['sourced', 'designed', 'sourced', 'designed', 'sourced', 'designed']
+    THE CENSUS  scenes=12  sourced=9  DESIGNED=3  assess=3  practice=3
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [4, 5], "LO-2": [10, 11], "LO-3": [7, 8]}
+    events: ['hook', 'present', 'guide', 'guide', 'practice', 'assess', 'guide', 'practice', 'assess', 'transfer', 'practice', 'assess']
+    >> scene 4 [practice] origin=sourced serves=['LO-1'] media=motion_graphics 60s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "Our problem is: 23 times 14."}]
+       NARRATION  : Solve the problem: 23 times 14.
+       visual     : A blank worksheet with a multiplication problem.
+    >> scene 5 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the script does not contain a problem for the learner to solve
+       NARRATION  : Solve the problem: 43 times 27.
+       visual     : A blank worksheet with a multiplication problem.
+    >> scene 7 [practice] origin=sourced serves=['LO-3'] media=motion_graphics 60s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "We\u2019re almost finished! We have two answers: 92 and 230."}]
+       NARRATION  : Check your work: 23 times 14.
+       visual     : A completed worksheet with a multiplication problem.
+    >> scene 8 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the script does not contain a problem for the learner to check
+       NARRATION  : Check your work: 23 times 14.
+       visual     : A completed worksheet with a multiplication problem.
+    >> scene 10 [practice] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero.
+    >> scene 11 [assess] origin=designed serves=['LO-2'] media=image 30s
+       source_refs: null
+       rationale  : the script does not contain an explanation for the placeholder zero
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero.
+    HARD REFUSALS = 0    flags = 3
+        flag   scene 10       PRACTICE_NOT_PREPARED
+        flag   scene 11       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 9] assessed=[4, 5]
+        LO-2: served=[0, 9, 10, 11] assessed=[10, 11]
+        LO-3: served=[0, 6, 7, 8, 9] assessed=[7, 8]
+
+--- ACCEPT-contract6 generation 3: 395s  finish=stop  prompt_tokens=14861 completion_tokens=7693
+    ⛔ evidence events INSIDE the model's own scenes[] = 0   (contract-6 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 1, "assess": 1}, "LO-2": {"practice": 1, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['sourced', 'sourced', 'sourced', 'designed', 'designed', 'designed']
+    THE CENSUS  scenes=37  sourced=34  DESIGNED=3  assess=3  practice=3
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [26, 27], "LO-2": [17, 18], "LO-3": [35, 36]}
+    events: ['hook', 'objective', 'objective', 'hook', 'present', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'feedback', 'guide', 'guide', 'guide', 'guide', 'guide', 'practice', 'assess', 'guide', 'feedback', 'guide', 'feedback', 'feedback', 'hook', 'guide', 'practice', 'assess', 'feedback', 'feedback', 'feedback', 'feedback', 'feedback', 'transfer', 'transfer', 'practice', 'assess']
+    >> scene 17 [practice] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Why do we write a placeholder zero in the ones column before multiplying by the tens digit?
+       visual     : a worksheet with a multiplication problem and a placeholder zero
+    >> scene 18 [assess] origin=sourced serves=['LO-2'] media=image 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."}]
+       NARRATION  : Why do we write a placeholder zero in the ones column before multiplying by the tens digit?
+       visual     : a worksheet with a multiplication problem and a placeholder zero
+    >> scene 26 [practice] origin=sourced serves=['LO-1'] media=motion_graphics 30s
+       source_refs: [{"transcript_id": null, "start": 0, "end": 120, "quote": "First, multiply 4 times 3. 4 times 3 equals 12. Write the 2 underneath the ones column, and carry the 1 above the tens column."}]
+       NARRATION  : Multiply 4 times 3. Write the 2 underneath the ones column, and carry the 1 above the tens column.
+       visual     : a worksheet with a multiplication problem and a partial product
+    >> scene 27 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to perform the multiplication independently
+       NARRATION  : Now it's your turn. Multiply 43 by 25 using the standard column algorithm.
+       visual     : a blank worksheet with a multiplication problem
+    >> scene 35 [practice] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work with support
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : a completed worksheet with a multiplication problem
+    >> scene 36 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the outcome requires the learner to check their own work
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : a completed worksheet with a multiplication problem
+    HARD REFUSALS = 0    flags = 3
+        flag   scene 35       PRACTICE_NOT_PREPARED
+        flag   scene 36       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34] assessed=[26, 27]
+        LO-2: served=[0, 1, 2, 3, 14, 15, 16, 17, 18, 24, 33, 34] assessed=[17, 18]
+        LO-3: served=[0, 1, 2, 3, 24, 33, 34, 35, 36] assessed=[35, 36]
+
+==========================================================================
+ACCEPT-contract6 TOTALS vs BOTH baselines
+   contract-4 (RC-Q9e, 6 gens): 83 scenes / 83 sourced / 0 designed / 0 assess
+   contract-5 (RC-Q9f run B, 3 gens): 43 / 33 / 10 / 10, 6 refusals in 6 gens
+  scenes  49   sourced 43   DESIGNED 6   assess 6   practice 6
+  hard refusals per generation: [0, 0, 0]
+  ⛔ evidence events in the model's own scenes[]: [0, 0]   (contract-6 requires all 0)
+  per-LO practice AND assess present: [True, True]
+  exactly one assess per LO:          [True, True]
+==========================================================================

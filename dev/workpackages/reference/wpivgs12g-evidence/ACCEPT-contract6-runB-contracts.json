@@ -1,0 +1,4476 @@
+[
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "computes the product of two 2-digit numbers using the standard column algorithm"
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "explains why a placeholder zero is written in the ones column before multiplying by the tens digit"
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "checks their own work by verifying the column alignment, each partial product, and the placeholder zero"
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to compute the product of two 2-digit numbers"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must perform a numeric transformation",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 25,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "Why do we write a placeholder zero in the ones column?"
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why we write a placeholder zero in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a multiplication problem and a placeholder zero",
+          "media_type": "image",
+          "media_rationale": "the learner must recognize the purpose of the placeholder zero",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to check their own work"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must perform a numeric transformation",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 25,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to compute the product of two 2-digit numbers"
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Multiply 43 by 25 using the standard column algorithm. You can use the workspace below to help you.",
+          "visual_description": "A blank worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must perform a numeric transformation",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 25,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "Why do we write a placeholder zero in the ones column?"
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why we write a placeholder zero in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a multiplication problem and a placeholder zero",
+          "media_type": "image",
+          "media_rationale": "the learner must recognize the purpose of the placeholder zero",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to check their own work"
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must perform a numeric transformation",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 25,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Now we\u2019re ready to multiply.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we\u2019re ready to multiply."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "We start with the 4 in 14.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We start with the 4 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "4 times 3 equals 12.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Next, multiply 4 times 2.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Next, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "4 times 2 equals 8.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 2 equals 8."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "But remember, we carried a 1.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But remember, we carried a 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "So we add it: 8 plus 1 equals 9.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So we add it: 8 plus 1 equals 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "Write down the 9.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Our first answer is 92.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our first answer is 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we need to multiply by the 1 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "But there\u2019s something very important to remember.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But there\u2019s something very important to remember."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "That 1 isn\u2019t really just 1.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That 1 isn\u2019t really just 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 21,
+        "narration_text": "Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 22,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 23,
+        "narration_text": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 24,
+        "narration_text": "Now multiply 1 times 3.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 25,
+        "narration_text": "1 times 3 equals 3.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 3 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 26,
+        "narration_text": "Write down the 3.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 27,
+        "narration_text": "Then multiply 1 times 2.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 28,
+        "narration_text": "1 times 2 equals 2.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 2 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 29,
+        "narration_text": "Write down the 2.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 30,
+        "narration_text": "Our second answer is 230.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our second answer is 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 31,
+        "narration_text": "We\u2019re almost finished!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We\u2019re almost finished!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 32,
+        "narration_text": "We have two answers: 92 and 230.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We have two answers: 92 and 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 33,
+        "narration_text": "Now add them together.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 34,
+        "narration_text": "2 plus 0 equals 2.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "2 plus 0 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 35,
+        "narration_text": "9 plus 3 equals 12.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "9 plus 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 36,
+        "narration_text": "Write down 2 and carry the 1.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2 and carry the 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 37,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 38,
+        "narration_text": "Our final answer is 322.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our final answer is 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 39,
+        "narration_text": "So 23 times 14 equals 322.",
+        "visual_description": "A worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "the learner must perform a numeric transformation",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 40,
+        "narration_text": "Nice work!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "human or social moment",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Nice work!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 120,
+          "end": 240,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The script jumps abruptly to a new example without connecting it to the previous one.",
+        "reason": "The new example is not necessary for the current lesson and disrupts the flow."
+      }
+    ],
+    "design_notes": "The lesson follows a linear structure, starting with an introduction to the concept of multiplying two-digit numbers, followed by a step-by-step guide on how to perform the multiplication. The lesson then provides practice opportunities for the learner to apply their new skills, and finally, assesses their understanding with a quiz. The media type for each scene is chosen based on the content, with motion graphics used for numeric transformations, images used for human or social moments, and animations used for build-ups or transformations. The narration is self-consistent, and the visuals are detailed and accurate, with no text or numerals on screen. The lesson is designed to be engaging and easy to follow, with a clear structure and concise language.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "computes the product of two 2-digit numbers using the standard column algorithm"
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "explains why a placeholder zero is written in the ones column before multiplying by the tens digit"
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "checks their own work by verifying the column alignment, each partial product, and the placeholder zero"
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to compute the product of two 2-digit numbers using the standard column algorithm, which is not provided in the script."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Compute the product of 43 and 27 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to perform a numeric transformation, which is best represented using motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 27,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a multiplication problem and a placeholder zero.",
+          "media_type": "image",
+          "media_rationale": "The scene requires the learner to recognize and explain a concept, which is best represented using a still image.",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to check their own work, which is not provided in the script."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to perform a numeric transformation, which is best represented using motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 27,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to compute the product of two 2-digit numbers using the standard column algorithm, which is not provided in the script."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Compute the product of 43 and 27 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to perform a numeric transformation, which is best represented using motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 27,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a multiplication problem and a placeholder zero.",
+          "media_type": "image",
+          "media_rationale": "The scene requires the learner to recognize and explain a concept, which is best represented using a still image.",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to check their own work, which is not provided in the script."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to perform a numeric transformation, which is best represented using motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 27,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "A worksheet with a multiplication problem.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Draw a line underneath.",
+        "visual_description": "A hand holding a pencil, drawing a line underneath a multiplication problem on a worksheet.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Draw a line underneath."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "Now we\u2019re ready to multiply.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we\u2019re ready to multiply."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "We start with the 4 in 14.",
+        "visual_description": "A hand pointing to the ones digit of a multiplication problem on a worksheet.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We start with the 4 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "4 times 3 equals 12.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Next, multiply 4 times 2.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Next, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "4 times 2 equals 8.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 2 equals 8."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "But remember, we carried a 1.",
+        "visual_description": "A hand pointing to the carried digit on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But remember, we carried a 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So we add it: 8 plus 1 equals 9.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So we add it: 8 plus 1 equals 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Write down the 9.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Our first answer is 92.",
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our first answer is 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "Great! That means 23 times 4 equals 92.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "feedback",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Great! That means 23 times 4 equals 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "visual_description": "A hand pointing to the tens digit of a multiplication problem on a worksheet.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we need to multiply by the 1 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 21,
+        "narration_text": "But there\u2019s something very important to remember.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But there\u2019s something very important to remember."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 22,
+        "narration_text": "That 1 isn\u2019t really just 1.",
+        "visual_description": "A hand pointing to the tens digit of a multiplication problem on a worksheet.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That 1 isn\u2019t really just 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 23,
+        "narration_text": "Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 24,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 25,
+        "narration_text": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "A hand pointing to the placeholder zero on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 26,
+        "narration_text": "Now multiply 1 times 3.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 27,
+        "narration_text": "1 times 3 equals 3.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 3 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 28,
+        "narration_text": "Then multiply 1 times 2.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 29,
+        "narration_text": "1 times 2 equals 2.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 2 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 30,
+        "narration_text": "Our second answer is 230.",
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our second answer is 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 31,
+        "narration_text": "That makes sense, because 23 times 10 equals 230.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "feedback",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That makes sense, because 23 times 10 equals 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 32,
+        "narration_text": "We\u2019re almost finished!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We\u2019re almost finished!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 33,
+        "narration_text": "We have two answers: 92 and 230.",
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We have two answers: 92 and 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 34,
+        "narration_text": "Now add them together.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 35,
+        "narration_text": "2 plus 0 equals 2.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "2 plus 0 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 36,
+        "narration_text": "9 plus 3 equals 12.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "9 plus 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 37,
+        "narration_text": "Write down 2 and carry the 1.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2 and carry the 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 38,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "visual_description": "A hand holding a pencil, writing on a worksheet with a multiplication problem.",
+        "media_type": "video_clip",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to watch a physical action, which is best represented using a video clip.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 39,
+        "narration_text": "Our final answer is 322.",
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our final answer is 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 40,
+        "narration_text": "So 23 times 14 equals 322.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene requires the learner to recognize and understand a concept, which is best represented using a still image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "feedback",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 0,
+          "end": 120,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The script mentions trying another example, but it is not included in the lesson.",
+        "reason": "The example is not necessary for the learner to achieve the outcomes."
+      }
+    ],
+    "design_notes": "The lesson follows the Gagn\u00e9's nine events of instruction. The scenes are designed to deliver the plan, with a mix of presentation, guidance, practice, and feedback. The learner is encouraged to try another example, but it is not included in the lesson. The lesson ends with a recap of the final answer.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum"
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "explains why a placeholder zero is written in the ones column before multiplying by the tens digit"
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "checks their own work by verifying the column alignment, each partial product, and the placeholder zero"
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to perform the multiplication independently"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn! Multiply 43 by 27 using the standard column algorithm.",
+          "visual_description": "a blank worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must perform the multiplication independently",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 27,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Why do we write a placeholder zero in the ones column before multiplying by the tens digit?",
+          "visual_description": "a worksheet with a multiplication problem and a placeholder zero",
+          "media_type": "image",
+          "media_rationale": "the learner must explain the concept",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": null,
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to check their own work"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "a completed worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must check their own work",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 27,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "First, we set up the problem. WRITE THE NUMBERS on top and underneath, making sure the ones digits LINE UP and the tens digits line up. DRAW A LINE underneath."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Let's practice multiplying two 2-digit numbers. Set up the problem by writing the numbers on top and underneath, making sure the ones digits line up and the tens digits line up. Draw a line underneath.",
+          "visual_description": "a blank worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must practice the multiplication",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 23,
+            "bottom": 14,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Let's practice explaining why we write a placeholder zero in the ones column before multiplying by the tens digit.",
+          "visual_description": "a worksheet with a multiplication problem and a placeholder zero",
+          "media_type": "image",
+          "media_rationale": "the learner must practice explaining the concept",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": null,
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "the outcome requires the learner to check their own work"
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Let's practice checking our work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "a completed worksheet with a multiplication problem",
+          "media_type": "motion_graphics",
+          "media_rationale": "the learner must practice checking their own work",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "highlight_and_hold",
+            "top": 43,
+            "bottom": 27,
+            "column": 0,
+            "label": "units"
+          },
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "a teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "the scene introduces the topic",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "a teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "the scene introduces the topic",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "a teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "the scene introduces the topic",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "a teacher standing in front of a clean, empty whiteboard",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "the scene introduces the topic",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "a worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene presents the problem",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "a worksheet with a multiplication problem",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene presents the problem",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Draw a line underneath.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene presents the problem",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Draw a line underneath."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "Now we\u2019re ready to multiply.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene presents the problem",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we\u2019re ready to multiply."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "We start with the 4 in 14.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We start with the 4 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "4 times 3 equals 12.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Next, multiply 4 times 2.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Next, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "4 times 2 equals 8.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 2 equals 8."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "But remember, we carried a 1.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But remember, we carried a 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So we add it: 8 plus 1 equals 9.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So we add it: 8 plus 1 equals 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Write down the 9.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Our first answer is 92.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our first answer is 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "Great! That means 23 times 4 equals 92.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Great! That means 23 times 4 equals 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we need to multiply by the 1 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 21,
+        "narration_text": "But there\u2019s something very important to remember.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But there\u2019s something very important to remember."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 22,
+        "narration_text": "That 1 isn\u2019t really just 1.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That 1 isn\u2019t really just 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 23,
+        "narration_text": "Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 24,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 25,
+        "narration_text": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 26,
+        "narration_text": "Now multiply 1 times 3.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 27,
+        "narration_text": "1 times 3 equals 3.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 3 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 28,
+        "narration_text": "Write down 3.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 29,
+        "narration_text": "Then multiply 1 times 2.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 30,
+        "narration_text": "1 times 2 equals 2.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 2 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 31,
+        "narration_text": "Write down 2.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 32,
+        "narration_text": "Our second answer is 230.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our second answer is 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 33,
+        "narration_text": "That makes sense, because 23 times 10 equals 230.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That makes sense, because 23 times 10 equals 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 34,
+        "narration_text": "We\u2019re almost finished!",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We\u2019re almost finished!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 35,
+        "narration_text": "We have two answers: 92 and 230.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We have two answers: 92 and 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 36,
+        "narration_text": "Now add them together.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 37,
+        "narration_text": "2 plus 0 equals 2.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "2 plus 0 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 38,
+        "narration_text": "9 plus 3 equals 12.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "9 plus 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 39,
+        "narration_text": "Write down 2 and carry the 1.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2 and carry the 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 40,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "visual_description": "a worksheet with a multiplication problem and a line underneath",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "the scene guides the learner",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 0,
+          "end": 120,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The script mentions trying another example, but this is not included in the scenes.",
+        "reason": "The example is not necessary for the learner to understand the concept."
+      }
+    ],
+    "design_notes": "The lesson follows the standard arc of introduction, presentation, guided practice, and independent practice. The learner is introduced to the concept of multiplying two-digit numbers, and then guided through the process with a worked example. The learner is then given the opportunity to practice the concept with a faded example, and finally, to apply the concept to an independent problem. The lesson is designed to be engaging and interactive, with a mix of visual and auditory elements to support the learner's understanding.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    }
+  }
+]
