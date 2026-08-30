@@ -51,7 +51,11 @@ import httpx
 import structlog
 
 from design_core.contract import parse_contract
-from shared.design.merge import merged_scene_sequence
+from shared.design.merge import (
+    EVIDENCE_SECTIONS,
+    LEGACY_SECTION,
+    merged_scene_sequence,
+)
 
 logger = structlog.get_logger("ivgs.design_core.capture")
 
@@ -177,17 +181,27 @@ def transform_document(document: Any) -> Any:
     of the evidence map came to disagree.
 
     ⚠ IT REWRITES EXACTLY ONE KEY AND ONLY ON A DOCUMENT IT RECOGNISES. Not a
-    dict, not armed for the storyboard stage, no `designed_assessments`, or a
+    dict, not armed for the storyboard stage, no evidence section at all, or a
     merge that produced nothing — the document goes back untouched, so a v7
     storyboard and every other stage's JSON pass through unchanged.
+
+    ⛳ WP-IVGS-12g. THE RECOGNITION TEST IS `shared.design.merge`'s OWN LIST and
+    not a key spelled again here. Contract-6 renamed the one section into two
+    (`practice_scenes`, `assessment_scenes`) and contract-5's
+    `designed_assessments` still has to merge for stored briefs — three names
+    where 12f had one, and a second copy of that list in this module is how a
+    contract-7 would silently stop transforming while every test still passed.
     """
     state = _armed.get()
     if not state or state.get("stage") != "storyboard":
         return document
     if not isinstance(document, dict):
         return document
-    designed = document.get("designed_assessments")
-    if not isinstance(designed, dict) or not designed:
+    sections = [
+        name for name in (*EVIDENCE_SECTIONS, LEGACY_SECTION)
+        if isinstance(document.get(name), dict) and document[name]
+    ]
+    if not sections:
         return document
     merged = merged_scene_sequence(document)
     if not merged:
@@ -199,7 +213,10 @@ def transform_document(document: Any) -> Any:
         project_id=state.get("project_id"),
         job_id=state.get("job_id"),
         emitted_scenes=len(document.get("scenes") or []),
-        designed_assessments=len(designed),
+        evidence_sections=sections,
+        evidence_scenes=sum(
+            len(document[name]) for name in sections
+        ),
         merged_scenes=len(merged),
     )
     return out

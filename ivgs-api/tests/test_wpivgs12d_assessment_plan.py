@@ -386,7 +386,7 @@ class TestTheContractFourRoundTrip:
         from app.services.design_review import review, split
 
         sys.path.insert(0, str(REPO / "ivgs-workers"))
-        from design_core.contract import parse_contract
+        from design_core.contract import CONTRACT_VERSION, parse_contract
 
         outcomes_text = "LO-1: compute the product.\nLO-2: explain the zero."
         project = Project(id=_uuid.uuid4(), name="12d round trip", state="DRAFT",
@@ -420,10 +420,13 @@ class TestTheContractFourRoundTrip:
         }
         payload = parse_contract(emission)
         assert payload is not None
-        # WP-IVGS-12f: -5 is the current shape. This emission carries no
-        # `designed_assessments`, which is the pre-contract-5 case the merge
-        # handles as the identity, and it must still round-trip whole.
-        assert payload["contract_version"] == "design-contract-5"
+        # ⚠ RE-AIMED BY WP-IVGS-12g, for the reason 12f's own version test was:
+        # `parse_contract` stamps the CURRENT version whatever shape it read, so
+        # a literal here made every contract bump edit a round-trip test that is
+        # not about versions. This emission carries NO evidence section at all,
+        # which is the pre-contract-5 case the merge handles as the identity,
+        # and it must still round-trip whole — that is the claim.
+        assert payload["contract_version"] == CONTRACT_VERSION
 
         brief = await DesignBriefService(db_session).record(project.id, payload)
 

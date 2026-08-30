@@ -70,6 +70,47 @@ merges them into the sequence. So for any emission the decoder accepted:
     PLAN_ENTRY_UNREALIZED(assess)  a plan entry promising `assess` is realized
                                    by that outcome's designed assessment, always
 
+⛔ WP-IVGS-12g: THE OTHER HALF, AND ONE NEW CHECK THAT IS BORN UNREACHABLE
+
+Contract-5 forced `assess` and left `practice` to the model's own
+follow-through, and RC-Q9f measured what happened in the gap — SIX generations
+of six refused `PLAN_ENTRY_UNREALIZED` on LO-2, whose plan said `practice` in
+every one. That is RC-Q9d's non-causal plan surviving intact in the one kind the
+grammar did not force, and it is the fourth package to measure the same law:
+**on this stack the model's plan predicts nothing; only the grammar is causal.**
+
+Contract-6 applies it once, to the whole evidence layer. `practice_scenes`
+(1..2 per outcome) and `assessment_scenes` (exactly 1) are both REQUIRED
+per-outcome sections, and `scenes[]` loses `practice` and `assess` from its
+`instructional_event` enum entirely. So:
+
+    PLAN_ENTRY_UNREALIZED          unreachable for BOTH kinds now, not one.
+                                   Whichever kind the plan promises, a scene
+                                   serving that outcome and declaring that kind
+                                   exists before the plan is even read
+    OUTCOME_ASSESSED_TWICE         new, and it has never been able to fire.
+                                   RC-Q9f limb 2 is the reason it exists: with
+                                   `assess` forced elsewhere, contract-5's model
+                                   began writing EXTRA assess scenes into
+                                   `scenes[]` — four generations of six — and
+                                   the merge placed the mandated one beside its
+                                   near-identical twin, posing one problem twice
+                                   back to back. `scenes[]` cannot declare
+                                   `assess` any more and the section holds
+                                   exactly one, so the count is always one
+
+⛳ ALL OF THEM STAY, AS THE LOUD REGRESSION BELT, AND THAT INCLUDES THE ONE BORN
+UNREACHABLE. A structural guarantee is a claim about a schema, a merge and a
+decoder, and all three are code that can be edited by someone who does not know
+why they are shaped this way. This whole lineage is a record of guarantees that
+turned out narrower than believed — `guided_json` returning 200 and doing
+nothing is the purest example, and contract-5's own `assess`-only forcing is the
+most recent. A check that can never fire costs one comparison per outcome and is
+the only thing that will say so out loud when the guarantee stops holding.
+`test_wpivgs12g_evidence_layer` asserts every one of these unreachable directly,
+including against the hostile cases, so the guarantee is MEASURED and not
+assumed.
+
 ⛳ AND THEY BOTH STAY, AS THE LOUD REGRESSION BELT. A structural guarantee is a
 claim about a schema, a merge and a decoder, and all three are code that can be
 edited by someone who does not know why they are shaped this way. The whole
@@ -90,6 +131,20 @@ the learner to perform before any earlier scene presents or guides the same
 outcome"). It is a FLAG. Promoting it is an operator ruling and this package did
 not take it — 12c's promotion of `EVIDENCE_MAP_DISAGREES` was ordered, not
 chosen, and the precedent is the point.
+
+⛔ WP-IVGS-12g DOES NOT RESTORE IT AND MAKES THE COST TOTAL, WHICH IS SAID HERE
+RATHER THAN DISCOVERED. Under contract-6 every outcome carries at least two
+authored evidence scenes that declare it, so `OUTCOME_UNSERVED` is now
+unreachable as well — and unlike the other two it is unreachable for a reason
+nobody should be comforted by. It has stopped measuring anything. The question
+it was asked to answer, *"does this lesson TEACH the outcome it assesses?"*,
+now lives ONLY in `PRACTICE_NOT_PREPARED`, still a flag, firing on the merged
+sequence when nothing presents or guides the outcome before its attempt. ⚠ The
+belt-and-braces reading — three unreachable refusals plus one flag — is that
+this gate's hard limb increasingly measures the grammar rather than the design,
+and that the flag limb is where a reviewer's attention now has to go. Promoting
+`PRACTICE_NOT_PREPARED` remains an operator ruling and 12g does not take it
+either.
 
 ⚠ WHAT IS DELIBERATELY A FLAG THOUGH IT LOOKS CHECKABLE
 
@@ -386,6 +441,29 @@ def review(
                 outcome_id=oid,
             ))
 
+        # ⛔ WP-IVGS-12g, RC-Q9f limb 2, BORN UNREACHABLE — see the module
+        # docstring. The `assess` scenes serving this outcome, counted off the
+        # merged sequence the same way `derive_evidence_map` reads it.
+        independent = sorted(
+            scene_index_of(s, i) for i, s in enumerate(scenes)
+            if _scene_field(s, "instructional_event") == "assess"
+            and oid in [str(x) for x in (_scene_field(s, "serves_outcomes") or [])]
+        )
+        if len(independent) > 1:
+            findings.append(Finding(
+                REFUSE, "OUTCOME_ASSESSED_TWICE",
+                f"is assessed by {len(independent)} independent-attempt scenes "
+                f"{independent}. One outcome gets ONE unaided attempt: a second "
+                "poses the same problem again, and under contract-5 the two "
+                "landed adjacent and near-identical (RC-Q9f limb 2). "
+                "design-contract-6 emits exactly one per outcome and `scenes[]` "
+                "cannot declare `assess` at all, so this firing means the "
+                "structural guarantee has stopped holding — not that the "
+                "designer made a judgment call.",
+                outcome_id=oid,
+                detail={"assess_scene_indices": independent},
+            ))
+
         # ── the promise, checked against the design that had to keep it ──
         findings.extend(_plan_is_realized(assessment_plan, oid, scenes))
         if not outcome.get("measurable", True):
@@ -460,11 +538,20 @@ def _plan_is_realized(
     scenes cannot serve an id that does not exist, so refusing on it would
     report the same defect twice. `SCENE_CITES_UNKNOWN_OUTCOME` owns that.
 
-    ⛔ WP-IVGS-12f. FOR `evidence_kind == "assess"` THIS IS NOW UNREACHABLE and
-    the code is unchanged on purpose — see the module docstring. The `practice`
-    branch is untouched and still fires: contract-5 forces an `assess` scene per
-    outcome, it does not force a `practice` one, so a plan that promised guided
-    practice and never built it is refused exactly as it was under contract-4.
+    ⛔ WP-IVGS-12f MADE THIS UNREACHABLE FOR `assess`; WP-IVGS-12g MAKES IT
+    UNREACHABLE FOR BOTH KINDS. The code is unchanged in both packages, on
+    purpose — see the module docstring.
+
+    ⚠ AND THE ROUTE HERE IS WORTH KEEPING IN VIEW, because it is the argument
+    against the fix that was NOT taken. RC-Q9f offered three routes and two were
+    refused: loosening this comparison to accept any assessing event would have
+    greened the number and left LO-2's learner with no supported attempt at all
+    (12d declined exactly that with the number on the record, and 12e made it a
+    standing rule — evidence kinds are never collapsed to green a check); adding
+    prompt emphasis after seeing the number is iterating against the metric, and
+    the instruction was already there and already correct. The third route was
+    to force the other kind too, and it is what contract-6 does. **The check is
+    not weakened by one character.**
     """
     entry = assessment_plan.get(oid)
     if not isinstance(entry, dict):

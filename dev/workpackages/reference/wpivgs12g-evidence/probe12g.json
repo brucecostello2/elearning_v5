@@ -1,0 +1,227 @@
+[
+  {
+    "probe": "A1. narrowed enum, scalar",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "instructional_event": "guide"
+    },
+    "raw_chars": 32,
+    "whitespace_chars": 1
+  },
+  {
+    "probe": "A2. narrowed enum, inside a scene array",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "scenes": [
+        {
+          "narration_text": "Welcome to the first scene",
+          "instructional_event": "guide"
+        },
+        {
+          "narration_text": "Here is the second scene",
+          "instructional_event": "transfer"
+        },
+        {
+          "narration_text": "This is the third scene",
+          "instructional_event": "recall_prior"
+        }
+      ]
+    },
+    "raw_chars": 337,
+    "whitespace_chars": 98
+  },
+  {
+    "probe": "B1. exactly-1 objects, ORDERED EMPTY",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "assessment_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "This is a forbidden narration",
+            "instructional_event": "assess",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "sourced",
+              "source_refs": [
+                {
+                  "start": 0,
+                  "end": 10
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "raw_chars": 233,
+    "whitespace_chars": 25
+  },
+  {
+    "probe": "B2. exactly-1 objects, ORDERED THREE",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "assessment_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "some text",
+            "instructional_event": "assess",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "sourced",
+              "source_refs": [
+                {
+                  "start": 12,
+                  "end": 17
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "raw_chars": 214,
+    "whitespace_chars": 22
+  },
+  {
+    "probe": "C1. 1..2 objects, ORDERED EMPTY",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "practice_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "This is not supposed to be here",
+            "instructional_event": "practice",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "forced by testing requirement"
+            }
+          }
+        ]
+      }
+    },
+    "raw_chars": 236,
+    "whitespace_chars": 23
+  },
+  {
+    "probe": "C2. 1..2 objects, ORDERED FIVE",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "practice_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "You find yourself in a room with a mysterious door.",
+            "instructional_event": "practice",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "Studenst shoud be able to solve the problem"
+            }
+          },
+          {
+            "narration_text": "You are given a set of numbers and must find the average.",
+            "instructional_event": "practice",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "Studenst shoud be able to find the average"
+            }
+          }
+        ]
+      }
+    },
+    "raw_chars": 682,
+    "whitespace_chars": 229
+  },
+  {
+    "probe": "D. contract-6 evidence layer, whole",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "assessment_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "This is a test narration",
+            "instructional_event": "assess",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "This scene was designed to assess LO-1"
+            }
+          }
+        ],
+        "LO-2": [
+          {
+            "narration_text": "This is another test narration",
+            "instructional_event": "assess",
+            "serves_outcomes": [
+              "LO-2"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "This scene was designed to assess LO-2"
+            }
+          }
+        ]
+      },
+      "practice_scenes": {
+        "LO-1": [
+          {
+            "narration_text": "This is a test narration",
+            "instructional_event": "practice",
+            "serves_outcomes": [
+              "LO-1"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "This scene was designed to practice LO-1"
+            }
+          }
+        ],
+        "LO-2": [
+          {
+            "narration_text": "This is another test narration",
+            "instructional_event": "practice",
+            "serves_outcomes": [
+              "LO-2"
+            ],
+            "provenance": {
+              "origin": "designed",
+              "rationale": "This scene was designed to practice LO-2"
+            }
+          }
+        ]
+      },
+      "scenes": [
+        {
+          "narration_text": "This is a test narration",
+          "instructional_event": "guide"
+        },
+        {
+          "narration_text": "This is another test narration",
+          "instructional_event": "guide"
+        }
+      ]
+    },
+    "raw_chars": 1280,
+    "whitespace_chars": 292
+  }
+]

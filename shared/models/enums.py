@@ -307,6 +307,37 @@ APPLICATION_EVENTS: frozenset[str] = frozenset(INSTRUCTIONAL_EVENTS[5:8])
 #: of separating these two questions, and the gate asks them separately.
 ASSESSING_EVENTS: frozenset[str] = frozenset({"practice", "assess"})
 
+#: ⛔ WP-IVGS-12g. THE EVENTS `scenes[]` MAY DECLARE UNDER design-contract-6 —
+#: the nine minus the two that assess. In arc order, because the tuple closes a
+#: per-request JSON-Schema enum and the model reads it in the order given.
+#:
+#: This is the vocabulary split the whole 12c-12f lineage argued its way to.
+#: Contract-4 offered ONE array in which sourced and designed material competed
+#: for the same slots, and 12f measured that anything excerptable wins: 0
+#: designed scenes in 83, and immediate invention on a script with nothing to
+#: excerpt. Contract-5 removed the competition for `assess` by putting that one
+#: kind in its own required object — and RC-Q9f then measured the SAME defect
+#: surviving in the one kind the grammar had left in `scenes[]`: six generations,
+#: six `PLAN_ENTRY_UNREALIZED` refusals, all on a promised `practice` never
+#: built. It also measured the mirror defect, RC-Q9f limb 2 — with `assess`
+#: forced elsewhere the model started writing EXTRA assess scenes into
+#: `scenes[]`, and the merge placed the mandated one next to its near-identical
+#: twin, posing the same problem twice back to back.
+#:
+#: ⛳ ONE SPLIT KILLS BOTH. `scenes[]` becomes the EXPOSITORY arc and cannot
+#: declare evidence at all; evidence is authored only in the per-outcome
+#: evidence sections, where the grammar guarantees existence for BOTH kinds.
+#: There is no slot for an unbuilt promise and no slot for a duplicate.
+#:
+#: ⚠ `feedback` STAYS HERE and that is deliberate. It is an APPLICATION event
+#: (6-8) but not an ASSESSING one: it confirms or corrects an attempt rather
+#: than being the attempt, so it belongs to the arc the script can supply.
+#: Removing it would also make `MERRILL_NO_APPLICATION` unreachable for the
+#: wrong reason.
+EXPOSITORY_EVENTS: tuple[str, ...] = tuple(
+    e for e in INSTRUCTIONAL_EVENTS if e not in ASSESSING_EVENTS
+)
+
 
 class BloomLevel(str, enum.Enum):
     """Bloom's taxonomy as revised (Anderson & Krathwohl). Foundation §2.

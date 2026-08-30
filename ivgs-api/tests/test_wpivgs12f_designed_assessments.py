@@ -38,6 +38,26 @@ the three moves:
           structurally unreachable — asserted here directly — and BOTH CHECKS
           STAY, because a structural guarantee is a claim about code that some
           later edit can quietly falsify.
+
+⛔ SUPERSEDED IN PART BY WP-IVGS-12g, AND RE-AIMED RATHER THAN DELETED
+
+design-contract-6 splits `designed_assessments` into `assessment_scenes` and
+`practice_scenes`, because contract-5 forced only the `assess` half and RC-Q9f
+measured the identical defect surviving whole in the half it left unforced. The
+CLAIMS this file makes are unchanged and are now made of both kinds, so the
+schema assertions below are re-aimed at the two sections; the emission fixtures
+stay contract-5 on purpose, because contract-5 briefs are stored and the merge
+still has to read them.
+
+⚠ ONE CLAIM IS REVERSED AND IT IS THE ONLY ONE:
+`test_the_designed_branch_cannot_cite_a_span` asserted that an authored
+assessment could not be `sourced`. 12g gives that choice back — see
+`test_origin_is_free_in_both_sections` — because 12f's OWN TASK 0 had already
+measured the model finding a real *"Now you try. Work out 63 minus 48."* span in
+script B1 and anchoring to it, twice. Pinning `designed` would force an invented
+substitute for material the script plainly contains, and a rationale asserting
+its absence. The invention defect was never about provenance; it was about
+competition inside one array, and the section removes that on its own.
 """
 from __future__ import annotations
 
@@ -130,70 +150,105 @@ def _emission(scenes=None, designed=None, plan_kind="assess"):
 # FORCE — the grammar does not ask, it demands
 # ---------------------------------------------------------------------------
 
+#: The two evidence sections and the event each is pinned to. Named once so
+#: every assertion below reads one list — 12g's split is where a second copy
+#: would go stale first.
+SECTIONS = (("assessment_scenes", "assess"), ("practice_scenes", "practice"))
+
+
+def _entry(section, oid):
+    """The scene SCHEMA inside one section's per-outcome array."""
+    return (_contract().design_contract_schema(outcome_ids=IDS)
+            ["properties"][section]["properties"][oid]["items"])
+
+
 class TestTheExcerpterCannotDecline:
 
-    def test_designed_assessments_is_required_with_one_key_per_outcome(self):
+    @pytest.mark.parametrize("section,_event", SECTIONS)
+    def test_the_section_is_required_with_one_key_per_outcome(
+        self, section, _event,
+    ):
         schema = _contract().design_contract_schema(outcome_ids=IDS)
-        assert "designed_assessments" in schema["required"]
-        block = schema["properties"]["designed_assessments"]
+        assert section in schema["required"]
+        block = schema["properties"][section]
         assert sorted(block["required"]) == sorted(IDS)
         assert sorted(block["properties"]) == sorted(IDS)
         # RC-Q12: the construct measured ENFORCED in 12c, reused not re-invented.
         assert block["additionalProperties"] is False
 
     @pytest.mark.parametrize("oid", IDS)
-    def test_the_three_pins_are_single_value_enums(self, oid):
-        """origin, event and the served outcome are NOT the model's decisions.
+    @pytest.mark.parametrize("section,event", SECTIONS)
+    def test_the_two_pins_are_single_value_enums(self, section, event, oid):
+        """The event and the served outcome are NOT the model's decisions.
 
         Single-value `enum` and not `const`: both were measured implemented and
-        ENFORCED on the pinned engine for this package, under a prompt ordering
-        each one broken, so the order's tie-break applies and the proven
-        construct wins.
+        ENFORCED on the pinned engine for 12f, under a prompt ordering each one
+        broken, so the order's tie-break applies and the proven construct wins.
+        12g re-measured the same construct on the narrowed `scenes[]` enum and
+        on both bounded object arrays before shipping them.
+
+        ⚠ TWO pins, not 12f's three. Origin is the third and it is free now —
+        `test_origin_is_free_in_both_sections`.
         """
-        entry = (_contract().design_contract_schema(outcome_ids=IDS)
-                 ["properties"]["designed_assessments"]["properties"][oid])
-        props = entry["properties"]
-        assert props["instructional_event"]["enum"] == ["assess"]
-        assert props["provenance"]["properties"]["origin"]["enum"] == ["designed"]
+        props = _entry(section, oid)["properties"]
+        assert props["instructional_event"]["enum"] == [event]
         assert props["serves_outcomes"]["items"]["enum"] == [oid]
 
-    def test_the_designed_branch_cannot_cite_a_span(self):
-        entry = (_contract().design_contract_schema(outcome_ids=IDS)
-                 ["properties"]["designed_assessments"]["properties"]["LO-1"])
-        prov = entry["properties"]["provenance"]
-        assert sorted(prov["properties"]) == ["origin", "rationale"]
-        assert prov["additionalProperties"] is False
-        assert "source_refs" not in entry["properties"]
+    @pytest.mark.parametrize("section,_event", SECTIONS)
+    def test_origin_is_free_in_both_sections(self, section, _event):
+        """⛔ THE ONE 12f CLAIM WP-IVGS-12g REVERSES — see the module banner.
 
-    def test_the_model_is_not_asked_where_it_goes(self):
+        The grammar guarantees the scene EXISTS. It does not dictate where the
+        scene came from: `sourced` with spans when the script genuinely hands
+        over the learner's own attempt (B1 did, and the model found it), and
+        `designed` with a rationale otherwise. The same `oneOf` XOR every other
+        scene uses, so migration 0048's CHECK still holds it at the database.
+        """
+        prov = _entry(section, "LO-1")["properties"]["provenance"]
+        branches = {b["properties"]["origin"]["enum"][0]: b
+                    for b in prov["oneOf"]}
+        assert sorted(branches) == ["designed", "sourced"]
+        assert "source_refs" in branches["sourced"]["properties"]
+        assert "source_refs" not in branches["designed"]["properties"]
+        assert branches["designed"]["properties"]["rationale"]["maxLength"]
+
+    @pytest.mark.parametrize("section,_event", SECTIONS)
+    def test_the_model_is_not_asked_where_it_goes(self, section, _event):
         """12b's principle: never ask the model for what code can compute."""
-        entry = (_contract().design_contract_schema(outcome_ids=IDS)
-                 ["properties"]["designed_assessments"]["properties"]["LO-1"])
+        entry = _entry(section, "LO-1")
         assert "scene_index" not in entry["properties"]
         assert "scene_index" not in entry["required"]
 
-    def test_every_array_is_bounded(self):
+    @pytest.mark.parametrize("section,_event", SECTIONS)
+    def test_every_array_is_bounded(self, section, _event):
         """RC-Q12. `minItems` with no maximum is a runaway on this engine."""
-        entry = (_contract().design_contract_schema(outcome_ids=IDS)
-                 ["properties"]["designed_assessments"]["properties"]["LO-1"])
-        for name, prop in entry["properties"].items():
+        schema = _contract().design_contract_schema(outcome_ids=IDS)
+        per_outcome = schema["properties"][section]["properties"]["LO-1"]
+        assert "maxItems" in per_outcome, f"{section} array is unbounded"
+        for name, prop in per_outcome["items"]["properties"].items():
             if prop.get("type") == "array":
                 assert "maxItems" in prop, f"{name} is an unbounded array"
 
-    def test_declared_second_so_it_is_generated_before_any_scene(self):
+    def test_the_evidence_is_declared_before_any_scene(self):
         """Declaration order binds generation order (12d, measured).
 
-        Second, not last: the model authors the unaided attempt while `scenes`
-        is still empty, so it has no worked example of its own to lift numbers
-        out of. Moving this down the properties dict would silently turn an
-        authored assessment into a rationalised one and no membership check
-        would notice — which is exactly what happened to `outcome_notes` in 12c.
+        Before `scenes`, not after: the model authors both attempts while the
+        scene list is still empty, so it has no worked example of its own to
+        lift numbers out of. Moving either down the properties dict would
+        silently turn an authored assessment into a rationalised one and no
+        membership check would notice — which is exactly what happened to
+        `outcome_notes` in 12c.
+
+        ⛳ AND `assessment_scenes` COMES BEFORE `practice_scenes`, which reads
+        backwards on the page and is exactly right: backward design writes the
+        END of each outcome's fading sequence first, then the middle that leads
+        to it, then the beginning.
         """
         order = list(_contract().design_contract_schema(
             outcome_ids=IDS)["properties"])
-        assert order[0] == "assessment_plan"
-        assert order[1] == "designed_assessments"
-        assert order.index("designed_assessments") < order.index("scenes")
+        assert order[:3] == ["assessment_plan", "assessment_scenes",
+                             "practice_scenes"]
+        assert order.index("practice_scenes") < order.index("scenes")
 
     def test_no_outcomes_means_nothing_to_force(self):
         """An empty required-key object is a grammar demanding a key set that
@@ -268,7 +323,12 @@ class TestPlacementIsDerivedNeverAuthored:
 
     def test_the_parse_returns_the_merged_sequence(self):
         payload = _contract().parse_contract(_emission())
-        assert payload["contract_version"] == "design-contract-5"
+        # ⚠ RE-AIMED BY WP-IVGS-12g. `parse_contract` stamps the CURRENT
+        # version whatever shape it read, so pinning a literal here made
+        # a contract bump edit a test about PLACEMENT.
+        # `test_the_contract_version_records_the_shape_change` is where
+        # the version itself is guarded.
+        assert payload["contract_version"] == _contract().CONTRACT_VERSION
         assert len(payload["scenes"]) == 6
         designed = [s for s in payload["scenes"]
                     if s["scene_origin"] == "designed"]
@@ -375,20 +435,33 @@ class TestThePromptAndTheStorage:
         return (REPO / "ivgs-api" / "seed" / "default_prompts"
                 / "storyboard_design_system.j2").read_text(encoding="utf-8")
 
-    def test_v6_says_the_assessments_are_the_designers_own_work(self):
+    def test_the_prompt_says_the_evidence_is_the_designers_own_work(self):
+        """⚠ RE-AIMED BY WP-IVGS-12g, ONE ENTRY, WITH THE REASON.
+
+        12f gated the literal key `designed_assessments`. That key no longer
+        exists — contract-6 splits it into two sections — so gating it would
+        refuse every correct v7. Every OTHER phrase 12f pinned is still here and
+        still asserted, and `test_v7_removed_nothing_v6_gated` reads the
+        publisher's own tuple so this list cannot silently shrink again.
+        """
         text = self._prompt()
         for phrase in ("THE ASSESSMENTS ARE YOURS TO AUTHOR",
-                       "designed_assessments",
+                       "assessment_scenes",
+                       "practice_scenes",
                        "ONE ENTRY PER OUTCOME ID",
                        "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
                        "AND YOU DO NOT PLACE THEM"):
             assert phrase in text, phrase
+        assert "designed_assessments" not in text
 
-    def test_v6_removed_nothing_v5_gated(self):
-        """The 12e discipline: this package earns its keep by adding.
+    def test_the_publisher_gate_matches_the_shipped_prompt(self):
+        """The 12e discipline: a package earns its keep by adding.
 
-        Every phrase the publisher gated before 12f must still be present —
-        read from the publisher itself so the two lists cannot drift.
+        Every phrase the publisher gates must be present in the template it
+        publishes — read from the publisher itself so the two lists cannot
+        drift. Renamed from `test_v6_removed_nothing_v5_gated` by 12g: the claim
+        is version-independent and the name was not, so every package was
+        editing this line for no reason.
         """
         src = (REPO / "ivgs-api" / "app" / "scripts"
                / "wpivgs12_publish_design_prompts.py").read_text(encoding="utf-8")
@@ -507,7 +580,12 @@ class TestTheContractFiveRoundTrip:
         await db_session.flush()
 
         payload = parse_contract(emission)
-        assert payload["contract_version"] == "design-contract-5"
+        # ⚠ RE-AIMED BY WP-IVGS-12g. `parse_contract` stamps the CURRENT
+        # version whatever shape it read, so pinning a literal here made
+        # a contract bump edit a test about PLACEMENT.
+        # `test_the_contract_version_records_the_shape_change` is where
+        # the version itself is guarded.
+        assert payload["contract_version"] == _contract().CONTRACT_VERSION
         brief = await DesignBriefService(db_session).record(project.id, payload)
         await db_session.refresh(brief)
 

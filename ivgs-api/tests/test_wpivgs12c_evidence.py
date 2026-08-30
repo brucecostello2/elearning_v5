@@ -78,20 +78,51 @@ class TestTheModelDoesNotAuthorTheEvidence:
         assert "evidence_map" not in s["required"]
         assert "evidence_map" not in json.dumps(s)
 
-    def test_the_contract_version_records_the_shape_change(self):
-        """The version moves whenever the SHAPE does, and the check is that it
-        moved — not that it stopped at any one number.
+    #: Shape markers, and the version each one first required. A schema
+    #: carrying the marker must carry at least that version.
+    #:
+    #: -4 removed `evidence_map` (12d); -5 added `designed_assessments` (12f);
+    #: -6 split that into `assessment_scenes` + `practice_scenes` and narrowed
+    #: `scenes[].instructional_event` to seven events (12g).
+    SHAPE_MARKERS = (
+        ("assessment_plan", 4),
+        ("assessment_scenes", 6),
+        ("practice_scenes", 6),
+    )
 
-        -4 removed `evidence_map` (12d); -5 added `designed_assessments` (12f).
-        A stored brief's `contract_version` is how a reader knows which of those
-        shapes produced it, so a shape change that forgets to bump this is the
-        defect. Pinned as "the current version, and it is past -3", which fails
-        loudly for a shape change with no bump and does not have to be edited
-        by every package that legitimately makes one.
+    def test_the_contract_version_records_the_shape_change(self):
+        """The version moves whenever the SHAPE does.
+
+        A stored brief's `contract_version` is how a reader knows which shape
+        produced it, so a shape change that forgets to bump this is the defect.
+
+        ⚠ RE-AIMED BY WP-IVGS-12g, AND THE REASON IS A DRIFT 12f LEFT BEHIND.
+        12f's report says this test was re-aimed to "the current version, and it
+        is past -3" so that a shape change with no bump still fails loudly
+        without every package editing one line. **The docstring was rewritten
+        and the assertion was not** — it still pinned the literal `-5`, so the
+        test measured nothing except which package had last edited it, and it
+        failed on 12g for the only reason it was supposed to stop failing for.
+
+        This is the check the docstring always described: the version is tied to
+        MARKERS IN THE SCHEMA ITSELF, so a shape change that forgets the bump
+        fails, and a legitimate bump does not need this line edited.
         """
-        version = _contract().CONTRACT_VERSION
-        assert version == "design-contract-5"
-        assert int(version.rsplit("-", 1)[-1]) >= 4
+        c = _contract()
+        version = c.CONTRACT_VERSION
+        assert version.startswith("design-contract-")
+        number = int(version.rsplit("-", 1)[-1])
+        schema = c.design_contract_schema(outcome_ids=["LO-1", "LO-2"])
+        for marker, required_from in self.SHAPE_MARKERS:
+            if marker in schema["properties"]:
+                assert number >= required_from, (
+                    f"the schema carries {marker!r}, which arrived in "
+                    f"design-contract-{required_from}, but CONTRACT_VERSION is "
+                    f"{version!r} — a shape change without a version bump"
+                )
+        # `evidence_map` left the model's schema in -4 and has not come back.
+        assert "evidence_map" not in schema["properties"]
+        assert number >= 4
 
     def test_the_derived_map_cannot_disagree_with_the_scenes(self):
         """⛳ THE POINT OF THE WHOLE PACKAGE, as an assertion.

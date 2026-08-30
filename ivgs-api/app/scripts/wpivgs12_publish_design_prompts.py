@@ -136,10 +136,37 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     # forces it: the script is source material for the teaching, and the
     # assessments are the designer's own work.
     "THE ASSESSMENTS ARE YOURS TO AUTHOR",
-    "designed_assessments",
     "ONE ENTRY PER OUTCOME ID",
     "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
     "AND YOU DO NOT PLACE THEM",
+    # ⛔ WP-IVGS-12g REPLACES EXACTLY ONE PHRASE HERE — the only drop in the
+    # package — with the reason recorded rather than the entry quietly deleted,
+    # which is the discipline 12b, 12d and 12f each used in turn.
+    #
+    # 12f gated the literal key `"designed_assessments"`. **That key no longer
+    # exists.** design-contract-6 splits it into two REQUIRED per-outcome
+    # sections, `assessment_scenes` and `practice_scenes`, because contract-5
+    # forced only the `assess` half and RC-Q9f measured the same defect
+    # surviving whole in the unforced half: six generations of six refused
+    # `PLAN_ENTRY_UNREALIZED` on the one outcome whose plan promised `practice`.
+    # Gating a key that must no longer appear would refuse every correct v7.
+    #
+    # Everything else 12f, 12e, 12d and 12b gated is still above and still
+    # required; `test_v7_removed_nothing_v6_gated` reads this tuple rather than
+    # a second copy, so the two cannot drift.
+    "assessment_scenes",
+    "practice_scenes",
+    # ⛳ The 12g reversal, pinned because it is the one thing a later package
+    # would be most tempted to "tidy" back to a pin. Origin is FREE in both
+    # sections: 12f's own TASK 0 measured the model finding a real "now you try"
+    # span in script B1 and anchoring to it, twice, and a grammar pinning
+    # `designed` would force it to invent a substitute AND to write a rationale
+    # asserting the script lacked what the script contains.
+    'origin: "sourced"',
+    'origin: "designed"',
+    # The expository/evidence split, in the words the model reads.
+    "SO `scenes` IS THE EXPOSITORY ARC, AND ONLY THAT",
+    "THE PRACTICE MUST NOT BE THE ASSESSMENT WEARING A LABEL",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
@@ -158,6 +185,36 @@ TARGETS: Sequence[Tuple[str, str, Tuple[str, ...], str]] = (
         "storyboard_generation_system",
         "storyboard_design_system.j2",
         DESIGN_PHRASES,
+        "WP-IVGS-12g. THE EVIDENCE LAYER BECOMES STRUCTURAL, COMPLETELY, "
+        "closing RC-Q9f in both limbs. `scenes` is stated to be the EXPOSITORY "
+        "arc and nothing else — its instructional_event enum is narrowed to "
+        "SEVEN events, with `practice` and `assess` removed — and BOTH evidence "
+        "kinds are authored in their own REQUIRED per-outcome sections: "
+        "`assessment_scenes` (exactly one per outcome) and `practice_scenes` "
+        "(one or two, because Foundation §2 fades in steps). Emission order is "
+        "backward design complete: assessment_plan, then the independent "
+        "attempt, then the supported attempt, then the exposition that prepares "
+        "both — the model writes the END of every outcome's fading sequence "
+        "while the scene list is still empty. WHY IT IS GRAMMAR AND NOT MORE "
+        "PROMPT: contract-5 forced `assess` alone and RC-Q9f measured the "
+        "identical defect surviving whole in the kind it left unforced — six "
+        "generations of six refused PLAN_ENTRY_UNREALIZED on the one outcome "
+        "whose plan promised `practice`, with the plan byte-identical every "
+        "time. Four packages now measure one law: on this stack the model's "
+        "plan predicts nothing and only the grammar is causal, so 12g applies "
+        "it ONCE to the whole layer instead of chasing it kind by kind. It also "
+        "kills RC-Q9f limb 2 — contract-5 taught the model the shape of an "
+        "authored assessment and it began writing SECOND ones into `scenes` "
+        "(four generations of six), which the merge then placed beside their "
+        "near-identical twins; `scenes` cannot declare either evidence event "
+        "any more. AND ORIGIN IS FREE IN BOTH SECTIONS, which reverses the one "
+        "thing contract-5 got wrong: 12f's own second script contained an "
+        "explicit unaided problem and the model found that span and used it, so "
+        "pinning origin `designed` would force an invented substitute for "
+        "material the script plainly has. The grammar guarantees the scene "
+        "EXISTS; provenance stays honest under the same XOR every other scene "
+        "uses. Placement is code's: each practice after the last present/guide "
+        "serving its outcome, each assessment after that practice. "
         "WP-IVGS-12f. THE EXCERPTER IS FORCED TO DESIGN, closing the "
         "prompt half of RC-Q9e. The script is stated to be source material for "
         "present/guide/recall and NOT the source of the assessments: those are "
