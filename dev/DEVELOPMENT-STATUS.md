@@ -6,7 +6,33 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.38.5-rcq15-script-intact`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.38.6-rcq18-merged-brief`, frontend `v5.37.0-design-core`
+
+✅ **RC-Q18 CLOSED — THE DESIGN OF RECORD IS THE MERGED CONTRACT.** Operator
+ruling. The capture moved out of `RESPONSE_OBSERVERS` (which fires on call 1's
+raw content, before call 2 exists) into `transform_document`, the only place both
+calls have been stitched — the same law as the derived `evidence_map`: **one
+artifact of record, assembled by code.** Proven on a real pipeline run: **17 scene
+rows, 17 carrying declarations, 17 scene designs, and the gate's ELEVEN hard
+refusals dropped to ZERO.** All three assessments appear in the arc and all three
+outcomes are assessed. ⛔ **The eleven refusals were entirely false** — the design
+was sound and the brief could not see it. ⚠ And the trap the route contains is
+pinned by a test: `parse_contract` merges internally, so capturing the
+already-merged document would have inserted every practice and assessment twice
+(15 against the correct 9).
+
+✅ **AND AN OPERATOR EDIT TO AN UPLOADED ROW NOW WRITES BOTH FIELDS.** Ruling (2).
+12h-fix's service-principal scoping left the invariant half-true — after a human
+edit `refined_text` and `source_text` disagreed, so the design read one string
+while the coverage spans indexed into another, **RC-Q15 with a person's hand on
+it.** The belt no longer asks who wrote. Proven live: a real PATCH editing *"Nice
+work!"* reached `source_text` and the invariant held at 3,015 = 3,015.
+
+⛳ **Regressions held on the same run:** refined == source byte-identical, design
+`prompt_tokens` 15,602, stage 2 **269 s of the ruled 870 s (31%)**. Test project
+deleted via WP-59.
+
+ⓘ **WP-IVGS-12h-fix RC-Q15/16/17, superseded by the above but kept for the lineage.**
 
 ⛔ **THE OPERATOR'S PHASE-1 WATCH RAN AND FOUND TWO DEFECTS ON ITS FIRST RUN. Both
 are fixed and deployed; two more that it exposed are rowed.**
@@ -153,10 +179,10 @@ neither half.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.5-rcq15-script-intact`** + workers **`v5.38.5-rcq15-script-intact`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.5-rcq15-script-intact`**; vLLM pinned `sha256:3dbe092e…` | ✅ **RC-Q13 RULED: soft 900 / hard 960**, derived client budget **870 s** split **740/130** across the two calls — read back off the LIVE task objects, not the file |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.5-rcq15-script-intact`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.5-rcq15-script-intact`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.6-rcq18-merged-brief`** + workers **`v5.38.6-rcq18-merged-brief`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.6-rcq18-merged-brief`**; vLLM pinned `sha256:3dbe092e…` | ✅ **RC-Q13 RULED: soft 900 / hard 960**, derived client budget **870 s** split **740/130** across the two calls — read back off the LIVE task objects, not the file |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.6-rcq18-merged-brief`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.6-rcq18-merged-brief`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
@@ -493,17 +519,19 @@ while the RC-Q13 ruling was being executed, so the close-out count is **2**. ⛳
 worked four sessions running**, and each time the previous board's text would have
 implied a number that was wrong.
 
-**Held now: TWO commits** — the RC-Q15/RC-Q16 fixes (`829e6eb`, tagged
-`v5.38.5-rcq15-script-intact`) and this report/board commit. **The push block
+**Held now: TWO commits** — the RC-Q18 fix (`a11cd7e`, tagged
+`v5.38.6-rcq18-merged-brief`) and this report/board commit. **The push block
 expects 2.**
 
-⛔ **AND THE §0 RULE BIT THREE TIMES IN THIS ONE SESSION, WHICH IS A RECORD WORTH
-KEEPING.** The session made seven commits; the operator pushed the first three
-while the RC-Q13 ruling was being executed, and `a17b7f0` + `bd043b8` while the
-RC-Q15 fix was. I drafted this row as 5, then 2, then 4, and the ref says **2**
-each time it was actually measured. `v5.38.2`, `v5.38.3` and `v5.38.4` are
-already on the remote; only `v5.38.5-rcq15-script-intact` is held with its
-commit. **Never carry the number forward — measure it.**
+⛔ **AND THE §0 RULE BIT FOUR TIMES IN THIS ONE SESSION, WHICH IS A RECORD WORTH
+KEEPING.** The session made nine commits and the operator pushed seven of them
+mid-session, in three separate batches, while the next defect order was being
+executed. I drafted this row as 5, then 4, then 2 — and every time the number was
+actually measured with `git rev-list --count origin/main..HEAD` after a
+`git fetch`, it was smaller than what the previous paragraph implied.
+`v5.38.2`…`v5.38.5` are already on the remote; only
+`v5.38.6-rcq18-merged-brief` is held with its commit. **Never carry the number
+forward — measure it.**
 
 ⚠ **THE PACKAGE MADE FIVE AND THE OPERATOR PUSHED THREE OF THEM MID-SESSION**,
 while the ruling was being executed: `d8da66c` (tagged `v5.38.2`), `a41d642`
@@ -534,8 +562,8 @@ planned.**
 
 ⚠ **`ivgs-infra/.env` is dirty on ALL FOUR NODES and is not mine to commit** —
 the deploy moved `IVGS_API_TAG` and `IVGS_WORKERS_TAG` to
-`v5.38.5-rcq15-script-intact`. Gitignored, and §3 names it never-touch for its
-token. **The rollback is `v5.38.4-rcq13-declared-budget` on all four nodes.**
+`v5.38.6-rcq18-merged-brief`. Gitignored, and §3 names it never-touch for its
+token. **The rollback is `v5.38.5-rcq15-script-intact` on all four nodes.**
 
 ⚠ **AND MIGRATION 0053 IS APPLIED TO PRODUCTION AND IS AHEAD OF `origin/main`
 UNTIL THE PUSH.** Correct order — schema before code, and the code is deployed —
@@ -547,7 +575,7 @@ rollback runs `alembic downgrade 0052`.
 `IVGS_BUILD_REF` unset, reported its version as `"unknown"`) and `v5.38.1`
 (correct bytes, wrong ref — it reported itself as `v5.38.0`).** Both are my slips
 and both are banked. Neither was a rebuilt tag: the bytes differ, so the tags
-differ, which is the RC-Q8 discipline. Only `v5.38.2`…`v5.38.5` are pushed — the first two already are.
+differ, which is the RC-Q8 discipline. Only `v5.38.2`…`v5.38.6` are pushed — all but the last already are.
 
 ---
 
@@ -603,6 +631,7 @@ shipped with a placeholder.
 
 | report | verdict |
 |---|---|
+| ↳ same file, **§12h-fix.10–.11** | ✅ **RC-Q18 CLOSED BY TWO OPERATOR RULINGS, AND THE ELEVEN REFUSALS WERE ENTIRELY FALSE.** **(1) The design of record is the merged contract** — the capture moved out of `RESPONSE_OBSERVERS` (which fires on call 1's raw content, before call 2 exists) into `transform_document`, the same law as the derived `evidence_map`: one artifact of record, assembled by code. Proven on a real run: **17 rows / 17 declared / 17 scene designs, and 11 hard refusals → 0**, all three assessments in the gate's arc, all three outcomes assessed. ⚠ **The trap is pinned by a test** — `parse_contract` merges internally, so capturing the already-merged document would insert every practice and assessment twice (15 vs the correct 9); ⚠ and `model_used`/`prompt_fingerprint` would have been silently dropped from every brief, caught by reading the payload rather than by a failing test. **(2) An operator edit to an uploaded row writes BOTH fields**, so the invariant and the belt survive every editor — 12h-fix's service scoping had left it half-true, which was RC-Q15 with a person's hand on it. Proven live at 3,015 = 3,015. Regressions held: refined == source, `prompt_tokens` 15,602, stage 2 **269 s of 870 s**. Project deleted via WP-59. API 1789 → 1797, 0 failed |
 | ↳ same file, **§12h-fix** | ⛔ **THE OPERATOR'S PHASE-1 WATCH FOUND TWO DEFECTS ON ITS FIRST RUN AND EXPOSED TWO MORE.** **RC-Q15**: the uploaded script was paraphrased into the design's input — 3,138 chars in, 1,647 bytes of summary stored, and `stage2:122` designs from it. ⛳ **The mechanism was not a disobedient model: `GET /prompts` answered the worker 401, so stage 1 never received the extraction prompt and ran the image's old refine-for-readability `.j2`** — that is **RC-Q17**, and it means **no published system prompt has ever reached a real pipeline run**, v1…v8 included. Fixed by the 12b principle, seam-side: `refined_text := source_text` for an uploaded row written by the worker, post-write belt, ⚠ scoped to the service principal so a human's edit survives. **RC-Q16**: job-status PATCHes bouncing 422 — ⛔ neither side a 12-series change (API required `status` since 2026-06-01; WP-45 added a partial caller 2026-08-25), ⚠ **so WP-45's own fix has never worked and cancel revokes the dispatcher.** Fixed both sides; 2 → 0 on a real run and a forced 422 now names itself. ⛳ **THE ACCEPTANCE WAS THE FIRST GENERATION IN THIS LINEAGE TO GO THROUGH THE REAL PIPELINE**: refined == source byte-identical (3,172 = 3,172), design `prompt_tokens` 15,611, the gate quoting the operator's own words back, project deleted via WP-59, and **RC-Q13's budget holding at 274 s of 870 s**. ⛔ It also found **RC-Q18**, which is mine: the brief is captured from call 1 and never learns about call 2, so three assessment rows reach the gate undeclared and raise 11 refusals. Rowed, not fixed. API 1771 → 1789, 0 failed |
 | ↳ same file, **§12h.16–.17** | ✅ **RC-Q13 RULED, ENCODED, DEPLOYED AND READ BACK OFF THE LIVE TASKS.** soft 900 / hard 960 on the 13-generation table (135–564 s), in `policies.py` alone and carried by `apply_declared_time_limits` — no decorator, no frozen body, no freeze exception. `start_to_close_s` 5 m → 30 m, **forced** by an invariant the tree already asserts. ⛳ Visibility timeout 7,200 ≫ 960 and 960 is not even the tallest row; `check_visibility_timeout` PASSED over 30 tasks in every worker on all four nodes. ⚠ Derived client budget is **870, not the 900 the ruling names** — the 30 s headroom is what makes the client lose the race (RC-P16); soft 930 would give a literal 900 with no code change. `ASSESSMENT_CALL_BUDGET_SHARE` 0.25 → 0.15 because its own argument expired. AD-05 Appendix C annotated — ⚠ it was already stale, reading the decorator's inert 120/150. ⛔ One test failed first and proved its own point: it pinned the literals 270/300, a second copy of the policy table inside a test whose subject is that second copies go stale. **RC-Q9h** and **RC-Q14** registered. API 1763 → 1771, 0 failed |
 | ↳ same file, **§12h** | ⛳ **RC-Q9g CLOSED — the calls separate the kinds and the second never sees what it must not copy.** **design-contract-7** splits the design across TWO engine calls inside one stage: call 1 emits everything except `assessment_scenes` (probed: it CANNOT put the key back), call 2 authors the assessments from the outcomes, the plan and a code-built practice summary — no narrations, no scenes, no script. **18 of 18 outcome-pairs distinct over six generations**, against 11 of 15 duplicates under contract-6. ⛳ **The order's STOP condition did not fire**: both "no axis" outcomes now invent a fresh CASE, 6 of 6, and B2's collapsed LO-3 goes 1.000 → 0.556. New HARD refusal **`EVIDENCE_NEAR_DUPLICATE`**, calibrated on 18 banked pairs (classes separate 0.667 \| 0.900) and **proven RED on 12g's duplicates as part of the acceptance**; ⛳ its worked-example limb caught a defect 12g's hand-comparison missed. Prompt **v8** (four phrases MOVED, proven arrived) + NEW lineage **`assessment_authoring_system` v1**, migration **0053**; deployed to nodes 01-04 at `v5.38.3`, verified by image ID. ⛳ **ACCEPTANCE MET run B: 0 refusals 3/3**, census 127/109/18/9/12, 0 evidence events in call 1's `scenes[]` 3/3. ⛔ Run A refused 1/1/1 on `MOTION_WITHOUT_TEMPLATE` — call 2 was ordered to name a template and never shown the list; fixed with a catalogue read from the renderer's registry, and B2 then showed call 1 (told in prose) inventing a template name while call 2 (given the registry) did not. ⚠ **RC-Q9h** rowed — two identical practice scenes, 4 of 6; ⛔ **RC-Q13** rowed — the declared 240 s client budget against 280–564 s of measured work |
@@ -618,20 +647,18 @@ shipped with a placeholder.
 
 ## Next, in order
 
-1. ⛔ **RE-RUN THE WATCH THROUGH THE FIXED PATH.** The operator deletes project
-   `3beaf804` — its design was built from a 1,647-byte summary and is not worth
-   reviewing — and re-runs the upload with the same script. ⛳ **The first watch
-   paid for itself in one run: RC-Q15, RC-Q16, RC-Q17 and RC-Q18, none of which
-   six packages of harness-driven acceptance had found.** ⚠ **Expect 11 hard
-   refusals on the re-run until RC-Q18 is fixed** — the three assessment rows
-   reach the gate undeclared. The DESIGN will be sound; the gate will not agree
-   yet, and that is a known, rowed cause
-2. ⛔ **RC-Q18 — THE BRIEF DOES NOT KNOW ABOUT CALL 2, AND IT IS 12h's.** The
-   capture observer fires on call 1's raw content; the transform makes call 2 and
-   stitches the assessments in afterwards. 15 scene rows, 12 scene designs, three
-   undeclared assessments, 11 refusals. Three routes named at §12h-fix.7 and each
-   changes which artifact is the design of record, so it is a package
-3. ⛳ **THE WATCH ITSELF — PHASE 1'S HUMAN ACCEPTANCE — CONTINUES AFTER THAT.**
+1. ⛳ **RE-RUN THE WATCH — AND THIS TIME THE GATE SHOULD AGREE.** The operator
+   deletes project `3beaf804` (its design was built from a 1,647-byte summary and
+   is not worth reviewing) and re-runs the upload with the same script. ⛳ **The
+   previous "expect 11 hard refusals" warning is withdrawn: RC-Q18 is closed and a
+   real run now returns ZERO.** ⛳ **The first watch paid for itself in one run —
+   RC-Q15, RC-Q16, RC-Q17 and RC-Q18, none of which six packages of
+   harness-driven acceptance had found. All four are fixed and deployed.**
+2. ⛳ **THE WATCH ITSELF — PHASE 1'S HUMAN ACCEPTANCE — IS WHAT THAT RE-RUN IS
+   FOR.** ⚠ Everything this session proved about the gate comes from the
+   `design-review` PAYLOAD; **no browser has ever been driven.** What the panel
+   LOOKS like is the one thing still unmeasured, and it is the only thing left
+   between here and 12i/12j
    ⛳ **RC-Q9g IS CLOSED and the gate is clean: 0 hard refusals 3/3, and 18 of 18
    outcome-pairs distinct by the belt's own measure**, where contract-6 shipped a
    design in which most outcomes got the same scene twice. Every previous
@@ -732,7 +759,22 @@ shipped with a placeholder.
   silently discarded. If the operator wants uploaded rows locked against human
   edits too, that is one line and a ruling. §12h-fix.2
 
-- ⛔ **RC-Q18, NEW AND MINE — THE BRIEF DOES NOT KNOW ABOUT CALL 2.** The capture
+- ✅ **RC-Q18 — RULED AND CLOSED, 2026-08-30. No decision outstanding.**
+  **Ruling (1): the design of record is the merged contract.** The capture moved
+  into `transform_document`; route 1 of the three named WAS the ruling, so it was
+  taken, and no measurement stood against it. **11 hard refusals → 0** on a real
+  run, 17 rows / 17 designs, all three assessments in the arc. ⚠ **One trap
+  recorded and pinned by a test:** `parse_contract` merges internally, so
+  capturing the already-merged document would have inserted every practice and
+  assessment twice. ⚠ **And one near-silent loss caught by reading rather than by
+  a failing test:** `model_used` and `prompt_fingerprint` are observer arguments,
+  not document fields, so the move would have dropped them from every brief; the
+  observer now records them onto the armed state (call 1 only) and the capture
+  reads them back. **Ruling (2): an operator edit to an uploaded row writes both
+  fields**, so the invariant and the belt survive every editor — proven live.
+  §12h-fix.10
+
+- ⓘ **RC-Q18 AS 12h-fix FOUND IT — kept for the lineage.** The capture
   observer fires on call 1's raw content inside `_chat_request`; `transform_
   document` makes call 2 and stitches the assessments in afterwards. So the stage
   writes 15 correct scene rows and the brief carries 12 scene designs, and the

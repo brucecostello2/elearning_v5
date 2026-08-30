@@ -5036,7 +5036,7 @@ if [ "$ACTUAL" -ne "$EXPECTED" ]; then
   git log --oneline origin/main..HEAD
 else
   git push origin main \
-    && git push origin v5.38.5-rcq15-script-intact
+    && git push origin v5.38.6-rcq18-merged-brief
 fi
 ```
 
@@ -5063,3 +5063,130 @@ fi
    narrowed rather than closed.
 7. ⚠ **I did not re-run stages 3+.** The acceptance stops at the gate, as every
    package in this lineage has.
+
+---
+
+## 12h-fix.10 ⛳ RC-Q18 CLOSED — the design of record is the merged contract
+
+**Two operator rulings of 2026-08-30, encoded, deployed and proven on a real
+pipeline run.**
+
+### Ruling (1) — the capture moves to the merged contract
+
+⛳ **ROUTE 1 OF THE THREE I NAMED *IS* THIS RULING, SO IT WAS TAKEN.** I found no
+measurement against it; the trap it does contain is real but avoidable, and is
+recorded below rather than presented as a reason to stop.
+
+The capture used to fire on `RESPONSE_OBSERVERS`, inside `_chat_request`, on
+**call 1's raw content** — before design-contract-7's second call exists. It now
+fires inside `transform_document`, the only place both calls have been stitched.
+
+⛳ **AND IT IS THE SAME LAW AS THE DERIVED EVIDENCE MAP.** 12d took `evidence_map`
+away from the model because two accounts of one thing drift. This takes the BRIEF
+away from call 1 for the same reason: **one artifact of record, assembled by
+code, read by everything.**
+
+⛔ **THE TRAP, WHICH IS NOT COSMETIC AND IS NOW PINNED BY A TEST.**
+`parse_contract` calls `merged_scene_sequence` **itself**. Capturing the
+post-merge document — the one whose `scenes` has already been replaced by the
+merged list — would insert every practice and assessment a **second time**. The
+capture is handed the **stitched** contract (call 1's expository `scenes` plus
+both evidence sections) and does the one merge. The test asserts both answers so
+the trap cannot be walked into later:
+
+    parse_contract(already-merged)  -> 15 scenes   ⛔ the wrong answer
+    parse_contract(stitched)        ->  9 scenes   ⛳ the right one
+
+⚠ **THE OBSERVER'S STORYBOARD BRANCH IS A DOCUMENTED NO-OP, NOT A DELETION.**
+Call 2's own response also arrives there — it is made from inside the transform,
+which is inside `chat_json`. `parse_contract` returns `None` for it, but relying
+on that would be relying on an accident.
+
+⚠ **AND THE MOVE WOULD HAVE SILENTLY DROPPED TWO FIELDS FROM EVERY BRIEF.**
+`model_used` and `prompt_fingerprint` are observer **arguments**, not document
+fields, so the transform cannot see them. The observer now records them onto the
+armed state — **call 1 only**, so call 2 cannot overwrite the fingerprint of the
+call that produced the arc — and the capture reads them back. Caught by reading
+the payload the observer used to build, not by a test failing.
+
+### Ruling (2) — an operator edit writes both fields
+
+12h-fix scoped the substitution to the worker so a human's correction was not
+discarded. ⛔ **That left the invariant half-true:** after a human edit
+`refined_text` and `source_text` disagreed, so the design read one string while
+the coverage spans indexed into another — **RC-Q15 with a person's hand on it.**
+
+On an uploaded row the operator is editing **the script**, so both fields move
+together. ⛳ **The belt no longer asks who wrote**: both paths maintain the
+invariant, so it checks the invariant itself on every uploaded row the function
+touches. The generated path is untouched on both rulings, and `source_text`'s
+*"written ONCE, by the upload path only"* comment in `models/transcript.py` is
+amended and says so.
+
+### The proof — ONE generation, fresh project, the operator's script
+
+Built from `a11cd7e`, tagged **`v5.38.6-rcq18-merged-brief`**, deployed to nodes
+01-04 under §6.1a, **all seven containers verified by tag AND by image ID against
+the banked digests** — api `sha256:ca51840076ed…`, workers
+`sha256:3ababbce7794…`.
+
+| | before (RC-Q18) | after |
+|---|---|---|
+| `storyboard_scenes` rows | 15 | **17** |
+| rows carrying declarations | 12 | ⛳ **17** |
+| `scene_designs` in the brief | 12 | ⛳ **17** |
+| ⛔ **hard refusals at the gate** | **11** | ⛳ **0** |
+| assessments in the gate's arc | 0 declared | ⛳ **3** |
+| outcomes assessed | — | ⛳ **LO-1, LO-2, LO-3 all true** |
+
+**The gate's event arc, read from the live `design-review` payload:**
+
+    hook, present, guide, guide, guide, guide, practice, assess,
+    guide, guide, practice, practice, assess, transfer, feedback,
+    practice, assess
+
+⛳ **That is the merged design, and it reads as one:** the teaching, then the
+supported attempt, then the independent one, per outcome. **The eleven refusals
+were entirely false** — the design was sound and the brief could not see it.
+
+**Flags only, all by design:** `SEGMENTING` ×7, `PRACTICE_NOT_PREPARED` ×2,
+`UNDECLARED_SCRIPT_GAP` ×1.
+
+**And the regressions held:** `refined_text` byte-identical to `source_text`;
+design call `prompt_tokens` **15,602**; stage 2 **269 s** against the ruled 870 s
+budget (**31%**), so RC-Q13 still holds at full-script input.
+
+**Ruling (2), proven live as well as by test** — a real `PATCH` from a user
+principal, editing *"Nice work!"* to *"Nice work indeed!"*:
+
+    PATCH HTTP 200
+    refined_text = source_text          -> t
+    the edit reached source_text        -> t
+    3,015 = 3,015 bytes
+
+**Test project deleted via WP-59**: projects, transcripts, scenes and briefs all
+**0**.
+
+### Tests
+
+**API 1789 → 1797 passed, 0 failed** (+8). Workers **identical BY NAME** to the
+`eafbf9f` baseline. **ZERO NEW FAILURES.**
+
+⚠ **A short-lived user JWT was minted in-process again for the acceptance**, for
+the reason recorded in 12h-fix.8, and destroyed with its script at the end. No
+password was read, printed or stored.
+
+---
+
+## 12h-fix.11 What I did not verify — RC-Q18's additions
+
+1. ⚠ **n = 1.** One generation on one script. It produced a 17-scene design where
+   the pre-fix run produced 15; the counts are not comparable as a quality
+   measure and are not offered as one.
+2. ⚠ **The rendered gate panel, still.** *"The gate view shows the merged
+   design"* is asserted from the **`design-review` payload** — the event arc
+   above is that payload's `event_arc`. **No browser was driven.** That remains
+   the operator's watch.
+3. ⚠ **`SEGMENTING` ×7 is higher than any harness run recorded** and I did not
+   investigate it; it is a flag by design, and this order was narrow.
+4. ⚠ **Stage 3+ still has never been handed a contract-7 design.**
