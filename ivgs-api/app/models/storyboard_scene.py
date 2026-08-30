@@ -137,6 +137,13 @@ class StoryboardScene(Base):
     # database that refuses a scene claiming both or claiming neither, rather
     # than whichever caller remembers to look.
     scene_origin: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    #: WP-IVGS-12f, migration 0052. Why an INVENTED scene exists — what the
+    #: outcome required that the uploaded script did not contain. NULL on every
+    #: sourced scene. ⛳ It is the evidence limb for invention: `scene_origin =
+    #: 'designed'` with no account of itself is the silent-invention defect one
+    #: layer below the one this contract removed, so the gate renders the two
+    #: together (`_arc_row`).
+    designed_rationale: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     # {transcript_id, start, end, original} when the narration was REWORDED
     # under R1a. Marking is mandatory and the original travels with the mark:
     # the ruling is that silent loss is the defect class, so an unmarked rewrite

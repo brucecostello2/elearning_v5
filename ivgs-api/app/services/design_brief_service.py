@@ -50,6 +50,12 @@ SCENE_DESIGN_FIELDS = (
     "scene_origin",
     "rewrite_of",
     "signal_spec",
+    # ⛔ WP-IVGS-12f, migration 0052. `parse_contract` has produced this for
+    # every `designed` scene since 12a and nothing has ever written it, because
+    # until contract-5 no generation produced a designed scene (0 in 83,
+    # RC-Q9e). Contract-5 makes them mandatory, so an invented scene now
+    # reaches the table — and it must arrive with its reason attached.
+    "designed_rationale",
 )
 
 
@@ -307,6 +313,8 @@ def _clean(scene_design: Dict[str, Any]) -> Dict[str, Any]:
             continue
         if field == "serves_outcomes" and not isinstance(value, list):
             continue
+        if field == "designed_rationale" and not isinstance(value, str):
+            continue
         out[field] = value
 
     # The XOR, mirrored from the CHECK so a bad pair is neutralised here rather
@@ -319,4 +327,10 @@ def _clean(scene_design: Dict[str, Any]) -> Dict[str, Any]:
         out["source_refs"] = None
     if origin == "designed":
         out["source_refs"] = None
+    else:
+        # A rationale belongs to an invented scene and to nothing else. Clearing
+        # it explicitly is the same argument `_clean` makes for every other
+        # field: a regenerate that turns a designed scene back into a sourced
+        # one must not leave the old reason readable and false on the row.
+        out["designed_rationale"] = None
     return out

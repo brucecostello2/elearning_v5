@@ -1085,6 +1085,19 @@ def on_task_prerun(
             )
         else:
             set_response_format_override(None)
+
+        # WP-IVGS-12f. The document transform that merges `designed_assessments`
+        # into the scene sequence, so the frozen stage body writes scene rows
+        # for the assessments the model invented. Armed for the storyboard task
+        # only; `transform_document` is itself a no-op for anything else, so
+        # this is belt and braces on purpose — the seam is in the request path
+        # of every LLM stage.
+        from clients.vllm_client import set_document_transform
+
+        set_document_transform(
+            _design_capture.transform_document
+            if task_name == _design_capture.STORYBOARD_TASK else None
+        )
     except Exception:                                           # noqa: BLE001
         # Never block a task on the capture layer. The stage runs unconstrained
         # and unobserved, which is exactly what it did before this package.
@@ -1110,7 +1123,10 @@ def on_task_postrun(
     # "the gate shows no brief" and "stage 2 ran a pre-v8 prompt" look
     # identical from outside and have different fixes.
     try:
-        from clients.vllm_client import set_response_format_override
+        from clients.vllm_client import (
+            set_document_transform,
+            set_response_format_override,
+        )
         from design_core import capture as _design_capture
 
         from design_core import headers as _headers
@@ -1118,6 +1134,7 @@ def on_task_postrun(
         _design_capture.disarm()
         _headers.disarm()
         set_response_format_override(None)
+        set_document_transform(None)
     except Exception:                                           # noqa: BLE001
         pass
     structlog.contextvars.clear_contextvars()

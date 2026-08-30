@@ -165,7 +165,18 @@ class TestTheMapIsDerivedInOnePlace:
             "outcome_notes": {"LO-1": {}},
         }
         parsed = c.parse_contract(raw)
-        assert parsed["evidence_map"] == {"LO-1": [1]}, (
+        # ⚠ WP-IVGS-12f RE-AIMED THE INDEX, NOT THE CLAIM. The derived map is
+        # keyed to the scene's POSITION in the merged sequence, because
+        # `merged_scene_sequence` re-indexes the design 0..n-1 — it has to, since
+        # inserting a designed assessment shifts every later scene. So this
+        # single scene, which declared itself `scene_index: 1`, is at position 0.
+        # ⛳ AND THAT IS MORE CORRECT THAN WHAT IT REPLACED: the frozen stage body
+        # has ALWAYS re-indexed its rows sequentially
+        # (`stage2_storyboard.py`, after validation), so a parse that preserved
+        # the model's own numbering could name a row that was somewhere else.
+        # The claim under test is unchanged and is the one that matters —
+        # the map is DERIVED, and the model's own is ignored.
+        assert parsed["evidence_map"] == {"LO-1": [0]}, (
             "the model's own map must not survive the parse"
         )
         assert parsed["raw_contract"]["evidence_map"] == {"LO-1": [99]}, (
@@ -409,7 +420,10 @@ class TestTheContractFourRoundTrip:
         }
         payload = parse_contract(emission)
         assert payload is not None
-        assert payload["contract_version"] == "design-contract-4"
+        # WP-IVGS-12f: -5 is the current shape. This emission carries no
+        # `designed_assessments`, which is the pre-contract-5 case the merge
+        # handles as the identity, and it must still round-trip whole.
+        assert payload["contract_version"] == "design-contract-5"
 
         brief = await DesignBriefService(db_session).record(project.id, payload)
 
@@ -418,8 +432,10 @@ class TestTheContractFourRoundTrip:
         assert brief.assessment_plan["LO-1"]["evidence_kind"] == "assess"
         assert brief.assessment_plan["LO-2"]["learner_does"] == (
             "explains the placeholder zero")
-        # keyed by the OPERATOR's ids and derived, not authored
-        assert brief.evidence_map == {"LO-1": [2], "LO-2": [3]}
+        # keyed by the OPERATOR's ids and derived, not authored.
+        # ⚠ Positions, not the emission's own 1-based numbering: 12f re-indexes
+        # the merged sequence, and the scenes here are at 0, 1, 2.
+        assert brief.evidence_map == {"LO-1": [1], "LO-2": [2]}
         # ── the operator's words, verbatim, still (RC-Q9 regression) ──
         # `text` is the outcome WITHOUT its "LO-n: " marker — the marker is
         # carried separately so `reconstruct(parse(x)) == x`. Asserting
@@ -439,7 +455,7 @@ class TestTheContractFourRoundTrip:
         refusals, _ = split(findings)
         assert refusals == [], [f.code for f in refusals]
         assert {r.outcome_id: r.assessed_by for r in rows} == {
-            "LO-1": [2], "LO-2": [3]}
+            "LO-1": [1], "LO-2": [2]}
 
     async def test_a_broken_promise_survives_the_round_trip_as_a_refusal(
         self, db_session,
@@ -477,7 +493,7 @@ class TestTheContractFourRoundTrip:
         })
         brief = await DesignBriefService(db_session).record(project.id, payload)
         await db_session.refresh(brief)
-        assert brief.evidence_map == {"LO-1": [2]}
+        assert brief.evidence_map == {"LO-1": [1]}   # position, per 12f
 
         findings, _ = review(scenes=payload["scenes"], outcomes=brief.outcomes,
                              assessment_plan=brief.assessment_plan)

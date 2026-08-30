@@ -51,6 +51,7 @@ import httpx
 import structlog
 
 from design_core.contract import parse_contract
+from shared.design.merge import merged_scene_sequence
 
 logger = structlog.get_logger("ivgs.design_core.capture")
 
@@ -152,6 +153,56 @@ def outcome_ids_for_current_project() -> list:
             error=str(exc),
         )
         return []
+
+
+def transform_document(document: Any) -> Any:
+    """The merged sequence, handed to the frozen stage body.
+
+    WP-IVGS-12f. Armed as `clients.vllm_client`'s document transform for the
+    storyboard task only, and applied to `chat_json`'s parsed document before
+    the stage sees it.
+
+    ⛔ WHY THIS EXISTS AT ALL. Under contract-5 the model authors one invented
+    unaided scene per outcome in `designed_assessments`, OUTSIDE `scenes`, and
+    it does not place them — `shared.design.merge` does, after the last scene
+    serving each outcome. The frozen body builds its `StoryboardScene` rows from
+    `scenes` and POSTs them; without this it would build rows for the sourced
+    scenes only, and every designed assessment would exist in the design brief
+    and in no scene row. Designed, stored, reviewed at the gate — and never
+    rendered. That is the RC-E failure class with better paperwork.
+
+    ⛳ IT CALLS THE SAME `merged_scene_sequence` `parse_contract` CALLS, so the
+    rows in `storyboard_scenes` and the brief's `scene_designs` are one list
+    computed once. Two derivations of one sequence is how 12c's three accounts
+    of the evidence map came to disagree.
+
+    ⚠ IT REWRITES EXACTLY ONE KEY AND ONLY ON A DOCUMENT IT RECOGNISES. Not a
+    dict, not armed for the storyboard stage, no `designed_assessments`, or a
+    merge that produced nothing — the document goes back untouched, so a v7
+    storyboard and every other stage's JSON pass through unchanged.
+    """
+    state = _armed.get()
+    if not state or state.get("stage") != "storyboard":
+        return document
+    if not isinstance(document, dict):
+        return document
+    designed = document.get("designed_assessments")
+    if not isinstance(designed, dict) or not designed:
+        return document
+    merged = merged_scene_sequence(document)
+    if not merged:
+        return document
+    out = dict(document)
+    out["scenes"] = merged
+    logger.info(
+        "design_contract_assessments_merged",
+        project_id=state.get("project_id"),
+        job_id=state.get("job_id"),
+        emitted_scenes=len(document.get("scenes") or []),
+        designed_assessments=len(designed),
+        merged_scenes=len(merged),
+    )
+    return out
 
 
 def disarm() -> None:

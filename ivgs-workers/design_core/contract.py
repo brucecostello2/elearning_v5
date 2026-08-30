@@ -41,6 +41,7 @@ import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from shared.design.evidence import derive_evidence_map
+from shared.design.merge import merged_scene_sequence
 from shared.models.enums import (
     ASSESSING_EVENTS,
     BLOOM_LEVELS,
@@ -65,7 +66,15 @@ from shared.models.enums import (
 #: scene exists (declaration order measured to BIND — see below); and
 #: `evidence_map` is GONE from the model's schema, because code derives it from
 #: the scenes' own declarations. RC-Q9c.
-CONTRACT_VERSION = "design-contract-4"
+#:
+#: **-5, WP-IVGS-12f:** the excerpter is FORCED to design. `designed_assessments`
+#: is a new REQUIRED top-level object with one entry per outcome, and each entry
+#: is a full scene whose grammar has already pinned `origin: "designed"`,
+#: `instructional_event: "assess"` and `serves_outcomes: [that outcome]`. An
+#: emission that lacks an invented unaided scene per outcome is NOT PARSEABLE.
+#: RC-Q9e — see `_designed_assessments_schema` for why an invitation was never
+#: going to be enough.
+CONTRACT_VERSION = "design-contract-5"
 
 #: The one supported mechanism, measured. See the module docstring.
 MECHANISM_JSON_SCHEMA = "json_schema"
@@ -135,6 +144,14 @@ MAX_EVIDENCE_SCENES = 4
 #: outcome. Bounded because every string in a grammar-constrained emission is a
 #: place the decoder can run, and `maxLength` is the string-shaped `maxItems`.
 MAX_LEARNER_DOES_CHARS = 300
+
+#: WP-IVGS-12f. The same bound, for the one sentence a designed assessment gives
+#: on what the script lacked. ⚠ The `rationale` on the `scenes` oneOf's
+#: `designed` branch is deliberately NOT bounded by this package: that branch is
+#: untouched contract-4 surface, and widening a package's blast radius to tidy a
+#: string is how a contract change acquires a second variable. Named as a
+#: residue rather than fixed quietly.
+MAX_DESIGNED_RATIONALE_CHARS = 300
 
 # ⛔ WP-IVGS-12d. SCHEMA DECLARATION ORDER BINDS GENERATION ORDER — MEASURED,
 # IN BOTH DIRECTIONS, AGAINST AN EXPLICIT PROMPT INSTRUCTION TO DO OTHERWISE.
@@ -304,6 +321,155 @@ def _assessment_plan_schema(outcome_ids: Sequence[str]) -> Dict[str, Any]:
             "learner DO to prove it? One entry per outcome id, no exceptions. "
             "Every entry must then be realized by a scene that serves that "
             "outcome and declares that exact instructional_event."
+        ),
+    }
+
+
+def _designed_assessments_schema(
+    outcome_ids: Sequence[str], *, media_types: Tuple[str, ...],
+) -> Dict[str, Any]:
+    """One INVENTED unaided scene per outcome, and the model cannot decline.
+
+    ⛔ WHY AN INVITATION WAS NEVER GOING TO BE ENOUGH, MEASURED TWICE
+
+    The prompt has invited invention since v8 — *"material the outcomes require
+    that the script lacks is legitimate: you invent it, mark the scene
+    `origin: designed`"* — and across six generations and 83 scenes the model
+    accepted it ZERO times (RC-Q9e). Every scene of every generation was
+    `sourced`, anchored to a span of the uploaded script.
+
+    ⛳ AND WP-IVGS-12f MEASURED WHY, WHICH IS NOT WHAT RC-Q9e ASSUMED. Handed a
+    SPARSE script that teaches a procedure and contains no practice material at
+    all, the same model on the same stack invented FIVE scenes and emitted the
+    first `assess` event this project has ever recorded. It is not that the
+    model cannot design. It is that in one `scenes[]` array, sourced and
+    designed material compete for the same slots, and anything the script can
+    supply wins. Handed an explicit unaided problem (*"Now you try. Work out 63
+    minus 48"*), it anchored three scenes to that span and labelled them
+    `practice` — the invention refused even where the pedagogy was written down.
+
+    So this object removes the competition rather than arguing with it. Three
+    keys are pinned by the grammar and are not decisions the model makes:
+
+        origin              "designed"   — it cannot cite a span
+        instructional_event "assess"     — it cannot downgrade to `practice`
+        serves_outcomes     [that id]    — it cannot re-aim at another outcome
+
+    Every pin is a single-value `enum`, which RC-Q12 measured ENFORCED on the
+    pinned engine, re-measured for this package under a prompt ordering each one
+    broken. `const` was measured too and is implemented and enforced — scalar
+    and whole-array alike — and is NOT used: it buys nothing the proven
+    construct does not already give, and RC-Q12's whitespace corridor applies
+    identically to both shapes. The order's tie-break stands.
+
+    ⛔ AND THERE IS NO `scene_index`. Placement is not the model's to make —
+    `shared.design.merge` inserts each of these after the last scene serving its
+    outcome. 12b's principle: never ask the model for what code can compute.
+    """
+    def one(oid: str) -> Dict[str, Any]:
+        return {
+            "type": "object",
+            "properties": {
+                # First, because generation order follows declaration order
+                # (12d): the model states what the script lacked BEFORE it
+                # writes the scene that supplies it.
+                "provenance": {
+                    "type": "object",
+                    "properties": {
+                        "origin": {"type": "string", "enum": ["designed"]},
+                        "rationale": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": MAX_DESIGNED_RATIONALE_CHARS,
+                            "description": (
+                                "One sentence: what this outcome needs that the "
+                                "script does not contain. It does not contain an "
+                                "unaided attempt — that is why you are writing "
+                                "one."
+                            ),
+                        },
+                    },
+                    "required": ["origin", "rationale"],
+                    "additionalProperties": False,
+                },
+                "instructional_event": {"type": "string", "enum": ["assess"]},
+                "serves_outcomes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1,
+                    "items": {"type": "string", "enum": [oid]},
+                    "description": f"This scene assesses {oid} and nothing else.",
+                },
+                "narration_text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": (
+                        "POSE the problem cold, in FRESH NUMBERS the script never "
+                        "worked, then HOLD, then REVEAL for self-check. Do not "
+                        "narrate the method, do not give the first step, and do "
+                        "not restate the script's own worked answer. If the "
+                        "learner could follow along without thinking, you have "
+                        "written a `guide` and put an `assess` label on it."
+                    ),
+                },
+                "visual_description": {"type": "string", "minLength": 1},
+                "media_type": {"type": "string", "enum": list(media_types)},
+                "media_rationale": {
+                    "type": "string",
+                    "description": (
+                        "Which row of the modality table this scene sits in. A "
+                        "computational attempt is `motion_graphics` and MUST "
+                        "carry a template in `generation_params`; an explain-it "
+                        "or check-your-own-work attempt is `image` or "
+                        "`talking_head`, because the renderer has no template "
+                        "for it and a motion scene without one is refused."
+                    ),
+                },
+                "duration_seconds": {
+                    "type": "number", "minimum": 3, "maximum": 120,
+                    "description": (
+                        "Long enough to pose, hold and reveal in ONE scene. The "
+                        "hold is the part that makes it unaided; a three-second "
+                        "assess has no hold in it."
+                    ),
+                },
+                "bloom_level": {"type": "string", "enum": list(BLOOM_LEVELS)},
+                "text_carried_by": {
+                    "type": _nullable("string"), "enum": ["narration", None],
+                },
+                "generation_params": {
+                    "type": _nullable("object"),
+                    "description": (
+                        "REQUIRED when media_type is motion_graphics: the "
+                        "template name and its parameters FLAT alongside it. "
+                        "The numbers here are the FRESH ones you posed, not the "
+                        "script's."
+                    ),
+                },
+                "signal_spec": {"type": _nullable("object")},
+            },
+            "required": [
+                "provenance", "instructional_event", "serves_outcomes",
+                "narration_text", "visual_description", "media_type",
+                "media_rationale", "duration_seconds", "bloom_level",
+                "text_carried_by", "generation_params", "signal_spec",
+            ],
+            "additionalProperties": False,
+        }
+
+    return {
+        "type": "object",
+        "properties": {oid: one(oid) for oid in outcome_ids},
+        "required": list(outcome_ids),
+        "additionalProperties": False,
+        "description": (
+            "ONE SCENE PER OUTCOME THAT YOU INVENT. The script is source "
+            "material for present/guide/recall; the assessments are YOURS TO "
+            "AUTHOR and there is no entry here you can leave out. Pose the "
+            "problem cold in fresh numbers, hold while the learner attempts it, "
+            "then reveal. You do NOT place these — they are inserted after the "
+            "last scene serving each outcome, so design each one as the end of "
+            "that outcome's fading sequence."
         ),
     }
 
@@ -534,11 +700,30 @@ def design_contract_schema(
         # A dict preserves insertion order and `properties` order is what the
         # decoder follows, so this rebuild — not a mutation of the existing
         # dict — is what puts the plan ahead of `scenes` in the emission.
-        properties = {"assessment_plan": _assessment_plan_schema(ids), **properties}
+        #
+        # ⛔ WP-IVGS-12f PUTS `designed_assessments` SECOND, AND THE POSITION IS
+        # THE ARGUMENT. Declaration order binds generation order, so the model
+        # writes the unaided assessment while the scene list is STILL EMPTY —
+        # it has no worked example of its own to copy the numbers out of, which
+        # is the exact degeneracy the acceptance has to check for by hand. This
+        # is Foundation §1 in full for the first time: outcomes, then the
+        # evidence, then the assessment that IS the evidence, and only then the
+        # arc that leads to it.
+        properties = {
+            "assessment_plan": _assessment_plan_schema(ids),
+            "designed_assessments": _designed_assessments_schema(
+                ids, media_types=tuple(media_types or MEDIA_TYPES),
+            ),
+            **properties,
+        }
+        required.insert(0, "designed_assessments")
         required.insert(0, "assessment_plan")
     # With no ids there is no plan to require: the operator stated no outcomes,
-    # so there is nothing to promise evidence FOR. `design_review` says the
-    # outcomes were never stated and carries the whole weight on that path.
+    # so there is nothing to promise evidence FOR — and nothing to force an
+    # assessment OF, so `designed_assessments` is absent on this path too
+    # (WP-IVGS-12f). An empty required-key object would be a grammar demanding
+    # a key set that does not exist. `design_review` says the outcomes were
+    # never stated and carries the whole weight on that path.
 
     return {
         "type": "object",
@@ -619,6 +804,20 @@ def parse_contract(raw: Any) -> Optional[Dict[str, Any]]:
     )
     if not (has_notes or has_plan or declares):
         return None
+
+    # ⛔ WP-IVGS-12f. FROM HERE ON, `scenes` MEANS THE MERGED SEQUENCE.
+    # `designed_assessments` are full scenes the model authored and did NOT
+    # place; `shared.design.merge` inserts each after the last scene serving its
+    # outcome and re-indexes the whole design. Everything downstream — the
+    # derived evidence map, the stored `scene_designs`, the gate's arc — reads
+    # the merged sequence, because that is the design. The model's own array
+    # survives untouched inside `raw_contract`, which is the evidence limb.
+    #
+    # ⚠ AND THE SAME FUNCTION PRODUCES THE SEQUENCE THE FROZEN STAGE BODY SEES
+    # (`design_core.capture.transform_document`), so the brief's scenes and the
+    # `storyboard_scenes` rows are one list computed once. That is 12d's lesson
+    # about `derive_evidence_map`, applied before it could be learned twice.
+    scenes = merged_scene_sequence(raw)
 
     scene_rows: List[Dict[str, Any]] = []
     for i, scene in enumerate(scenes):

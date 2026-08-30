@@ -206,6 +206,10 @@ def _arc_row(scene: StoryboardScene) -> dict:
         "serves_outcomes": scene.serves_outcomes or [],
         "media_rationale": scene.media_rationale,
         "scene_origin": scene.scene_origin,
+        # WP-IVGS-12f. Beside the origin, never apart from it: an invented scene
+        # and the reason it was invented are one fact, and the gate is where a
+        # reviewer decides whether the reason is good enough.
+        "designed_rationale": scene.designed_rationale,
         "narration_text": scene.narration_text,
         "text_carried_by": scene.text_carried_by,
     }

@@ -118,6 +118,28 @@ DESIGN_PHRASES: Tuple[str, ...] = (
     "HOLD — a silent attempt window",
     "REVEAL for self-check",
     "THE ASSESS IS THE WHOLE PROCEDURE, NOT A\nFRAGMENT",
+    # ⛔ WP-IVGS-12f. NOTHING IS REMOVED HERE EITHER — every 12b/12d/12e phrase
+    # above survives and a test asserts it. What is added is the sentence the
+    # whole lineage turned out to be missing.
+    #
+    # v5 defined what an `assess` scene IS and changed nothing: 83 scenes across
+    # six generations were `sourced`, 0 `designed`, 0 `assess` (RC-Q9e). 12f then
+    # measured the mechanism on a second script and it was not ignorance. Given
+    # a SPARSE script with no practice material in it, the same model on the same
+    # stack invented five scenes and produced the first `assess` this project has
+    # recorded; given a script with an explicit "now you try", it anchored to
+    # that span and labelled it `practice`. Invention is not absent from the
+    # model — it is out-competed by anything the script can supply.
+    #
+    # So the invitation is replaced by a grammar that does not ask, and this
+    # prompt says the same thing in words the model reads BEFORE the schema
+    # forces it: the script is source material for the teaching, and the
+    # assessments are the designer's own work.
+    "THE ASSESSMENTS ARE YOURS TO AUTHOR",
+    "designed_assessments",
+    "ONE ENTRY PER OUTCOME ID",
+    "POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED",
+    "AND YOU DO NOT PLACE THEM",
 )
 
 #: The extraction prompt's. The `source_kind` branch is the whole point.
@@ -136,6 +158,23 @@ TARGETS: Sequence[Tuple[str, str, Tuple[str, ...], str]] = (
         "storyboard_generation_system",
         "storyboard_design_system.j2",
         DESIGN_PHRASES,
+        "WP-IVGS-12f. THE EXCERPTER IS FORCED TO DESIGN, closing the "
+        "prompt half of RC-Q9e. The script is stated to be source material for "
+        "present/guide/recall and NOT the source of the assessments: those are "
+        "the designer's own work, one invented unaided scene per outcome, posed "
+        "COLD IN FRESH NUMBERS the script never worked, then held, then "
+        "revealed. This text is not what enforces it — contract-5's "
+        "`designed_assessments` is a REQUIRED per-outcome object whose values "
+        "are scenes the grammar pins to origin `designed`, instructional_event "
+        "`assess` and serves_outcomes [that outcome], so an emission lacking one "
+        "is not parseable, and code places each after the last scene serving its "
+        "outcome. The prompt exists so the model knows WHY before the decoder "
+        "makes it. MEASURED FIRST, on a second script, which is what changed the "
+        "diagnosis: v5's operational definitions moved nothing (83 scenes, 0 "
+        "designed, 0 assess), and a sparse script with no practice material in "
+        "it produced five designed scenes and the first assess event on the same "
+        "stack. The model was never unable to invent; it was out-competed by "
+        "anything it could anchor to. "
         "WP-IVGS-12d. BACKWARD DESIGN BECOMES THE EMISSION ORDER, closing "
         "RC-Q9c. The design instruction now matches the contract it is judged "
         "against: the model writes `assessment_plan` FIRST — for each outcome, "

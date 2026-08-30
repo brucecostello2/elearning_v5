@@ -265,6 +265,42 @@ def set_response_format_override(value: Optional[Dict[str, Any]]) -> None:
         _RESPONSE_FORMAT_OVERRIDE.update(value)
 
 
+#: WP-IVGS-12f. THE THIRD SEAM, and the same shape as the other two: an owned
+#: module arms it, nothing registered means byte-identical previous behaviour.
+#:
+#: ⛔ WHY A TRANSFORM AND NOT AN OBSERVER. `RESPONSE_OBSERVERS` is deliberately
+#: read-only — it carries the Design Contract OUT to the API and must never
+#: change what the stage receives. Contract-5 needs the opposite direction for
+#: one specific thing: the model authors `designed_assessments` OUTSIDE
+#: `scenes`, and `shared.design.merge` places them into the sequence. If the
+#: frozen stage body never sees the merged list, the invented assessment exists
+#: in the brief and in NO scene row — designed, stored, and never rendered.
+#:
+#: ⚠ IT IS A DOCUMENT TRANSFORM, NOT A REPAIR. It may only rewrite a document
+#: the armed module recognises as its own; anything else it returns unchanged.
+#: It must never raise: a transform problem is not a reason to fail a render,
+#: and `chat_json` keeps the untransformed document when one does.
+_DOCUMENT_TRANSFORM: List[Any] = []
+
+
+def set_document_transform(fn: Optional[Any]) -> None:
+    """Arm (or clear) the transform applied to `chat_json`'s parsed document."""
+    _DOCUMENT_TRANSFORM.clear()
+    if fn is not None:
+        _DOCUMENT_TRANSFORM.append(fn)
+
+
+def _apply_document_transform(document: Any) -> Any:
+    if not _DOCUMENT_TRANSFORM:
+        return document
+    try:
+        result = _DOCUMENT_TRANSFORM[0](document)
+    except Exception:                                        # noqa: BLE001
+        logger.warning("vllm_document_transform_failed", exc_info=True)
+        return document
+    return document if result is None else result
+
+
 def _notify_observers(content: str, model: str) -> None:
     for observer in list(RESPONSE_OBSERVERS):
         try:
@@ -679,11 +715,11 @@ class VLLMClient(LLMProvider):
 
         parsed = _extract_json_document(content)
         if parsed is not None:
-            return parsed, response
+            return _apply_document_transform(parsed), response
 
         try:
             parsed = json.loads(content)
-            return parsed, response
+            return _apply_document_transform(parsed), response
         except json.JSONDecodeError as exc:
             raise VLLMInvalidResponseError(
                 f"vLLM response is not valid JSON: {exc}",

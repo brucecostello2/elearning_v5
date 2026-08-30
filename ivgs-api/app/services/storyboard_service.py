@@ -203,6 +203,13 @@ class StoryboardService:
         "scene_origin",
         "rewrite_of",
         "signal_spec",
+        # WP-IVGS-12f. ⛳ CAUGHT BY `test_the_design_fields_are_editable_at_the
+        # _gate`, which is a general invariant over `SCENE_DESIGN_FIELDS` and
+        # not a list anybody maintains — it noticed the new field the same hour
+        # it was added. An invented scene's reason is the reviewer's business
+        # more than any other field here: it is the whole account of why
+        # material the teacher never wrote is in their lesson.
+        "designed_rationale",
     )
 
     async def update_scene(

@@ -57,7 +57,39 @@ plan's ``evidence_kind`` is a closed two-value enum the model chose; the scene's
 declarations by one author, compared. Nothing here judges whether the practice
 item is any good.
 
-⚠ WHAT IS DELIBERATELY A FLAG THOUGH IT LOOKS CHECKABLE
+⛔ WP-IVGS-12f: TWO OF THESE REFUSALS ARE NOW STRUCTURALLY UNREACHABLE, AND
+NEITHER IS DELETED
+
+Contract-5 makes `designed_assessments` a REQUIRED per-outcome object whose
+values are scenes the grammar pins to `origin: "designed"`,
+`instructional_event: "assess"` and `serves_outcomes: [that outcome]`. Code
+merges them into the sequence. So for any emission the decoder accepted:
+
+    OUTCOME_UNASSESSED             every outcome has an `assess` scene serving
+                                   it, so the derived map is never empty
+    PLAN_ENTRY_UNREALIZED(assess)  a plan entry promising `assess` is realized
+                                   by that outcome's designed assessment, always
+
+⛳ AND THEY BOTH STAY, AS THE LOUD REGRESSION BELT. A structural guarantee is a
+claim about a schema, a merge and a decoder, and all three are code that can be
+edited by someone who does not know why they are shaped this way. The whole
+lineage this gate lives in is a record of guarantees that turned out to be
+narrower than believed — `guided_json` returning 200 and doing nothing is the
+purest example. A check that can never fire costs one comparison per outcome and
+is the only thing that will say so out loud when the guarantee stops holding.
+`test_wpivgs12f_designed_assessments` asserts the unreachability directly, so
+the guarantee is measured rather than assumed, and the check is what catches the
+day the measurement stops being true in production.
+
+⚠ AND ONE REFUSAL GOT QUIETLY WEAKER, WHICH IS 12f'S OWN COST AND IS NOT HIDDEN.
+`OUTCOME_UNSERVED` asks whether ANY scene declares the outcome. A designed
+assessment declares it, so an outcome the lesson never TEACHES — no present, no
+guide, nothing — is no longer unserved: it is served by its own assessment.
+`PRACTICE_NOT_PREPARED` is what remains, and it names exactly that shape ("asks
+the learner to perform before any earlier scene presents or guides the same
+outcome"). It is a FLAG. Promoting it is an operator ruling and this package did
+not take it — 12c's promotion of `EVIDENCE_MAP_DISAGREES` was ordered, not
+chosen, and the precedent is the point.
 
 ⚠ WHAT IS DELIBERATELY A FLAG THOUGH IT LOOKS CHECKABLE
 
@@ -427,6 +459,12 @@ def _plan_is_realized(
     ⚠ A plan entry for an outcome the operator never wrote is IGNORED here — the
     scenes cannot serve an id that does not exist, so refusing on it would
     report the same defect twice. `SCENE_CITES_UNKNOWN_OUTCOME` owns that.
+
+    ⛔ WP-IVGS-12f. FOR `evidence_kind == "assess"` THIS IS NOW UNREACHABLE and
+    the code is unchanged on purpose — see the module docstring. The `practice`
+    branch is untouched and still fires: contract-5 forces an `assess` scene per
+    outcome, it does not force a `practice` one, so a plan that promised guided
+    practice and never built it is refused exactly as it was under contract-4.
     """
     entry = assessment_plan.get(oid)
     if not isinstance(entry, dict):

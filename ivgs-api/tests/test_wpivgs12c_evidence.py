@@ -79,7 +79,19 @@ class TestTheModelDoesNotAuthorTheEvidence:
         assert "evidence_map" not in json.dumps(s)
 
     def test_the_contract_version_records_the_shape_change(self):
-        assert _contract().CONTRACT_VERSION == "design-contract-4"
+        """The version moves whenever the SHAPE does, and the check is that it
+        moved — not that it stopped at any one number.
+
+        -4 removed `evidence_map` (12d); -5 added `designed_assessments` (12f).
+        A stored brief's `contract_version` is how a reader knows which of those
+        shapes produced it, so a shape change that forgets to bump this is the
+        defect. Pinned as "the current version, and it is past -3", which fails
+        loudly for a shape change with no bump and does not have to be edited
+        by every package that legitimately makes one.
+        """
+        version = _contract().CONTRACT_VERSION
+        assert version == "design-contract-5"
+        assert int(version.rsplit("-", 1)[-1]) >= 4
 
     def test_the_derived_map_cannot_disagree_with_the_scenes(self):
         """⛳ THE POINT OF THE WHOLE PACKAGE, as an assertion.
