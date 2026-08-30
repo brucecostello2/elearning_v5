@@ -114,6 +114,17 @@ class StoryboardDesignBrief(Base):
     scene_designs: Mapped[list] = mapped_column(
         JSONB, nullable=False, server_default=text("'[]'::jsonb"),
     )
+    #: WP-IVGS-12i, migration 0054. ONE AUTO-REPAIR PASS, DECLARED — what code
+    #: corrected before the gate opened, and what it tried to correct and could
+    #: not. See `app.services.storyboard_repair`.
+    #:
+    #: ⛔ NULL AND `repaired: 0` ARE DIFFERENT FACTS. NULL means the pass never
+    #: ran (a brief from before this package); a stored row with `repaired: 0`
+    #: means it ran and found nothing mechanical to fix. A `server_default`
+    #: would have collapsed the two and made every old brief claim a clean pass.
+    system_corrections: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True,
+    )
     #: 64, not 16. Migration 0049: `design-contract-1` is seventeen characters
     #: and 0048's VARCHAR(16) rejected every ingest with HTTP 500. A version
     #: string is a label, not a key.

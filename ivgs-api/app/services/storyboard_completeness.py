@@ -89,6 +89,23 @@ SEV_OK = "ok"
 SEV_FLAG = "flag"        # soft: shown to the reviewer, blocks nothing
 SEV_REFUSE = "refuse"    # hard: objective, refuses by name
 
+#: ⛳ WP-IVGS-12i. THE VERDICT SAYS WHAT THE SCENE IS; THE CODE SAYS WHICH RULE
+#: SPOKE. Three verdicts across four distinct hard refusals was enough while a
+#: refusal was only ever read by a human — the reason names the rule in prose.
+#: It is not enough for `storyboard_repair`, which has to decide whether a
+#: refusal has a deterministic default exit, and it is not enough for a per-scene
+#: badge. So every assessment now carries a stable code, and the repair pass
+#: classifies on the code rather than by matching the prose it prints.
+CODE_OK = "OK"
+CODE_MOTION_WITHOUT_TEMPLATE = "MOTION_WITHOUT_TEMPLATE"
+CODE_MOTION_TEMPLATE_PENDING = "MOTION_TEMPLATE_PENDING"
+CODE_MOTION_CONTRADICTS_NARRATION = "MOTION_CONTRADICTS_NARRATION"
+CODE_VISUAL_DEMANDS_TEXT = "VISUAL_DEMANDS_ON_SCREEN_TEXT"
+CODE_NARRATION_TEXT_UNDECLARED = "NARRATION_TEXT_UNDECLARED"
+CODE_DUPLICATE_DESCRIPTION = "DUPLICATE_DESCRIPTION"
+CODE_NO_WORKING_SURFACE = "NO_WORKING_SURFACE"
+CODE_NO_MEDIA_RATIONALE = "NO_MEDIA_RATIONALE"
+
 #: The only value ``text_carried_by`` may take. A column with one legal value
 #: is deliberate: this is a DECLARATION that the written content is spoken, not
 #: a free-text field somebody can fill with a sentence and satisfy a check.
@@ -289,6 +306,10 @@ class SceneAssessment:
     verdict: str
     severity: str
     reason: str
+    #: WHICH RULE SPOKE. Stable, machine-readable, and the thing
+    #: `storyboard_repair` classifies on. Defaults to ``OK`` so a caller that
+    #: constructs an assessment positionally cannot silently mislabel one.
+    code: str = CODE_OK
     referents: Referents = field(default_factory=Referents)
     depicted: Tuple[str, ...] = ()
     #: Present only for a motion scene: what its template + parameters are.
@@ -305,6 +326,7 @@ class SceneAssessment:
             "verdict": self.verdict,
             "severity": self.severity,
             "reason": self.reason,
+            "code": self.code,
             "referents": self.referents.as_dict(),
             "depicted": list(self.depicted),
         }
@@ -374,6 +396,7 @@ def assess_scene(
                         f"cannot — nothing here blocks you. (Stage 2 cannot "
                         f"currently deliver a template it authored: RC-P1.)"
                     ),
+                    code=CODE_MOTION_TEMPLATE_PENDING,
                     referents=refs,
                     depicted=depicted_structure(visual_description or ""),
                     spec=spec,
@@ -387,6 +410,7 @@ def assess_scene(
                     f"one has no content at all, and its visual_description is a "
                     f"caption the renderer never reads."
                 ),
+                code=CODE_MOTION_WITHOUT_TEMPLATE,
                 referents=refs,
                 depicted=depicted_structure(visual_description or ""),
                 spec=spec,
@@ -410,6 +434,7 @@ def assess_scene(
                     f"the template contradicts this scene's own narration — "
                     f"{exc}"
                 ),
+                code=CODE_MOTION_CONTRADICTS_NARRATION,
                 referents=refs,
                 depicted=depicted_structure(visual_description or ""),
                 spec=spec,
@@ -421,6 +446,7 @@ def assess_scene(
                 f"{ {k: v for k, v in spec.items() if k != 'template'} }, "
                 f"consistent with its narration (WP-IVGS-09f guard)"
             ),
+            code=CODE_OK,
             referents=refs,
             depicted=depicted_structure(visual_description or ""),
             spec=spec,
@@ -448,6 +474,7 @@ def assess_scene(
                 f"as motion_graphics with a template, or describe the structure "
                 f"without the digits (RULE 1's deletion test)."
             ),
+            code=CODE_VISUAL_DEMANDS_TEXT,
             referents=refs,
             depicted=depicted,
         )
@@ -467,6 +494,7 @@ def assess_scene(
                 f"or set text_carried_by='narration' and describe the non-text "
                 f"situation. Ambiguity is the defect, not the medium."
             ),
+            code=CODE_NARRATION_TEXT_UNDECLARED,
             referents=refs,
             depicted=depicted,
         )
@@ -481,6 +509,7 @@ def assess_scene(
                 f"steps, so at least one of the two is staging rather than "
                 f"content (RULE 6)."
             ),
+            code=CODE_DUPLICATE_DESCRIPTION,
             referents=refs,
             depicted=depicted,
         )
@@ -495,6 +524,7 @@ def assess_scene(
                 f"carry. It would fit any lesson on any subject. Soft flag: "
                 f"whether it is good enough is yours to judge."
             ),
+            code=CODE_NO_WORKING_SURFACE,
             referents=refs,
             depicted=depicted,
         )
@@ -507,6 +537,7 @@ def assess_scene(
                 f"one-line reason for choosing {medium!r} (v7 RULE 9). The "
                 f"picture is fine; the choice behind it is unrecorded."
             ),
+            code=CODE_NO_MEDIA_RATIONALE,
             referents=refs,
             depicted=depicted,
         )
@@ -518,6 +549,7 @@ def assess_scene(
             if depicted
             else "narration names no written, numeric or changing content"
         ),
+        code=CODE_OK,
         referents=refs,
         depicted=depicted,
     )

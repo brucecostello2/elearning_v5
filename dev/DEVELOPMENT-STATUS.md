@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12h, the Design Core)
+# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12i, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,7 +6,27 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.38.6-rcq18-merged-brief`, frontend `v5.37.0-design-core`
+## Fleet — node-01 api `v5.39.1-approve-refusal-named`, workers + frontend `v5.39.0-auto-repair`
+
+⚠ **node-01 ONLY.** Nodes 02/03/04 remain on `v5.38.6-rcq18-merged-brief`; the WP-IVGS-12i
+order granted node-01 and no more, and the changed code (the API, the orchestrator's gate
+branch, the frontend) all runs there. Every image verified **by `.Image` ID against its banked
+artifact digest**, not by tag (RC-Q8), and every container asserted running (RC-P19).
+
+✅ **WP-IVGS-12i — MECHANICAL REFUSALS ARE REPAIRED BY CODE, AND DECLARED.** Operator ruling
+2026-08-30. `storyboard_repair.auto_repair_storyboard` runs between stage 2 and the gate,
+applies the validator's own default exit to every refusal with a deterministic fix, and writes
+each repair — **including each one that FAILED, with both errors named** — to
+`storyboard_design_briefs.system_corrections` (migration 0054), rendered at the gate as
+**System corrections**. Proven end-to-end on the operator's own script: **8 hard refusals in,
+3 repaired, 5 refused by WP-IVGS-09f's guard and PUT BACK, 5 out.** ⛔ **The acceptance's target
+of zero was NOT reached, and that is the ruling working**: for an introduction and an "explain
+why" scene the honest answer is that no template fits, and the guard says so. The pass's real
+product is a **triaged** gate, not a clean one. ⛔ **AND THE APPROVE BUTTON ANSWERED HTTP 500**
+with refusals outstanding — `RegenerationError` from the pre-gate authoring escaped
+`_gate_decision`, after the approval row was already written. Now 409 `MOTION_AUTHORING_REFUSED`
+carrying the guard's own sentence, and the button is disabled while refusals stand.
+Ledger: `OUTSTANDING_WORK.md` §12i-watch.
 
 ✅ **RC-Q18 CLOSED — THE DESIGN OF RECORD IS THE MERGED CONTRACT.** Operator
 ruling. The capture moved out of `RESPONSE_OBSERVERS` (which fires on call 1's
@@ -629,6 +649,10 @@ shipped with a placeholder.
 ---
 
 ## Reports filed this session
+
+| report | verdict |
+|---|---|
+| `dev/workpackages/reports/WP-IVGS-12i-AUTO-REPAIR-report_2026-08-30.md` | ✅ RC-R4 built and proven in the live pipeline (3 of 8 repaired, 5 refused honestly); ⛔ RC-R1 was an HTTP 500, now a named 409, button disabled at nonzero; ✅ RC-R2 built — including the one-click the order believed existed and which never did; ⓘ RC-R3(a)/(b) and RC-R5 rowed, nothing built |
 
 ⛳ **ONE SESSION, FOUR PACKAGES, AND THE LAST TWO WERE FOUND BY THE OPERATOR.**
 WP-IVGS-12h closed RC-Q9g by design; the RC-Q13 ruling made the declared budget

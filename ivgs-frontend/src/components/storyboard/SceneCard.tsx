@@ -10,6 +10,7 @@ import {
   sceneTitle,
 } from "@/lib/scenes";
 import type { Scene, SceneStatus } from "@/types/storyboard";
+import type { SceneCompleteness } from "@/hooks/useProjectProgress";
 import type { DraggableProvidedDragHandleProps } from "react-beautiful-dnd";
 
 /**
@@ -61,6 +62,21 @@ interface SceneCardProps {
   onRegenerate: () => void;
   /** Delete scene callback */
   onDelete: () => void;
+  /**
+   * WP-IVGS-12i RC-R2. THIS SCENE'S GATE FINDINGS, ON THE WORK SURFACE.
+   *
+   * Every finding in this list is about THIS scene, and until this package they
+   * existed only inside the gate panel on another tab. That is the wrong place
+   * for them: a reviewer told "scene 7 delegates written content to a diffusion
+   * medium" has to leave the panel, find scene 7 in a grid of nineteen, and
+   * remember what the complaint was on the way. The finding belongs where the
+   * fix is made.
+   *
+   * Empty or absent renders nothing — a card with no findings must not grow a
+   * reassuring green badge, because a badge that is always there stops being
+   * read.
+   */
+  findings?: SceneCompleteness[];
   /**
    * WP-66 Task 4. The model this scene overrides the project default with, if
    * any. Shown on the card so an operator can see the exceptions without
@@ -130,8 +146,15 @@ export default function SceneCard({
   onEdit,
   onRegenerate,
   onDelete,
+  findings,
   modelOverrideName,
 }: SceneCardProps): React.ReactElement {
+  /* WP-IVGS-12i RC-R2. The two severities are two different statements and the
+     card must not blend them: `refuse` is objective and blocks the gate,
+     `flag` is the reviewer's judgement and blocks nothing. Counted separately
+     for the same reason the gate panel renders them in two colours. */
+  const refuseFindings = (findings ?? []).filter((f) => f.severity === "refuse");
+  const flagFindings = (findings ?? []).filter((f) => f.severity === "flag");
   // ── Local Loading States ──────────────────────────────────────────
   const [isRegenerating, setIsRegenerating] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
@@ -331,6 +354,32 @@ export default function SceneCard({
           >
             {STATUS_LABELS[scene.status]}
           </span>
+          {/* ── WP-IVGS-12i RC-R2. THE GATE'S VERDICT ON THIS SCENE ──────
+              Red when approving is refused because of this card, amber when
+              the finding is information. The code, not the prose, because the
+              prose is a paragraph and this is a badge — the whole reason is in
+              the tooltip and in the Edit modal, one click away, where the fix
+              is. */}
+          {refuseFindings.length > 0 && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/50 text-xs font-medium text-red-800 dark:text-red-300"
+              title={refuseFindings.map((f) => f.reason).join("\n\n")}
+            >
+              {refuseFindings.length === 1
+                ? refuseFindings[0]?.code ?? "refused"
+                : `${refuseFindings.length} refusals`}
+            </span>
+          )}
+          {refuseFindings.length === 0 && flagFindings.length > 0 && (
+            <span
+              className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-xs font-medium text-amber-800 dark:text-amber-300"
+              title={flagFindings.map((f) => f.reason).join("\n\n")}
+            >
+              {flagFindings.length === 1
+                ? flagFindings[0]?.code ?? "flagged"
+                : `${flagFindings.length} flags`}
+            </span>
+          )}
           {/* WP-66 Task 4 — the exception, visible from the grid. */}
           {modelOverrideName && (
             <span

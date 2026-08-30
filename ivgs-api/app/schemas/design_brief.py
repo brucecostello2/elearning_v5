@@ -52,6 +52,9 @@ class DesignBriefResponse(BaseModel):
     evidence_map: Dict[str, Any] = Field(default_factory=dict)
     assessment_plan: Dict[str, Any] = Field(default_factory=dict)
     scene_designs: List[Dict[str, Any]] = Field(default_factory=list)
+    #: WP-IVGS-12i. The auto-repair pass's declaration, or None when it never
+    #: ran. The gate renders it as "System corrections".
+    system_corrections: Optional[Dict[str, Any]] = None
     intent: Optional[Dict[str, Any]] = None
     contract_version: Optional[str] = None
     prompt_fingerprint: Optional[str] = None

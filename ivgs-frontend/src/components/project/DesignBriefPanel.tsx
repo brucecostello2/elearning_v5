@@ -120,6 +120,122 @@ function CoverageMatrix({
   );
 }
 
+/** WP-IVGS-12i. One declared repair, as `storyboard_repair.Correction` writes it. */
+interface SystemCorrectionRow {
+  scene_index: number;
+  refusal_code: string;
+  refusal_reason: string;
+  media_type_was: string;
+  media_type_is: string;
+  applied: boolean;
+  template?: string | null;
+  params?: Record<string, unknown>;
+  original_visual_description?: string | null;
+  repair_error?: string | null;
+}
+
+/** One auto-repair pass, as the design brief stores it. */
+interface SystemCorrectionsRecord {
+  ran_at?: string;
+  scenes?: number;
+  refusals_before: number;
+  refusals_after: number;
+  mechanical_before: number;
+  judgment_before: number;
+  repaired: number;
+  repair_refused: number;
+  corrections?: SystemCorrectionRow[];
+}
+
+/**
+ * WP-IVGS-12i RC-R4. WHAT CODE CORRECTED BEFORE THIS GATE OPENED.
+ *
+ * The operator's ruling of 2026-08-30 lets code repair a MECHANICAL refusal —
+ * one with a deterministic default fix — before a human ever sees it. The whole
+ * safety of that rule is this section: a repair that is not declared is a
+ * silent correction, and a reviewer approving a storyboard is entitled to know
+ * which scenes are as the designer wrote them and which ones code moved.
+ *
+ * ⛔ THE FAILED REPAIRS RENDER TOO, AND FIRST. When authoring refused, the scene
+ * was PUT BACK and its original refusal still stands in the panel below; this
+ * says that code tried and what it was told, so the reviewer is not left to
+ * infer it from a refusal that looks untouched.
+ *
+ * Absent (`null`) means the pass never ran — a brief from before this package.
+ * A pass that ran and repaired nothing still renders, because "looked and found
+ * nothing" and "never looked" are different facts about the same screen.
+ */
+function SystemCorrections({
+  corrections,
+}: {
+  corrections: SystemCorrectionsRecord | null | undefined;
+}): React.ReactElement | null {
+  if (!corrections) return null;
+  const rows = corrections.corrections ?? [];
+  const applied = rows.filter((c) => c.applied);
+  const refused = rows.filter((c) => !c.applied);
+
+  return (
+    <div className="mt-3 rounded border border-sky-500/40 bg-sky-500/[0.04] p-2">
+      <div className="text-xs font-semibold text-sky-900 dark:text-sky-200">
+        System corrections — {applied.length} repaired
+        {refused.length > 0 ? `, ${refused.length} could not be` : ""}
+      </div>
+      <div className="mt-0.5 text-[11px] text-sky-900/80 dark:text-sky-200/80">
+        {corrections.refusals_before} hard refusal
+        {corrections.refusals_before === 1 ? "" : "s"} before the pass,{" "}
+        {corrections.refusals_after} after ·{" "}
+        {corrections.mechanical_before} mechanical ·{" "}
+        {corrections.judgment_before} judgment, left for you. Original visual
+        descriptions are preserved; nothing below was rewritten.
+      </div>
+
+      {refused.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {refused.map((c) => (
+            <li
+              key={`fix-refused-${c.scene_index}`}
+              className="rounded border border-red-500/40 bg-red-500/5 p-1.5 text-[11px] text-red-900 dark:text-red-200"
+            >
+              <span className="font-medium">Scene {c.scene_index}</span>{" "}
+              <span className="font-mono text-[10px] opacity-60">
+                {c.refusal_code}
+              </span>{" "}
+              — the repair was refused and the scene was left as{" "}
+              <span className="font-mono">{c.media_type_was}</span>. Its original
+              refusal stands. Authoring said: {c.repair_error}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {applied.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {applied.map((c) => (
+            <li
+              key={`fix-${c.scene_index}`}
+              className="text-[11px] text-sky-900 dark:text-sky-200"
+            >
+              <span className="font-medium">Scene {c.scene_index}</span>{" "}
+              <span className="font-mono text-[10px] opacity-60">
+                {c.refusal_code}
+              </span>{" "}
+              — <span className="font-mono">{c.media_type_was}</span> →{" "}
+              <span className="font-mono">{c.media_type_is}</span>, drawn by{" "}
+              <span className="font-mono">{c.template ?? "—"}</span>
+              {c.params && Object.keys(c.params).length > 0
+                ? ` (${Object.entries(c.params)
+                    .map(([k, v]) => `${k}=${String(v)}`)
+                    .join(", ")})`
+                : ""}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 function Findings({ findings }: { findings: DesignFinding[] }): React.ReactElement | null {
   const refusals = findings.filter((f) => f.severity === "refuse");
   const flags = findings.filter((f) => f.severity === "flag");
@@ -138,7 +254,7 @@ function Findings({ findings }: { findings: DesignFinding[] }): React.ReactEleme
         <div className="rounded border border-red-500/50 bg-red-500/5 p-2">
           <div className="text-xs font-semibold text-red-800 dark:text-red-300">
             {refusals.length} design {refusals.length === 1 ? "refusal" : "refusals"} —
-            approving will be refused by name
+            objectively checkable, and yours to resolve before approving
           </div>
           <ul className="mt-1 space-y-0.5">
             {refusals.map((f, i) => (
@@ -208,6 +324,14 @@ export default function DesignBriefPanel({
 
       <EventArc arc={review.event_arc} />
       <CoverageMatrix coverage={review.coverage} arc={review.event_arc} />
+      <SystemCorrections
+        corrections={
+          (review.brief?.system_corrections as
+            | SystemCorrectionsRecord
+            | null
+            | undefined) ?? null
+        }
+      />
       <Findings findings={review.findings} />
 
       {review.rewrites.length > 0 && (

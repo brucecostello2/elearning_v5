@@ -14,6 +14,7 @@ import SceneCard from "@/components/storyboard/SceneCard";
 import { apiClient } from "@/lib/api-client";
 import type { Scene } from "@/types/storyboard";
 import type { ModelSelection } from "@/types/models";
+import type { SceneCompleteness } from "@/hooks/useProjectProgress";
 
 /**
  * §8.1.3 Storyboard Editor — Drag-Drop Scene Grid
@@ -61,6 +62,16 @@ interface StoryboardEditorProps {
   onDeleteScene: (sceneId: string) => Promise<void>;
   /** Handle drag-drop reorder */
   onReorder: (sourceIndex: number, destinationIndex: number) => Promise<void>;
+  /**
+   * WP-IVGS-12i RC-R2. The gate's per-scene findings, keyed by `scene_index`.
+   *
+   * ⚠ BY `scene_index` AND NOT BY SCENE ID, because that is the key the gate
+   * computes them under: `assess_storyboard` reads rows and reports indices,
+   * and a scene id never enters the completeness check. Passed as a map rather
+   * than a list so this component does not filter nineteen findings nineteen
+   * times.
+   */
+  findingsByScene?: Map<number, SceneCompleteness[]>;
 }
 
 export default function StoryboardEditor({
@@ -73,6 +84,7 @@ export default function StoryboardEditor({
   onRegenerateScene,
   onDeleteScene,
   onReorder,
+  findingsByScene,
 }: StoryboardEditorProps): React.ReactElement {
   /* WP-66 Task 4 — which scenes override the project's model binding.
      Rendered on the grid so the exceptions are visible without opening every
@@ -236,6 +248,7 @@ export default function StoryboardEditor({
                          not one per card: `GET /model-selections` already
                          returns every row, scene-scoped included. */
                       modelOverrideName={sceneOverrides.get(scene.id) ?? null}
+                      findings={findingsByScene?.get(scene.scene_index)}
                     />
                   </div>
                 )}

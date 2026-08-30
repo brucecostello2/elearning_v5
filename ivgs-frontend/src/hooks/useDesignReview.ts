@@ -70,6 +70,11 @@ export interface DesignReview {
     model_used: string | null;
     prompt_fingerprint: string | null;
     created_at: string;
+    /** WP-IVGS-12i RC-R4. One auto-repair pass, declared. `null` means the
+     *  pass never ran; a record with `repaired: 0` means it ran and found
+     *  nothing mechanical. Typed loosely here and narrowed in the panel that
+     *  renders it, so this hook does not grow a second copy of the shape. */
+    system_corrections?: Record<string, unknown> | null;
   } | null;
   event_arc: ArcRow[];
   coverage: OutcomeCoverage[];

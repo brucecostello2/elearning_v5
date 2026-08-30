@@ -69,6 +69,14 @@ export interface SceneCompleteness {
   verdict: string;
   /** ok | flag | refuse */
   severity: string;
+  /** WP-IVGS-12i. WHICH RULE SPOKE, stable and machine-readable —
+   *  MOTION_WITHOUT_TEMPLATE | MOTION_TEMPLATE_PENDING |
+   *  MOTION_CONTRADICTS_NARRATION | VISUAL_DEMANDS_ON_SCREEN_TEXT |
+   *  NARRATION_TEXT_UNDECLARED | DUPLICATE_DESCRIPTION | NO_WORKING_SURFACE |
+   *  NO_MEDIA_RATIONALE | OK. Optional because a cached response from an API
+   *  built before 12i carries none, and a badge that reads `undefined` is
+   *  worse than a badge that reads the verdict. */
+  code?: string;
   reason: string;
   referents: {
     numerals: string[];

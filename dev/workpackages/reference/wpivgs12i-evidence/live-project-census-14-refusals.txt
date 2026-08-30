@@ -1,0 +1,32 @@
+=== authoring_will_run=True: 19 scenes, 14 refuse, 1 flag ===
+  R scene 0 [image] the narration's content is written or numeric (['23', '14']) and the scene is 'image', a diffusion medium that cannot draw a glyph reliably, while the
+  R scene 1 [image] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a num
+  R scene 2 [image] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a num
+  R scene 3 [image] the visual_description asks for on-screen text — ['multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a number or askin
+  R scene 4 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 5 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 6 [image] the visual_description asks for on-screen text — ['23', '14', '92', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming
+  R scene 7 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 8 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 9 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 10 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 11 [image] the visual_description asks for on-screen text — ['23', '14', '230', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Namin
+  R scene 12 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 15 [image] the visual_description asks for on-screen text — ['23', '14', '322', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Namin
+
+=== authoring_will_run=False: 19 scenes, 14 refuse, 1 flag ===
+  R scene 0 [image] the narration's content is written or numeric (['23', '14']) and the scene is 'image', a diffusion medium that cannot draw a glyph reliably, while the
+  R scene 1 [image] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a num
+  R scene 2 [image] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a num
+  R scene 3 [image] the visual_description asks for on-screen text — ['multiplication problem'] — while the scene is 'image', a diffusion medium. Naming a number or askin
+  R scene 4 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 5 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 6 [image] the visual_description asks for on-screen text — ['23', '14', '92', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Naming
+  R scene 7 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 8 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 9 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 10 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 11 [image] the visual_description asks for on-screen text — ['23', '14', '230', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Namin
+  R scene 12 [video_clip] the visual_description asks for on-screen text — ['23', '14', 'multiplication problem'] — while the scene is 'video_clip', a diffusion medium. Naming 
+  R scene 15 [image] the visual_description asks for on-screen text — ['23', '14', '322', 'multiplication problem'] — while the scene is 'image', a diffusion medium. Namin
+

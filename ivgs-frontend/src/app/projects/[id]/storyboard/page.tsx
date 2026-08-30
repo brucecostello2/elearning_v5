@@ -10,6 +10,8 @@ import SceneEditModal from "@/components/storyboard/SceneEditModal";
 import SceneTimeline from "@/components/storyboard/SceneTimeline";
 import GateReviewPanel from "@/components/project/GateReviewPanel";
 import { useProjectProgress } from "@/hooks/useProjectProgress";
+import type { SceneCompleteness } from "@/hooks/useProjectProgress";
+import { apiClient } from "@/lib/api-client";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { apiError } from "@/lib/api-error";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -150,6 +152,42 @@ export default function StoryboardPage(): React.ReactElement {
      open", on every surface that asks. */
   const { progress, mutate: mutateProgress } = useProjectProgress(projectId);
   const storyboardGate = progress?.gates?.storyboard;
+
+  /* ── WP-IVGS-12i RC-R2. THE GATE'S FINDINGS, INDEXED FOR THE WORK SURFACE ──
+     The completeness array the gate panel renders is the SAME array the cards
+     and the Edit modal render, indexed once here rather than filtered per card.
+     One computation, one source: a second fetch would let the panel and the
+     card disagree about the same scene, which is the class of defect this
+     package exists to close.
+
+     ⚠ Read whether or not the gate is OPEN. A closed gate — approved, or not
+     yet reached — still has scenes worth a verdict, and hiding the findings
+     until the gate opens would mean the one place they are actionable goes
+     blank exactly when an operator is editing. */
+  const findingsByScene = useMemo(() => {
+    const map = new Map<number, SceneCompleteness[]>();
+    for (const c of storyboardGate?.completeness ?? []) {
+      const list = map.get(c.scene_index);
+      if (list) list.push(c);
+      else map.set(c.scene_index, [c]);
+    }
+    return map;
+  }, [storyboardGate?.completeness]);
+
+  /* ── WP-IVGS-12i RC-R2. The manual authoring press. ───────────────────────
+     The page owns the call for the same reason it owns every other write here:
+     the scene list and the gate's findings both go stale the moment a scene's
+     medium changes, and only this component holds both mutators. */
+  const handleAuthorAsMotion = useCallback(
+    async (sceneId: string): Promise<void> => {
+      await apiClient.post(
+        `/api/v1/projects/${projectId}/scenes/${sceneId}/author-motion`
+      );
+      await mutate();
+      await mutateProgress();
+    },
+    [projectId, mutate, mutateProgress]
+  );
   const gateIsOpen =
     (progress?.steps ?? []).some(
       (st) => st.gate === "storyboard" && st.status === "gated",
@@ -696,6 +734,7 @@ export default function StoryboardPage(): React.ReactElement {
             onRegenerateScene={handleRegenerateScene}
             onDeleteScene={handleDeleteScene}
             onReorder={handleReorder}
+            findingsByScene={findingsByScene}
           />
         ) : (
           <SceneTimeline
@@ -725,6 +764,10 @@ export default function StoryboardPage(): React.ReactElement {
                operator accepts it, at which point it becomes an ordinary
                unsaved edit that `handleSaveScene` persists. */
             onAdaptDescription={adaptSceneDescription}
+            /* WP-IVGS-12i RC-R2. The findings for THIS scene, and the manual
+               half of the auto-repair primitive. */
+            findings={findingsByScene.get(editingScene.scene_index)}
+            onAuthorAsMotion={handleAuthorAsMotion}
             onClose={handleCloseEditModal}
             onRegenerate={handleRegenerateScene}
           />

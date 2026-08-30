@@ -468,6 +468,29 @@ def handle_stage_completion(
 
     # User gate — pipeline pauses
     if next_stage is None:
+        # ── WP-IVGS-12i RC-R4. THE AUTO-REPAIR PASS, AND WHY IT IS HERE ──────
+        #
+        # The operator's ruling of 2026-08-30: a gate refusal is either
+        # MECHANICAL (a deterministic default fix exists) or JUDGMENT (a human
+        # must decide), and mechanical refusals are repaired by code BEFORE the
+        # gate opens — declared, never silently.
+        #
+        # ⛳ "BEFORE THE GATE" HAS EXACTLY ONE MEANING IN THIS PIPELINE AND IT IS
+        # THIS LINE. Stage 2 validates and writes its scenes; the next thing that
+        # happens is that the gate becomes readable and a human starts judging
+        # it. There is no other seam between the two — and the stage body itself
+        # is frozen (§3), so the repair could not live there even if it belonged
+        # there, which it does not: the repair reads the SAVED rows, which is the
+        # storyboard the reviewer will actually approve.
+        #
+        # ⛔ IT NEVER BLOCKS THE GATE. A repair pass that fails, times out or
+        # answers non-2xx leaves the gate opening exactly as it did before this
+        # package — with its refusals intact and honest. The pass exists to
+        # remove mechanical noise from a human's screen; it is not permitted to
+        # become a new way for a storyboard to fail to arrive.
+        if completed_stage == PipelineStage.STORYBOARD_GENERATION.value:
+            _auto_repair_storyboard(project_id, config, log)
+
         gate_status = _determine_gate_status(completed_stage)
         log.info(
             "pipeline_paused_at_gate",
@@ -2140,6 +2163,61 @@ def _fetch_transcripts(
     except Exception as e:
         logger.warning("fetch_transcripts_failed", error=str(e))
     return []
+
+
+
+def _auto_repair_storyboard(
+    project_id: str, config: WorkerConfig, log: Any,
+) -> None:
+    """Ask the API to repair every mechanical refusal, and DECLARE the result.
+
+    WP-IVGS-12i RC-R4. The work is the API's — the authoring primitive, the
+    scene rows and the design brief all live there, and a second implementation
+    in the worker would be the "two builders for one payload" defect
+    WP-IVGS-09f records. This is the call, the log line, and nothing else.
+
+    ⚠ THE TIMEOUT IS GENEROUS ON PURPOSE. The pass makes one authoring call per
+    mechanically-refused scene, serially, on the storyboard-generation binding;
+    a nineteen-scene storyboard with fourteen refusals is fourteen model calls.
+    Measured against the same engine WP-IVGS-12's Task 7 timed, that is minutes,
+    not seconds. A short timeout here would abandon a pass that was working and
+    leave the declaration unwritten while the repairs were still being committed.
+
+    ⛔ EVERY FAILURE IS LOGGED AND SWALLOWED, and this is the one place in this
+    package where that is right rather than the eighteenth entry in the swallow
+    register: the caller's next action is to open a gate that is already
+    correct. What must never be swallowed is a REPAIR THAT FAILED, and it is
+    not — `storyboard_repair` writes a correction row naming both errors, and
+    the gate renders it.
+    """
+    try:
+        with httpx.Client(
+            timeout=900.0,
+            headers={"Authorization": f"Bearer {config.pipeline_api.service_token}"},
+        ) as client:
+            resp = client.post(
+                f"{config.pipeline_api.full_base_url}"
+                f"/projects/{project_id}/scenes/auto-repair",
+            )
+        if resp.status_code >= 300:
+            log.warning(
+                "auto_repair_not_applied",
+                status_code=resp.status_code,
+                body=resp.text[:500],
+            )
+            return
+        data = resp.json()
+        log.info(
+            "auto_repair_pass_complete",
+            scenes=data.get("scenes"),
+            refusals_before=data.get("refusals_before"),
+            refusals_after=data.get("refusals_after"),
+            repaired=data.get("repaired"),
+            repair_refused=data.get("repair_refused"),
+            judgment=data.get("judgment_before"),
+        )
+    except Exception as exc:
+        log.warning("auto_repair_call_failed", error=str(exc))
 
 
 def _fetch_project_scenes(

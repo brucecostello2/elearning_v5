@@ -726,6 +726,42 @@ async def _gate_decision(
                     }
                 },
             )
+        except RegenerationError as exc:
+            # ⛔ WP-IVGS-12i RC-R1. MEASURED 2026-08-30: THIS ANSWERED HTTP 500.
+            #
+            # `approve_storyboard` runs `_author_missing_motion_specs` before the
+            # completeness check, and that helper RAISES `RegenerationError` for
+            # a motion scene whose template cannot be authored from its own
+            # narration — by design, since WP-IVGS-09f: "one scene that cannot be
+            # drawn is a reason not to start". Nothing here caught it, so the
+            # operator's press answered `INTERNAL_ERROR / An unexpected error
+            # occurred` with a request id and nothing else, while the decision
+            # row was already written and the log held a full traceback naming
+            # the scene, the template and the contradiction.
+            #
+            # Measured on the 12i acceptance project, scene 7: *"the narration
+            # announces 4 … but column_addition_carry{top:230,bottom:92} never
+            # produces 4"*. That sentence is the whole answer and the surface
+            # threw it away. A 500 also tells a reviewer the SYSTEM broke, when
+            # what actually happened is that the system refused — the two are
+            # opposite instructions about what to do next.
+            #
+            # The approval STANDS, on the same rule the two refusals beside this
+            # one follow: a human approved this storyboard and that is recorded;
+            # only the dispatch is refused.
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={
+                    "error": {
+                        "code": "MOTION_AUTHORING_REFUSED",
+                        "message": (
+                            f"{exc}\n\nThe approval WAS recorded (decision "
+                            f"{row.id}); only the dispatch was refused. Nothing "
+                            f"was rendered and no job row was created."
+                        ),
+                    }
+                },
+            )
         except StoryboardIncomplete as exc:
             # WP-IVGS-10 Task 3. ITS OWN CODE, not INVALID_STATE_TRANSITION.
             # A reviewer told "invalid state transition" goes to look at the
@@ -743,6 +779,13 @@ async def _gate_decision(
                 detail={
                     "error": {
                         "code": "STORYBOARD_INCOMPLETE",
+                        # WP-IVGS-12i RC-R1. THE COUNT, AS A FIELD. The message
+                        # has always carried it in prose; a surface that wants
+                        # to say "N refusals block approval" beside a disabled
+                        # button should not have to parse an English sentence to
+                        # find N, and one that does will disagree with this one
+                        # the first time the sentence is reworded.
+                        "refusals": len(exc.assessments),
                         "message": (
                             f"{exc}\n\nThe approval WAS recorded (decision "
                             f"{row.id}); only the dispatch was refused. Fix the "

@@ -9,6 +9,12 @@ Endpoints:
 - POST   /api/v1/projects/{id}/scenes/{sid}/adapt-description — Propose a
          medium-appropriate rewrite of this scene's visual description (WP-64
          Task 3). Returns a proposal; writes no scene row.
+- POST   /api/v1/projects/{id}/scenes/auto-repair — WP-IVGS-12i RC-R4. Repair
+         every MECHANICAL refusal before the gate opens, declare each on the
+         design brief, re-validate once. The orchestrator calls it.
+- POST   /api/v1/projects/{id}/scenes/{sid}/author-motion — WP-IVGS-12i RC-R2.
+         The MANUAL half of the same primitive: one scene, on the reviewer's
+         press, for the judgment cases code deliberately does not touch.
 """
 import logging
 from datetime import datetime, timezone
@@ -431,3 +437,137 @@ async def approve_storyboard(
         current_user,
         db,
     )
+
+
+# ---------------------------------------------------------------------------
+# WP-IVGS-12i — the repair pass, and its manual twin
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/auto-repair",
+    summary="Repair every mechanical refusal, declared (WP-IVGS-12i RC-R4)",
+)
+async def auto_repair_scenes(
+    project_id: UUID,
+    current_user: User = Depends(get_service_or_user),
+    db: AsyncSession = Depends(get_session),
+):
+    """One pass. Mechanical refusals repaired and declared; judgment untouched.
+
+    ⛳ `get_service_or_user` BECAUSE THE ORCHESTRATOR IS THE CALLER. It runs
+    between stage 2 finishing and the gate opening, which is the only moment at
+    which "before the gate" means anything. It is also reachable by an operator,
+    because a storyboard edited at the gate can acquire a mechanical refusal that
+    was not there when the design was generated.
+
+    ⛔ NOT IDEMPOTENT IN THE TRIVIAL SENSE AND IT DOES NOT PRETEND TO BE: a
+    second call re-assesses and repairs whatever is mechanical NOW, and
+    overwrites the declaration with the new pass. That is correct — the
+    declaration describes the storyboard as it stands, not a history — and it is
+    still ONE authoring call per refused scene per pass. There is no loop.
+    """
+    project_service = ProjectService(db)
+    project = await project_service.get_project(project_id, current_user)
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND",
+                              "message": f"Project {project_id} not found"}},
+        )
+
+    from app.services.storyboard_repair import repair_and_declare
+
+    result = await repair_and_declare(db, project_id, project)
+    return result.as_dict()
+
+
+@router.post(
+    "/{scene_id}/author-motion",
+    response_model=SceneResponse,
+    summary="Author this scene as motion graphics (WP-IVGS-12i RC-R2)",
+)
+async def author_scene_as_motion(
+    project_id: UUID,
+    scene_id: UUID,
+    current_user: User = Depends(require_operator_or_admin),
+    db: AsyncSession = Depends(get_session),
+):
+    """Flip ONE scene to `motion_graphics` and author its template from its words.
+
+    ⛳ THE SAME PRIMITIVE THE AUTO-REPAIR PASS CALLS, ON A HUMAN'S PRESS. Two
+    surfaces, one mechanism, for the reason WP-45 gives about dispatch and
+    WP-IVGS-09f gives about payload builders: a second implementation of a rule
+    is a second place for it to be wrong.
+
+    This is the override path. Auto-repair deliberately touches only refusals
+    with a deterministic default exit; a reviewer looking at a JUDGMENT finding —
+    or at a scene that refuses nothing at all but that they judge belongs in a
+    drawn medium — presses this.
+
+    ⛔ IT REFUSES BY NAME AND WRITES NOTHING WHEN AUTHORING REFUSES. The scene is
+    left exactly as it was, medium included.
+    """
+    from app.services.motion_authoring import (
+        MotionAuthoringError,
+        author_params_for_scene,
+    )
+    from app.models.storyboard_scene import StoryboardScene
+
+    project_service = ProjectService(db)
+    project = await project_service.get_project(project_id, current_user)
+    if project is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND",
+                              "message": f"Project {project_id} not found"}},
+        )
+
+    rows = list((await db.scalars(
+        select(StoryboardScene)
+        .where(StoryboardScene.project_id == project_id)
+        .order_by(StoryboardScene.scene_index)
+    )).all())
+    scene = next((r for r in rows if r.id == scene_id), None)
+    if scene is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"error": {"code": "RESOURCE_NOT_FOUND",
+                              "message": f"Scene {scene_id} not found"}},
+        )
+
+    try:
+        spec = await author_params_for_scene(
+            db,
+            project_id=project_id,
+            narration=scene.narration_text or "",
+            # ⛳ PASSED, NEVER REWRITTEN. The description is the operator's and
+            # it survives the flip; the renderer draws from the template.
+            visual_description=scene.visual_description or "",
+            project_name=getattr(project, "name", "") or "",
+            project_description=getattr(project, "description", "") or "",
+            scene_index=scene.scene_index,
+            context_scenes=[(r.scene_index, r.narration_text or "") for r in rows],
+        )
+    except MotionAuthoringError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={"error": {
+                "code": "MOTION_AUTHORING_REFUSED",
+                "message": (
+                    f"Scene {scene.scene_index} could not be authored as motion "
+                    f"graphics: {exc} Nothing was changed — the scene is still "
+                    f"{scene.media_type!r}."
+                ),
+            }},
+        )
+
+    scene.media_type = "motion_graphics"
+    scene.generation_params = spec
+    scene.updated_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(scene)
+    logger.info(
+        "scene_authored_as_motion project=%s scene=%s index=%s template=%s",
+        project_id, scene_id, scene.scene_index, spec.get("template"),
+    )
+    return SceneResponse.model_validate(scene)

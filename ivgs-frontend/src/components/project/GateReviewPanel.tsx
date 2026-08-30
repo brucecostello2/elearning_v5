@@ -74,6 +74,11 @@ const DECISION_HELP: Record<Decision, string> = {
  *             medium and declares nothing about where that content lives, or a
  *             motion scene has no template. Shown in red, BEFORE the buttons,
  *             so nobody presses Approve to find out.
+ *
+ *             ⛳ WP-IVGS-12i RC-R1: and since 2026-08-30 the Approve button is
+ *             DISABLED while any of these stand, from this same array. The
+ *             sentence "Approving is refused until these are fixed" was true
+ *             of the server and false of the button beside it for two packages.
  *   `flag`    SUBJECTIVE, and blocks nothing whatsoever. The description names
  *             no part of the working surface, or two scenes share a picture, or
  *             no rationale was recorded. Shown in amber, as information.
@@ -180,6 +185,30 @@ export default function GateReviewPanel({
   const [busy, setBusy] = useState<Decision | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  /* ── WP-IVGS-12i RC-R1. THE BUTTON MAY NOT LIE ──────────────────────────
+     Measured 2026-08-30 on the operator's live project: the panel above said
+     "14 would be refused" and "Approving is refused until these are fixed",
+     and the green Approve button beside it was fully enabled. Pressing it
+     recorded the decision, answered 409 STORYBOARD_INCOMPLETE, and dispatched
+     nothing — the server has refused correctly since WP-IVGS-10 Task 3. So
+     the enforcement was never the defect; the SCREEN was, and a banner that
+     contradicts the button next to it teaches an operator to distrust both.
+
+     ⛔ THE COUNT COMES FROM THE SAME ARRAY THE BANNER COUNTS. Not from a
+     second fetch and not from the error body: two numbers derived two ways
+     will disagree, and this panel exists to stop exactly that.
+
+     ⚠ ONLY `approved` IS BLOCKED. Reject and Regenerate are how a reviewer
+     ACTS on a refusal; disabling them would trap the gate closed, which is the
+     opposite of what the refusals are asking for. */
+  const refusalCount = (state.completeness ?? []).filter(
+    (c) => c.severity === "refuse"
+  ).length;
+  const approveBlocked = gate === "storyboard" && refusalCount > 0;
+  const approveBlockedReason = `${refusalCount} refusal${
+    refusalCount === 1 ? "" : "s"
+  } block approval — the server refuses this dispatch by name until they are zero.`;
+
   /* Not open means nothing to do. A closed gate is reported by the stepper's
      green step; a second "approved ✓" panel here would be the duplication
      Task 4 removes elsewhere on this page. */
@@ -282,9 +311,15 @@ export default function GateReviewPanel({
                     <button
                       key={d}
                       type="button"
-                      disabled={busy !== null}
+                      disabled={
+                        busy !== null || (d === "approved" && approveBlocked)
+                      }
                       onClick={() => submit(d)}
-                      title={DECISION_HELP[d]}
+                      title={
+                        d === "approved" && approveBlocked
+                          ? approveBlockedReason
+                          : DECISION_HELP[d]
+                      }
                       className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors disabled:opacity-50 ${
                         d === "approved"
                           ? "bg-green-600 text-white hover:bg-green-700"
@@ -298,6 +333,11 @@ export default function GateReviewPanel({
                   )
                 )}
               </div>
+              {approveBlocked && (
+                <p className="mt-2 text-sm font-medium text-red-800 dark:text-red-300">
+                  {approveBlockedReason}
+                </p>
+              )}
               {error && (
                 <p className="mt-2 text-sm text-red-700 dark:text-red-400">
                   {error}

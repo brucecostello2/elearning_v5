@@ -13,6 +13,7 @@ import type {
   SceneEffect,
 } from "@/types/storyboard";
 import type { MediaType } from "@/lib/scenes";
+import type { SceneCompleteness } from "@/hooks/useProjectProgress";
 import {
   MEDIA_TYPES as MEDIA_TYPE_VALUES,
   durationError,
@@ -204,6 +205,31 @@ interface SceneEditModalProps {
     sceneId: string,
     targetMediaType: string
   ) => Promise<SceneAdaptationProposal>;
+  /**
+   * WP-IVGS-12i RC-R2. This scene's gate findings, hard and soft.
+   *
+   * The gate panel lives on the project tab and this modal is where a scene is
+   * actually changed. A finding that cannot be read beside the field it is
+   * about is a finding the reviewer has to hold in their head while they work.
+   */
+  findings?: SceneCompleteness[];
+  /**
+   * WP-IVGS-12i RC-R2. Flip this scene to `motion_graphics` and author its
+   * template + parameters from its own narration, in one press.
+   *
+   * ⛳ THE SAME PRIMITIVE THE AUTO-REPAIR PASS CALLS — `POST
+   * /scenes/{id}/author-motion` — and it is here because the pass deliberately
+   * does not touch JUDGMENT findings. This is the manual half of the operator's
+   * 2026-08-30 ruling: code repairs what is mechanical, and a human presses
+   * this for everything else.
+   *
+   * ⛔ IT WRITES THE SCENE. Unlike "Adapt description", which proposes and saves
+   * nothing, this one commits — because there is nothing for a human to review
+   * in a template name and two integers that the guard has not already checked
+   * against this scene's own words, and a spec that contradicts them is refused
+   * rather than returned.
+   */
+  onAuthorAsMotion?: (sceneId: string) => Promise<void>;
 }
 
 export default function SceneEditModal({
@@ -214,7 +240,15 @@ export default function SceneEditModal({
   onClose,
   onRegenerate,
   onAdaptDescription,
+  findings,
+  onAuthorAsMotion,
 }: SceneEditModalProps): React.ReactElement {
+  /* WP-IVGS-12i RC-R2. Two severities, never blended — the same discipline the
+     gate panel keeps, for the same reason: one is a stop and one is a question. */
+  const refuseFindings = (findings ?? []).filter((f) => f.severity === "refuse");
+  const flagFindings = (findings ?? []).filter((f) => f.severity === "flag");
+  const [isAuthoringMotion, setIsAuthoringMotion] = useState<boolean>(false);
+  const [authorMotionError, setAuthorMotionError] = useState<string | null>(null);
   // ── Form State ────────────────────────────────────────────────────────
   const [narrationText, setNarrationText] = useState<string>(
     scene.narration_text
@@ -372,6 +406,30 @@ export default function SceneEditModal({
    * they can still change or abandon. Nothing here writes the scene; that is
    * Save, exactly as it was before this existed.
    */
+  /**
+   * WP-IVGS-12i RC-R2. One press: flip to motion graphics, author the template.
+   *
+   * ⛔ IT REPORTS THE SERVER'S REFUSAL VERBATIM. `author_params_for_scene` runs
+   * WP-IVGS-09f's guard, so an authoring that cannot be reconciled with this
+   * scene's own narration comes back 409 MOTION_AUTHORING_REFUSED naming the
+   * contradiction — and the scene is left exactly as it was, medium included.
+   * A rewritten "could not author scene" would throw away the one sentence that
+   * says why.
+   */
+  const handleAuthorAsMotion = useCallback(async (): Promise<void> => {
+    if (!canEdit || !onAuthorAsMotion || isAuthoringMotion) return;
+    setAuthorMotionError(null);
+    setIsAuthoringMotion(true);
+    try {
+      await onAuthorAsMotion(scene.id);
+      onClose();
+    } catch (err) {
+      setAuthorMotionError(apiErrorMessage(err));
+    } finally {
+      setIsAuthoringMotion(false);
+    }
+  }, [canEdit, onAuthorAsMotion, isAuthoringMotion, scene.id, onClose]);
+
   const handleAdapt = useCallback(async (): Promise<void> => {
     if (!canEdit || !onAdaptDescription || isAdapting) return;
     /* The medium currently CHOSEN in the form, not the one on the row: the
@@ -755,6 +813,102 @@ export default function SceneEditModal({
                   }
                   canEdit={canEdit}
                 />
+              )}
+
+              {/* ── WP-IVGS-12i RC-R2. THE GATE'S FINDINGS, AT THE FIX ────
+                  Above the actions and below the fields, because a reviewer
+                  reads the complaint, then edits, then acts. The reasons are
+                  the server's own words — this component could not reconstruct
+                  which numerals a narration named or which structure a
+                  description failed to mention, and a paraphrase of a refusal
+                  is a second opinion about it. */}
+              {refuseFindings.length > 0 && (
+                <div className="rounded-lg border-2 border-red-400 bg-red-50 p-3 dark:border-red-700 dark:bg-red-950/40">
+                  <p className="text-sm font-semibold text-red-900 dark:text-red-200">
+                    {refuseFindings.length === 1
+                      ? "This scene blocks approval"
+                      : `This scene blocks approval — ${refuseFindings.length} refusals`}
+                  </p>
+                  <ul className="mt-1 space-y-2">
+                    {refuseFindings.map((f) => (
+                      <li
+                        key={`refuse-${f.code}-${f.scene_index}`}
+                        className="text-xs text-red-900 dark:text-red-200"
+                      >
+                        <span className="font-mono text-[10px] opacity-70">
+                          {f.code}
+                        </span>
+                        <p className="mt-0.5">{f.reason}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {flagFindings.length > 0 && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-700 dark:bg-amber-950/40">
+                  <p className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Worth a look — this blocks nothing, and the judgement is
+                    yours
+                  </p>
+                  <ul className="mt-1 space-y-2">
+                    {flagFindings.map((f) => (
+                      <li
+                        key={`flag-${f.code}-${f.scene_index}`}
+                        className="text-xs text-amber-900 dark:text-amber-200"
+                      >
+                        <span className="font-mono text-[10px] opacity-70">
+                          {f.code}
+                        </span>
+                        <p className="mt-0.5">{f.reason}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* ── Author as motion graphics — WP-IVGS-12i RC-R2 ─────────
+                  The manual half of the 2026-08-30 ruling. Code repairs what is
+                  mechanical before the gate; this is the press for everything
+                  else — a judgment finding, or a scene a reviewer simply
+                  decides belongs in a drawn medium. Same endpoint, same guard,
+                  same primitive. */}
+              {onAuthorAsMotion && (
+                <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Author as motion graphics
+                      </p>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Sets this scene&apos;s medium to motion graphics and
+                        authors its template and numbers from its OWN narration —
+                        the digits are drawn, so they cannot be misspelled. Your
+                        visual description is kept exactly as it is; the renderer
+                        draws from the template, not from prose.{" "}
+                        <strong className="font-medium">
+                          This one writes the scene, and it is refused by name if
+                          the template would contradict the narration.
+                        </strong>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAuthorAsMotion}
+                      disabled={!canEdit || isAuthoringMotion}
+                      className="shrink-0 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isAuthoringMotion ? "Authoring…" : "Author as motion graphics"}
+                    </button>
+                  </div>
+                  {authorMotionError && (
+                    <p
+                      role="alert"
+                      className="mt-2 text-xs text-red-600 dark:text-red-400"
+                    >
+                      {authorMotionError}
+                    </p>
+                  )}
+                </div>
               )}
 
               {/* ── Adapt description for this medium — WP-64 Task 3 ──

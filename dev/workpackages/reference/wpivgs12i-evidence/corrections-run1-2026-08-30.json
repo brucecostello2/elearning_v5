@@ -1,0 +1,128 @@
+{
+    "ran_at": "2026-08-30T15:04:42.514423+00:00",
+    "scenes": 15,
+    "repaired": 3,
+    "corrections": [
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "scene_index": 0,
+            "refusal_code": "NARRATION_TEXT_UNDECLARED",
+            "repair_error": "scene 0: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: 'Hi! Today, we’re going to learn how to multiply two-digit numbers. That might sound tricky, but don’t worry. We’re going to break it into small, easy steps. By '. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "media_type_is": "image",
+            "media_type_was": "image",
+            "refusal_reason": "the narration's content is written or numeric (['23', '14']) and the scene is 'image', a diffusion medium that cannot draw a glyph reliably, while the scene declares nothing about where that content lives. v7 gives exactly two answers and requires one of them: author the scene as motion_graphics with a template + parameters (RULE 8), or set text_carried_by='narration' and describe the non-text situation. Ambiguity is the defect, not the medium.",
+            "original_visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to the audience."
+        },
+        {
+            "params": {
+                "top": 23,
+                "label": "",
+                "bottom": 14,
+                "column": 0
+            },
+            "applied": true,
+            "template": "highlight_and_hold",
+            "scene_index": 1,
+            "refusal_code": "MOTION_CONTRADICTS_NARRATION",
+            "repair_error": null,
+            "media_type_is": "motion_graphics",
+            "media_type_was": "motion_graphics",
+            "refusal_reason": "the template contradicts this scene's own narration — scene 1: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: '## Step 1: Set Up the Problem Our problem is: 23 times 14. Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up'. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "original_visual_description": "A worksheet with the problem 23 x 14 and the ones digits and tens digits lined up."
+        },
+        {
+            "params": {
+                "top": 23,
+                "step": 0,
+                "phase": "full",
+                "bottom": 14
+            },
+            "applied": true,
+            "template": "column_multiplication_step",
+            "scene_index": 2,
+            "refusal_code": "MOTION_CONTRADICTS_NARRATION",
+            "repair_error": null,
+            "media_type_is": "motion_graphics",
+            "media_type_was": "motion_graphics",
+            "refusal_reason": "the template contradicts this scene's own narration — scene 2: the narration says 92, which column_multiplication_step{'top': 23, 'step': 0, 'phase': 'start', 'bottom': 14} can never draw — the largest number it produces is 23. The spec is pointed at a different sum from the words. Refused rather than rendered.",
+            "original_visual_description": "A worksheet with the problem 23 x 14 and the first partial product calculated."
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "scene_index": 4,
+            "refusal_code": "VISUAL_DEMANDS_ON_SCREEN_TEXT",
+            "repair_error": "scene 4: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: \"Can you identify the unit numbers and 10's in the problem 23 x 14?\". Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "media_type_is": "image",
+            "media_type_was": "image",
+            "refusal_reason": "the visual_description asks for on-screen text — ['23', '14', '10'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).",
+            "original_visual_description": "A worksheet with the problem 23 x 14 and the unit numbers and 10's highlighted."
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "scene_index": 5,
+            "refusal_code": "VISUAL_DEMANDS_ON_SCREEN_TEXT",
+            "repair_error": "scene 5: template 'place_value_split' needs narration about place value/tens place/ones place, and this scene's words contain none of them: 'Explain why 56 is different from 60 in terms of units and tens'. Refused rather than rendered — a template that animates a step the words never mention teaches over the top of them.",
+            "media_type_is": "image",
+            "media_type_was": "image",
+            "refusal_reason": "the visual_description asks for on-screen text — ['56', '60', 'the numbers'] — while the scene is 'image', a diffusion medium. Naming a number or asking for writing in prose is still asking for it to be drawn, and this pipeline has measured what comes back: '2? x 23.14' and '12 + 44 = 67 + 5'. Either author the scene as motion_graphics with a template, or describe the structure without the digits (RULE 1's deletion test).",
+            "original_visual_description": "The numbers 56 and 60 side by side"
+        },
+        {
+            "params": {
+                "top": 23,
+                "step": 1,
+                "phase": "complete",
+                "bottom": 14
+            },
+            "applied": true,
+            "template": "column_multiplication_step",
+            "scene_index": 6,
+            "refusal_code": "MOTION_CONTRADICTS_NARRATION",
+            "repair_error": null,
+            "media_type_is": "motion_graphics",
+            "media_type_was": "motion_graphics",
+            "refusal_reason": "the template contradicts this scene's own narration — scene 6: the narration says 230, which column_multiplication_step{'top': 23, 'step': 1, 'phase': 'start', 'bottom': 14} can never draw — the largest number it produces is 23. The spec is pointed at a different sum from the words. Refused rather than rendered.",
+            "original_visual_description": "A worksheet with the problem 23 x 14 and the second partial product calculated."
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "scene_index": 7,
+            "refusal_code": "MOTION_CONTRADICTS_NARRATION",
+            "repair_error": "scene 7: the narration announces 4 — '## Step 4: Add the Two Answers We’re almost finished!' — but column_addition_carry{'bottom': 92, 'phase': 'full', 'top': 230} never produces 4; it draws [3, 9, 12, 92, 230, 322]. The words and the animation would disagree in front of the learner. Refused rather than rendered.",
+            "media_type_is": "motion_graphics",
+            "media_type_was": "motion_graphics",
+            "refusal_reason": "the template contradicts this scene's own narration — scene 7: the narration announces 4 — '## Step 4: Add the Two Answers We’re almost finished!' — but column_addition_carry{'top': 92, 'phase': 'full', 'bottom': 230} never produces 4; it draws [3, 9, 12, 92, 230, 322]. The words and the animation would disagree in front of the learner. Refused rather than rendered.",
+            "original_visual_description": "A worksheet with the problem 23 x 14 and the final answer calculated."
+        },
+        {
+            "params": {
+            },
+            "applied": false,
+            "template": null,
+            "scene_index": 10,
+            "refusal_code": "NARRATION_TEXT_UNDECLARED",
+            "repair_error": "scene 10: the narration says 322, which highlight_and_hold{'bottom': 14, 'column': 1, 'label': 'result', 'top': 23} can never draw — the largest number it produces is 23. The spec is pointed at a different sum from the words. Refused rather than rendered.",
+            "media_type_is": "image",
+            "media_type_was": "image",
+            "refusal_reason": "the narration's content is written or numeric (['23', '14', '322']) and the scene is 'image', a diffusion medium that cannot draw a glyph reliably, while the scene declares nothing about where that content lives. v7 gives exactly two answers and requires one of them: author the scene as motion_graphics with a template + parameters (RULE 8), or set text_carried_by='narration' and describe the non-text situation. Ambiguity is the defect, not the medium.",
+            "original_visual_description": "A teacher standing in front of a clean, empty whiteboard, smiling at the audience."
+        }
+    ],
+    "refusals_after": 5,
+    "repair_refused": 5,
+    "judgment_before": 0,
+    "refusals_before": 8,
+    "mechanical_before": 8
+}
