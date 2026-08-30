@@ -243,6 +243,53 @@ class TestCallTwoCannotSeeThePractice:
         assert "does the LO-1 thing" in message          # the plan's brief
         assert "43" in message and "23" in message       # the spent numbers
 
+    def test_the_user_message_carries_the_motion_template_catalogue(self):
+        """⛔ ADDED AFTER THE FIRST ACCEPTANCE GENERATION MEASURED THE GAP.
+
+        Call 2's LO-1 assessment chose `motion_graphics` and carried no
+        template, and the gate refused it `MOTION_WITHOUT_TEMPLATE` — correctly,
+        and the model had no way to comply: the template names live in call 1's
+        42,365-character USER template, which call 2 has never seen. Telling a
+        model to name a template while withholding the list is asking for a
+        guess.
+
+        ⛳ AND IT IS READ FROM THE RENDERER'S REGISTRY, NOT TYPED OUT. Call 1's
+        template prose is a transcription of the same registry — *"Choose from
+        EXACTLY these four templates"* — and a transcription is an accurate
+        mirror with no authority (RC-P17). This one cannot go stale.
+        """
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.assessment_call import build_user_message
+        from shared.motion.templates import param_kinds, template_names
+
+        message = build_user_message(
+            outcomes=OUTCOMES,
+            assessment_plan={"LO-1": {"evidence_kind": "assess",
+                                      "learner_does": "multiplies unaided"}},
+            summary={"per_outcome": {}, "numbers_already_used": []})
+        assert template_names(), "the renderer registry is empty"
+        for name in template_names():
+            assert name in message, f"{name} is not offered to call 2"
+            for param in param_kinds(name):
+                assert param in message, f"{name}.{param} is not offered"
+
+    def test_the_catalogue_degrades_rather_than_failing_the_job(self):
+        """A worker that cannot import the motion package must still author
+        assessments; what it loses is the ability to author a MOTION one, and
+        the gate names that by itself."""
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        import design_core.assessment_call as ac
+
+        original = sys.modules.get("shared.motion.templates")
+        sys.modules["shared.motion.templates"] = None       # forces ImportError
+        try:
+            assert ac._motion_catalogue() == {}
+        finally:
+            if original is None:
+                sys.modules.pop("shared.motion.templates", None)
+            else:
+                sys.modules["shared.motion.templates"] = original
+
     def test_the_user_message_cannot_render_what_it_was_not_handed(self):
         """⛔ THE STRUCTURAL VERSION OF THE CLAIM. `build_user_message` takes
         three keyword arguments; there is no document in scope, so no future

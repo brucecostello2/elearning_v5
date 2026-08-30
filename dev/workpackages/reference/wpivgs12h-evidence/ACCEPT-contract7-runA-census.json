@@ -1,0 +1,1596 @@
+[
+  {
+    "gen": 1,
+    "label": "ACCEPT-contract7",
+    "scenes": 47,
+    "sourced": 42,
+    "designed": 5,
+    "assess": 3,
+    "practice": 4,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        44,
+        45,
+        46
+      ],
+      "LO-2": [
+        32,
+        33
+      ],
+      "LO-3": [
+        34,
+        35
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "practice",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "events": [
+      "hook",
+      "objective",
+      "objective",
+      "hook",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "hook",
+      "practice",
+      "assess",
+      "practice",
+      "assess",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "practice",
+      "practice",
+      "assess"
+    ],
+    "refusals": [
+      "MOTION_WITHOUT_TEMPLATE"
+    ],
+    "flags": [
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "evidence_in_scenes": 0,
+    "per_lo": {
+      "LO-1": {
+        "practice": 2,
+        "assess": 1
+      },
+      "LO-2": {
+        "practice": 1,
+        "assess": 1
+      },
+      "LO-3": {
+        "practice": 1,
+        "assess": 1
+      }
+    },
+    "both_present": true,
+    "assessed_once": true,
+    "evidence_origins": [
+      "sourced",
+      "designed",
+      "sourced",
+      "designed",
+      "designed",
+      "designed",
+      "designed"
+    ],
+    "duplication": [
+      {
+        "outcome_id": "LO-1",
+        "assessment": "Multiply 67 and 49 using the standard column algorithm.",
+        "practices": [
+          "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+        ],
+        "practice_containment": 0.7143,
+        "practice_duplicate": false,
+        "worked_containment": 0.1429,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-2",
+        "assessment": "Explain why a placeholder zero is necessary when multiplying 93 by 14, focusing on the tens digit of the second number.",
+        "practices": [
+          "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."
+        ],
+        "practice_containment": 0.5,
+        "practice_duplicate": false,
+        "worked_containment": 0.0,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "assessment": "Check your work: Verify the column alignment, partial products, and placeholder zero in the multiplication of 75 by 36.",
+        "practices": [
+          "Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+        ],
+        "practice_containment": 0.5833,
+        "practice_duplicate": false,
+        "worked_containment": 0.0,
+        "worked_duplicate": false
+      }
+    ],
+    "timing": {
+      "call1": {
+        "seconds": 526.4,
+        "usage": {
+          "prompt_tokens": 14876,
+          "total_tokens": 24973,
+          "completion_tokens": 10097,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop"
+      },
+      "call2": {
+        "seconds": 37.8,
+        "usage": {
+          "prompt_tokens": 2202,
+          "total_tokens": 2973,
+          "completion_tokens": 771,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop",
+        "user_chars": 2528
+      },
+      "total_seconds": 564.2,
+      "summary_given_to_call2": {
+        "per_outcome": {
+          "LO-1": {
+            "practice_scene_count": 2,
+            "numbers_used": [
+              "34",
+              "21",
+              "0",
+              "1"
+            ],
+            "step_reached": {
+              "motion_templates": [
+                "column_multiplication_step"
+              ],
+              "motion_phases": [
+                "start",
+                "complete"
+              ],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 120.0
+            },
+            "media_types": [
+              "motion_graphics"
+            ]
+          },
+          "LO-2": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "understand"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "image"
+            ]
+          },
+          "LO-3": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "image"
+            ]
+          }
+        },
+        "numbers_already_used": [
+          "2019",
+          "23",
+          "14",
+          "4",
+          "3",
+          "12",
+          "2",
+          "1",
+          "8",
+          "9",
+          "92",
+          "10",
+          "230",
+          "0",
+          "322",
+          "34",
+          "21"
+        ]
+      }
+    },
+    "practice_scenes": [
+      {
+        "scene_index": 32,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "understand",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 0,
+            "end": 120,
+            "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must provide a written explanation, which does not require a visual representation.",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A worksheet with a problem that requires multiplying by the tens digit, and space to write an explanation.",
+        "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      {
+        "scene_index": 34,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 0,
+            "end": 120,
+            "quote": "Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must provide a written check, which does not require a visual representation.",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A worksheet with a completed problem and space to check the work.",
+        "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+      },
+      {
+        "scene_index": 44,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The outcome requires the learner to apply the standard column algorithm, which is not fully demonstrated in the script.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must apply the standard column algorithm, which requires a step-by-step visual representation.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 34,
+          "bottom": 21,
+          "step": 0,
+          "phase": "start"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A worksheet with the problem 34 x 21 and space to work out the solution.",
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+      },
+      {
+        "scene_index": 45,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The outcome requires the learner to apply the standard column algorithm, which is not fully demonstrated in the script.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must apply the standard column algorithm, which requires a step-by-step visual representation.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 34,
+          "bottom": 21,
+          "step": 1,
+          "phase": "complete"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A worksheet with the problem 34 x 21 and space to work out the solution.",
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+      }
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46
+        ],
+        "assessed_by": [
+          44,
+          45,
+          46
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          31,
+          32,
+          33
+        ],
+        "assessed_by": [
+          32,
+          33
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          31,
+          34,
+          35
+        ],
+        "assessed_by": [
+          34,
+          35
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 33,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "understand",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must understand the concept of placeholder zeros in column multiplication.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must provide a clear explanation for the use of placeholder zeros.",
+        "generation_params": {
+          "numbers": [
+            "93",
+            "14"
+          ],
+          "focus": "tens_digit"
+        },
+        "duration_seconds": 90,
+        "visual_description": "A diagram showing the multiplication of 93 by 14, with the tens digit of the second number highlighted.",
+        "narration_text": "Explain why a placeholder zero is necessary when multiplying 93 by 14, focusing on the tens digit of the second number."
+      },
+      {
+        "scene_index": 35,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must apply their knowledge to check their own work in a multiplication problem.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must carefully review their work to identify any errors.",
+        "generation_params": {
+          "numbers": [
+            "75",
+            "36"
+          ],
+          "check": [
+            "column_alignment",
+            "partial_products",
+            "placeholder_zero"
+          ]
+        },
+        "duration_seconds": 90,
+        "visual_description": "A completed multiplication problem, with the partial products and final sum displayed.",
+        "narration_text": "Check your work: Verify the column alignment, partial products, and placeholder zero in the multiplication of 75 by 36."
+      },
+      {
+        "scene_index": 46,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must apply the standard column algorithm to multiply two 2-digit numbers.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must work through the multiplication problem step-by-step.",
+        "generation_params": {
+          "numbers": [
+            "67",
+            "49"
+          ],
+          "algorithm": "standard_column",
+          "partial_products": true,
+          "carries": true,
+          "final_sum": true
+        },
+        "duration_seconds": 120,
+        "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form.",
+        "narration_text": "Multiply 67 and 49 using the standard column algorithm."
+      }
+    ]
+  },
+  {
+    "gen": 2,
+    "label": "ACCEPT-contract7",
+    "scenes": 47,
+    "sourced": 42,
+    "designed": 5,
+    "assess": 3,
+    "practice": 4,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        41,
+        42,
+        43
+      ],
+      "LO-2": [
+        25,
+        26
+      ],
+      "LO-3": [
+        45,
+        46
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "practice",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "events": [
+      "hook",
+      "objective",
+      "objective",
+      "hook",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "guide",
+      "present",
+      "guide",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "practice",
+      "assess",
+      "guide",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "present",
+      "present",
+      "practice",
+      "practice",
+      "assess",
+      "feedback",
+      "practice",
+      "assess"
+    ],
+    "refusals": [
+      "MOTION_WITHOUT_TEMPLATE"
+    ],
+    "flags": [
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "evidence_in_scenes": 0,
+    "per_lo": {
+      "LO-1": {
+        "practice": 2,
+        "assess": 1
+      },
+      "LO-2": {
+        "practice": 1,
+        "assess": 1
+      },
+      "LO-3": {
+        "practice": 1,
+        "assess": 1
+      }
+    },
+    "both_present": true,
+    "assessed_once": true,
+    "evidence_origins": [
+      "sourced",
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "sourced",
+      "designed"
+    ],
+    "duplication": [
+      {
+        "outcome_id": "LO-1",
+        "assessment": "Multiply 67 and 49 using the standard column algorithm.",
+        "practices": [
+          "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."
+        ],
+        "practice_containment": 0.7143,
+        "practice_duplicate": false,
+        "worked_containment": 0.1429,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-2",
+        "assessment": "Why is a placeholder zero written in the ones column when multiplying 93 by 17?",
+        "practices": [
+          "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."
+        ],
+        "practice_containment": 0.7,
+        "practice_duplicate": false,
+        "worked_containment": 0.2,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "assessment": "Check your work for the multiplication problem 75 * 32.",
+        "practices": [
+          "Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+        ],
+        "practice_containment": 0.3333,
+        "practice_duplicate": false,
+        "worked_containment": 0.0,
+        "worked_duplicate": false
+      }
+    ],
+    "timing": {
+      "call1": {
+        "seconds": 457.6,
+        "usage": {
+          "prompt_tokens": 14876,
+          "total_tokens": 23769,
+          "completion_tokens": 8893,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop"
+      },
+      "call2": {
+        "seconds": 36.3,
+        "usage": {
+          "prompt_tokens": 2208,
+          "total_tokens": 2961,
+          "completion_tokens": 753,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop",
+        "user_chars": 2535
+      },
+      "total_seconds": 493.9,
+      "summary_given_to_call2": {
+        "per_outcome": {
+          "LO-1": {
+            "practice_scene_count": 2,
+            "numbers_used": [
+              "34",
+              "21",
+              "0",
+              "43",
+              "25"
+            ],
+            "step_reached": {
+              "motion_templates": [
+                "column_multiplication_step"
+              ],
+              "motion_phases": [
+                "start"
+              ],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 120.0
+            },
+            "media_types": [
+              "motion_graphics"
+            ]
+          },
+          "LO-2": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "understand"
+              ],
+              "total_seconds": 30.0
+            },
+            "media_types": [
+              "image"
+            ]
+          },
+          "LO-3": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 30.0
+            },
+            "media_types": [
+              "image"
+            ]
+          }
+        },
+        "numbers_already_used": [
+          "2019",
+          "23",
+          "14",
+          "4",
+          "3",
+          "12",
+          "2",
+          "1",
+          "8",
+          "9",
+          "92",
+          "10",
+          "230",
+          "0",
+          "322",
+          "34",
+          "21",
+          "43",
+          "25"
+        ]
+      }
+    },
+    "practice_scenes": [
+      {
+        "scene_index": 25,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "understand",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 0,
+            "end": 120,
+            "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must explain the concept, which requires a static image.",
+        "generation_params": null,
+        "duration_seconds": 30,
+        "visual_description": "A worksheet with a multiplication problem and a pencil.",
+        "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      {
+        "scene_index": 41,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The outcome requires the learner to multiply two 2-digit numbers, but the script only provides a single example.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must write the numbers and perform the multiplication, which requires motion graphics.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 34,
+          "bottom": 21,
+          "step": 0,
+          "phase": "start"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+      },
+      {
+        "scene_index": 42,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The outcome requires the learner to multiply two 2-digit numbers, but the script only provides a single example.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must write the numbers and perform the multiplication, which requires motion graphics.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 43,
+          "bottom": 25,
+          "step": 0,
+          "phase": "start"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+        "narration_text": "Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."
+      },
+      {
+        "scene_index": 45,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 0,
+            "end": 120,
+            "quote": "Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must check their work, which requires a static image.",
+        "generation_params": null,
+        "duration_seconds": 30,
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          22,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44
+        ],
+        "assessed_by": [
+          41,
+          42,
+          43
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          19,
+          20,
+          21,
+          23,
+          24,
+          25,
+          26,
+          44
+        ],
+        "assessed_by": [
+          25,
+          26
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          44,
+          45,
+          46
+        ],
+        "assessed_by": [
+          45,
+          46
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 26,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "understand",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must explain the reasoning behind the placeholder zero in column multiplication.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must provide a written explanation for the placeholder zero.",
+        "generation_params": {
+          "numbers": [
+            "93",
+            "17"
+          ],
+          "placeholder_zero_explanation": true
+        },
+        "duration_seconds": 60,
+        "visual_description": "A multiplication problem with 93 and 17 is displayed, with the ones column highlighted.",
+        "narration_text": "Why is a placeholder zero written in the ones column when multiplying 93 by 17?"
+      },
+      {
+        "scene_index": 43,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must apply the standard column algorithm to two 2-digit numbers.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must perform calculations and fill in the correct numbers.",
+        "generation_params": {
+          "numbers": [
+            "67",
+            "49"
+          ],
+          "algorithm": "standard_column",
+          "partial_products": true,
+          "final_sum": true
+        },
+        "duration_seconds": 120,
+        "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form, with empty spaces for the learner to fill in the partial products and final sum.",
+        "narration_text": "Multiply 67 and 49 using the standard column algorithm."
+      },
+      {
+        "scene_index": 46,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner must check their own work for a two-digit multiplication problem.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must verify the column alignment, partial products, and placeholder zero.",
+        "generation_params": {
+          "numbers": [
+            "75",
+            "32"
+          ],
+          "check_work": true
+        },
+        "duration_seconds": 60,
+        "visual_description": "A completed multiplication problem with 75 and 32 is displayed, with the learner's work shown.",
+        "narration_text": "Check your work for the multiplication problem 75 * 32."
+      }
+    ]
+  },
+  {
+    "gen": 3,
+    "label": "ACCEPT-contract7",
+    "scenes": 27,
+    "sourced": 21,
+    "designed": 6,
+    "assess": 3,
+    "practice": 4,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        18,
+        19,
+        20
+      ],
+      "LO-2": [
+        23,
+        24
+      ],
+      "LO-3": [
+        25,
+        26
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "events": [
+      "hook",
+      "objective",
+      "objective",
+      "hook",
+      "present",
+      "guide",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "guide",
+      "guide",
+      "present",
+      "hook",
+      "present",
+      "practice",
+      "practice",
+      "assess",
+      "transfer",
+      "transfer",
+      "practice",
+      "assess",
+      "practice",
+      "assess"
+    ],
+    "refusals": [
+      "MOTION_WITHOUT_TEMPLATE"
+    ],
+    "flags": [
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "PRACTICE_NOT_PREPARED",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "evidence_in_scenes": 0,
+    "per_lo": {
+      "LO-1": {
+        "practice": 2,
+        "assess": 1
+      },
+      "LO-2": {
+        "practice": 1,
+        "assess": 1
+      },
+      "LO-3": {
+        "practice": 1,
+        "assess": 1
+      }
+    },
+    "both_present": true,
+    "assessed_once": true,
+    "evidence_origins": [
+      "designed",
+      "designed",
+      "designed",
+      "sourced",
+      "designed",
+      "designed",
+      "designed"
+    ],
+    "duplication": [
+      {
+        "outcome_id": "LO-1",
+        "assessment": "Multiply 67 and 49 using the standard column algorithm.",
+        "practices": [
+          "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+        ],
+        "practice_containment": 0.7143,
+        "practice_duplicate": false,
+        "worked_containment": 0.1429,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-2",
+        "assessment": "Why do you need to write a placeholder zero in the ones column when multiplying 93 by 17?",
+        "practices": [
+          "Can you explain why we write a placeholder zero in the ones column when multiplying by the tens digit?"
+        ],
+        "practice_containment": 0.7273,
+        "practice_duplicate": false,
+        "worked_containment": 0.0,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "assessment": "Check your work on the multiplication problem 75 * 36 to ensure the column alignment, partial products, and placeholder zero are correct.",
+        "practices": [
+          "Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+        ],
+        "practice_containment": 0.5,
+        "practice_duplicate": false,
+        "worked_containment": 0.0,
+        "worked_duplicate": false
+      }
+    ],
+    "timing": {
+      "call1": {
+        "seconds": 279.8,
+        "usage": {
+          "prompt_tokens": 14876,
+          "total_tokens": 20350,
+          "completion_tokens": 5474,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop"
+      },
+      "call2": {
+        "seconds": 37.9,
+        "usage": {
+          "prompt_tokens": 2193,
+          "total_tokens": 2978,
+          "completion_tokens": 785,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop",
+        "user_chars": 2508
+      },
+      "total_seconds": 317.7,
+      "summary_given_to_call2": {
+        "per_outcome": {
+          "LO-1": {
+            "practice_scene_count": 2,
+            "numbers_used": [
+              "34",
+              "21",
+              "0",
+              "1"
+            ],
+            "step_reached": {
+              "motion_templates": [
+                "column_multiplication_step"
+              ],
+              "motion_phases": [
+                "start",
+                "complete"
+              ],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 120.0
+            },
+            "media_types": [
+              "motion_graphics"
+            ]
+          },
+          "LO-2": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "understand"
+              ],
+              "total_seconds": 30.0
+            },
+            "media_types": [
+              "image"
+            ]
+          },
+          "LO-3": {
+            "practice_scene_count": 1,
+            "numbers_used": [],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "image"
+            ]
+          }
+        },
+        "numbers_already_used": [
+          "2019",
+          "23",
+          "14",
+          "0",
+          "4",
+          "3",
+          "2",
+          "10",
+          "1",
+          "9",
+          "322",
+          "32",
+          "21",
+          "34"
+        ]
+      }
+    },
+    "practice_scenes": [
+      {
+        "scene_index": 18,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not contain a step-by-step example of multiplying two 2-digit numbers.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must attempt the multiplication problem with support.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 34,
+          "bottom": 21,
+          "step": 0,
+          "phase": "start"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+      },
+      {
+        "scene_index": 19,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not contain a step-by-step example of multiplying two 2-digit numbers.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The learner must attempt the multiplication problem with support.",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 34,
+          "bottom": 21,
+          "step": 1,
+          "phase": "complete"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A worksheet with a multiplication problem and a pencil, showing the first partial product.",
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."
+      },
+      {
+        "scene_index": 23,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "understand",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 0,
+            "end": 120,
+            "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must explain the concept of a placeholder zero.",
+        "generation_params": null,
+        "duration_seconds": 30,
+        "visual_description": "A worksheet showing a multiplication problem with a placeholder zero.",
+        "narration_text": "Can you explain why we write a placeholder zero in the ones column when multiplying by the tens digit?"
+      },
+      {
+        "scene_index": 25,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not contain a step-by-step example of checking work.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The learner must check their work.",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A completed worksheet with a multiplication problem.",
+        "narration_text": "Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form, the learner will compute their product using the standard column algorithm, producing both partial products with correct carries and a correct final sum.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22
+        ],
+        "assessed_by": [
+          18,
+          19,
+          20
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given the second row of a column multiplication, the learner will explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          16,
+          21,
+          22,
+          23,
+          24
+        ],
+        "assessed_by": [
+          23,
+          24
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit multiplication they have just attempted, the learner will check their own work by verifying the column alignment, each partial product, and the placeholder zero.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          16,
+          21,
+          22,
+          25,
+          26
+        ],
+        "assessed_by": [
+          25,
+          26
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 20,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to apply the standard column algorithm to multiply two 2-digit numbers.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "Allows the learner to work through the multiplication problem step-by-step.",
+        "generation_params": {
+          "numbers": [
+            "67",
+            "49"
+          ],
+          "algorithm": "standard_column",
+          "partial_products": true,
+          "final_sum": true
+        },
+        "duration_seconds": 120,
+        "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form, with empty spaces for partial products and the final sum.",
+        "narration_text": "Multiply 67 and 49 using the standard column algorithm."
+      },
+      {
+        "scene_index": 24,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "understand",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to explain the reasoning behind using a placeholder zero in column multiplication.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "Provides a visual representation of the multiplication problem to support the learner's explanation.",
+        "generation_params": {
+          "numbers": [
+            "93",
+            "17"
+          ],
+          "focus": "ones_column"
+        },
+        "duration_seconds": 60,
+        "visual_description": "A multiplication problem with 93 and 17 is displayed, with a focus on the ones column.",
+        "narration_text": "Why do you need to write a placeholder zero in the ones column when multiplying 93 by 17?"
+      },
+      {
+        "scene_index": 26,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to apply their understanding of column multiplication to check their own work.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "Provides a visual representation of the completed multiplication problem for the learner to review.",
+        "generation_params": {
+          "numbers": [
+            "75",
+            "36"
+          ],
+          "focus": "completed_work"
+        },
+        "duration_seconds": 90,
+        "visual_description": "A completed multiplication problem with 75 and 36 is displayed, with the learner's work shown.",
+        "narration_text": "Check your work on the multiplication problem 75 * 36 to ensure the column alignment, partial products, and placeholder zero are correct."
+      }
+    ]
+  }
+]

@@ -1,0 +1,3676 @@
+[
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "practice",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to apply the standard column algorithm, which is not fully demonstrated in the script."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "visual_description": "A worksheet with the problem 34 x 21 and space to work out the solution.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must apply the standard column algorithm, which requires a step-by-step visual representation.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 34,
+            "bottom": 21,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        },
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to apply the standard column algorithm, which is not fully demonstrated in the script."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "visual_description": "A worksheet with the problem 34 x 21 and space to work out the solution.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must apply the standard column algorithm, which requires a step-by-step visual representation.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 34,
+            "bottom": 21,
+            "step": 1,
+            "phase": "complete"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a problem that requires multiplying by the tens digit, and space to write an explanation.",
+          "media_type": "image",
+          "media_rationale": "The learner must provide a written explanation, which does not require a visual representation.",
+          "duration_seconds": 60,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A worksheet with a completed problem and space to check the work.",
+          "media_type": "image",
+          "media_rationale": "The learner must provide a written check, which does not require a visual representation.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to its blank left-hand side, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic and sets the tone, which requires a human presence.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to its blank left-hand side, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic and sets the tone, which requires a human presence.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to its blank left-hand side, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic and sets the tone, which requires a human presence.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to its blank left-hand side, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic and sets the tone, which requires a human presence.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "A whiteboard with the problem 23 x 14 written on it, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with the ones digits lined up and the tens digits lined up, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Draw a line underneath.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Draw a line underneath."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "Now we\u2019re ready to multiply.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we\u2019re ready to multiply."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "We start with the 4 in 14.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and a pointer pointing to the 4, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We start with the 4 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and a pointer pointing to the 4, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "4 times 3 equals 12.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Next, multiply 4 times 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Next, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "4 times 2 equals 8.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, and the result 8 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 2 equals 8."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "But remember, we carried a 1.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, and the result 8 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But remember, we carried a 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So we add it: 8 plus 1 equals 9.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, and the result 8 written below the tens column, and the result 9 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So we add it: 8 plus 1 equals 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Write down the 9.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 12 written below the line, with the 2 written underneath the ones column and the 1 carried above the tens column, and the result 8 written below the tens column, and the result 9 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Our first answer is 92.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our first answer is 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "Great! That means 23 times 4 equals 92.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Great! That means 23 times 4 equals 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we need to multiply by the 1 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 21,
+        "narration_text": "But there\u2019s something very important to remember.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But there\u2019s something very important to remember."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 22,
+        "narration_text": "That 1 isn\u2019t really just 1.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That 1 isn\u2019t really just 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 23,
+        "narration_text": "Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 24,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 25,
+        "narration_text": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "This zero is a placeholder. It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 26,
+        "narration_text": "Now multiply 1 times 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 27,
+        "narration_text": "1 times 3 equals 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, and the result 3 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 3 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 28,
+        "narration_text": "Then multiply 1 times 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, and the result 3 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 29,
+        "narration_text": "1 times 2 equals 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with a zero in the ones place, and the result 3 written below the tens column, and the result 2 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 2 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 30,
+        "narration_text": "Our second answer is 230.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our second answer is 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 31,
+        "narration_text": "That makes sense, because 23 times 10 equals 230.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That makes sense, because 23 times 10 equals 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 32,
+        "narration_text": "We\u2019re almost finished!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to its blank left-hand side, warm classroom light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic and sets the tone, which requires a human presence.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We\u2019re almost finished!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 33,
+        "narration_text": "We have two answers: 92 and 230.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We have two answers: 92 and 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 34,
+        "narration_text": "Now add them together.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 35,
+        "narration_text": "2 plus 0 equals 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 2 written below the ones column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "2 plus 0 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 36,
+        "narration_text": "9 plus 3 equals 12.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 2 written below the ones column, and the result 12 written below the tens column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "9 plus 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 37,
+        "narration_text": "Write down 2 and carry the 1.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 2 written below the ones column, and the result 12 written below the tens column, and the result 2 written below the hundreds column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2 and carry the 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 38,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 2 written below the ones column, and the result 12 written below the tens column, and the result 2 written below the hundreds column, and the result 3 written below the hundreds column, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 39,
+        "narration_text": "Our final answer is 322.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 322 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our final answer is 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 40,
+        "narration_text": "So 23 times 14 equals 322.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a line underneath, and the result 92 written below the line, and a new answer line with the result 230 written below the line, and the result 322 written below the line, in a clean and empty classroom, warm light",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a visual representation.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 0,
+          "end": 120,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The script jumps abruptly to a new problem without a clear transition.",
+        "reason": "The transition to the new problem is not necessary for the learning outcomes."
+      }
+    ],
+    "design_notes": "The lesson follows a step-by-step approach to teach the learner how to multiply two-digit numbers. The practice scenes are designed to provide the learner with opportunities to apply the standard column algorithm, and the assessment scenes are designed to evaluate the learner's understanding of the concept.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must apply the standard column algorithm to multiply two 2-digit numbers."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Multiply 67 and 49 using the standard column algorithm.",
+          "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must work through the multiplication problem step-by-step.",
+          "duration_seconds": 120,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "67",
+              "49"
+            ],
+            "algorithm": "standard_column",
+            "partial_products": true,
+            "carries": true,
+            "final_sum": true
+          },
+          "signal_spec": {
+            "hold_duration": 60,
+            "reveal_duration": 30
+          }
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must understand the concept of placeholder zeros in column multiplication."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why a placeholder zero is necessary when multiplying 93 by 14, focusing on the tens digit of the second number.",
+          "visual_description": "A diagram showing the multiplication of 93 by 14, with the tens digit of the second number highlighted.",
+          "media_type": "image",
+          "media_rationale": "The learner must provide a clear explanation for the use of placeholder zeros.",
+          "duration_seconds": 90,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "93",
+              "14"
+            ],
+            "focus": "tens_digit"
+          },
+          "signal_spec": {
+            "hold_duration": 60,
+            "reveal_duration": 30
+          }
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must apply their knowledge to check their own work in a multiplication problem."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work: Verify the column alignment, partial products, and placeholder zero in the multiplication of 75 by 36.",
+          "visual_description": "A completed multiplication problem, with the partial products and final sum displayed.",
+          "media_type": "image",
+          "media_rationale": "The learner must carefully review their work to identify any errors.",
+          "duration_seconds": 90,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "75",
+              "36"
+            ],
+            "check": [
+              "column_alignment",
+              "partial_products",
+              "placeholder_zero"
+            ]
+          },
+          "signal_spec": {
+            "hold_duration": 60,
+            "reveal_duration": 30
+          }
+        }
+      ]
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "practice",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to multiply two 2-digit numbers, but the script only provides a single example."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must write the numbers and perform the multiplication, which requires motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 34,
+            "bottom": 21,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        },
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The outcome requires the learner to multiply two 2-digit numbers, but the script only provides a single example."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must write the numbers and perform the multiplication, which requires motion graphics.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 43,
+            "bottom": 25,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.",
+          "visual_description": "A worksheet with a multiplication problem and a pencil.",
+          "media_type": "image",
+          "media_rationale": "The learner must explain the concept, which requires a static image.",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "Check each multiplication one at a time, make sure your numbers are lined up correctly, and remember that important zero when you start multiplying by the tens digit."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem.",
+          "media_type": "image",
+          "media_rationale": "The learner must check their work, which requires a static image.",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the approach, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene states the objective, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene begins the lesson, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "A worksheet with the problem 23 times 14.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A worksheet with the numbers 23 and 14.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene guides the learner to set up the problem, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Draw a line underneath.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to draw a line, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Draw a line underneath."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "Now we\u2019re ready to multiply.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene transitions to the multiplication step, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we\u2019re ready to multiply."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "We start with the 4 in 14.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 4.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to focus on the 4, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We start with the 4 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 4 and 3.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to multiply, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "4 times 3 equals 12.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 4, 3, and 12.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Write the 2 underneath the ones column, and carry the 1 above the tens column.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 2 and 1.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene guides the learner to write and carry, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write the 2 underneath the ones column, and carry the 1 above the tens column."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Next, multiply 4 times 2.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 4 and 2.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to multiply, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Next, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "4 times 2 equals 8.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 4, 2, and 8.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "4 times 2 equals 8."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "But remember, we carried a 1.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene reminds the learner of the carried 1, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But remember, we carried a 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So we add it: 8 plus 1 equals 9.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 8, 1, and 9.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So we add it: 8 plus 1 equals 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Write down the 9.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 9.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to write, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down the 9."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Our first answer is 92.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 92.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our first answer is 92."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to multiply by the 1, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now we need to multiply by the 1 in 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "But there\u2019s something very important to remember.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces a key concept, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "But there\u2019s something very important to remember."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 21,
+        "narration_text": "That 1 isn\u2019t really just 1.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene explains the concept, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "That 1 isn\u2019t really just 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 22,
+        "narration_text": "Because it\u2019s in the tens place, it means 10.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1 and the tens place.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene explains the concept, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Because it\u2019s in the tens place, it means 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 23,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the zero.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to write a zero, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So before we start, put a zero in the ones place on our new answer line."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 24,
+        "narration_text": "This zero is a placeholder.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the zero.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene explains the concept, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "This zero is a placeholder."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 25,
+        "narration_text": "It reminds us that we\u2019re multiplying by tens.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the zero and the tens place.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene explains the concept, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "It reminds us that we\u2019re multiplying by tens."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 26,
+        "narration_text": "Now multiply 1 times 3.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1 and 3.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to multiply, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 27,
+        "narration_text": "1 times 3 equals 3.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1, 3, and 3.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 3 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 28,
+        "narration_text": "Then multiply 1 times 2.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1 and 2.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to multiply, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 29,
+        "narration_text": "1 times 2 equals 2.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1, 2, and 2.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "1 times 2 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 30,
+        "narration_text": "Our second answer is 230.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 230.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our second answer is 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 31,
+        "narration_text": "We\u2019re almost finished!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene transitions to the final step, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We\u2019re almost finished!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 32,
+        "narration_text": "We have two answers: 92 and 230.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 92 and 230.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the results, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "We have two answers: 92 and 230."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 33,
+        "narration_text": "Now add them together.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 92 and 230.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to add, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Now add them together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 34,
+        "narration_text": "2 plus 0 equals 2.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 2 and 0.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "2 plus 0 equals 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 35,
+        "narration_text": "9 plus 3 equals 12.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 9, 3, and 12.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "9 plus 3 equals 12."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 36,
+        "narration_text": "Write down 2 and carry the 1.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 2 and 1.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner to write and carry, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Write down 2 and carry the 1."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 37,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 1, 2, and 3.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Then 1 plus 2 equals 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 38,
+        "narration_text": "Our final answer is 322.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 322.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Our final answer is 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 39,
+        "narration_text": "So 23 times 14 equals 322.",
+        "visual_description": "A worksheet with the numbers 23 and 14 and a line underneath, highlighting the 322.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the result, which requires a static image.",
+        "text_carried_by": "narration",
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "So 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 40,
+        "narration_text": "Nice work!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene provides feedback, which requires a static image.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "feedback",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Nice work!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 0,
+          "end": 120,
+          "quote": "Let\u2019s try another one"
+        },
+        "summary": "The script mentions trying another example, but it is not necessary for the lesson.",
+        "reason": "Not necessary for the lesson"
+      }
+    ],
+    "design_notes": "The lesson follows a step-by-step approach to teach double-digit multiplication. It starts with an introduction, followed by a worked example, and then provides practice opportunities for the learner. The lesson also includes feedback and assessment to ensure the learner understands the concept.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must apply the standard column algorithm to two 2-digit numbers."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Multiply 67 and 49 using the standard column algorithm.",
+          "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form, with empty spaces for the learner to fill in the partial products and final sum.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must perform calculations and fill in the correct numbers.",
+          "duration_seconds": 120,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "67",
+              "49"
+            ],
+            "algorithm": "standard_column",
+            "partial_products": true,
+            "final_sum": true
+          },
+          "signal_spec": {
+            "signal_type": "numeric_entry",
+            "signal_value": "partial_products_and_final_sum"
+          }
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must explain the reasoning behind the placeholder zero in column multiplication."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Why is a placeholder zero written in the ones column when multiplying 93 by 17?",
+          "visual_description": "A multiplication problem with 93 and 17 is displayed, with the ones column highlighted.",
+          "media_type": "image",
+          "media_rationale": "The learner must provide a written explanation for the placeholder zero.",
+          "duration_seconds": 60,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "93",
+              "17"
+            ],
+            "placeholder_zero_explanation": true
+          },
+          "signal_spec": {
+            "signal_type": "text_entry",
+            "signal_value": "explanation_for_placeholder_zero"
+          }
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The learner must check their own work for a two-digit multiplication problem."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work for the multiplication problem 75 * 32.",
+          "visual_description": "A completed multiplication problem with 75 and 32 is displayed, with the learner's work shown.",
+          "media_type": "image",
+          "media_rationale": "The learner must verify the column alignment, partial products, and placeholder zero.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "75",
+              "32"
+            ],
+            "check_work": true
+          },
+          "signal_spec": {
+            "signal_type": "text_entry",
+            "signal_value": "verification_of_work"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Multiplies two 2-digit numbers using the standard column algorithm, producing both partial products with correct carries and a correct final sum."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why a placeholder zero is written in the ones column before multiplying by the tens digit."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own work by verifying the column alignment, each partial product, and the placeholder zero."
+      }
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not contain a step-by-step example of multiplying two 2-digit numbers."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "visual_description": "A blank worksheet with a multiplication problem and a pencil.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must attempt the multiplication problem with support.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 34,
+            "bottom": 21,
+            "step": 0,
+            "phase": "start"
+          },
+          "signal_spec": null
+        },
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not contain a step-by-step example of multiplying two 2-digit numbers."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm.",
+          "visual_description": "A worksheet with a multiplication problem and a pencil, showing the first partial product.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The learner must attempt the multiplication problem with support.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "column_multiplication_step",
+            "top": 34,
+            "bottom": 21,
+            "step": 1,
+            "phase": "complete"
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "sourced",
+            "source_refs": [
+              {
+                "transcript_id": null,
+                "start": 0,
+                "end": 120,
+                "quote": "That 1 isn\u2019t really just 1. Because it\u2019s in the tens place, it means 10."
+              }
+            ],
+            "rewrite_of": null
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Can you explain why we write a placeholder zero in the ones column when multiplying by the tens digit?",
+          "visual_description": "A worksheet showing a multiplication problem with a placeholder zero.",
+          "media_type": "image",
+          "media_rationale": "The learner must explain the concept of a placeholder zero.",
+          "duration_seconds": 30,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not contain a step-by-step example of checking work."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero.",
+          "visual_description": "A completed worksheet with a multiplication problem.",
+          "media_type": "image",
+          "media_rationale": "The learner must check their work.",
+          "duration_seconds": 60,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the topic.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 50,
+              "quote": "Hi! Today, we\u2019re going to learn how to multiply two-digit numbers."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to the left.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the approach.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 50,
+              "end": 100,
+              "quote": "That might sound tricky, but don\u2019t worry. We\u2019re going to break it into small, easy steps."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to the right.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene states the objective.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "objective",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 100,
+              "end": 150,
+              "quote": "By the end, you\u2019ll be able to solve a problem like 23 times 14 all by yourself."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "Ready? Let\u2019s begin!",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, smiling.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene begins the lesson.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 150,
+              "end": 200,
+              "quote": "Ready? Let\u2019s begin!"
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Our problem is: 23 times 14.",
+        "visual_description": "A whiteboard with the problem 23 x 14 written on it.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 200,
+              "end": 250,
+              "quote": "Our problem is: 23 times 14."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with lines underneath.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 250,
+              "end": 300,
+              "quote": "Write 23 on top, and 14 underneath it. Make sure the ones digits line up, and the tens digits line up."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "Now we need to multiply by the ones digit, which is 4.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a pointer to the ones digit.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the next step.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 300,
+              "end": 350,
+              "quote": "Now we need to multiply by the ones digit, which is 4."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "First, multiply 4 times 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a calculation for 4 x 3.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 350,
+              "end": 400,
+              "quote": "First, multiply 4 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "Then, multiply 4 times 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a calculation for 4 x 2.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 400,
+              "end": 450,
+              "quote": "Then, multiply 4 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "Now we need to multiply by the tens digit, which is 10.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a pointer to the tens digit.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the next step.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 450,
+              "end": 500,
+              "quote": "Now we need to multiply by the tens digit, which is 10."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "First, multiply 1 times 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a calculation for 1 x 3.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 500,
+              "end": 550,
+              "quote": "First, multiply 1 times 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Then, multiply 1 times 2.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with a calculation for 1 x 2.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 1,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 550,
+              "end": 600,
+              "quote": "Then, multiply 1 times 2."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 13,
+        "narration_text": "Now we need to add the two answers together.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with the two answers.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the next step.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 600,
+              "end": 650,
+              "quote": "Now we need to add the two answers together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 14,
+        "narration_text": "First, add 2 and 0.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with the calculation for 2 + 0.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 650,
+              "end": 700,
+              "quote": "First, add 2 and 0."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 15,
+        "narration_text": "Then, add 9 and 3.",
+        "visual_description": "A whiteboard with the numbers 23 and 14 written on it, with the calculation for 9 + 3.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene guides the learner.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "start"
+        },
+        "instructional_event": "guide",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 700,
+              "end": 750,
+              "quote": "Then, add 9 and 3."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 16,
+        "narration_text": "So, 23 times 14 equals 322.",
+        "visual_description": "A whiteboard with the final answer.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the final answer.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 23,
+          "bottom": 14,
+          "step": 2,
+          "phase": "complete"
+        },
+        "instructional_event": "present",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 750,
+              "end": 800,
+              "quote": "So, 23 times 14 equals 322."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 17,
+        "narration_text": "Let\u2019s try another one.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, smiling.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene introduces the next example.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 800,
+              "end": 850,
+              "quote": "Let\u2019s try another one."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 18,
+        "narration_text": "Let\u2019s practice with 32 times 21.",
+        "visual_description": "A whiteboard with the problem 32 x 21 written on it.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 10,
+        "media_rationale": "The scene presents the problem.",
+        "text_carried_by": "narration",
+        "generation_params": {
+          "template": "column_multiplication_step",
+          "top": 32,
+          "bottom": 21,
+          "step": 0,
+          "phase": "start"
+        },
+        "instructional_event": "present",
+        "bloom_level": "apply",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 850,
+              "end": 900,
+              "quote": "Let\u2019s practice with 32 times 21."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 19,
+        "narration_text": "Remember the four-step trick: multiply by the ones digit, start the next line with a zero, multiply by the tens digit, and add the two answers together.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, gesturing to the left.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene summarizes the steps.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 900,
+              "end": 950,
+              "quote": "Remember the four-step trick: multiply by the ones digit, start the next line with a zero, multiply by the tens digit, and add the two answers together."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 20,
+        "narration_text": "With a little practice, multiplying two-digit numbers gets much easier.",
+        "visual_description": "A teacher standing in front of a clean, empty whiteboard, smiling.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene concludes the lesson.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 950,
+              "end": 1000,
+              "quote": "With a little practice, multiplying two-digit numbers gets much easier."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 120,
+          "end": 150,
+          "quote": "Because it\u2019s in the tens place, it means 10."
+        },
+        "summary": "The script explains the concept of a placeholder zero.",
+        "reason": "The concept is already covered in the practice scenes."
+      }
+    ],
+    "design_notes": "The lesson follows a linear structure, starting with an introduction and objective, followed by a step-by-step guide on how to multiply two-digit numbers, and concluding with a practice example and a summary of the four-step trick. The practice scenes are designed to help the learner apply the concept, and the summary at the end helps to reinforce the learning.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "understand",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to apply the standard column algorithm to multiply two 2-digit numbers."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Multiply 67 and 49 using the standard column algorithm.",
+          "visual_description": "Two 2-digit numbers, 67 and 49, are displayed in column form, with empty spaces for partial products and the final sum.",
+          "media_type": "motion_graphics",
+          "media_rationale": "Allows the learner to work through the multiplication problem step-by-step.",
+          "duration_seconds": 120,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "67",
+              "49"
+            ],
+            "algorithm": "standard_column",
+            "partial_products": true,
+            "final_sum": true
+          },
+          "signal_spec": {
+            "pose": 0,
+            "hold": 90,
+            "reveal": 30
+          }
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to explain the reasoning behind using a placeholder zero in column multiplication."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Why do you need to write a placeholder zero in the ones column when multiplying 93 by 17?",
+          "visual_description": "A multiplication problem with 93 and 17 is displayed, with a focus on the ones column.",
+          "media_type": "image",
+          "media_rationale": "Provides a visual representation of the multiplication problem to support the learner's explanation.",
+          "duration_seconds": 60,
+          "bloom_level": "understand",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "93",
+              "17"
+            ],
+            "focus": "ones_column"
+          },
+          "signal_spec": {
+            "pose": 0,
+            "hold": 45,
+            "reveal": 15
+          }
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to apply their understanding of column multiplication to check their own work."
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Check your work on the multiplication problem 75 * 36 to ensure the column alignment, partial products, and placeholder zero are correct.",
+          "visual_description": "A completed multiplication problem with 75 and 36 is displayed, with the learner's work shown.",
+          "media_type": "image",
+          "media_rationale": "Provides a visual representation of the completed multiplication problem for the learner to review.",
+          "duration_seconds": 90,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "numbers": [
+              "75",
+              "36"
+            ],
+            "focus": "completed_work"
+          },
+          "signal_spec": {
+            "pose": 0,
+            "hold": 60,
+            "reveal": 30
+          }
+        }
+      ]
+    }
+  }
+]

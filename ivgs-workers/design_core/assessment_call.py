@@ -140,6 +140,26 @@ def _fetch_prompt(config: Any) -> str:
         return ""
 
 
+def _motion_catalogue() -> Dict[str, Dict[str, str]]:
+    """``{template: {parameter: kind}}``, read from the renderer's own registry.
+
+    ⚠ RETURNS EMPTY ON ANY FAILURE rather than raising. A worker that cannot
+    import the motion package must still be able to author assessments; what it
+    loses is the ability to author a *motion* one, and the gate says so by name
+    (`MOTION_WITHOUT_TEMPLATE`) instead of the whole storyboard failing.
+    """
+    try:
+        from shared.motion.templates import param_kinds, template_names
+
+        return {name: param_kinds(name) for name in template_names()}
+    except Exception as exc:                                     # noqa: BLE001
+        logger.warning(
+            "assessment_call_motion_catalogue_unavailable",
+            error_type=type(exc).__name__, error=str(exc),
+        )
+        return {}
+
+
 def build_user_message(
     *,
     outcomes: Sequence[Dict[str, Any]],
@@ -183,6 +203,31 @@ def build_user_message(
             f"bloom: {step.get('bloom_levels') or 'unstated'}; "
             f"media: {facts.get('media_types') or 'unstated'}"
         )
+
+    # ⛔ THE MOTION TEMPLATE CATALOGUE, BUILT FROM THE REGISTRY. WP-IVGS-12h,
+    # added after the first acceptance generation, which is why it is here and
+    # not in the prompt: call 2's LO-1 assessment chose `motion_graphics` and
+    # carried NO template, and the gate refused it `MOTION_WITHOUT_TEMPLATE`.
+    # Correctly — and the model had no way to comply, because the template names
+    # live in call 1's USER template (42,365 characters of it) and call 2 has
+    # never seen that. Telling a model to name a template while withholding the
+    # list of templates is a prompt asking for a guess.
+    #
+    # ⛳ AND IT IS READ FROM `shared.motion.templates` RATHER THAN TYPED OUT,
+    # which is the one improvement on how call 1 is told. Call 1's template
+    # prose is a TRANSCRIPTION — *"Choose from EXACTLY these four templates"* —
+    # and a transcription is an accurate mirror with no authority (RC-P17). This
+    # list cannot go stale, and the renderer gap 12f and 12g both found on a
+    # division lesson shows up here as an ABSENCE the model can see rather than
+    # as a template it invents.
+    lines += ["", "THE MOTION TEMPLATES THE RENDERER ACTUALLY HAS. A "
+                  "`motion_graphics` scene MUST carry `generation_params` with "
+                  "one of these names and every parameter it declares, using "
+                  "YOUR numbers. If none of them can draw your assessment, it "
+                  "is not a motion scene — choose `image` or `talking_head`.", ""]
+    for name, kinds in _motion_catalogue().items():
+        params = ", ".join(f"{k}: {v}" for k, v in kinds.items())
+        lines.append(f"  {{\"template\": \"{name}\", {params}}}")
 
     spent = (summary or {}).get("numbers_already_used") or []
     lines += [
