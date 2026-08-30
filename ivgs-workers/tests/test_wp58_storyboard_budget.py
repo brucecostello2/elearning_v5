@@ -31,10 +31,26 @@ from config import WorkerConfig
 
 
 class TestScaledBudget:
-    def test_an_18_scene_storyboard_gets_more_than_the_floor(self):
-        """The scene count in the failing project. It must widen the budget."""
+    def test_a_large_storyboard_gets_more_than_the_floor(self):
+        """⚠ RE-AIMED BY WP-IVGS-12g, AND THE REASON IS THE FLOOR MOVING.
+
+        This asserted that 18 scenes — the count in the project WP-58 was named
+        for — widens the budget past the floor. It no longer does, and nothing is
+        broken: 2048 + 18*400 = 9,248, and 12g raised the floor to 12,288 after
+        design-contract-6 truncated a generation at 8,192. The floor now COVERS
+        an 18-scene storyboard outright, which is the mechanism working.
+
+        The claim WP-58 actually makes is that a fixed ceiling is a latent
+        defect and the budget must scale with what is being asked for. That is
+        asserted here where it still bites — at the scene counts big enough to
+        need it — rather than at a number the floor has overtaken.
+        """
         c = WorkerConfig()
-        assert c.storyboard_max_tokens_for(18) > c.vllm.storyboard_max_tokens
+        floor = c.vllm.storyboard_max_tokens
+        assert c.storyboard_max_tokens_for(18) >= 2048 + 18 * c.vllm.storyboard_tokens_per_scene
+        widened = [n for n in range(1, 200) if c.storyboard_max_tokens_for(n) > floor]
+        assert widened, "the budget never widens past its floor at any scene count"
+        assert c.storyboard_max_tokens_for(widened[0]) > floor
 
     def test_the_budget_covers_the_measured_18_scene_payload_several_times_over(self):
         """10,831 chars ~ 2,708 tokens at 4 chars/token — job bd99fe37, the
@@ -50,14 +66,51 @@ class TestScaledBudget:
         for n in (None, 0, -5, 1, 2, 6):
             assert c.storyboard_max_tokens_for(n) >= floor, f"narrowed at {n}"
 
+    #: ⛔ THE REAL MEASURED INPUT, WP-IVGS-12g, and it is not what this file
+    #: assumed. Every acceptance generation under design-contract-6 reported
+    #: `prompt_tokens=14861` on the operator's own 3,008-byte script — where
+    #: this constant guessed 10,000 as a FIVEFOLD worst case over a documented
+    #: ~2,000. The stage-2 SYSTEM prompt alone has gone 7,788 -> 19,217
+    #: characters across v1..v7 and nothing was watching the input side while it
+    #: did. Measured, on the pinned engine, not estimated.
+    MEASURED_INPUT_TOKENS = 14_861
+    SERVING_CONTEXT = 32_768          # node-02: vllm --max-model-len 32768
+
     def test_it_is_capped_inside_the_serving_context(self):
         """node-02 serves --max-model-len 32768 and this budget is OUTPUT only.
         Asking for more than the context holds turns a long course into a hard
         failure instead of a slow one."""
         c = WorkerConfig()
-        worst_case_input = 10_000  # measured ~2,000; 5x transcript
         for n in (50, 200, 10_000):
-            assert worst_case_input + c.storyboard_max_tokens_for(n) < 32_768
+            assert (self.MEASURED_INPUT_TOKENS
+                    + c.storyboard_max_tokens_for(n)) < self.SERVING_CONTEXT
+
+    def test_the_context_headroom_is_stated_and_not_merely_survived(self):
+        """⛔ WP-IVGS-12g. THE BINDING CONSTRAINT IS NOW THE INPUT, NOT THIS KNOB.
+
+        At the measured prompt size the whole cap still fits — 14,861 + 16,384 =
+        31,245 against 32,768 — but by 1,523 tokens, and the prompt is the thing
+        that has been growing every package. This asserts the margin OUT LOUD so
+        the next prompt version that eats it fails here, in a test naming the
+        cause, instead of in production as a truncated generation.
+
+        It is also why 12g set the floor to 12,288 rather than to the cap:
+        14,861 + 12,288 = 27,149 leaves 5,619 tokens, which is a longer script's
+        worth of room AND leaves the scaling path something to widen with.
+        """
+        c = WorkerConfig()
+        at_floor = self.MEASURED_INPUT_TOKENS + c.vllm.storyboard_max_tokens
+        at_cap = self.MEASURED_INPUT_TOKENS + c.vllm.storyboard_max_tokens_cap
+        assert at_cap < self.SERVING_CONTEXT, (
+            f"the CAP no longer fits the serving context: {at_cap} >= "
+            f"{self.SERVING_CONTEXT}. Raise --max-model-len on node-02 or cut "
+            f"the stage-2 prompt; do not lower the cap silently."
+        )
+        assert self.SERVING_CONTEXT - at_floor >= 4_000, (
+            f"only {self.SERVING_CONTEXT - at_floor} tokens of headroom at the "
+            f"FLOOR. A longer script than the operator's 3,008-byte one will "
+            f"not fit. The stage-2 prompt has grown every package since v1."
+        )
 
     def test_it_scales_monotonically(self):
         c = WorkerConfig()

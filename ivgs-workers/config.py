@@ -111,7 +111,7 @@ class VLLMConfig:
     # changed nothing on the node where stage 2 actually runs. That 2048 is what
     # truncated job e408515a four times (~8 KB of JSON each attempt).
     #
-    # 8192 is sized from measurement, not habit:
+    # 8192 was sized from measurement, not habit:
     #   input  ~2,000 tokens  (stage2 templates 5,066 chars ~1,266; the refined
     #                          transcript 2,241 chars ~560; project context ~100)
     #   output  8,192 tokens
@@ -120,8 +120,43 @@ class VLLMConfig:
     #          a transcript several times longer than this one.
     # 2048 demonstrably could not hold a 5-minute storyboard; 8192 is 4x that
     # with the context to spare.
+    #
+    # ⛔ WP-IVGS-12g RAISED THE FLOOR TO 12,288, AND THE INPUT FIGURE ABOVE IS
+    # NOW STALE BY A FACTOR OF SEVEN. Both halves are measured, on the pinned
+    # engine, against the operator's own 3,008-byte script.
+    #
+    # WHAT TRUNCATED. The first acceptance generation under design-contract-6
+    # hit this ceiling exactly — `finish_reason=length`, 8,192 completion
+    # tokens, 28,977 characters of JSON and no parseable document. One
+    # generation in three. ⚠ AND IT IS NOT RC-Q12's WHITESPACE CORRIDOR: the
+    # emission was 10.6% whitespace, the ordinary ratio for indented JSON, and
+    # the probes for both new array shapes were run against that corridor before
+    # the contract shipped and did not enter it. This was a plain overrun.
+    #
+    # WHY THE EMISSION GREW, and it is contract-6's own doing:
+    #   the evidence layer went from ~2,040 characters (contract-5's three
+    #   assessments) to ~3,950-4,400 (three assessments AND three practice
+    #   scenes, each a full scene object) — it roughly DOUBLED, by construction;
+    #   and with `practice`/`assess` removed from `scenes[]` the expository arc
+    #   itself lengthened, 31 and 37 scenes where contract-5 emitted 10 to 14.
+    #
+    # ⚠ THE INPUT SIDE IS THE PART NOBODY WAS WATCHING. Measured prompt_tokens
+    # on every generation above: **14,861** — not the ~2,000 this comment has
+    # claimed since WP-37. The stage-2 SYSTEM prompt alone has gone 7,788 ->
+    # 19,217 characters across v1..v7 and the input estimate here was never
+    # revisited. So the real arithmetic against node-02's 32,768 is:
+    #
+    #     input  14,861   output 12,288   total 27,149   headroom 5,619
+    #
+    # ⛔ THAT HEADROOM, NOT THIS KNOB, IS THE BINDING CONSTRAINT NOW, and it is
+    # why the floor is 12,288 and NOT the 16,384 cap. Maxing the floor would fit
+    # today (14,861 + 16,384 = 31,245, 1,523 spare), leave `storyboard_max_
+    # tokens_for` nothing left to widen for a genuinely large storyboard, and
+    # put the next longer script straight into the context wall instead of into
+    # a budget that can still grow. 12,288 covers the largest emission measured
+    # (7,693 completion tokens) with 60% to spare and keeps the scaling path.
     storyboard_max_tokens: int = _env(
-        "IVGS_VLLM_STORYBOARD_MAX_TOKENS", 8192, int
+        "IVGS_VLLM_STORYBOARD_MAX_TOKENS", 12288, int
     )
     # WP-58 Task 5. The FLOOR above is a fixed number, and a fixed number is the
     # same latent defect one course-size larger: WP-37's truncation happened
