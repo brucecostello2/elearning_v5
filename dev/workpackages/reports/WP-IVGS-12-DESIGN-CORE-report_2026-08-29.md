@@ -2707,7 +2707,7 @@ fi
 | ⛔ **THE BINDING CONSTRAINT IS NOW THE PROMPT, NOT THE BUDGET** | Measured `prompt_tokens = 14,861`. The knob's own comment has claimed *"input ~2,000"* since WP-37 and a WP-58 test guessed 10,000 as a **fivefold** worst case. Both stale. **12f's residue #5 is no longer unmeasured** |
 | **No migration, and that is a finding** | Contract-6 adds **zero** storage surface. Proved by a database round trip, not asserted |
 | **Tests** | API **1682 → 1727 passed, 0 failed**. Workers identical to baseline. **ZERO NEW FAILURES.** Both baselines re-measured in this environment from a worktree at `2c3c97d` |
-| **Held** | **3 commits.** Nothing pushed |
+| **Held** | **2 commits.** Nothing pushed by me — ⚠ **the operator pushed the first three mid-session**, measured at the ref at close |
 
 ---
 
@@ -3403,11 +3403,12 @@ fi
 | ⛳ **ACCEPTANCE MET, EIGHTH ATTEMPT, RUN B** | **ZERO hard refusals 3/3.** Near-duplicate check GREEN 3/3 and proven RED on 12g's banked duplicates (12 of 12 mandated refuse). Census 127/109/18/9/12. Per-LO practice AND assess 3/3, exactly one assess each 3/3, **0 evidence events in call 1's own `scenes[]` 3/3**. Regressions held |
 | ⛔ **AND RUN A DID NOT MEET IT — 1 REFUSAL IN EVERY GENERATION, AND IT WAS MINE** | `MOTION_WITHOUT_TEMPLATE`, 3 of 3. Call 2's prompt orders it to name a motion template and **call 2 had never been shown the list** — the four names live in call 1's 42,365-character user template. Fixed by a code-built catalogue read from the renderer's own registry, fleet rebuilt, acceptance re-run. **Both runs reported; neither is preferred** |
 | **Done** | **design-contract-7**: `assessment_scenes` removed from call 1 and authored by a SECOND engine call from the outcomes, the plan and a code-built practice summary. **`EVIDENCE_NEAR_DUPLICATE`**, a hard refusal, calibrated on 18 banked outcome-pairs. **Prompt v8** (four phrases MOVED, audited) and **`assessment_authoring_system` v1**, its own lineage. **Migration 0053**, exercised both directions |
-| ⛔ **RC-Q13 ROWED, NOT FIXED — AND IT IS DEPLOYED TODAY, NOT INTRODUCED BY THIS PACKAGE** | AD-05 declares stage 2 at soft 270 / hard 300, so the client budget is **240 s**. Measured stage-2 wall clock, this package and 12g's own banked logs: **280–564 s. Ten of twelve generations exceed the client budget and eight exceed the Celery hard limit.** Contract-6 as shipped would time out in production on most jobs while its acceptance passed. Moving a declared conformance number is the operator's |
-| ⚠ **A NEW DEGENERACY, ONE LAYER IN** | LO-1's **two practice scenes are the same sentence** in 4 of 6 generations. The belt is scoped by the order to the assessment and does not look at practice-vs-practice. Rowed as **RC-Q9h** with the quotes — it is not the RC-Q9g residue the order reserved, it is a new one the fix uncovered |
-| **Tests** | API **1727 → 1763 passed, 0 failed**. Workers **identical BY NAME** to the baseline measured at `eafbf9f` in this environment. **ZERO NEW FAILURES** |
-| ⚠ **Four tags for two code commits, and two of them are my slips** | `v5.38.0` shipped with `IVGS_BUILD_REF` unset and reported its version as `"unknown"`; `v5.38.1` carried the wrong ref and reported itself as `v5.38.0`; **`v5.38.2` is correct**; **`v5.38.3` adds the catalogue fix and is what the fleet runs.** ⛳ No tag was ever rebuilt — different bytes got different tags, which is the RC-Q8 discipline. Recorded because a tag that misnames itself is that same class |
-| **Held** | **3 commits.** Nothing pushed |
+| ✅ **RC-Q13 — RULED BY THE OPERATOR AND ENCODED. Closed.** | It was rowed on the measurement — **135–564 s against a 240 s client budget, ten of thirteen over it and eight over the Celery hard limit**, a state stage 2 had been deployed in since contract-5. **Ruled to soft 900 / hard 960 ON THAT TABLE, not raised to pass**, encoded in `policies.py` alone and carried to the live tasks by `apply_declared_time_limits` — no decorator, no frozen body, no freeze exception. Derived client budget **870**, split **740 / 130**. `start_to_close_s` 5 m → 30 m, forced by an invariant the tree already asserts. **Visibility timeout 7,200 ≫ 960, checked over 30 tasks in every worker.** Deployed at `v5.38.4` and **read back off the live task objects on all four nodes**. §12h.16 |
+| ⚠ **A NEW DEGENERACY, ONE LAYER IN — RC-Q9h, REGISTERED AND SCHEDULED** | LO-1's **two practice scenes are the same sentence** in 4 of 6 generations. Not the RC-Q9g residue the order reserved — a new one the fix uncovered. **Operator disposition: the belt widens to practice-vs-practice per LO in 12i; not a blocker, because the gate already shows a doubled practice as two `practice` rows with the same narration** (verified against the running API). §12h.17 |
+| ⚠ **RC-Q14, REGISTERED — and it falsifies a claim 12f and 12g both made** | `test_wp60_orphan_guard.py` is **flaky in BOTH trees**: the baseline at `eafbf9f` gives 18 then 20 failures on consecutive whole-suite runs, and a *different subset* fails each time. So *"failures are identical in every run"* is false, and the workers baseline is **"18 plus a flaky file"**. 12h compares the failure sets **by name** with that file isolated. §12h.17 |
+| **Tests** | API **1727 → 1771 passed, 0 failed**. Workers **identical BY NAME** to the baseline measured at `eafbf9f` in this environment. **ZERO NEW FAILURES.** ⛔ One test failed first and proved its own point: it pinned the literals `270`/`300` — a second copy of the policy table, inside a test whose subject is that second copies go stale |
+| ⚠ **Five tags for three code commits, and two of them are my slips** | `v5.38.0` shipped with `IVGS_BUILD_REF` unset and reported its version as `"unknown"`; `v5.38.1` carried the wrong ref and reported itself as `v5.38.0`; **`v5.38.2` is correct**; `v5.38.3` adds the catalogue fix; **`v5.38.4-rcq13-declared-budget` carries the RC-Q13 ruling and is what the fleet runs.** ⛳ No tag was ever rebuilt — different bytes got different tags, which is the RC-Q8 discipline. Recorded because a tag that misnames itself is that same class |
+| **Held** | **2 commits.** Nothing pushed by me — ⚠ **the operator pushed the first three mid-session**, measured at the ref at close |
 
 ---
 
@@ -4229,19 +4230,32 @@ scene rows land byte-for-byte where contract-6's did.
 
 ## 12h.14 The tree, and the operator's push block
 
-**Held: 3 commits. Nothing pushed by me. Working tree clean. No frozen stage body
-was touched. No freeze exception was requested.**
+**Held: 2 commits. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched. No freeze exception was requested — and the RC-Q13 ruling needed
+none, because `apply_declared_time_limits` is the seam §3 sanctions.**
 
-    d8da66c  feat(wp-ivgs-12h): the two-call design — evidence gets its own breath
-             [tag v5.38.2-two-call-design]
-    a41d642  fix(wp-ivgs-12h): call 2 was told to name a template and never shown
-             the list                       [tag v5.38.3-two-call-design]
-    <3rd>    docs(wp-ivgs-12h): the acceptance, RC-Q9g closed, and RC-Q13
+The package made FIVE commits. ⚠ **The operator pushed the first three while the
+ruling was being executed**, so the held count at close is 2:
 
-⚠ **Three, and the middle one is not bookkeeping:** the missing template catalogue
-was found by the acceptance run the first commit's images were built for, so it
-could not have been in that commit; and the acceptance can only be written after
-both.
+    d8da66c  feat(wp-ivgs-12h): the two-call design       [tag v5.38.2] ← PUSHED
+    a41d642  fix(wp-ivgs-12h): the motion catalogue        [tag v5.38.3] ← PUSHED
+    34a2019  docs(wp-ivgs-12h): the acceptance, RC-Q9g closed            ← PUSHED
+    a17b7f0  fix(wp-ivgs-12h): RC-Q13 ruled  [tag v5.38.4-rcq13-declared-budget]
+    <5th>    docs(wp-ivgs-12h): the RC-Q13 ruling, and two rows registered
+
+⛔ **AND THIS IS THE §0 RULE EARNING ITS KEEP FOR THE FIFTH SESSION RUNNING.** I
+drafted this section saying 4, then 5. `git rev-list --count origin/main..HEAD`
+after a `git fetch` at close says **2**, because `origin/main` moved under me
+mid-session. **The number in the block below is the measured one.** Both tags on
+the remote (`v5.38.2`, `v5.38.3`) are already pushed; only
+`v5.38.4-rcq13-declared-budget` is held with its commit.
+
+⚠ **None of the five is padding.** The catalogue fix was found by the acceptance
+the first commit's images were built for; the acceptance can only be written after
+both; and **RC-Q13 was ruled by the operator after the report was filed**, which
+is why the ruling is a fourth commit and its write-up a fifth. Every code commit
+is tagged and its SHA is baked into a deployed image's `IVGS_BUILD_SHA`, so none
+can be squashed after the fact.
 
 ⚠ **I DRAFTED THIS SECTION SAYING TWO AND THEN COULD NOT MAKE IT TRUE.** The plan
 was to fold the report into `a41d642`. That commit is tagged and the RUNNING
@@ -4259,7 +4273,8 @@ because a tag that misnames itself is the RC-Q8 class:
 | `v5.38.0-two-call-design` | `d8da66c` | ⛔ built with `IVGS_BUILD_REF` unset; `/api/v1/version` reported `"unknown"`. Deployed ~4 minutes |
 | `v5.38.1-two-call-design` | `d8da66c` | ⛔ correct bytes, WRONG ref — it reported `build_ref: v5.38.0`. Deployed ~3 minutes |
 | `v5.38.2-two-call-design` | `d8da66c` | ✅ correct. Deployed, verified, prompts published against it |
-| **`v5.38.3-two-call-design`** | **`a41d642`** | ✅ **the fleet is on this one**, the catalogue fix |
+| `v5.38.3-two-call-design` | `a41d642` | ✅ correct. The acceptance's run B ran against it |
+| **`v5.38.4-rcq13-declared-budget`** | **`a17b7f0`** | ✅ **the fleet is on this one** — the RC-Q13 ruling, soft 900 / hard 960 |
 
 ⛳ **I DID NOT REBUILD A TAG.** `v5.38.0`'s bytes and `v5.38.1`'s bytes differ, so
 they got different tags rather than one tag meaning two things — which is
@@ -4269,8 +4284,8 @@ deployed from `v5.38.0` or `v5.38.1`.**
 
 ⚠ **`ivgs-infra/.env` is MODIFIED AND IS NOT MINE TO COMMIT** on node-01 and on
 nodes 02, 03 and 04: the deploy moved `IVGS_API_TAG` and `IVGS_WORKERS_TAG` to
-`v5.38.3-two-call-design`. It is gitignored and §3 names it never-touch for its
-token. **The rollback is the two previous values — `v5.37.7-evidence-structural`
+`v5.38.4-rcq13-declared-budget`. It is gitignored and §3 names it never-touch for
+its token. **The rollback is the two previous values — `v5.37.7-evidence-structural`
 on all four nodes** — written here because the scratchpad does not survive.
 
 ⚠ **AND MIGRATION 0053 IS APPLIED TO PRODUCTION AND IS AHEAD OF `origin/main`
@@ -4282,15 +4297,14 @@ unaffected; a full rollback would run `alembic downgrade 0052`.
 ```
 # node-01, as the operator
 cd /opt/ivgs
-EXPECTED=3
+EXPECTED=2
 ACTUAL=$(git rev-list --count origin/main..HEAD)
 if [ "$ACTUAL" -ne "$EXPECTED" ]; then
   echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
   git log --oneline origin/main..HEAD
 else
   git push origin main \
-    && git push origin v5.38.2-two-call-design \
-    && git push origin v5.38.3-two-call-design
+    && git push origin v5.38.4-rcq13-declared-budget
 fi
 ```
 
@@ -4338,3 +4352,203 @@ fi
 11. ⚠ **The frontend was not rebuilt or redeployed**, so `/api/v1/version` reports
     `v5.38.3` while `ivgs-nextjs` runs `v5.37.0-design-core`. Correct, and worth
     knowing before reading a version off a screen.
+
+---
+
+## 12h.16 RC-Q13 RULED — the declared budget rises to meet the measured work
+
+**Operator ruling, 2026-08-30, taken on §12h.6's table. Encoded, deployed to
+nodes 01-04, and verified on the live task objects.**
+
+⛳ **AND IT IS A RULING AGAINST THE TABLE, NOT A RAISE-TO-PASS.** The distinction
+is the ruling, and it is written into the code beside the constant so the next
+reader gets it without this report: a limit moved until failures stop is tuning;
+a limit moved to cover a distribution somebody measured is a policy.
+
+    135  281  366  395  427  457  476  477  488  491  503  526  564   seconds
+    └ min                                                        max ┘
+
+### What changed, and where — ONE place
+
+| | was | is | why |
+|---|---|---|---|
+| `celery_soft_time_limit_s` | 270 | **900** | 1.6× the largest measurement (564 s) |
+| `celery_time_limit_s` | 300 | **960** | the same 60 s soft-to-hard gap stage 7 uses |
+| `start_to_close_s` | 5 m | **30 m** | ⛔ **forced, see below** |
+| derived client budget | 240 s | **870 s** | `soft − 30`, unchanged derivation |
+| per-call split | 180 / 60 | **740 / 130** | and the share moved, see below |
+
+⛳ **ENCODED THROUGH THE WP-IVGS-08 DECLARED-POLICY MECHANISM AND NOWHERE ELSE.**
+`temporal_pipeline/policies.py` is the one definition;
+`celery_app.apply_declared_time_limits` pushes it onto the live task objects
+through `task_annotations`. **No decorator was edited, no frozen stage body was
+touched, and no freeze exception was needed** — which is the entire reason that
+mechanism exists (`stage2_storyboard.py:548-549` still says 120/150 and is
+inert). The measurement table is quoted *beside the constant*, not cited from it.
+
+### ⛔ `start_to_close_s` 5 m → 30 m, AND IT IS FORCED
+
+`test_start_to_close_is_never_below_todays_hard_limit` requires
+`start_to_close_s >= celery_time_limit_s`. Appendix C's 5 m cleared the old 300 s
+hard limit and does not clear 960. Leaving it would enshrine, as the Temporal
+migration's **conformance target**, an activity timeout that kills work the Celery
+task is now allowed to finish — the mirror-with-no-authority defect that file's
+own docstring exists to describe.
+
+⛳ **30 minutes is the table's own answer for this pair**, not an invented ratio:
+stage 7 is the only other row declaring soft 900 / hard 960, and Appendix C gives
+it `s2c 30 m`.
+
+### ⛳ THE VISIBILITY-TIMEOUT CHECK THE RULING ASKED FOR
+
+    IVGS_BROKER_VISIBILITY_TIMEOUT = 7200
+    stage-2 hard time_limit        =  960     960 << 7200          ✅
+    tallest hard limit in the table = 3900     (stage 3, video)    ✅ unchanged
+
+**960 is not merely under 7,200 — it is not even the tallest row.** Stage 3's
+video activity at 3,900 s is what set 7,200 in the first place, and this ruling
+does not approach it. A hard `time_limit` reaching the visibility timeout is the
+*"long tasks can execute twice"* trap (`dev/CLAUDE.md` §7): the broker re-delivers
+a task that is still running.
+
+⛳ **CHECKED THREE WAYS, not asserted once.** `check_visibility_timeout` is run
+over all **30** registered tasks inside every worker container (below); a new test
+asserts the same relation; and `assert_visibility_timeout_covers_time_limits`
+already aborts worker startup if it is ever violated.
+
+### ⚠ ONE DISCREPANCY WITH THE RULING'S WORDING, STATED RATHER THAN RESOLVED
+
+The ruling names **"stage-2 client budget 900s"**. Deriving from a soft limit of
+900 gives **870**, because `STORYBOARD_CLIENT_TIMEOUT_HEADROOM_S` is 30 and it is
+what makes the CLIENT lose the race. That is not a rounding choice: a
+`VLLMTimeoutError` is a named, retryable, logged failure, while
+`SoftTimeLimitExceeded` kills the task mid-write and strands the job row
+`running` — **RC-P16, which then blocks both `/resume` and WP-59 deletion.**
+Setting the client to a literal 900 against a soft limit of 900 ties that race.
+
+⛳ **The fix, if 900 is wanted literally, is one number in one file and no code
+changes: declare soft 930.** That is the point of deriving rather than
+transcribing, and it is the operator's call. **870 is what is deployed.**
+
+### ⚠ AND ONE CONSTANT OF MINE MOVED, BECAUSE THE RULING EXPIRED ITS ARGUMENT
+
+`ASSESSMENT_CALL_BUDGET_SHARE` **0.25 → 0.15**. The 25% was picked before either
+call had been measured and was argued from a premise the ruling removes —
+*"starving the call that fixes RC-Q9g to buy call 1 forty more seconds is the
+wrong trade WHEN CALL 1 IS ALREADY OVER BUDGET."* Call 1 is no longer over budget.
+Against six measurements of each:
+
+| | measured max | at 0.25 | **at 0.15** |
+|---|---|---|---|
+| call 1 | 526 s | 652 s (1.24×) | **740 s (1.41×)** |
+| call 2 | 41 s | 218 s (5.3×) | **130 s (3.17×)** |
+
+At 0.25 a longer script would fail call 1 **with a third of the budget sitting
+unspent in a share nothing can use.** ⚠ It is still a fraction and not a literal,
+deliberately: a hard-coded 130 goes stale the moment the declared budget moves
+again, and the 45 s floor still catches the small-budget case.
+
+### VERIFIED ON THE LIVE TASK OBJECTS, EVERY WORKER, ALL FOUR NODES
+
+A verified tag proves which bytes are there and not what they do. Read back from
+inside each running container:
+
+    ivgs-celery-default          LIVE TASK soft/hard = 900 / 960   decorator overridden: True
+    ivgs-celery-composition      LIVE TASK soft/hard = 900 / 960   decorator overridden: True
+    ivgs-celery-node02           LIVE TASK soft/hard = 900 / 960   decorator overridden: True
+    ivgs-cogvideox-worker-node03 LIVE TASK soft/hard = 900 / 960   decorator overridden: True
+    ivgs-celery-node04           LIVE TASK soft/hard = 900 / 960   decorator overridden: True
+
+    all five:  derived client budget 870.0   split (740.0, 130.0)
+               visibility timeout 7200 covers hard: True
+               check_visibility_timeout(): PASSED over 30 tasks
+
+**DEPLOY VERIFIED, seven containers**, at `v5.38.4-rcq13-declared-budget`, and
+⛳ **by IMAGE ID against the banked digests — all seven identical**: api
+`sha256:6dd094695 13c…`, workers `sha256:9739104787a4…`.
+`/api/v1/version` → `{"build_ref":"v5.38.4-rcq13-declared-budget",
+"commit_sha":"a17b7f0490fe…"}`.
+
+### AD-05 Appendix C, annotated — and it was already stale
+
+The stage-2 row now carries the ruling and the measurement. ⚠ **Two things were
+wrong with it before the ruling touched it:** it read *"soft 120, hard 150"* — the
+decorator's inert literals — while `policies.py` declared 270/300 and has been the
+applied definition since 2026-08-29; and its `file:line` pointed at `:451`, which
+is `_save_storyboard_scenes` today (the decorator is at `:543`). Both corrected.
+⛔ **`policies.py` remains the ONE place. Appendix C is the record of the ruling,
+not a second source** — which is the whole lesson of the 120-vs-300 incident.
+
+### Tests
+
+**API 1763 → 1771 passed, 0 failed** (+8, the RC-Q13 class). Workers **identical
+BY NAME** to the baseline at `eafbf9f`. **ZERO NEW FAILURES.**
+
+⛔ **AND ONE TEST FAILED FIRST, WHICH IS WORTH RECORDING BECAUSE IT PROVED THE
+POINT IT WAS WRITTEN TO MAKE.** `test_stage2_carries_its_declared_limit_and_not_
+the_decorator_literal` asserted the literals **270** and **300** — a second copy
+of the policy table, inside a test whose entire subject is that a second copy goes
+stale. It went stale the moment the ruling landed. Re-aimed to read the
+declaration and to assert against the decorator's 120/150 instead: **the claim is
+unchanged and is now made where it cannot drift.** And
+`test_stage2_has_real_margin_over_the_observed_generation_time` carried
+`observed_longest_s = 130` from the v7 era — **stale by four times** — now the
+measured 564.
+
+**Eight tests added**, `TestTheRuledTimeoutCoversTheMeasurement`, and they pin the
+budget to the MEASUREMENT rather than to the number: the declared soft limit and
+the derived client budget must both exceed the largest banked generation; the
+client must still lose the race to the soft limit; the two calls must fit inside
+one budget; each call must keep headroom over its own measured maximum;
+`s2c >= time_limit`; the hard limit must stay under the visibility timeout **and
+not become the tallest row**; and the measurement must still be quoted beside the
+constant. ⛳ A later edit that lowers the budget fails naming what it would break.
+
+---
+
+## 12h.17 Two rows registered, per the operator's instruction
+
+### ⚠ RC-Q9h — the belt widens in 12i, and it is not a blocker
+
+**Disposition: `shared.design.duplication` widens to practice-vs-practice, per
+LO, in WP-IVGS-12i.** The module already computes the comparison; it is anchored
+on the assessment because 12h's order scoped it there, and widening a hard
+refusal on my own judgment was not mine to take.
+
+⛳ **AND THE GATE ALREADY SHOWS IT, WHICH IS WHY IT IS NOT A BLOCKER — VERIFIED
+AGAINST THE RUNNING API RATHER THAN ASSUMED.** `design_brief._arc_row` carries
+`instructional_event` and `narration_text` for every scene, so a doubled practice
+reaches the design review as **two `practice` rows on the same outcome carrying
+the same narration, adjacent**:
+
+    scene 3  practice  LO-1  "Now it's your turn to try. Multiply 34 by 21…"
+    scene 4  practice  LO-1  "Now it's your turn to try. Multiply 34 by 21…"
+
+The belt would make that refuse. A reviewer can already see it. ⚠ That is a
+statement about the PAYLOAD, not about the rendered panel — which remains
+unverified (§12h.15 item 1) and is what the browser watch is for.
+
+### ⚠ RC-Q14 — `test_wp60_orphan_guard.py` is flaky in BOTH trees
+
+⛔ **AND IT FALSIFIES A CLAIM 12f AND 12g BOTH MADE**: *"failures (18) and errors
+(15) are identical in every run, which is the comparison that matters."* It does
+not survive repetition. Measured this session, same environment, same credential:
+
+| run | tree | result |
+|---|---|---|
+| whole suite | 12h | **19** failed — `proof_2_a_cross_project_shared_object_survives` |
+| whole suite | 12h | **20** failed — `proof_1_…survives_the_sweep`, `proof_3_…is_quarantined` |
+| whole suite | **BASELINE at `eafbf9f`** | **18** failed |
+| whole suite | **BASELINE at `eafbf9f`** | **20** failed |
+| that file alone | BASELINE | 1 failed, 1 failed, then **9 passed** |
+| that file alone | 12h | 2 failed, then **9 passed** |
+
+⛳ **PRE-EXISTING AND NOT 12h's.** The baseline worktree at `eafbf9f` does the same
+thing, and nothing in this package touches orphan cleanup or SeaweedFS. **A
+different subset fails each time**, which is the signature of shared state or test
+order, not of a regression.
+
+⛔ **THE CONSEQUENCE FOR EVERY FUTURE PACKAGE:** the workers baseline is **"18
+plus a flaky file"**, not 18, and a comparison by COUNT can silently pass a real
+regression or fail a clean tree. 12h compares the sorted FAILED/ERROR lists **by
+name** with that file isolated. **Diagnosing the flake is not scheduled.**

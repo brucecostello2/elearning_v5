@@ -6,7 +6,7 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.38.3-two-call-design`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.38.4-rcq13-declared-budget`, frontend `v5.37.0-design-core`
 
 ⛳ **WP-IVGS-12h IS LIVE, AND RC-Q9g IS CLOSED.** Nodes 01-04 rebuilt from
 `a41d642`, banked with digest sidecars, loaded from the artifact store, deployed
@@ -28,13 +28,21 @@ Both are my slips, both are banked, and neither was ever a rebuilt tag — the b
 differ, so the tags differ. `v5.38.2` is `d8da66c` correct; **the fleet is on
 `v5.38.3`**, which adds the motion-catalogue fix.
 
-⛔ **RC-Q13 IS OPEN AND IT DESCRIBES A FLEET THAT IS RUNNING.** AD-05 declares
-stage 2 at soft 270 / hard 300, so the client budget is **240 s**. Measured
-stage-2 wall clock across 13 generations (12g's banked logs and 12h's own):
-**135–564 s. Ten exceed the client budget and eight exceed the Celery hard
-limit.** No storyboard job has ever been run through the real Celery task since
-contract-5, so this has never surfaced. **Raising a declared conformance number
-is the operator's ruling, not an agent's.**
+✅ **RC-Q13 IS RULED, ENCODED AND DEPLOYED.** It was open on a measurement:
+13 generations at **135–564 s** against a 240 s client budget, ten over it and
+eight over the Celery hard limit — a state stage 2 had been deployed in since
+contract-5 and which never surfaced, because no storyboard job has gone through
+the real Celery task since then. **The operator ruled the declared budget up to
+soft 900 / hard 960 ON THAT TABLE, not raised until a run passed.** Encoded in
+`temporal_pipeline/policies.py` alone, with the measurement quoted beside the
+constant, and carried to the live tasks by `apply_declared_time_limits` — **no
+decorator, no frozen body, no freeze exception.** `start_to_close_s` 5 m → 30 m,
+forced by `test_start_to_close_is_never_below_todays_hard_limit`. ⛳ **Visibility
+timeout 7,200 ≫ 960, and 960 is not even the tallest row** (stage 3's video at
+3,900 is); `check_visibility_timeout` PASSED over 30 tasks in every worker
+container on all four nodes. ⚠ **Derived client budget is 870, not the 900 the
+ruling names** — the 30 s headroom is what makes the client lose the race
+(RC-P16). **If 900 is wanted literally, declare soft 930 and no code changes.**
 
 ⓘ **WP-IVGS-12g, superseded by the above but kept for the lineage.**
 
@@ -96,10 +104,10 @@ neither half.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.3-two-call-design`** + workers **`v5.38.3-two-call-design`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.3-two-call-design`**; vLLM pinned `sha256:3dbe092e…` | ⛔ **stage 2's derived 240 s client budget is SHORTER THAN THE MEASURED WORK (280–564 s) — RC-Q13**, split 180/60 across the two calls |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.3-two-call-design`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.3-two-call-design`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.4-rcq13-declared-budget`** + workers **`v5.38.4-rcq13-declared-budget`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.4-rcq13-declared-budget`**; vLLM pinned `sha256:3dbe092e…` | ✅ **RC-Q13 RULED: soft 900 / hard 960**, derived client budget **870 s** split **740/130** across the two calls — read back off the LIVE task objects, not the file |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.4-rcq13-declared-budget`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.4-rcq13-declared-budget`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
@@ -120,10 +128,12 @@ acceptance needs the GPU fleet must not assume overnight availability.**
 ## In flight
 
 **WP-IVGS-12 + 12b…12h — Phase 1 of the recovery plan, the DESIGN CORE.**
-**3 commits held, none pushed by me** — measured with
+**2 commits held, none pushed by me** — measured with
 `git rev-list --count origin/main..HEAD` after a `git fetch` at close, per the §0
 rule 12c added. At this session's START the same command measured **0**: the
-operator had pushed all three 12g commits.
+operator had pushed all three 12g commits. ⚠ **And it moved again DURING this
+session**: the package made five commits and the operator pushed the first three
+while the RC-Q13 ruling was being executed, so the close-out count is **2**.
 
 ### 12h — the two-call design, and RC-Q9g CLOSED
 
@@ -428,14 +438,27 @@ real defects — a good trade.**
 **`eafbf9f`** — `docs(wp-ivgs-12g): the acceptance, and RC-Q9g — the practice is the assessment`, pushed by the operator between 12g and 12h.
 Measured at the start of THIS session from the remote-tracking ref after a
 `git fetch`: `origin/main` and local `HEAD` were **equal**, so the held count was
-**0** — the operator had pushed all three 12g commits. ⛳ **The §0 rule has now
+**0** — the operator had pushed all three 12g commits. ⚠ **And it moved again DURING this
+session**: the package made five commits and the operator pushed the first three
+while the RC-Q13 ruling was being executed, so the close-out count is **2**. ⛳ **The §0 rule has now
 worked four sessions running**, and each time the previous board's text would have
 implied a number that was wrong.
 
-**Held now: THREE commits — WP-IVGS-12h's two-call design (`d8da66c`, tagged
-`v5.38.2-two-call-design`), the motion-catalogue fix the acceptance found
-(`a41d642`, tagged `v5.38.3-two-call-design`), and this report/board commit.
-The push block expects 3.**
+**Held now: TWO commits — the RC-Q13 ruling (`a17b7f0`, tagged
+`v5.38.4-rcq13-declared-budget`) and this report/board commit. The push block
+expects 2.**
+
+⚠ **THE PACKAGE MADE FIVE AND THE OPERATOR PUSHED THREE OF THEM MID-SESSION**,
+while the ruling was being executed: `d8da66c` (tagged `v5.38.2`), `a41d642`
+(tagged `v5.38.3`) and `34a2019`. Both of those tags are already on the remote.
+⛔ **I drafted this row saying 4, then 5. The ref says 2** — the §0 rule earning
+its keep for the fifth session running.
+
+⚠ **None of the five is padding.** The catalogue fix was found by the acceptance
+the first commit's images were built for; the acceptance can only be written after
+both; **the operator ruled RC-Q13 after the report was filed**, so the ruling is a
+fourth commit and its write-up a fifth. Every code commit is tagged and its SHA is
+baked into a deployed image's `IVGS_BUILD_SHA`, which is why none can be squashed.
 
 ⚠ **Three, and the middle one is not bookkeeping:** run A refused
 `MOTION_WITHOUT_TEMPLATE` three times out of three because call 2 was ordered to
@@ -443,17 +466,19 @@ name a motion template and had never been shown the list. That could not have be
 in the first commit — it was found by the acceptance the first commit's images
 were built for — and the acceptance can only be written after both.
 
-⚠ **I DRAFTED THIS SECTION SAYING TWO AND THEN COULD NOT MAKE IT TRUE.** The plan
-was to fold the report into the fix commit. `a41d642` is tagged
-`v5.38.3-two-call-design` and the RUNNING image's `IVGS_BUILD_SHA` is
-`a41d642…` — amending it to keep a tidy count would leave the deployed fleet
-naming a commit that does not exist, which is the exact trap this board has warned
-about since 12e. **The number below is the measured one, not the planned one.**
+⚠ **I DRAFTED THIS SECTION SAYING TWO, THEN THREE, AND THE MEASURED NUMBER IS
+FIVE.** The plan was to fold the report into the fix commit; `a41d642` is tagged
+and a RUNNING image's `IVGS_BUILD_SHA` names it, so amending it to keep a tidy
+count would leave the deployed fleet naming a commit that does not exist — the
+exact trap this board has warned about since 12e. Then the operator's RC-Q13
+ruling added two more. **The number below is measured with
+`git rev-list --count origin/main..HEAD` after a `git fetch` at close, not
+planned.**
 
 ⚠ **`ivgs-infra/.env` is dirty on ALL FOUR NODES and is not mine to commit** —
 the deploy moved `IVGS_API_TAG` and `IVGS_WORKERS_TAG` to
-`v5.38.3-two-call-design`. Gitignored, and §3 names it never-touch for its token.
-**The rollback is `v5.37.7-evidence-structural` on all four nodes.**
+`v5.38.4-rcq13-declared-budget`. Gitignored, and §3 names it never-touch for its
+token. **The rollback is `v5.37.7-evidence-structural` on all four nodes.**
 
 ⚠ **AND MIGRATION 0053 IS APPLIED TO PRODUCTION AND IS AHEAD OF `origin/main`
 UNTIL THE PUSH.** Correct order — schema before code, and the code is deployed —
@@ -465,7 +490,7 @@ rollback runs `alembic downgrade 0052`.
 `IVGS_BUILD_REF` unset, reported its version as `"unknown"`) and `v5.38.1`
 (correct bytes, wrong ref — it reported itself as `v5.38.0`).** Both are my slips
 and both are banked. Neither was a rebuilt tag: the bytes differ, so the tags
-differ, which is the RC-Q8 discipline. Only `v5.38.2` and `v5.38.3` are pushed.
+differ, which is the RC-Q8 discipline. Only `v5.38.2`, `v5.38.3` and `v5.38.4` are pushed — the first two already are.
 
 ---
 
@@ -521,6 +546,7 @@ shipped with a placeholder.
 
 | report | verdict |
 |---|---|
+| ↳ same file, **§12h.16–.17** | ✅ **RC-Q13 RULED, ENCODED, DEPLOYED AND READ BACK OFF THE LIVE TASKS.** soft 900 / hard 960 on the 13-generation table (135–564 s), in `policies.py` alone and carried by `apply_declared_time_limits` — no decorator, no frozen body, no freeze exception. `start_to_close_s` 5 m → 30 m, **forced** by an invariant the tree already asserts. ⛳ Visibility timeout 7,200 ≫ 960 and 960 is not even the tallest row; `check_visibility_timeout` PASSED over 30 tasks in every worker on all four nodes. ⚠ Derived client budget is **870, not the 900 the ruling names** — the 30 s headroom is what makes the client lose the race (RC-P16); soft 930 would give a literal 900 with no code change. `ASSESSMENT_CALL_BUDGET_SHARE` 0.25 → 0.15 because its own argument expired. AD-05 Appendix C annotated — ⚠ it was already stale, reading the decorator's inert 120/150. ⛔ One test failed first and proved its own point: it pinned the literals 270/300, a second copy of the policy table inside a test whose subject is that second copies go stale. **RC-Q9h** and **RC-Q14** registered. API 1763 → 1771, 0 failed |
 | ↳ same file, **§12h** | ⛳ **RC-Q9g CLOSED — the calls separate the kinds and the second never sees what it must not copy.** **design-contract-7** splits the design across TWO engine calls inside one stage: call 1 emits everything except `assessment_scenes` (probed: it CANNOT put the key back), call 2 authors the assessments from the outcomes, the plan and a code-built practice summary — no narrations, no scenes, no script. **18 of 18 outcome-pairs distinct over six generations**, against 11 of 15 duplicates under contract-6. ⛳ **The order's STOP condition did not fire**: both "no axis" outcomes now invent a fresh CASE, 6 of 6, and B2's collapsed LO-3 goes 1.000 → 0.556. New HARD refusal **`EVIDENCE_NEAR_DUPLICATE`**, calibrated on 18 banked pairs (classes separate 0.667 \| 0.900) and **proven RED on 12g's duplicates as part of the acceptance**; ⛳ its worked-example limb caught a defect 12g's hand-comparison missed. Prompt **v8** (four phrases MOVED, proven arrived) + NEW lineage **`assessment_authoring_system` v1**, migration **0053**; deployed to nodes 01-04 at `v5.38.3`, verified by image ID. ⛳ **ACCEPTANCE MET run B: 0 refusals 3/3**, census 127/109/18/9/12, 0 evidence events in call 1's `scenes[]` 3/3. ⛔ Run A refused 1/1/1 on `MOTION_WITHOUT_TEMPLATE` — call 2 was ordered to name a template and never shown the list; fixed with a catalogue read from the renderer's registry, and B2 then showed call 1 (told in prose) inventing a template name while call 2 (given the registry) did not. ⚠ **RC-Q9h** rowed — two identical practice scenes, 4 of 6; ⛔ **RC-Q13** rowed — the declared 240 s client budget against 280–564 s of measured work |
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
 | ↳ same file, **§12b** | RC-Q9 closed by structure (outcomes parsed by code, per-request enum measured enforced); RC-Q8 closed by digest; **acceptance still NOT met — RC-Q9b** |
