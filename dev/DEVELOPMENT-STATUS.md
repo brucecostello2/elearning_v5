@@ -203,7 +203,7 @@ acceptance needs the GPU fleet must not assume overnight availability.**
 ## In flight
 
 **WP-IVGS-12 + 12b…12h — Phase 1 of the recovery plan, the DESIGN CORE.**
-**2 commits held, none pushed by me** — measured with
+**1 commit held, none pushed by me** — measured with
 `git rev-list --count origin/main..HEAD` after a `git fetch` at close, per the §0
 rule 12c added. At this session's START the same command measured **0**: the
 operator had pushed all three 12g commits. ⚠ **And it moved again DURING this
@@ -519,19 +519,20 @@ while the RC-Q13 ruling was being executed, so the close-out count is **2**. ⛳
 worked four sessions running**, and each time the previous board's text would have
 implied a number that was wrong.
 
-**Held now: TWO commits** — the RC-Q18 fix (`a11cd7e`, tagged
-`v5.38.6-rcq18-merged-brief`) and this report/board commit. **The push block
-expects 2.**
+**Held now: ONE commit** — this session's close-out (`400468a`). Everything else
+is already on `origin/main`, **and so is every image tag `v5.38.2`…`v5.38.6`**.
+**The push block expects 1 and pushes no tag.**
 
-⛔ **AND THE §0 RULE BIT FOUR TIMES IN THIS ONE SESSION, WHICH IS A RECORD WORTH
-KEEPING.** The session made nine commits and the operator pushed seven of them
-mid-session, in three separate batches, while the next defect order was being
-executed. I drafted this row as 5, then 4, then 2 — and every time the number was
-actually measured with `git rev-list --count origin/main..HEAD` after a
-`git fetch`, it was smaller than what the previous paragraph implied.
-`v5.38.2`…`v5.38.5` are already on the remote; only
-`v5.38.6-rcq18-merged-brief` is held with its commit. **Never carry the number
-forward — measure it.**
+⛔ **AND THE §0 RULE BIT FIVE TIMES IN THIS ONE SESSION, WHICH IS A RECORD WORTH
+KEEPING.** The session made ten commits and the operator pushed nine of them
+mid-session, in four separate batches, while the next defect order was being
+executed. I drafted this row as 5, then 4, then 2, then 2 again — and every time
+the number was actually measured with `git rev-list --count origin/main..HEAD`
+after a `git fetch`, it was smaller than what the previous draft implied. ⛳ **The
+last correction had to be made to a paragraph that was already committed**, which
+is the cleanest demonstration of the rule this lineage has produced: **the number
+is not knowable until it is measured, and it is true only for as long as it takes
+to write down.**
 
 ⚠ **THE PACKAGE MADE FIVE AND THE OPERATOR PUSHED THREE OF THEM MID-SESSION**,
 while the ruling was being executed: `d8da66c` (tagged `v5.38.2`), `a41d642`
@@ -628,6 +629,20 @@ shipped with a placeholder.
 ---
 
 ## Reports filed this session
+
+⛳ **ONE SESSION, FOUR PACKAGES, AND THE LAST TWO WERE FOUND BY THE OPERATOR.**
+WP-IVGS-12h closed RC-Q9g by design; the RC-Q13 ruling made the declared budget
+cover the measured work; and then the **Phase-1 watch's first run** produced
+RC-Q15, RC-Q16, RC-Q17 and RC-Q18 — none of which six packages of harness-driven
+acceptance had found, because the harness fed the pipeline the right script and
+read back its own merge. All four are fixed, deployed and verified.
+
+**Evidence:** `dev/workpackages/reference/wpivgs12h-evidence/` — 23 files,
+including the probes, the belt's calibration over 12g's banked emissions, both
+acceptance runs, and ⛳ **the two live gate payloads that are the 11 → 0 claim**
+(`gate-BEFORE-rcq18-11-refusals.json`, `gate-AFTER-rcq18-0-refusals.json`).
+⚠ The RC-Q15/RC-Q18 acceptance stdout is **lost by name** — those runs were
+driven with `curl`/`psql` against projects deleted per the orders.
 
 | report | verdict |
 |---|---|

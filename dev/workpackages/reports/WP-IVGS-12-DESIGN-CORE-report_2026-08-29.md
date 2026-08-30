@@ -4576,10 +4576,10 @@ real pipeline was pointed at it, the script was not what arrived.
 | ⛔ **AND NEITHER SIDE OF RC-Q16 IS A 12-SERIES CHANGE**, which the order asked me to name | API `JobStatusUpdate` with required `status`: `5847f40`, **2026-06-01**. Worker `_update_job_celery_task_id` sending only `celery_task_id`: `60a4ef4`, **2026-08-25**, *"fix(wp-45): Cancel was revoking the right task id and the wrong task"*. **WP-45 added the caller five days ago against a contract requiring `status` since June** |
 | ⚠ **AND WP-45's OWN FIX HAS THEREFORE NEVER WORKED** | The write that records the STAGE task id is the one that 422s, so `render_jobs.celery_task_id` still holds the ORCHESTRATOR's id and cancel has been revoking the dispatcher. Verified on the live row |
 | ⛔ **RC-Q17 ROWED — NO PUBLISHED SYSTEM PROMPT HAS EVER REACHED A REAL RUN** | The 401 is wider than RC-Q15: **prompt v8 and the whole `assessment_authoring_system` lineage have never been used by the pipeline either.** Fixed here; the consequence for every acceptance in this lineage is stated in 12h-fix.6 |
-| ⛔ **RC-Q18 ROWED, NOT FIXED — AND IT IS MINE, FROM 12h** | The first real contract-7 run wrote **15 scene rows and a brief carrying only 12 scene designs**: the capture observer sees call 1's raw content, so **the brief never learns about call 2's assessments**. 11 gate refusals follow. Out of this order's scope; quoted and rowed |
-| **Tests** | API **1771 → 1789 passed, 0 failed**. Workers **identical BY NAME** to the `eafbf9f` baseline. **ZERO NEW FAILURES** |
+| ⛳ **RC-Q18 — ROWED HERE, THEN RULED AND CLOSED THE SAME DAY** | The first real contract-7 run wrote **15 scene rows and a brief carrying only 12 scene designs**: the capture observer saw call 1's raw content, so **the brief never learned about call 2's assessments**, and 11 gate refusals followed. **The operator ruled the design of record is the merged contract; the capture moved; a fresh run returns 17/17/17 and ZERO refusals — the eleven were entirely false.** §12h-fix.10, and both gate payloads are banked |
+| **Tests** | API **1771 → 1797 passed, 0 failed** across this order and RC-Q18's. Workers **identical BY NAME** to the `eafbf9f` baseline. **ZERO NEW FAILURES** |
 | ⛳ **RC-Q13's headroom holds at full-script input** | Stage 2 ran **274 s** against the ruled 870 s client budget and 900 s soft limit — **32% of it.** No retuning |
-| **Held** | **2 commits.** Nothing pushed by me — ⚠ **the operator pushed `a17b7f0` and `bd043b8` mid-session**, measured at the ref at close |
+| **Held** | **2 commits at close.** Nothing pushed by me. ⚠ **The session made nine commits and the operator pushed seven mid-session, in three batches** — every held count drafted in this file was larger than the one `git rev-list --count origin/main..HEAD` returned after a `git fetch`. §0's rule, four times in one day |
 
 ---
 
@@ -5029,14 +5029,14 @@ the token file were destroyed at the end. It reached no file that is committed.
 ```
 # node-01, as the operator
 cd /opt/ivgs
-EXPECTED=2
+EXPECTED=1
 ACTUAL=$(git rev-list --count origin/main..HEAD)
 if [ "$ACTUAL" -ne "$EXPECTED" ]; then
   echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
   git log --oneline origin/main..HEAD
 else
-  git push origin main \
-    && git push origin v5.38.6-rcq18-merged-brief
+  # ⛳ No tag is held — v5.38.2…v5.38.6 are all already on the remote.
+  git push origin main
 fi
 ```
 
@@ -5190,3 +5190,111 @@ password was read, printed or stored.
 3. ⚠ **`SEGMENTING` ×7 is higher than any harness run recorded** and I did not
    investigate it; it is a flag by design, and this order was narrow.
 4. ⚠ **Stage 3+ still has never been handed a contract-7 design.**
+
+---
+
+## 12h-fix.12 SESSION CLOSE-OUT — 2026-08-30
+
+**`dev/CLAUDE.md` §0 rule 5, run unprompted at `CLOSE`.**
+
+### What this session did, in the order it happened
+
+| | package | outcome |
+|---|---|---|
+| 1 | **WP-IVGS-12h** — the two-call design | ⛳ **RC-Q9g CLOSED.** 18 of 18 outcome-pairs distinct across six generations, against 11 duplicates in 15. The order's STOP condition did not fire |
+| 2 | **RC-Q13**, operator ruling | ⛳ Declared stage-2 budget 270/300 → **900/960** on the 13-generation table, read back off the live task objects on all four nodes |
+| 3 | **RC-Q15 / RC-Q16 / RC-Q17**, defect order | ⛳ The uploaded script reaches the design intact; job PATCHes stop bouncing 422; **published prompts reach the pipeline for the first time ever** |
+| 4 | **RC-Q18**, defect order | ⛳ The design of record is the merged contract. **11 hard refusals → 0** |
+
+⛳ **AND THE THROUGH-LINE IS WORTH STATING ONCE.** Items 3 and 4 were both found
+by the operator's Phase-1 watch, on its **first run**, and neither was findable
+by anything this lineage had been doing: six packages of probes, census-scored
+acceptance and belts all measured the Design Core **through a harness that fed it
+the right script and read back its own merge**. The first time the real pipeline
+was pointed at the same lesson, the script was a summary, the prompts were files,
+and the brief knew about two thirds of the design. **The watch paid for itself in
+one run, four times over.**
+
+### Evidence, banked (§0 rule 5.1)
+
+`dev/workpackages/reference/wpivgs12h-evidence/` — 23 files. Added at close:
+
+    gate-BEFORE-rcq18-11-refusals.json   the live design-review payload,
+                                         refusals=11, flags=7, 15-scene arc
+    gate-AFTER-rcq18-0-refusals.json     the same, after the ruling:
+                                         refusals=0, flags=10, 17-scene arc
+
+⛳ **Those two files are the 11 → 0 claim**, and either can be re-read without
+the fleet. The event arc quoted in 12h-fix.10 is `event_arc` in the second.
+
+⚠ **AND WHAT IS NOT BANKED, DECLARED BY NAME.** The RC-Q15 and RC-Q18 acceptance
+runs were driven with `curl` and `psql` against live projects that were then
+deleted per the orders (WP-59). **Their raw stdout is lost**; what survives is
+these two payloads, the numbers quoted in 12h-fix.5 and .10, and the tests that
+assert the same properties on fixtures. The 12h acceptance itself is fully banked
+(`ACCEPT-contract7-run{A,B}-*.json`, `B2-contract7-*`), because that harness
+writes its own JSON.
+
+### Superseded text, bannered (§0 rule 5.3)
+
+  * **AD-05 Draft 2 Appendix C**, stage-2 row — annotated in place with the
+    RC-Q13 ruling, the measurement table and the visibility-timeout check. ⚠ It
+    was *already* stale before the ruling: it read the decorator's inert
+    "soft 120, hard 150" against a policy file declaring 270/300, with a
+    `file:line` pointing at `_save_storyboard_scenes`. Both corrected.
+  * **`models/transcript.py`** — `source_text`'s *"written ONCE, by the upload
+    path only"* comment, amended by RC-Q18 ruling (2).
+  * **`test_wp37_prompts_service_auth.py`** — its *"no worker reads it"* premise,
+    re-aimed with both dates and both commits.
+  * **`test_wpivgs10_declared_time_limits.py`** — the literals 270/300, replaced
+    by the declaration they were a second copy of.
+  * ⚠ **Nothing was edited that belongs to another agent**, and no frozen stage
+    body was touched in any of the four packages.
+
+### The tree at close (§0 rule 5.5)
+
+**Held: 1**, measured with `git rev-list --count origin/main..HEAD` after a
+`git fetch`, at close:
+
+    400468a  docs(wp-ivgs-12h-fix): session close-out — evidence banked,
+             tree declared
+
+**Everything else this session is already on `origin/main`, and so is
+`v5.38.6-rcq18-merged-brief`** — the operator pushed `a11cd7e` and `6a2e415`
+while this close-out was being written.
+
+⛔ **THE SESSION MADE TEN COMMITS AND THE OPERATOR PUSHED NINE OF THEM
+MID-SESSION, IN FOUR BATCHES.** Every held count drafted in this file — 5, then
+4, then 2, then 2 again, then 2 once more — was larger than the ref's answer at
+the moment it was measured. ⛳ **This paragraph itself had to be rewritten after
+the commit that contains it**, which is as clean a demonstration of the rule as
+the lineage has produced: **the number is not knowable until it is measured, and
+it is only true for as long as it takes to write it down.** The push block below
+states the measured number, and **no image tag is held** — all six are on the
+remote.
+
+**Working tree clean. Fleet on `v5.38.6-rcq18-merged-brief`, seven containers
+verified by tag and by image ID.** ⚠ `ivgs-infra/.env` is dirty on all four nodes
+and is not mine to commit; rollback is `v5.38.5-rcq15-script-intact`.
+
+⚠ **A short-lived user JWT was minted in-process twice**, for the two acceptance
+runs, because the upload and trigger routes take `require_operator_or_admin` and
+a service token cannot drive them. **No password was read, printed or stored**;
+both tokens and both minting scripts were destroyed, inside the container and
+out, and reached no committed file.
+
+### What is left, in one line each
+
+1. ⛳ **The operator deletes project `3beaf804` and runs the watch.** Its design
+   was built from a 1,647-byte summary; it is not worth reviewing.
+2. ⛔ **No browser has ever been driven.** Every gate claim in this entire report
+   — including 12h-fix.10's arc — comes from the `design-review` **payload**.
+   **That is the one thing still unmeasured, and it is what the watch is for.**
+3. **RC-Q9h** (two identical practice scenes, 4 of 6 generations) — the belt
+   widens to practice-vs-practice in 12i.
+4. **RC-Q14** (`test_wp60_orphan_guard.py` flaky in both trees) — the workers
+   baseline is "18 plus a flaky file"; compare by name, never by count.
+5. **RC-Q3** — the uploaded half is closed by construction; the generated half is
+   untouched.
+6. **12i (audience fields) and 12j (hierarchical long-form)** are queued behind
+   the watch.
