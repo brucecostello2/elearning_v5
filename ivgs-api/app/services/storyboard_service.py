@@ -94,8 +94,27 @@ class StoryboardService:
         method sees one scene at a time and cannot know the new total. It is
         logged (`scene_upsert`) so the count is visible in the run's log, and
         the gate re-opens either way, so the operator reviews what is actually
-        there. Trimming needs the whole-storyboard write that Stage 2 does not
-        make; ledgered for the Temporal cutover.
+        there.
+
+        ⛳ **SUPERSEDED IN ITS SECOND HALF BY WP-IVGS-12i2, RC-S1, 2026-08-30.**
+        This paragraph used to end *"Trimming needs the whole-storyboard write
+        that Stage 2 does not make; ledgered for the Temporal cutover"*, and a
+        reader arriving here would conclude the surplus is still unhandled and
+        will stay so until M3.3. **It is handled now.**
+
+        The limitation ABOVE is unchanged and still true — this method cannot
+        know the new total, and nothing here trims. What changed is that
+        somewhere else does: `storyboard_repair.prune_scenes_not_in_design`
+        reconciles the rows against `scene_designs` on the active design brief —
+        the design of record (RC-Q18) — and runs before the gate on every
+        generation. The whole-storyboard write did not need Temporal; it needed
+        the design of record, which arrived with the Design Core.
+
+        ⛔ Why it matters that this says so: the surplus was not cosmetic. On the
+        operator's live project a 19-scene generation was followed by a 17-scene
+        one, rows 17 and 18 survived, and row 18 was an `assess` serving LO-3 —
+        so the gate refused `OUTCOME_ASSESSED_TWICE` against a design that
+        emitted exactly one assessment per outcome.
         """
         existing = await self.db.scalar(
             select(StoryboardScene).where(

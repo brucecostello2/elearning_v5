@@ -14,6 +14,7 @@ throwaway project `0840e6c2`, which is deleted through the WP-59 flow.
 | `approve-500-BEFORE-rcr1-fix.txt` | ⛔ `POST /scenes/approve` answering **HTTP 500 INTERNAL_ERROR** with refusals outstanding — RC-R1's defect, measured |
 | `approve-409-AFTER-rcr1-fix.txt` | the same press after the fix: **409 `MOTION_AUTHORING_REFUSED`**, carrying the authoring guard's own sentence |
 | `design-review-with-system-corrections.json` | `GET /design-review` proving the declaration reaches the gate surface, beside 0 design refusals and 8 judgment flags |
+| `review_r.py` | the DESIGN-review probe behind the "0 design refusals, 10 flags" reading on the live project — the measurement that showed the operator's whole gate blockage was the completeness limb |
 | `zerocheck.py` | the read-only proof that the server would NOT refuse at zero — it runs the pre-gate authoring check and `refuse_if_incomplete` and dispatches nothing |
 | `test-project-census-after-reviewer-edits.txt` | the test project at zero refusals |
 | `api-tests-1811-passed.txt` | the full `ivgs-api` suite after every change in this package: **1811 passed, 0 failed** |

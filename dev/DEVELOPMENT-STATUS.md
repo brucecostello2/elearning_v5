@@ -689,7 +689,21 @@ shipped with a placeholder.
 | `dev/workpackages/reports/WP-IVGS-12i2-RCS-BATCH-report_2026-08-30.md` | ✅ RC-S1 fixed at cause and proven over two real regenerations; ✅ RC-S2(a) loophole closed, both live designs now refuse; ⓘ RC-S2(b) full input → variance, rowed; ✅ RC-S4 equation lint hard, method-prose half rowed to L7; ✅ RC-S3 belt widened, flag-level |
 | `dev/workpackages/reports/WP-IVGS-12i-AUTO-REPAIR-report_2026-08-30.md` | ✅ RC-R4 built and proven in the live pipeline (3 of 8 repaired, 5 refused honestly); ⛔ RC-R1 was an HTTP 500, now a named 409, button disabled at nonzero; ✅ RC-R2 built — including the one-click the order believed existed and which never did; ⓘ RC-R3(a)/(b) and RC-R5 rowed, nothing built |
 
-⛳ **ONE SESSION, FOUR PACKAGES, AND THE LAST TWO WERE FOUND BY THE OPERATOR.**
+⛳ **THREE MORE PACKAGES THIS SESSION (12i, 12i2, 12i3), AND EVERY ONE OF THEM
+STARTED FROM SOMETHING THE OPERATOR SAW ON A LIVE GATE.** RC-R made mechanical
+refusals repairable and declared; RC-S found the second assessment was a ghost
+left by the previous generation and gave the pipeline its first check that asks
+whether generated CONTENT is true; RC-T made "stage complete" mean "approvable"
+and, in doing so, made visible that only one generation of four currently
+reaches the gate clean. ⛔ **Three defects of my own were caught by the
+acceptances rather than by me** — the exit order read as attempts instead of
+conditions, a split that left the parent still refusing, and a failure message
+that counted survivors it could not name. All three are fixed and pinned.
+**Evidence:** `wpivgs12i-evidence/`, `wpivgs12i2-evidence/`,
+`wpivgs12i3-evidence/`.
+
+⛳ **EARLIER IN THE SAME SESSION — ONE SESSION, FOUR PACKAGES, AND THE LAST TWO
+WERE FOUND BY THE OPERATOR.**
 WP-IVGS-12h closed RC-Q9g by design; the RC-Q13 ruling made the declared budget
 cover the measured work; and then the **Phase-1 watch's first run** produced
 RC-Q15, RC-Q16, RC-Q17 and RC-Q18 — none of which six packages of harness-driven

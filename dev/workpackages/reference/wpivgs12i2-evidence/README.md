@@ -12,6 +12,7 @@ the WP-59 flow.
 | `rcs2-fidelity-calibration-both-designs.txt` | RC-S2(a) calibrated against both live designs. WATCH-1: 1,622/3,138 covered (51.7%), one 1,473-char gap, 2 drops. WATCH-2 regen: **110/3,138 (3.5%)**, one 2,968-char gap, 1 drop. **Old rule: 0 refusals for both. New rule: 1 each** |
 | `rcs2b-token-counts-both-runs.txt` | RC-S2(b). Storyboard stage `total_input_tokens`: **15,547** (watch-1, 19 scenes) and **13,993** (regen, 17 scenes). Both full-scale |
 | `rcs4-equation-lint-calibration.txt` | ⛳ RC-S4's calibration, and a finding in its own right: the uploaded script carries **17 complete arithmetic claims, all 17 true**, and **both live designs carry ZERO**. The lint has nothing to bite on precisely because the designs abandoned the script's teaching |
+| `s2b_prompt_reconstruction.py` | RC-S2(b)'s decisive probe: rebuilds call 1's user input exactly as the regen built it and shows the full 3,150-character transcript was in it, **"Step 4" included** — the section the design left uncovered |
 | `s1_probe.py`, `s2_probe.py`, `s4_calibrate.py` | the probes. Pure reads: they compute and return, and write nothing |
 
 ## The acceptance (test project `43c59a2a`, two real pipeline runs)

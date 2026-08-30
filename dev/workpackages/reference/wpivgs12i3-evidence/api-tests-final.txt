@@ -37,4 +37,4 @@ ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=============== 1855 passed, 2381 warnings in 339.56s (0:05:39) ================
+=============== 1855 passed, 2381 warnings in 339.25s (0:05:39) ================

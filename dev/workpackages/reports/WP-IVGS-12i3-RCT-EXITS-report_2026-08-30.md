@@ -272,6 +272,15 @@ jobs carrying red refusals.** The stage now says so.
 | `ivgs-nextjs` | `ivgs-frontend:v5.41.0-rct-exits` (`sha256:346dfebc5746…`) |
 | `ivgs-celery-default` / `-composition` / `-beat` | `ivgs-workers:v5.41.0-rct-exits` (`sha256:430450667cf2…`) |
 
+⛔ **THE DEPLOYED API IMAGE PREDATES THIS SESSION'S LAST THREE EDITS, AND THEY
+ARE DOCSTRINGS ONLY — MEASURED, NOT ASSERTED.** The close-out banners
+(`storyboard_service.py`, `design_review.py`, `storyboard_completeness.py`) were
+written after `v5.41.3` was built. I did not rebuild for comment-only text, and
+I did not want that to rest on my word: each file was parsed out of the running
+container and out of the tree, docstrings stripped, and the ASTs compared —
+**identical in all three.** The fleet is running the tree's code. The next deploy
+picks up the prose.
+
 ⛳ **The workers moved this time and the reason is RC-T2**: `handle_stage_completion`
 now fails the job on a non-approvable stage. stderr never redirected;
 `verify-deployed-image.sh` green on all five; running `.Image` compared against
@@ -283,9 +292,18 @@ the session. **No migration.**
 
 ## 8. The tree
 
-**Committed and HELD — one commit** (`f27d26a`). Nothing pushed. WP-IVGS-12i2's
-`e40f4dc` is already on `origin/main` — the operator pushed it between watches —
-so the count-gate below is 1.
+**Two commits for this package; ONE is held.**
+
+| commit | state |
+|---|---|
+| `9ec1bb2` `feat(wp-ivgs-12i3)` — the three exits and the invariant | ✅ **already on `origin/main`** — the operator pushed it while this close-out was being written |
+| `d22d0e3` `docs(wp-ivgs-12i3)` — this close-out | ⛔ **HELD.** Nothing pushed by me |
+
+WP-IVGS-12i's `ed72440` and 12i2's `e40f4dc` were pushed by the operator between
+watches. **The count-gate below is therefore 1**, and it is the close-out commit.
+⚠ Re-check it before running the block: the operator has pushed mid-session
+twice today, and a gate written against a moving `origin/main` is exactly the
+kind of stale instruction §0 rule 5.3 exists to stop.
 
 ⛔ **`ivgs-infra/.env` is DIRTY and is NOT mine to stage** — the three tag lines
 moved with the deploy. Untracked and gitignored (§3).
@@ -296,9 +314,78 @@ ordered, after its evidence was banked.
 **Nothing was written to the operator's live project by hand.** Its rows were
 last written at 15:42:37 by the operator's own regeneration.
 
+⛔ **A FILE APPEARED THAT IS NOT MINE, AND IT IS LEFT UNTRACKED AND UNSTAGED**
+(§0 rule 5.5, "never stage another agent's files"). It was swept in by a
+directory-wide `git add` during the close-out and removed again with
+`git restore --staged`:
+
+    dev/workpackages/Design_Note_WP-IVGS-12j_Interview_and_Vocabulary_2026-08-30.md
+    root:root, 8,425 bytes, written 19:32 — mid-session, by the operator
+
+⛳ **It is worth reading before the next package starts, because it already
+consumes this session's output.** It states the law twelve packages have proved
+— *"what the grammar or code demands, the model delivers every time; what the
+prompt merely requests, it eventually declines"* — and cites **RC-T5's number,
+"one approvable generation in four"**, as the residue that motivates contract-8:
+the free-text fields become selections from closed vocabularies, the parameters
+the model invents become user inputs, and the judgment calls discovered at the
+gate become questions asked before design. It says the validator suite is not
+discarded but **demotes to regression belts** — which is the right reading of
+everything in §12i-watch, §12i-watch2 and §12i-watch3.
+
+⚠ **It is the operator's file and this package neither edits it nor acts on
+it.** RC-T4 (the multiplication lexicon, rowed unpatched) is squarely inside its
+scope, and a closed vocabulary would remove the whole class rather than widen a
+trigger list a third time.
+
 ---
 
-## 9. Push block — the operator's
+## 9. Session close-out (dev/CLAUDE.md §0 rule 5)
+
+**Closing act for all three packages of this session — 12i, 12i2 and 12i3.**
+
+**1. Evidence out of scratch.** Three albums committed:
+`wpivgs12i-evidence/` (14 files), `wpivgs12i2-evidence/` (15),
+`wpivgs12i3-evidence/` (13). Every number in all three reports traces to one of
+them.
+
+⚠ **Declared lost by name**, and none of it load-bearing: `t3.txt` (a pytest
+transcript, superseded by the banked suite results), `proj2.json`,
+`testpid.txt`/`testpid2.txt`, `orig_narration.txt` (session bookkeeping),
+`vtest.py` (a throwaway probe used once to find the motion guard's parameter
+shape, its answer quoted in the 12i report), `rct-stage-failed-real-run.json` (a
+mis-named duplicate of a banked file), and `operator_script.md`/`.txt` (the
+operator's upload, already banked at
+`wpivgs12h-evidence/operator-script-f65f340c.txt` and still in the live
+database). ⛔ **`token.txt` and `mint.py` are deliberately NOT banked**: one is a
+live JWT and the other mints them from the users table. Neither belongs in git.
+
+**2. Indexed** in `dev/DEVELOPMENT-STATUS.md` under `## Reports filed this
+session`, all three reports with one-line verdicts, and the session narrative
+above the table corrected — it described only the four earlier packages and
+would have read as the whole session.
+
+**3. Superseded text bannered, not edited around.** Three statements this
+session made false:
+
+| file | what it said | why it is now wrong |
+|---|---|---|
+| `storyboard_service.py` `create_scene` | *"Trimming needs the whole-storyboard write that Stage 2 does not make; ledgered for the Temporal cutover"* | RC-S1 built it. It did not need Temporal; it needed the design of record, which arrived with the Design Core. A reader would have concluded the surplus is unhandled until M3.3 |
+| `design_review._evidence_is_distinct` | *"The practice is NOT compared against the worked examples here … a named residue in the report rather than a check smuggled in under this one"* | Still exactly true of that function, and RC-S3 closed the residue ELSEWHERE at flag level. Without the banner a reader concludes nothing compares them anywhere |
+| `storyboard_completeness` module header | *"There is no prompt loop here and no re-authoring … Nothing in between"* | Still true of that module and no longer the whole story: a separate pass now repairs its refusals before the gate, and a surviving refusal fails the stage |
+
+⛳ Also superseded, in the previous package and recorded there: the two
+`test_wpivgs12b_outcomes.py` tests that pinned the fidelity loophole — one now
+asserts the inverse of what it asserted, with the change of sense written into
+the class docstring.
+
+**4. `STATE AT SESSION END`** is at the top of each of the three reports.
+
+**5. The tree** is declared in §8 above and in the closing message.
+
+---
+
+## 10. Push block — the operator's
 
 ```bash
 # node-01

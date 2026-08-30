@@ -659,6 +659,16 @@ def _evidence_is_distinct(
     is the order's and it is the assessment; 12g's run A gen 2 quoted a practice
     that IS the script's own worked example, and that case is a named residue in
     the report rather than a check smuggled in under this one.
+
+    ⛳ **THAT RESIDUE WAS CLOSED BY WP-IVGS-12i2, RC-S3, 2026-08-30 — ELSEWHERE,
+    NOT HERE.** The paragraph above still describes THIS function exactly: it
+    remains assessment-anchored and it remains the only HARD limb. But a reader
+    would otherwise conclude that no check compares a practice with a worked
+    example anywhere, and since 2026-08-30 one does: `_same_outcome_duplicates`
+    compares ANY two scenes serving one outcome, at FLAG level, using this same
+    `duplication_verdict` and the same calibrated thresholds. It was driven by
+    the operator's live regen, whose LO-2 `guide` scene 10 and `practice` scene
+    11 carried byte-identical narration and which this limb could not see.
     """
     def _narration(scene: Any) -> str:
         return str(_scene_field(scene, "narration_text") or "")

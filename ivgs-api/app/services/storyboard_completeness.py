@@ -34,6 +34,16 @@ kinds of question:
 There is no prompt loop here and no re-authoring: a flag is information for a
 human, and a refusal is a stop. Nothing in between.
 
+⛳ STILL TRUE OF THIS MODULE, AND NO LONGER THE WHOLE STORY (WP-IVGS-12i…12i3,
+2026-08-30). Nothing here re-authors, and nothing here ever will. What changed is
+that a separate pass — `app.services.storyboard_repair` — now runs BETWEEN stage
+2 and the gate and repairs the refusals this module raises where a deterministic
+default exit exists, declaring every repair on the design brief. The operator's
+ruling that made that legal ALSO says a stage whose refusals survive that pass
+must FAIL rather than reach the gate, so a reader who assumes the refusals below
+are what an operator sees at the gate is now reading a pre-12i pipeline. This
+module stays the measurement; it never became the remedy.
+
 WHY "RULE 1 EXTENDED UPSTREAM" IS THE HARD LIMB
 
 RULE 1 of the storyboard prompt has said since v3 that a ``visual_description``
