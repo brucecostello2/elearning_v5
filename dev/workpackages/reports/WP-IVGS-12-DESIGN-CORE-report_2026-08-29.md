@@ -4552,3 +4552,514 @@ order, not of a regression.
 plus a flaky file"**, not 18, and a comparison by COUNT can silently pass a real
 regression or fail a clean tree. 12h compares the sorted FAILED/ERROR lists **by
 name** with that file isolated. **Diagnosing the flake is not scheduled.**
+
+---
+
+# §12h-fix — RC-Q15 and RC-Q16: the script the design never saw
+
+**2026-08-30 · defect order · same package lineage. Commit and HOLD.**
+
+⛳ **BOTH FOUND BY THE OPERATOR'S PHASE-1 WATCH, ON ITS FIRST RUN.** That is what
+the watch was for, and it earned its place immediately: six packages of grammar,
+belts, probes and census-scored acceptance had all measured the Design Core
+against the operator's real script **through a harness**, and the first time the
+real pipeline was pointed at it, the script was not what arrived.
+
+## 12h-fix.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| ⛔ **RC-Q15 — THE UPLOADED SCRIPT WAS PARAPHRASED INTO THE DESIGN'S INPUT** | Project `3beaf804` / job `5b228dd5`: `source_kind='uploaded'`, `source_text` **3,138 characters intact**, `refined_text` **1,647 bytes of summary**. `stage2_storyboard.py:122` builds the design call's `combined_transcript` from `refined_text`, so **the whole Design Core was reasoning about a summary of the operator's lesson** |
+| ⛔ **AND THE MECHANISM IS NOT THE ONE THE ORDER ASSUMED** | It was not a model ignoring a verbatim-copy instruction. **The instruction never arrived.** `GET /prompts` took `get_current_user`, which answers a service token with **401**, so `_fetch_active_prompt` returned `""` and every stage silently loaded the `.j2` baked into its image. Measured live before the fix: **all three lineages resolved to 0 characters** while their rows were active. Stage 1 ran the OLD refine-for-readability prompt and paraphrased **exactly as instructed** |
+| ⛳ **FIXED, AND VERIFIED ON A REAL PIPELINE RUN** | `refined_text` is **byte-identical to `source_text`** — 3,172 = 3,172 — through the operator's own upload → trigger route. The design call's `prompt_tokens` went to **15,611**, and the gate's coverage-gap quote now carries the operator's own words: *"**92**… **230.**… Nice work!"*, markdown and CRLFs intact, indexed into the full 3,138-character script |
+| ⛳ **RC-Q16 — THE 422 SWALLOW, FIXED AND PROVEN BOTH WAYS** | **2 → 0** 422s on a real run; and a **forced** 422 now produces the named `job_celery_task_id_update_rejected` **error** event and returns `False`, where the call previously never read its response at all |
+| ⛔ **AND NEITHER SIDE OF RC-Q16 IS A 12-SERIES CHANGE**, which the order asked me to name | API `JobStatusUpdate` with required `status`: `5847f40`, **2026-06-01**. Worker `_update_job_celery_task_id` sending only `celery_task_id`: `60a4ef4`, **2026-08-25**, *"fix(wp-45): Cancel was revoking the right task id and the wrong task"*. **WP-45 added the caller five days ago against a contract requiring `status` since June** |
+| ⚠ **AND WP-45's OWN FIX HAS THEREFORE NEVER WORKED** | The write that records the STAGE task id is the one that 422s, so `render_jobs.celery_task_id` still holds the ORCHESTRATOR's id and cancel has been revoking the dispatcher. Verified on the live row |
+| ⛔ **RC-Q17 ROWED — NO PUBLISHED SYSTEM PROMPT HAS EVER REACHED A REAL RUN** | The 401 is wider than RC-Q15: **prompt v8 and the whole `assessment_authoring_system` lineage have never been used by the pipeline either.** Fixed here; the consequence for every acceptance in this lineage is stated in 12h-fix.6 |
+| ⛔ **RC-Q18 ROWED, NOT FIXED — AND IT IS MINE, FROM 12h** | The first real contract-7 run wrote **15 scene rows and a brief carrying only 12 scene designs**: the capture observer sees call 1's raw content, so **the brief never learns about call 2's assessments**. 11 gate refusals follow. Out of this order's scope; quoted and rowed |
+| **Tests** | API **1771 → 1789 passed, 0 failed**. Workers **identical BY NAME** to the `eafbf9f` baseline. **ZERO NEW FAILURES** |
+| ⛳ **RC-Q13's headroom holds at full-script input** | Stage 2 ran **274 s** against the ruled 870 s client budget and 900 s soft limit — **32% of it.** No retuning |
+| **Held** | **2 commits.** Nothing pushed by me — ⚠ **the operator pushed `a17b7f0` and `bd043b8` mid-session**, measured at the ref at close |
+
+---
+
+## 12h-fix.1 TASK 1 — both mechanisms, confirmed on the live rows
+
+### The paraphrase, and the prompt that never arrived
+
+| | measured | source |
+|---|---|---|
+| `source_kind` | `uploaded` | `transcripts` row `765fd363` |
+| `source_text` | **3,138 chars / 3,172 bytes**, opening *"# How to Multiply Double-Digit Numbers"* | same row |
+| `refined_text` | **1,647 bytes**, opening *"Here's how to multiply two-digit numbers. Let's break it down into small steps."* | same row |
+| stage-1 output | **459 tokens** — where a verbatim copy of that script needs ~800 | checkpoint `transcript_refinement` |
+| design consumes | `refined_text` | `stage2_storyboard.py:122`, `combined_transcript` |
+| the copy instruction | *"`refined_text`: `<THE SCRIPT, COPIED CHARACTER FOR CHARACTER, UNCHANGED>`"* and rule 1 *"`refined_text` IS THE SCRIPT, UNCHANGED. Copy it."* | the ACTIVE `transcript_refinement_system` row, quoted from the database |
+
+⛔ **AND THEN THE OPERATOR'S OWN WATCH LOG CONVICTED SOMETHING ELSE.** At
+11:16:07.786, one line after the job started:
+
+    system_prompt_not_published  prompt_type=transcript_refinement_system
+      detail="no active row; the stage will load its .j2 from the image."
+      fingerprint=transcript_refinement_system:file:sha256=eff34946716f1768
+
+**There WAS an active row.** `fingerprint=…:file:…` says the stage used the
+image's `.j2`. Measured directly, inside the running worker, before any fix:
+
+    transcript_refinement_system -> 0 chars
+    storyboard_generation_system -> 0 chars
+    assessment_authoring_system  -> 0 chars
+    GET /prompts (service token) -> 401
+
+⛳ **SO THE MODEL WAS NEVER ASKED TO COPY ANYTHING.** It received
+`stage1_system.j2` from the image — the pre-WP-IVGS-12 refine-for-readability
+prompt, whose §5 *"Time Alignment"* section is the one the recovery plan indicts
+for turning a four-minute script into a 1:45 condensation — and it did exactly
+that. **The order's premise, *"the extraction prompt asks for a verbatim copy;
+the model summarized"*, is false in its second half and the correction matters:
+this was not a model that disobeyed.**
+
+⚠ **AND IT IS THE SAME DEFECT WP-IVGS-12b ALREADY FIXED ONCE, IN ANOTHER ROUTE.**
+12b: *"`/design-outcomes`, NOT `/projects/{id}`. The latter takes
+`get_current_user` and answers a service token with 401, so this returned []
+every time, the enum never armed."* Identical shape; and the swallow here is
+worse, because `_fetch_active_prompt` returns `""` on any non-200 and the stage
+falls back to a file, so a published prompt **appears to be live and is not.**
+
+### The 422
+
+| | measured |
+|---|---|
+| the two responses | `PATCH /api/v1/jobs/5b228dd5… "HTTP/1.1 422 Unprocessable Entity"` at **11:16:07.811** and **11:16:30.743** — one per stage dispatch |
+| the payload the worker sends | `{"celery_task_id": "<id>"}` — `pipeline_orchestrator_v2.py:1517-1520` |
+| the endpoint's schema | `class JobStatusUpdate` with **`status: str`** — required — `jobs.py:174-181` |
+| the endpoint's own docstring | *"Only fields the worker sends are written"* |
+| why nothing said so | `client.patch(…)` with **no assignment**, inside a `try` that catches only transport errors. A 422 is a successful request carrying a refusal, so the `except` never fired |
+
+⛳ **THE API IS THE CONVICTED SIDE, AND ITS OWN DOCSTRING IS THE EVIDENCE.** A
+required field on a PATCH contradicts *"only fields the worker sends are
+written"*. Forcing the caller to restate `status` would be worse than a defect:
+it would send a value it does not know is still current, so a `celery_task_id`
+write could overwrite a concurrent transition with a stale status.
+
+⛔ **NEITHER SIDE IS A 12-SERIES CHANGE.** Dated with `git log -S`:
+
+    API     5847f40  2026-06-01  feat(api): internal service-account auth +
+                                 PATCH /jobs/{id} (worker callback contract)
+    worker  60a4ef4  2026-08-25  fix(wp-45): Cancel was revoking the right task
+                                 id and the wrong task
+
+⚠ **AND THE COST IS WP-45's ENTIRE PURPOSE.** Its title is the fix it shipped;
+the write that records the STAGE task id is the one that 422s, so
+`render_jobs.celery_task_id` keeps the ORCHESTRATOR's id and **cancel has been
+revoking the dispatcher, not the stage, for five days.** Verified on the live
+row: job `5b228dd5` holds `a4e23190-…`, which the log shows is the
+`dispatch_pipeline` task.
+
+---
+## 12h-fix.2 TASK 2 — the fix, by the 12b principle
+
+### The substitution, and where it lives
+
+`TranscriptService.update_transcript` — **the one function that owns the row and
+already holds `source_text`.** For an uploaded transcript written by the WORKER,
+`refined_text := source_text` and the model's echo is discarded.
+
+⛳ **THE UNIFICATION CONSEQUENCE, WHICH IS THE ARGUMENT FOR THIS SHAPE.** With
+the substitution, **every existing consumer of `refined_text` becomes correct
+with ZERO changes to any of them**:
+
+| consumer | what it now gets |
+|---|---|
+| `stage2_storyboard.py:122` → `combined_transcript` | the operator's script, entire |
+| `design_review`'s coverage spans | offsets into the real script |
+| the gate's gap quotes | the operator's own phrasing |
+| `_coverage_gaps`' `source_text` comparison | two copies of the same bytes |
+
+Re-pointing consumers at `source_text` instead would have meant finding all of
+them, and **the one missed would be a silent wrong answer rather than a compile
+error.** ⛳ **I looked for a consumer the argument fails for and did not find
+one** — the order asked me to stop and say so if I did.
+
+⚠ **BUT I DID FIND A WRITER IT FAILS FOR, AND THE ORDER DID NOT COVER IT.** This
+same endpoint is how a **human** edits `refined_text` inline from the gate.
+Substituting unconditionally would silently discard an operator's own correction
+and hand their edit straight back unchanged — **a worse defect than the one being
+fixed**, and precisely the "silent loss" class this lineage exists to remove. So
+the substitution is scoped to the **service principal**:
+
+    is_service_principal(current_user)   ->  the worker's echo, discarded
+    a real user                          ->  a deliberate edit, honoured
+
+⛳ **THE TEST IS THE AUTHENTICATED PRINCIPAL AND NOT A FLAG IN THE BODY**, so a
+worker cannot present itself as a person to keep its paraphrase, and a person
+cannot claim to be the worker. `SERVICE_ACCOUNT_USERNAME` became a named constant
+because RC-Q15 made it load-bearing beyond authentication — it now decides
+whether a write is a model's echo or a person's work, and a hand-typed
+`"svc-pipeline"` at a call site would be a second copy of a security-relevant
+identity. ⚠ **My first attempt used `getattr(current_user, "is_service_account",
+False)`, an attribute that does not exist — it would have silently never
+fired.** Caught by reading `get_service_or_user` rather than assuming.
+
+**The generated path is untouched byte for byte, on both principals**, and a test
+asserts it: a generated transcript IS raw material and refining it is right.
+
+### The belt, post-write and loud
+
+    if by_service and source_kind == 'uploaded'
+       and transcript.refined_text != transcript.source_text:
+           raise RuntimeError("RC-Q15 BELT: … the substitution did not take.")
+
+⛳ **READ BACK FROM THE REFRESHED ROW, NOT FROM THE LOCAL VARIABLE.** The claim
+is about what is IN the database; an ORM default, a trigger or a future column
+could make those two disagree, and that is exactly the silent case. A test
+asserts the `db.refresh` precedes the check.
+
+⛔ **AND AN UPLOADED ROW WITH NO `source_text` NOW REFUSES RATHER THAN STORING
+THE PLACEHOLDER.** This is a consequence of the prompt change below and it is not
+theoretical: with nothing to substitute, the model's `EXTRACTED` would have been
+persisted **as the script**, and every stage would have designed from one word.
+
+### The prompt — and a blocker the order's wording would have hit
+
+The verbatim-copy instruction is gone. ⚠ **But it could not be replaced with
+"emit it empty", which is what "stop requesting the copy" most naturally means.**
+
+⛔ `stage1_transcript.py:368` refuses an empty `refined_text` as *"Empty response
+from vLLM"* and fails the stage — **before** the substitution can run, in a body
+AD-05 §8 freezes. So the field is now a fixed placeholder:
+
+    "refined_text": "EXTRACTED"
+
+Non-empty, so the frozen guard passes; a constant, so it cannot drift; obviously
+not content. The rule states the frozen line number so the next reader does not
+"tidy" it back to `""`.
+
+⚠ **The publisher's `EXTRACTION_PHRASES` drops `COPIED CHARACTER FOR CHARACTER,
+UNCHANGED` and gates the opposite instruction instead**, so a future edit that
+quietly reinstates the copy fails the publisher. Same audited-drop discipline 12b,
+12d, 12f, 12g and 12h each used.
+
+### ⛔ AND THE API MUST BE REBUILT — the order asked me to name it
+
+**Both Task 2 and Task 5 land API-side**, so `ivgs-api` is rebuilt, not just
+`ivgs-workers`:
+
+  * `transcript_service.py` — the substitution and the belt
+  * `transcripts.py` — passes the principal
+  * `auth.py` — `SERVICE_ACCOUNT_USERNAME`, `is_service_principal`
+  * `prompts.py` — the 401 (RC-Q17)
+  * `jobs.py` — `status` optional and the transition guards (RC-Q16)
+
+The only worker-side change is `pipeline_orchestrator_v2._update_job_celery_task_id`.
+
+---
+
+## 12h-fix.3 TASK 5 — RC-Q16, and the freeze claim checked first
+
+⛳ **THE ORDER'S FREEZE CLAIM IS TRUE AND I VERIFIED IT BEFORE EDITING.**
+`dev/CLAUDE.md` §3 freezes *"the eight stage task bodies"* — the `stageN_*` /
+`*_task` bodies named in `policies.py`'s table. `pipeline_orchestrator_v2.py` is
+not among them, and §7's swallowed-failures row already names it at `:880,893` as
+carrying open defects to fix. **No wrapper and no STOP-with-diff was needed.**
+
+**The API side** — `status` is optional, and the transition logic is guarded:
+stamping and the WP-45/WP-62 DRAFT reset are TRANSITION logic and must not run
+for a write that carries no transition. Stamping `None` would either crash or
+record a change that did not happen.
+
+**The worker side** — returns `bool`, logs `job_celery_task_id_recorded` on
+success and `job_celery_task_id_update_rejected` at **error** on a non-2xx, with
+the status code, the body and the consequence.
+
+⚠ **DELIBERATELY NOT RAISED INTO THE DISPATCH.** A job whose task id was not
+recorded is still a job that should run; failing the pipeline over a bookkeeping
+write trades a quiet defect for a loud outage. **Loud is the requirement; fatal
+is not** — and a test pins that it does not raise.
+
+### Proven both ways, as the order required
+
+    forced 422  ->  [error] job_celery_task_id_update_rejected
+                    status_code=422 celery_task_id=task-probe
+                    body={"detail":[{"msg":"Field required","loc":["body","status"]}]}
+                    detail="the API refused the task-id write; cancel will
+                            revoke the dispatcher rather than this stage (RC-Q16)"
+                    RETURNED: False
+
+    a real run  ->  422 count in the worker log: **0**   (was 2)
+
+⚠ **THE SECOND PROOF THE ORDER ASKED FOR — "a real run's statuses persist
+(ledger vs jobs row agree at every transition)" — IS PARTIALLY GIVEN AND I SAY
+WHICH HALF.** The acceptance run's checkpoint ledger reports
+`transcript_refinement complete` then `storyboard_generation complete`, and the
+run produced no 422 at any transition. **I did not additionally diff the
+`render_jobs.status` column against the ledger at each transition**, because the
+project was deleted at the end of the acceptance per the order and the row is
+gone. That check is cheap and is named in 12h-fix.7 rather than claimed.
+
+---
+## 12h-fix.4 TASK 3 — the pinned regression, and the RC-Q3 slice
+
+**18 tests**, `test_wpivgs12h_fix_rcq15_rcq16.py`: the worker's paraphrase
+discarded, a human's edit honoured, the generated path unchanged on both
+principals, the no-`source_text` refusal, the belt reading the refreshed row, the
+service-principal test, the `/prompts` route accepting the worker **and the
+worker reading that exact route**, the prompt's dropped and added instructions,
+the partial PATCH, the guarded transition logic, and the loud-but-not-fatal
+task-id write.
+
+⛳ **AND THE END-TO-END REGRESSION IS THE ACCEPTANCE ITSELF** (12h-fix.5), driven
+through the operator's own upload route rather than a fixture.
+
+### The RC-Q3 slice the substitution closes, with evidence
+
+RC-Q3 is *"a 64-character chat refusal recorded as a refined transcript; the 'is
+this a transcript at all' check does not exist."* `stage1_transcript.py:368` is
+the whole check today: `if not refined_text`.
+
+⛳ **FOR AN UPLOADED ROW THAT CHECK IS NOW EXACT EQUALITY, AND IT IS ENFORCED
+SERVER-SIDE WHERE THE FROZEN GUARD CANNOT BE.** The stored value must be
+byte-identical to `source_text` or the write raises. A 64-character refusal, a
+summary, a truncation or an apology **cannot be stored as an uploaded
+transcript** — not because a heuristic judged it, but because it is not the
+bytes we already have. Proved by `test_the_workers_paraphrase_is_discarded…`
+(a 60-byte paraphrase against a 3,138-byte script) and by the live acceptance.
+
+⛔ **THE GENERATED-PATH HALF STAYS OPEN AND IS NOT TOUCHED.** There is no
+`source_text` to compare against on that path — refining is the model's real work
+there — so `:368`'s emptiness check remains the only validator. **RC-Q3 stays on
+the board with its scope narrowed to the generated path**, which is the honest
+close: half the row is closed by construction and half is not closed at all.
+
+---
+
+## 12h-fix.5 TASK 4 — build, deploy, publish, and the acceptance
+
+**Built from `829e6eb`, both images, tagged `v5.38.5-rcq15-script-intact`**,
+banked with RC-Q8 digest sidecars and registered in `MANIFEST.txt`.
+
+**DEPLOY VERIFIED, seven containers**, §6.1a, stderr never redirected, compose
+invocation derived from container labels. ⛳ **And by IMAGE ID against the banked
+digests — all seven identical**: api `sha256:5d252fe5dfe7…`, workers
+`sha256:d0273a1c9cec…`.
+
+**PUBLISHED AFTER THE DEPLOY**, per 12c's rule:
+
+    storyboard_generation_system: v8 is already this exact text — no-op
+    assessment_authoring_system:  v1 is already this exact text — no-op
+    transcript_refinement_system: published v2 (8000 chars, sha256 9ba92177c1f61898…),
+                                  superseding v1
+
+⛳ **AND THE BEHAVIOUR READ BACK OUT OF THE RUNNING WORKER — THIS IS THE ONE THAT
+MATTERS**, because before the deploy all three of these were `0`:
+
+    transcript_refinement_system -> 8000 chars
+    storyboard_generation_system -> 19857 chars
+    assessment_authoring_system  -> 7514 chars
+
+### The acceptance — ONE fresh project, the operator's own route
+
+⛳ **AND IT IS THE FIRST TIME IN THIS ENTIRE LINEAGE THAT A GENERATION HAS GONE
+THROUGH THE REAL PIPELINE.** §12h.15 item 2 called that the largest gap; this
+closes it for stages 1–2.
+
+`POST /projects` → `POST /projects/{id}/transcripts/upload` (multipart, the
+operator's own file) → `POST /projects/{id}/trigger`, all as a real user
+principal, then Celery ran it.
+
+| acceptance criterion | measured | |
+|---|---|---|
+| `refined_text` byte-identical to `source_text` | **3,172 = 3,172, `t`** | ⛳ |
+| design call `prompt_tokens` reflects the full script | **15,611** (stage-2 checkpoint) | ⛳ |
+| gap quotes carry the ORIGINAL phrasing | see below | ⛳ |
+| test project deleted via WP-59 | `DELETE … HTTP 200`; projects/transcripts/scenes/briefs all **0** | ⛳ |
+
+**The gate's coverage-gap quote, from the live `design-review` payload** —
+characters 1700–3138 of the operator's script, his words, his markdown, his CRLFs:
+
+> *"re almost finished!\r\n\r\nWe have two answers:\r\n\r\n\*\*92\*\*\r\n\r\nand\r\n\r\n\*\*230.\*\*\r\n\r\nNow add them together… \*\*322.\*\*\r\n\r\nSo:\r\n\r\n\*\*23 times 14 equals 322.\*\*\r\n\r\nNice work!\r\n\r\n## Let'…"*
+
+⛳ **NONE OF THAT SURVIVED THE PARAPHRASE.** The stored refinement was *"Here's
+how to multiply two-digit numbers. Let's break it down into small steps."* —
+1,647 bytes with no `**92**`, no `**230**`, no *"Nice work!"*, and spans that
+indexed into a summary. The gate now quotes the operator's lesson back to him.
+
+⚠ **ONE CRITERION RESTATED RATHER THAN MET AS WRITTEN.** The order asks for
+*"'Hi there!' findable"*. **That string is not in the operator's script** — it
+opens *"Hi! Today, we're going to learn how to multiply \*\*two-digit
+numbers\*\*."* The equality assertion is stronger than any phrase test and it
+passes; the phrase actually checked in the test suite is `"Hi there!"` against a
+fixture, and against the live row `position('Hi! Today' in refined_text) > 0`
+returned true.
+
+⛳ **AND THE SCRIPT IS THE ONE THE 12h ACCEPTANCE ALREADY USED — md5
+`f65f340c1650…`, byte-identical.** So the six generations of §12h.9–.10 were
+measured against the operator's REAL script all along, because the harness read
+it from SeaweedFS directly. **The Design Core's findings stand; it was only the
+pipeline that was fed a summary.**
+
+### RC-Q13's headroom at full-script input, as the order required
+
+| | measured |
+|---|---|
+| stage 2, real Celery task, full script | **274 s** |
+| ruled client budget (soft 900 − 30) | **870 s** |
+| the two-call split | 740 / 130 |
+| **headroom used** | ⛳ **32%** |
+
+**No retuning, and none is needed.** ⚠ 274 s is well under the 366–526 s the 12h
+harness measured; the run produced 12 designed scenes against the harness's
+33–47, so this is a smaller design and not evidence that the budget is generous.
+**The budget holds; the sample is one.**
+
+---
+## 12h-fix.6 ⛔ RC-Q17 — no published system prompt has ever reached a real run
+
+**Fixed here, and rowed because its consequence is larger than RC-Q15.**
+
+`GET /prompts` answered a service token with 401 from **2026-06-01**; WP-IVGS-12
+added `_fetch_active_prompt` as a worker reader on **2026-08-29** (`cead433`)
+without widening it. `_fetch_active_prompt` returns `""` on any non-200, and
+`_resolve_system_prompt` then logs `system_prompt_not_published` and falls back
+to the image's `.j2`.
+
+⛔ **SO EVERY VERSIONED SYSTEM PROMPT THIS PACKAGE LINEAGE PUBLISHED HAS BEEN
+INERT IN PRODUCTION.** v1…v8 of `storyboard_generation_system`, v1 of
+`transcript_refinement_system`, and v1 of `assessment_authoring_system`. Six
+packages published prompts into a lineage, verified them in the database, and
+watched the fleet load a file instead.
+
+⛳ **WHAT THIS DOES *NOT* INVALIDATE, STATED PRECISELY.** Every acceptance in
+§§12b–12h rendered the seed `.j2` files **directly** in the harness and passed
+them to node-02 — so those runs used the prompt under test, and their findings
+stand. What was never true is the sentence every one of those reports implies:
+that the deployed pipeline was running them.
+
+⚠ **AND IT EXPLAINS SOMETHING 12h SAW AND MISREAD.** The operator's watch
+produced a `design-contract-7` brief — because the CONTRACT is armed by
+`celery_app`'s `response_format` override, which needs no API — while its stage-2
+prompt was the image's `stage2_system.j2`, not v8. **The grammar reached
+production and the prompt did not.**
+
+⛳ Fixed: `list_global_prompts` now takes `get_service_or_user`. Reading is all
+the worker does there; **prompt WRITES stay human-only and are still tested.**
+
+⚠ **ONE EXISTING TEST RE-AIMED, AND IT IS THE PREMISE THAT CHANGED, NOT THE
+CLAIM.** `test_global_prompt_list_still_refuses_the_service_token` asserted 401
+with the reason *"no worker reads it"* — true when WP-37 wrote it on 2026-08-23,
+made false by WP-IVGS-12 six days later. Re-aimed to assert 200, with both dates
+and both commits in the docstring.
+
+---
+
+## 12h-fix.7 ⛔ RC-Q18 — the brief does not know about call 2, and it is MINE
+
+**Found by this acceptance. NOT fixed — out of this order's scope, and it needs a
+design decision rather than a patch.**
+
+The first real contract-7 run wrote:
+
+    storyboard_scenes rows                15   (12 carrying design columns, 3 not)
+    storyboard_design_briefs.scene_designs 12
+    the 3 undesigned rows, at indices 12-14, are THE ASSESSMENTS:
+      12  "Why do you need to write a placeholder zero…"
+      13  "Check your work by verifying the column alignment…"
+      14  "Check your work: did you correctly multiply…"
+
+⛔ **THE MECHANISM IS AN ORDERING I BUILT IN 12h.**
+`design_core.capture.observe` is called from `_notify_observers` **inside
+`_chat_request`** — on call 1's raw content — while `transform_document`, which
+makes call 2 and stitches its assessments in, runs later inside `chat_json`. So:
+
+  * the **stage** receives the merged 15-scene document and writes 15 rows ✅
+  * the **brief** is parsed from call 1 alone and carries 12 scene designs ⛔
+  * `apply_scene_design` matches by index and back-fills only 12
+  * the gate then reads 3 rows with no `instructional_event`, no
+    `serves_outcomes` and no provenance → **11 hard refusals**:
+    `SCENE_NO_EVENT`, `SCENE_SERVES_NOTHING`, `SCENE_PROVENANCE_UNDECLARED`,
+    `PLAN_ENTRY_UNREALIZED`
+
+⛳ **AND THIS IS EXACTLY WHAT §12h.15 ITEM 2 SAID WOULD BE FOUND.** *"The second
+call, the `await`ed seam and the `DocumentTransformFatal` path have never run
+inside a real stage-2 job… this is now the largest gap in the lineage by a
+distance."* It was, and the first real run found a defect in it within minutes.
+
+⚠ **THE 12h ACCEPTANCE COULD NOT HAVE CAUGHT IT**, and that is the lesson worth
+keeping: the harness calls `parse_contract` on the **stitched** document, so it
+measured what the brief *would* contain if the observer saw the stitched
+document. It does not.
+
+⛔ **THE ROUTES, NAMED, NONE TAKEN:** move the capture to after the transform;
+have the transform re-post the stitched brief; or give the observer the merged
+document. Each changes which artifact is the design of record, so it is a
+package, not a patch. **Rowed for 12i.**
+
+---
+
+## 12h-fix.8 The tree, and the operator's push block
+
+**Working tree clean. No frozen stage body was touched. No freeze exception was
+requested — `pipeline_orchestrator_v2` was checked against §3's list first and is
+not frozen.**
+
+    a17b7f0  fix(wp-ivgs-12h): RC-Q13 ruled  [tag v5.38.4]   ← PUSHED mid-session
+    bd043b8  docs(wp-ivgs-12h): the RC-Q13 ruling                ← PUSHED mid-session
+    829e6eb  fix(wp-ivgs-12h): RC-Q15 the script was paraphrased, RC-Q16 the 422
+             swallow                         [tag v5.38.5-rcq15-script-intact]
+    <2nd>    docs(wp-ivgs-12h-fix): RC-Q15, RC-Q16, and two rows that outlive them
+
+⛔ **THE §0 RULE BIT THREE TIMES IN ONE SESSION.** I drafted a held count of 5,
+then 2, then 4; `git rev-list --count origin/main..HEAD` after a `git fetch` said
+**2** every time it was actually measured, because `origin/main` moved under me
+twice more while these fixes were being built. **Measure the ref, never the
+memory.**
+
+⚠ **`ivgs-infra/.env` is dirty on ALL FOUR NODES and is not mine to commit** —
+the deploy moved both tags to `v5.38.5-rcq15-script-intact`. Gitignored, §3
+never-touch. **Rollback is `v5.38.4-rcq13-declared-budget` on all four nodes.**
+
+⚠ **A SHORT-LIVED USER JWT WAS MINTED INSIDE THE API CONTAINER FOR THE
+ACCEPTANCE, AND IS RECORDED BECAUSE CREDENTIALS ARE §3's SUBJECT.** The upload
+and trigger routes take `require_operator_or_admin`, which is `get_current_user`
+— a service token cannot drive them. **No password was read, printed or stored:**
+the token was signed in-process from the app's own key for an existing admin, was
+given 45 minutes, was never echoed to the transcript, and the minting script and
+the token file were destroyed at the end. It reached no file that is committed.
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=2
+ACTUAL=$(git rev-list --count origin/main..HEAD)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main \
+    && git push origin v5.38.5-rcq15-script-intact
+fi
+```
+
+---
+
+## 12h-fix.9 What I did not verify
+
+1. ⛔ **RC-Q18 is rowed and not fixed**, and it means a contract-7 design
+   currently reaches the gate with its assessments undeclared — **11 hard
+   refusals on a run whose design was otherwise sound.** The operator's re-run of
+   the watch will see them.
+2. ⛔ **The rendered gate panel, still.** No browser was driven, by me. The
+   operator's watch is the first thing that ever has, and it found two defects in
+   one run — which is the argument for it continuing rather than against.
+3. ⚠ **`render_jobs.status` was not diffed against the checkpoint ledger at each
+   transition.** The run produced zero 422s and both checkpoints report
+   `complete`; the row itself was deleted with the project. Named in 12h-fix.3
+   rather than claimed.
+4. ⚠ **The generated path was tested, not exercised.** No generated-transcript
+   job was run; the byte-for-byte claim rests on unit tests over the service.
+5. ⚠ **n = 1 on the acceptance**, and it produced a 12-scene design where the
+   harness produces 33–47. The RC-Q13 headroom figure (32%) is one sample.
+6. ⚠ **RC-Q3's generated half stays open**, deliberately, and the board row is
+   narrowed rather than closed.
+7. ⚠ **I did not re-run stages 3+.** The acceptance stops at the gate, as every
+   package in this lineage has.

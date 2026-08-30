@@ -6,7 +6,56 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — api + workers `v5.38.4-rcq13-declared-budget`, frontend `v5.37.0-design-core`
+## Fleet — api + workers `v5.38.5-rcq15-script-intact`, frontend `v5.37.0-design-core`
+
+⛔ **THE OPERATOR'S PHASE-1 WATCH RAN AND FOUND TWO DEFECTS ON ITS FIRST RUN. Both
+are fixed and deployed; two more that it exposed are rowed.**
+
+⛔ **RC-Q15 — THE UPLOADED SCRIPT WAS PARAPHRASED INTO THE DESIGN'S INPUT.**
+Project `3beaf804`: `source_text` 3,138 characters intact, `refined_text` **1,647
+bytes of summary**, and `stage2_storyboard.py:122` feeds the design from
+`refined_text`. **The whole Design Core was reasoning about a summary of the
+operator's lesson.** ⛳ **And the mechanism was not a disobedient model — the
+instruction never arrived** (RC-Q17 below). Fixed by the 12b principle:
+`TranscriptService.update_transcript` substitutes `refined_text := source_text`
+for an uploaded row written by the WORKER, with a post-write belt that refuses a
+mismatch. **Every existing consumer becomes correct with zero changes.** ⚠ Scoped
+to the service principal so a HUMAN's inline edit at the gate is still honoured.
+
+⛔ **RC-Q17 — NO PUBLISHED SYSTEM PROMPT HAS EVER REACHED A REAL PIPELINE RUN.**
+`GET /prompts` answered a service token **401** (since 2026-06-01), WP-IVGS-12
+added a worker reader on 2026-08-29 without widening it, and
+`_fetch_active_prompt` swallows to `""` — so every stage loaded the `.j2` from its
+image. Measured before the fix: **all three lineages resolved to 0 characters**
+while their rows were active. **v1…v8 of the storyboard prompt and the whole
+assessment lineage have been inert in production.** ⛳ The acceptances in
+§§12b–12h render the seed files directly and their findings stand; what was never
+true is that the deployed pipeline was running them. Fixed and read back live:
+8,000 / 19,857 / 7,514 characters.
+
+⛔ **RC-Q16 — JOB-STATUS PATCHES SILENTLY BOUNCING 422.** `JobStatusUpdate.status`
+was required on a PATCH whose own docstring says *"only fields the worker sends
+are written"*; WP-45 added a caller sending `celery_task_id` alone on 2026-08-25.
+⛔ **Neither side is a 12-series change.** ⚠ **And WP-45's own fix has therefore
+never worked** — the write that records the STAGE task id is the one that 422s, so
+cancel has been revoking the dispatcher. Fixed both sides; **2 → 0** 422s on a real
+run, and a forced 422 now produces a named `error` event.
+
+⛳ **AND THE ACCEPTANCE WAS THE FIRST GENERATION IN THIS ENTIRE LINEAGE TO GO
+THROUGH THE REAL PIPELINE** — the operator's own upload → trigger route.
+`refined_text` byte-identical to `source_text` (3,172 = 3,172); design call
+`prompt_tokens` **15,611**; the gate's gap quote carrying the operator's own
+words, markdown and CRLFs. Test project deleted via WP-59. ⛳ **RC-Q13's budget
+holds at full-script input: 274 s of 870 s, 32%.**
+
+⛔ **RC-Q18, ROWED AND MINE — THE BRIEF DOES NOT KNOW ABOUT CALL 2.** That same
+first real run wrote **15 scene rows and a brief with 12 scene designs**: the
+capture observer fires on call 1's raw content, before the transform makes call 2
+and stitches its assessments in. The three assessment rows reach the gate
+undeclared and it raises **11 hard refusals**. ⛳ Exactly what §12h.15 item 2 said
+would be found. Not fixed — it changes which artifact is the design of record.
+
+ⓘ **WP-IVGS-12h RC-Q13, superseded by the above but kept for the lineage.**
 
 ⛳ **WP-IVGS-12h IS LIVE, AND RC-Q9g IS CLOSED.** Nodes 01-04 rebuilt from
 `a41d642`, banked with digest sidecars, loaded from the artifact store, deployed
@@ -104,10 +153,10 @@ neither half.
 
 | Node | Card / role | Key images | Health exceptions |
 |---|---|---|---|
-| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.4-rcq13-declared-budget`** + workers **`v5.38.4-rcq13-declared-budget`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
-| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.4-rcq13-declared-budget`**; vLLM pinned `sha256:3dbe092e…` | ✅ **RC-Q13 RULED: soft 900 / hard 960**, derived client budget **870 s** split **740/130** across the two calls — read back off the LIVE task objects, not the file |
-| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.4-rcq13-declared-budget`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
-| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.4-rcq13-declared-budget`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
+| **node-01** `.90` | CPU hub: Postgres, Redis, SeaweedFS, API, frontend, scheduler, workers, monitoring. 16 GB | **api `v5.38.5-rcq15-script-intact`** + workers **`v5.38.5-rcq15-script-intact`**; frontend `v5.37.0-design-core` (unchanged tree — rebuilding it only to move a tag would mint a new digest for identical source); `ivgs-motion-renderer` `v5.34.0-v7-contract`; scheduler + backup-worker `v5.31.0-hygiene` | none |
+| **node-02** `.91` | LLM (Llama-3.3-70B FP8) | worker **`v5.38.5-rcq15-script-intact`**; vLLM pinned `sha256:3dbe092e…` | ✅ **RC-Q13 RULED: soft 900 / hard 960**, derived client budget **870 s** split **740/130** across the two calls — read back off the LIVE task objects, not the file |
+| **node-03** `.92` | Video (CogVideoX, Wan) | `cogvideox-worker` **`v5.38.5-rcq15-script-intact`** | ⓘ also runs two servers no IVGS package placed — RC-I5; ⛔ **blank clip recorded as success — RC-P3** |
+| **node-04** `.93` | Image + TTS + talking head. RTX PRO 6000 | worker **`v5.38.5-rcq15-script-intact`**; `ivgs-coqui` `coqui-v5.2.9-params`; vLLM pinned `sha256:3dbe092e…` | none |
 | **node-05** `.94` | Qwen3.8-27B-FP8 on vLLM. No Celery worker | vLLM `sha256:3dbe092e…` | ⛔ **OUT OF BOUNDS — not contacted** |
 | **node-06** `.95` | **OPERATOR-MANAGED, OUT OF BOUNDS.** Telemetry + CLIP scorer | — | not contacted |
 | **.96** | **Temporal 1.29.7 host.** gRPC `:7233`, UI `:8080` | — | ⛔ node-01 root ssh **not authorized**; admin method is an operator input |
@@ -444,9 +493,17 @@ while the RC-Q13 ruling was being executed, so the close-out count is **2**. ⛳
 worked four sessions running**, and each time the previous board's text would have
 implied a number that was wrong.
 
-**Held now: TWO commits — the RC-Q13 ruling (`a17b7f0`, tagged
-`v5.38.4-rcq13-declared-budget`) and this report/board commit. The push block
+**Held now: TWO commits** — the RC-Q15/RC-Q16 fixes (`829e6eb`, tagged
+`v5.38.5-rcq15-script-intact`) and this report/board commit. **The push block
 expects 2.**
+
+⛔ **AND THE §0 RULE BIT THREE TIMES IN THIS ONE SESSION, WHICH IS A RECORD WORTH
+KEEPING.** The session made seven commits; the operator pushed the first three
+while the RC-Q13 ruling was being executed, and `a17b7f0` + `bd043b8` while the
+RC-Q15 fix was. I drafted this row as 5, then 2, then 4, and the ref says **2**
+each time it was actually measured. `v5.38.2`, `v5.38.3` and `v5.38.4` are
+already on the remote; only `v5.38.5-rcq15-script-intact` is held with its
+commit. **Never carry the number forward — measure it.**
 
 ⚠ **THE PACKAGE MADE FIVE AND THE OPERATOR PUSHED THREE OF THEM MID-SESSION**,
 while the ruling was being executed: `d8da66c` (tagged `v5.38.2`), `a41d642`
@@ -477,8 +534,8 @@ planned.**
 
 ⚠ **`ivgs-infra/.env` is dirty on ALL FOUR NODES and is not mine to commit** —
 the deploy moved `IVGS_API_TAG` and `IVGS_WORKERS_TAG` to
-`v5.38.4-rcq13-declared-budget`. Gitignored, and §3 names it never-touch for its
-token. **The rollback is `v5.37.7-evidence-structural` on all four nodes.**
+`v5.38.5-rcq15-script-intact`. Gitignored, and §3 names it never-touch for its
+token. **The rollback is `v5.38.4-rcq13-declared-budget` on all four nodes.**
 
 ⚠ **AND MIGRATION 0053 IS APPLIED TO PRODUCTION AND IS AHEAD OF `origin/main`
 UNTIL THE PUSH.** Correct order — schema before code, and the code is deployed —
@@ -490,7 +547,7 @@ rollback runs `alembic downgrade 0052`.
 `IVGS_BUILD_REF` unset, reported its version as `"unknown"`) and `v5.38.1`
 (correct bytes, wrong ref — it reported itself as `v5.38.0`).** Both are my slips
 and both are banked. Neither was a rebuilt tag: the bytes differ, so the tags
-differ, which is the RC-Q8 discipline. Only `v5.38.2`, `v5.38.3` and `v5.38.4` are pushed — the first two already are.
+differ, which is the RC-Q8 discipline. Only `v5.38.2`…`v5.38.5` are pushed — the first two already are.
 
 ---
 
@@ -546,6 +603,7 @@ shipped with a placeholder.
 
 | report | verdict |
 |---|---|
+| ↳ same file, **§12h-fix** | ⛔ **THE OPERATOR'S PHASE-1 WATCH FOUND TWO DEFECTS ON ITS FIRST RUN AND EXPOSED TWO MORE.** **RC-Q15**: the uploaded script was paraphrased into the design's input — 3,138 chars in, 1,647 bytes of summary stored, and `stage2:122` designs from it. ⛳ **The mechanism was not a disobedient model: `GET /prompts` answered the worker 401, so stage 1 never received the extraction prompt and ran the image's old refine-for-readability `.j2`** — that is **RC-Q17**, and it means **no published system prompt has ever reached a real pipeline run**, v1…v8 included. Fixed by the 12b principle, seam-side: `refined_text := source_text` for an uploaded row written by the worker, post-write belt, ⚠ scoped to the service principal so a human's edit survives. **RC-Q16**: job-status PATCHes bouncing 422 — ⛔ neither side a 12-series change (API required `status` since 2026-06-01; WP-45 added a partial caller 2026-08-25), ⚠ **so WP-45's own fix has never worked and cancel revokes the dispatcher.** Fixed both sides; 2 → 0 on a real run and a forced 422 now names itself. ⛳ **THE ACCEPTANCE WAS THE FIRST GENERATION IN THIS LINEAGE TO GO THROUGH THE REAL PIPELINE**: refined == source byte-identical (3,172 = 3,172), design `prompt_tokens` 15,611, the gate quoting the operator's own words back, project deleted via WP-59, and **RC-Q13's budget holding at 274 s of 870 s**. ⛔ It also found **RC-Q18**, which is mine: the brief is captured from call 1 and never learns about call 2, so three assessment rows reach the gate undeclared and raise 11 refusals. Rowed, not fixed. API 1771 → 1789, 0 failed |
 | ↳ same file, **§12h.16–.17** | ✅ **RC-Q13 RULED, ENCODED, DEPLOYED AND READ BACK OFF THE LIVE TASKS.** soft 900 / hard 960 on the 13-generation table (135–564 s), in `policies.py` alone and carried by `apply_declared_time_limits` — no decorator, no frozen body, no freeze exception. `start_to_close_s` 5 m → 30 m, **forced** by an invariant the tree already asserts. ⛳ Visibility timeout 7,200 ≫ 960 and 960 is not even the tallest row; `check_visibility_timeout` PASSED over 30 tasks in every worker on all four nodes. ⚠ Derived client budget is **870, not the 900 the ruling names** — the 30 s headroom is what makes the client lose the race (RC-P16); soft 930 would give a literal 900 with no code change. `ASSESSMENT_CALL_BUDGET_SHARE` 0.25 → 0.15 because its own argument expired. AD-05 Appendix C annotated — ⚠ it was already stale, reading the decorator's inert 120/150. ⛔ One test failed first and proved its own point: it pinned the literals 270/300, a second copy of the policy table inside a test whose subject is that second copies go stale. **RC-Q9h** and **RC-Q14** registered. API 1763 → 1771, 0 failed |
 | ↳ same file, **§12h** | ⛳ **RC-Q9g CLOSED — the calls separate the kinds and the second never sees what it must not copy.** **design-contract-7** splits the design across TWO engine calls inside one stage: call 1 emits everything except `assessment_scenes` (probed: it CANNOT put the key back), call 2 authors the assessments from the outcomes, the plan and a code-built practice summary — no narrations, no scenes, no script. **18 of 18 outcome-pairs distinct over six generations**, against 11 of 15 duplicates under contract-6. ⛳ **The order's STOP condition did not fire**: both "no axis" outcomes now invent a fresh CASE, 6 of 6, and B2's collapsed LO-3 goes 1.000 → 0.556. New HARD refusal **`EVIDENCE_NEAR_DUPLICATE`**, calibrated on 18 banked pairs (classes separate 0.667 \| 0.900) and **proven RED on 12g's duplicates as part of the acceptance**; ⛳ its worked-example limb caught a defect 12g's hand-comparison missed. Prompt **v8** (four phrases MOVED, proven arrived) + NEW lineage **`assessment_authoring_system` v1**, migration **0053**; deployed to nodes 01-04 at `v5.38.3`, verified by image ID. ⛳ **ACCEPTANCE MET run B: 0 refusals 3/3**, census 127/109/18/9/12, 0 evidence events in call 1's `scenes[]` 3/3. ⛔ Run A refused 1/1/1 on `MOTION_WITHOUT_TEMPLATE` — call 2 was ordered to name a template and never shown the list; fixed with a catalogue read from the renderer's registry, and B2 then showed call 1 (told in prose) inventing a template name while call 2 (given the registry) did not. ⚠ **RC-Q9h** rowed — two identical practice scenes, 4 of 6; ⛔ **RC-Q13** rowed — the declared 240 s client budget against 280–564 s of measured work |
 | `reports/WP-IVGS-12-DESIGN-CORE-report_2026-08-29.md` | the Design Core built and deployed; `guided_json` measured a silent no-op; the uploaded script found destroyed in place; **acceptance NOT met — RC-Q9** |
@@ -560,7 +618,20 @@ shipped with a placeholder.
 
 ## Next, in order
 
-1. ⛳ **THE OPERATOR'S BROWSER WATCH — PHASE 1'S HUMAN ACCEPTANCE. IT IS NEXT.**
+1. ⛔ **RE-RUN THE WATCH THROUGH THE FIXED PATH.** The operator deletes project
+   `3beaf804` — its design was built from a 1,647-byte summary and is not worth
+   reviewing — and re-runs the upload with the same script. ⛳ **The first watch
+   paid for itself in one run: RC-Q15, RC-Q16, RC-Q17 and RC-Q18, none of which
+   six packages of harness-driven acceptance had found.** ⚠ **Expect 11 hard
+   refusals on the re-run until RC-Q18 is fixed** — the three assessment rows
+   reach the gate undeclared. The DESIGN will be sound; the gate will not agree
+   yet, and that is a known, rowed cause
+2. ⛔ **RC-Q18 — THE BRIEF DOES NOT KNOW ABOUT CALL 2, AND IT IS 12h's.** The
+   capture observer fires on call 1's raw content; the transform makes call 2 and
+   stitches the assessments in afterwards. 15 scene rows, 12 scene designs, three
+   undeclared assessments, 11 refusals. Three routes named at §12h-fix.7 and each
+   changes which artifact is the design of record, so it is a package
+3. ⛳ **THE WATCH ITSELF — PHASE 1'S HUMAN ACCEPTANCE — CONTINUES AFTER THAT.**
    ⛳ **RC-Q9g IS CLOSED and the gate is clean: 0 hard refusals 3/3, and 18 of 18
    outcome-pairs distinct by the belt's own measure**, where contract-6 shipped a
    design in which most outcomes got the same scene twice. Every previous
@@ -581,23 +652,27 @@ shipped with a placeholder.
    one definition that reaches the tasks, so the change is a one-line edit to a
    **declared conformance table** — and that is an operator ruling, not a config
    tweak. ⚠ Item 3 below is how it would be discovered rather than argued
-3. ⛔ **NOT ONE GENERATION HAS GONE THROUGH THE REAL PIPELINE, AND 12h MAKES THIS
-   THE LARGEST GAP BY A DISTANCE.** The second engine call, the `await`ed
+5. ✅ **A GENERATION HAS NOW GONE THROUGH THE REAL PIPELINE — the RC-Q15
+   acceptance, stages 1-2, the operator's own upload route. This item is closed
+   for stage 2 and it closed by finding RC-Q18 within minutes.** The text below
+   is kept because it predicted exactly that. ⛔ **NOT ONE GENERATION HAS GONE
+   THROUGH THE REAL PIPELINE, AND 12h MAKES THIS THE LARGEST GAP BY A
+   DISTANCE.** The second engine call, the `await`ed
    transform seam and the `DocumentTransformFatal` path have never been executed
    by Celery — only unit-tested, round-tripped through the database and read back
    out of the running containers. **RC-Q13 says the first real run would time
    out**, which is precisely why it should be the first real run
-4. ⚠ **RC-Q9h — THE DUPLICATE MOVED ONE LAYER IN.** LO-1's two practice scenes are
+6. ⚠ **RC-Q9h — THE DUPLICATE MOVED ONE LAYER IN.** LO-1's two practice scenes are
    the same sentence in 4 of 6 generations: same mechanism, inside `practice_scenes`,
    where the first sits in context while the second is asked for. The belt is
    scoped by the order to the assessment and does not look. Three routes named at
    §12h.12; ⛔ the honest one is a third call, and that needs a view of the cost
-5. ⛔ **THE STAGE-2 PROMPT IS 45% OF THE SERVING CONTEXT, AND v8 GREW IT.**
+7. ⛔ **THE STAGE-2 PROMPT IS 45% OF THE SERVING CONTEXT, AND v8 GREW IT.**
    `prompt_tokens = 14,876` against node-02's 32,768. ⛳ **The two-call split
    HELPS here and it is worth noting**: call 2 pays only ~2,300 tokens, so the
    assessments are authored at 7% of context rather than 45%. But call 1 is
    unchanged and a longer script still eats the 5,619-token headroom
-6. ⛔ **THE RULING ON RC-Q9g — CLOSED BY 12h. Kept for the record.** ✅ **RC-Q9f IS CLOSED,
+8. ⛔ **THE RULING ON RC-Q9g — CLOSED BY 12h. Kept for the record.** ✅ **RC-Q9f IS CLOSED,
    both limbs**: contract-6 forces both evidence kinds and `scenes[]` can declare
    neither, and the acceptance went **6 refusals in 6 generations → 0 in 3, on a
    byte-identical plan**. ⛔ **What replaced it is that the practice and the
@@ -647,6 +722,41 @@ shipped with a placeholder.
   the two "no axis" outcomes — was NOT needed**: both invent a fresh CASE in 6 of
   6 generations, and B2's collapsed LO-3 goes from containment 1.000 to 0.556.
   Quotes at §12h.10. **The remaining decisions are RC-Q13 and RC-Q9h below.**
+
+- ✅ **RC-Q15 — FIXED AND VERIFIED ON A REAL RUN. No decision outstanding.**
+  The uploaded script was paraphrased into the design's input; code now
+  substitutes `source_text` on the worker's write and a belt refuses a mismatch.
+  ⚠ **One scoping decision I took that the order did not cover, and it is
+  reviewable:** the substitution fires only for the SERVICE principal, so a
+  human's inline edit of `refined_text` at the gate is honoured rather than
+  silently discarded. If the operator wants uploaded rows locked against human
+  edits too, that is one line and a ruling. §12h-fix.2
+
+- ⛔ **RC-Q18, NEW AND MINE — THE BRIEF DOES NOT KNOW ABOUT CALL 2.** The capture
+  observer fires on call 1's raw content inside `_chat_request`; `transform_
+  document` makes call 2 and stitches the assessments in afterwards. So the stage
+  writes 15 correct scene rows and the brief carries 12 scene designs, and the
+  three assessments reach the gate with no `instructional_event`, no
+  `serves_outcomes` and no provenance — **11 hard refusals on a design that is
+  otherwise sound.** ⛳ Found by the first real pipeline run, exactly as §12h.15
+  item 2 predicted. ⛔ **Three routes and each changes which artifact is the design
+  of record** — move the capture after the transform, have the transform re-post
+  the stitched brief, or hand the observer the merged document. **A package, not a
+  patch, and the operator's to sequence.** §12h-fix.7
+
+- ✅ **RC-Q16 and RC-Q17 — FIXED, no decision outstanding.** Both convicted with
+  `git log -S` dates and both proven on a real run. ⚠ **RC-Q17's consequence
+  outlives its fix and should be read once:** no versioned system prompt had ever
+  reached the deployed pipeline, so every "v_N_ published and live" line in
+  §§12b–12h meant published-and-inert. The acceptances render the seed files
+  directly and their findings stand.
+
+- ⚠ **RC-Q3 — NARROWED, NOT CLOSED.** The uploaded half is closed by construction:
+  an uploaded row's stored text must be byte-identical to `source_text` or the
+  write raises, so a refusal, a summary or a truncation cannot be stored as a
+  transcript. **The generated half is untouched** — there is nothing to compare
+  against there, and `stage1_transcript.py:368`'s emptiness check remains the only
+  validator. §12h-fix.4
 
 - ✅ **RC-Q13 — RULED AND ENCODED, 2026-08-30. Closed by this session.**
   **Operator ruling: the declared budget rises to meet the measured work —
