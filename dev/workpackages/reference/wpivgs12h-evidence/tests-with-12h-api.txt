@@ -1,3 +1,187 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-8.3.4, pluggy-1.6.0
+rootdir: /opt/ivgs
+configfile: pyproject.toml
+plugins: timeout-2.3.1, anyio-4.13.0, asyncio-0.24.0
+timeout: 300.0s
+timeout method: signal
+timeout func_only: False
+asyncio: mode=Mode.AUTO, default_loop_scope=session
+collected 1763 items
+
+tests/test_api_backup.py ...........                                     [  0%]
+tests/test_api_jobs.py .............                                     [  1%]
+tests/test_api_languages.py ............                                 [  2%]
+tests/test_api_model_export.py ........................................  [  4%]
+tests/test_api_model_store.py .............                              [  5%]
+tests/test_api_nodes.py ........                                         [  5%]
+tests/test_api_pagination.py ...............                             [  6%]
+tests/test_api_rbac.py ......................                            [  7%]
+tests/test_assets.py .........                                           [  8%]
+tests/test_auth.py ............                                          [  8%]
+tests/test_bug_001_backup_error_handler.py .                             [  8%]
+tests/test_bug_003_manifest_field_names.py ..                            [  8%]
+tests/test_bug_004_manifest_asset_checksum.py .                          [  9%]
+tests/test_bug_005_backup_field_names.py .                               [  9%]
+tests/test_bug_009_quota_field_names.py ..                               [  9%]
+tests/test_checkpoint_api.py ...............                             [ 10%]
+tests/test_critical_paths.py .................                           [ 11%]
+tests/test_dlq_api.py ...............                                    [ 11%]
+tests/test_gpu_api.py .................                                  [ 12%]
+tests/test_health.py .....                                               [ 13%]
+tests/test_model_selection_planner.py .............                      [ 13%]
+tests/test_node_topology.py .....                                        [ 14%]
+tests/test_projects.py ...................                               [ 15%]
+tests/test_prompts.py ...........                                        [ 15%]
+tests/test_provider_factory.py .........                                 [ 16%]
+tests/test_quality_api.py ...........                                    [ 16%]
+tests/test_rate_limiting_basic.py .....                                  [ 17%]
+tests/test_rate_limiting_edge_cases.py .....                             [ 17%]
+tests/test_rate_limiting_lockout.py .....                                [ 17%]
+tests/test_retention_api.py ..............                               [ 18%]
+tests/test_rollback_probe.py ..                                          [ 18%]
+tests/test_service_asset.py ................                             [ 19%]
+tests/test_service_auth.py ...........                                   [ 20%]
+tests/test_service_checkpoint.py ..............                          [ 21%]
+tests/test_service_dlq.py ....................                           [ 22%]
+tests/test_service_gpu.py ..............................                 [ 23%]
+tests/test_service_job.py ...........                                    [ 24%]
+tests/test_service_language.py ..........                                [ 25%]
+tests/test_service_project.py ...............                            [ 25%]
+tests/test_service_prompt.py ...........                                 [ 26%]
+tests/test_service_quality.py .............                              [ 27%]
+tests/test_service_retention.py ....                                     [ 27%]
+tests/test_service_retention_extended.py ...............                 [ 28%]
+tests/test_service_rollback.py ...............                           [ 29%]
+tests/test_service_storyboard.py ..........                              [ 29%]
+tests/test_service_transcript.py ....................                    [ 30%]
+tests/test_service_user.py ...............                               [ 31%]
+tests/test_storyboard.py ......                                          [ 32%]
+tests/test_transcripts.py ......                                         [ 32%]
+tests/test_users.py ..............                                       [ 33%]
+tests/test_wp07_checkpoint_write.py ...................                  [ 34%]
+tests/test_wp24_node_honesty.py ............                             [ 34%]
+tests/test_wp27_manifest_layers.py ..............                        [ 35%]
+tests/test_wp36_checkpoint_service_auth.py .............                 [ 36%]
+tests/test_wp37_prompts_service_auth.py ..........                       [ 37%]
+tests/test_wp38_storyboard_state.py .......                              [ 37%]
+tests/test_wp44_quality_scores_and_clip.py ..............                [ 38%]
+tests/test_wp45_dedup_and_gate.py ...................................... [ 40%]
+.......................                                                  [ 41%]
+tests/test_wp45_dispatch.py .......................................      [ 43%]
+tests/test_wp45_service_rate_limit.py ..........                         [ 44%]
+tests/test_wp48_telemetry.py ..................                          [ 45%]
+tests/test_wp55_metrics_exporter.py .......                              [ 45%]
+tests/test_wp56_library.py .........................                     [ 47%]
+tests/test_wp57_service_token.py .....                                   [ 47%]
+tests/test_wp59_deletion.py .....................                        [ 48%]
+tests/test_wp60_surfaces.py .......                                      [ 49%]
+tests/test_wp61_surfaces.py .............                                [ 49%]
+tests/test_wp61_translation.py ....................                      [ 51%]
+tests/test_wp61_trigger_guard.py .........                               [ 51%]
+tests/test_wp62_fleet.py ............                                    [ 52%]
+tests/test_wp62_gates.py ..................                              [ 53%]
+tests/test_wp62_guards.py .......                                        [ 53%]
+tests/test_wp62_ledger.py .............                                  [ 54%]
+tests/test_wp62_progress.py ...........                                  [ 55%]
+tests/test_wp62_translation_scope.py ............                        [ 55%]
+tests/test_wp63_regeneration.py ......................                   [ 57%]
+tests/test_wp63_storyboard_prompt.py ..................................  [ 58%]
+tests/test_wp64_adapt_description.py ........................            [ 60%]
+tests/test_wp64_learning_outcomes.py .................                   [ 61%]
+tests/test_wp65_engine_reconciliation.py ...........                     [ 61%]
+tests/test_wp65_storyboard_v5.py .............................           [ 63%]
+tests/test_wp65_weight_fetch.py ........................................ [ 65%]
+.........                                                                [ 66%]
+tests/test_wp66_invalidation.py ...........                              [ 66%]
+tests/test_wp66_selection.py ............................                [ 68%]
+tests/test_wp67_clients.py ............................................. [ 71%]
+...............                                                          [ 71%]
+tests/test_wp68_motion.py .............................................. [ 74%]
+....                                                                     [ 74%]
+tests/test_wp68_prompt_v6.py .......................                     [ 76%]
+tests/test_wp_ivgs_0_dispatch_context.py ...                             [ 76%]
+tests/test_wp_ivgs_0_f9_project_fetcher.py ....                          [ 76%]
+tests/test_wp_ivgs_0_new_project_form.py .....................           [ 77%]
+tests/test_wp_ivgs_0_prompt_filter.py ..................                 [ 78%]
+tests/test_wp_ivgs_0_tier_dispatch.py ....                               [ 78%]
+tests/test_wpivgs08_selection_audit.py ....                              [ 79%]
+tests/test_wpivgs09b_scene_picker_media_type.py .................        [ 80%]
+tests/test_wpivgs09c_motion_authoring.py ............................... [ 81%]
+................                                                         [ 82%]
+tests/test_wpivgs10_completeness.py ..................                   [ 83%]
+tests/test_wpivgs10_phase.py ........................                    [ 85%]
+tests/test_wpivgs10_prompt_v7.py ...................                     [ 86%]
+tests/test_wpivgs10_stage2_delivery_and_gate.py ..................       [ 87%]
+tests/test_wpivgs12_design_contract.py ..........................        [ 88%]
+tests/test_wpivgs12b_outcomes.py .................................       [ 90%]
+tests/test_wpivgs12c_evidence.py .............                           [ 91%]
+tests/test_wpivgs12d_assessment_plan.py .........................        [ 92%]
+tests/test_wpivgs12f_designed_assessments.py ........................... [ 94%]
+..........                                                               [ 94%]
+tests/test_wpivgs12g_evidence_layer.py ................................. [ 96%]
+.....                                                                    [ 96%]
+tests/test_wpivgs12h_two_call.py ...................................     [ 98%]
+tests/test_ws_connection.py ....                                         [ 99%]
+tests/test_ws_edge_cases.py ....                                         [ 99%]
+tests/test_ws_job_status.py .......                                      [ 99%]
+tests/test_ws_node_logs.py ...                                           [100%]
+
+=============================== warnings summary ===============================
+ivgs-api/tests/test_api_backup.py: 14 warnings
+ivgs-api/tests/test_api_jobs.py: 24 warnings
+ivgs-api/tests/test_api_languages.py: 33 warnings
+ivgs-api/tests/test_api_model_store.py: 113 warnings
+ivgs-api/tests/test_api_nodes.py: 11 warnings
+ivgs-api/tests/test_api_pagination.py: 19 warnings
+ivgs-api/tests/test_api_rbac.py: 38 warnings
+ivgs-api/tests/test_assets.py: 27 warnings
+ivgs-api/tests/test_auth.py: 12 warnings
+ivgs-api/tests/test_bug_001_backup_error_handler.py: 2 warnings
+ivgs-api/tests/test_bug_003_manifest_field_names.py: 6 warnings
+ivgs-api/tests/test_bug_004_manifest_asset_checksum.py: 4 warnings
+ivgs-api/tests/test_bug_005_backup_field_names.py: 1 warning
+ivgs-api/tests/test_bug_009_quota_field_names.py: 4 warnings
+ivgs-api/tests/test_checkpoint_api.py: 35 warnings
+ivgs-api/tests/test_critical_paths.py: 218 warnings
+ivgs-api/tests/test_dlq_api.py: 26 warnings
+ivgs-api/tests/test_gpu_api.py: 34 warnings
+ivgs-api/tests/test_model_selection_planner.py: 13 warnings
+ivgs-api/tests/test_projects.py: 73 warnings
+ivgs-api/tests/test_prompts.py: 44 warnings
+ivgs-api/tests/test_provider_factory.py: 9 warnings
+ivgs-api/tests/test_quality_api.py: 28 warnings
+ivgs-api/tests/test_rate_limiting_basic.py: 251 warnings
+ivgs-api/tests/test_rate_limiting_edge_cases.py: 3 warnings
+ivgs-api/tests/test_rate_limiting_lockout.py: 1 warning
+ivgs-api/tests/test_retention_api.py: 28 warnings
+ivgs-api/tests/test_service_auth.py: 14 warnings
+ivgs-api/tests/test_service_job.py: 9 warnings
+ivgs-api/tests/test_service_language.py: 10 warnings
+ivgs-api/tests/test_service_prompt.py: 1 warning
+ivgs-api/tests/test_service_quality.py: 18 warnings
+ivgs-api/tests/test_service_storyboard.py: 10 warnings
+ivgs-api/tests/test_storyboard.py: 20 warnings
+ivgs-api/tests/test_transcripts.py: 22 warnings
+ivgs-api/tests/test_users.py: 29 warnings
+ivgs-api/tests/test_wp07_checkpoint_write.py: 87 warnings
+ivgs-api/tests/test_wp36_checkpoint_service_auth.py: 18 warnings
+ivgs-api/tests/test_wp37_prompts_service_auth.py: 9 warnings
+ivgs-api/tests/test_wp38_storyboard_state.py: 17 warnings
+ivgs-api/tests/test_wp44_quality_scores_and_clip.py: 36 warnings
+ivgs-api/tests/test_wp45_dedup_and_gate.py: 208 warnings
+ivgs-api/tests/test_wp45_dispatch.py: 101 warnings
+ivgs-api/tests/test_wp56_library.py: 165 warnings
+ivgs-api/tests/test_wp57_service_token.py: 4 warnings
+ivgs-api/tests/test_wp61_trigger_guard.py: 39 warnings
+ivgs-api/tests/test_wp62_gates.py: 58 warnings
+ivgs-api/tests/test_wp62_guards.py: 14 warnings
+ivgs-api/tests/test_wp62_ledger.py: 2 warnings
+ivgs-api/tests/test_wp62_progress.py: 24 warnings
+ivgs-api/tests/test_wp62_translation_scope.py: 4 warnings
+ivgs-api/tests/test_wp63_regeneration.py: 106 warnings
+ivgs-api/tests/test_wp64_adapt_description.py: 56 warnings
+ivgs-api/tests/test_wp64_learning_outcomes.py: 34 warnings
 ivgs-api/tests/test_wp66_invalidation.py: 8 warnings
 ivgs-api/tests/test_wp66_selection.py: 14 warnings
 ivgs-api/tests/test_wp_ivgs_0_f9_project_fetcher.py: 8 warnings
@@ -57,4 +241,4 @@ ivgs-api/tests/test_wpivgs10_stage2_delivery_and_gate.py::test_site_1_a_template
     warnings.warn(DEPRECATION_MESSAGE, DeprecationWarning)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-=============== 1761 passed, 2357 warnings in 331.19s (0:05:31) ================
+=============== 1763 passed, 2357 warnings in 333.06s (0:05:33) ================

@@ -1,0 +1,492 @@
+[
+  {
+    "gen": 1,
+    "label": "B2-contract7",
+    "scenes": 20,
+    "sourced": 12,
+    "designed": 8,
+    "assess": 3,
+    "practice": 5,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        4,
+        5,
+        6
+      ],
+      "LO-2": [
+        9,
+        10,
+        11
+      ],
+      "LO-3": [
+        16,
+        17
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "practice",
+        "learner_does": "Divides a whole number of up to four digits by 10 by shifting every digit one place to the right, producing the correct quotient."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Divides a whole number of up to four digits by 100 by shifting every digit two places to the right, producing the correct quotient."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Explains why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not."
+      }
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "practice",
+      "practice",
+      "assess",
+      "present",
+      "present",
+      "practice",
+      "practice",
+      "assess",
+      "hook",
+      "present",
+      "present",
+      "present",
+      "practice",
+      "assess",
+      "transfer",
+      "transfer"
+    ],
+    "refusals": [
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "evidence_in_scenes": 0,
+    "per_lo": {
+      "LO-1": {
+        "practice": 2,
+        "assess": 1
+      },
+      "LO-2": {
+        "practice": 2,
+        "assess": 1
+      },
+      "LO-3": {
+        "practice": 1,
+        "assess": 1
+      }
+    },
+    "both_present": true,
+    "assessed_once": true,
+    "evidence_origins": [
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed",
+      "designed"
+    ],
+    "duplication": [
+      {
+        "outcome_id": "LO-1",
+        "assessment": "Divide 627 by 10 by shifting every digit one place to the right.",
+        "practices": [
+          "Let's try an example. If we have the number 432, what is the result of dividing it by 10?",
+          "Now, let's try another example. If we have the number 219, what is the result of dividing it by 10?"
+        ],
+        "practice_containment": 0.1111,
+        "practice_duplicate": false,
+        "worked_containment": 0.5556,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-2",
+        "assessment": "Divide 814 by 100 by shifting every digit two places to the right.",
+        "practices": [
+          "Let's try an example. If we have the number 945, what is the result of dividing it by 100?",
+          "Now, let's try another example. If we have the number 753, what is the result of dividing it by 100?"
+        ],
+        "practice_containment": 0.1111,
+        "practice_duplicate": false,
+        "worked_containment": 0.2222,
+        "worked_duplicate": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "assessment": "Explain why shifting every digit one place to the right is a reliable rule for dividing by 10, but crossing off a zero is not, using the example of 540.",
+        "practices": [
+          "Can you explain why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not?"
+        ],
+        "practice_containment": 0.5556,
+        "practice_duplicate": false,
+        "worked_containment": 0.3333,
+        "worked_duplicate": false
+      }
+    ],
+    "timing": {
+      "call1": {
+        "seconds": 228.5,
+        "usage": {
+          "prompt_tokens": 14558,
+          "total_tokens": 18957,
+          "completion_tokens": 4399,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop"
+      },
+      "call2": {
+        "seconds": 35.8,
+        "usage": {
+          "prompt_tokens": 2376,
+          "total_tokens": 3113,
+          "completion_tokens": 737,
+          "prompt_tokens_details": null
+        },
+        "finish": "stop",
+        "user_chars": 3126
+      },
+      "total_seconds": 264.3,
+      "summary_given_to_call2": {
+        "per_outcome": {
+          "LO-1": {
+            "practice_scene_count": 2,
+            "numbers_used": [
+              "432",
+              "10",
+              "1",
+              "219"
+            ],
+            "step_reached": {
+              "motion_templates": [
+                "place_value_shift"
+              ],
+              "motion_phases": [],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "motion_graphics"
+            ]
+          },
+          "LO-2": {
+            "practice_scene_count": 2,
+            "numbers_used": [
+              "945",
+              "100",
+              "2",
+              "753"
+            ],
+            "step_reached": {
+              "motion_templates": [
+                "place_value_shift"
+              ],
+              "motion_phases": [],
+              "bloom_levels": [
+                "apply"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "motion_graphics"
+            ]
+          },
+          "LO-3": {
+            "practice_scene_count": 1,
+            "numbers_used": [
+              "10",
+              "100"
+            ],
+            "step_reached": {
+              "motion_templates": [],
+              "motion_phases": [],
+              "bloom_levels": [
+                "evaluate"
+              ],
+              "total_seconds": 60.0
+            },
+            "media_types": [
+              "image"
+            ]
+          }
+        },
+        "numbers_already_used": [
+          "10",
+          "100",
+          "1",
+          "1000",
+          "2",
+          "432",
+          "219",
+          "945",
+          "753"
+        ]
+      }
+    },
+    "practice_scenes": [
+      {
+        "scene_index": 4,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not provide a practice example for LO-1.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 432,
+          "shift": 1
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number 432 on a place value chart, with the digits highlighted and the place values labeled.",
+        "narration_text": "Let's try an example. If we have the number 432, what is the result of dividing it by 10?"
+      },
+      {
+        "scene_index": 5,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not provide a practice example for LO-1.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 219,
+          "shift": 1
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number 219 on a place value chart, with the digits highlighted and the place values labeled.",
+        "narration_text": "Now, let's try another example. If we have the number 219, what is the result of dividing it by 10?"
+      },
+      {
+        "scene_index": 9,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not provide a practice example for LO-2.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 945,
+          "shift": 2
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number 945 on a place value chart, with the digits highlighted and the place values labeled.",
+        "narration_text": "Let's try an example. If we have the number 945, what is the result of dividing it by 100?"
+      },
+      {
+        "scene_index": 10,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not provide a practice example for LO-2.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 753,
+          "shift": 2
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number 753 on a place value chart, with the digits highlighted and the place values labeled.",
+        "narration_text": "Now, let's try another example. If we have the number 753, what is the result of dividing it by 100?"
+      },
+      {
+        "scene_index": 16,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "practice",
+        "bloom_level": "evaluate",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The script does not provide a practice example for LO-3.",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "The scene requires the learner to provide a written explanation, which is a non-numeric content.",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "A blank space for the learner to write their explanation.",
+        "narration_text": "Can you explain why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not?"
+      }
+    ],
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 10 by shifting every digit one place to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          18,
+          19
+        ],
+        "assessed_by": [
+          4,
+          5,
+          6
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 100 by shifting every digit two places to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          7,
+          8,
+          9,
+          10,
+          11,
+          18,
+          19
+        ],
+        "assessed_by": [
+          9,
+          10,
+          11
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given the claim that dividing by 10 means crossing off a zero, the learner will explain why the place-value shift is the reliable rule and the crossed-off zero is not.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "evaluate",
+        "served_by": [
+          0,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19
+        ],
+        "assessed_by": [
+          16,
+          17
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 6,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to apply the place-value shift rule to divide by 10",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "To visualize the place-value shift",
+        "generation_params": {
+          "template": "place_value_split",
+          "number": 627
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number line with the digits 6, 2, and 7, followed by a blank space, then the digits 6, 2, and 7 shifted one place to the right, resulting in 62.7.",
+        "narration_text": "Divide 627 by 10 by shifting every digit one place to the right."
+      },
+      {
+        "scene_index": 11,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to apply the place-value shift rule to divide by 100",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "To visualize the place-value shift",
+        "generation_params": {
+          "template": "place_value_split",
+          "number": 814
+        },
+        "duration_seconds": 30,
+        "visual_description": "A number line with the digits 8, 1, and 4, followed by a blank space, then the digits 8, 1, and 4 shifted two places to the right, resulting in 8.14.",
+        "narration_text": "Divide 814 by 100 by shifting every digit two places to the right."
+      },
+      {
+        "scene_index": 17,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "evaluate",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "Requires the learner to explain the reliability of the place-value shift rule",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "To allow the learner to write their explanation",
+        "generation_params": {},
+        "duration_seconds": 60,
+        "visual_description": "A text box with a prompt and a blank space for the learner to write their explanation.",
+        "narration_text": "Explain why shifting every digit one place to the right is a reliable rule for dividing by 10, but crossing off a zero is not, using the example of 540."
+      }
+    ]
+  }
+]

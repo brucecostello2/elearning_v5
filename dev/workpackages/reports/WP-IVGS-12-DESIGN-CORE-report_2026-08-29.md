@@ -3387,3 +3387,954 @@ fi
    print that file's contents. It reached no file, no commit and no remote; the
    runner was immediately rewritten to read it from the container env and it was
    not printed again. Recorded because a rule broken quietly is a rule gone.
+
+---
+
+# §12h — WP-IVGS-12h: the two-call design, and evidence gets its own breath
+
+**2026-08-30 · same package lineage. Commit and HOLD.**
+
+## 12h.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| ⛳ **RC-Q9g IS CLOSED, AND THE MEASUREMENT IS UNAMBIGUOUS** | **9 of 9 outcome-pairs DISTINCT** in run B, and 9 of 9 in run A — where design-contract-6 produced **11 duplicates in 15**. Not one near-duplicate in six generations across two runs, by the belt's own measure, on the same script and the same three outcomes |
+| ⛳ **AND THE "NO AXIS" CASE — THE ORDER'S STOP CONDITION — DID NOT FIRE** | 12g measured LO-2 (*explain why*) and LO-3 (*check your work*) collapsing in **5 of 5** completed generations, and named them as the residue that might be a per-outcome-type design question. Under contract-7 both get a **fresh CASE** every time: *"…when multiplying 93 by 17"*, *"…of 75 by 32"*. **No RC-Q9h row. The operator's escalation was not needed** |
+| ⛳ **ACCEPTANCE MET, EIGHTH ATTEMPT, RUN B** | **ZERO hard refusals 3/3.** Near-duplicate check GREEN 3/3 and proven RED on 12g's banked duplicates (12 of 12 mandated refuse). Census 127/109/18/9/12. Per-LO practice AND assess 3/3, exactly one assess each 3/3, **0 evidence events in call 1's own `scenes[]` 3/3**. Regressions held |
+| ⛔ **AND RUN A DID NOT MEET IT — 1 REFUSAL IN EVERY GENERATION, AND IT WAS MINE** | `MOTION_WITHOUT_TEMPLATE`, 3 of 3. Call 2's prompt orders it to name a motion template and **call 2 had never been shown the list** — the four names live in call 1's 42,365-character user template. Fixed by a code-built catalogue read from the renderer's own registry, fleet rebuilt, acceptance re-run. **Both runs reported; neither is preferred** |
+| **Done** | **design-contract-7**: `assessment_scenes` removed from call 1 and authored by a SECOND engine call from the outcomes, the plan and a code-built practice summary. **`EVIDENCE_NEAR_DUPLICATE`**, a hard refusal, calibrated on 18 banked outcome-pairs. **Prompt v8** (four phrases MOVED, audited) and **`assessment_authoring_system` v1**, its own lineage. **Migration 0053**, exercised both directions |
+| ⛔ **RC-Q13 ROWED, NOT FIXED — AND IT IS DEPLOYED TODAY, NOT INTRODUCED BY THIS PACKAGE** | AD-05 declares stage 2 at soft 270 / hard 300, so the client budget is **240 s**. Measured stage-2 wall clock, this package and 12g's own banked logs: **280–564 s. Ten of twelve generations exceed the client budget and eight exceed the Celery hard limit.** Contract-6 as shipped would time out in production on most jobs while its acceptance passed. Moving a declared conformance number is the operator's |
+| ⚠ **A NEW DEGENERACY, ONE LAYER IN** | LO-1's **two practice scenes are the same sentence** in 4 of 6 generations. The belt is scoped by the order to the assessment and does not look at practice-vs-practice. Rowed as **RC-Q9h** with the quotes — it is not the RC-Q9g residue the order reserved, it is a new one the fix uncovered |
+| **Tests** | API **1727 → 1763 passed, 0 failed**. Workers **identical BY NAME** to the baseline measured at `eafbf9f` in this environment. **ZERO NEW FAILURES** |
+| ⚠ **Four tags for two code commits, and two of them are my slips** | `v5.38.0` shipped with `IVGS_BUILD_REF` unset and reported its version as `"unknown"`; `v5.38.1` carried the wrong ref and reported itself as `v5.38.0`; **`v5.38.2` is correct**; **`v5.38.3` adds the catalogue fix and is what the fleet runs.** ⛳ No tag was ever rebuilt — different bytes got different tags, which is the RC-Q8 discipline. Recorded because a tag that misnames itself is that same class |
+| **Held** | **3 commits.** Nothing pushed |
+
+---
+
+## 12h.1 Premises of the order, checked before acting
+
+| Premise | Checked | Verdict |
+|---|---|---|
+| Held commits, from `eafbf9f` | `git fetch` then `git rev-list --count origin/main..HEAD` → **0** | ⚠ **The operator pushed all three 12g commits.** Measured at the ref |
+| Alembic head is 0052 | `alembic_version` = **0052**; tree's highest `0052_wp_ivgs_12f_designed_rationale.py` | ✅ **TRUE.** Next free is **0053** |
+| Nodes 01-04 deployable under §6.1a | all four ssh-reachable, all running `v5.37.7-evidence-structural` | ✅ **TRUE** |
+| Prompt v7 active, contract-6 live | `prompts` v7 `is_active = t`, exactly one active; `CONTRACT_VERSION` read from the running worker | ✅ **TRUE** |
+| ⚠ **The board says nodes 01-04 run `v5.37.5`** | the node table in `dev/DEVELOPMENT-STATUS.md`; the machine says `v5.37.7`, and the board's own headline says `v5.37.7` | ⛔ **THE BOARD'S NODE TABLE IS STALE AND CONTRADICTS ITS OWN HEADLINE.** The machine wins (§4). Corrected at close |
+| ⛔ **"the 14,861-token prompt measurement"** | `config.py`'s cap comment still read *"Measured input is ~2,000 tokens; at 5x that is ~10,000, so 10,000 + 16,384 = 26,384 still fits"* | ⛔ **PARTLY STALE — 12g corrected the FLOOR's comment and the WP-58 test and left the CAP's arithmetic untouched.** Task 0 below closes it |
+| The operator's script is md5 `f65f340c…` | fetched read-only from SeaweedFS volume `7,0237c99b8fb7`: **3,172 bytes, md5 `f65f340c1650…`** | ✅ **TRUE**, and it is the file every generation below used. ⚠ **12g's own token prose says "a 3,008-byte script" in five places and its premise table says 3,172.** 3,172 bytes decode to 2,974 characters; neither figure is 3,008. The BYTES are what was measured |
+
+---
+## 12h.2 TASK 0 — the 14,861-token prompt, registered as a row
+
+⛔ **12g CORRECTED TWO OF THE THREE STALE PLACES AND LEFT THE THIRD, WHICH IS
+WHY THIS TASK WAS NOT ALREADY DONE.** 12g rewrote the comment above
+`storyboard_max_tokens` and replaced `test_wp58_storyboard_budget`'s invented
+`worst_case_input = 10_000` with the measured figure. It did **not** touch the
+comment above `storyboard_max_tokens_cap`, which still read:
+
+> *"Measured input is ~2,000 tokens; at 5x transcript length that is ~10,000, so
+> 10,000 + 16,384 = 26,384 still fits."*
+
+**Every number in that sentence is wrong.** The honest arithmetic is
+`14,861 + 16,384 = 31,245` against 32,768 — **1,523 spare, not 6,384** — and a
+"fivefold worst case" is not a worst case at all: it is 0.67× what was measured
+on a script of 3,172 bytes. Corrected in this commit.
+
+**AND IT IS NOW A CONSTANT, NOT A COMMENT, BECAUSE COMMENTS DO NOT GET ASSERTED:**
+
+    VLLMConfig.measured_stage2_prompt_tokens = 14861     ← the new row
+    VLLMConfig.serving_context_tokens        = 32768
+
+⛳ **Cited on both calls, which is what the order asked for.** Read back out of
+the running worker (12h.7): call 1 pays the whole 14,861 and call 2 pays
+**2,193–2,376 measured**, which is the number that makes the split affordable.
+
+| | input tokens | % of node-02's 32,768 |
+|---|---|---|
+| call 1 | **14,876** (measured, six generations, identical every time) | 45% |
+| call 2 | **2,193 – 2,376** | 7% |
+
+⚠ **The +15 on call 1 against 12g's 14,861 is v8**, which is 640 characters
+longer than v7. The constant keeps 12g's measured figure deliberately: it is the
+number the WP-58 headroom test is calibrated on, and moving it every time a
+prompt is edited would make it a mirror again.
+
+---
+
+## 12h.3 TASK 1 — the probes, run before contract-7 was written
+
+RC-Q12 probe-first. Every probe **orders the model to break the construct**, and
+each is read for all three outcomes this engine has shown — ENFORCED, HTTP 400,
+and the dangerous one, 200 with the constraint silently doing nothing. Banked at
+`wpivgs12h-evidence/probe12h.json`.
+
+| probe | ordered to emit | emitted | verdict |
+|---|---|---|---|
+| **E1** the whole call-2 document, every pin broken | omit `LO-2`, add `LO-9`, THREE scenes in `LO-1`, event `practice`, serves `["LO-4","LO-7"]`, origin `"invented"`, a top-level `design_notes` | all three keys, one scene each, `assess`, the right single outcome, `designed`, and **only** `assessment_scenes` at top level | ✅ **ENFORCED in every part** |
+| **E2** call 2 **ORDERED EMPTY** — RC-Q12's corridor | `{"LO-1": [], "LO-2": [], "LO-3": []}` | one element each, `finish=stop`, whitespace **278 of 2,132 characters (13%)** | ✅ **ENFORCED, NO HANG** |
+| **F1** call 1 ordered to emit `assessment_scenes` | a top-level `assessment_scenes`, *"the most important part of the task"* | the six contract-7 keys and no seventh | ✅ **THE REMOVAL IS ENFORCED, not merely omitted** |
+| **F2** call 1 ordered to declare `assess`/`practice` in `scenes[]` | every scene `assess`, the last `practice` | `present, present, present` | ✅ **ENFORCED under the new property set** |
+
+⛳ **E2 IS THE ONE THAT HAD TO BE RE-RUN RATHER THAN INHERITED.** 12g probed this
+same section shape inside a SIX-property document and found it clear of 12c's
+5,243-character whitespace runaway. A grammar is compiled per request, so "the
+same subschema in a smaller document" is an assumption. Measured: 13% whitespace,
+which is ordinary indented JSON.
+
+⛳ **AND F1 IS THE PROBE THE PACKAGE RESTS ON.** The whole design is that call 1
+cannot write an assessment. `additionalProperties: false` at the contract's own
+top level had been measured by 12c only on an object of *outcome keys* — never on
+the contract root. It holds.
+
+---
+
+## 12h.4 TASK 1 — design-contract-7, the split
+
+### (a) What moved, and what deliberately did not
+
+    CALL 1  design_contract_schema        properties: [assessment_plan,
+                                          practice_scenes, scenes,
+                                          dropped_beats, design_notes,
+                                          outcome_notes]
+    CALL 2  assessment_authoring_schema   properties: [assessment_scenes]
+
+⛳ **THE GRAMMAR OF EACH SECTION IS CONTRACT-6's, BYTE FOR BYTE, AND THAT IS THE
+POINT.** `_evidence_section_schema` is called with the same event, the same
+bounds, the same pins and the same free origin. This package's new surface is
+the **CALL**, not the shape — so a difference measured between contract-6's
+assessments and contract-7's is a difference in what the model could SEE, and
+cannot be attributed to a grammar change. Read back from the running worker:
+
+    call-2 bounds 1..1   event [assess]   serves [LO-2]   origins [sourced, designed]
+    scene_index offered = False
+
+### (b) ⛔ BACKWARD DESIGN SURVIVES THE SPLIT, AND IT IS THE THING THAT HAD TO
+
+12d measured, in both directions against a prompt ordering otherwise, that
+declaration order binds generation order. `assessment_plan` is still call 1's
+**first** property, so the model still commits to what would prove each outcome
+while the scene list is empty. **And that plan is the ONLY brief call 2 receives**
+— so the END of every outcome's fading sequence is still written from a
+commitment made before a scene existed. The split did not weaken Foundation §1;
+it removed the thing that was corrupting it.
+
+⛔ **12g's ORDERING SENTENCE IS SUPERSEDED BY ITS OWN CLOSING LINE.** 12g wrote:
+*"⛔ It reads backwards on the page and that is the point — and 12g.9 is where
+that decision comes back with a bill."* The bill came. `assessment_scenes` before
+`practice_scenes` is what put the assessment in context while the practice was
+asked for. There is now no order between them to assert, and
+`test_the_evidence_is_declared_before_any_scene` says so with the reason.
+
+### (c) What call 2 is given, and the list is exhaustive
+
+`design_core.assessment_call.build_user_message`, three keyword-only arguments:
+
+    the OUTCOMES   id and the operator's own text, injected server-side exactly
+                   as call 1 gets them — the model has not been trusted with
+                   outcome text since 12b (RC-Q9)
+    the PLAN       `assessment_plan`, verbatim
+    a SUMMARY      code-built: per outcome, the numbers the practice used, the
+                   motion template and phase it reached, its Bloom level, its
+                   media and its total seconds
+
+⛔ **AND WHAT IT IS NOT GIVEN IS THE MECHANISM:** not the practice narrations,
+not `scenes`, not the transcript. **The model cannot copy what it never sees.**
+Every previous package in this lineage made a defect unrepresentable in the
+GRAMMAR; this one makes it unrepresentable in the CONTEXT, because no grammar can
+forbid two strings from being equal.
+
+⛳ **THE FUNCTION TAKES THREE ARGUMENTS AND NOT A DOCUMENT, DELIBERATELY.** A
+Jinja template with the emission in scope is one edit away from rendering
+`practice_scenes` "for context", which would undo the package silently and pass
+every test — the only symptom would be a duplicate. `build_user_message` cannot
+render what it was not handed, and a test asserts its signature.
+
+### (d) ⛳ ONE ADDITION BEYOND THE ORDER'S LETTER, STATED RATHER THAN FOLDED IN
+
+`numbers_already_used` — the union of every numeral in call 1's expository
+`scenes` and in every practice. The order specifies a per-outcome summary; this is
+lesson-wide. **Without it, *"pose it in numbers this lesson has not worked"* is
+unenforceable at call 2**, because call 2 never sees the script and so cannot know
+what the script worked. It is code-built, digits only, and cannot carry a
+copyable sentence. Measured live: `['2019','23','14','4','3','12','2','1','8','9','92','10','230','0','322','34','21']`.
+
+### (e) Migration 0053, and the storage that did not change
+
+⛔ **THE MIGRATION IS FOR THE PROMPT LINEAGE AND FOR NOTHING ELSE.** Contract-7
+adds no storage surface: call 2's output is `assessment_scenes`, full scene
+objects of exactly the shape contract-6 already stored, merged by the same
+function into the same columns. **Proved by a round trip, not asserted** —
+`test_a_stitched_contract_seven_emission_lands_exactly_as_six_did` drives a
+stitched emission through the worker's parse, the API's service and the gate
+against the database and asserts the evidence map is **byte-for-byte 12g's**:
+`{"LO-1":[1,2],"LO-2":[4,5],"LO-3":[7,8]}`, the same nine rows, the same events,
+the same origins through 0048's XOR CHECK.
+
+**Exercised both directions on the test database**, member absent then present:
+
+    0052 -> 0053   alembic_version 0053, enum member count 1
+    0053 -> 0052   alembic_version 0052, enum member count 0
+    0052 -> 0053   alembic_version 0053, enum member count 1
+
+⛔ **AND THE ENUM MEMBER IS ADDED TO `shared/models/enums.py` IN THE SAME COMMIT.**
+Migration 0047 added two members to PostgreSQL and not to Python; the rows were
+published and the next `SELECT` that touched one raised `LookupError`. 12b found
+it a package later. `0053`'s own docstring carries the warning and a test asserts
+both halves.
+
+⚠ **AND 0053's DOWNGRADE IS NOT THE BENIGN THING 0047's IS**, which is written
+into the migration rather than discovered: 0047 could say *"the stage falls back
+to its `.j2` file"*. There is **no file fallback for the assessment prompt**, by
+design — `_fetch_prompt` refuses rather than reaching for a baked-in default,
+because the package's central claim must not be made by an unversioned string.
+So a downgrade past 0053 makes every contract-7 storyboard fail loudly at call 2.
+
+---
+
+## 12h.5 TASK 2 — the belt the grammar cannot provide
+
+`shared.design.duplication`, imported by the API's gate, the worker and the
+acceptance harness — **one implementation, for `evidence.py`'s reason**.
+
+### The measure, and why each choice was measured rather than picked
+
+    containment(A, X) = |tokens(A) ∩ tokens(X)| / |tokens(A)|
+
+**Containment and not Jaccard**, because the degenerate assessment is typically
+the SHORTER string: 12g gen 3's practice *"Let's practice checking our work by
+verifying the column alignment…"* wholly contains its assessment *"Check your
+work by verifying the column alignment…"*, and a symmetric measure dilutes
+exactly the case that matters.
+
+**A small GENERIC stoplist** — articles, pronouns, copulas, prepositions. ⛔ **No
+task word, and none drawn from the measured corpus**, because tuning a stoplist
+against the calibration set is fitting the belt to its own test. Measured both
+ways: with it the classes separate **0.667 | 0.900**; without it, **0.750 |
+0.857**. It more than doubles the margin and is kept for that reason.
+
+⛔ **NUMERALS ARE KEPT, AND DROPPING THEM WAS MEASURED TO DESTROY THE BELT.**
+B2's two correctly-differentiated computational pairs both go to containment
+**1.00** the moment numbers are removed, because a faded and an unaided attempt at
+one procedure differ in nothing else. **The number IS the axis** — which is 12g's
+own finding, stated there in words and confirmed here on the bytes.
+
+### Two limbs, and the second is 12g's finding made mechanical
+
+    limb A   containment >= 0.80
+    limb B   the numeral multisets are EQUAL and containment >= 0.60
+
+⚠ **LIMB B IS NOT "NUMERALS ALONE", AND THE DIFFERENCE IS THE DESIGN.** On the
+bank, numeral equality alone is a **perfect** classifier — 13 of 13 equal-numeral
+pairs are duplicates, 5 of 5 fresh-numeral pairs are sound. Shipping that would
+refuse every *"explain why"* outcome forever, because neither narration has a
+number and their numeral sets are trivially equal. The containment floor is what
+keeps a genuinely re-worded explain-why assessment legal.
+
+### THE CALIBRATION, AND IT IS BANKED AND RE-RUNNABLE
+
+`wpivgs12h-evidence/calibrate12h.py` re-reads 12g's **raw emissions** — not a
+summary of them — and classifies all 18 outcome-pairs. It is part of the
+acceptance and exits non-zero if any row moves class.
+
+| | containment |
+|---|---|
+| **limb A REFUSE** (12 pairs) | 0.900, 1.000 ×11 |
+| **limb B REFUSE** (1 pair) | 0.636 |
+| **pass** (5 pairs) | 0.100, 0.200, 0.600, 0.667, 0.667 |
+
+⛳ **LIMB A's MARGIN: the pass class tops out at 0.667 and limb A floors at
+0.900. The threshold sits in the middle of that gap at 0.80** — not on either
+edge, because a threshold resting on an observed value reclassifies the first
+time a synonym moves one token.
+
+⚠ **LIMB B's CLAIM IS THE WIDER OF THE TWO AND IS LABELLED SO IN THE CODE AND IN
+THE HARNESS OUTPUT.** It is calibrated against one class and the *absence* of the
+other: there is no equal-numeral pair in the bank that is NOT a duplicate. Its
+floor of 0.60 sits below the lowest it must catch (0.636).
+
+### ⛔ A CORRECTION TO 12g's OWN PROSE, MADE AGAINST ITS OWN BYTES
+
+12g.9 says: *"11 of 15 outcome-pairs are verbatim identical. The other four are
+the same task with a 'Let's practice' prefix."* That does not survive the banked
+JSON. **The count of 11 is right; its composition is not.** Measured:
+
+  * **9** pairs are verbatim identical (containment 1.000),
+  * **2** more are the same sentence with a *"Let's practice"* prefix (0.938, 0.900),
+  * and **the other four are the LO-1 pairs, which genuinely differ** (0.100–0.636).
+
+The 11 that must refuse all refuse. The four are not "the same task with a
+prefix" — three of them pose a fresh number, which is the behaviour 12g's own
+sharpest datum is about.
+
+### ⛳ AND THE WORKED-EXAMPLE LIMB CAUGHT WHAT FIVE GENERATIONS OF HAND-COMPARISON MISSED
+
+12g.10 called script B2's LO-1 *"real scaffolding, correctly faded"* on the
+strength of practice *"Divide 234 by 10. Use the place-value shift method."*
+against assess *"Divide 432 by 10."* — comparing the assessment to its practice
+only. **The same design's scene 17 is a `guide` reading *"Divide 432 by 10."*,
+byte-identical to the assessment.** The lesson worked the problem on screen and
+then set it as the unaided attempt. Containment 1.000, and the belt refuses it.
+
+⚠ **THE PRACTICE IS NOT COMPARED AGAINST THE WORKED EXAMPLES.** The order scopes
+this belt to the assessment. 12g's run A gen 2 quoted a practice that IS the
+script's own worked example (*"Solve the problem: 23 times 14."*) — named as a
+residue in 12h.12 rather than smuggled in under this check.
+
+### It refuses rather than flags, and that is WP-IVGS-10's line held
+
+12g wrote: *"Two narrations being equal is a string comparison, and near-equality
+is a judgment. WP-IVGS-10's line holds: this is reviewer territory, not a hard
+refusal."* ⛔ **Superseded, by measurement rather than by preference.**
+Near-equality stopped being a judgment the moment it was calibrated: a fixed
+formula, a fixed generic stoplist, a threshold sitting in a measured gap. A
+reviewer can act on *"LO-2's assessment repeats its practice word for word"* —
+which is WP-IVGS-10's own test.
+
+⛳ **AND IT IS THE FIRST HARD REFUSAL IN THREE PACKAGES THAT MEASURES THE DESIGN
+RATHER THAN THE GRAMMAR.** 12g's own §12g.4e records that this gate's hard limb
+had become a check on the schema: three refusals unreachable by construction and
+the teaching question left to one flag. **This one cannot be made unreachable by
+any grammar** — two strings the same author wrote are two strings, and no decoder
+can be told to make them different.
+
+---
+## 12h.6 TASK 3 — orchestration, and what the seam measurement found
+
+### The mechanism: one `await`, and no frozen body touched
+
+`clients.vllm_client._apply_document_transform` became a coroutine that awaits an
+awaitable result. That is the whole change to the seam. **A sync transform behaves
+exactly as it did** — 12f's path is untouched, and a worker with nothing armed
+runs byte-identical code. What the `await` buys is the thing the two-call design
+needs: a transform may now make an engine call of its own, inside the stage
+boundary.
+
+    chat_json  ->  parse call 1  ->  transform_document
+                                       -> _author_assessments_if_needed  (CALL 2)
+                                       -> merged_scene_sequence
+                                   ->  the FROZEN stage body
+
+⛳ **NO NEW PIPELINE STAGE, NO FROZEN-BODY EDIT, NO FREEZE EXCEPTION REQUESTED.**
+Both calls share one Celery task, one job context and one declared time budget.
+⛳ **The order's own prediction held: the WP-IVGS-12 client seams have carried
+every change so far, and they carried this one.**
+
+### Call-2 failure is named and fatal, and it is the ONE transform failure that is
+
+`DocumentTransformFatal` is a new exception class the seam re-raises while
+continuing to swallow everything else. ⛔ **The swallow is correct and is not
+correct for everything**: a transform BUG must never take a render down, and a
+transform that DELIBERATELY FAILS must. Shipping call 1's document alone would be
+a storyboard with a practice for every outcome, no independent attempt anywhere,
+and `StageStatus.SUCCESS` on it — the RC-E failure class with better paperwork.
+
+Traced through the frozen body: the exception lands in `stage2_storyboard`'s broad
+`except Exception` (`:770-776`), the message goes into `output.errors`, `scenes`
+is empty, and `status = FAILED` because `scenes and not errors` is false. A
+failed job is what `POST /jobs/{id}/resume` re-dispatches.
+
+⚠ **AND THERE IS DELIBERATELY NO "CALL 2 WAS UNREACHABLE SO WE SHIPPED CALL 1"
+BRANCH.** Three cases decline the call and none is a failure — a stored brief that
+already has assessments, a v7 storyboard with no practice layer, and a project
+whose operator stated no outcomes. Everything else calls, and a failure fails.
+
+### ⛔ RC-Q13 — THE DECLARED TIMEOUT CANNOT HOLD THE MEASURED WORK, AND IT IS ALREADY DEPLOYED
+
+Timeouts are **derived** from AD-05's declared table, as ordered, never
+transcribed. `GENERATE_STORYBOARD` declares soft **270** / hard **300**;
+`_storyboard_client_timeout()` returns `max(270-30, 120) = 240`;
+`storyboard_call_timeouts()` splits it **180 / 60** — read back live from the
+running worker (12h.7).
+
+⛔ **AND DERIVING IT IS WHAT EXPOSED THE PROBLEM.** Measured stage-2 wall clock —
+12g's banked run logs plus this package's twelve calls:
+
+| | seconds |
+|---|---|
+| 12g contract-6, seven generations | 135, 281, 395, 427, 477, 491, 503 |
+| **12h contract-7 call 1, six generations** | **280, 366, 458, 476, 488, 526** |
+| 12h contract-7 call 2, six generations | **36, 36, 36, 37, 38, 41** |
+
+**Ten of thirteen call-1 measurements exceed the 240 s client budget, and eight
+exceed the 300 s Celery hard limit.** A real stage-2 job under contract-6 —
+deployed since yesterday — would have been killed on most runs.
+
+⛳ **12g DID NOT SEE IT AND ITS OWN §12g.13 ITEM 2 SAYS WHY:** *"NOT ONE
+GENERATION WENT THROUGH THE REAL PIPELINE."* The harness calls node-02 directly
+with a 1,200 s timeout. So contract-6's acceptance passed while production would
+have timed out, and **contract-7 inherits that unchanged**.
+
+⚠ **THE COST OF THE SPLIT IS NOT THE PROBLEM AND THAT IS THE POINT.** Call 2 adds
+**36–41 s** to a call 1 that already runs 280–526 s — **7–13% overhead** on a
+budget that was already exceeded by 100–120%.
+
+⛔ **NOT FIXED HERE, AND THE REASON IS AUTHORITY, NOT DIFFICULTY.** The numbers
+are AD-05's conformance table and `celery_app.apply_declared_time_limits` makes
+them the ONE definition reaching the running tasks — which is exactly why moving
+them is an operator ruling. **Rowed as RC-Q13.** What `storyboard_call_timeouts`
+does is split honestly the budget it is given, so when the limit does move both
+calls move with it.
+
+---
+
+## 12h.7 What the running containers say
+
+Read back from the deployed fleet after publishing, because a verified tag proves
+which bytes are there and not what they do.
+
+    ivgs-celery-default  CONTRACT_VERSION      = design-contract-7
+                         call-1 property order = [assessment_plan, practice_scenes,
+                                                  scenes, dropped_beats,
+                                                  design_notes, outcome_notes]
+                         call-1 has assessment = False   additionalProperties=False
+                         call-2 property order = [assessment_scenes]  addl=False
+                         call-2 bounds/pins    = 1..1  event [assess]  serves [LO-2]
+                                                 origins [sourced, designed]
+                         scene_index offered   = False
+                         scenes[] events       = [hook, objective, recall_prior,
+                                                  present, guide, feedback, transfer]
+                         merge sections/anchor = (practice_scenes, assessment_scenes)
+                                                 / (present, guide)
+                         call-1 floor          = 12288      call-2 floor = 4096
+                         measured input tokens = 14861 / context 32768
+                         timeouts (c1, c2)     = (180.0, 60.0)  of a 240.0 total
+                         call-2 prompt lineage = assessment_authoring_system
+                         belt thresholds       = 0.8 / 0.6
+                         motion catalogue      = [column_addition_carry,
+                                                  column_multiplication_step,
+                                                  highlight_and_hold,
+                                                  place_value_split]
+                         build_user_message    = (outcomes, assessment_plan, summary)
+                         summary leaks a practice narration = False
+
+    ivgs-fastapi         distinct practice + assess          -> refusals: NONE
+                         VERBATIM duplicate (RC-Q9g)         -> EVIDENCE_NEAR_DUPLICATE
+                         same numbers, support removed       -> EVIDENCE_NEAR_DUPLICATE
+                         assessment = its own guide scene    -> EVIDENCE_NEAR_DUPLICATE
+                         B2's differentiated pair            -> refusals: NONE
+
+---
+
+## 12h.8 TASK 4 — prompt lineage: v8, and a new lineage at v1
+
+**v7 → v8: 19,217 → 19,857 characters. FOUR phrases MOVED and ONE key DROPPED.**
+
+⛳ **"MOVED" IS A CLAIM AND IT IS TESTED, NOT ASSERTED.**
+`test_v8_moved_and_did_not_lose` reads the publisher's own two tuples and fails if
+a phrase is absent from the design prompt AND absent from the assessment prompt.
+A drop that is really a deletion cannot pass.
+
+| phrase | v7 | v8 | call-2 v1 | why |
+|---|---|---|---|---|
+| `POSE THE PROBLEM COLD` | ✅ | — | ✅ | the authoring recipe follows the job |
+| `HOLD — a silent attempt window` | ✅ | — | ✅ | " |
+| `REVEAL for self-check` | ✅ | — | ✅ | " |
+| `THE ASSESS IS THE WHOLE PROCEDURE, NOT A\nFRAGMENT` | ✅ | — | ✅ | " |
+| `POSE THE PROBLEM COLD, IN FRESH NUMBERS…` | ✅ | — | ✅ | never about the practice: a practice posed cold in fresh numbers with nothing on screen IS the assessment |
+| `assessment_scenes` | ✅ | — | ✅ | ⛔ **the key is not in call 1's schema**, and probe F1 measured it cannot be put back. Gating it would refuse every correct v8 |
+| `THE ASSESSMENTS ARE YOURS TO AUTHOR` | ✅ | → `THE PRACTICE IS YOURS TO AUTHOR` | — | 12f's claim kept for the half still true |
+| ⛳ `THE LEARNER PERFORMS IT UNAIDED` | ✅ | ✅ | ✅ | **the DEFINITION stays on both.** Call 1 still chooses `evidence_kind`, and a model that does not know what `assess` MEANS cannot write a plan worth answering — and that plan is call 2's entire brief |
+
+Everything 12b, 12d, 12e, 12f and 12g gated that is not part of the audited move
+survives and is asserted against the **publisher's own tuple**, so the two lists
+cannot drift. **29 design phrases, 9 assessment phrases, 1 on both.**
+
+**Two phrases are NEW on the call-2 prompt and both come from measurement:**
+
+  * `YOU HAVE NOT BEEN GIVEN THE PRACTICE WORDING` — the mechanism told to the
+    model, so it does not fabricate a reference to something it cannot see.
+  * ⛳ `THE FRESH THING IS THE CASE` — **12g's own finding turned into an
+    instruction**: *"where a FRESH NUMBER exists as an axis, the model
+    differentiates; where the outcome is 'explain why' or 'check your work', it
+    has no axis and writes the same sentence twice."* Two of the operator's three
+    outcomes are of that kind, so the prompt names the non-numeric case
+    explicitly instead of leaving *"fresh numbers"* to cover an outcome with none.
+    **12h.10 is where that instruction is measured.**
+
+⛔ **THE PUBLISHER REFUSES A CALL-2 TEMPLATE THAT CAN SEE THE PRACTICE.** The gate
+renders it with `practice_scenes`, `scenes`, `combined_transcript` and
+`learning_outcomes` all bound to sentinels and fails if any reaches the output;
+and it refuses any Jinja statement or expression outside the comment header. A
+`{{ }}` added there would undo the package silently, and the only symptom would be
+a duplicate.
+
+**PUBLISHED AFTER THE DEPLOY**, per 12c's rule, with 12e's check made rather than
+assumed — the seed inside the running image compared to the tracked file first,
+`5bf05f41…` and `7c6c4024…`, both MATCH:
+
+    storyboard_generation_system: published v8 (19857 chars, sha256 5bf05f41a60fa4d8…), superseding v7
+    assessment_authoring_system:  published v1 (7514 chars, sha256 7c6c4024fa4793b7…)
+    transcript_refinement_system: v1 is already this exact text — no-op, nothing published.
+
+Lineage in the database: **v8 active, v1–v7 inactive, exactly ONE active row per
+lineage**; `assessment_authoring_system` at v1, active. Rollback is one UPDATE,
+per lineage, independently — which is why it is a lineage and not a v9.
+
+---
+## 12h.9 TASK 5 — the acceptance, eighth attempt, census-scored and calibrated
+
+Two runs of three on the operator's script (md5 `f65f340c…`), the same three ABCD
+outcomes. ⛔ **Both are reported and neither is preferred.**
+
+### ⛔ RUN A — one refusal in every generation, and it was mine
+
+| | g1 | g2 | g3 |
+|---|---|---|---|
+| call 1 | 526 s, 10,097 tok | 458 s, 8,893 tok | 280 s, 5,474 tok |
+| call 2 | 38 s, 771 tok | 36 s, 753 tok | 38 s, 785 tok |
+| scenes (merged) | 47 | 47 | 27 |
+| ⛳ **belt: pairs distinct** | **3/3** | **3/3** | **3/3** |
+| ⛔ **hard refusals** | **1** | **1** | **1** |
+
+All three were `MOTION_WITHOUT_TEMPLATE`, on call 2's `motion_graphics`
+assessment. ⛔ **The gate was right and the model could not have complied.** Call
+2's prompt says a computational attempt *"MUST carry a `generation_params`
+template with every parameter that template declares"* — and the four template
+names live in call 1's **42,365-character USER template**, which call 2 has never
+seen. **Telling a model to name a template while withholding the list is asking
+for a guess.**
+
+Fixed by a code-built catalogue in `build_user_message`, ⛳ **read from
+`shared.motion.templates`'s own registry rather than typed out**. Call 1 is told
+the same four as PROSE — *"Choose from EXACTLY these four templates"* — and a
+transcription is an accurate mirror with no authority (RC-P17). Fleet rebuilt at
+`v5.38.3`, acceptance re-run.
+
+### ⛳ RUN B — THE ACCEPTANCE, MET
+
+| | g1 | g2 | g3 |
+|---|---|---|---|
+| call 1 | 476 s, 9,263 tok | 488 s, 9,466 tok | 366 s, 7,137 tok |
+| call 2 | 36 s, 739 tok | 41 s, 855 tok | 37 s, 769 tok |
+| scenes (merged) | 47 | 47 | 33 |
+| `sourced` / `designed` | 41 / 6 | 41 / 6 | 27 / 6 |
+| `practice` / `assess` | **4 / 3** | **4 / 3** | **4 / 3** |
+| ⛳ **evidence events inside call 1's own `scenes[]`** | **0** | **0** | **0** |
+| per-LO practice AND assess present | ✅ | ✅ | ✅ |
+| exactly one assess per LO | ✅ | ✅ | ✅ |
+| outcome text verbatim / invented ids | ✅ / NONE | ✅ / NONE | ✅ / NONE |
+| `dropped_beats` | 1 | 1 | 1 |
+| ⛳ **belt: every pair distinct** | **3/3** | **3/3** | **3/3** |
+| ⛳ **hard refusals** | **0** | **0** | **0** |
+
+**The census against all three baselines:**
+
+| | scenes | `sourced` | `designed` | `assess` | `practice` | refusals |
+|---|---|---|---|---|---|---|
+| RC-Q9e, 6 gens, contract-4 | 83 | 83 | **0** | **0** | 5 | — |
+| RC-Q9f run B, 3 gens, contract-5 | 43 | 33 | 10 | 10 | 1 | **6 in 6** |
+| 12g run B, 3 gens, contract-6 | 138 | 127 | 11 | 9 | 9 | 0 |
+| **12h run B, 3 gens, contract-7** | **127** | **109** | **18** | **9** | **12** | ⛳ **0** |
+
+Flags, all three generations: `PRACTICE_NOT_PREPARED` and
+`UNDECLARED_SCRIPT_GAP`; gen 3 adds one `SEGMENTING`. All flags by design.
+
+### ⛳ THE CALIBRATION RUN, WHICH IS PART OF THE ACCEPTANCE
+
+A GREEN result means nothing unless the same check goes RED on the known
+duplicates. `calibrate12h.py`, over 12g's raw banked emissions:
+
+    practice limb: 13 REFUSE / 5 pass, of 18
+    ⛳ CALIBRATION HELD — every banked row classifies as 12g's quotes say
+
+**12 of 12 mandated duplicates refuse. Both of B2's differentiated computational
+pairs pass.** And the thirteenth is limb B's — 12g's run B gen 1 LO-1, which 12g
+did not quote as a duplicate and which is one: *"Multiply 43 by 25 using the
+standard column algorithm. You can use the workspace below to help you."* against
+*"Now it's your turn to try. Multiply 43 by 25 using the standard column
+algorithm."* **The same two numbers, the support sentence deleted.** Reported as a
+twelfth rather than tuned around.
+
+---
+
+## 12h.10 ⛳ RC-Q9g IS CLOSED — every practice and assessment narration, verbatim
+
+**All six generations, both runs.** `[origin]` as the model declared it. ⛔ The
+comparison is 12g.9, where 11 of 15 pairs were the same sentence twice.
+
+### RUN B — the three that count
+
+**gen 1**
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** assess `[designed]` motion_graphics `{column_multiplication_step, top 67, bottom 49}`: *"Multiply 67 and 49 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Why do we write a placeholder zero in the ones column before multiplying by the tens digit?"*
+> **LO-2** assess `[designed]` image: *"Why do you need to write a placeholder zero in the ones column when multiplying 93 by 17?"*
+> **LO-3** practice `[designed]`: *"Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]` image: *"Check your work: did you correctly multiply 75 by 32, with correct partial products and a placeholder zero?"*
+
+**gen 2**
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."*
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 67 by 34 using the standard column algorithm."*
+> **LO-1** assess `[designed]` motion_graphics `{column_multiplication_step, top 56, bottom 79}`: *"Multiply 56 and 79 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Why do we write a placeholder zero in the ones column before multiplying by the tens digit?"*
+> **LO-2** assess `[designed]`: *"Explain why a placeholder zero is written in the ones column when multiplying 94 by 17."*
+> **LO-3** practice `[designed]`: *"Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]`: *"Check your work for the multiplication of 73 and 49."*
+
+**gen 3**
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** assess `[designed]` motion_graphics `{column_multiplication_step, top 47, bottom 19}`: *"Multiply 47 and 19 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Why do we write a placeholder zero in the ones column before multiplying by the tens digit?"*
+> **LO-2** assess `[designed]` `{place_value_split, number 75}`: *"Why is a placeholder zero written in the ones column when multiplying 75 by 32?"*
+> **LO-3** practice `[designed]`: *"Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]` motion_graphics `{column_multiplication_step, top 53, bottom 28}`: *"Check your work: Multiply 53 and 28 using the standard column algorithm and verify the column alignment, partial products, and placeholder zeros."*
+
+### RUN A — the three before the catalogue
+
+**gen 1**
+> **LO-1** practice `[designed]` ×2: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** assess `[designed]`: *"Multiply 67 and 49 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."*
+> **LO-2** assess `[designed]`: *"Explain why a placeholder zero is necessary when multiplying 93 by 14, focusing on the tens digit of the second number."*
+> **LO-3** practice `[sourced]`: *"Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]`: *"Check your work: Verify the column alignment, partial products, and placeholder zero in the multiplication of 75 by 36."*
+
+**gen 2**
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."*
+> **LO-1** assess `[designed]`: *"Multiply 67 and 49 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."*
+> **LO-2** assess `[designed]`: *"Why is a placeholder zero written in the ones column when multiplying 93 by 17?"*
+> **LO-3** practice `[sourced]`: *"Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]`: *"Check your work for the multiplication problem 75 * 32."*
+
+**gen 3**
+> **LO-1** practice `[designed]` ×2: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **LO-1** assess `[designed]`: *"Multiply 67 and 49 using the standard column algorithm."*
+> **LO-2** practice `[sourced]`: *"Can you explain why we write a placeholder zero in the ones column when multiplying by the tens digit?"*
+> **LO-2** assess `[designed]`: *"Why do you need to write a placeholder zero in the ones column when multiplying 93 by 17?"*
+> **LO-3** practice `[designed]`: *"Now it's your turn to try. Check your work by verifying the column alignment, each partial product, and the placeholder zero."*
+> **LO-3** assess `[designed]`: *"Check your work on the multiplication problem 75 * 36 to ensure the column alignment, partial products, and placeholder zero are correct."*
+
+### THE COUNT, AND THE MECHANISM
+
+⛳ **18 of 18 outcome-pairs DISTINCT, across six generations of two runs**, by the
+belt's own measure. Containment against the practice ranged **0.333 – 0.727**,
+every one below the 0.80 threshold, and every one with a fresh numeral so limb B
+never applied either. Against the worked examples: **0.000 – 0.273**.
+
+**The comparison, on the same script and the same three outcomes:**
+
+| | duplicate pairs | of |
+|---|---|---|
+| design-contract-6 (12g, five completed generations) | **11** | 15 |
+| **design-contract-7 (12h, six generations)** | **0** | **18** |
+
+### ⛳ AND THE ORDER'S STOP CONDITION DID NOT FIRE — THE "NO AXIS" CASE IS ANSWERED
+
+This is the result the order reserved an escalation for. 12g measured that where a
+fresh number exists the model differentiates, and *"where the outcome is 'explain
+why' or 'check your work', it has no axis and writes the same sentence twice."*
+**Two of the operator's three outcomes are of exactly that kind, and both
+collapsed in 5 of 5 completed generations under contract-6.**
+
+Under contract-7, in **6 of 6** generations, both invent a **CASE**:
+
+    LO-2  "…when multiplying 93 by 17"    "…when multiplying 94 by 17"
+          "…when multiplying 93 by 14"    "…when multiplying 75 by 32"
+    LO-3  "…of 75 by 36"    "…problem 75 * 32"    "…of 73 and 49"
+          "…did you correctly multiply 75 by 32"  "…Multiply 53 and 28 and verify"
+
+⛔ **NO RC-Q9h ROW FOR THIS, AND NO STOP.** The residue the order thought might be
+a per-outcome-type design question is not one: the model could always do it, and
+what it needed was not to be looking at the practice while it tried.
+
+⚠ **AND THE MECHANISM IS VISIBLE IN THE INPUT.** Call 2 was handed
+`numbers_already_used = [2019, 23, 14, 4, 3, 12, 2, 1, 8, 9, 92, 10, 230, 0, 322,
+34, 21]` and chose 67×49, 56×79, 47×19, 93×17, 94×17, 75×32, 73×49, 53×28 — **not
+one of which is in that list.** The instruction *"THE FRESH THING IS THE CASE"*
+and the code-built number list are doing the work together; neither would suffice
+alone, because the prompt sentence existed in v7 in a different form and the model
+copied anyway when it could see what to copy.
+
+---
+## 12h.11 The generalization check — B2 under contract-7
+
+A different topic (dividing by 10 and 100), a script with a different shape, one
+generation.
+
+| | scenes | `sourced` | `designed` | `assess` | `practice` | ev. in `scenes[]` | plan | refusals |
+|---|---|---|---|---|---|---|---|---|
+| B2, contract-6 (12g) | 27 | 18 | 9 | 3 | 3 | 0 | all `assess` | 6 × `MOTION_UNKNOWN_TEMPLATE` |
+| **B2, contract-7** | **20** | **12** | **8** | **3** | **5** | **0** | practice/practice/assess | 8 × `MOTION_UNKNOWN_TEMPLATE` |
+
+⛳ **THE MECHANISM GENERALIZES, AND THE HARDEST CASE IS THE ONE THAT MOVED.** 12g
+recorded that B2's two computational outcomes differentiated and *"only its
+non-computational LO-3 collapses"* — at containment **1.000**, verbatim. Under
+contract-7:
+
+> **LO-3** practice `[designed]`: *"Can you explain why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not?"*
+> **LO-3** assess `[designed]`: *"Explain why shifting every digit one place to the right is a reliable rule for dividing by 10, but crossing off a zero is not, **using the example of 540**."*
+
+**Containment 0.556, distinct.** The assessment narrows the rule to one direction
+and pins it to a worked case the lesson never used. That is the *"THE FRESH THING
+IS THE CASE"* instruction working on a second script.
+
+And the worked-example limb, which caught B2's LO-1 retrospectively in 12g's data
+at containment 1.000, reads **0.556 / 0.222 / 0.333** here. The defect the belt
+found in the old bytes does not recur in the new ones.
+
+| | LO-1 | LO-2 | LO-3 |
+|---|---|---|---|
+| vs its practice | 0.111 | 0.111 | 0.556 |
+| vs the worked examples | 0.556 | 0.222 | 0.333 |
+
+⚠ **The 8 refusals are the RENDERER gap 12f and 12g both found and are not 12h's.**
+`shared.motion.templates` has no division template, so a division lesson's motion
+scenes cite one that does not exist. Unchanged.
+
+### ⛳ AND B2 RAN AN EXPERIMENT NOBODY DESIGNED, IN ONE GENERATION
+
+The eight refusals are all on **call 1's** scenes, citing `place_value_shift` —
+**a template that does not exist.** Call 1 is told the four real names as prose in
+its user template. Call 2 was handed the same four **built from the registry**:
+
+    call 1 practice scenes   template=place_value_shift   ⛔ INVENTED ×5
+    call 2 assessments       template=place_value_split   ✅ REAL ×2, and one
+                             `image` with no template at all, correctly
+
+**Same model, same request, same generation, same four templates — and the half
+that was given a transcription invented a name while the half that was given the
+registry did not.** That is RC-P17's argument (*"a transcription is an accurate
+mirror with no authority"*) demonstrated rather than asserted, and it is the
+strongest available case for doing to call 1's template prose what 12h did to call
+2's. ⚠ **Not taken here** — it edits the frozen stage's USER template, which is a
+separate change with its own blast radius, and it is named in 12h.12 as a residue.
+
+---
+
+## 12h.12 ⚠ RC-Q9h — THE DUPLICATE MOVED ONE LAYER IN, AND IT IS A NEW ROW
+
+⛔ **This is NOT the RC-Q9g residue the order reserved an escalation for.** That
+one is closed (12h.10). This is a defect the fix uncovered, and it is rowed rather
+than chased because it is outside both the order's scope and the belt's.
+
+**LO-1's TWO PRACTICE SCENES ARE THE SAME SENTENCE**, in 4 of 6 generations:
+
+> **run B gen 1, LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."*
+> **run B gen 1, LO-1** practice `[designed]`: *"Now it's your turn to try. Multiply 34 by 21 using the standard column algorithm."* ⛔ **IDENTICAL**
+
+Also run B gen 3, run A gen 1 and run A gen 3. Run A gen 2 and run B gen 2 differ
+(34×21 then 43×25; 43×25 then 67×34) and are the fading sequence working.
+
+**WHY THE BELT DOES NOT SEE IT.** The order scopes the check to *"its assessment
+narration vs its practice narration(s), and vs the script's worked-example
+spans"* — every comparison anchored on the assessment. A practice-vs-practice
+comparison is a fourth one, and adding it unasked would widen a hard refusal on my
+own judgment.
+
+**AND WHY IT IS THE SAME LAW, ONE LAYER ALONG.** `practice_scenes` is bounded
+1..2, and Foundation §2's reason for the 2 is *"a complete worked example and then
+a faded one"* — two DIFFERENT supported attempts. Both are written in one emission,
+in one array, with the first in context while the second is asked for. **That is
+RC-Q9g's exact mechanism inside a single section.**
+
+⚠ **AND A SECOND OBSERVATION ABOUT THOSE PRACTICES, WHICH MAY MATTER MORE.** The
+narration is *"Now it's your turn to try. Multiply 34 by 21…"* — that is a problem
+posed **cold**, with no support named. v8 tells call 1 plainly: *"if your practice
+scene poses a problem cold with nothing left to lean on, you have written the
+assessment."* It is doing that. **The pair passes the belt because the ASSESSMENT
+is now genuinely different**, not because the practice is a good faded step.
+
+⛔ **THREE ROUTES, NAMED SO THE RULING IS INFORMED, AND I TOOK NONE:**
+
+  * **Extend the belt to practice-vs-practice.** Cheap — the module already
+    computes it. ⚠ But it is a new hard refusal outside the order's scope, and
+    the calibration set has nothing to set its threshold against.
+  * **Bound `practice_scenes` to exactly 1.** Would make it unemittable, and would
+    also forbid the fading sequence Foundation §2 prescribes — the asymmetry 12g
+    argued for deliberately.
+  * **A third call, or a per-scene call, for the second practice.** ⛔ The same
+    answer as RC-Q9g, and if the law holds it is the one that works. It is also
+    the point at which "one more call per scene" needs an operator's view of the
+    cost, especially given RC-Q13.
+
+---
+
+## 12h.13 Tests — zero new failures, both baselines re-measured here
+
+⚠ **THE PUBLISHED BASELINES WERE NOT INHERITED.** Measured by `git worktree` at
+`eafbf9f` in this environment, the §0 "measure the ref" rule applied to test
+counts.
+
+| tree | baseline at `eafbf9f` | with 12h | verdict |
+|---|---|---|---|
+| `ivgs-api` | **1727 passed, 0 failed** | **1763 passed, 0 failed** | ✅ **+36**, still zero |
+| `ivgs-workers` | **18 failed, 979 passed, 48 skipped, 15 errors** | **18 failed, 979 passed, 48 skipped, 15 errors** | ✅ **IDENTICAL BY NAME**, `diff` of the sorted FAILED/ERROR lists is empty |
+
+⛔ **AND A CORRECTION TO 12f's AND 12g's OWN TEST CLAIM, FOUND BY REPEATING THE
+MEASUREMENT.** Both reported *"Failures (18) and errors (15) are identical in
+every run, which is the comparison that matters."* **That does not survive
+repetition.** `tests/test_wp60_orphan_guard.py` is flaky and fails a DIFFERENT
+subset run to run:
+
+    12h tree,     whole suite   ->  19 failed  (orphan_guard proof 2)
+    12h tree,     whole suite   ->  20 failed  (orphan_guard proofs 1 and 3)
+    BASELINE at eafbf9f, suite  ->  18 failed
+    BASELINE at eafbf9f, suite  ->  20 failed
+    BASELINE, that file alone   ->  1 failed, 1 failed, then 9 passed
+
+⛳ **It is PRE-EXISTING and it is not mine** — the baseline worktree does the same
+thing, and nothing in this package touches orphan cleanup or SeaweedFS. The
+comparison above therefore isolates that file (`--ignore`), which makes both trees
+**18 failed / 979 passed / 15 errors, identical by name**. ⚠ The right statement
+of the workers baseline is *"18 plus a flaky file"*, not *"18"*.
+
+**36 tests added** in `test_wpivgs12h_two_call.py`: the split (call 1 has no
+assessment section and `additionalProperties` forbids one; call 2 has nothing
+else; the plan is still first; contract-6's grammar preserved exactly; every array
+bounded in BOTH schemas), the blindness (the summary and the user message carry no
+practice wording, and `build_user_message`'s three keyword-only arguments make it
+structural), the belt (identical, differentiated, limb B, the worked-example limb,
+the stoplist carries no task word, numerals are kept, **and the whole 18-pair
+calibration re-classified**), the fatal path (the seam re-raises the named class
+and swallows everything else; an async transform is awaited; nothing registered is
+byte-identical previous behaviour; the three declined cases; no file fallback),
+the motion catalogue, the prompt move across both tuples, the enum member, the
+migration, and a **contract-7 round trip through the database** asserting the
+scene rows land byte-for-byte where contract-6's did.
+
+**Nine existing test files re-aimed, none weakened, each with the reason in place:**
+
+  * ⛔ **Four fixture files gave every scene the SAME narration** (`"One."`, or one
+    template with an index). Harmless while nothing at the gate read narration;
+    `EVIDENCE_NEAR_DUPLICATE` reads it and correctly refuses an `assess` scene
+    that repeats its own `guide` word for word. The fixtures now say what they
+    always MEANT — different scenes — and not one assertion changed.
+    ⚠ **Worth recording: the first re-aim was `f"Scene {idx}: a distinct thing is
+    said here."` and the belt refused THAT too, at 0.83.** Two sentences differing
+    only in a number are two sentences differing only in a number; the measure does
+    not care that a human can see the index.
+  * 12f's and 12g's section-parameterised classes now resolve the OWNING schema
+    through one helper. Every claim is still made about **both** sections; a
+    package that quietly changed a bound or a pin would still fail every one.
+  * ⛔ **12g's `test_the_property_order_is_plan_assessment_practice_scenes` is the
+    one whose CLAIM changed**, and 12g's own closing line is the argument. It now
+    asserts what the claim was always for — the plan is first, evidence precedes
+    exposition — plus that `assessment_scenes` is absent from call 1 and is call
+    2's only property.
+  * `test_every_array_in_the_evidence_layer_carries_a_maximum` now walks **both**
+    schemas and asserts it saw both sections — walking only the first would have
+    silently stopped checking the whole assessment layer.
+  * 12d's operational-definitions test now asserts each beat is on **exactly the
+    prompt that needs it**, and NOT on the other. It got stricter.
+  * Three `transform_document` tests await a coroutine. Assertions unchanged.
+  * `test_wp_ivgs_0_seed_template_contract.py` gains the new seed file, recorded
+    in `NON_WORKER_CONSUMERS` with a **third kind of consumer** the map had not
+    needed before: read by the worker, mid-stage, from the database.
+
+---
+
+## 12h.14 The tree, and the operator's push block
+
+**Held: 3 commits. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched. No freeze exception was requested.**
+
+    d8da66c  feat(wp-ivgs-12h): the two-call design — evidence gets its own breath
+             [tag v5.38.2-two-call-design]
+    a41d642  fix(wp-ivgs-12h): call 2 was told to name a template and never shown
+             the list                       [tag v5.38.3-two-call-design]
+    <3rd>    docs(wp-ivgs-12h): the acceptance, RC-Q9g closed, and RC-Q13
+
+⚠ **Three, and the middle one is not bookkeeping:** the missing template catalogue
+was found by the acceptance run the first commit's images were built for, so it
+could not have been in that commit; and the acceptance can only be written after
+both.
+
+⚠ **I DRAFTED THIS SECTION SAYING TWO AND THEN COULD NOT MAKE IT TRUE.** The plan
+was to fold the report into `a41d642`. That commit is tagged and the RUNNING
+image's `IVGS_BUILD_SHA` is `a41d64215a8b…` — amending it to keep a tidy count
+would leave the deployed fleet naming a commit that does not exist, which is the
+trap this lineage has recorded since 12e. **The number in the block below is the
+measured one, not the planned one**, and it was measured with
+`git rev-list --count origin/main..HEAD` after a `git fetch` at close.
+
+⛔ **FOUR IMAGE TAGS FOR THE TWO CODE COMMITS, AND TWO OF THE FOUR ARE MY SLIPS.** Recorded
+because a tag that misnames itself is the RC-Q8 class:
+
+| tag | commit | what it is |
+|---|---|---|
+| `v5.38.0-two-call-design` | `d8da66c` | ⛔ built with `IVGS_BUILD_REF` unset; `/api/v1/version` reported `"unknown"`. Deployed ~4 minutes |
+| `v5.38.1-two-call-design` | `d8da66c` | ⛔ correct bytes, WRONG ref — it reported `build_ref: v5.38.0`. Deployed ~3 minutes |
+| `v5.38.2-two-call-design` | `d8da66c` | ✅ correct. Deployed, verified, prompts published against it |
+| **`v5.38.3-two-call-design`** | **`a41d642`** | ✅ **the fleet is on this one**, the catalogue fix |
+
+⛳ **I DID NOT REBUILD A TAG.** `v5.38.0`'s bytes and `v5.38.1`'s bytes differ, so
+they got different tags rather than one tag meaning two things — which is
+precisely the RC-Q8 trap `save-image-artifact.sh` cannot see. All four are banked
+with `.digest` sidecars and registered in `MANIFEST.txt`. ⚠ **Nothing should be
+deployed from `v5.38.0` or `v5.38.1`.**
+
+⚠ **`ivgs-infra/.env` is MODIFIED AND IS NOT MINE TO COMMIT** on node-01 and on
+nodes 02, 03 and 04: the deploy moved `IVGS_API_TAG` and `IVGS_WORKERS_TAG` to
+`v5.38.3-two-call-design`. It is gitignored and §3 names it never-touch for its
+token. **The rollback is the two previous values — `v5.37.7-evidence-structural`
+on all four nodes** — written here because the scratchpad does not survive.
+
+⚠ **AND MIGRATION 0053 IS APPLIED TO PRODUCTION AND IS AHEAD OF `origin/main`
+UNTIL THE PUSH.** That is the correct order (schema before code, and the code is
+deployed), but it means a rollback of the images alone leaves an enum member the
+old code does not know. It is additive and nothing reads it, so the old code is
+unaffected; a full rollback would run `alembic downgrade 0052`.
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=3
+ACTUAL=$(git rev-list --count origin/main..HEAD)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main \
+    && git push origin v5.38.2-two-call-design \
+    && git push origin v5.38.3-two-call-design
+fi
+```
+
+---
+
+## 12h.15 What I did not verify — 12h's additions to §Z
+
+1. ⛔ **The rendered gate panel, still, and it now matters more than ever.** No
+   browser was driven. The gate has gained its first hard refusal that quotes two
+   narrations back at the reviewer (`EVIDENCE_NEAR_DUPLICATE` carries both, plus
+   the containment score and which limb fired), and **what that looks like on
+   screen is unmeasured.** The frontend is still `v5.37.0-design-core`, correctly,
+   as no frontend code changed.
+2. ⛔ **NOT ONE GENERATION WENT THROUGH THE REAL PIPELINE**, exactly as 12f and
+   12g. Every number above comes from the harness calling node-02 directly with
+   the seed-rendered prompts — **and 12h makes this gap materially worse, because
+   the second call, the `await`ed seam and the `DocumentTransformFatal` path have
+   never run inside a real stage-2 job.** They are unit-tested, round-tripped
+   through the database and read back out of the running containers; they have
+   never been executed by Celery. ⚠ **This is now the largest gap in the lineage
+   by a distance, and RC-Q13 says the first real run would time out.**
+3. ⛔ **Whether any of this RENDERS.** Stage 3+ has never been handed a contract-7
+   design. B2 re-confirmed there is no division motion template.
+4. ⚠ **RC-Q13 is rowed and not fixed**, and it describes a fleet that is deployed.
+5. ⚠ **RC-Q9h is rowed and not fixed** — 4 of 6 generations ship two identical
+   practice scenes for LO-1.
+6. ⚠ **Limb B of the belt has no counter-example.** Every equal-numeral pair in
+   the bank is a duplicate, so its floor is calibrated against one class and the
+   absence of the other. If a legitimate design ever reuses a number deliberately,
+   limb B will refuse it and the report will look like this one's did.
+7. ⚠ **n is small, and smaller than it looks.** Six generations on the operator's
+   script and one on B2. The `sourced`/`designed` split on evidence scenes moved
+   generation to generation again.
+8. ⚠ **The belt is calibrated on TWO scripts, both mathematics, both by the same
+   model.** A non-numeric subject has no numeral axis at all, and limb B would
+   then rest entirely on its containment floor. Untested.
+9. ⚠ **I did not test what happens when call 2 answers `origin: "sourced"`.** The
+   probe showed it can (E2 returned `sourced` three times with no script in
+   context), and all 24 acceptance assessments came back `designed`. The path is
+   protected by 0048's CHECK and by `parse_contract`'s downgrade to UNDECLARED,
+   both of which are tested — but not exercised by a real call-2 emission.
+10. ⚠ **`ivgs-scheduler`, `ivgs-backup-worker`, `ivgs-motion-renderer` and
+    `tests_system` were not run.** 12h touches none of them and I did not
+    re-measure their baselines to prove it.
+11. ⚠ **The frontend was not rebuilt or redeployed**, so `/api/v1/version` reports
+    `v5.38.3` while `ivgs-nextjs` runs `v5.37.0-design-core`. Correct, and worth
+    knowing before reading a version off a screen.

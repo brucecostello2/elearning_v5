@@ -1,0 +1,608 @@
+[
+  {
+    "assessment_plan": {
+      "LO-1": {
+        "evidence_kind": "practice",
+        "learner_does": "Divides a whole number of up to four digits by 10 by shifting every digit one place to the right, producing the correct quotient."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Divides a whole number of up to four digits by 100 by shifting every digit two places to the right, producing the correct quotient."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Explains why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not."
+      }
+    },
+    "practice_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not provide a practice example for LO-1."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Let's try an example. If we have the number 432, what is the result of dividing it by 10?",
+          "visual_description": "A number 432 on a place value chart, with the digits highlighted and the place values labeled.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "place_value_shift",
+            "number": 432,
+            "shift": 1
+          },
+          "signal_spec": null
+        },
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not provide a practice example for LO-1."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Now, let's try another example. If we have the number 219, what is the result of dividing it by 10?",
+          "visual_description": "A number 219 on a place value chart, with the digits highlighted and the place values labeled.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "place_value_shift",
+            "number": 219,
+            "shift": 1
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not provide a practice example for LO-2."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Let's try an example. If we have the number 945, what is the result of dividing it by 100?",
+          "visual_description": "A number 945 on a place value chart, with the digits highlighted and the place values labeled.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "place_value_shift",
+            "number": 945,
+            "shift": 2
+          },
+          "signal_spec": null
+        },
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not provide a practice example for LO-2."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Now, let's try another example. If we have the number 753, what is the result of dividing it by 100?",
+          "visual_description": "A number 753 on a place value chart, with the digits highlighted and the place values labeled.",
+          "media_type": "motion_graphics",
+          "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": null,
+          "generation_params": {
+            "template": "place_value_shift",
+            "number": 753,
+            "shift": 2
+          },
+          "signal_spec": null
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "The script does not provide a practice example for LO-3."
+          },
+          "instructional_event": "practice",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Can you explain why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not?",
+          "visual_description": "A blank space for the learner to write their explanation.",
+          "media_type": "image",
+          "media_rationale": "The scene requires the learner to provide a written explanation, which is a non-numeric content.",
+          "duration_seconds": 60,
+          "bloom_level": "evaluate",
+          "text_carried_by": "narration",
+          "generation_params": null,
+          "signal_spec": null
+        }
+      ]
+    },
+    "scenes": [
+      {
+        "scene_index": 1,
+        "narration_text": "Today we are looking at what happens to a whole number when you divide it by 10, and then by 100.",
+        "visual_description": "A presenter standing in front of a clean whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene is an introduction, which is a human moment.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 0,
+              "end": 120,
+              "quote": "Today we are looking at what happens to a whole number when you divide it by 10, and then by 100."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 2,
+        "narration_text": "Every whole number is built out of place value columns. From the right, we have ones, then tens, then hundreds, then thousands.",
+        "visual_description": "A place value chart with the columns labeled.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene is a presentation of a concept, which is a non-numeric content.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 120,
+              "end": 240,
+              "quote": "Every whole number is built out of place value columns. From the right, we have ones, then tens, then hundreds, then thousands."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 3,
+        "narration_text": "Dividing by 10 makes a number ten times smaller.",
+        "visual_description": "A number on a place value chart, with the digits highlighted and the place values labeled.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 100,
+          "shift": 1
+        },
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 240,
+              "end": 360,
+              "quote": "Dividing by 10 makes a number ten times smaller."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 4,
+        "narration_text": "When a number gets ten times smaller, every digit in it moves one place to the right. The thousands digit becomes the hundreds digit. The hundreds digit becomes the tens digit. The tens digit becomes the ones digit.",
+        "visual_description": "A number on a place value chart, with the digits highlighted and the place values labeled, and the digits moving one place to the right.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 1000,
+          "shift": 1
+        },
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 360,
+              "end": 480,
+              "quote": "When a number gets ten times smaller, every digit in it moves one place to the right. The thousands digit becomes the hundreds digit. The hundreds digit becomes the tens digit. The tens digit becomes the ones digit."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 5,
+        "narration_text": "Dividing by 100 makes a number one hundred times smaller.",
+        "visual_description": "A number on a place value chart, with the digits highlighted and the place values labeled.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 20,
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 100,
+          "shift": 2
+        },
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 480,
+              "end": 600,
+              "quote": "Dividing by 100 makes a number one hundred times smaller."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 6,
+        "narration_text": "One hundred is ten times ten. So dividing by 100 is the same as dividing by 10, and then dividing by 10 again.",
+        "visual_description": "A number on a place value chart, with the digits highlighted and the place values labeled, and the digits moving two places to the right.",
+        "media_type": "motion_graphics",
+        "duration_seconds": 30,
+        "media_rationale": "The scene requires the learner to interact with a place value chart, which is a numeric content.",
+        "text_carried_by": null,
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 1000,
+          "shift": 2
+        },
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 600,
+              "end": 720,
+              "quote": "One hundred is ten times ten. So dividing by 100 is the same as dividing by 10, and then dividing by 10 again."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 7,
+        "narration_text": "It helps to know why this works rather than only that it works.",
+        "visual_description": "A presenter standing in front of a clean whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene is an introduction, which is a human moment.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "hook",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 720,
+              "end": 840,
+              "quote": "It helps to know why this works rather than only that it works."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 8,
+        "narration_text": "A digit in the tens column is worth ten times what the same digit is worth in the ones column. So moving a digit one column to the right divides what it is worth by exactly ten. Doing that to every digit at once divides the whole number by ten.",
+        "visual_description": "A place value chart with the columns labeled.",
+        "media_type": "image",
+        "duration_seconds": 40,
+        "media_rationale": "The scene is a presentation of a concept, which is a non-numeric content.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 840,
+              "end": 960,
+              "quote": "A digit in the tens column is worth ten times what the same digit is worth in the ones column. So moving a digit one column to the right divides what it is worth by exactly ten. Doing that to every digit at once divides the whole number by ten."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 9,
+        "narration_text": "People often say 'dividing by 10 means crossing off a zero.' That works for whole numbers that end in a zero and it fails for every other number, because there is no zero to cross off.",
+        "visual_description": "A presenter standing in front of a clean whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene is a presentation of a concept, which is a non-numeric content.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 960,
+              "end": 1080,
+              "quote": "People often say 'dividing by 10 means crossing off a zero.' That works for whole numbers that end in a zero and it fails for every other number, because there is no zero to cross off."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 10,
+        "narration_text": "The reliable version is the one about columns: every digit shifts one place right for each ten you divide by.",
+        "visual_description": "A place value chart with the columns labeled.",
+        "media_type": "image",
+        "duration_seconds": 20,
+        "media_rationale": "The scene is a presentation of a concept, which is a non-numeric content.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "present",
+        "bloom_level": "understand",
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1080,
+              "end": 1200,
+              "quote": "The reliable version is the one about columns: every digit shifts one place right for each ten you divide by."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 11,
+        "narration_text": "Let's summarize what we have learned.",
+        "visual_description": "A presenter standing in front of a clean whiteboard.",
+        "media_type": "image",
+        "duration_seconds": 10,
+        "media_rationale": "The scene is a summary, which is a human moment.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1200,
+              "end": 1320,
+              "quote": "Let's summarize what we have learned."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      },
+      {
+        "scene_index": 12,
+        "narration_text": "Divide by 10, every digit moves one column to the right. Divide by 100, every digit moves two columns to the right. The digits stay in the same order and keep their own identities throughout.",
+        "visual_description": "A place value chart with the columns labeled.",
+        "media_type": "image",
+        "duration_seconds": 30,
+        "media_rationale": "The scene is a summary, which is a non-numeric content.",
+        "text_carried_by": null,
+        "generation_params": null,
+        "instructional_event": "transfer",
+        "bloom_level": "remember",
+        "serves_outcomes": [
+          "LO-1",
+          "LO-2",
+          "LO-3"
+        ],
+        "provenance": {
+          "origin": "sourced",
+          "source_refs": [
+            {
+              "transcript_id": null,
+              "start": 1320,
+              "end": 1440,
+              "quote": "Divide by 10, every digit moves one column to the right. Divide by 100, every digit moves two columns to the right. The digits stay in the same order and keep their own identities throughout."
+            }
+          ],
+          "rewrite_of": null
+        },
+        "signal_spec": null
+      }
+    ],
+    "dropped_beats": [
+      {
+        "span": {
+          "transcript_id": null,
+          "start": 1440,
+          "end": 1560,
+          "quote": "## A common mistake"
+        },
+        "summary": "The script mentions a common mistake, but it is not relevant to the learning outcomes.",
+        "reason": "The script mentions a common mistake, but it is not relevant to the learning outcomes."
+      }
+    ],
+    "design_notes": "The lesson starts with an introduction to the concept of dividing by 10 and 100. It then presents the concept of place value and how it relates to dividing by 10 and 100. The lesson includes practice examples for each learning outcome, and ends with a summary of the key concepts. The design is based on the learning outcomes, and each scene is designed to serve one or more of the outcomes. The practice examples are designed to be interactive and engaging, and to help the learner apply the concepts to real-world problems.",
+    "outcome_notes": {
+      "LO-1": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-2": {
+        "bloom_level": "apply",
+        "measurable": true,
+        "proposed_refinement": null
+      },
+      "LO-3": {
+        "bloom_level": "evaluate",
+        "measurable": true,
+        "proposed_refinement": null
+      }
+    },
+    "assessment_scenes": {
+      "LO-1": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to apply the place-value shift rule to divide by 10"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "narration_text": "Divide 627 by 10 by shifting every digit one place to the right.",
+          "visual_description": "A number line with the digits 6, 2, and 7, followed by a blank space, then the digits 6, 2, and 7 shifted one place to the right, resulting in 62.7.",
+          "media_type": "motion_graphics",
+          "media_rationale": "To visualize the place-value shift",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "place_value_split",
+            "number": 627
+          },
+          "signal_spec": {
+            "signal_type": "hold",
+            "hold_duration": 15
+          }
+        }
+      ],
+      "LO-2": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to apply the place-value shift rule to divide by 100"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-2"
+          ],
+          "narration_text": "Divide 814 by 100 by shifting every digit two places to the right.",
+          "visual_description": "A number line with the digits 8, 1, and 4, followed by a blank space, then the digits 8, 1, and 4 shifted two places to the right, resulting in 8.14.",
+          "media_type": "motion_graphics",
+          "media_rationale": "To visualize the place-value shift",
+          "duration_seconds": 30,
+          "bloom_level": "apply",
+          "text_carried_by": "narration",
+          "generation_params": {
+            "template": "place_value_split",
+            "number": 814
+          },
+          "signal_spec": {
+            "signal_type": "hold",
+            "hold_duration": 15
+          }
+        }
+      ],
+      "LO-3": [
+        {
+          "provenance": {
+            "origin": "designed",
+            "rationale": "Requires the learner to explain the reliability of the place-value shift rule"
+          },
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-3"
+          ],
+          "narration_text": "Explain why shifting every digit one place to the right is a reliable rule for dividing by 10, but crossing off a zero is not, using the example of 540.",
+          "visual_description": "A text box with a prompt and a blank space for the learner to write their explanation.",
+          "media_type": "image",
+          "media_rationale": "To allow the learner to write their explanation",
+          "duration_seconds": 60,
+          "bloom_level": "evaluate",
+          "text_carried_by": "narration",
+          "generation_params": {},
+          "signal_spec": {
+            "signal_type": "hold",
+            "hold_duration": 45
+          }
+        }
+      ]
+    }
+  }
+]

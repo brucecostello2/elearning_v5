@@ -1,0 +1,100 @@
+==============================================================================
+CENSUS B2-contract7   contract design-contract-7   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script   : dev/workpackages/reference/wpivgs12f-evidence/B2-script.txt  2156 chars
+call 1   : system=19088 user=41530 chars  max_tokens=12288  client timeout=180.0s
+call 2   : system=6351 chars  max_tokens=4096  client timeout=60.0s
+call-1 property order : ['assessment_plan', 'practice_scenes', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+call-2 property order : ['assessment_scenes']
+near-duplicate threshold (limb A) : 0.8
+==============================================================================
+--- B2-contract7 gen 1 CALL 1: 229s  finish=stop  prompt_tokens=14558 completion_tokens=4399
+--- B2-contract7 gen 1 CALL 2: 36s  finish=stop  prompt_tokens=2376 completion_tokens=737  user=3126 chars
+    numbers already used, handed to call 2: ['10', '100', '1', '1000', '2', '432', '219', '945', '753']
+    ⛳ TWO-CALL TOTAL: 264s   input 14558 + 2376   output 4399 + 737
+    ⛔ evidence events INSIDE the model's own call-1 scenes[] = 0   (contract-7 requires 0)
+    per-LO practice AND assess present = True   exactly one assess each = True   {"LO-1": {"practice": 2, "assess": 1}, "LO-2": {"practice": 2, "assess": 1}, "LO-3": {"practice": 1, "assess": 1}}
+    evidence-scene origins = ['designed', 'designed', 'designed', 'designed', 'designed', 'designed', 'designed', 'designed']
+    ⛳ THE BELT — assessment vs its own practice, and vs the worked examples
+       LO-1: practice containment 0.111 distinct   worked-example containment 0.556 distinct
+       LO-2: practice containment 0.111 distinct   worked-example containment 0.222 distinct
+       LO-3: practice containment 0.556 distinct   worked-example containment 0.333 distinct
+    THE CENSUS  scenes=20  sourced=12  DESIGNED=8  assess=3  practice=5
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "practice", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [4, 5, 6], "LO-2": [9, 10, 11], "LO-3": [16, 17]}
+    events: ['hook', 'present', 'present', 'present', 'practice', 'practice', 'assess', 'present', 'present', 'practice', 'practice', 'assess', 'hook', 'present', 'present', 'present', 'practice', 'assess', 'transfer', 'transfer']
+    >> scene 4 [practice] origin=designed serves=['LO-1'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The script does not provide a practice example for LO-1.
+       NARRATION  : Let's try an example. If we have the number 432, what is the result of dividing it by 10?
+       visual     : A number 432 on a place value chart, with the digits highlighted and the place values labeled.
+    >> scene 5 [practice] origin=designed serves=['LO-1'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The script does not provide a practice example for LO-1.
+       NARRATION  : Now, let's try another example. If we have the number 219, what is the result of dividing it by 10?
+       visual     : A number 219 on a place value chart, with the digits highlighted and the place values labeled.
+    >> scene 6 [assess] origin=designed serves=['LO-1'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : Requires the learner to apply the place-value shift rule to divide by 10
+       NARRATION  : Divide 627 by 10 by shifting every digit one place to the right.
+       visual     : A number line with the digits 6, 2, and 7, followed by a blank space, then the digits 6, 2, and 7 shifted one place to the right, resulting in 62.7.
+    >> scene 9 [practice] origin=designed serves=['LO-2'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The script does not provide a practice example for LO-2.
+       NARRATION  : Let's try an example. If we have the number 945, what is the result of dividing it by 100?
+       visual     : A number 945 on a place value chart, with the digits highlighted and the place values labeled.
+    >> scene 10 [practice] origin=designed serves=['LO-2'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The script does not provide a practice example for LO-2.
+       NARRATION  : Now, let's try another example. If we have the number 753, what is the result of dividing it by 100?
+       visual     : A number 753 on a place value chart, with the digits highlighted and the place values labeled.
+    >> scene 11 [assess] origin=designed serves=['LO-2'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : Requires the learner to apply the place-value shift rule to divide by 100
+       NARRATION  : Divide 814 by 100 by shifting every digit two places to the right.
+       visual     : A number line with the digits 8, 1, and 4, followed by a blank space, then the digits 8, 1, and 4 shifted two places to the right, resulting in 8.14.
+    >> scene 16 [practice] origin=designed serves=['LO-3'] media=image 60s
+       source_refs: null
+       rationale  : The script does not provide a practice example for LO-3.
+       NARRATION  : Can you explain why the place-value shift is the reliable rule for dividing by 10 and 100, and why crossing off a zero is not?
+       visual     : A blank space for the learner to write their explanation.
+    >> scene 17 [assess] origin=designed serves=['LO-3'] media=image 60s
+       source_refs: null
+       rationale  : Requires the learner to explain the reliability of the place-value shift rule
+       NARRATION  : Explain why shifting every digit one place to the right is a reliable rule for dividing by 10, but crossing off a zero is not, using the example of 540.
+       visual     : A text box with a prompt and a blank space for the learner to write their explanation.
+    HARD REFUSALS = 8    flags = 3
+        REFUSE scene 2        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 3        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 4        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 5        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 7        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 8        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 9        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 10       MOTION_UNKNOWN_TEMPLATE
+        flag   scene 3        SEGMENTING
+        flag   scene 13       SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 18, 19] assessed=[4, 5, 6]
+        LO-2: served=[0, 1, 7, 8, 9, 10, 11, 18, 19] assessed=[9, 10, 11]
+        LO-3: served=[0, 12, 13, 14, 15, 16, 17, 18, 19] assessed=[16, 17]
+
+==============================================================================
+B2-contract7 TOTALS vs THE THREE BASELINES
+   contract-4 (RC-Q9e, 6 gens): 83 scenes / 83 sourced / 0 designed / 0 assess
+   contract-5 (RC-Q9f run B, 3 gens): 43 / 33 / 10 / 10, 6 refusals in 6 gens
+   contract-6 (12g run B, 3 gens): 138 / 127 / 11 / 9, 9 practice, 0 refusals
+  scenes  20   sourced 12   DESIGNED 8   assess 3   practice 5
+  hard refusals per generation: [8]
+  ⛔ evidence events in call 1's own scenes[]: [0]   (contract-7 requires all 0)
+  per-LO practice AND assess present: [True]
+  exactly one assess per LO:          [True]
+  ⛳ THE BELT, every outcome-pair, every generation:
+     gen 1 LO-1: practice 0.111 distinct, worked 0.556 distinct
+     gen 1 LO-2: practice 0.111 distinct, worked 0.222 distinct
+     gen 1 LO-3: practice 0.556 distinct, worked 0.333 distinct
+  ⛔ THE TWO-CALL COST, per generation:
+     gen 1: call1 228.5s (14558 in / 4399 out)   call2 35.8s (2376 in / 737 out)   TOTAL 264.3s
+==============================================================================

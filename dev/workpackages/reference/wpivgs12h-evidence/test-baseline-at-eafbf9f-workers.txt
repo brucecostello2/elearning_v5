@@ -7,7 +7,7 @@ timeout: 300.0s
 timeout method: signal
 timeout func_only: False
 asyncio: mode=Mode.AUTO, default_loop_scope=session
-collected 1067 items / 2 skipped
+collected 1058 items / 2 skipped
 
 tests/temporal/test_wp41_conformance.py ...................              [  1%]
 tests/temporal/test_wp41_dag.py .........................                [  4%]
@@ -16,7 +16,7 @@ tests/temporal/test_wp41_payload_shapes.py ............................. [  8%]
 ........................................                                 [ 12%]
 tests/temporal/test_wp41_policies.py ................................... [ 15%]
                                                                          [ 15%]
-tests/test_composition.py ..........................                     [ 17%]
+tests/test_composition.py ..........................                     [ 18%]
 tests/test_corruption.py ...........                                     [ 19%]
 tests/test_dlq_service.py FFFFFFFFFF..                                   [ 20%]
 tests/test_orphan_cleanup.py ....FF.                                     [ 20%]
@@ -27,36 +27,35 @@ tests/test_retry_engine.py ...............FF                             [ 27%]
 tests/test_stage1.py ...................F                                [ 29%]
 tests/test_stage2.py ........................F                           [ 31%]
 tests/test_stage3.py ........                                            [ 32%]
-tests/test_stage4.py .....                                               [ 32%]
-tests/test_talking_head_task.py .F........                               [ 33%]
-tests/test_video_gen.py .............                                    [ 34%]
-tests/test_wp04_frame_align.py ......................................... [ 38%]
-..........                                                               [ 39%]
+tests/test_stage4.py .....                                               [ 33%]
+tests/test_talking_head_task.py .F........                               [ 34%]
+tests/test_video_gen.py .............                                    [ 35%]
+tests/test_wp04_frame_align.py ......................................... [ 39%]
+..........                                                               [ 40%]
 tests/test_wp05_visibility_timeout.py ................                   [ 41%]
 tests/test_wp06_media_join.py sssssssssssssssssss                        [ 43%]
-tests/test_wp07_save_checkpoint_surfaces.py ....................         [ 44%]
+tests/test_wp07_save_checkpoint_surfaces.py ....................         [ 45%]
 tests/test_wp08_gpu_reservations.py .................................... [ 48%]
-.................                                                        [ 49%]
-tests/test_wp27_stage7_raises.py ........                                [ 50%]
+.................                                                        [ 50%]
+tests/test_wp27_stage7_raises.py ........                                [ 51%]
 tests/test_wp36_dlq_missing_ids.py .........                             [ 51%]
-tests/test_wp37_stage2_output.py ...........................             [ 53%]
+tests/test_wp37_stage2_output.py ...........................             [ 54%]
 tests/test_wp39_heartbeat_schema.py ............                         [ 55%]
 tests/test_wp39_media_join.py sssssssssssssss                            [ 56%]
 tests/test_wp39_video_checkpoint.py ......                               [ 57%]
-tests/test_wp42_voice.py ........................ss....                  [ 59%]
+tests/test_wp42_voice.py ........................ss....                  [ 60%]
 tests/test_wp44_animation_input_guard.py ..............                  [ 61%]
 tests/test_wp44_quality_gate.py .......................                  [ 63%]
 tests/test_wp44_storyboard_prompt_rules.py ............................. [ 66%]
-.................                                                        [ 67%]
+.................                                                        [ 68%]
 tests/test_wp44_video_validator.py ..sssss.s.ssss..                      [ 69%]
 tests/test_wp45_dedup_probe.py ....................                      [ 71%]
 tests/test_wp45_project_state.py ..............                          [ 72%]
-tests/test_wp46_animation.py ............................                [ 74%]
+tests/test_wp46_animation.py ............................                [ 75%]
 tests/test_wp57_error_classification.py ............                     [ 76%]
 tests/test_wp58_failure_category.py .............                        [ 77%]
 tests/test_wp58_storyboard_budget.py .........                           [ 78%]
-tests/test_wp59_retention.py ...............                             [ 79%]
-tests/test_wp60_orphan_guard.py .........                                [ 80%]
+tests/test_wp59_retention.py ...............                             [ 80%]
 tests/test_wp61_schedules.py ...............                             [ 81%]
 tests/test_wp63_blank_check.py ...............                           [ 83%]
 tests/test_wp63_failure_attribution.py ..............                    [ 84%]
@@ -64,8 +63,8 @@ tests/test_wp64_media.py ..................                              [ 86%]
 tests/test_wp67_animatediff.py ................                          [ 87%]
 tests/test_wp_ivgs_0_binding_honesty.py .......                          [ 88%]
 tests/test_wp_ivgs_0_job_context.py ......                               [ 88%]
-tests/test_wp_ivgs_0_prompt_type.py ............                         [ 90%]
-tests/test_wp_ivgs_0_seed_template_contract.py ..........                [ 91%]
+tests/test_wp_ivgs_0_prompt_type.py ............                         [ 89%]
+tests/test_wp_ivgs_0_seed_template_contract.py ..........                [ 90%]
 tests/test_wp_ivgs_0_tier.py ....                                        [ 91%]
 tests/test_wpivgs04_tts_runtime_builder.py .............                 [ 92%]
 tests/test_wpivgs06_speaker_reference.py .........                       [ 93%]
@@ -214,10 +213,10 @@ ____________ TestValidatorIntegration.test_caption_full_validation _____________
 tests/test_quality_validator.py:455: in test_caption_full_validation
     assert report.validation_duration_s > 0
 E   AssertionError: assert 0.0 > 0
-E    +  where 0.0 = QualityReport(asset_id='cap-test', asset_type=<AssetType.CAPTION: 'caption'>, project_id='proj-test', scene_id='scene-...0.0, content_hash='3cc3b99298a2a7d12b16bc4accf2f6434bc68c86b5ee3ce305e5a9e708fe54e5', file_path='/tmp/tmpaqdqrdth.srt').validation_duration_s
+E    +  where 0.0 = QualityReport(asset_id='cap-test', asset_type=<AssetType.CAPTION: 'caption'>, project_id='proj-test', scene_id='scene-...0.0, content_hash='3cc3b99298a2a7d12b16bc4accf2f6434bc68c86b5ee3ce305e5a9e708fe54e5', file_path='/tmp/tmp6pmuifge.srt').validation_duration_s
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 04:58:20 [info     ] quality_validation_start       asset_id=cap-test asset_type=caption project_id=proj-test
-2026-08-30 04:58:20 [info     ] quality_validation_complete    asset_id=cap-test asset_type=caption decision=rejected elapsed_s=0.0 metric_count=1 project_id=proj-test safety_score=0.99
+2026-08-30 06:32:25 [info     ] quality_validation_start       asset_id=cap-test asset_type=caption project_id=proj-test
+2026-08-30 06:32:25 [info     ] quality_validation_complete    asset_id=cap-test asset_type=caption decision=rejected elapsed_s=0.0 metric_count=1 project_id=proj-test safety_score=0.99
 ____________ TestAttemptRecording.test_record_attempt_creates_entry ____________
 tests/test_retry_engine.py:212: in test_record_attempt_creates_entry
     record = await retry_engine.record_attempt(
@@ -247,7 +246,7 @@ tasks/stage1_transcript.py:506: in _run_refinement
     raise ValueError('badly formed hexadecimal UUID string')
 E   ValueError: badly formed hexadecimal UUID string
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 04:58:20 [info     ] stage1_starting                job_id=job-111-222-333 project_id=proj-aaa-bbb-ccc stage=stage1 transcript_count=2
+2026-08-30 06:32:25 [info     ] stage1_starting                job_id=job-111-222-333 project_id=proj-aaa-bbb-ccc stage=stage1 transcript_count=2
 ________________ TestStage2Integration.test_full_task_execution ________________
 tests/test_stage2.py:603: in test_full_task_execution
     result = generate_storyboard_task(sample_task_input)
@@ -265,7 +264,7 @@ tasks/stage2_storyboard.py:621: in _run_storyboard_generation
     raise ValueError('badly formed hexadecimal UUID string')
 E   ValueError: badly formed hexadecimal UUID string
 ----------------------------- Captured stdout call -----------------------------
-2026-08-30 04:58:20 [info     ] stage2_starting                job_id=job-222-333-444 project_id=proj-aaa-bbb-ccc stage=stage2 transcript_count=2
+2026-08-30 06:32:25 [info     ] stage2_starting                job_id=job-222-333-444 project_id=proj-aaa-bbb-ccc stage=stage2 transcript_count=2
 _____________ TestStage6Input.test_requires_at_least_one_audio_ref _____________
 tests/test_talking_head_task.py:139: in test_requires_at_least_one_audio_ref
     with pytest.raises(Exception):
@@ -332,18 +331,6 @@ ivgs-workers/tests/test_retry_engine.py::TestAttemptRecording::test_record_attem
   Enable tracemalloc to get traceback where the object was allocated.
   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
 
-ivgs-workers/tests/test_wp60_orphan_guard.py::test_storage_urls_come_from_the_environment_not_from_node_01
-  ivgs-workers/tests/test_wp60_orphan_guard.py:354: PytestWarning: The test <Function test_storage_urls_come_from_the_environment_not_from_node_01> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
-    def test_storage_urls_come_from_the_environment_not_from_node_01(monkeypatch):
-
-ivgs-workers/tests/test_wp60_orphan_guard.py::test_an_explicit_url_still_wins_over_the_environment
-  ivgs-workers/tests/test_wp60_orphan_guard.py:375: PytestWarning: The test <Function test_an_explicit_url_still_wins_over_the_environment> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
-    def test_an_explicit_url_still_wins_over_the_environment(monkeypatch):
-
-ivgs-workers/tests/test_wp60_orphan_guard.py::test_the_service_defaults_to_dry_run
-  ivgs-workers/tests/test_wp60_orphan_guard.py:384: PytestWarning: The test <Function test_the_service_defaults_to_dry_run> is marked with '@pytest.mark.asyncio' but it is not an async function. Please remove the asyncio mark. If the test is not marked explicitly, check for global marks applied via 'pytestmark'.
-    def test_the_service_defaults_to_dry_run():
-
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
 =========================== short test summary info ============================
 FAILED tests/test_dlq_service.py::TestDLQEntryCreation::test_send_to_dlq_with_exception_object
@@ -379,4 +366,4 @@ ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_pending_assets_
 ERROR tests/test_quality_gate.py::TestProjectGateReadiness::test_empty_project_cannot_advance
 ERROR tests/test_quality_gate.py::TestAssetRegistration::test_register_asset_adds_to_pending
 ERROR tests/test_quality_gate.py::TestGateHistory::test_history_recorded - Mo...
-===== 18 failed, 988 passed, 48 skipped, 21 warnings, 15 errors in 37.77s ======
+===== 18 failed, 979 passed, 48 skipped, 18 warnings, 15 errors in 37.08s ======
