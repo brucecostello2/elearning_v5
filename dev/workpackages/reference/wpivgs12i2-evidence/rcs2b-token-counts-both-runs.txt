@@ -1,0 +1,5 @@
+job_id|stage_name|created_at|in_tok|out_tok|scenes
+578478bf-ab6e-4e8d-8583-b0a9c88e67fb|transcript_refinement|2026-08-30 14:06:52.938266+00|1988|1549|
+578478bf-ab6e-4e8d-8583-b0a9c88e67fb|storyboard_generation|2026-08-30 14:08:09.562375+00|15547|3796|19
+b82a5e61-b1e3-4e4e-95a3-d1a1265c8876|storyboard_generation|2026-08-30 15:39:15.262378+00|13993|3185|17
+(3 rows)

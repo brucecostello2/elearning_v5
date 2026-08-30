@@ -80,7 +80,7 @@ from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.storyboard_scene import StoryboardScene
@@ -150,6 +150,29 @@ class Correction:
 
 
 @dataclass
+class PrunedScene:
+    """One surplus row removed because the design of record has no such scene.
+
+    Its content is recorded in full. A row that disappears without a trace is
+    the same silent correction the whole ruling forbids, and a reviewer who
+    remembers a scene that is no longer there is owed the reason.
+    """
+
+    scene_index: int
+    instructional_event: Optional[str] = None
+    serves_outcomes: List[str] = field(default_factory=list)
+    media_type: Optional[str] = None
+    narration_text: Optional[str] = None
+    #: When the row was last written. The whole argument in one field: every
+    #: row the regeneration wrote carries its timestamp, and a pruned row does
+    #: not.
+    updated_at: Optional[str] = None
+
+    def as_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+
+@dataclass
 class RepairPass:
     """What one pass did, and what the gate is left holding."""
 
@@ -162,10 +185,18 @@ class RepairPass:
     repaired: int
     repair_refused: int
     corrections: List[Correction] = field(default_factory=list)
+    #: RC-S1. Surplus rows removed before anything else ran.
+    pruned: List[PrunedScene] = field(default_factory=list)
+    #: Why nothing was pruned, when nothing was. ⛔ "There was no surplus" and
+    #: "I could not tell whether there was a surplus" are different facts and a
+    #: reviewer must be able to tell them apart.
+    prune_skipped_because: Optional[str] = None
 
     def as_dict(self) -> Dict[str, Any]:
         return {
             "ran_at": self.ran_at,
+            "pruned": [p.as_dict() for p in self.pruned],
+            "prune_skipped_because": self.prune_skipped_because,
             "scenes": self.scenes,
             "refusals_before": self.refusals_before,
             "refusals_after": self.refusals_after,
@@ -187,6 +218,106 @@ async def _rows(db: AsyncSession, project_id: UUID) -> List[StoryboardScene]:
             )
         ).all()
     )
+
+
+async def prune_scenes_not_in_design(
+    db: AsyncSession, project_id: UUID,
+) -> "tuple[List[PrunedScene], Optional[str]]":
+    """Remove scene rows the ACTIVE design of record does not contain.
+
+    ⛔ WP-IVGS-12i2, RC-S1. THE DEFECT THIS CLOSES, AND IT WAS SELF-DOCUMENTED
+    FOR TWO PACKAGES. `StoryboardService.create_scene` upserts by `scene_index`
+    and says so in its own docstring
+    (`app/services/storyboard_service.py:92-98`):
+
+        "a re-run that produces FEWER scenes than the project already has leaves
+         the surplus rows behind. This method sees one scene at a time and
+         cannot know the new total ... Trimming needs the whole-storyboard write
+         that Stage 2 does not make."
+
+    ⛳ MEASURED ON THE OPERATOR'S LIVE PROJECT, 2026-08-30, and it is what broke
+    the per-outcome exactly-one guarantee. The 14:12 generation wrote 19 scenes;
+    the 15:42 regeneration designed 17. Rows 17 and 18 survived with
+    `updated_at = 14:12:05` while every regenerated row carries `15:42:37`, and
+    **row 18 is an `assess` serving LO-3** — so the gate saw LO-3 assessed by
+    scene 15 (the new design) AND scene 18 (a design that no longer exists) and
+    fired `OUTCOME_ASSESSED_TWICE`. ⛔ **Call 2 was innocent: the active
+    contract emits `{LO-1:[9], LO-2:[12], LO-3:[15]}` — exactly one each.** The
+    structural guarantee never stopped holding; the database stopped matching
+    the contract.
+
+    ⛳ THIS IS THE WHOLE-STORYBOARD WRITE, MADE WHERE IT CAN BE MADE. Not in the
+    frozen stage body, and not by counting scenes — by reconciling the rows
+    against `scene_designs` on the ACTIVE brief, which RC-Q18 ruled is the
+    design of record. Index-set membership, not `index >= count`: a contract
+    with a gap in its indices would be trimmed correctly by one and wrongly by
+    the other.
+
+    ⛔ IT REFUSES TO GUESS. No active brief, or a brief with no `scene_designs`
+    (a stage-1 intent-only post), means this function cannot know what the
+    design contains — so it prunes NOTHING and returns the reason, which is
+    declared at the gate. A pre-v8 storyboard is left exactly as it is.
+
+    ⚠ WHAT DELETING A ROW TAKES WITH IT, stated rather than discovered later:
+    `assets.scene_id` is `ON DELETE SET NULL`, so generated media SURVIVES and
+    is merely unlinked; `prompts.scene_id` and `project_model_selections.scene_id`
+    are `ON DELETE CASCADE` and go. That is correct for a scene belonging to a
+    superseded design, and it is why the full content of every pruned row is
+    recorded in the declaration.
+    """
+    from app.services.design_brief_service import DesignBriefService
+
+    brief = await DesignBriefService(db).get_active(project_id)
+    if brief is None:
+        return [], (
+            "no active design brief — this storyboard predates the Design Core, "
+            "so there is no design of record to reconcile the rows against"
+        )
+    designs = brief.scene_designs or []
+    if not designs:
+        return [], (
+            "the active design brief carries no scene designs (a stage-1 "
+            "intent post), so the intended scene set is unknown"
+        )
+
+    intended = {
+        d.get("scene_index") for d in designs
+        if isinstance(d, dict) and isinstance(d.get("scene_index"), int)
+    }
+    if not intended:
+        return [], (
+            "the active design brief's scene designs carry no scene_index, so "
+            "the intended scene set is unknown"
+        )
+
+    rows = await _rows(db, project_id)
+    surplus = [r for r in rows if r.scene_index not in intended]
+    if not surplus:
+        return [], None
+
+    pruned = [
+        PrunedScene(
+            scene_index=r.scene_index,
+            instructional_event=r.instructional_event,
+            serves_outcomes=[str(x) for x in (r.serves_outcomes or [])],
+            media_type=r.media_type,
+            narration_text=r.narration_text,
+            updated_at=r.updated_at.isoformat() if r.updated_at else None,
+        )
+        for r in surplus
+    ]
+    await db.execute(
+        delete(StoryboardScene).where(
+            StoryboardScene.id.in_([r.id for r in surplus])
+        )
+    )
+    await db.commit()
+    logger.warning(
+        "surplus_scenes_pruned project=%s removed=%s intended=%s — rows from a "
+        "superseded design that survived regeneration (RC-S1)",
+        project_id, [p.scene_index for p in pruned], sorted(intended),
+    )
+    return pruned, None
 
 
 async def auto_repair_storyboard(
@@ -316,14 +447,26 @@ async def repair_and_declare(
     """
     from app.services.design_brief_service import DesignBriefService
 
+    # ── RC-S1 FIRST, AND THE ORDER IS THE ARGUMENT ──────────────────────────
+    # A surplus row belongs to a design that no longer exists. Repairing one
+    # spends an authoring call on a scene that is about to be deleted, and —
+    # measured on the operator's regen, 15:42:45Z — the pass reported
+    # `scenes: 19` over a 17-scene design and refused repairs on rows that were
+    # not part of it. Reconcile the storyboard to its design of record, THEN
+    # assess what is actually there.
+    pruned, skipped = await prune_scenes_not_in_design(db, project_id)
+
     result = await auto_repair_storyboard(db, project_id, project)
+    result.pruned = pruned
+    result.prune_skipped_because = skipped
 
     brief = await DesignBriefService(db).get_active(project_id)
     if brief is None:
         logger.warning(
             "auto_repair_undeclared project=%s — no active design brief to "
-            "record %s correction(s) on; a pre-v8 storyboard carries none",
-            project_id, len(result.corrections),
+            "record %s correction(s) and %s prune(s) on; a pre-v8 storyboard "
+            "carries none",
+            project_id, len(result.corrections), len(result.pruned),
         )
         return result
 

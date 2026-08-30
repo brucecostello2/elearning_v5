@@ -154,9 +154,25 @@ class TestTheBelt:
 
 class TestSilenceAboutDropsIsRefused:
     """Task 1(d). An empty `dropped_beats` is the model CLAIMING it used
-    everything; the uncovered length is measured BY CODE. Both cannot be true,
-    and the emptiness is not subject to the span-arithmetic doubt that keeps
-    attribution soft."""
+    everything; the uncovered length is measured BY CODE. Both cannot be true.
+
+    ⛔ **SUPERSEDED IN PART BY WP-IVGS-12i2, RC-S2(a), 2026-08-30. THE CHANGE OF
+    SENSE IS DELIBERATE AND THE HISTORY IS THE POINT.**
+
+    12b's rule was `gap >= 400 AND dropped_beats is empty`, and the second
+    clause is GLOBAL where the first is PER-SPAN — so **one throwaway declared
+    drop anywhere in the design made every hole in the script soft.** That is
+    not a hypothetical: measured on the operator's live project, a regenerated
+    design declared ONE drop, cited spans covering **110 of 3,138 characters**,
+    left a single undeclared 2,968-character stretch, and drew zero refusals.
+
+    The rule is now per-span: an uncovered stretch over the threshold refuses
+    **regardless of what was declared elsewhere**. The second test below used to
+    assert the downgrade and now asserts that it does NOT happen; the first is
+    unchanged in sense and only in the code it names. The full argument and the
+    calibration against both live designs live in
+    `test_wpivgs12i2_rcs_batch.py::TestFidelitySpanRule`.
+    """
 
     SCRIPT = "A" * 50 + "B" * 900
 
@@ -168,14 +184,25 @@ class TestSilenceAboutDropsIsRefused:
         return [x.code for x in ref], [x.code for x in flg]
 
     def test_empty_drops_over_a_big_hole_is_a_HARD_refusal(self):
+        """Unchanged in sense. The code is renamed because the rule no longer
+        turns on emptiness: `UNDECLARED_SPAN_OVER_THRESHOLD` says what is now
+        actually being refused."""
         ref, _ = self._codes([])
-        assert "UNDECLARED_GAP_WITH_NO_DROPS" in ref
+        assert "UNDECLARED_SPAN_OVER_THRESHOLD" in ref
 
-    def test_a_declared_drop_downgrades_it_to_a_flag(self):
+    def test_a_drop_declared_ELSEWHERE_no_longer_downgrades_it(self):
+        """⛔ THIS TEST'S ASSERTION IS INVERTED FROM 12b's, ON PURPOSE.
+
+        It used to read `assert "UNDECLARED_GAP_WITH_NO_DROPS" not in ref` — it
+        pinned the loophole as the intended behaviour. The drop below spans
+        900..950 and the hole is at 50..900, so this drop declares nothing about
+        this stretch, and a design may no longer buy silence about one beat by
+        declaring another.
+        """
         ref, flg = self._codes(
             [{"span": {"start": 900, "end": 950}, "summary": "s", "reason": "r"}])
-        assert "UNDECLARED_GAP_WITH_NO_DROPS" not in ref
-        assert "UNDECLARED_SCRIPT_GAP" in flg
+        assert "UNDECLARED_SPAN_OVER_THRESHOLD" in ref
+        assert "UNDECLARED_SCRIPT_GAP" not in flg
 
 
 class TestTheDeclarationIsWrittenWhole:

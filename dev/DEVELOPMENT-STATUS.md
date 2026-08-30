@@ -1,4 +1,4 @@
-# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12i, the Design Core)
+# IVGS Development Status — 2026-08-30 (WP-IVGS-12 + 12b…12i2, the Design Core)
 
 **The one-page board.** Updated as the closing act of every package
 (`dev/CLAUDE.md` §12a). ⛔ **A stale board is a defect, not an oversight.**
@@ -6,7 +6,24 @@ Everything below is from measurement taken this session, not from memory.
 
 ---
 
-## Fleet — node-01 api `v5.39.1-approve-refusal-named`, workers + frontend `v5.39.0-auto-repair`
+## Fleet — node-01 api `v5.40.1-rcs-batch`, frontend `v5.40.0-rcs-batch`, workers `v5.39.0-auto-repair`
+
+✅ **WP-IVGS-12i2 — THE RC-S BATCH.** ⛳ **RC-S1: the second assessment was a GHOST.** The active
+contract emits per-LO assess exactly once; rows 17 and 18 were left behind by the previous
+generation (`storyboard_service.py:92-98`, RC-Q10, self-documented and unfixed for two packages)
+and row 18 is an `assess` serving LO-3. `prune_scenes_not_in_design` reconciles rows to the
+design of record before the gate; **acceptance on two real runs: 37 scenes → regen designs 16 →
+21 rows pruned → per-LO assess 1/1/1.** ⛳ **RC-S2(a): the fidelity check had a loophole** — its
+`dropped_beats is empty` clause was GLOBAL where the gap test is PER-SPAN, so one throwaway drop
+made every hole soft. Now per-span; **both live designs refuse** (51.7% and **3.5%** script
+coverage). ⓘ **RC-S2(b): the input was FULL** — 15,547 / 13,993 prompt tokens, whole script
+present — so the 3.5% is RC-P15-class variance, **rowed with both censuses, not tuned**.
+✅ **RC-S4: the first check that asks whether the CONTENT is true.** A deterministic equation
+lint hard-refuses a false arithmetic claim; the operator's script carries 17 claims, all true,
+and **both live designs carry zero**. ⛔ The method-prose half (scene 4's *"multiply the tens and
+the units separately"*) is **not** lintable and is rowed to the human gate until L7 (M3.3).
+✅ **RC-S3: the within-LO belt now sees pairs containing no assessment**, flag-level.
+Ledger: `OUTSTANDING_WORK.md` §12i-watch2.
 
 ⚠ **node-01 ONLY.** Nodes 02/03/04 remain on `v5.38.6-rcq18-merged-brief`; the WP-IVGS-12i
 order granted node-01 and no more, and the changed code (the API, the orchestrator's gate
@@ -652,6 +669,7 @@ shipped with a placeholder.
 
 | report | verdict |
 |---|---|
+| `dev/workpackages/reports/WP-IVGS-12i2-RCS-BATCH-report_2026-08-30.md` | ✅ RC-S1 fixed at cause and proven over two real regenerations; ✅ RC-S2(a) loophole closed, both live designs now refuse; ⓘ RC-S2(b) full input → variance, rowed; ✅ RC-S4 equation lint hard, method-prose half rowed to L7; ✅ RC-S3 belt widened, flag-level |
 | `dev/workpackages/reports/WP-IVGS-12i-AUTO-REPAIR-report_2026-08-30.md` | ✅ RC-R4 built and proven in the live pipeline (3 of 8 repaired, 5 refused honestly); ⛔ RC-R1 was an HTTP 500, now a named 409, button disabled at nonzero; ✅ RC-R2 built — including the one-click the order believed existed and which never did; ⓘ RC-R3(a)/(b) and RC-R5 rowed, nothing built |
 
 ⛳ **ONE SESSION, FOUR PACKAGES, AND THE LAST TWO WERE FOUND BY THE OPERATOR.**

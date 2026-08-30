@@ -1,0 +1,24 @@
+UPLOADED SCRIPT (3138 chars): 17 complete claims, 0 FALSE
+   OK  '4 times 3 equals 12'
+   OK  '4 times 2 equals 8'
+   OK  '8 plus 1 equals 9'
+   OK  '23 times 4 equals 92'
+   OK  '1 times 3 equals 3'
+   OK  '1 times 3 equals 3'
+   OK  '1 times 2 equals 2'
+   OK  '1 times 2 equals 2'
+   OK  '23 times 10 equals 230'
+   OK  '2 plus 0 equals 2'
+   OK  '9 plus 3 equals 12'
+   OK  '1 plus 2 equals 3'
+   OK  '23 times 14 equals 322'
+   OK  '2 times 2 equals 4'
+   OK  '2 times 3 equals 6'
+   OK  '32 plus 640 equals 672'
+   OK  '32 times 21 equals 672'
+
+LIVE ROWS (19 scenes, the regen + 2 stale): 0 FALSE claim(s)
+   (0 complete claims parsed across all 19 narrations)
+
+WATCH-1 design: 0 complete claims, 0 FALSE
+WATCH-2 regen: 0 complete claims, 0 FALSE

@@ -1,0 +1,24 @@
+uploaded script: 3138 chars
+
+=== WATCH-1 design (19 scenes)  brief 2fb0b951 active=False ===
+  source_refs on scenes: 13 | declared drops: 2
+  covered 1622/3138 chars (51.7%)
+    gap 1665..3138 = 1473 chars [OVER-THRESHOLD]  'Step 4: Add the Two Answers\r\n\r\nWe’re almost finished!\r\n\r\nWe have two a'
+  OLD RULE (gap>=400 AND dropped_beats empty): 0 refusal(s)
+  NEW RULE (every uncovered span>=400 refuses): 1 refusal(s)
+  origins: {'sourced': 13, 'designed': 6}
+  events : {'hook': 1, 'present': 1, 'practice': 3, 'assess': 3, 'guide': 7, 'feedback': 3, 'transfer': 1}
+  model=llama-3.3-70b fingerprint=None
+  raw_contract top-level keys: ['assessment_plan', 'assessment_scenes', 'design_notes', 'dropped_beats', 'outcome_notes', 'practice_scenes', 'scenes']
+
+=== WATCH-2 regen (17 scenes)  brief b436d74d active=True ===
+  source_refs on scenes: 6 | declared drops: 1
+  covered 110/3138 chars (3.5%)
+    gap 170..3138 = 2968 chars [OVER-THRESHOLD]  'to break it into small, easy steps.\r\n\r\nBy the end, you’ll be able to s'
+  OLD RULE (gap>=400 AND dropped_beats empty): 0 refusal(s)
+  NEW RULE (every uncovered span>=400 refuses): 1 refusal(s)
+  origins: {'sourced': 6, 'designed': 11}
+  events : {'hook': 1, 'objective': 1, 'recall_prior': 1, 'present': 1, 'guide': 5, 'practice': 4, 'assess': 3, 'transfer': 1}
+  model=llama-3.3-70b fingerprint=None
+  raw_contract top-level keys: ['assessment_plan', 'assessment_scenes', 'design_notes', 'dropped_beats', 'outcome_notes', 'practice_scenes', 'scenes']
+

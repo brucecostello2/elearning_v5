@@ -1,0 +1,212 @@
+[
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.709673+00:00",
+        "scene_index": 16,
+        "narration_text": "So we add it: 8 plus 1 equals 9. Write down the 9.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.745557+00:00",
+        "scene_index": 17,
+        "narration_text": "Our first answer is 92.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.773952+00:00",
+        "scene_index": 18,
+        "narration_text": "Now we need to multiply by the 1 in 14.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.827040+00:00",
+        "scene_index": 19,
+        "narration_text": "But there’s something very important to remember. That 1 isn’t really just 1.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.891702+00:00",
+        "scene_index": 20,
+        "narration_text": "Because it’s in the tens place, it means 10.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.918596+00:00",
+        "scene_index": 21,
+        "narration_text": "So before we start, put a zero in the ones place on our new answer line.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.944860+00:00",
+        "scene_index": 22,
+        "narration_text": "This zero is a placeholder. It reminds us that we’re multiplying by tens.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.970230+00:00",
+        "scene_index": 23,
+        "narration_text": "We’re almost finished! We have two answers: 92 and 230.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:12.998938+00:00",
+        "scene_index": 24,
+        "narration_text": "Now add them together.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.025224+00:00",
+        "scene_index": 25,
+        "narration_text": "2 plus 0 equals 2. 9 plus 3 equals 12.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.049296+00:00",
+        "scene_index": 26,
+        "narration_text": "Write down 2 and carry the 1.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.074376+00:00",
+        "scene_index": 27,
+        "narration_text": "Then 1 plus 2 equals 3.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.101628+00:00",
+        "scene_index": 28,
+        "narration_text": "Our final answer is: 322.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.130636+00:00",
+        "scene_index": 29,
+        "narration_text": "Let’s try another one. Let’s practice with: 32 times 21.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "present"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.162721+00:00",
+        "scene_index": 30,
+        "narration_text": "Write 32 on top and 21 underneath. Start with the ones digit, which is 1.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.188942+00:00",
+        "scene_index": 31,
+        "narration_text": "1 times 2 equals 2. 1 times 3 equals 3.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.214730+00:00",
+        "scene_index": 32,
+        "narration_text": "So our first answer is 32.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.240331+00:00",
+        "scene_index": 33,
+        "narration_text": "Now move to the tens digit, which is 2. Remember, because we’re multiplying by the tens digit, start by putting down a zero.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "guide"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.265234+00:00",
+        "scene_index": 34,
+        "narration_text": "Now it's your turn to try. Multiply 34 by 21.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "practice"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.289822+00:00",
+        "scene_index": 35,
+        "narration_text": "Now it's your turn to try. Multiply 43 by 12.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "practice"
+    },
+    {
+        "media_type": "motion_graphics",
+        "updated_at": "2026-08-30T16:46:13.318091+00:00",
+        "scene_index": 36,
+        "narration_text": "Multiply 67 and 49.",
+        "serves_outcomes": [
+            "LO-1"
+        ],
+        "instructional_event": "assess"
+    }
+]

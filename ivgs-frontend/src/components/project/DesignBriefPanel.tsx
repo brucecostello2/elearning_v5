@@ -134,9 +134,21 @@ interface SystemCorrectionRow {
   repair_error?: string | null;
 }
 
+/** WP-IVGS-12i2 RC-S1. One surplus row removed, recorded in full. */
+interface PrunedSceneRow {
+  scene_index: number;
+  instructional_event?: string | null;
+  serves_outcomes?: string[];
+  media_type?: string | null;
+  narration_text?: string | null;
+  updated_at?: string | null;
+}
+
 /** One auto-repair pass, as the design brief stores it. */
 interface SystemCorrectionsRecord {
   ran_at?: string;
+  pruned?: PrunedSceneRow[];
+  prune_skipped_because?: string | null;
   scenes?: number;
   refusals_before: number;
   refusals_after: number;
@@ -174,6 +186,7 @@ function SystemCorrections({
   const rows = corrections.corrections ?? [];
   const applied = rows.filter((c) => c.applied);
   const refused = rows.filter((c) => !c.applied);
+  const pruned = corrections.pruned ?? [];
 
   return (
     <div className="mt-3 rounded border border-sky-500/40 bg-sky-500/[0.04] p-2">
@@ -189,6 +202,40 @@ function SystemCorrections({
         {corrections.judgment_before} judgment, left for you. Original visual
         descriptions are preserved; nothing below was rewritten.
       </div>
+
+      {/* ── RC-S1. ROWS THAT WERE REMOVED, AND WHAT THEY SAID ──────────
+          A scene that vanishes without a trace is the silent correction this
+          whole section exists to forbid — and a reviewer who remembers a scene
+          that is no longer there is owed the reason. The full narration is
+          kept so the removal can be checked rather than trusted. */}
+      {pruned.length > 0 && (
+        <div className="mt-2 rounded border border-slate-400/50 bg-slate-500/5 p-1.5">
+          <div className="text-[11px] font-semibold text-slate-800 dark:text-slate-200">
+            {pruned.length} surplus scene{pruned.length === 1 ? "" : "s"} removed —
+            rows from a previous design that survived regeneration
+          </div>
+          <ul className="mt-1 space-y-1">
+            {pruned.map((p) => (
+              <li
+                key={`pruned-${p.scene_index}`}
+                className="text-[11px] text-slate-800 dark:text-slate-300"
+              >
+                <span className="font-medium">Scene {p.scene_index}</span>
+                {p.instructional_event ? ` · ${p.instructional_event}` : ""}
+                {p.serves_outcomes && p.serves_outcomes.length > 0
+                  ? ` · ${p.serves_outcomes.join(", ")}`
+                  : ""}
+                {p.updated_at ? ` · last written ${p.updated_at}` : ""}
+                {p.narration_text ? (
+                  <div className="mt-0.5 rounded bg-black/5 p-1 italic dark:bg-white/5">
+                    {p.narration_text}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {refused.length > 0 && (
         <ul className="mt-2 space-y-1">

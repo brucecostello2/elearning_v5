@@ -191,6 +191,7 @@ from shared.design.duplication import (
     duplication_verdict,
     explain as explain_duplication,
 )
+from shared.design.equations import lint_scenes as lint_equations
 from shared.design.evidence import (
     derive_evidence_map,
     realizes,
@@ -228,6 +229,31 @@ MIN_GAP_CHARS = 120
 #: and an empty array asserting completeness over a 400-character hole is the
 #: purest form of it.
 HARD_GAP_CHARS = 400
+
+#: ⛔ WP-IVGS-12i2, RC-S2(a). THE LOOPHOLE THIS CONSTANT USED TO HAVE, AND WHY
+#: IT IS GONE.
+#:
+#: The 12b rule above was `gap >= HARD_GAP_CHARS and not dropped_beats`, and the
+#: second clause is GLOBAL where the first is PER-SPAN. So **one throwaway
+#: declared drop anywhere in the design defeated the check for every hole in the
+#: script.** Measured on the operator's live project, 2026-08-30: the
+#: regenerated design declared ONE drop, cited source spans covering **110 of
+#: 3,138 characters — 3.5%** — and left a single undeclared 2,968-character
+#: stretch. Old rule: zero refusals. The first watch's design covered 51.7% and
+#: left a 1,473-character tail (the script's whole "Step 4: Add the Two Answers"
+#: section) with two drops declared. Old rule: zero refusals.
+#:
+#: ⛳ THE NEW RULE IS PER-SPAN, AND NOTE THAT IT NEEDS NO NEW BOOKKEEPING: a
+#: declared drop's span is ALREADY merged into the coverage below, so a stretch
+#: that survives as a gap is by construction one that **no drop declared**.
+#: Dropping the global clause is therefore exactly the operator's rule —
+#: *"every unused span >= 400 chars must be individually covered by a declared
+#: drop whose span matches it; an undeclared span over threshold refuses
+#: regardless of other drops"* — and not an approximation of it.
+#:
+#: ⚠ THE SPAN-ARITHMETIC DOUBT THAT KEEPS ATTRIBUTION SOFT DOES NOT REACH HERE,
+#: and that is why this can be hard. An off-by-twenty on one offset does not
+#: manufacture a 400-character hole; 400 characters is a BEAT.
 
 
 @dataclass
@@ -513,6 +539,11 @@ def review(
         # assessment is a GOOD one.
         findings.extend(_evidence_is_distinct(oid, scenes))
 
+        # ── RC-S3. THE SAME MEASURE, OVER THE PAIRS THE HARD LIMB CANNOT SEE ──
+        # Assessment-anchored above; any other same-outcome pair here, at flag
+        # level. The live regen's scenes 10/11 are the driving evidence.
+        findings.extend(_same_outcome_duplicates(oid, scenes))
+
         # ── the promise, checked against the design that had to keep it ──
         findings.extend(_plan_is_realized(assessment_plan, oid, scenes))
         if not outcome.get("measurable", True):
@@ -563,7 +594,47 @@ def review(
     # ── beat coverage: what the script said and the design did not use ───
     findings.extend(_coverage_gaps(scenes, dropped_beats, source_text))
 
+    # ── RC-S4. IS THE MATHS TRUE? Last, and unconditioned on everything above:
+    # a scene teaching a false calculation is wrong whether or not it is
+    # declared, sourced, assessed or depictable.
+    findings.extend(_arithmetic_is_true(scenes))
+
     return findings, rows
+
+
+def _arithmetic_is_true(scenes: Sequence[Any]) -> List[Finding]:
+    """RC-S4. Does what a scene SAYS about arithmetic actually hold?
+
+    ⛳ THE OPERATOR'S CATCH, and the first check in this pipeline that asks
+    whether generated content is CORRECT rather than whether it is DECLARED,
+    DEPICTABLE or CONSISTENT WITH ITS TEMPLATE. Every other check here would
+    pass a scene that teaches 23 × 14 = 212 without a murmur.
+
+    ⛔ HARD, BECAUSE A COMPLETE CLAIM IS DECIDABLE BY ARITHMETIC. There is no
+    taste in `4 times 3 equals 13`, no span-offset doubt and no pedagogical
+    judgement — the sentence is wrong and a nine-year-old would learn it.
+
+    ⚠ AND IT CATCHES ONLY WHAT IT CAN DECIDE. `shared.design.equations` parses
+    statements naming both operands, the operation and the result; anything
+    short of that falls out rather than being guessed at. **Scene 4 of the
+    operator's own regenerated design — "we need to multiply the tens and the
+    units separately" — is NOT caught by this and cannot be**, and RC-S4's
+    ledger row says so rather than letting the presence of a maths check imply
+    the maths was checked.
+    """
+    findings: List[Finding] = []
+    for bad in lint_equations(scenes):
+        findings.append(Finding(
+            REFUSE, "NARRATION_ARITHMETIC_FALSE",
+            f"states arithmetic that is not true — {bad['message']}. A scene "
+            f"may not teach a false calculation. Fix the narration, or the "
+            f"numbers it quotes."
+            + (f" (This scene's template draws {bad['template_operands']}.)"
+               if bad["template_operands"] else ""),
+            scene_index=bad["scene_index"],
+            detail=bad,
+        ))
+    return findings
 
 
 def _evidence_is_distinct(
@@ -648,6 +719,100 @@ def _evidence_is_distinct(
                         if verdict["limb"] == "no_fresh_axis"
                         else NEAR_DUPLICATE_CONTAINMENT
                     ),
+                    **verdict,
+                },
+            ))
+    return findings
+
+
+def _same_outcome_duplicates(
+    oid: str, scenes: Sequence[Any],
+) -> List[Finding]:
+    """RC-S3. ANY two scenes serving one outcome that say the same thing.
+
+    ⛳ THE WIDENING THE 12h BELT'S OWN DOCSTRING NAMED AS ITS RESIDUE:
+    *"The practice is NOT compared against the worked examples here."* That
+    scope was the order's and it was anchored on the ASSESSMENT, so a design can
+    repeat itself anywhere else in an outcome's sequence and nothing sees it.
+
+    ⛔ MEASURED ON THE OPERATOR'S REGENERATED LIVE DESIGN, 2026-08-30. LO-2's
+    `guide` scene 10 and its `practice` scene 11 carry **byte-identical**
+    narration — *"Can you identify the units and tens in the number 45?"* — and
+    so do LO-1's scenes 6/7/8 and LO-3's 13/14. Neither member of any of those
+    pairs is an `assess`, so the assessment-anchored belt could not and did not
+    fire. Three duplicated pairs, and the gate said nothing.
+
+    ⛳ WHY THIS LIMB IS A FLAG AND THE ASSESSMENT LIMB STAYS HARD, per the
+    operator's ruling: *"hard only where 12h's ruling already made it hard;
+    flag-level elsewhere."* The hard case has a pedagogical absolute behind it —
+    an independent attempt that repeats the practice is not evidence, full stop.
+    Two `guide` scenes that restate one question are usually a defect and
+    sometimes deliberate repetition for a nine-year-old who is anxious about
+    multiplication, and this module does not get to decide which. The reviewer
+    does, with the pair in front of them.
+
+    ⚠ IT USES THE SAME MEASURE, NOT A SECOND ONE. `duplication_verdict` is
+    imported and called exactly as the hard limb calls it, so a threshold change
+    moves both together and the calibration bank governs both.
+    """
+    def _narration(scene: Any) -> str:
+        return str(_scene_field(scene, "narration_text") or "")
+
+    serving = [
+        (int(_scene_field(s, "scene_index", i) or 0), s)
+        for i, s in enumerate(scenes)
+        if oid in [str(x) for x in (_scene_field(s, "serves_outcomes") or [])]
+    ]
+
+    findings: List[Finding] = []
+    for position, (a_idx, a) in enumerate(serving):
+        a_text = _narration(a)
+        if not a_text:
+            continue
+        for b_idx, b in serving[position + 1:]:
+            b_text = _narration(b)
+            if not b_text:
+                continue
+            a_event = str(_scene_field(a, "instructional_event") or "")
+            b_event = str(_scene_field(b, "instructional_event") or "")
+            # ⛔ The hard limb owns every pair with an `assess` in it. Emitting a
+            # flag beside a refusal about the same two scenes would tell a
+            # reviewer two things about one sentence and leave them to work out
+            # which to fix — the duplication `assess_scene` avoids by design.
+            if "assess" in (a_event, b_event):
+                continue
+            verdict = duplication_verdict(a_text, b_text)
+            if not verdict["duplicate"]:
+                continue
+            # ⛔ NOT `explain_duplication` HERE, AND THE REASON IS THAT ITS
+            # SENTENCES SAY "the assessment". They are correct for the
+            # assessment-anchored limb above and false here, where neither
+            # scene need be an assessment — measured on the 12i2 acceptance
+            # run, where this limb reported "the assessment restates that
+            # scene" about a `guide`/`practice` pair. A shared helper whose
+            # wording only fits one caller is worse than two sentences.
+            same_numbers = verdict["limb"] == "no_fresh_axis"
+            findings.append(Finding(
+                FLAG, "SAME_OUTCOME_NEAR_DUPLICATE",
+                f"scenes {a_idx} ({a_event or 'unlabelled'}) and {b_idx} "
+                f"({b_event or 'unlabelled'}) both serve this outcome and "
+                + (
+                    "say the same thing in the same numbers, so the second "
+                    "asks nothing the first did not"
+                    if same_numbers else
+                    "restate each other almost word for word, so the learner "
+                    "meets the same question twice under two labels"
+                )
+                + f" (containment {verdict['containment']:.2f}). Two scenes in "
+                f"one outcome's sequence asking the same question do not fade "
+                f"it. Blocks nothing — deliberate repetition is a real choice, "
+                f"and it is yours.",
+                scene_index=a_idx,
+                outcome_id=oid,
+                detail={
+                    "scene_indices": [a_idx, b_idx],
+                    "events": [a_event, b_event],
+                    "narrations": [a_text, b_text],
                     **verdict,
                 },
             ))
@@ -821,18 +986,28 @@ def _coverage_gaps(
         gap = start - cursor
         if gap >= MIN_GAP_CHARS:
             text = source_text[cursor:start].strip()
-            # Task 1(d). An empty `dropped_beats` is the model CLAIMING it used
-            # everything. Code has just measured a hole. Both cannot be true,
-            # and the emptiness is not subject to the span-arithmetic doubt that
-            # keeps attribution soft — see HARD_GAP_CHARS.
-            hard = gap >= HARD_GAP_CHARS and not dropped_beats
+            # RC-S2(a). PER-SPAN, not global. A drop's span is already merged
+            # into the coverage above, so reaching this line means NO declared
+            # drop covers this stretch — whatever was declared elsewhere.
+            hard = gap >= HARD_GAP_CHARS
             findings.append(Finding(
                 REFUSE if hard else FLAG,
-                "UNDECLARED_GAP_WITH_NO_DROPS" if hard else "UNDECLARED_SCRIPT_GAP",
+                "UNDECLARED_SPAN_OVER_THRESHOLD" if hard else "UNDECLARED_SCRIPT_GAP",
                 (
                     f"{gap} characters of the uploaded script are used by no "
-                    "scene, and dropped_beats is EMPTY — which claims nothing "
-                    "was dropped. Declare what you left out and why."
+                    f"scene and covered by no declared drop — over the "
+                    f"{HARD_GAP_CHARS}-character threshold, which makes this a "
+                    f"BEAT rather than connective tissue. "
+                    + (
+                        f"{len(dropped_beats)} beat(s) are declared dropped "
+                        f"elsewhere in this design, and none of them covers "
+                        f"this stretch: a drop declared somewhere else is not a "
+                        f"declaration about here. "
+                        if dropped_beats else
+                        "`dropped_beats` is EMPTY, which claims nothing was "
+                        "dropped at all. "
+                    )
+                    + "Use it, or declare it dropped with its span and a reason."
                 ) if hard else (
                     f"{gap} characters of the uploaded script are used by no "
                     "scene and declared in no dropped_beat."

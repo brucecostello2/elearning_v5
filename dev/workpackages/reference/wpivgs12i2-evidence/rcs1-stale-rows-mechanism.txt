@@ -1,0 +1,39 @@
+brief 2fb0b951 active=False created=2026-08-30 14:12:04.537606+00:00 designs=19 indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+   assess-by-LO in THIS CONTRACT: {'LO-2': [3], 'LO-1': [14], 'LO-3': [18]}
+brief b436d74d active=True created=2026-08-30 15:42:37.035602+00:00 designs=17 indices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+   assess-by-LO in THIS CONTRACT: {'LO-1': [9], 'LO-2': [12], 'LO-3': [15]}
+
+scene ROWS in the database: 19  indices [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]
+indices in the ACTIVE contract: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+ROWS WITH NO ENTRY IN THE ACTIVE CONTRACT: [17, 18]
+
+  orphan scene 17: updated_at=2026-08-30 14:12:05.075977+00:00
+    row narration : "Now it's your turn to try. Multiply 32 and 21, and check your work."
+    PREVIOUS contract's scene 17 narration: ''
+    row event=practice serves=['LO-3'] origin=designed
+
+  orphan scene 18: updated_at=2026-08-30 14:12:05.107543+00:00
+    row narration : 'Multiply 67 and 39 using a pencil and paper.'
+    PREVIOUS contract's scene 18 narration: ''
+    row event=assess serves=['LO-3'] origin=designed
+
+row updated_at by index:
+   0 2026-08-30 15:42:37.204441+00:00  ev=hook
+   1 2026-08-30 15:42:37.237356+00:00  ev=objective
+   2 2026-08-30 15:42:37.264512+00:00  ev=recall_prior
+   3 2026-08-30 15:42:37.296290+00:00  ev=present
+   4 2026-08-30 15:42:37.323771+00:00  ev=guide
+   5 2026-08-30 15:42:37.351585+00:00  ev=guide
+   6 2026-08-30 15:42:37.377677+00:00  ev=guide
+   7 2026-08-30 15:42:37.403714+00:00  ev=practice
+   8 2026-08-30 15:42:37.435106+00:00  ev=practice
+   9 2026-08-30 15:42:37.462289+00:00  ev=assess
+  10 2026-08-30 15:42:37.490645+00:00  ev=guide
+  11 2026-08-30 15:42:37.517328+00:00  ev=practice
+  12 2026-08-30 15:42:37.543538+00:00  ev=assess
+  13 2026-08-30 15:42:37.569026+00:00  ev=guide
+  14 2026-08-30 15:42:37.593509+00:00  ev=practice
+  15 2026-08-30 15:42:37.618041+00:00  ev=assess
+  16 2026-08-30 15:42:37.640970+00:00  ev=transfer
+  17 2026-08-30 14:12:05.075977+00:00  ev=practice
+  18 2026-08-30 14:12:05.107543+00:00  ev=assess
