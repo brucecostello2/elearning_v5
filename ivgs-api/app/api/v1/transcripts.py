@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, is_service_principal
 from app.core.rbac import require_operator_or_admin
 from app.models.user import User
 from app.schemas.transcript import (
@@ -119,7 +119,19 @@ async def update_transcript(
     current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """Update refined_text inline or reorder sequence_order."""
+    """Update refined_text inline or reorder sequence_order.
+
+    ⛔ RC-Q15. `by_service` tells the service WHO is writing, and it changes what
+    happens to `refined_text` on an uploaded script. Stage 1's callback carries a
+    service token and its `refined_text` is the model's echo of a script the
+    database already holds — that echo is discarded and `source_text` is written
+    instead (`TranscriptService.update_transcript` carries the measurement). A
+    real user on this same route is editing deliberately and is honoured.
+
+    ⚠ The test is the AUTHENTICATED PRINCIPAL, not a flag the caller can set.
+    `get_service_or_user` already distinguishes them, so a worker cannot present
+    itself as a person to keep its paraphrase.
+    """
     service = TranscriptService(db)
     transcript = await service.update_transcript(
         project_id=project_id,
@@ -127,6 +139,7 @@ async def update_transcript(
         refined_text=data.refined_text,
         sequence_order=data.sequence_order,
         language_code=data.language_code,
+        by_service=is_service_principal(current_user),
     )
     if transcript is None:
         raise HTTPException(

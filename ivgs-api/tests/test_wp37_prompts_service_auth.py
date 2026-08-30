@@ -134,7 +134,12 @@ class TestHumanAccessUnchanged:
 
 @pytest.mark.asyncio
 class TestWriteRoutesNotWidened:
-    """Only the read route the worker calls was changed. No worker writes prompts."""
+    """Only the READ routes the worker calls were changed. No worker writes prompts.
+
+    ⚠ Plural since RC-Q15: WP-37 widened the project-scoped list, and
+    WP-IVGS-12's `_fetch_active_prompt` added a second reader on the GLOBAL list
+    without widening it. See the re-aimed test below.
+    """
 
     async def test_create_project_prompt_refuses_the_service_token(
         self, client: AsyncClient, svc_pipeline_account, project_id: str
@@ -159,10 +164,34 @@ class TestWriteRoutesNotWidened:
         )
         assert r.status_code == 401, r.text
 
-    async def test_global_prompt_list_still_refuses_the_service_token(
+    async def test_global_prompt_list_now_answers_the_service_token(
         self, client: AsyncClient, svc_pipeline_account
     ):
-        """GET /prompts is the human library view; no worker reads it, so it was
-        deliberately left on get_current_user."""
+        """⛔ RE-AIMED BY RC-Q15, AND IT IS THE PREMISE THAT CHANGED, NOT THE CLAIM.
+
+        This asserted **401**, and its reason was stated in one line: *"GET
+        /prompts is the human library view; **no worker reads it**, so it was
+        deliberately left on get_current_user."* That was true and correct on
+        **2026-08-23** (`43190ac`).
+
+        ⛳ **WP-IVGS-12 MADE IT FALSE ON 2026-08-29** (`cead433`) by adding
+        `pipeline_orchestrator_v2._fetch_active_prompt`, which reads exactly this
+        route with a service token to resolve the versioned SYSTEM prompt for
+        stages 1 and 2 — and did not widen it. So the route answered 401, the
+        fetch returned `""` on any non-200, and **every stage silently fell back
+        to the `.j2` baked into its image. No published system prompt has ever
+        reached a real pipeline run.**
+
+        MEASURED live, 2026-08-30, before the fix — all three lineages resolved
+        to 0 chars while their rows were active in the database. It surfaced as
+        RC-Q15: stage 1 never received the extraction prompt and ran the old
+        refine-for-readability text instead, paraphrasing a 3,138-byte script to
+        1,647 bytes, which the whole Design Core then designed against.
+
+        ⛳ WP-37's ACTUAL CLAIM IS UNCHANGED AND IS STILL TESTED ABOVE: **writes
+        stay human-only.** Only the read this class's own docstring describes —
+        *"the read route the worker calls"* — is widened, and now there are two
+        of them because WP-IVGS-12 added one.
+        """
         r = await client.get("/api/v1/prompts", headers=SERVICE_HEADERS)
-        assert r.status_code == 401, r.text
+        assert r.status_code == 200, r.text

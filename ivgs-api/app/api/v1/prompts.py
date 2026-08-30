@@ -27,7 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
-from app.core.auth import get_current_user
+from app.core.auth import get_current_user, get_service_or_user
 from app.core.rbac import (
     require_admin,
     require_operator_or_admin,
@@ -67,10 +67,42 @@ scene_prompt_router = APIRouter(
 )
 async def list_global_prompts(
     prompt_type: Optional[str] = Query(default=None, description="Filter by prompt type"),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_service_or_user),
     db: AsyncSession = Depends(get_session),
 ):
-    """List global prompts. Supports ?prompt_type= filter."""
+    """List global prompts. Supports ?prompt_type= filter.
+
+    ⛔ `get_service_or_user`, NOT `get_current_user`, AND THIS IS THE SAME DEFECT
+    WP-IVGS-12b ALREADY FIXED ONCE, IN A DIFFERENT ROUTE.
+
+    **THE WORKER IS A CALLER OF THIS ENDPOINT.**
+    `pipeline_orchestrator_v2._fetch_active_prompt` reads it to resolve the
+    versioned SYSTEM prompt for stages 1 and 2, and it presents a SERVICE TOKEN.
+    `get_current_user` answers a service token with **401**, and
+    `_fetch_active_prompt` returns `""` on any non-200 — so every stage silently
+    fell back to the `.j2` baked into its image and **no published system prompt
+    has ever reached a real pipeline run.**
+
+    MEASURED live, 2026-08-30, before this line changed — all three lineages:
+
+        transcript_refinement_system -> 0 chars
+        storyboard_generation_system -> 0 chars
+        assessment_authoring_system  -> 0 chars
+        GET /prompts (service token) -> 401
+
+    ⛳ AND IT IS THE MECHANISM OF RC-Q15. The operator's watch logged
+    `system_prompt_not_published ... "the stage will load its .j2 from the image"`
+    for `transcript_refinement_system` while that row was active in the database.
+    So stage 1 never received the extraction prompt that says *"`refined_text` IS
+    THE SCRIPT, UNCHANGED. Copy it."* — it received the image's old
+    refine-for-readability `stage1_system.j2` and paraphrased **exactly as
+    instructed**. The model was not disobeying; it was never asked.
+
+    ⚠ 12b wrote the identical paragraph about `/projects/{id}`: *"the latter takes
+    `get_current_user` and answers a service token with 401, so this returned []
+    every time, the enum never armed."* Same shape, same swallow, different route.
+    Reading is all the worker does here; nothing else on this router moves.
+    """
     service = PromptService(db)
     prompts = await service.list_global_prompts(prompt_type)
     return [

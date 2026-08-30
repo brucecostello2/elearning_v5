@@ -1504,8 +1504,34 @@ def _extract_context(output: Optional[Dict[str, Any]]) -> Dict[str, Any]:
 
 def _update_job_celery_task_id(
     job_id: str, celery_task_id: str, config: WorkerConfig,
-) -> None:
-    """Update the render job with the Celery task ID."""
+) -> bool:
+    """Record the STAGE Celery task id on the render job. WP-45, made to work.
+
+    ⛔ RC-Q16. THIS CALL HAS BEEN RETURNING 422 ON EVERY DISPATCH SINCE
+    2026-08-25 AND NOTHING SAID SO. The response was never read: `client.patch(…)`
+    with no assignment, inside a `try` that only catches transport errors. An
+    HTTP 422 is a perfectly successful request carrying a refusal, so the
+    `except` never fired and the caller proceeded.
+
+    MEASURED on the operator's Phase-1 watch — two `422 Unprocessable Entity` on
+    job `5b228dd5` at 11:16:07.811 and 11:16:30.743, one per stage dispatch. The
+    API required `status` on a PATCH whose own docstring said *"only fields the
+    worker sends are written"*; that side is fixed (`jobs.py`'s
+    `JobStatusUpdate`).
+
+    ⚠ AND THE COST WAS WP-45's ENTIRE PURPOSE — *"Cancel was revoking the right
+    task id and the wrong task."* The write that records the STAGE task id is the
+    one that 422'd, so `render_jobs.celery_task_id` kept the ORCHESTRATOR's id
+    and cancel has been revoking the dispatcher ever since. Verified on the live
+    row: job `5b228dd5` holds `a4e23190-…`, the `dispatch_pipeline` task.
+
+    ⛳ SO IT RETURNS A BOOL AND LOGS A NAMED EVENT ON EVERY FAILURE PATH. It is
+    deliberately NOT raised into the dispatch: a job whose task id was not
+    recorded is still a job that should run, and failing the pipeline over a
+    bookkeeping write would trade a quiet defect for a loud outage. What it must
+    never do again is succeed in silence — WP-00's swallow class, which
+    `dev/CLAUDE.md` §7 already lists this file for at `:880,893`.
+    """
     try:
         with httpx.Client(
             timeout=config.pipeline_api.timeout_seconds,
@@ -1514,12 +1540,38 @@ def _update_job_celery_task_id(
                 "Authorization": f"Bearer {config.pipeline_api.service_token}",
             },
         ) as client:
-            client.patch(
+            resp = client.patch(
                 f"{config.pipeline_api.full_base_url}/jobs/{job_id}",
                 json={"celery_task_id": celery_task_id},
             )
     except Exception as e:
-        logger.warning("job_celery_task_id_update_failed", job_id=job_id, error=str(e))
+        logger.error(
+            "job_celery_task_id_update_failed",
+            job_id=job_id, celery_task_id=celery_task_id,
+            error_type=type(e).__name__, error=str(e),
+            detail="cancel will revoke the dispatcher, not this stage",
+        )
+        return False
+
+    if resp.status_code in (200, 201):
+        logger.info(
+            "job_celery_task_id_recorded",
+            job_id=job_id, celery_task_id=celery_task_id,
+        )
+        return True
+
+    # ⛔ NOT SWALLOWED, AND NOT `info`. A non-2xx here is the API refusing a
+    # write, which is a contract mismatch between two things we ship.
+    logger.error(
+        "job_celery_task_id_update_rejected",
+        job_id=job_id, celery_task_id=celery_task_id,
+        status_code=resp.status_code, body=resp.text[:300],
+        detail=(
+            "the API refused the task-id write; cancel will revoke the "
+            "dispatcher rather than this stage (RC-Q16)"
+        ),
+    )
+    return False
 
 
 # ---------------------------------------------------------------------------

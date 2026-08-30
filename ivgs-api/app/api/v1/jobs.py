@@ -172,9 +172,46 @@ from pydantic import BaseModel as _BaseModel
 
 
 class JobStatusUpdate(_BaseModel):
-    """Body for PATCH /jobs/{id} — internal job-status callback from the worker fleet."""
+    """Body for PATCH /jobs/{id} — internal job-status callback from the worker fleet.
 
-    status: str
+    ⛔ RC-Q16. `status` IS OPTIONAL, AND IT WAS REQUIRED FOR FIVE DAYS AGAINST A
+    CALLER THAT DOES NOT SEND IT.
+
+    MEASURED on the operator's Phase-1 watch, 2026-08-30 11:16 — TWO
+    `422 Unprocessable Entity` responses on one job (`5b228dd5`), at 11:16:07.811
+    and 11:16:30.743, from `pipeline_orchestrator_v2._update_job_celery_task_id`,
+    which posts `{"celery_task_id": ...}` and nothing else.
+
+    ⛳ THE API IS THE CONVICTED SIDE, AND THE ENDPOINT'S OWN DOCSTRING IS THE
+    EVIDENCE: *"Only fields the worker sends are written."* That is PATCH
+    semantics — a partial update — and a required field contradicts it. Making
+    the caller restate `status` would be worse than a defect: it would have to
+    send a value it does not know is still current, so a `celery_task_id` write
+    could overwrite a concurrent transition with a stale status.
+
+    ⛔ AND NEITHER SIDE IS A 12-SERIES CHANGE, which the defect order assumed.
+    Dated with `git log -S`:
+
+        API    `class JobStatusUpdate` with required `status`
+               5847f40, **2026-06-01**, "feat(api): internal service-account
+               auth + PATCH /jobs/{id} (worker callback contract)"
+        worker `_update_job_celery_task_id` sending only `celery_task_id`
+               60a4ef4, **2026-08-25**, "fix(wp-45): Cancel was revoking the
+               right task id and the wrong task"
+
+    So **WP-45 introduced a caller on 2026-08-25 against a contract that had
+    required `status` since 2026-06-01**, and it has 422'd on every dispatch
+    since — silently, because that call ignores its response entirely.
+
+    ⚠ AND THE CONSEQUENCE IS THAT WP-45's OWN FIX HAS NEVER WORKED. Its purpose
+    was *"Cancel was revoking the right task id and the wrong task"*: the write
+    that records the STAGE task id is the one that 422s, so `render_jobs.
+    celery_task_id` still holds the ORCHESTRATOR's id. Verified on the live row —
+    job `5b228dd5`'s `celery_task_id` is `a4e23190-…`, the `dispatch_pipeline`
+    task, not the stage task the cancel path needs.
+    """
+
+    status: _Optional[str] = None
     error_message: _Optional[str] = None
     failure_category: _Optional[str] = None
     stage: _Optional[str] = None
@@ -201,7 +238,10 @@ async def update_job_status(
             detail={"error": {"code": "RESOURCE_NOT_FOUND", "message": f"Job {job_id} not found"}},
         )
     previous_status = job.status
-    job.status = payload.status
+    # ⛔ RC-Q16. ONLY WRITE WHAT WAS SENT — which is what the docstring above has
+    # always claimed and what a PATCH means.
+    if payload.status is not None:
+        job.status = payload.status
     if payload.error_message is not None:
         job.error_message = payload.error_message
     if payload.failure_category is not None:
@@ -214,7 +254,12 @@ async def update_job_status(
     # WP-45 Task 5 / WP-40 D-4. This is the choke point every worker status
     # change passes through, which is why the stamping lives here: one site
     # rather than one per stage. Checkpoint-derived duration stays the fallback.
-    JobService.stamp_status_timestamps(job, payload.status)
+    # ⚠ RC-Q16: the stamping and the DRAFT reset below are TRANSITION logic and
+    # must not run for a partial update that carries no transition. A
+    # `celery_task_id`-only write is not a status change and stamping it with
+    # `None` would either crash or record a transition that did not happen.
+    if payload.status is not None:
+        JobService.stamp_status_timestamps(job, payload.status)
 
     await db.commit()
     await db.refresh(job)
@@ -228,7 +273,9 @@ async def update_job_status(
     # Only on the EDGE into failure. A repeated "failed" callback (the worker
     # retries this call) must not walk the project back to DRAFT a second time
     # after somebody has deliberately moved it on.
-    if payload.status in FAILED_STATUSES and previous_status not in TERMINAL_STATUSES:
+    if (payload.status is not None
+            and payload.status in FAILED_STATUSES
+            and previous_status not in TERMINAL_STATUSES):
         from app.services.project_service import ProjectService, active_job
 
         # WP-62 Task 3. THE RESET NOW REQUIRES THIS TO HAVE BEEN THE LAST LIVE

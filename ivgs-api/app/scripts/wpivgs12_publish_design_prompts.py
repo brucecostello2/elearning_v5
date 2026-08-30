@@ -233,7 +233,18 @@ ASSESSMENT_PHRASES: Tuple[str, ...] = (
 EXTRACTION_PHRASES: Tuple[str, ...] = (
     '{% if source_kind == "uploaded" %}',
     "YOU ARE NOT EDITING PROSE",
-    "COPIED CHARACTER FOR CHARACTER, UNCHANGED",
+    # ⛔ RC-Q15 DROPS `COPIED CHARACTER FOR CHARACTER, UNCHANGED`, and it is the
+    # same class of drop 12b, 12d, 12f, 12g and 12h each made in turn: THE
+    # INSTRUCTION MUST NO LONGER APPEAR, so gating it would refuse every correct
+    # version. The model is not asked for the script any more — code substitutes
+    # `source_text` on the worker's write (`TranscriptService.update_transcript`)
+    # — and the measurement is why: 3,138 bytes in, 1,647 bytes of summary out,
+    # on the operator's first Phase-1 watch.
+    #
+    # ⛳ WHAT REPLACES IT GATES THE OPPOSITE INSTRUCTION, so a future edit that
+    # quietly reinstates the copy fails here.
+    "`refined_text` IS NOT YOURS TO WRITE",
+    "EMIT THE SINGLE WORD `EXTRACTED`",
     "BEATS COVER THE WHOLE SCRIPT",
     "A WORKED EXAMPLE IS ONE BEAT FROM ITS FIRST SETUP LINE TO ITS ANSWER",
     "Flesch-Kincaid",          # the generated branch must still be there

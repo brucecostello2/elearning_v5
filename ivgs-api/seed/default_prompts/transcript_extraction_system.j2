@@ -5,10 +5,17 @@
    ⛳ THE SHAPE OF THE OUTPUT IS LOAD-BEARING AND IT IS NOT COSMETIC. The stage-1
    task body is frozen (AD-05 §8). It already parses a JSON response and takes
    `refined_text` out of it, discarding every sibling key
-   (`stage1_transcript.py:359-364`). So an object carrying the script VERBATIM
-   under `refined_text` gives the frozen body exactly what it expects — which for
-   an uploaded script means NOTHING IS REWRITTEN AND NOTHING IS LOST — while the
-   extraction rides out to the design brief through the capture observer. #}
+   (`stage1_transcript.py:359-364`), while the extraction rides out to the design
+   brief through the capture observer.
+
+   ⛔ RC-Q15 AMENDS THIS. The original design had the model return the script
+   VERBATIM under `refined_text`, so the frozen body would store it unchanged.
+   **The model summarised instead** — 3,138 bytes in, 1,647 out, on the
+   operator's first Phase-1 watch — and stage 2 designed against the summary.
+   12b's law was being broken at our own seam: never ask a model to transcribe
+   what the database already holds. The model no longer supplies the script at
+   all; `TranscriptService.update_transcript` substitutes `source_text` by code
+   on the worker's write, and a post-write belt refuses a mismatch. #}
 {% if source_kind == "uploaded" %}
 You are extracting design inputs from a finished script.
 YOU ARE NOT EDITING PROSE, and you are not summarising.
@@ -25,7 +32,7 @@ One JSON object, exactly these two keys:
 
 ```
 {
-  "refined_text": "<THE SCRIPT, COPIED CHARACTER FOR CHARACTER, UNCHANGED>",
+  "refined_text": "EXTRACTED",
   "intent": {
     "beats": [
       {
@@ -58,9 +65,23 @@ One JSON object, exactly these two keys:
 
 ## THE RULES OF EXTRACTION
 
-  1. ⛔ `refined_text` IS THE SCRIPT, UNCHANGED. Copy it. If you find yourself
-     improving a sentence, stop — that is the next stage's job and it is only
-     allowed to do it in the open.
+  1. ⛔ `refined_text` IS NOT YOURS TO WRITE. EMIT THE SINGLE WORD `EXTRACTED`
+     AND NOTHING ELSE IN THAT FIELD. The script is already in the database, byte
+     for byte, and CODE puts it back where it belongs after you answer. You are
+     not asked to copy it, and copying it is not useful — it is the one part of
+     this task a machine does perfectly and a model does not.
+
+     ⛳ THIS RULE REPLACED ONE THAT ASKED FOR A VERBATIM COPY, BECAUSE THE COPY
+     WAS MEASURED TO FAIL. On the operator's first watch run a 3,138-byte script
+     came back as 1,647 bytes of summary, and every stage downstream designed
+     against the summary. Asking for what code will discard invites exactly that
+     drift between the instruction and the behaviour.
+
+     ⚠ A FIXED WORD RATHER THAN AN EMPTY STRING, AND THE REASON IS THE FROZEN
+     BODY. `stage1_transcript.py:368` refuses an empty `refined_text` as "Empty
+     response from vLLM" and fails the stage — before the substitution can run.
+     A one-word placeholder satisfies that guard, cannot drift, and is obviously
+     not content. Your real work is `intent`.
   2. Character offsets are into the script EXACTLY AS GIVEN, starting at 0.
      Carry the `quote` so a wrong offset is visible rather than silent.
   3. BEATS COVER THE WHOLE SCRIPT. Every sentence belongs to some beat. A beat is

@@ -211,13 +211,77 @@ class TranscriptService:
         refined_text: Optional[str] = None,
         sequence_order: Optional[int] = None,
         language_code: Optional[str] = None,
+        *,
+        by_service: bool = False,
     ) -> Optional[Transcript]:
-        """Update transcript fields."""
+        """Update transcript fields.
+
+        ⛔ RC-Q15. FOR AN UPLOADED SCRIPT WRITTEN BY THE WORKER, `refined_text`
+        IS SUBSTITUTED WITH `source_text` BY CODE AND THE MODEL'S ECHO IS
+        DISCARDED. This is 12b's law applied at our own seam: **never ask a model
+        to transcribe what the database already holds.**
+
+        MEASURED, the operator's Phase-1 watch, project `3beaf804` / job
+        `5b228dd5`: `source_kind='uploaded'`, `source_text` 3,138 bytes intact,
+        `refined_text` **1,647 bytes of paraphrase** — the script opened
+        *"# How to Multiply Double-Digit Numbers"* and the stored refinement
+        opened *"Here's how to multiply two-digit numbers. Let's break it down
+        into small steps."* `stage2_storyboard.py:122` then builds the design
+        call's `combined_transcript` from `refined_text`, so **the whole Design
+        Core was reasoning about a summary of the operator's lesson.**
+
+        ⛳ AND THE SUBSTITUTION IS WHY THIS SHAPE WAS CHOSEN OVER RE-POINTING
+        CONSUMERS AT `source_text`. Every existing consumer of `refined_text`
+        becomes correct with ZERO changes to any of them: stage 2's design input
+        (`:122`), `design_review`'s coverage spans, and the gap quotes a reviewer
+        reads. Re-pointing would have meant finding all of them, and the one
+        missed would be a silent wrong answer rather than a compile error.
+
+        ⚠ AND IT IS SCOPED TO THE SERVICE-TOKEN PATH, WHICH THE ORDER DID NOT
+        COVER AND WHICH IS A REAL DISTINCTION. This same endpoint is how a HUMAN
+        edits `refined_text` inline from the gate. Substituting unconditionally
+        would silently discard an operator's own correction and hand their edit
+        straight back to them unchanged — a worse defect than the one being
+        fixed. `by_service` is True only for the worker's callback, so the model's
+        echo is discarded and a person's edit is honoured. **The generated path
+        is untouched byte for byte on both.**
+        """
         transcript = await self.get_transcript(project_id, transcript_id)
         if transcript is None:
             return None
 
         if refined_text is not None:
+            source_text = transcript.source_text or ""
+            uploaded_by_worker = (
+                by_service and (transcript.source_kind or "") == "uploaded"
+            )
+            if uploaded_by_worker and not source_text:
+                # ⛔ REFUSE RATHER THAN STORE THE PLACEHOLDER. The extraction
+                # prompt now has the model emit the fixed word `EXTRACTED` in
+                # this field, so an uploaded row with no `source_text` to
+                # substitute would otherwise persist that placeholder AS the
+                # script and every stage downstream would design from one word.
+                # An uploaded transcript without `source_text` is already a
+                # broken row (migration 0046 exists to guarantee it); saying so
+                # here is cheaper than discovering it at the gate.
+                raise RuntimeError(
+                    f"RC-Q15: transcript {transcript_id} is source_kind="
+                    f"'uploaded' but has no source_text to substitute. Refusing "
+                    f"to store the worker's placeholder as the script."
+                )
+            if uploaded_by_worker:
+                if refined_text != source_text:
+                    # ⛳ NOT A WARNING TO BE SCROLLED PAST. The paraphrase is the
+                    # defect; the substitution is the fix; and the size of what
+                    # was discarded is the evidence that it happened.
+                    logger.warning(
+                        "RC-Q15 uploaded transcript refinement DISCARDED and "
+                        "replaced with source_text: id=%s model_echo=%d bytes, "
+                        "source=%d bytes. The model does not transcribe what the "
+                        "database holds (12b).",
+                        transcript_id, len(refined_text), len(source_text),
+                    )
+                refined_text = source_text
             transcript.refined_text = refined_text
         if sequence_order is not None:
             transcript.sequence_order = sequence_order
@@ -227,6 +291,26 @@ class TranscriptService:
         transcript.updated_at = datetime.now(timezone.utc)
         await self.db.commit()
         await self.db.refresh(transcript)
+
+        # ⛔ RC-Q15's BELT, POST-WRITE AND LOUD. Read back from the refreshed row
+        # rather than from the local variable: the claim is about what is IN the
+        # database, and an ORM default, a trigger or a future column could make
+        # those two disagree. A silent mismatch here is exactly the failure this
+        # whole ledger exists to remove — stage 2 would design from a summary
+        # again and nothing would say so.
+        if (by_service
+                and (transcript.source_kind or "") == "uploaded"
+                and transcript.source_text
+                and transcript.refined_text != transcript.source_text):
+            raise RuntimeError(
+                f"RC-Q15 BELT: transcript {transcript_id} is source_kind="
+                f"'uploaded' and its stored refined_text is NOT byte-identical "
+                f"to source_text after a service write "
+                f"({len(transcript.refined_text or '')} vs "
+                f"{len(transcript.source_text)} bytes). The substitution did not "
+                f"take. Stage 2 would design from a paraphrase of the operator's "
+                f"script; refusing rather than storing it."
+            )
         logger.info("Transcript updated: id=%s", transcript_id)
         return transcript
 

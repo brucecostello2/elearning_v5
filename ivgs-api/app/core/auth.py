@@ -149,6 +149,26 @@ async def blacklist_all_user_tokens(user_id: str) -> None:
 _INSECURE_DEFAULT_SERVICE_TOKEN = "dev-service-token"
 
 
+#: The seeded principal a service token resolves to
+#: (`app/scripts/seed_service_account.py`). ⛳ A CONSTANT because RC-Q15 made it
+#: load-bearing beyond authentication: `TranscriptService.update_transcript` asks
+#: "is the worker writing, or a person?" to decide whether a `refined_text` is a
+#: model's echo to discard or an operator's edit to honour. A caller comparing
+#: that username by hand is a second copy of a security-relevant identity.
+SERVICE_ACCOUNT_USERNAME = "svc-pipeline"
+
+
+def is_service_principal(user: object) -> bool:
+    """Is this the worker fleet writing, rather than a person?
+
+    ⛔ RC-Q15. THE TEST IS THE AUTHENTICATED PRINCIPAL AND NOT A FLAG IN THE
+    REQUEST BODY, which is the whole reason it lives here: a worker must not be
+    able to present itself as a person in order to keep its paraphrase, and a
+    person must not be able to claim to be the worker.
+    """
+    return getattr(user, "username", None) == SERVICE_ACCOUNT_USERNAME
+
+
 async def get_service_or_user(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: AsyncSession = Depends(get_session),
@@ -202,7 +222,7 @@ async def get_service_or_user(
         )
 
     if hmac.compare_digest(token, settings.IVGS_SERVICE_TOKEN):
-        result = await db.execute(select(User).where(User.username == "svc-pipeline"))
+        result = await db.execute(select(User).where(User.username == SERVICE_ACCOUNT_USERNAME))
         service_user = result.scalar_one_or_none()
         if service_user is None:
             logger.error(
