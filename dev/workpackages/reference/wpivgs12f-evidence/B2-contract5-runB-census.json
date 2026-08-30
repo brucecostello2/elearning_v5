@@ -1,0 +1,194 @@
+[
+  {
+    "gen": 1,
+    "label": "B2-contract5-runB",
+    "scenes": 14,
+    "sourced": 11,
+    "designed": 3,
+    "assess": 3,
+    "practice": 0,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        11
+      ],
+      "LO-2": [
+        12
+      ],
+      "LO-3": [
+        13
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "divides a whole number of up to four digits by 10 by shifting every digit one place to the right, producing the correct quotient"
+      },
+      "LO-2": {
+        "evidence_kind": "assess",
+        "learner_does": "divides a whole number of up to four digits by 100 by shifting every digit two places to the right, producing the correct quotient"
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "explains why the place-value shift is the reliable rule and the crossed-off zero is not"
+      }
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "guide",
+      "present",
+      "guide",
+      "hook",
+      "present",
+      "hook",
+      "present",
+      "transfer",
+      "assess",
+      "assess",
+      "assess"
+    ],
+    "refusals": [
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE",
+      "MOTION_UNKNOWN_TEMPLATE"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 10 by shifting every digit one place to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          2,
+          3,
+          10,
+          11
+        ],
+        "assessed_by": [
+          11
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 100 by shifting every digit two places to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          0,
+          1,
+          4,
+          5,
+          10,
+          12
+        ],
+        "assessed_by": [
+          12
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given the claim that dividing by 10 means crossing off a zero, the learner will explain why the place-value shift is the reliable rule and the crossed-off zero is not.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          6,
+          7,
+          8,
+          9,
+          10,
+          13
+        ],
+        "assessed_by": [
+          13
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 11,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain an unaided attempt at dividing by 10",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "the learner must write the digits and perform the division",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 432,
+          "shift": 1
+        },
+        "duration_seconds": 30,
+        "visual_description": "a blank worksheet with a pencil",
+        "narration_text": "Divide 432 by 10. Show your work."
+      },
+      {
+        "scene_index": 12,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain an unaided attempt at dividing by 100",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "the learner must write the digits and perform the division",
+        "generation_params": {
+          "template": "place_value_shift",
+          "number": 9432,
+          "shift": 2
+        },
+        "duration_seconds": 30,
+        "visual_description": "a blank worksheet with a pencil",
+        "narration_text": "Divide 9432 by 100. Show your work."
+      },
+      {
+        "scene_index": 13,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "the script does not contain an unaided explanation of the place-value shift",
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "the learner must write their explanation",
+        "generation_params": null,
+        "duration_seconds": 60,
+        "visual_description": "a blank worksheet with a pencil",
+        "narration_text": "Explain why the place-value shift is the reliable rule for dividing by 10 or 100."
+      }
+    ]
+  }
+]

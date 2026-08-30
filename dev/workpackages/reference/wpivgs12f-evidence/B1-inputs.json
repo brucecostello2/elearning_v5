@@ -1,0 +1,8 @@
+{
+  "name": "WP-IVGS-12f B1 - subtraction with regrouping (explicit unaided span)",
+  "description": "A short lesson for 7-to-9-year-olds who can already subtract two-digit numbers when no borrowing is needed, but have never regrouped across the tens column. Warm, encouraging, conversational. The learner should finish able to do one themselves, unaided.",
+  "target_audience": "children aged 7-9",
+  "language_code": "en-US",
+  "max_runtime_seconds": 300,
+  "learning_outcomes": "LO-1: Given two 2-digit numbers written in column form where the top ones digit is smaller than the bottom ones digit, the learner will compute the difference using regrouping, producing a correctly reduced tens digit and a correct final answer.\nLO-2: Given a column subtraction that requires borrowing, the learner will explain why one ten is crossed out of the tens column when ten ones are added to the ones column.\nLO-3: Given a two-digit subtraction they have just attempted, the learner will check their own work by verifying the crossed-out ten, the regrouped ones digit, and the final difference."
+}

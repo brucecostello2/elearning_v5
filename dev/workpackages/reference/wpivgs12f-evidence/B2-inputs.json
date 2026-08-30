@@ -1,0 +1,8 @@
+{
+  "name": "WP-IVGS-12f B2 - dividing by 10 and 100 (sparse, no practice material)",
+  "description": "A short lesson for 9-to-11-year-olds who understand place value columns but have not yet met division by powers of ten. Warm, encouraging, conversational. The learner should finish able to do one themselves, unaided.",
+  "target_audience": "children aged 9-11",
+  "language_code": "en-US",
+  "max_runtime_seconds": 300,
+  "learning_outcomes": "LO-1: Given a whole number of up to four digits, the learner will compute the result of dividing it by 10 by shifting every digit one place to the right, producing the correct quotient.\nLO-2: Given a whole number of up to four digits, the learner will compute the result of dividing it by 100 by shifting every digit two places to the right, producing the correct quotient.\nLO-3: Given the claim that dividing by 10 means crossing off a zero, the learner will explain why the place-value shift is the reliable rule and the crossed-off zero is not."
+}

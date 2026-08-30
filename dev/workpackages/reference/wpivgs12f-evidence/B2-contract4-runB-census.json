@@ -1,0 +1,196 @@
+[
+  {
+    "gen": 1,
+    "label": "B2-contract4-runB",
+    "scenes": 13,
+    "sourced": 10,
+    "designed": 3,
+    "assess": 3,
+    "practice": 0,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        11
+      ],
+      "LO-2": [
+        12
+      ],
+      "LO-3": [
+        13
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Divides a whole number of up to four digits by 10 by shifting every digit one place to the right, producing the correct quotient."
+      },
+      "LO-2": {
+        "evidence_kind": "assess",
+        "learner_does": "Divides a whole number of up to four digits by 100 by shifting every digit two places to the right, producing the correct quotient."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Explains why the place-value shift is the reliable rule for dividing by 10 or 100, and why crossing off a zero is not."
+      }
+    },
+    "events": [
+      "hook",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "present",
+      "transfer",
+      "assess",
+      "assess",
+      "assess"
+    ],
+    "refusals": [
+      "MOTION_WITHOUT_PARAMS"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 10 by shifting every digit one place to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          3,
+          4,
+          10,
+          11
+        ],
+        "assessed_by": [
+          11
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given a whole number of up to four digits, the learner will compute the result of dividing it by 100 by shifting every digit two places to the right, producing the correct quotient.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          5,
+          6,
+          10,
+          12
+        ],
+        "assessed_by": [
+          12
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given the claim that dividing by 10 means crossing off a zero, the learner will explain why the place-value shift is the reliable rule and the crossed-off zero is not.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "evaluate",
+        "served_by": [
+          7,
+          8,
+          9,
+          10,
+          13
+        ],
+        "assessed_by": [
+          13
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 11,
+        "serves_outcomes": [
+          "LO-1"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner needs to practice dividing by 10.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "Learner-attempt moment: the learner tries to divide 456 by 10.",
+        "generation_params": {
+          "template": "highlight_and_hold",
+          "top": 456,
+          "bottom": 10,
+          "column": 0,
+          "label": "ones"
+        },
+        "duration_seconds": 30,
+        "visual_description": "A worksheet with the problem 456 \u00f7 10 and a blank space for the answer.",
+        "narration_text": "Now it's your turn to try. Divide 456 by 10."
+      },
+      {
+        "scene_index": 12,
+        "serves_outcomes": [
+          "LO-2"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner needs to practice dividing by 100.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "Learner-attempt moment: the learner tries to divide 456 by 100.",
+        "generation_params": {
+          "template": "highlight_and_hold",
+          "top": 456,
+          "bottom": 100,
+          "column": 0,
+          "label": "ones"
+        },
+        "duration_seconds": 30,
+        "visual_description": "A worksheet with the problem 456 \u00f7 100 and a blank space for the answer.",
+        "narration_text": "Now it's your turn to try. Divide 456 by 100."
+      },
+      {
+        "scene_index": 13,
+        "serves_outcomes": [
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "evaluate",
+        "scene_origin": "designed",
+        "source_refs": null,
+        "designed_rationale": "The learner needs to explain the reliable rule.",
+        "rewrite_of": null,
+        "media_type": "motion_graphics",
+        "media_rationale": "Learner-attempt moment: the learner explains the reliable rule.",
+        "generation_params": {
+          "template": "highlight_and_hold",
+          "top": null,
+          "bottom": null,
+          "column": 0,
+          "label": "explanation"
+        },
+        "duration_seconds": 40,
+        "visual_description": "A blank space for the learner to write their explanation.",
+        "narration_text": "Now it's your turn to try. Explain why the place-value shift is the reliable rule for dividing by 10 or 100."
+      }
+    ]
+  }
+]

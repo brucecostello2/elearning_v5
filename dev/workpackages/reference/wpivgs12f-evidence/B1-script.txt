@@ -1,0 +1,65 @@
+# Subtracting with Regrouping
+
+Hi! Today we are going to learn how to subtract two-digit numbers when the top digit is too small.
+
+Let's look at our problem: **52 minus 27.**
+
+Write 52 on top and 27 underneath. The ones line up under the ones, and the tens line up under the tens.
+
+## Step 1: Look at the ones column
+
+In the ones column we have 2 minus 7.
+
+But 2 is smaller than 7. We cannot take 7 away from 2 and stay in whole numbers.
+
+So we need more ones. We go next door and borrow.
+
+## Step 2: Regroup
+
+Look at the tens column. There is a 5 there, which means 5 tens, or 50.
+
+We take one of those tens and carry it over to the ones.
+
+Cross out the 5 and write 4 above it. Now the tens column has 4 tens left.
+
+That ten we borrowed becomes ten ones. Add it to the 2 that was already there.
+
+2 plus 10 is 12. Write a small 1 in front of the 2 so the ones column now reads 12.
+
+## Step 3: Subtract the ones
+
+Now we can do it. 12 minus 7 is 5.
+
+Write 5 underneath the ones column.
+
+## Step 4: Subtract the tens
+
+The tens column now reads 4 minus 2.
+
+4 minus 2 is 2. Write 2 underneath the tens column.
+
+## The answer
+
+Reading our answer across, 52 minus 27 is **25**.
+
+## Now you try
+
+Here is one for you on your own.
+
+**Work out 63 minus 48.**
+
+Pause here. Do not read on yet. Set it up in columns, regroup if you need to, and find the answer yourself.
+
+Take your time. Nobody is watching the clock.
+
+When you have your answer, carry on.
+
+Ready?
+
+The answer is **15**.
+
+If you got 15, brilliant. If you did not, check whether you remembered to cross out the 6 and make it a 5 when you borrowed. That is the step people forget.
+
+## Remember
+
+Borrow only when the top digit is smaller than the bottom one. Cross out the ten you took, and never forget to reduce the tens column by one.

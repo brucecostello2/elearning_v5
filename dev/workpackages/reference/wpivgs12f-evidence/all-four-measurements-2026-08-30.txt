@@ -1,0 +1,256 @@
+==========================================================================
+CENSUS B1-contract4-runB   contract design-contract-4   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : /tmp/claude-1002/-opt-ivgs/47a0ed9d-37ff-4e84-b73c-39fc6478ff0c/scratchpad/B1-script.txt  1787 chars
+system=12152 chars  user=41196 chars
+property order    : ['assessment_plan', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+==========================================================================
+--- B1-contract4-runB generation 1: 171s  finish=stop  prompt_tokens=12928 completion_tokens=3274
+    THE CENSUS  scenes=13  sourced=13  DESIGNED=0  assess=1  practice=2
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [6, 8, 10], "LO-2": [], "LO-3": [10]}
+    events: ['hook', 'present', 'guide', 'present', 'guide', 'practice', 'present', 'practice', 'feedback', 'assess', 'transfer', 'feedback', 'feedback']
+    >> scene 6 [practice] origin=sourced serves=['LO-1'] media=image 10s
+       source_refs: [{"transcript_id": null, "start": 300, "end": 360, "quote": "Now we can do it. 12 minus 7 is 5."}]
+       NARRATION  : Now we can do it. 12 minus 7 is 5.
+       visual     : A hand writing the 5 underneath the ones column.
+    >> scene 8 [practice] origin=sourced serves=['LO-1'] media=image 10s
+       source_refs: [{"transcript_id": null, "start": 420, "end": 480, "quote": "4 minus 2 is 2. Write 2 underneath the tens column."}]
+       NARRATION  : 4 minus 2 is 2. Write 2 underneath the tens column.
+       visual     : A hand writing the 2 underneath the tens column.
+    >> scene 10 [assess] origin=sourced serves=['LO-1', 'LO-3'] media=image 20s
+       source_refs: [{"transcript_id": null, "start": 540, "end": 600, "quote": "Now you try. Work out 63 minus 48."}]
+       NARRATION  : Now you try. Work out 63 minus 48.
+       visual     : A blank two-row column layout on lined paper, with a pencil and a ruler nearby.
+    HARD REFUSALS = 2    flags = 2
+        REFUSE outcome LO-2   OUTCOME_UNASSESSED
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        flag   scene 4        SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13] assessed=[6, 8, 10]
+        LO-2: served=[1, 11, 13] assessed=[]
+        LO-3: served=[1, 10, 11, 13] assessed=[10]
+
+==========================================================================
+B1-contract4-runB TOTALS vs the RC-Q9e baseline (83 scenes / 83 sourced / 0 designed / 0 assess)
+  scenes  13   sourced 13   DESIGNED 0   assess 1   practice 2
+  hard refusals per generation: [2]
+==========================================================================
+==========================================================================
+CENSUS B2-contract4-runB   contract design-contract-4   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : /tmp/claude-1002/-opt-ivgs/47a0ed9d-37ff-4e84-b73c-39fc6478ff0c/scratchpad/B2-script.txt  2156 chars
+system=12095 chars  user=41530 chars
+property order    : ['assessment_plan', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+==========================================================================
+--- B2-contract4-runB generation 1: 176s  finish=stop  prompt_tokens=12912 completion_tokens=3389
+    THE CENSUS  scenes=13  sourced=10  DESIGNED=3  assess=3  practice=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "assess", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [11], "LO-2": [12], "LO-3": [13]}
+    events: ['hook', 'present', 'present', 'present', 'present', 'present', 'present', 'present', 'present', 'transfer', 'assess', 'assess', 'assess']
+    >> scene 11 [assess] origin=designed serves=['LO-1'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The learner needs to practice dividing by 10.
+       NARRATION  : Now it's your turn to try. Divide 456 by 10.
+       visual     : A worksheet with the problem 456 ÷ 10 and a blank space for the answer.
+    >> scene 12 [assess] origin=designed serves=['LO-2'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : The learner needs to practice dividing by 100.
+       NARRATION  : Now it's your turn to try. Divide 456 by 100.
+       visual     : A worksheet with the problem 456 ÷ 100 and a blank space for the answer.
+    >> scene 13 [assess] origin=designed serves=['LO-3'] media=motion_graphics 40s
+       source_refs: null
+       rationale  : The learner needs to explain the reliable rule.
+       NARRATION  : Now it's your turn to try. Explain why the place-value shift is the reliable rule for dividing by 10 or 100.
+       visual     : A blank space for the learner to write their explanation.
+    HARD REFUSALS = 1    flags = 2
+        REFUSE scene 13       MOTION_WITHOUT_PARAMS
+        flag   scene 5        SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[1, 2, 3, 4, 10, 11] assessed=[11]
+        LO-2: served=[1, 2, 5, 6, 10, 12] assessed=[12]
+        LO-3: served=[7, 8, 9, 10, 13] assessed=[13]
+
+==========================================================================
+B2-contract4-runB TOTALS vs the RC-Q9e baseline (83 scenes / 83 sourced / 0 designed / 0 assess)
+  scenes  13   sourced 10   DESIGNED 3   assess 3   practice 0
+  hard refusals per generation: [1]
+==========================================================================
+==========================================================================
+CENSUS ACCEPT-contract5-runB   contract design-contract-5   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : /tmp/claude-1002/-opt-ivgs/47a0ed9d-37ff-4e84-b73c-39fc6478ff0c/scratchpad/script.txt  2974 chars
+system=15805 chars  user=42365 chars
+property order    : ['assessment_plan', 'designed_assessments', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+==========================================================================
+--- ACCEPT-contract5-runB generation 1: 213s  finish=stop  prompt_tokens=14127 completion_tokens=4191
+    THE CENSUS  scenes=17  sourced=14  DESIGNED=3  assess=3  practice=1
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [12, 14], "LO-2": [15], "LO-3": [16]}
+    events: ['hook', 'present', 'guide', 'guide', 'feedback', 'present', 'guide', 'guide', 'feedback', 'present', 'guide', 'feedback', 'practice', 'transfer', 'assess', 'assess', 'assess']
+    >> scene 12 [practice] origin=sourced serves=['LO-1'] media=motion_graphics 20s
+       source_refs: [{"transcript_id": null, "start": 380, "end": 400, "quote": "Let\u2019s try another one. Multiply 32 by 21."}]
+       NARRATION  : Let’s try another one. Multiply 32 by 21.
+       visual     : A worksheet with 32 on top and 21 underneath
+    >> scene 14 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The script does not contain an unaided attempt at a two-digit multiplication problem.
+       NARRATION  : Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.
+       visual     : A blank worksheet with a multiplication problem
+    >> scene 15 [assess] origin=designed serves=['LO-2'] media=image 30s
+       source_refs: null
+       rationale  : The script does not contain an explanation for the placeholder zero.
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero
+    >> scene 16 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The script does not contain an unaided attempt at checking work.
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem
+    HARD REFUSALS = 1    flags = 9
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        flag   scene 2        SEGMENTING
+        flag   scene 3        SEGMENTING
+        flag   scene 5        SEGMENTING
+        flag   scene 6        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   scene 9        SEGMENTING
+        flag   scene 10       SEGMENTING
+        flag   scene 16       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 7, 8, 9, 10, 11, 12, 13, 14] assessed=[12, 14]
+        LO-2: served=[0, 5, 6, 13, 15] assessed=[15]
+        LO-3: served=[0, 13, 16] assessed=[16]
+
+--- ACCEPT-contract5-runB generation 2: 158s  finish=stop  prompt_tokens=14127 completion_tokens=3103
+    THE CENSUS  scenes=13  sourced=10  DESIGNED=3  assess=3  practice=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [10], "LO-2": [11], "LO-3": [12]}
+    events: ['hook', 'present', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'guide', 'transfer', 'assess', 'assess', 'assess']
+    >> scene 10 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The script does not contain an unaided attempt at a two-digit multiplication problem.
+       NARRATION  : Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.
+       visual     : A blank worksheet with a multiplication problem
+    >> scene 11 [assess] origin=designed serves=['LO-2'] media=image 30s
+       source_refs: null
+       rationale  : The script does not contain an explanation for the placeholder zero.
+       NARRATION  : Explain why a placeholder zero is written in the ones column before multiplying by the tens digit.
+       visual     : A worksheet with a multiplication problem and a placeholder zero
+    >> scene 12 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : The script does not contain an unaided attempt at checking work.
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : A completed worksheet with a multiplication problem
+    HARD REFUSALS = 1    flags = 2
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        flag   scene 12       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] assessed=[10]
+        LO-2: served=[0, 5, 9, 11] assessed=[11]
+        LO-3: served=[0, 9, 12] assessed=[12]
+
+--- ACCEPT-contract5-runB generation 3: 139s  finish=stop  prompt_tokens=14127 completion_tokens=2745
+    THE CENSUS  scenes=13  sourced=9  DESIGNED=4  assess=4  practice=1
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [9, 10], "LO-2": [8], "LO-3": [11, 12]}
+    events: ['hook', 'present', 'guide', 'guide', 'guide', 'guide', 'transfer', 'hook', 'assess', 'practice', 'assess', 'assess', 'assess']
+    >> scene 8 [assess] origin=designed serves=['LO-2'] media=image 30s
+       source_refs: null
+       rationale  : the script does not contain an explanation for the placeholder zero
+       NARRATION  : Why do we write a placeholder zero in the ones column when multiplying by the tens digit?
+       visual     : a worksheet with a multiplication problem and a placeholder zero
+    >> scene 9 [practice] origin=sourced serves=['LO-1'] media=motion_graphics 20s
+       source_refs: [{"transcript_id": null, "start": 400, "end": 450, "quote": "Multiply 32 by 21."}]
+       NARRATION  : Multiply 32 by 21.
+       visual     : a worksheet with a multiplication problem
+    >> scene 10 [assess] origin=designed serves=['LO-1'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the script does not contain an unaided attempt at a two-digit multiplication problem
+       NARRATION  : Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm.
+       visual     : a blank worksheet with a multiplication problem
+    >> scene 11 [assess] origin=designed serves=['LO-3'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : the script does not contain an unaided attempt at checking work
+       NARRATION  : Check your work.
+       visual     : a completed worksheet
+    >> scene 12 [assess] origin=designed serves=['LO-3'] media=motion_graphics 60s
+       source_refs: null
+       rationale  : the script does not contain an unaided attempt at checking work
+       NARRATION  : Check your work by verifying the column alignment, each partial product, and the placeholder zero.
+       visual     : a completed worksheet with a multiplication problem
+    HARD REFUSALS = 1    flags = 4
+        REFUSE outcome LO-2   PLAN_ENTRY_UNREALIZED
+        flag   scene 8        PRACTICE_NOT_PREPARED
+        flag   scene 11       PRACTICE_NOT_PREPARED
+        flag   scene 12       PRACTICE_NOT_PREPARED
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 4, 5, 6, 7, 9, 10] assessed=[9, 10]
+        LO-2: served=[0, 6, 7, 8] assessed=[8]
+        LO-3: served=[0, 6, 7, 11, 12] assessed=[11, 12]
+
+==========================================================================
+ACCEPT-contract5-runB TOTALS vs the RC-Q9e baseline (83 scenes / 83 sourced / 0 designed / 0 assess)
+  scenes  43   sourced 33   DESIGNED 10   assess 10   practice 2
+  hard refusals per generation: [1, 1, 1]
+==========================================================================
+==========================================================================
+CENSUS B2-contract5-runB   contract design-contract-5   outcome ids ['LO-1', 'LO-2', 'LO-3']
+script  : /tmp/claude-1002/-opt-ivgs/47a0ed9d-37ff-4e84-b73c-39fc6478ff0c/scratchpad/B2-script.txt  2156 chars
+system=15786 chars  user=41530 chars
+property order    : ['assessment_plan', 'designed_assessments', 'scenes', 'dropped_beats', 'design_notes', 'outcome_notes']
+==========================================================================
+--- B2-contract5-runB generation 1: 169s  finish=stop  prompt_tokens=13809 completion_tokens=3325
+    THE CENSUS  scenes=14  sourced=11  DESIGNED=3  assess=3  practice=0
+    outcome text VERBATIM  : True
+    ids cited: ['LO-1', 'LO-2', 'LO-3']   INVENTED: NONE
+    dropped_beats=1
+    assessment_plan: {"LO-1": "assess", "LO-2": "assess", "LO-3": "assess"}
+    DERIVED evidence_map: {"LO-1": [11], "LO-2": [12], "LO-3": [13]}
+    events: ['hook', 'present', 'present', 'guide', 'present', 'guide', 'hook', 'present', 'hook', 'present', 'transfer', 'assess', 'assess', 'assess']
+    >> scene 11 [assess] origin=designed serves=['LO-1'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : the script does not contain an unaided attempt at dividing by 10
+       NARRATION  : Divide 432 by 10. Show your work.
+       visual     : a blank worksheet with a pencil
+    >> scene 12 [assess] origin=designed serves=['LO-2'] media=motion_graphics 30s
+       source_refs: null
+       rationale  : the script does not contain an unaided attempt at dividing by 100
+       NARRATION  : Divide 9432 by 100. Show your work.
+       visual     : a blank worksheet with a pencil
+    >> scene 13 [assess] origin=designed serves=['LO-3'] media=image 60s
+       source_refs: null
+       rationale  : the script does not contain an unaided explanation of the place-value shift
+       NARRATION  : Explain why the place-value shift is the reliable rule for dividing by 10 or 100.
+       visual     : a blank worksheet with a pencil
+    HARD REFUSALS = 6    flags = 3
+        REFUSE scene 2        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 3        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 4        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 5        MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 11       MOTION_UNKNOWN_TEMPLATE
+        REFUSE scene 12       MOTION_UNKNOWN_TEMPLATE
+        flag   scene 3        SEGMENTING
+        flag   scene 7        SEGMENTING
+        flag   design         UNDECLARED_SCRIPT_GAP
+        LO-1: served=[0, 1, 2, 3, 10, 11] assessed=[11]
+        LO-2: served=[0, 1, 4, 5, 10, 12] assessed=[12]
+        LO-3: served=[6, 7, 8, 9, 10, 13] assessed=[13]
+
+==========================================================================
+B2-contract5-runB TOTALS vs the RC-Q9e baseline (83 scenes / 83 sourced / 0 designed / 0 assess)
+  scenes  14   sourced 11   DESIGNED 3   assess 3   practice 0
+  hard refusals per generation: [6]
+==========================================================================

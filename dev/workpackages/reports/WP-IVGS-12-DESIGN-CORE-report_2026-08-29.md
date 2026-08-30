@@ -1863,6 +1863,17 @@ this behaviour is live whether or not these commits are pushed.
 
 # §12e — WP-IVGS-12e: the model learns what an assessment is, and it was never the problem
 
+> ⛔ **SUPERSEDED IN PART BY §12f, 2026-08-30 — READ THIS BEFORE ACTING ON §12e.4.**
+> RC-Q9e below concludes *"THE MODEL HAS NEVER ONCE INVENTED A SCENE"* and infers
+> from it that the model **is not designing at all** and that *"no schema can"*
+> compel a scene with no source span. **The count is right and the inference is
+> wrong.** §12f took the second-script measurement §12e.6 item 2 said was needed:
+> handed a SPARSE script with no practice material in it, the same model on the
+> **same v5/contract-4 stack** invented scenes and emitted this project's first
+> `assess` events. The model will not invent when it has something to excerpt; it
+> invents readily when it does not. **A schema did compel it** — contract-5, §12f.3.
+> Everything else in §12e stands, including the standing rule in §12e.1.
+
 **2026-08-29 · same package lineage. Commit and HOLD.**
 
 ## 12e.0 STATE AT SESSION END
@@ -1983,6 +1994,9 @@ That prompted the census that should have been run five packages ago:
 | 12e gens 1-3 (v5) | 47 | 47 | **0** | **0** |
 | **six generations** | **83** | **83** | **0** | **0** |
 
+> ⛔ **SUPERSEDED BY §12f.2:** *has never* is accurate for this script and *cannot*
+> is not. See the banner at the head of §12e.
+
 ⛔ **THE MODEL HAS NEVER ONCE INVENTED A SCENE.** Every scene of every generation
 is `origin: "sourced"`, anchored to a span of the uploaded script. The script's
 second problem (32×21) is **fully worked with every step narrated**, so an
@@ -2061,3 +2075,617 @@ real project through the gate will be **refused**, for the reasons in §12e.4.
 4. **The API/worker tag split** (`v5.37.4` / `v5.37.3`) is correct and
    deliberate, but `verify-deployed-image.sh` compares tags per container and
    nothing checks that the SPLIT is intentional. A future reader sees two tags.
+
+---
+---
+
+# §12f — WP-IVGS-12f: the excerpter is forced to design
+
+**2026-08-29/30 · same package lineage. Commit and HOLD.**
+
+## 12f.0 STATE AT SESSION END
+
+| | |
+|---|---|
+| ⛳ **THE 12e DIAGNOSIS IS WRONG AND §12e IS SUPERSEDED ON THIS POINT** | RC-Q9e concluded *"the model has never once invented a scene"* and inferred it **is not designing at all**. TASK 0 measured the second script §12e.6 item 2 said was needed, and the answer is **WILL NOT, not CANNOT**: a SPARSE script produced designed scenes and the project's first `assess` events under the **unchanged** v5/contract-4 stack. The model is not incapable of invention — it is **out-competed** by anything it can excerpt |
+| **Done** | **design-contract-5**: `designed_assessments`, REQUIRED, one key per outcome, each value a full scene the grammar pins to `origin: designed` / `instructional_event: assess` / `serves_outcomes: [that outcome]`. **Placement by code** (`shared/design/merge.py`). Migration **0052**, both directions. **Prompt v6**, additive, 30 gated phrases, **none removed**. Built, deployed to nodes 01-04, published, read back from the running containers |
+| ⛳ **THE HOLE IS CLOSED** | **0 designed / 0 assess in 83 → 10 designed / 10 assess in 43**, three generations, plus a second three-generation run that replicates it |
+| ⛔ **ACCEPTANCE: NOT MET — 1, 1, 1 (and 1, 1, 1 again)** | **Six generations, six identical refusals**: `PLAN_ENTRY_UNREALIZED` on LO-2. The plan promises `practice`; the grammar forces only `assess`; no practice scene is built. **RC-Q9d's non-causal plan, surviving in the one kind the grammar does not force.** Rowed as **RC-Q9f**. ⛔ **NOT TUNED — see 12f.7** |
+| ⛳ **The degeneracy check the order named did NOT fire** | The designed assessments pose **fresh numbers** (43×25, 43×27) against a script that works 23×14 and 32×21, cold, with no method reminder. Quoted verbatim in **12f.8** |
+| ⛔ **I DESTROYED THE FIRST RUN'S EVIDENCE** | A re-scoring script imported the harness and its module-level write truncated **eight banked emission files to `[]`**. All four measurements were **re-run and re-banked**; both sets are reported. **12f.11** |
+| **Held** | **2 commits** — `git rev-list --count origin/main..HEAD` at close |
+
+## 12f.1 Premises of the order, checked before acting
+
+| Premise | Checked | Verdict |
+|---|---|---|
+| Held commits, from d2fc50c | `git fetch` then `git rev-list --count origin/main..HEAD` → **0** | ⚠ **The operator pushed both 12e commits.** Measured at the ref, per the §0 rule 12c added |
+| Alembic head is 0051 | `alembic_version` = **0051**; tree's highest `0051_wp_ivgs_12d_assessment_plan.py` | ✅ **TRUE.** Next free number is **0052** |
+| Nodes 01-04 deployable under §6.1a | ssh reachable on `.91`, `.92`, `.93`; all four ran `v5.37.3`/`v5.37.4` | ✅ **TRUE** — unlike 12's opening, where three nodes were offline |
+| Fleet is split `v5.37.4` API / `v5.37.3` workers | `docker ps` on all four | ✅ **TRUE**, exactly as §12e recorded |
+| Prompt v5 active, contract-4 live | `prompts` row v5 `is_active = t`; `CONTRACT_VERSION` in the running worker | ✅ **TRUE** |
+| The operator's script is the 3,172-byte multiplication lesson | Asset `62cd2663`, fid `7,0237c99b8fb7`, **3,172 bytes, md5 `f65f340c…`** — fetched read-only from SeaweedFS | ✅ **TRUE**, and it is the file every generation below used |
+| The banked copy is that script | `dev/workpackages/reference/wpivgs12-acceptance/uploaded-script.txt` is **3,008 bytes**, 164 lines, **every line differing** | ⚠ **LINE-ENDING NORMALISED.** Same 164 lines, CRLF→LF, so 164 bytes lighter. The BANKED copy is not byte-identical to what the pipeline receives, and a span offset computed against one does not hold against the other. Flagged, not fixed — the bank is 12's and rewriting it would destroy the record of what 12 actually scored |
+
+## 12f.2 TASK 0 — the second-script measurement, and it overturned the diagnosis
+
+Two mini-scripts, a different arithmetic topic from the operator's, one generation
+each under the **unchanged** v5/contract-4 stack. Banked at
+`dev/workpackages/reference/wpivgs12f-evidence/`.
+
+  * **B1** — subtraction with regrouping, 366 words, containing an **EXPLICIT
+    unaided-problem span**: *"Now you try. … Work out 63 minus 48. Pause here. Do
+    not read on yet. … The answer is 15."*
+  * **B2** — dividing by 10 and by 100, 411 words, **SPARSE**: a procedure and
+    the reason it works, **no practice material of any kind**, not one worked
+    number.
+
+| | scenes | `sourced` | **`designed`** | **`assess`** | `practice` |
+|---|---|---|---|---|---|
+| **baseline** — operator's script, 6 gens, v4+v5 | 83 | 83 | **0** | **0** | 5 |
+| **B1** run A (explicit unaided span) | 21 | 21 | **0** | **0** | 3 |
+| **B1** run B (re-banked) | 13 | 13 | **0** | **1** | 2 |
+| **B2** run A (sparse) | 15 | 10 | **5** | **1** | 2 |
+| **B2** run B (re-banked) | 13 | 10 | **3** | **3** | 0 |
+
+### ⛳ THE VERDICT, AND IT IS NOT THE ONE RC-Q9e WROTE
+
+⛔ **B2 INVENTED, UNDER THE STACK THAT HAD INVENTED NOTHING IN 83 SCENES.** Same
+prompt v5, same contract-4, same engine, same day. Its designed scenes pose
+numbers that appear nowhere in the script — *"Now it's your turn to try. Divide
+456 by 10."* — because the script contains no numbers at all to lift.
+
+⛔ **B1 DID NOT INVENT, AND IT IS THE SHARPER RESULT.** The script hands the model
+an unaided problem in plain words and tells the learner to pause. The model
+**found the span and anchored to it, both runs** — run A across three `practice`
+scenes, run B as a single `assess` — and in **34 scenes across the two runs it
+invented nothing at all.**
+
+So the two questions the order separated come apart cleanly:
+
+  * **Label-understanding is partial and unstable.** Handed a literal unaided
+    problem, the model called it `practice` once and `assess` once. It has some
+    grip on the distinction and no reliability.
+  * **Invention-refusal is total, and conditional on supply.** 0 `designed` in
+    every generation of every script that contained *anything* excerptable — 117
+    scenes now — and immediate invention on the one script that contained
+    nothing.
+
+⛳ **THAT IS WHY THE FIX IS GRAMMAR AND NOT PROMPTING, AND IT IS A DIFFERENT
+ARGUMENT FROM THE ONE RC-Q9e MADE.** 12e concluded the model cannot design and
+that no schema can compel a scene with no source span. B2 shows it designs
+readily when nothing competes. The defect is **competition inside one
+`scenes[]` array**, where sourced material always wins. Contract-5 does not
+argue with that preference — it removes the contest.
+
+⚠ **NO FIX CAME FROM THIS TABLE, as ordered.** It sharpened the row and it cost
+two generations, then two more to re-bank.
+
+## 12f.3 TASK 1 — the probe first, then contract-5
+
+### The RC-Q12 probe, run before a line of the contract was written
+
+Every probe **orders the model to break the construct**, which is 12c's
+discipline: a schema the model had no wish to violate proves nothing. Each is
+checked for all three outcomes this engine has shown — ENFORCED, HTTP 400
+(`uniqueItems`, `contains`), and the dangerous one, **200 with the constraint
+silently doing nothing** (`guided_json`).
+
+| probe | ordered to emit | emitted | verdict |
+|---|---|---|---|
+| **A** single-value `enum`, scalar | `"sourced"` | `"designed"` | ✅ **ENFORCED** (the proven construct, re-measured) |
+| **B** `const`, scalar string | `"sourced"` | `"designed"` | ✅ **ENFORCED — `const` IS implemented**, not 400, not a no-op |
+| **C** `const`, whole array | `["LO-1","LO-3","LO-9"]` | `["LO-2"]` | ✅ **ENFORCED** |
+| **D** array `minItems=maxItems=1` + enum | `["LO-1","LO-3","LO-9"]` | `["LO-2"]` | ✅ **ENFORCED** |
+| **E** the contract-5 construct, whole | omit `LO-1`, add `LO-7`, event `present`, serves `["LO-4","LO-5"]`, origin `sourced` | every pin held | ✅ **ENFORCED in every part** |
+
+⛳ **THE RULING, AND IT IS THE ORDER'S TIE-BREAK APPLIED HONESTLY.** `const` works.
+It is **not used.** For the scalars it is a plain tie with `enum`, so the proven
+construct wins. For the array it looks stronger and **is not**: RC-Q12's hang is
+the decoder forbidding `]` while whitespace stays legal, and that corridor is
+identical under `const ["LO-2"]` and under `minItems=maxItems=1`. `const` buys
+nothing the measured-since-12c construct does not already give, and taking an
+unproven key into the load-bearing contract to buy nothing is how a package
+acquires a second unmeasured variable. **Measured, banked at
+`wpivgs12f-evidence/const-probe.json`, and deliberately unused.**
+
+### design-contract-5
+
+⛔ **`designed_assessments`, REQUIRED, one key per outcome,
+`additionalProperties: false`.** Each value is a full scene object. Three fields
+are not decisions the model makes:
+
+    provenance.origin      enum ["designed"]   it cannot cite a span
+    instructional_event    enum ["assess"]     it cannot downgrade to `practice`
+    serves_outcomes        [enum [that id]]    it cannot re-aim at another outcome
+
+**An output lacking an invented unaided scene per outcome is not parseable.** The
+excerpter cannot decline, because there is nothing to decline.
+
+⛳ **DECLARED SECOND, AND THE POSITION IS THE ARGUMENT.** Declaration order binds
+generation order (12d, measured in both directions), so `designed_assessments`
+sits between `assessment_plan` and `scenes` and the model writes the unaided
+attempt **while the scene list is still empty** — with no worked example of its
+own to lift numbers out of. Foundation §1 in full for the first time: outcomes,
+then the evidence, then the assessment that IS the evidence, then the arc.
+Property order in the deployed worker:
+
+    ['assessment_plan', 'designed_assessments', 'scenes', 'dropped_beats',
+     'design_notes', 'outcome_notes']
+
+⛔ **AND THERE IS NO `scene_index`.** Placement is the third application of 12b's
+principle — never ask the model for what code can compute. `shared/design/merge.py`
+inserts each designed assessment **after the LAST scene serving its outcome**, the
+end of that outcome's fading sequence, and re-indexes the merged design 0..n-1.
+The model's own `scenes` array is never edited; the merged sequence is what stage
+3+ and the derived `evidence_map` consume, and `raw_contract` keeps the emission
+verbatim as the evidence limb.
+
+⚠ **RE-INDEXING IS NOT COSMETIC AND IT CORRECTED A LATENT DEFECT.** The frozen
+stage body has always re-indexed its rows sequentially after validation, while
+`parse_contract` preserved the model's own numbering — so a brief's
+`evidence_map` could name a row that was somewhere else. Two 12d tests pinned the
+old numbering and were **re-aimed with the reason recorded** (12f.10).
+
+⛔ **AND THE MERGED LIST HAS TO REACH THE FROZEN BODY, OR THE ASSESSMENT IS NEVER
+RENDERED.** `stage2_storyboard` builds its `StoryboardScene` rows from `scenes`
+and POSTs them. Without a seam, every designed assessment would exist in the
+brief, be reviewed at the gate, and appear in **no scene row** — designed,
+stored, approved and invisible. So `clients/vllm_client` grows a **third seam of
+the same shape as the two 12a added**: `set_document_transform`, applied to
+`chat_json`'s parsed document, armed by `celery_app`'s prerun for the storyboard
+task only, cleared at postrun, never raising, and **identity when nothing is
+registered**. It calls the same `merged_scene_sequence` the parse calls, so the
+brief's `scene_designs` and the `storyboard_scenes` rows are one list computed
+once — 12d's lesson about `derive_evidence_map`, applied before it could be
+learned twice. No frozen body was edited and no exception #3 was requested.
+
+**Every array in the new object carries a `maxItems`** (RC-Q12 (d)); the only one
+is `serves_outcomes`, bounded 1..1. The `minItems` corridor is honoured on 12c's
+argument: it is reachable only when the model's next token would be `]`, and a
+schema pinning the array to one known id under a prompt naming that outcome does
+not go there.
+
+### Migration 0052, and the validator
+
+**`storyboard_scenes.designed_rationale`**, nullable, additive, **exercised both
+directions on the live database** (0051→0052→0051→0052, column present/absent/
+present, `alembic_version` following). `scene_origin` has accepted `'designed'`
+since 0048 and **not one row ever carried it**; contract-5 makes designed scenes
+mandatory, so an invented scene now reaches the table — and `scene_origin =
+'designed'` with no account of itself is the silent-invention defect one layer
+down. The gate renders it beside the origin.
+
+⛳ **A GENERAL INVARIANT TEST CAUGHT A REAL DEFECT IN THIS, WITHIN THE HOUR.**
+`test_the_design_fields_are_editable_at_the_gate` iterates `SCENE_DESIGN_FIELDS`
+and asserts each is in `StoryboardService.OPTIONAL_SCENE_FIELDS` — it noticed the
+new field was **storable and not correctable at the gate**, which is precisely
+the "shown a problem and denied the fix" shape it was written for. Fixed in the
+code; the test was not touched.
+
+⛔ **`PLAN_ENTRY_UNREALIZED(assess)` AND `OUTCOME_UNASSESSED` ARE NOW
+STRUCTURALLY UNREACHABLE, AND NEITHER IS DELETED.** Asserted directly — including
+against the hostile case, a pure lecture in `scenes[]`, which under contract-4
+was three refusals every time. Both checks stay as the loud regression belt: a
+structural guarantee is a claim about a schema, a merge and a decoder, all three
+editable by someone who does not know why they are shaped this way, and this
+lineage is a record of guarantees narrower than believed. **The `practice` branch
+is untouched and still fires** — and 12f.7 is where it fires.
+
+⚠ **AND ONE REFUSAL GOT WEAKER, WHICH IS 12f's OWN COST AND IS NOT HIDDEN.**
+`OUTCOME_UNSERVED` asks whether ANY scene declares the outcome, and a designed
+assessment declares it — so an outcome the lesson never **teaches** is no longer
+unserved. `PRACTICE_NOT_PREPARED` names exactly that shape and remains a FLAG.
+Promoting it is an operator ruling and this package did not take it; 12c's
+promotion of `EVIDENCE_MAP_DISAGREES` was **ordered**, and that precedent is the
+point. A test pins the behaviour so it is discovered by reading, not by accident.
+
+## 12f.4 TASK 2 — prompt v6
+
+**+3,691 characters, 12,250 → 15,941, and ZERO deletions.** One new section,
+`## ⛔ THE SCRIPT IS SOURCE MATERIAL. THE ASSESSMENTS ARE YOURS TO AUTHOR.`, plus
+one additive line inside backward-design stage 2 and one bullet under the
+raw-material rules.
+
+  * *"The script is source material for `present`, `guide` and `recall` — the
+    teaching. **It is not the source of your assessments.** No script contains
+    the learner's own unaided attempt, because that attempt has not happened yet:
+    it is the thing the whole lesson exists to produce."*
+  * ⛔ **POSE THE PROBLEM COLD, IN FRESH NUMBERS THE SCRIPT NEVER WORKED** — *"If
+    the script teaches 23 × 14 and then works 32 × 21, your assessment uses
+    NEITHER of them."*
+  * **ONE ENTRY PER OUTCOME ID**, and the three pinned fields named so the model
+    knows why before the decoder makes it.
+  * ⛳ **AND YOU DO NOT PLACE THEM** — *"design each one as an ENDING."*
+  * ⚠ A modality line earned by B2, whose designed assess was refused
+    `MOTION_WITHOUT_PARAMS`: a computational attempt is `motion_graphics` **with**
+    a template; an explain-or-check attempt is `image` or `talking_head`, because
+    the renderer has no template for it.
+
+**Five gate phrases added, none removed.** `test_v6_removed_nothing_v5_gated`
+reads the publisher's own tuple rather than a second copy, so the two cannot
+drift: **30 phrases, 0 missing.**
+
+## 12f.5 TASK 3 — build, deploy, publish
+
+**BOTH images rebuilt — no tag split this time**, because the worker-side parse,
+the client seam and `celery_app`'s arming all changed alongside the API. Built on
+node-01 from `ac77733`, which is why the code is committed **before** the images
+exist: `IVGS_BUILD_SHA` must name a commit that does.
+
+    ivgs-api      sha256:f0c067d792be90c0804136f70149f68c9cc443a8b79f500a5e5871ea917771cf
+    ivgs-workers  sha256:70ec2c3fefa7d11b932a0b1aa1bb2f88193f88e3d6501e14790753fa7a83fe48
+
+**BANKED** with RC-Q8 digest sidecars, both `registered in MANIFEST.txt`.
+**LOADED** on nodes 02/03/04 from the shared store — `Loaded image:` three times.
+
+⛔ **SCHEMA BEFORE CODE.** 0052 was applied to the live database **first**: the new
+ORM column would break a SELECT if the column were missing, so the image that
+reads it is deployed after. Compose invocations were **derived from container
+labels**, never guessed — and the labels say **two** `-f` files on node-01, not
+the three `dev/CLAUDE.md` §6 describes. The machine wins.
+
+**VERIFIED, seven containers, every line from `verify-deployed-image.sh`:**
+
+    DEPLOY VERIFIED [local]        ivgs-fastapi                 -> ivgs-api:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [local]        ivgs-celery-default          -> ivgs-workers:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [local]        ivgs-celery-composition      -> ivgs-workers:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [local]        ivgs-celery-beat             -> ivgs-workers:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [192.168.1.91] ivgs-celery-node02           -> ivgs-workers:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [192.168.1.92] ivgs-cogvideox-worker-node03 -> ivgs-workers:v5.37.5-assessments-authored
+    DEPLOY VERIFIED [192.168.1.93] ivgs-celery-node04           -> ivgs-workers:v5.37.5-assessments-authored
+
+⛳ **AND BY IMAGE ID, WHICH IS THE CHECK THAT CATCHES A STALE ROLL-OUT** —
+`verify-deployed-image.sh` compares TAGS (RC-Q8). All seven **running** containers'
+`.Image`, against the banked `.digest`: `f0c067d7…` for the API, `70ec2c3f…` for
+all six worker containers on all four nodes. **Identical.**
+
+**RC-P19 — the image is not the process.** Four node-01 containers `(healthy)`;
+`/api/v1/health` returns `{"status":"healthy","version":"v5.37.5-assessments-authored",…}`
+with database, redis and seaweedfs connected. ⚠ **On port 8001, not 8000** — the
+12c report says `/api/v1/health` without the port and 8000 refuses the
+connection, which reads like a dead API and is not.
+
+**PUBLISHED AFTER THE DEPLOY, per 12c's rule** — and the 12e lesson was checked
+rather than assumed: the seed **inside the running image** was compared to the
+tracked file before publishing, `16,080` bytes and sha `62560091…` on both.
+
+    storyboard_generation_system: published v6 (15941 chars, sha256 62560091f531c6d3…), superseding v5
+    transcript_refinement_system: v1 is already this exact text — no-op, nothing published.
+
+Lineage in the database: **v6 active, v1–v5 inactive, exactly ONE active row**;
+the new phrases present and v5's `THE LEARNER PERFORMS IT UNAIDED` still there.
+Rollback is one UPDATE.
+
+**AND THE LIVE BEHAVIOUR WAS READ BACK OUT OF THE RUNNING CONTAINERS**, because a
+verified tag proves which bytes are there and not what they do:
+
+    ivgs-celery-default  CONTRACT_VERSION = design-contract-5
+                         property order   = [assessment_plan, designed_assessments, scenes, …]
+                         designed required = ['LO-1','LO-2','LO-3'], additionalProperties = False
+                         pins LO-2        = event ['assess'] | origin ['designed'] | serves ['LO-2']
+                         scene_index offered = False
+                         merge placement  = [(0,LO-1), (1,LO-1 assess), (2,LO-2), (3,LO-2 assess), (4,LO-3 assess)]
+                         prerun arms transform: True   postrun clears it: True
+    ivgs-fastapi         lecture WITHOUT the designed assess -> OUTCOME_UNASSESSED, PLAN_ENTRY_UNREALIZED
+                         lecture WITH it (contract-5 shape)  -> NO REFUSALS
+                         designed_rationale storable: True   editable at the gate: True
+
+## 12f.6 TASK 4 — the acceptance, sixth attempt, census-scored
+
+Three consecutive generations, the operator's script (md5 `f65f340c…`), the same
+three ABCD outcomes, the same production parameters — **and then three more**,
+because I destroyed the first run's emissions (12f.11). Both sets are reported;
+neither is preferred.
+
+| | run A g1 | g2 | g3 | run B g1 | g2 | g3 |
+|---|---|---|---|---|---|---|
+| scenes (merged) | 12 | 8 | 12 | 17 | 13 | 13 |
+| `sourced` | 8 | 4 | 8 | 14 | 10 | 9 |
+| ⛳ **`designed`** | **4** | **4** | **4** | **3** | **3** | **4** |
+| ⛳ **`assess`** | **4** | **4** | **4** | **3** | **3** | **4** |
+| `practice` | 0 | 0 | 0 | 1 | 0 | 1 |
+| every LO served **and** assessed | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| outcome text verbatim | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| invented ids | NONE | NONE | NONE | NONE | NONE | NONE |
+| `dropped_beats` | 1 | 1 | 1 | 1 | 1 | 1 |
+| ⛔ **hard refusals** | **1** | **1** | **1** | **1** | **1** | **1** |
+
+**The census against the baseline the order named:**
+
+| | scenes | `sourced` | **`designed`** | **`assess`** |
+|---|---|---|---|---|
+| RC-Q9e baseline, 6 gens, v4+v5 | 83 | 83 | **0** | **0** |
+| **12f run A**, 3 gens, v6/contract-5 | 32 | 20 | **12** | **12** |
+| **12f run B**, 3 gens, v6/contract-5 | 43 | 33 | **10** | **10** |
+
+⛳ **THE HOLE THIS PACKAGE LINEAGE HAS BEEN CHASING SINCE 12c IS CLOSED.** Every
+outcome is served and assessed by the derived map **over the merged sequence**,
+in six generations of six. `OUTCOME_UNASSESSED` did not fire once. Every
+regression held: outcomes verbatim, zero invented ids, one honest drop per
+generation.
+
+⛔ **AND THE ACCEPTANCE IS STILL NOT MET, ON ONE CHECK, SIX TIMES OUT OF SIX.**
+
+## 12f.7 ⛔ RC-Q9f — THE PLAN'S UNFORCED KIND, AND I DID NOT TUNE IT
+
+**Every one of the six refusals is the same one:** `PLAN_ENTRY_UNREALIZED` on
+**LO-2**. And the assessment plan is **identical in all six generations**:
+
+    {"LO-1": "assess", "LO-2": "practice", "LO-3": "assess"}
+
+LO-2 is *"explain why a placeholder zero is written"*. The model plans a
+**supported** attempt for it — which is a defensible reading of an
+understand-level outcome — and then never builds one. Contract-5 forces an
+`assess` scene for every outcome. **It does not force a `practice` scene**, so
+the one kind the grammar leaves to the model's own follow-through is the one kind
+the model does not follow through on.
+
+⛳ **THAT IS RC-Q9d, VERBATIM, ONE LAYER ALONG.** 12d measured the plan to be
+*prior, honest, stable and NON-CAUSAL*: the model commits well and the scenes
+ignore the commitment. 12f forced the `assess` half and the same non-causality
+reappeared **in the unforced half, unchanged and just as stable**. Four packages
+now show one law: **on this stack the model's plan predicts nothing; only the
+grammar is causal.**
+
+⛔ **AND I DID NOT CLOSE IT, DELIBERATELY.** Three routes were available and each
+is refused for a reason:
+
+  * **Loosen `PLAN_ENTRY_UNREALIZED` to match any assessing event.** ⛔ Refused
+    outright. That is exactly the change 12d declined with the number on the
+    record and 12e made a **standing rule**: *evidence kinds are never collapsed
+    to green a number*. LO-2's learner would still never get a supported attempt.
+  * **Add a sentence to the prompt telling the model that planning `practice`
+    commits it to building one.** ⚠ Refused as tuning. The instruction is
+    **already there and already correct** — v4 added *"a plan entry no scene
+    realizes is refused, by outcome and by kind"* and v6 keeps it. Adding
+    emphasis after seeing the number is iterating against the metric, and this
+    lineage has a precedent for not doing that.
+  * **Force a `practice` scene too, the way `assess` is now forced.** ⛔ **This is
+    the real answer and it is not mine to take.** It is a second required
+    per-outcome object, a contract-6, and a structural escalation of exactly the
+    kind the order reserved to the operator.
+
+⛔ **ROWED AS RC-Q9f. The escalation is the operator's to order.**
+
+### ⚠ AND A SECOND FINDING, WHICH IS 12f's OWN ARTEFACT
+
+⛳ **THE MODEL LEARNED TO INVENT FROM THE GRAMMAR, AND OVERSHOT.** In **all three**
+run-A generations and **one** run-B generation it wrote an **extra `designed`
+`assess` scene into `scenes[]` itself** — the first `designed` scenes ever
+emitted into that array on the operator's script. The merge then places the
+mandated one immediately after its near-identical twin:
+
+    run A gen 1, scenes 10 and 11, adjacent:
+      "Now it’s your turn. Multiply 43 by 27 using the standard column algorithm."
+      "Now it's your turn. Multiply 43 by 27 using the standard column algorithm."
+
+    run A gen 2, scenes 6 and 7, adjacent:
+      "Now it's your turn to try. Multiply 43 by 27 using the standard column algorithm."
+      "Now it's your turn to try. Multiply 43 by 27 using the standard column algorithm."
+
+    run B gen 3, scenes 11 and 12, adjacent:
+      "Check your work."
+      "Check your work by verifying the column alignment, each partial product, and the placeholder zero."
+
+**The lesson poses the same assessment twice, back to back.** No check catches it:
+both scenes are legally declared and both genuinely assess. It is a quality
+defect a reviewer would cut in one click, and it is **caused by this package** —
+contract-5 taught the model the shape and did not tell it the shape is already
+provided. **Rowed with RC-Q9f**, with the same refusal to fix it by prompt
+emphasis after the fact.
+
+⚠ **Not every adjacency is a duplicate.** Run B gen 1 pairs a `practice` sourced
+from the script's own second problem (*"Let's try another one. Multiply 32 by
+21."*) with the designed assess on fresh numbers — **that is the fading sequence
+working exactly as Foundation §2 describes it**, and the merge put the
+independent attempt at the end of it. The placement rule is doing its job.
+
+## 12f.8 The check the grammar cannot make — every designed assessment, verbatim
+
+The order's two degeneracy tests are **the script's worked answer restated as an
+"unaided" attempt**, and **the same numbers posed**. The script teaches **23 × 14**
+and works **32 × 21**. Every designed assessment across both runs:
+
+**Run A**
+
+> **LO-1** *"Now it's your turn. Multiply 43 by 27 using the standard column algorithm."*
+> **LO-1** *"Now it's your turn to try. Multiply 43 by 27 using the standard column algorithm."*
+> **LO-1** *"Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."*
+> **LO-2** *"Why do we write a placeholder zero in the ones column when multiplying by the tens digit?"* (×2)
+> **LO-2** *"Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."*
+> **LO-3** *"Check your work by verifying the column alignment, each partial product, and the placeholder zero."* (×3)
+
+**Run B**
+
+> **LO-1** *"Now it's your turn to try. Multiply 43 by 25 using the standard column algorithm."* (×3)
+> **LO-2** *"Explain why a placeholder zero is written in the ones column before multiplying by the tens digit."* (×2)
+> **LO-2** *"Why do we write a placeholder zero in the ones column when multiplying by the tens digit?"*
+> **LO-3** *"Check your work by verifying the column alignment, each partial product, and the placeholder zero."* (×2)
+> **LO-3** *"Check your work."*
+
+And the rationale attached to each, which is the evidence limb for an invented
+scene: *"The script does not contain an unaided attempt at a two-digit
+multiplication problem."*
+
+⛳ **NEITHER DEGENERACY TEST FIRES.** **43 × 27** and **43 × 25** appear nowhere in
+the script; the problem is posed cold, with no method reminder and no first step;
+no worked answer is restated. **So the order's STOP condition is NOT triggered**
+and the two-call escalation is not called for on those grounds.
+
+⚠ **AND THE HONEST LIMITS OF THAT, STATED RATHER THAN GLOSSED.** Three of these
+are thin as scenes. *"Check your work."* is four words and cannot pose anything.
+The LO-3 assessments restate the outcome's own wording back at the learner
+instead of giving them a specific worked attempt to check — a real weakness, and
+one the schema cannot see, because a string that reads like an instruction is a
+valid string. **Genuineness past this point is the operator's gate judgment, per
+the 12c ruling**, and this is the material for it.
+
+## 12f.9 The generalization check — B2 under contract-5, reported not scored
+
+| | scenes | `sourced` | `designed` | `assess` | plan | plan realized | refusals |
+|---|---|---|---|---|---|---|---|
+| B2 run A | 19 | 16 | **3** | **3** | all `assess` | ✅ | 11 × `MOTION_UNKNOWN_TEMPLATE` |
+| B2 run B | 14 | 11 | **3** | **3** | all `assess` | ✅ | 6 × `MOTION_UNKNOWN_TEMPLATE` |
+
+⛳ **THE MECHANISM GENERALIZES.** A different topic, a different script, exactly
+one designed assessment per outcome, every outcome assessed, fresh numbers
+(*"Divide 432 by 10. Show your work."*, *"Divide 9432 by 100."*) against a script
+that contains **no numbers at all**, **no duplicate**, and **zero
+`PLAN_ENTRY_UNREALIZED`** — because on this script the model planned `assess` for
+all three outcomes, which is precisely the difference from the operator's script
+and confirms 12f.7's diagnosis by contrast.
+
+⚠ **The refusals are a RENDERER gap, not a design one, and they have nothing to
+do with 12f.** The model chose `motion_graphics` for division and
+`shared.motion.templates` serves four templates, all column-arithmetic:
+`place_value_split`, `column_addition_carry`, `column_multiplication_step`,
+`highlight_and_hold`. **There is no division template**, so every motion scene in
+a division lesson is refused `MOTION_UNKNOWN_TEMPLATE`. That is a real coverage
+limit worth knowing before anyone points this pipeline at a second topic, and it
+is not a defect this package introduced or should fix.
+
+## 12f.10 Tests — zero new failures, both baselines re-measured in this environment
+
+⚠ **THE PUBLISHED BASELINES WERE NOT REPRODUCIBLE HERE, so I measured them by
+stash-and-rerun rather than inheriting them** — the §0 rule about measuring the
+ref, applied to test counts.
+
+| tree | baseline (stashed, same environment) | with 12f | verdict |
+|---|---|---|---|
+| `ivgs-api` | **1652 passed, 0 failed** | **1682 passed, 0 failed** | ✅ **+30**, still zero |
+| `ivgs-workers` | **18 failed, 983 passed, 52 skipped, 15 errors** | **identical** | ✅ **zero new** |
+
+⚠ The worker tree reported `987 passed, 48 skipped` on one run out of four and
+`983/52` on the other three, baseline and 12f alike. **Failures (18) and errors
+(15) were identical in every run.** Four tests flip between passed and skipped on
+something environmental; I did not chase it and it is not 12f's.
+
+⚠ Running these at all needed **both** `DATABASE_URL` and `TEST_DATABASE_URL`
+pointed at `ivgs_reconciliation_test`, and that database **migrated to 0052** —
+`conftest` reads one variable and the app's own startup reads the other, so
+setting only the documented one produces 1,562 errors that look like a broken
+package and are a broken harness.
+
+⚠ **TWO OF THE THIRTY TESTS ARE IN THE SECOND COMMIT, NOT THE TAGGED ONE.** The
+database round-trip pair was written after the images were built, so the image
+tagged `v5.37.5-assessments-authored` carries 28 of them. Tests do not ship
+behaviour and nothing deployed differs, but the tagged commit and the tree are
+not identical on this file and saying so is cheaper than a reader discovering it.
+
+**Thirty tests added** in `test_wpivgs12f_designed_assessments.py`, including a
+**contract-5 round trip through the database** (parse → service → scene rows →
+gate, asserting the merged indices `apply_scene_design` matches rows on, the
+rationale landing on designed rows and NULL on sourced ones) and a regenerate
+test proving a stale rationale is cleared — the RC-Q10 shape, for the field 12f
+adds.
+
+**Three existing tests re-aimed, none weakened:**
+
+  * `test_the_contract_version_records_the_shape_change` pinned `-4`. Re-aimed to
+    assert the current version **and that it is past -3**, so a shape change with
+    no bump still fails loudly without every package editing the same line.
+  * Two 12d tests asserted the model's own `scene_index` survived the parse. **The
+    claim under test is unchanged** — the evidence map is derived and the model's
+    own is ignored — and the index is now the merged position, which 12f.3
+    explains is the more correct of the two.
+  * ⛳ **One test was NOT re-aimed and the code was fixed instead**, which is the
+    right way round: see 12f.3 on `OPTIONAL_SCENE_FIELDS`.
+
+## 12f.11 ⛔ EVIDENCE I DESTROYED, AND WHAT I DID ABOUT IT
+
+I wrote a script to replay the banked emissions into a transcript. It **imported**
+the census harness, whose module-level code runs the generate-and-write loop —
+with `N = 0`, so `json.dump([], …)` **truncated all eight banked emission files to
+`[]`**. Four measurements' raw contracts were gone in one command.
+
+**What was lost:** the emissions behind run A of the acceptance, and behind run A
+of both TASK 0 scripts. Their **numbers survive in this report** and in the
+console output they were read from, but ⛔ **a reader cannot check them against
+the bytes**, which §0 rule 5.1 says is not sufficient.
+
+**What I did:**
+
+  1. **Fixed the harness so it cannot recur** — everything below an
+     `if __name__ == "__main__"` guard, and the tree under measurement made an
+     env var. Proved with a sentinel file that importing it now writes nothing.
+  2. **Re-ran all four measurements and banked them.** The contract-4 runs were
+     reproduced from a **git worktree at `d2fc50c`**, so B1 and B2 were measured
+     against the real contract-4 schema and not a reconstruction. The worktree is
+     removed; `git worktree list` shows only `/opt/ivgs`.
+  3. **Reported both sets.** Run B replicates run A on every load-bearing finding
+     — 0 designed on B1, designed scenes on B2, and **1, 1, 1 refusals with the
+     identical plan and the identical cause** — so the conclusions rest on n=6 for
+     the acceptance and n=2 for each TASK 0 script, not on the lost run.
+
+⚠ **Run A's contracts are declared LOST BY NAME** and are not in the bank. Run B's
+are, in full.
+
+## 12f.12 The tree, and the operator's push block
+
+**Held: 2 commits. Nothing pushed by me. Working tree clean. No frozen stage body
+was touched. No freeze exception was requested.**
+
+⚠ **Two, not one, and for 12e's reason:** the code is committed and tagged BEFORE
+the images are built, so `IVGS_BUILD_SHA` names a commit that exists; the
+acceptance can only be written afterwards.
+
+    ac77733  feat(wp-ivgs-12f): the excerpter is forced to design   [tag v5.37.5-assessments-authored]
+    <2nd>    docs(wp-ivgs-12f): the acceptance, and RC-Q9f — the plan's unforced kind
+
+⚠ **`ivgs-infra/.env` is MODIFIED AND IS NOT MINE TO COMMIT** on node-01, and the
+same file is modified on nodes 02, 03 and 04: the deploy moved `IVGS_API_TAG` and
+`IVGS_WORKERS_TAG` to `v5.37.5-assessments-authored`. It is gitignored and
+`dev/CLAUDE.md` §3 names it never-touch for its token; the tag lines are what a
+deploy changes and they are left as deployed. A copy of node-01's pre-deploy file
+is in the session scratchpad and **does not survive the session** — the rollback
+is the two tag values above, written out here because that is the only place they
+will keep.
+
+```
+# node-01, as the operator
+cd /opt/ivgs
+EXPECTED=2
+ACTUAL=$(git rev-list --count origin/main..HEAD)
+if [ "$ACTUAL" -ne "$EXPECTED" ]; then
+  echo "REFUSING: expected $EXPECTED held commit(s), found $ACTUAL"
+  git log --oneline origin/main..HEAD
+else
+  git push origin main && git push origin v5.37.5-assessments-authored
+fi
+```
+
+## 12f.13 What I did not verify — 12f's additions to §Z
+
+1. ⛔ **The rendered gate panel, still, and now it matters more than before.**
+   No browser was driven. The gate has gained a field this package added
+   (`designed_rationale` in `_arc_row`) and a scene kind that has never appeared
+   in it, and **nothing has confirmed the frontend renders either** — the
+   frontend is still `v5.37.0-design-core` and was not rebuilt, correctly, since
+   no frontend code changed. What a reviewer actually sees is unmeasured.
+2. ⛔ **NOT ONE GENERATION WENT THROUGH THE REAL PIPELINE.** Every number above
+   comes from the harness calling node-02 directly with the seed-rendered prompts
+   and the contract schema — the same modules production imports, but **not the
+   Celery task, not `task_prerun`, not the document transform, not the capture
+   observer, and not the scene rows.** The transform and the merge are tested and
+   were read back out of the running containers; they have **never run inside a
+   real stage-2 job.** ⚠ This is the largest gap in the package: the seam that
+   carries designed assessments into `storyboard_scenes` is proven by test and by
+   inspection, and not by a job.
+3. ⛔ **Whether a designed assessment RENDERS.** Stage 3+ has never been handed
+   one. The motion assessments carry `highlight_and_hold`-shaped intent but the
+   renderer has not drawn one, and B2 showed the template set does not cover
+   division at all.
+4. ⚠ **n is small and the script is one script.** Six generations on the
+   operator's script and two each on B1/B2. The `assess`-vs-`practice` label
+   flipped between B1's two runs, which is a direct measure of how unstable a
+   single generation is.
+5. ⚠ **Prompt length, still untested and now worse.** 7,788 → 15,941 characters
+   across v1–v6. The arc improved this time, so the question is live rather than
+   answered: nothing measures what the length costs.
+6. ⚠ **`ivgs-scheduler`, `ivgs-backup-worker`, `ivgs-motion-renderer` and
+   `tests_system` were not run.** 12f touches none of them, and I did not
+   re-measure their baselines to prove it.
+7. ⚠ **The `rationale` on the `scenes` oneOf's `designed` branch is still
+   unbounded**, where the new one has a `maxLength`. Named as a residue in
+   `contract.py` rather than widened into this package's blast radius.

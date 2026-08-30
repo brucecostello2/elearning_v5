@@ -1,0 +1,154 @@
+[
+  {
+    "gen": 1,
+    "label": "B1-contract4-runB",
+    "scenes": 13,
+    "sourced": 13,
+    "designed": 0,
+    "assess": 1,
+    "practice": 2,
+    "dropped": 1,
+    "invented": [],
+    "evidence_map": {
+      "LO-1": [
+        6,
+        8,
+        10
+      ],
+      "LO-2": [],
+      "LO-3": [
+        10
+      ]
+    },
+    "plan": {
+      "LO-1": {
+        "evidence_kind": "assess",
+        "learner_does": "Subtracts two 2-digit numbers with regrouping, producing a correctly reduced tens digit and a correct final answer, unaided."
+      },
+      "LO-2": {
+        "evidence_kind": "practice",
+        "learner_does": "Explains why one ten is crossed out of the tens column when ten ones are added to the ones column, with support."
+      },
+      "LO-3": {
+        "evidence_kind": "assess",
+        "learner_does": "Checks their own two-digit subtraction work by verifying the crossed-out ten, the regrouped ones digit, and the final difference, unaided."
+      }
+    },
+    "events": [
+      "hook",
+      "present",
+      "guide",
+      "present",
+      "guide",
+      "practice",
+      "present",
+      "practice",
+      "feedback",
+      "assess",
+      "transfer",
+      "feedback",
+      "feedback"
+    ],
+    "refusals": [
+      "OUTCOME_UNASSESSED",
+      "PLAN_ENTRY_UNREALIZED"
+    ],
+    "flags": [
+      "SEGMENTING",
+      "UNDECLARED_SCRIPT_GAP"
+    ],
+    "verbatim": true,
+    "rows": [
+      {
+        "outcome_id": "LO-1",
+        "text": "Given two 2-digit numbers written in column form where the top ones digit is smaller than the bottom ones digit, the learner will compute the difference using regrouping, producing a correctly reduced tens digit and a correct final answer.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13
+        ],
+        "assessed_by": [
+          6,
+          8,
+          10
+        ],
+        "served": true,
+        "assessed": true
+      },
+      {
+        "outcome_id": "LO-2",
+        "text": "Given a column subtraction that requires borrowing, the learner will explain why one ten is crossed out of the tens column when ten ones are added to the ones column.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "understand",
+        "served_by": [
+          1,
+          11,
+          13
+        ],
+        "assessed_by": [],
+        "served": true,
+        "assessed": false
+      },
+      {
+        "outcome_id": "LO-3",
+        "text": "Given a two-digit subtraction they have just attempted, the learner will check their own work by verifying the crossed-out ten, the regrouped ones digit, and the final difference.",
+        "measurable": true,
+        "proposed_refinement": null,
+        "bloom_level": "apply",
+        "served_by": [
+          1,
+          10,
+          11,
+          13
+        ],
+        "assessed_by": [
+          10
+        ],
+        "served": true,
+        "assessed": true
+      }
+    ],
+    "assess_scenes": [
+      {
+        "scene_index": 10,
+        "serves_outcomes": [
+          "LO-1",
+          "LO-3"
+        ],
+        "instructional_event": "assess",
+        "bloom_level": "apply",
+        "scene_origin": "sourced",
+        "source_refs": [
+          {
+            "transcript_id": null,
+            "start": 540,
+            "end": 600,
+            "quote": "Now you try. Work out 63 minus 48."
+          }
+        ],
+        "designed_rationale": null,
+        "rewrite_of": null,
+        "media_type": "image",
+        "media_rationale": "Human or social moment: the challenge.",
+        "generation_params": null,
+        "duration_seconds": 20,
+        "visual_description": "A blank two-row column layout on lined paper, with a pencil and a ruler nearby.",
+        "narration_text": "Now you try. Work out 63 minus 48."
+      }
+    ]
+  }
+]

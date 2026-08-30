@@ -1,0 +1,43 @@
+# Dividing by 10 and by 100
+
+Today we are looking at what happens to a whole number when you divide it by 10, and then by 100.
+
+## Dividing by 10
+
+Every whole number is built out of place value columns. From the right, we have ones, then tens, then hundreds, then thousands.
+
+Dividing by 10 makes a number ten times smaller.
+
+When a number gets ten times smaller, every digit in it moves one place to the right. The thousands digit becomes the hundreds digit. The hundreds digit becomes the tens digit. The tens digit becomes the ones digit.
+
+The digits themselves never change. Their order never changes. Only the column each one sits in changes.
+
+For a whole number that ends in a zero, that zero moves off the end and disappears, because there is nothing to the right of the ones column for it to move into.
+
+## Dividing by 100
+
+Dividing by 100 makes a number one hundred times smaller.
+
+One hundred is ten times ten. So dividing by 100 is the same as dividing by 10, and then dividing by 10 again.
+
+That means every digit moves two places to the right instead of one.
+
+A number with two zeros on the end loses both of them.
+
+## Why the digits do not change
+
+It helps to know why this works rather than only that it works.
+
+A digit in the tens column is worth ten times what the same digit is worth in the ones column. So moving a digit one column to the right divides what it is worth by exactly ten. Doing that to every digit at once divides the whole number by ten.
+
+That is the whole rule. It is not a trick about zeros. The zeros only look like they are being removed because the ones column has nowhere further right to go.
+
+## A common mistake
+
+People often say "dividing by 10 means crossing off a zero." That works for whole numbers that end in a zero and it fails for every other number, because there is no zero to cross off.
+
+The reliable version is the one about columns: every digit shifts one place right for each ten you divide by.
+
+## Summary
+
+Divide by 10, every digit moves one column to the right. Divide by 100, every digit moves two columns to the right. The digits stay in the same order and keep their own identities throughout.

@@ -450,3 +450,135 @@ class TestThePromptAndTheStorage:
         capture._armed.set(None)
         emission = _emission()
         assert capture.transform_document(emission) is emission
+
+
+# ---------------------------------------------------------------------------
+# The storage round trip, against the database — the 12d lesson, kept
+# ---------------------------------------------------------------------------
+
+class TestTheContractFiveRoundTrip:
+    """⛔ 12d LEARNED THIS THE EXPENSIVE WAY AND 12f DOES NOT RE-LEARN IT.
+
+    Contract-5 changes the worker's parse AND adds a column the ingest writes,
+    so "the storage round-trip was not re-exercised" would be a caveat covering
+    the exact seam most likely to break. This drives a real contract-5 emission
+    through the worker's parse, the API's service and the gate, against the
+    database, in one pass — including the merged indices, which are what
+    `apply_scene_design` matches scene ROWS on.
+    """
+
+    async def test_a_contract_five_emission_survives_parse_store_and_gate(
+        self, db_session,
+    ):
+        import uuid as _uuid
+
+        from app.models.project import Project
+        from app.models.storyboard_scene import StoryboardScene
+        from app.services.design_brief_service import DesignBriefService
+        from app.services.design_review import review, split
+        from sqlalchemy import select
+
+        sys.path.insert(0, str(REPO / "ivgs-workers"))
+        from design_core.contract import parse_contract
+        from shared.design.merge import merged_scene_sequence
+
+        outcomes_text = "\n".join(f"{o['id']}: {o['text']}." for o in OUTCOMES)
+        project = Project(id=_uuid.uuid4(), name="12f round trip", state="DRAFT",
+                          learning_outcomes=outcomes_text)
+        db_session.add(project)
+        await db_session.flush()
+
+        emission = _emission(scenes=[
+            _sourced("LO-1", narration_text="teach it"),
+            _sourced("LO-2", event="guide", narration_text="guide it"),
+            _sourced("LO-3", narration_text="show the check"),
+        ])
+
+        # ── the scene rows the FROZEN stage body would have written, which is
+        # the merged sequence handed to it by the document transform. They must
+        # exist before the brief is recorded for `apply_scene_design` to match.
+        for scene in merged_scene_sequence(emission):
+            db_session.add(StoryboardScene(
+                project_id=project.id, scene_index=scene["scene_index"],
+                narration_text=scene["narration_text"],
+                visual_description=scene["visual_description"],
+                media_type=scene["media_type"],
+                duration_seconds=scene["duration_seconds"]))
+        await db_session.flush()
+
+        payload = parse_contract(emission)
+        assert payload["contract_version"] == "design-contract-5"
+        brief = await DesignBriefService(db_session).record(project.id, payload)
+        await db_session.refresh(brief)
+
+        # ── the brief, IN THE DATABASE ──
+        assert len(brief.scene_designs) == 6
+        assert brief.evidence_map == {"LO-1": [1], "LO-2": [3], "LO-3": [5]}
+        # VERBATIM, including the full stop this test's `outcomes_text` added —
+        # the operator's line is what lands in `text`, never a normalisation of it.
+        assert [o["text"] for o in brief.outcomes] == [
+            f"{o['text']}." for o in OUTCOMES]
+        assert all(o["authored_by"] == "operator" for o in brief.outcomes)
+
+        # ── the SCENE ROWS carry the declarations, matched by merged index ──
+        rows = list((await db_session.execute(
+            select(StoryboardScene)
+            .where(StoryboardScene.project_id == project.id)
+            .order_by(StoryboardScene.scene_index))).scalars().all())
+        assert [r.instructional_event for r in rows] == [
+            "present", "assess", "guide", "assess", "present", "assess"]
+        assert [r.scene_origin for r in rows] == [
+            "sourced", "designed", "sourced", "designed", "sourced", "designed"]
+        # ⛔ migration 0052: the invented scene arrives WITH its reason, and the
+        # sourced ones carry none.
+        assert all(r.designed_rationale for r in rows if r.scene_origin == "designed")
+        assert all(r.designed_rationale is None
+                   for r in rows if r.scene_origin == "sourced")
+        assert all(r.source_refs is None
+                   for r in rows if r.scene_origin == "designed")
+
+        # ── and the gate reads it clean off the ROWS, not off the payload ──
+        findings, coverage = review(
+            scenes=rows, outcomes=brief.outcomes,
+            assessment_plan=brief.assessment_plan,
+            learning_outcomes=outcomes_text)
+        refusals, _ = split(findings)
+        assert [f.code for f in refusals] == [], [f.code for f in refusals]
+        assert all(r.served and r.assessed for r in coverage)
+
+    async def test_a_regenerate_clears_a_stale_designed_rationale(
+        self, db_session,
+    ):
+        """The RC-Q10 shape, for the field 12f adds: a scene that was designed
+        in one generation and sourced in the next must not keep the old reason
+        readable and false on the row."""
+        import uuid as _uuid
+
+        from app.models.project import Project
+        from app.models.storyboard_scene import StoryboardScene
+        from app.services.design_brief_service import DesignBriefService
+        from sqlalchemy import select
+
+        project = Project(id=_uuid.uuid4(), name="12f regenerate", state="DRAFT",
+                          learning_outcomes="LO-1: compute the product.")
+        db_session.add(project)
+        db_session.add(StoryboardScene(project_id=project.id, scene_index=0,
+                                       narration_text="n", media_type="image"))
+        await db_session.flush()
+
+        service = DesignBriefService(db_session)
+        await service.apply_scene_design(project.id, {
+            "scene_index": 0, "scene_origin": "designed",
+            "source_refs": None, "designed_rationale": "invented for the check"})
+        row = await db_session.scalar(
+            select(StoryboardScene).where(StoryboardScene.project_id == project.id))
+        await db_session.refresh(row)
+        assert row.designed_rationale == "invented for the check"
+
+        await service.apply_scene_design(project.id, {
+            "scene_index": 0, "scene_origin": "sourced",
+            "source_refs": [{"transcript_id": None, "start": 0, "end": 4,
+                             "quote": "text"}]})
+        await db_session.refresh(row)
+        assert row.scene_origin == "sourced"
+        assert row.designed_rationale is None

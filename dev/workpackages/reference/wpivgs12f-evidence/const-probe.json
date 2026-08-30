@@ -1,0 +1,63 @@
+[
+  {
+    "probe": "A. enum, single value (scalar)",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "origin": "designed"
+    },
+    "raw_chars": 22
+  },
+  {
+    "probe": "B. const, scalar string",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "origin": "designed"
+    },
+    "raw_chars": 22
+  },
+  {
+    "probe": "C. const, whole array",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "serves_outcomes": [
+        "LO-2"
+      ]
+    },
+    "raw_chars": 29
+  },
+  {
+    "probe": "D. array minItems=maxItems=1 + enum",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "serves_outcomes": [
+        "LO-2"
+      ]
+    },
+    "raw_chars": 29
+  },
+  {
+    "probe": "E. contract-5 construct, whole",
+    "http": 200,
+    "finish": "stop",
+    "value": {
+      "designed_assessments": {
+        "LO-1": {
+          "narration_text": "This is a test",
+          "instructional_event": "assess",
+          "serves_outcomes": [
+            "LO-1"
+          ],
+          "provenance": {
+            "origin": "designed",
+            "rationale": "example"
+          }
+        }
+      }
+    },
+    "raw_chars": 267
+  }
+]
