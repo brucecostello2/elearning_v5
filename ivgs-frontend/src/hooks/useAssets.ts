@@ -44,10 +44,13 @@ export function useAssets(projectId: string): UseAssetsReturn {
 
   /**
    * Upload a new asset (manual upload).
+   *
+   * WP-70 fix S6: the path was the GET-only list route, so every manual upload
+   * answered 405. Uploads are `POST /projects/{id}/assets/upload` (assets.py).
    */
   const uploadAsset = async (formData: FormData): Promise<any> => {
     const response = await apiClient.post<{ data: Asset }>(
-      `/api/v1/projects/${projectId}/assets`,
+      `/api/v1/projects/${projectId}/assets/upload`,
       formData,
       { headers: { "Content-Type": "multipart/form-data" } }
     );

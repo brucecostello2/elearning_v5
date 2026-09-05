@@ -30,3 +30,55 @@ class TestS11DLQEnteredAt:
         for row in rows:
             assert "entered_dlq_at" in row, f"missing on {sorted(row)}"
             assert row["entered_dlq_at"] == row["created_at"]
+
+
+# ── S6: the upload call the hook now makes returns 2xx ───────────────────
+
+@pytest.mark.asyncio
+class TestS6UploadPath:
+    async def test_post_to_assets_upload_returns_2xx_on_a_fixture_project(
+        self, client: AsyncClient, operator_token: str, project_id: str
+    ):
+        """useAssets.uploadAsset now POSTs multipart form data to
+        /projects/{id}/assets/upload. This is that call, made from the API's
+        own test client, on a fixture project."""
+        import io
+        r = await client.post(
+            f"/api/v1/projects/{project_id}/assets/upload",
+            files={"file": ("clip.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\0" * 64), "image/png")},
+            data={"asset_type": "image"},
+            headers=_auth(operator_token),
+        )
+        assert 200 <= r.status_code < 300, r.text
+        assert r.json()["asset_type"] == "image"
+
+    async def test_post_to_the_list_path_is_405_which_is_what_the_hook_used_to_do(
+        self, client: AsyncClient, operator_token: str, project_id: str
+    ):
+        """The pre-fix hook POSTed to the GET-only list path."""
+        import io
+        r = await client.post(
+            f"/api/v1/projects/{project_id}/assets",
+            files={"file": ("clip.png", io.BytesIO(b"x"), "image/png")},
+            data={"asset_type": "image"},
+            headers=_auth(operator_token),
+        )
+        assert r.status_code == 405, r.text
+
+    async def test_the_assets_page_form_without_asset_type_is_refused_422(
+        self, client: AsyncClient, operator_token: str, project_id: str
+    ):
+        """WP-70 Decision D-2, pinned as the API contract: `asset_type` is
+        `Form(...)` (required) on the upload route. The project Assets page
+        (app/projects/[id]/assets/page.tsx) appends only `file` and
+        `project_id`, so its upload will be refused with 422 even after the
+        hook's path is corrected. That page is outside this package's file
+        list and is reported, not edited."""
+        import io
+        r = await client.post(
+            f"/api/v1/projects/{project_id}/assets/upload",
+            files={"file": ("clip.png", io.BytesIO(b"x"), "image/png")},
+            data={"project_id": project_id},
+            headers=_auth(operator_token),
+        )
+        assert r.status_code == 422, r.text

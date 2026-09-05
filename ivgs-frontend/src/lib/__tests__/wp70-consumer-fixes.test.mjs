@@ -108,3 +108,49 @@ test("S12: every field TS User declares is one UserResponse emits", () => {
   const missing = [...declared].filter((f) => !emitted.has(f));
   assert.deepEqual(missing, [], `declared but never sent: ${missing}`);
 });
+
+/* ── Route table helpers (S6, S5, S4, S7, S8) ─────────────────────────── */
+
+/** `[method, path]` pairs a FastAPI router file serves, each router's prefix applied. */
+function routes(pyRel, mountPrefix = "/api/v1") {
+  const py = api(pyRel);
+  const prefixes = {};
+  for (const m of py.matchAll(/^(\w+)\s*=\s*APIRouter\(([^)]*)\)/gm)) {
+    const pm = m[2].match(/prefix="([^"]*)"/);
+    prefixes[m[1]] = pm ? pm[1] : "";
+  }
+  return [...py.matchAll(/@(\w+)\.(get|post|put|patch|delete|websocket)\(\s*"([^"]*)"/g)].map(
+    (m) => [m[2].toUpperCase(), mountPrefix + (prefixes[m[1]] ?? "") + m[3]]
+  );
+}
+
+/** The `apiClient.<method>(`<template>`...` call inside a named hook function. */
+function hookCall(hookRel, fnName) {
+  const s = src(hookRel);
+  const at = s.indexOf(`const ${fnName} =`);
+  assert.ok(at >= 0, `${fnName} not found in ${hookRel}`);
+  const body = s.slice(at, s.indexOf("\n  };", at));
+  const m = body.match(/apiClient\.(get|post|put|patch|delete)(?:<[^(]*>)?\(\s*`([^`]*)`/);
+  assert.ok(m, `no apiClient call in ${fnName}`);
+  return { method: m[1].toUpperCase(), path: m[2] };
+}
+
+/** Does a template-literal path match a FastAPI path (`${x}` ~ `{y}`)? */
+function pathMatches(templatePath, routePath) {
+  const re = new RegExp("^" + routePath.replace(/\{[^}]+\}/g, "[^/]+") + "$");
+  return re.test(templatePath.replace(/\$\{[^}]+\}/g, "X"));
+}
+
+/* ── S6: asset upload POSTs to the GET-only list path ─────────────────── */
+
+test("S6: uploadAsset POSTs to a path the API serves for POST", () => {
+  const call = hookCall("hooks/useAssets.ts", "uploadAsset");
+  assert.equal(call.method, "POST");
+  const served = routes("app/api/v1/assets.py").filter(([m]) => m === "POST").map(([, p]) => p);
+  assert.ok(served.length > 0, "no POST routes parsed from assets.py");
+  assert.ok(
+    served.some((p) => pathMatches(call.path, p)),
+    `POST ${call.path} matches none of ${served.join(", ")}`
+  );
+  assert.ok(call.path.endsWith("/assets/upload"), call.path);
+});
