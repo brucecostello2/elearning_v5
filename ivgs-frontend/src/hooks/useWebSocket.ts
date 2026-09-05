@@ -1,11 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getAccessToken } from "@/lib/auth";
 
 /**
  * Phase 13 — WebSocket Hook for Real-Time Updates
  *
  * Generic WebSocket connection manager used by:
- * - Pipeline Progress Tracker (§8.2.1): WS /api/v1/jobs/{id}/status
- * - Node Monitor (§8.1.5): WS /api/v1/nodes/{node_id}/logs
+ * - Pipeline Progress Tracker (§8.2.1): WS /api/v1/ws/jobs/{id}/status
+ *
+ * WP-70 fix S5+N3. Every IVGS WebSocket route authenticates with
+ * `?token=<access JWT>` (ws_logs.py `_authenticate_ws`, close 1008 without
+ * it). The token is appended HERE, once, for every caller, from the same
+ * stored access token the HTTP client sends as a Bearer header.
  *
  * Features:
  * - Automatic connection management (connect on mount, disconnect on unmount)
@@ -61,6 +66,15 @@ const getWebSocketBaseURL = (): string => {
 
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}`;
+};
+
+/**
+ * The full socket URL: base + path + the server's `token` query parameter.
+ * Kept as a plain function so the WP-70 test can evaluate it directly.
+ */
+const websocketUrl = (baseUrl: string, path: string, token: string | null): string => {
+  const sep = path.includes("?") ? "&" : "?";
+  return token ? `${baseUrl}${path}${sep}token=${encodeURIComponent(token)}` : `${baseUrl}${path}`;
 };
 
 export function useWebSocket(path: string | null): UseWebSocketReturn {
@@ -127,7 +141,7 @@ export function useWebSocket(path: string | null): UseWebSocketReturn {
     }
 
     const baseUrl = getWebSocketBaseURL();
-    const fullUrl = `${baseUrl}${path}`;
+    const fullUrl = websocketUrl(baseUrl, path, getAccessToken());
 
     setConnectionState("CONNECTING");
 

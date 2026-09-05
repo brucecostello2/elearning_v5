@@ -215,3 +215,38 @@ test("S8: resumeJob POSTs to the /jobs/{id}/resume route, with no /projects/ seg
   );
   assert.ok(!call.path.includes("/projects/"), call.path);
 });
+
+/* ══ WP-70 v2 ═══════════════════════════════════════════════════════════ */
+
+/** Evaluate a small arrow function from TS source after stripping simple annotations. */
+function evalArrow(tsSource, constName) {
+  const at = tsSource.indexOf(`const ${constName} =`);
+  assert.ok(at >= 0, `${constName} not found`);
+  const end = tsSource.indexOf("\n};", at);
+  assert.ok(end > at, `${constName} body end not found`);
+  const text = tsSource
+    .slice(at + `const ${constName} =`.length, end + 2)
+    .replace(/:\s*(string|number|boolean|null|File)(\s*\|\s*(string|number|boolean|null))*/g, "");
+  return new Function(`return (${text.trim().replace(/;$/, "")});`)();
+}
+
+/* ── S5 + N3: the socket URL carries /ws/jobs/ AND the access token ───── */
+
+test("S5+N3: the socket URL for a selected job contains /ws/jobs/ and a non-empty token", () => {
+  const page = src("app/monitoring/pipeline/page.tsx");
+  const pm = page.match(/useWebSocket\(\s*selectedJobId\s*\?\s*`([^`]*)`\s*:\s*null\s*\)/);
+  assert.ok(pm, "useWebSocket(selectedJobId ? `...` : null) not found");
+  const path = pm[1].replace(/\$\{selectedJobId\}/g, "job-42");
+
+  // The hook must build the URL from the current access token, in one place.
+  const hook = src("hooks/useWebSocket.ts");
+  assert.ok(/getAccessToken\(\)/.test(hook), "useWebSocket does not read the access token");
+  const withToken = evalArrow(hook, "websocketUrl");
+  const url = withToken("ws://api.local", path, "tok.en.abc");
+  assert.ok(url.includes("/ws/jobs/job-42/status"), url);
+  const q = new URL(url).searchParams.get("token");
+  assert.ok(q && q.length > 0, `no token on ${url}`);
+  assert.equal(q, "tok.en.abc");
+  // The server's contract is the `token` query parameter (ws_logs.py _authenticate_ws).
+  assert.ok(/query_params\.get\("token"\)/.test(api("app/api/v1/ws_logs.py")));
+});

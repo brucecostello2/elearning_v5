@@ -230,3 +230,78 @@ class TestS10PresetActorClip:
         assert project.talking_head_asset_id is None, (
             "talking_head_asset_id names the RENDERED head; preset apply must not set it"
         )
+
+
+# ══ WP-70 v2 ═══════════════════════════════════════════════════════════════
+
+# ── S5 + N3: the job-status socket's real authentication contract ─────────
+
+def _ws_client():
+    from starlette.testclient import TestClient
+    from main import app
+    return TestClient(app)
+
+
+def _mock_redis_one_terminal_message():
+    """redis.asyncio stand-in that delivers one COMPLETE frame then ends."""
+    import json
+    from unittest.mock import AsyncMock, MagicMock
+
+    pubsub = MagicMock()
+    pubsub.subscribe = AsyncMock()
+    pubsub.unsubscribe = AsyncMock()
+    frames = [{"type": "status", "job_id": "job-42", "status": "COMPLETE"}]
+
+    async def get_message(**kw):
+        if frames:
+            return {"type": "message", "data": json.dumps(frames.pop(0)).encode()}
+        raise RuntimeError("no more frames")
+
+    pubsub.get_message = get_message
+    r = MagicMock()
+    r.pubsub.return_value = pubsub
+    r.close = AsyncMock()
+    return r
+
+
+@pytest.mark.asyncio
+class TestS5N3JobStatusSocketAuth:
+    """The real `_authenticate_ws` (ws_logs.py), not the mock the older WS
+    tests patch in: `?token=<access JWT>`, user must exist and be active."""
+
+    async def test_a_valid_token_is_accepted(self, operator_user, db_session):
+        from datetime import timedelta
+        from unittest.mock import patch
+        from starlette.websockets import WebSocketDisconnect
+        from app.core.security import create_access_token
+
+        user, _ = operator_user
+        token = create_access_token(user_id=str(user.id), role=user.role,
+                                    expires_delta=timedelta(minutes=5))
+        with patch("redis.asyncio.from_url", return_value=_mock_redis_one_terminal_message()):
+            with _ws_client() as c:
+                with c.websocket_connect(f"/api/v1/ws/jobs/job-42/status?token={token}") as ws:
+                    frame = ws.receive_json()
+        assert frame["status"] == "COMPLETE", frame
+
+    async def test_no_token_is_rejected_1008(self, operator_user):
+        from starlette.websockets import WebSocketDisconnect
+        with _ws_client() as c:
+            with pytest.raises(WebSocketDisconnect) as ei:
+                with c.websocket_connect("/api/v1/ws/jobs/job-42/status"):
+                    pass
+        assert ei.value.code == 1008
+
+    async def test_an_expired_token_is_rejected_1008(self, operator_user):
+        from datetime import timedelta
+        from starlette.websockets import WebSocketDisconnect
+        from app.core.security import create_access_token
+
+        user, _ = operator_user
+        expired = create_access_token(user_id=str(user.id), role=user.role,
+                                      expires_delta=timedelta(seconds=-60))
+        with _ws_client() as c:
+            with pytest.raises(WebSocketDisconnect) as ei:
+                with c.websocket_connect(f"/api/v1/ws/jobs/job-42/status?token={expired}"):
+                    pass
+        assert ei.value.code == 1008
