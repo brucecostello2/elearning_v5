@@ -1113,3 +1113,8 @@ the shape it does *because* the eight stage bodies are frozen. When they become
 activities, the Design Contract can travel through stage 2 directly, and
 **RC-Q6's shortfall (a table keyed by scene number rather than one pre-selected
 block) closes with one line in each of three bodies.**
+
+## Reports filed this session — WP-69 (2026-09-05, consumer audit)
+
+- `dev/workpackages/reports/WP-69-CONSUMER-AUDIT-report_2026-09-05.md` — read-only consumer audit, D1–D7 indexed by `dev/audit/build_consumer_index.py` (deterministic); calibration 6/6 found by the method; **13 definite defects in surviving code**, 3 in replaced stage bodies; operator has ordered WP-70..WP-73 from it (not started). Nothing deployed, no source file changed. Branch `wp-69-consumer-audit-clean` (2 commits off `origin/main`), HELD.
+

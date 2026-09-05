@@ -16,11 +16,13 @@
 
 **Learned, not yet written anywhere else:** the system python on node-01 has neither SQLAlchemy nor Pydantic installed; the index is stdlib-only (`ast`, `re`, `yaml`) and therefore runs from a clean checkout without the images.
 
-**Tree at close (§0 rule 5.5):**
-- Committed on `wp-69-consumer-audit`: `dev/audit/build_consumer_index.py`, `dev/audit/consumer_index.json`, `dev/audit/consumer_index.md`, this report. One commit.
-- **Held:** `git rev-list --count origin/main..HEAD` after `git fetch` = **10** (9 held WP-IVGS-12j commits that were already on `main` unpushed, plus this package's 1). The count-gated push block below states 10.
-- Dirty and **not mine**: `dev/workpackages/WP-69-CONSUMER-AUDIT_order_2026-09-05.md` is untracked (the operator's order file). Not staged.
-- Evidence in scratch: only the intermediate review dumps used to write this report; everything they contain is derivable by re-running the script. Declared lost by name: `scratchpad/review.txt`, `scratchpad/run1.json`, `scratchpad/run1.md` (the second-run comparison copies). Nothing else.
+**Tree at close (§0 rule 5.5) — amended 2026-09-05 after the operator's push ruling:**
+- Branch `wp-69-consumer-audit` holds the package commit `61c0f59` plus a follow-up commit (board row, order-file banner, this amendment) on top of nine unpushed WP-IVGS-12j commits that the 2026-08-30 ruling superseded. **It is not to be pushed** (operator ruling) and stays in place.
+- Branch **`wp-69-consumer-audit-clean`** was cut from `origin/main` and carries only the two WP-69 commits (cherry-picked). **Held:** `git rev-list --count origin/main..wp-69-consumer-audit-clean` after `git fetch` = **2**; the push block below states 2.
+- Dirty and not mine at close: nothing (the order file is now tracked by the follow-up commit, at operator instruction).
+- Evidence in scratch: only intermediate review dumps, all derivable by re-running the script. Declared lost by name: `scratchpad/review.txt`, `scratchpad/run1.json`, `scratchpad/run1.md`.
+
+**Operator rulings received 2026-09-05 (recorded so the package is not re-litigated):** board row and banner added (CLAUDE.md §0 5.2/5.3 stand). Packages ordered from this report: **WP-70** (S4–S8, S10–S13 frontend/API one-liners, each with a failing-first test; S4 becomes "add `POST /retention/run`"), **WP-71** (S1 motion-graphics asset persistence + migration 0056 adding the `animation` enum member), **WP-72** (deletion service's `sched:reservation` key mismatch, verified against WP-59), **WP-73** (S2/S3 scripts rewritten against 0001 column names, or deleted if the runbook has another path). S9 is owned by the AD-12 cutover package; R1–R3 are frozen bodies. None started in this session.
 
 ---
 
@@ -206,6 +208,6 @@ Diffs I would apply, for the operator to turn into packages. Nothing below was w
 ## Push block (operator runs; Claude never pushes)
 
 ```bash
-# node-01 only
-( cd /opt/ivgs && git fetch origin && n=$(git rev-list --count origin/main..wp-69-consumer-audit) && if [ "$n" -eq 10 ]; then git push origin wp-69-consumer-audit; else echo "held count is $n, expected 10 - refusing"; fi )
+# node-01 only — pushes the CLEAN branch (2 commits off origin/main), never wp-69-consumer-audit
+( git fetch origin && n=$(git rev-list --count origin/main..wp-69-consumer-audit-clean) && if [ "$n" -eq 2 ]; then git push origin wp-69-consumer-audit-clean; else echo "held count is $n, expected 2 - refusing"; fi )
 ```
