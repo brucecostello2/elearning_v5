@@ -170,3 +170,18 @@ test("S5: the monitoring page's job-status socket path is one the API serves", (
   );
   assert.ok(wsPath.includes("/ws/jobs/"), wsPath);
 });
+
+/* ── S4: retention "Run cleanup" calls a path no route served ─────────── */
+
+test("S4: the Run cleanup button's request matches a POST route in retention.py", () => {
+  const page = src("app/admin/retention/page.tsx");
+  const at = page.indexOf("const handleRunCleanup");
+  assert.ok(at >= 0, "handleRunCleanup not found");
+  const m = page.slice(at).match(/api\.post\(\s*"([^"]+)"/);
+  assert.ok(m, "no api.post in handleRunCleanup");
+  const served = routes("app/api/v1/retention.py").filter(([mth]) => mth === "POST").map(([, p]) => p);
+  assert.ok(
+    served.some((p) => pathMatches(m[1], p)),
+    `POST ${m[1]} matches none of ${served.join(", ")}`
+  );
+});

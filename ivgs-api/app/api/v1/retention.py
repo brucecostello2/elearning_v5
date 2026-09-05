@@ -7,6 +7,7 @@ Endpoints:
 - GET    /api/v1/retention/policies/{id}           — Get retention policy detail
 - PUT    /api/v1/retention/policies/{id}           — Update retention policy (admin only)
 - GET    /api/v1/retention/report                  — Asset tier distribution report
+- POST   /api/v1/retention/run                     — Run the retention migration now (admin only)
 
 RBAC: Admin only for mutations. All authenticated users can read.
 """
@@ -14,6 +15,7 @@ import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from shared.database import get_session
@@ -150,3 +152,65 @@ async def get_retention_report(
     """Asset distribution across tiers and upcoming tier migrations."""
     service = RetentionService(db)
     return await service.get_report()
+
+
+# ── WP-70 fix S4: the "Run cleanup" button ────────────────────────────────
+#
+# Admin -> Retention -> "Run cleanup" has POSTed /api/v1/retention/run since the
+# page was written, and no route served it: every press was a 404 and the
+# success toast never showed. The route enqueues the nightly beat task once,
+# under the beat entry's own name and kwargs (ivgs-workers/celery_app.py,
+# "retention-migration"), so a manual run IS the nightly run.
+
+RETENTION_BEAT_TASK = "ivgs_workers.tasks.periodic_tasks.run_retention_migration"
+RETENTION_BEAT_QUEUE = "default"
+RETENTION_BEAT_PRIORITY = 2
+RETENTION_BEAT_KWARGS = {"dry_run": False, "max_transitions": 500}
+
+
+class RetentionRunResponse(BaseModel):
+    """The Celery task id of the enqueued retention migration."""
+
+    task_id: str
+
+
+@router.post(
+    "/run",
+    response_model=RetentionRunResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Run the retention migration now (admin only)",
+)
+async def run_retention_migration_now(
+    current_user: User = Depends(require_admin),
+):
+    """Enqueue one run of the retention migration beat task (admin only).
+
+    Returns 202 with the task id. A broker failure is a 503, not a 500: the
+    request was well-formed and nothing was enqueued.
+    """
+    from app.services.celery_producer import celery_app as pipeline_celery
+
+    try:
+        result = pipeline_celery.send_task(
+            RETENTION_BEAT_TASK,
+            kwargs=dict(RETENTION_BEAT_KWARGS),
+            queue=RETENTION_BEAT_QUEUE,
+            priority=RETENTION_BEAT_PRIORITY,
+        )
+    except Exception as exc:
+        logger.error(
+            "retention_run_enqueue_failed user=%s error=%s", current_user.id, exc
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={
+                "error": {
+                    "code": "BROKER_UNAVAILABLE",
+                    "message": f"Could not enqueue {RETENTION_BEAT_TASK}: {exc}",
+                }
+            },
+        ) from exc
+    logger.info(
+        "retention_run_enqueued user=%s task_id=%s", current_user.id, result.id
+    )
+    return RetentionRunResponse(task_id=str(result.id))

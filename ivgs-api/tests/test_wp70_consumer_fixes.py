@@ -82,3 +82,70 @@ class TestS6UploadPath:
             headers=_auth(operator_token),
         )
         assert r.status_code == 422, r.text
+
+
+# ── S4: POST /api/v1/retention/run ───────────────────────────────────────
+
+RETENTION_BEAT_TASK = "ivgs_workers.tasks.periodic_tasks.run_retention_migration"
+
+
+@pytest.fixture
+def retention_send_task(monkeypatch):
+    """Record every send_task on the API's Celery producer; push nothing."""
+    from app.services import celery_producer
+
+    calls = []
+
+    def _stub(name, args=None, kwargs=None, queue=None, **extra):
+        calls.append({"name": name, "args": args, "kwargs": kwargs, "queue": queue, **extra})
+
+        class _R:
+            id = "wp70-stub-task-id"
+
+        return _R()
+
+    monkeypatch.setattr(celery_producer.celery_app, "send_task", _stub)
+    return calls
+
+
+@pytest.mark.asyncio
+class TestS4RetentionRun:
+    async def test_the_route_exists_and_refuses_a_viewer(
+        self, client: AsyncClient, viewer_token: str, retention_send_task: list
+    ):
+        r = await client.post("/api/v1/retention/run", headers=_auth(viewer_token))
+        assert r.status_code == 403, f"{r.status_code} {r.text}"
+        assert retention_send_task == []
+
+    async def test_the_route_refuses_an_operator(
+        self, client: AsyncClient, operator_token: str, retention_send_task: list
+    ):
+        r = await client.post("/api/v1/retention/run", headers=_auth(operator_token))
+        assert r.status_code == 403, f"{r.status_code} {r.text}"
+        assert retention_send_task == []
+
+    async def test_an_admin_enqueues_the_retention_beat_task_exactly_once(
+        self, client: AsyncClient, admin_token: str, retention_send_task: list
+    ):
+        r = await client.post("/api/v1/retention/run", headers=_auth(admin_token))
+        assert r.status_code == 202, f"{r.status_code} {r.text}"
+        assert r.json() == {"task_id": "wp70-stub-task-id"}
+        assert len(retention_send_task) == 1, retention_send_task
+        call = retention_send_task[0]
+        assert call["name"] == RETENTION_BEAT_TASK
+        assert call["queue"] == "default"
+        # The beat entry's own kwargs (celery_app.py "retention-migration"):
+        # a manual run is the nightly run, not a dry run.
+        assert call["kwargs"] == {"dry_run": False, "max_transitions": 500}
+
+    async def test_a_broker_failure_is_a_503_not_a_500(
+        self, client: AsyncClient, admin_token: str, monkeypatch
+    ):
+        from app.services import celery_producer
+
+        def _boom(*a, **kw):
+            raise ConnectionError("broker down")
+
+        monkeypatch.setattr(celery_producer.celery_app, "send_task", _boom)
+        r = await client.post("/api/v1/retention/run", headers=_auth(admin_token))
+        assert r.status_code == 503, f"{r.status_code} {r.text}"
