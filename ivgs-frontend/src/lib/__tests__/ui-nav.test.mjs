@@ -246,7 +246,10 @@ test("T7 fix: the payload now carries an accepted media_type and nothing else", 
 });
 
 test("T7: every value the picker can offer is one the API accepts", () => {
-  assert.deepEqual([...MEDIA_TYPES], ["image", "video_clip", "animation"]);
+  // WP-74: `motion_graphics` joined MEDIA_TYPES in WP-IVGS-09c (2026-08-28) and
+  // the API accepts it (shared.models.enums.MEDIA_TYPES); this list pinned the
+  // three-member vocabulary and has been red since. Test drift, not a defect.
+  assert.deepEqual([...MEDIA_TYPES], ["image", "video_clip", "animation", "motion_graphics"]);
   for (const v of MEDIA_TYPES) assert.equal(normalizeMediaType(v), v);
 });
 
@@ -505,7 +508,10 @@ test("T5: the eight stage ids are the ones mergeCheckpoints emits", () => {
 /* ───────────────── TASKS 1, 2, 4 — navigation ───────────────── */
 
 test("T2: no tab is deferred, and every tab has a route segment or is Overview", () => {
-  assert.equal(PROJECT_TABS.length, 11);
+  // WP-74: WP-66 (2026-08-26) added the twelfth tab, Models; the count pinned
+  // eleven and has been red since. The property this test exists for — no
+  // tab deferred, every tab routable — is asserted below and still holds.
+  assert.equal(PROJECT_TABS.length, 12);
   for (const t of PROJECT_TABS) {
     assert.ok(!/soon/i.test(t.label), `${t.id} still says "soon"`);
     assert.equal(typeof t.segment, "string");
