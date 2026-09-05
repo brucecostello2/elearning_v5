@@ -362,3 +362,30 @@ class TestD2AssetsPageForm:
         )
         assert 200 <= r.status_code < 300, r.text
         assert r.json()["asset_type"] == "image"
+
+
+# ══ WP-70 v3 ═══════════════════════════════════════════════════════════════
+
+# ── D-6: the retention run's task name is a literal the index can verify ──
+
+class TestD6RetentionTaskNameLiteral:
+    def test_send_task_receives_a_string_literal_equal_to_the_beat_entrys_name(self):
+        """dev/audit/build_consumer_index.py D3 checks a send_task producer
+        against the registered task names only when its first argument is a
+        literal; a Name is filed as 'dynamic task name', unchecked. The route
+        must therefore pass the literal, and it must be the beat entry's."""
+        import ast
+        from pathlib import Path
+        src = Path(__file__).resolve().parents[1] / "app/api/v1/retention.py"
+        tree = ast.parse(src.read_text())
+        calls = [
+            n for n in ast.walk(tree)
+            if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+            and n.func.attr == "send_task"
+        ]
+        assert len(calls) == 1, f"expected one send_task in retention.py, found {len(calls)}"
+        first = calls[0].args[0] if calls[0].args else None
+        assert isinstance(first, ast.Constant) and isinstance(first.value, str), (
+            f"send_task's first argument is {ast.dump(first) if first else None}, not a string literal"
+        )
+        assert first.value == RETENTION_BEAT_TASK

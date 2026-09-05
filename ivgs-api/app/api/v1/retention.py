@@ -162,7 +162,11 @@ async def get_retention_report(
 # under the beat entry's own name and kwargs (ivgs-workers/celery_app.py,
 # "retention-migration"), so a manual run IS the nightly run.
 
-RETENTION_BEAT_TASK = "ivgs_workers.tasks.periodic_tasks.run_retention_migration"
+# WP-70 fix D-6: the task NAME is passed to send_task as a string literal
+# (below), not through a constant — dev/audit/build_consumer_index.py's D3
+# check verifies a literal against the registered task names and files a
+# variable as "dynamic task name", unchecked. TestS4RetentionRun pins the
+# literal to the beat entry's name.
 RETENTION_BEAT_QUEUE = "default"
 RETENTION_BEAT_PRIORITY = 2
 RETENTION_BEAT_KWARGS = {"dry_run": False, "max_transitions": 500}
@@ -192,7 +196,7 @@ async def run_retention_migration_now(
 
     try:
         result = pipeline_celery.send_task(
-            RETENTION_BEAT_TASK,
+            "ivgs_workers.tasks.periodic_tasks.run_retention_migration",
             kwargs=dict(RETENTION_BEAT_KWARGS),
             queue=RETENTION_BEAT_QUEUE,
             priority=RETENTION_BEAT_PRIORITY,
@@ -206,7 +210,7 @@ async def run_retention_migration_now(
             detail={
                 "error": {
                     "code": "BROKER_UNAVAILABLE",
-                    "message": f"Could not enqueue {RETENTION_BEAT_TASK}: {exc}",
+                    "message": f"Could not enqueue the retention migration task: {exc}",
                 }
             },
         ) from exc
