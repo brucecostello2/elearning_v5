@@ -68,12 +68,10 @@ class TestS6UploadPath:
     async def test_the_assets_page_form_without_asset_type_is_refused_422(
         self, client: AsyncClient, operator_token: str, project_id: str
     ):
-        """WP-70 Decision D-2, pinned as the API contract: `asset_type` is
-        `Form(...)` (required) on the upload route. The project Assets page
-        (app/projects/[id]/assets/page.tsx) appends only `file` and
-        `project_id`, so its upload will be refused with 422 even after the
-        hook's path is corrected. That page is outside this package's file
-        list and is reported, not edited."""
+        """The API contract that WP-70 v1 Decision D-2 recorded: `asset_type`
+        is `Form(...)` (required) on the upload route. Until WP-70 v2 the
+        Assets page appended only `file` and `project_id` and was refused
+        with 422. v2 fixes the page; this pins the contract it now meets."""
         import io
         r = await client.post(
             f"/api/v1/projects/{project_id}/assets/upload",
@@ -343,3 +341,24 @@ class TestS7N4ReorderBody:
         parsed = TranscriptReorderRequest.model_validate(body)   # raises ValidationError pre-fix
         assert len(parsed.items) == 1
         assert parsed.items[0].sequence_order == 1
+
+
+# ── D-2: the Assets page's exact form (file + project_id + asset_type) ────
+
+@pytest.mark.asyncio
+class TestD2AssetsPageForm:
+    async def test_the_pages_form_returns_2xx(
+        self, client: AsyncClient, operator_token: str, project_id: str
+    ):
+        """What app/projects/[id]/assets/page.tsx handleUpload now sends for
+        an image: file, project_id (ignored by the route, harmless) and
+        asset_type derived from the MIME type."""
+        import io
+        r = await client.post(
+            f"/api/v1/projects/{project_id}/assets/upload",
+            files={"file": ("photo.png", io.BytesIO(b"\x89PNG\r\n\x1a\n" + b"\0" * 64), "image/png")},
+            data={"project_id": project_id, "asset_type": "image"},
+            headers=_auth(operator_token),
+        )
+        assert 200 <= r.status_code < 300, r.text
+        assert r.json()["asset_type"] == "image"

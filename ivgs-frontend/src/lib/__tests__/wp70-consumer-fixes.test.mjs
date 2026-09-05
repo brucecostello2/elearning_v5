@@ -226,7 +226,8 @@ function evalArrow(tsSource, constName) {
   assert.ok(end > at, `${constName} body end not found`);
   const text = tsSource
     .slice(at + `const ${constName} =`.length, end + 2)
-    .replace(/:\s*(string|number|boolean|null|File)(\s*\|\s*(string|number|boolean|null))*/g, "");
+    .replace(/\)\s*:\s*[^=]*?=>/, ") =>")                       // return type
+    .replace(/:\s*(string|number|boolean|null|File)(\s*\|\s*(string|number|boolean|null))*/g, ""); // params
   return new Function(`return (${text.trim().replace(/;$/, "")});`)();
 }
 
@@ -270,4 +271,27 @@ test("S7+N4: reorderTranscripts emits items[] with the fields ReorderItem declar
   assert.ok(item, "items are not built from an object literal");
   const keys = [...item[1].matchAll(/(\w+):/g)].map((m) => m[1]).sort();
   assert.deepEqual(keys, [...itemFields].sort());
+});
+
+/* ── D-2: the Assets page's upload form carries asset_type ────────────── */
+
+test("D-2: the Assets page's FormData contains asset_type, with values the upload route accepts", () => {
+  const page = src("app/projects/[id]/assets/page.tsx");
+  const at = page.indexOf("const handleUpload =");
+  assert.ok(at >= 0, "handleUpload not found");
+  const fn = page.slice(at, page.indexOf("\n  );", at));
+  const appended = [...fn.matchAll(/formData\.append\(\s*"(\w+)"/g)].map((m) => m[1]);
+  assert.ok(appended.includes("file"), `appends ${appended}`);
+  assert.ok(appended.includes("asset_type"), `form appends ${appended} — no asset_type, and the route's asset_type is Form(...) (required)`);
+
+  // Every value the page can send is one the API's upload path accepts.
+  const py = api("app/services/asset_service.py");
+  const m = py.match(/ASSET_TYPE_PATHS = \{([\s\S]*?)\}/);
+  const allowed = new Set([...m[1].matchAll(/"(\w+)":/g)].map((x) => x[1]));
+  const derive = evalArrow(page, "uploadAssetType");
+  for (const [mime, expect] of [["image/png", "image"], ["video/mp4", "video"], ["audio/mpeg", "audio"], ["application/pdf", "document"], ["", "document"]]) {
+    const v = derive({ type: mime, name: "x" });
+    assert.equal(v, expect, `mime ${mime}`);
+    assert.ok(allowed.has(v), `'${v}' is not in ASSET_TYPE_PATHS ${[...allowed]}`);
+  }
 });

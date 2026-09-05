@@ -49,6 +49,22 @@ const ASSET_FILTERS: { id: AssetFilter; label: string }[] = [
   { id: "other", label: "Other" },
 ];
 
+/**
+ * WP-70 fix D-2. `POST /projects/{id}/assets/upload` declares `asset_type`
+ * as `Form(...)` (required); this form used to send only `file` and
+ * `project_id`, so every manual upload from this page was refused with 422
+ * — after v1 corrected the path, and 405 before it. The type is derived from
+ * the file's MIME type; every value is a key of
+ * `asset_service.ASSET_TYPE_PATHS`.
+ */
+const uploadAssetType = (file: File): "image" | "video" | "audio" | "document" => {
+  const mime = file.type || "";
+  if (mime.startsWith("image/")) return "image";
+  if (mime.startsWith("video/")) return "video";
+  if (mime.startsWith("audio/")) return "audio";
+  return "document";
+};
+
 export default function AssetsPage(): React.ReactElement {
   const params = useParams();
   const projectId = params.id as string;
@@ -116,6 +132,7 @@ export default function AssetsPage(): React.ReactElement {
           const formData = new FormData();
           formData.append("file", file);
           formData.append("project_id", projectId);
+          formData.append("asset_type", uploadAssetType(file));
           await uploadAsset(formData);
         }
         setToastMessage(
