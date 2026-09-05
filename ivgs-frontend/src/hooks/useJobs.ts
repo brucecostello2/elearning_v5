@@ -61,11 +61,13 @@ export function useJobs(projectId: string): UseJobsReturn {
 
   /**
    * Resume a failed job from its last checkpoint.
+   *
+   * WP-70 fix S8: the route is `POST /jobs/{job_id}/resume` (checkpoints.py),
+   * not nested under the project; the old path answered 404. Latent — no
+   * component calls it yet.
    */
   const resumeJob = async (jobId: string): Promise<void> => {
-    await apiClient.post(
-      `/api/v1/projects/${projectId}/jobs/${jobId}/resume`
-    );
+    await apiClient.post(`/api/v1/jobs/${jobId}/resume`);
     mutate();
   };
 

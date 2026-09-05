@@ -199,3 +199,19 @@ test("S7: reorderTranscripts uses the method the reorder route serves", () => {
     `${call.method} ${call.path}: route serves only ${served.join(", ")}`
   );
 });
+
+/* ── S8: resumeJob nests the path under /projects/{id}; the route does not ── */
+
+test("S8: resumeJob POSTs to the /jobs/{id}/resume route, with no /projects/ segment", () => {
+  const call = hookCall("hooks/useJobs.ts", "resumeJob");
+  assert.equal(call.method, "POST");
+  const served = routes("app/api/v1/checkpoints.py")
+    .filter(([m, p]) => m === "POST" && p.endsWith("/resume"))
+    .map(([, p]) => p);
+  assert.ok(served.length > 0, "no POST .../resume route parsed from checkpoints.py");
+  assert.ok(
+    served.some((p) => pathMatches(call.path, p)),
+    `POST ${call.path} matches none of ${served.join(", ")}`
+  );
+  assert.ok(!call.path.includes("/projects/"), call.path);
+});
