@@ -159,7 +159,7 @@ export default function DLQTable({
             ) : (
               messages.map((msg: DLQMessage) => {
                 const { truncated, isTruncated } = truncateError(
-                  msg.error_message
+                  msg.exception_message ?? ""
                 );
                 const isExpanded = expandedRows.has(msg.id);
 
@@ -201,22 +201,22 @@ export default function DLQTable({
                         <span
                           className={`inline-flex items-center px-2 py-0.5
                             rounded-full text-xs font-medium ${
-                              CATEGORY_STYLES[msg.category] ||
+                              CATEGORY_STYLES[msg.failure_category ?? "unknown"] ||
                               "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300"
                             }`}
                         >
-                          {msg.category}
+                          {msg.failure_category ?? "unknown"}
                         </span>
                       </td>
                       {/* Error Message */}
                       <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 max-w-[300px]">
                         <span className="font-mono text-xs">
-                          {isExpanded ? msg.error_message : truncated}
+                          {isExpanded ? msg.exception_message : truncated}
                         </span>
                       </td>
                       {/* Retry Count */}
                       <td className="px-4 py-3 text-center text-sm font-mono text-gray-700 dark:text-gray-300">
-                        {msg.retry_count}
+                        {msg.retry_count_exhausted ?? 0}
                       </td>
                       {/* Entered DLQ */}
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
@@ -258,7 +258,7 @@ export default function DLQTable({
                       <tr>
                         <td colSpan={7} className="px-4 py-3 bg-gray-50 dark:bg-gray-950">
                           <pre className="text-xs text-gray-700 dark:text-gray-300 font-mono whitespace-pre-wrap max-h-32 overflow-y-auto">
-                            {msg.error_message}
+                            {msg.exception_message}
                           </pre>
                         </td>
                       </tr>

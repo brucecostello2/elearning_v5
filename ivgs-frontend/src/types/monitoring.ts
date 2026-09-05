@@ -154,12 +154,18 @@ export type DLQCategory =
   | "RESOURCE"
   | "UNKNOWN";
 
+/**
+ * WP-70 fix S11. The field names are `DLQMessageResponse`'s
+ * (ivgs-api/app/schemas/dlq.py): this interface used to declare
+ * `error_message`, `category` and `retry_count`, which the API never sent, so
+ * the table rendered an empty badge and an empty error for every row.
+ */
 export interface DLQMessage {
   id: string;
   task_name: string;
-  error_message: string;
-  category: DLQCategory;
-  retry_count: number;
+  exception_message: string | null;
+  failure_category: DLQCategory | null;
+  retry_count_exhausted: number | null;
   entered_dlq_at: string;
 }
 

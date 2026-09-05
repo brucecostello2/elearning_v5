@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DLQMessageResponse(BaseModel):
@@ -22,11 +22,21 @@ class DLQMessageResponse(BaseModel):
     failure_category: Optional[str] = None
     retry_count_exhausted: Optional[int] = None
     created_at: datetime
+    # WP-70 fix S11. The DLQ table renders an "Entered DLQ" column from
+    # `entered_dlq_at`, which this model never carried; the row's only
+    # timestamp of arrival is `created_at`, so it is exposed under both names.
+    entered_dlq_at: Optional[datetime] = None
     reviewed_at: Optional[datetime] = None
     reviewed_by: Optional[str] = None
     resolution: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def _entered_dlq_at_is_created_at(self) -> "DLQMessageResponse":
+        if self.entered_dlq_at is None:
+            self.entered_dlq_at = self.created_at
+        return self
 
 
 class DLQDetailResponse(BaseModel):
