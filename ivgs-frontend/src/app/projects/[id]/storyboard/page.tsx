@@ -41,6 +41,17 @@ import {
  *   - viewer: read-only (no edit, no reorder, no regenerate)
  */
 
+/**
+ * WP-70 S13 interim (operator ruling 2026-09-05). No producer writes a
+ * per-scene status: `SceneResponse` has no `status`, `storyboard_scenes`
+ * has no state column, and nothing in the pipeline sets PENDING /
+ * GENERATING / COMPLETE / ERROR / REGENERATING on a scene. The filter and
+ * its counters could therefore only ever read zero. They are hidden — not
+ * deleted — behind this constant until the scene-status contract, which is
+ * defined by the new design engine, has a producer. Flip it when one exists.
+ */
+const SCENE_STATUS_PRODUCER_EXISTS = false;
+
 /** Possible scene statuses for filter dropdown */
 const SCENE_STATUSES: SceneStatus[] = [
   "PENDING",
@@ -624,30 +635,32 @@ export default function StoryboardPage(): React.ReactElement {
             />
           </div>
 
-          {/* Status Filter */}
-          <div>
-            <label
-              htmlFor="status-filter"
-              className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
-            >
-              Status
-            </label>
-            <select
-              id="status-filter"
-              value={statusFilter}
-              onChange={(e) =>
-                setStatusFilter(e.target.value as SceneStatus | "ALL")
-              }
-              className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="ALL">All Statuses ({statusCounts.ALL})</option>
-              {SCENE_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {status} ({statusCounts[status]})
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Status Filter — hidden until a scene-status producer exists (S13 interim) */}
+          {SCENE_STATUS_PRODUCER_EXISTS && (
+            <div>
+              <label
+                htmlFor="status-filter"
+                className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1"
+              >
+                Status
+              </label>
+              <select
+                id="status-filter"
+                value={statusFilter}
+                onChange={(e) =>
+                  setStatusFilter(e.target.value as SceneStatus | "ALL")
+                }
+                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-gray-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="ALL">All Statuses ({statusCounts.ALL})</option>
+                {SCENE_STATUSES.map((status) => (
+                  <option key={status} value={status}>
+                    {status} ({statusCounts[status]})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Media Type Filter */}
           <div>

@@ -329,3 +329,25 @@ test("D-8: every field TS DLQMessageDetail declares is one DLQDetailResponse emi
     assert.ok(reads.includes(f), `modal does not read ${f}`);
   }
 });
+
+/* ── S13 interim: the status filter and counters are hidden until a producer exists ── */
+
+test("S13 interim: with SCENE_STATUS_PRODUCER_EXISTS false, the storyboard page renders neither the status filter nor its counters", () => {
+  const page = src("app/projects/[id]/storyboard/page.tsx");
+  const decl = page.match(/^const SCENE_STATUS_PRODUCER_EXISTS\s*=\s*(true|false)\s*;/m);
+  assert.ok(decl, "SCENE_STATUS_PRODUCER_EXISTS is not declared as a module constant");
+  assert.equal(decl[1], "false", "no producer writes a per-scene status yet");
+
+  // The filter <select id="status-filter"> and the counters it shows are
+  // inside a `{SCENE_STATUS_PRODUCER_EXISTS && (` guard.
+  const guardAt = page.indexOf("{SCENE_STATUS_PRODUCER_EXISTS && (");
+  assert.ok(guardAt >= 0, "no {SCENE_STATUS_PRODUCER_EXISTS && ( guard in the JSX");
+  const selectAt = page.indexOf('id="status-filter"');
+  const countsAt = page.indexOf("statusCounts[status]");
+  assert.ok(selectAt > guardAt, "status filter select is not inside the guard");
+  assert.ok(countsAt > guardAt, "per-status counters are not inside the guard");
+  // and no counter is rendered outside it: every `statusCounts` read in JSX
+  // sits after the guard.
+  const firstJsxCounter = page.indexOf("{statusCounts");
+  assert.ok(firstJsxCounter > guardAt, "a statusCounts read renders before the guard");
+});
