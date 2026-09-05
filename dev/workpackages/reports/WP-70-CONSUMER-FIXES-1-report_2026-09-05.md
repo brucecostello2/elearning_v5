@@ -190,11 +190,99 @@ Added to `dev/DEVELOPMENT-STATUS.md` under `## Reports filed this session — WP
 
 Not needed; the package is complete under the decisions above.
 
+---
+
+# WP-70 v2 — the three items v1 left undone (same session, 2026-09-05)
+
+**Order:** `dev/workpackages/WP-70-CONSUMER-FIXES-1_order_v2_2026-09-05.md`, applied per the operator's instruction to what v1 left undone: **S5+N3**, **S7+N4**, **D-2**. Branch continued at `b876df6`; no new branch; not pushed. Everything above this line is the v1 report and stands; the v1 push block at the end is superseded by the one below.
+
+## v2.0 STATE AT SESSION END
+
+**Done.** Three commits — `e68a4df` S5+N3, `bf62da9` S7+N4, `040593f` D-2 — each with its test written first and failing on the pre-fix tree, then the close-out commit (index rebuilt in place, this section, board row, v2 order tracked). **Mid-way through:** nothing. **Ways the v2 order is stale:** none found for the three items; line numbers re-derived on the branch (`_authenticate_ws` is `ws_logs.py:26-63`, its `token` read at `:38`; `ReorderItem` at `schemas/transcript.py:43-47`, `TranscriptReorderRequest` at `:50-58`; the upload route's `asset_type: str = Form(...)` at `assets.py:91`). Two places where the v2 order's §1 text and the v1 work differ are Decisions D-7 and D-8, not stale premises.
+
+**Tree at close (§0 rule 5.5):** see the push block for the held count measured after `git fetch`. Dirty: nothing. **Not mine, untracked, left alone:** `dev/workpackages/WP-71_72_73_74_orders_2026-09-05.md` (the operator's). Evidence in scratch, declared lost by name: `scratchpad/api_full_v2_run1.txt`, `scratchpad/frontend_full_v2_run1.txt` (tails quoted in v2.4); the runner is in §4 above.
+
+## v2.1 S-identity → index-row map (v2 order §2 step 3)
+
+| id | index rows in `baseline_wp70.json` | class | status at branch head |
+|---|---|---|---|
+| S4 | D2 `admin/retention/page.tsx:117` — POST /retention/run, no route | definite | absent |
+| S5 | D2 `monitoring/pipeline/page.tsx:156` — WEBSOCKET /api/v1/jobs/{id}/status, no route | definite | absent; **N3 (no token) has no index row** — the index checks paths, not query parameters. The behavioural tests are the sole exit evidence. |
+| S6 | D2 `hooks/useAssets.ts:50` — POST on a GET-only path | suspect | absent |
+| S7 | D2 `hooks/useTranscripts.ts:63` — PUT on a POST route | suspect | absent; **N4 (body shape) has no index row** — the index does not compare request bodies to schemas. Tests are the sole evidence. |
+| S8 | D2 `hooks/useJobs.ts:67` — POST on an unserved nested path | definite | absent |
+| S10 | none in `findings`; `rows.D4/vocab:asset_type` consumer `preset_service.py:219` `write:talking_head` | (vocab row) | consumer now `write:reference_clip` |
+| S11 | D7 `types/monitoring.ts:157` ×4 — `category`, `error_message`, `retry_count`, `entered_dlq_at` not emitted | definite | absent |
+| S12 | D7 `types/monitoring.ts:16` — `last_login` not emitted | definite | absent |
+| S13 | D7 `types/storyboard.ts:104` ×3 — `status`, `error_message`, `generation_prompt_id` not emitted | definite | **present, 3 rows — the ordered skip** (v2 order §1; v1 D-1) |
+| D-2 | none — the index does not compare multipart form fields to `Form(...)` parameters | — | tests are the sole evidence |
+
+## v2.2 Per item
+
+### S5 + N3 — token on the job-status socket — commit `e68a4df`
+**Where the token is supplied: the hook, `useWebSocket.ts`**, once, for every WebSocket caller (the page is the only caller today). `websocketUrl(baseUrl, path, token)` appends `?token=<encodeURIComponent(getAccessToken())>` — the same stored access token `api-client.ts` sends as the Bearer header — matching the server's contract `websocket.query_params.get("token")` in `_authenticate_ws`. The page's path is unchanged from v1 (`/api/v1/ws/jobs/${id}/status`).
+Before (frontend):
+```
+not ok 10 - S5+N3: the socket URL for a selected job contains /ws/jobs/ and a non-empty token
+  error: 'useWebSocket does not read the access token'
+```
+After: `# pass 10 / # fail 0` — the test evaluates `websocketUrl` from the hook's source on the page's own path and asserts `/ws/jobs/job-42/status` and `token=tok.en.abc`; `tsc --noEmit` clean.
+API, `TestS5N3JobStatusSocketAuth` (3), against the **real** `_authenticate_ws` (the older ws tests patch it out): valid 5-minute token → accepted, a frame received; no token → close **1008**; token expired 60 s ago → close **1008**. ⚠ These pass on the pre-fix tree **by design** — the server's check already existed (BUG-012) and the order asks for it to be exercised, not created. The failing-first evidence for this item is the frontend test. `test_ws_connection + test_ws_job_status + test_ws_edge_cases + wp70: 27 passed`.
+
+### S7 + N4 — reorder body — commit `bf62da9`
+Field names read from `schemas/transcript.py`: `TranscriptReorderRequest.items: List[ReorderItem]`, `ReorderItem {id: UUID, sequence_order: int ≥ 1}`. The hook keeps its public parameter `{id, order}[]` (no caller) and maps `order → sequence_order` at the call.
+Before (API — the body literal read from the hook's source, then `model_validate`):
+```
+E   pydantic_core._pydantic_core.ValidationError: 1 validation error for TranscriptReorderRequest
+E   items
+E     Field required [type=missing, input_value={'order': [{'id': '8d3f1d...9a1c3d4e', 'order': 1}]}, input_type=dict]
+```
+Before (frontend):
+```
+not ok 11 - S7+N4: reorderTranscripts emits items[] with the fields ReorderItem declares
+  error: "top-level key 'order' is not a TranscriptReorderRequest field (items)"
+```
+After: API parses `{"items": [{"id": …, "sequence_order": 1}]}`; frontend `# pass 11 / # fail 0`; `wp70 + test_transcripts + test_service_transcript: 39 passed`; `tsc` clean. Honesty note: the API test builds the body from the KEYS the hook's literal emits (top-level key, and the item keys of the `.map((o) => ({…}))` literal), with sample values — it cannot execute TypeScript. Pre-fix it produced the hook's old `{order: [{id, order}]}` and the schema rejected it; post-fix it produces `{items: [{id, sequence_order}]}` and the schema accepts it.
+
+### D-2 — the Assets page's `asset_type` — commit `040593f`
+Required `Form(...)` fields on `POST /projects/{id}/assets/upload` (`assets.py:88-120`): `file` and `asset_type` only; `scene_id`, `language_code`, `content_hash`, `generation_params_hash`, `metadata`, `library_kind`, `library_name` are optional. **Fixed in the page** (`app/projects/[id]/assets/page.tsx`): `uploadAssetType(file)` derives `image | video | audio | document` from the MIME type and `handleUpload` appends it; the hook is unchanged.
+Before (frontend):
+```
+not ok 12 - D-2: the Assets page's FormData contains asset_type, with values the upload route accepts
+  error: "form appends file,project_id — no asset_type, and the route's asset_type is Form(...) (required)"
+```
+After: `# pass 12 / # fail 0` — the test evaluates `uploadAssetType` for five MIME types and checks every value is a key of `asset_service.ASSET_TYPE_PATHS`; `tsc` clean. API `TestD2AssetsPageForm`: the page's exact form (`file` + `project_id` + `asset_type=image`) → **201**; passes before and after (the route was never wrong). The v1 contract test "no `asset_type` → 422" is kept with its docstring updated. `wp70 + test_assets: 23 passed`.
+
+## v2.3 Index diff — branch head (`040593f` + close-out) vs `baseline_wp70.json`
+
+Identical in substance to v1 §3: **definite 51 → 43, 8 removed, 0 added**; suspect 339 → 340 (the same 2 removed, the same 3 added, all named in §3). **v2's three commits added no row of any class** — N3, N4 and D-2 are outside what the index measures (v2.1). S13's 3 definite rows remain: the ordered skip.
+
+## v2.4 Suite results, against the branch baseline
+
+| Suite | at base (`d7cf49b`) | v1 head (`b876df6`) | v2 head (`040593f`) |
+|---|---|---|---|
+| ivgs-api `pytest tests -q` | not run at base by this session; v1 measured 1863 passed / 1 failed with the 0055-only `project_design_interviews` failure that is the test DB's, not the tree's (§4) | 1863 / 1 | **1868 passed, 1 failed** (345 s) — the same `test_wp59_deletion.py::TestCategoryMap::test_every_project_fk_table_is_in_the_map` naming the 0055-only `project_design_interviews`; +5 passed, **0 new failures** |
+| frontend `npm run test:logic` | 108 / 110, 2 failed (T7 picker values, T2 tabs) | 117 / 119, same 2 | **120 / 122, same 2** — +3, 0 new failures |
+| `tsc --noEmit` | — | clean | clean after each of the three edits |
+
+⛔ Neither suite is called green: the frontend has two failures at the base and still has exactly those two; the API has one failure that is the environment's (0055 table, 0054 tree) and still has exactly that one. v2 used one full run of each (v2 order §2.6 allows two).
+
+## v2.5 Decisions
+
+- **D-7 — S11's `entered_dlq_at`.** The v2 order §1 row 7 says *"`entered_dlq_at → created_at` (map from the real timestamp the API already sends; do not add an ORM field)"*. v1 (commit `a79160b`) did not add an ORM field; it added a **Pydantic** response field `entered_dlq_at` filled from `created_at`, and kept the TS name. The operator's v2 instruction scoped this session to three items, so v1's S11 stands as committed. If the operator prefers the TS-side rename (`entered_dlq_at → created_at`, drop the response field), it is a two-file change and one commit; say so.
+- **D-8 — DLQ detail view.** v2 row 7 also says *"include the DLQ detail schema/view in the consumer walk"*; v1 D-4 recorded `DLQMessageDetail` (`types/monitoring.ts`) still declaring `category`, `retry_count`, `entered_dlq_at` against `DLQDetailResponse`. Not in the three items; not changed. Same one-commit shape if ordered.
+- **D-6 (v1) stands** — the D3 suspect row for the constant task name in `retention.py`.
+- **S13 skip** recorded as ordered (v2 §1, v1 D-1).
+
+## HANDOFF
+
+Not needed.
+
 ## Push block (operator; §1 — Claude never pushes)
 
-Measured at close, after `git fetch`: `git rev-list --count origin/main..HEAD` = **10** (baseline + 8 fixes + close-out). The operator's block:
+Measured at close of v2, after `git fetch`: `git rev-list --count origin/main..HEAD` = **14** (v1's 10 + three v2 fixes + the v2 close-out). This block supersedes v1's. The operator's block:
 
 ```
 # node-01 (192.168.1.90), operator only
-( cd /opt/ivgs && git fetch origin && n=$(git rev-list --count origin/main..wp-70-consumer-fixes-1) && if [ "$n" -eq 10 ]; then git push origin wp-70-consumer-fixes-1; else echo "REFUSED: held count is $n, expected 10"; fi ) 2>&1 | tr -cd '\11\12\15\40-\176'
+( cd /opt/ivgs && git fetch origin && n=$(git rev-list --count origin/main..wp-70-consumer-fixes-1) && if [ "$n" -eq 14 ]; then git push origin wp-70-consumer-fixes-1; else echo "REFUSED: held count is $n, expected 14"; fi ) 2>&1 | tr -cd '\11\12\15\40-\176'
 ```
