@@ -278,11 +278,87 @@ Identical in substance to v1 §3: **definite 51 → 43, 8 removed, 0 added**; su
 
 Not needed.
 
+---
+
+# WP-70 v3 — the operator's rulings on the v2 decisions (same session, 2026-09-05)
+
+**Rulings:** D-7 yes, D-8 yes, D-6 yes, plus an S13 interim. Four commits, in that order, each with its test written first and failing on the pre-fix tree. Branch continued at `3d873db`; no new branch; not pushed. The v1 and v2 sections above stand; the push block at the end is v3's.
+
+## v3.0 STATE AT SESSION END
+
+**Done.** `58b2f99` D-7, `a322fd0` D-8, `60dd977` D-6, `9f7259d` S13 interim, then the v3 close-out commit (index rebuilt in place, this section, board row). **Mid-way through:** nothing. **Stale premises in the ruling:** none found. One thing the ruling did not name and the D-8 test as ordered forced: `DLQMessageDetail` also declared `task_arguments` and `resolution_history`, which `DLQDetailResponse` never sends under those names (it sends `task_args` + `task_kwargs`, and one `resolution` + `reviewed_by` + `reviewed_at`, not a history). Both were mapped onto the API's fields (v3.1 D-8); nothing was deleted — `DLQResolutionEntry` and the history list rendering remain, fed by a one-entry list built from the three API fields.
+
+**Tree at close (§0 rule 5.5):** see the push block for the held count measured after `git fetch`. Dirty: nothing. **Not mine, untracked, left alone:** `dev/workpackages/WP-71_72_73_74_orders_2026-09-05.md`. Evidence in scratch, declared lost by name: `scratchpad/api_full_v3_run1.txt` (tail quoted in v3.3); the frontend run's tail is quoted from the terminal. The runner is in §4.
+
+## v3.1 Per item
+
+### D-7 — one name for the DLQ timestamp — commit `58b2f99`
+Before (frontend):
+```
+not ok 13 - D-7: DLQMessageResponse emits created_at only, and TS DLQMessage declares nothing the API does not send
+  error: 'DLQMessageResponse still declares entered_dlq_at'
+```
+Before (API — `TestS11DLQTimestamp`, re-aimed from v1's "carries `entered_dlq_at`" to "carries `created_at`, no alias"):
+```
+E   AssertionError: alias still emitted: ['created_at', 'entered_dlq_at', 'exception_message', …]
+```
+After: frontend `# pass 13 / # fail 0`; `wp70 + test_dlq_api + test_service_dlq: 49 passed`; `tsc` clean. Removed from `DLQMessageResponse`: the `entered_dlq_at` field and its after-validator (and the now-unused `model_validator` import). TS `DLQMessage.entered_dlq_at → created_at`; `DLQTable.tsx` "Entered DLQ" cell reads `created_at`.
+
+### D-8 — DLQ detail view — commit `a322fd0`
+Before (frontend):
+```
+not ok 14 - D-8: every field TS DLQMessageDetail declares is one DLQDetailResponse emits, and the modal reads only those
+  error: declared but never sent: category,retry_count,entered_dlq_at,task_arguments,resolution_history
+```
+After: `# pass 14 / # fail 0`; `tsc` clean. `DLQMessageDetail` now declares exactly `DLQDetailResponse`'s fields with the API's nullability. `DLQDetailModal.tsx`: `category → failure_category ?? "unknown"`, `retry_count → retry_count_exhausted ?? 0`, `entered_dlq_at → created_at`; the arguments tab renders `{args: task_args, kwargs: task_kwargs}`; the history tab renders `resolutionHistory(detail)` — one entry from `resolution` / `reviewed_by` / `reviewed_at` (`performed_at` falls back to `created_at`), the "REPLAY" colour test now `startsWith("REPLAY")` since the API's value is `replayed`. The test also asserts every `detail.<field>` read in the modal is an emitted field.
+
+### D-6 — task-name literal — commit `60dd977`
+Before (API, AST):
+```
+E   AssertionError: send_task's first argument is Name(id='RETENTION_BEAT_TASK', ctx=Load()), not a string literal
+```
+After: `wp70 + test_retention_api + test_api_rbac: 51 passed`. The module constant is gone; `send_task("ivgs_workers.tasks.periodic_tasks.run_retention_migration", …)`; `TestS4RetentionRun` still asserts the enqueued name equals the beat entry's; the 503 message no longer interpolates the name. Index effect: the D3 "dynamic task name" suspect row is gone and **no D3 row replaced it**, i.e. the extractor verified the literal against the registered task names and found it (v3.2).
+
+### S13 interim — commit `9f7259d`
+Before (frontend):
+```
+not ok 15 - S13 interim: with SCENE_STATUS_PRODUCER_EXISTS false, the storyboard page renders neither the status filter nor its counters
+  error: 'SCENE_STATUS_PRODUCER_EXISTS is not declared as a module constant'
+```
+After: `# pass 15 / # fail 0`; `tsc` clean. `app/projects/[id]/storyboard/page.tsx`: `const SCENE_STATUS_PRODUCER_EXISTS = false;` with the reason in its comment (no producer writes a per-scene status; the scene-status contract is defined by the new design engine); the `<select id="status-filter">` and the per-status counters it shows are inside `{SCENE_STATUS_PRODUCER_EXISTS && ( … )}`. No column added; no code deleted — `statusFilter` state (default `"ALL"`, so the scene filter is inert) and the `statusCounts` memo remain for the day the constant flips. The test asserts the constant is declared `false` and that the select and every JSX `statusCounts` read sit inside the guard.
+
+## v3.2 Index diff — branch head vs `baseline_wp70.json` (line numbers normalised)
+
+| class | baseline | now | removed | added |
+|---|---|---|---|---|
+| **definite** | 51 | **43** | **8** (the same eight as §3) | **0** |
+| suspect | 339 | 338 | 2 (S6, S7) | **1** — D2 `tests/test_wp70_consumer_fixes.py`, the deliberate 405 guard |
+
+Exactly as the ruling expected: S13's 3 definite rows present (D7 total 3); the D3 constant-name row gone (`findings.D3` has no retention row of any class); the D7 `entered_dlq_at`-may-be-null row gone.
+
+## v3.3 Suite results, against the branch baseline
+
+| Suite | at base (`d7cf49b`) | v3 head |
+|---|---|---|
+| ivgs-api `pytest tests -q` | 1 failure (the 0055-only `project_design_interviews`, the test DB's) | **1869 passed, 1 failed** (345 s) — the same `test_wp59_deletion.py::TestCategoryMap::test_every_project_fk_table_is_in_the_map` naming the 0055-only `project_design_interviews`; +1 passed vs v2, **0 new failures** |
+| frontend `npm run test:logic` | 108 / 110, 2 failed (T7 picker values, T2 tabs) | **123 / 125, the same 2** — +3, 0 new failures |
+| `tsc --noEmit` | — | clean after each of the four edits |
+
+⛔ Neither suite is called green: each carries exactly the failures it carried at the base and no other. One full run of each in v3.
+
+## v3.4 Decisions
+
+None open. D-1 (S13's producer) remains the operator's separate contract package; the interim hides the dead UI until then.
+
+## HANDOFF
+
+Not needed.
+
 ## Push block (operator; §1 — Claude never pushes)
 
-Measured at close of v2, after `git fetch`: `git rev-list --count origin/main..HEAD` = **14** (v1's 10 + three v2 fixes + the v2 close-out). This block supersedes v1's. The operator's block:
+Measured at close of v3, after `git fetch`: `git rev-list --count origin/main..HEAD` = **19** (v2's 14 + four v3 fixes + the v3 close-out). This block supersedes v1's and v2's. The operator's block:
 
 ```
 # node-01 (192.168.1.90), operator only
-( cd /opt/ivgs && git fetch origin && n=$(git rev-list --count origin/main..wp-70-consumer-fixes-1) && if [ "$n" -eq 14 ]; then git push origin wp-70-consumer-fixes-1; else echo "REFUSED: held count is $n, expected 14"; fi ) 2>&1 | tr -cd '\11\12\15\40-\176'
+( cd /opt/ivgs && git fetch origin && n=$(git rev-list --count origin/main..wp-70-consumer-fixes-1) && if [ "$n" -eq 19 ]; then git push origin wp-70-consumer-fixes-1; else echo "REFUSED: held count is $n, expected 19"; fi ) 2>&1 | tr -cd '\11\12\15\40-\176'
 ```

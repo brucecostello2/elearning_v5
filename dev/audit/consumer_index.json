@@ -2070,7 +2070,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "pydantic RetentionRunResponse (ivgs-api/app/api/v1/retention.py:171)",
+    "definition": "pydantic RetentionRunResponse (ivgs-api/app/api/v1/retention.py:175)",
     "disagreement": "no route and no production reference outside its own file",
     "family": "D2",
     "note": ""
@@ -2426,14 +2426,6 @@
     "consumer": "ivgs-api/app/api/v1/backup.py:251",
     "definition": "task registry",
     "disagreement": "send_task with dynamic task name task_name",
-    "family": "D3",
-    "note": "not checkable statically"
-   },
-   {
-    "class": "suspect",
-    "consumer": "ivgs-api/app/api/v1/retention.py:194",
-    "definition": "task registry",
-    "disagreement": "send_task with dynamic task name RETENTION_BEAT_TASK",
     "family": "D3",
     "note": "not checkable statically"
    },
@@ -3370,7 +3362,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'manifest_lock_status' member 'INVALID' (ivgs-frontend/src/types/monitoring.ts:255)",
+    "definition": "vocabulary 'manifest_lock_status' member 'INVALID' (ivgs-frontend/src/types/monitoring.ts:271)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3378,7 +3370,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'manifest_lock_status' member 'LOCKED' (ivgs-frontend/src/types/monitoring.ts:255)",
+    "definition": "vocabulary 'manifest_lock_status' member 'LOCKED' (ivgs-frontend/src/types/monitoring.ts:271)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3386,7 +3378,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'manifest_lock_status' member 'RENDERED' (ivgs-frontend/src/types/monitoring.ts:255)",
+    "definition": "vocabulary 'manifest_lock_status' member 'RENDERED' (ivgs-frontend/src/types/monitoring.ts:271)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3394,7 +3386,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'manifest_lock_status' member 'UNKNOWN' (ivgs-frontend/src/types/monitoring.ts:255)",
+    "definition": "vocabulary 'manifest_lock_status' member 'UNKNOWN' (ivgs-frontend/src/types/monitoring.ts:271)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3578,7 +3570,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'CLIP_SCORE' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'CLIP_SCORE' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3586,7 +3578,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'DURATION_CHECK' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'DURATION_CHECK' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3594,7 +3586,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'FRAME_CONSISTENCY' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'FRAME_CONSISTENCY' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3602,7 +3594,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'LIP_SYNC_SCORE' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'LIP_SYNC_SCORE' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3610,7 +3602,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'RESOLUTION_CHECK' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'RESOLUTION_CHECK' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3618,7 +3610,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'SAFETY_SCORE' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'SAFETY_SCORE' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3626,7 +3618,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'SNR' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'SNR' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3634,7 +3626,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'aesthetic' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'aesthetic' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3642,7 +3634,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'consistency' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'consistency' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3650,7 +3642,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'safety' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'safety' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3658,7 +3650,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'quality_metric_type' member 'technical' (ivgs-frontend/src/types/monitoring.ts:204)",
+    "definition": "vocabulary 'quality_metric_type' member 'technical' (ivgs-frontend/src/types/monitoring.ts:220)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3906,7 +3898,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'AUDIO' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'AUDIO' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3914,7 +3906,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'BACKGROUND' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'BACKGROUND' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3922,7 +3914,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'CAPTIONS' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'CAPTIONS' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3930,7 +3922,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'LOWER_THIRD' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'LOWER_THIRD' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3938,7 +3930,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'TALKING_HEAD' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'TALKING_HEAD' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3946,7 +3938,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'overlay' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'overlay' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -3954,7 +3946,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "vocabulary 'timeline_layer' member 'subtitle' (ivgs-frontend/src/types/monitoring.ts:276)",
+    "definition": "vocabulary 'timeline_layer' member 'subtitle' (ivgs-frontend/src/types/monitoring.ts:292)",
     "disagreement": "no production consumer (no literal in an owned slot, no positional literal)",
     "family": "D4",
     "note": ""
@@ -4361,7 +4353,7 @@
    },
    {
     "class": "suspect",
-    "consumer": "ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:111; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:193; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141",
+    "consumer": "ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:111; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:204; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141",
     "definition": "vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28)",
     "disagreement": "literal 'gated' read in slot 'status' at 9 production site(s) is not a member of any vocabulary owning that slot",
     "family": "D4",
@@ -4449,7 +4441,7 @@
    },
    {
     "class": "suspect",
-    "consumer": "ivgs-frontend/src/types/monitoring.ts:411",
+    "consumer": "ivgs-frontend/src/types/monitoring.ts:427",
     "definition": "vocabulary 'backup_type' union=['asset_backup', 'config_backup', 'full_database', 'physical_base_backup', 'vm_snapshot', 'wal_archive']",
     "disagreement": "ts-union BackupType lacks members ['physical_base_backup'] that other definition(s) carry: ['db-enum backup_type (ivgs-api/migrations/versions/0013_backup_records.py:19)']",
     "family": "D4",
@@ -5595,7 +5587,7 @@
     "class": "suspect",
     "consumer": "ivgs-api/migrations/versions/0009_render_segments.py:19",
     "definition": "vocabulary 'render_segment_status' union=['COMPLETE', 'FAILED', 'PENDING', 'RENDERING', 'complete', 'failed', 'pending', 'rendering']",
-    "disagreement": "db-enum segment_status lacks members ['COMPLETE', 'FAILED', 'PENDING', 'RENDERING'] that other definition(s) carry: ['ts-union RenderSegmentStatus (ivgs-frontend/src/types/monitoring.ts:266)']",
+    "disagreement": "db-enum segment_status lacks members ['COMPLETE', 'FAILED', 'PENDING', 'RENDERING'] that other definition(s) carry: ['ts-union RenderSegmentStatus (ivgs-frontend/src/types/monitoring.ts:282)']",
     "family": "D4",
     "note": ""
    },
@@ -5747,13 +5739,13 @@
     "class": "suspect",
     "consumer": "ivgs-frontend/src/types/api.ts:53",
     "definition": "vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm']",
-    "disagreement": "ts-union StorageTier lacks members ['archived', 'deleted'] that other definition(s) carry: ['db-enum storage_tier (ivgs-api/migrations/versions/0001_initial_core.py:93)', 'ts-union StorageTier (ivgs-frontend/src/types/monitoring.ts:335)', 'py-enum StorageTier (ivgs-workers/services/retention_migration.py:46)', 'py-enum StorageTier (shared/models/enums.py:197)']",
+    "disagreement": "ts-union StorageTier lacks members ['archived', 'deleted'] that other definition(s) carry: ['db-enum storage_tier (ivgs-api/migrations/versions/0001_initial_core.py:93)', 'ts-union StorageTier (ivgs-frontend/src/types/monitoring.ts:351)', 'py-enum StorageTier (ivgs-workers/services/retention_migration.py:46)', 'py-enum StorageTier (shared/models/enums.py:197)']",
     "family": "D4",
     "note": ""
    },
    {
     "class": "suspect",
-    "consumer": "ivgs-frontend/src/types/monitoring.ts:335",
+    "consumer": "ivgs-frontend/src/types/monitoring.ts:351",
     "definition": "vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm']",
     "disagreement": "ts-union StorageTier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)']",
     "family": "D4",
@@ -8496,7 +8488,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS BackupRecord.backup_path (ivgs-frontend/src/types/monitoring.ts:420)",
+    "definition": "TS BackupRecord.backup_path (ivgs-frontend/src/types/monitoring.ts:436)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -8504,7 +8496,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS BackupRecord.verification_checksum (ivgs-frontend/src/types/monitoring.ts:420)",
+    "definition": "TS BackupRecord.verification_checksum (ivgs-frontend/src/types/monitoring.ts:436)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -8544,7 +8536,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS CompositionManifest.locked_at (ivgs-frontend/src/types/monitoring.ts:300)",
+    "definition": "TS CompositionManifest.locked_at (ivgs-frontend/src/types/monitoring.ts:316)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -8552,7 +8544,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS CompositionManifest.rendered_at (ivgs-frontend/src/types/monitoring.ts:300)",
+    "definition": "TS CompositionManifest.rendered_at (ivgs-frontend/src/types/monitoring.ts:316)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -8560,7 +8552,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS CompositionManifest.total_duration_seconds (ivgs-frontend/src/types/monitoring.ts:300)",
+    "definition": "TS CompositionManifest.total_duration_seconds (ivgs-frontend/src/types/monitoring.ts:316)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -8632,6 +8624,22 @@
    {
     "class": "orphan",
     "consumer": "-",
+    "definition": "TS DLQMessageDetail.exception_type (ivgs-frontend/src/types/monitoring.ts:191)",
+    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
+    "family": "D7",
+    "note": ""
+   },
+   {
+    "class": "orphan",
+    "consumer": "-",
+    "definition": "TS DLQMessageDetail.original_queue (ivgs-frontend/src/types/monitoring.ts:191)",
+    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
+    "family": "D7",
+    "note": ""
+   },
+   {
+    "class": "orphan",
+    "consumer": "-",
     "definition": "TS DLQMessageResponse.exception_type (ivgs-frontend/src/types/api.ts:514)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
@@ -8641,38 +8649,6 @@
     "class": "orphan",
     "consumer": "-",
     "definition": "TS DLQMessageResponse.original_queue (ivgs-frontend/src/types/api.ts:514)",
-    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "orphan",
-    "consumer": "-",
-    "definition": "TS DLQMessageResponse.reviewed_at (ivgs-frontend/src/types/api.ts:514)",
-    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "orphan",
-    "consumer": "-",
-    "definition": "TS DLQMessageResponse.reviewed_by (ivgs-frontend/src/types/api.ts:514)",
-    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "orphan",
-    "consumer": "-",
-    "definition": "TS DLQMessageResponse.task_args (ivgs-frontend/src/types/api.ts:514)",
-    "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "orphan",
-    "consumer": "-",
-    "definition": "TS DLQMessageResponse.task_kwargs (ivgs-frontend/src/types/api.ts:514)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -9032,7 +9008,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS RollbackPoint.alembic_revision (ivgs-frontend/src/types/monitoring.ts:437)",
+    "definition": "TS RollbackPoint.alembic_revision (ivgs-frontend/src/types/monitoring.ts:453)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -9040,7 +9016,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS RollbackPoint.docker_image_tags (ivgs-frontend/src/types/monitoring.ts:437)",
+    "definition": "TS RollbackPoint.docker_image_tags (ivgs-frontend/src/types/monitoring.ts:453)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -9048,7 +9024,7 @@
    {
     "class": "orphan",
     "consumer": "-",
-    "definition": "TS RollbackPoint.version_tag (ivgs-frontend/src/types/monitoring.ts:437)",
+    "definition": "TS RollbackPoint.version_tag (ivgs-frontend/src/types/monitoring.ts:453)",
     "disagreement": "field never read by any component/hook (dead TS field, or read only via spread)",
     "family": "D7",
     "note": ""
@@ -9184,14 +9160,6 @@
    {
     "class": "orphan",
     "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
-    "definition": "pydantic DLQMessageResponse.created_at (ivgs-api/app/schemas/dlq.py:24)",
-    "disagreement": "API sends 'created_at' but TS DLQMessage does not declare it",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "orphan",
-    "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
     "definition": "pydantic DLQMessageResponse.exception_type (ivgs-api/app/schemas/dlq.py:20)",
     "disagreement": "API sends 'exception_type' but TS DLQMessage does not declare it",
     "family": "D7",
@@ -9208,7 +9176,7 @@
    {
     "class": "orphan",
     "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
-    "definition": "pydantic DLQMessageResponse.resolution (ivgs-api/app/schemas/dlq.py:31)",
+    "definition": "pydantic DLQMessageResponse.resolution (ivgs-api/app/schemas/dlq.py:30)",
     "disagreement": "API sends 'resolution' but TS DLQMessage does not declare it",
     "family": "D7",
     "note": ""
@@ -9216,7 +9184,7 @@
    {
     "class": "orphan",
     "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
-    "definition": "pydantic DLQMessageResponse.reviewed_at (ivgs-api/app/schemas/dlq.py:29)",
+    "definition": "pydantic DLQMessageResponse.reviewed_at (ivgs-api/app/schemas/dlq.py:28)",
     "disagreement": "API sends 'reviewed_at' but TS DLQMessage does not declare it",
     "family": "D7",
     "note": ""
@@ -9224,7 +9192,7 @@
    {
     "class": "orphan",
     "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
-    "definition": "pydantic DLQMessageResponse.reviewed_by (ivgs-api/app/schemas/dlq.py:30)",
+    "definition": "pydantic DLQMessageResponse.reviewed_by (ivgs-api/app/schemas/dlq.py:29)",
     "disagreement": "API sends 'reviewed_by' but TS DLQMessage does not declare it",
     "family": "D7",
     "note": ""
@@ -9320,14 +9288,6 @@
    {
     "class": "suspect",
     "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
-    "definition": "pydantic DLQMessageResponse.entered_dlq_at Optional (ivgs-api/app/schemas/dlq.py:28)",
-    "disagreement": "TS DLQMessage.entered_dlq_at is required but the API may send null",
-    "family": "D7",
-    "note": ""
-   },
-   {
-    "class": "suspect",
-    "consumer": "ivgs-frontend/src/types/monitoring.ts:164",
     "definition": "pydantic DLQMessageResponse.task_name Optional (ivgs-api/app/schemas/dlq.py:19)",
     "disagreement": "TS DLQMessage.task_name is required but the API may send null",
     "family": "D7",
@@ -9335,7 +9295,7 @@
    },
    {
     "class": "suspect",
-    "consumer": "ivgs-frontend/src/types/monitoring.ts:468",
+    "consumer": "ivgs-frontend/src/types/monitoring.ts:484",
     "definition": "pydantic RetentionPolicyResponse.applies_to Optional (ivgs-api/app/schemas/retention.py:77)",
     "disagreement": "TS RetentionPolicy.applies_to is required but the API may send null",
     "family": "D7",
@@ -9392,7 +9352,7 @@
   ]
  },
  "header": {
-  "built_from_commit": "040593feb5680bc59b4276f901ca961aa089519e",
+  "built_from_commit": "9f7259da142e638eb0078f0b7872413ebe559958",
   "families": {
    "D1": {
     "consumers": 329,
@@ -9420,7 +9380,7 @@
     "findings": {
      "definite": 2,
      "orphan": 4,
-     "suspect": 35
+     "suspect": 34
     },
     "title": "Task and activity signatures"
    },
@@ -9455,12 +9415,12 @@
     "title": "Cross-service protocols"
    },
    "D7": {
-    "consumers": 790,
+    "consumers": 796,
     "definitions": 109,
     "findings": {
      "definite": 3,
-     "orphan": 107,
-     "suspect": 5
+     "orphan": 104,
+     "suspect": 4
     },
     "title": "Frontend <-> API types"
    }
@@ -24725,7 +24685,7 @@
       "detail": "POST /api/v1/projects/{projectId}/scenes/{sceneId}/author-motion",
       "file": "ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx",
       "kind": "frontend-call",
-      "line": 184,
+      "line": 195,
       "test": false
      }
     ],
@@ -25876,7 +25836,7 @@
      "body_model": null,
      "file": "ivgs-api/app/api/v1/retention.py",
      "func": "run_retention_migration_now",
-     "line": 183,
+     "line": 187,
      "params": {
       "current_user": {
        "ann": "User",
@@ -31187,7 +31147,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 117,
+     "line": 110,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31259,7 +31219,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 73,
+     "line": 66,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31317,7 +31277,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 130,
+     "line": 123,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31329,7 +31289,7 @@
       "detail": "DLQAnalyticsResponse",
       "file": "ivgs-api/app/schemas/dlq.py",
       "kind": "py-ref",
-      "line": 125,
+      "line": 118,
       "test": false
      },
      {
@@ -31353,7 +31313,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 96,
+     "line": 89,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31365,7 +31325,7 @@
       "detail": "DLQAnalyticsResponse",
       "file": "ivgs-api/app/schemas/dlq.py",
       "kind": "py-ref",
-      "line": 127,
+      "line": 120,
       "test": false
      },
      {
@@ -31389,7 +31349,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 110,
+     "line": 103,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31543,7 +31503,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": true,
-     "line": 42,
+     "line": 35,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31575,7 +31535,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 63,
+     "line": 56,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -31710,10 +31670,6 @@
       "created_at": {
        "ann": "datetime",
        "required": true
-      },
-      "entered_dlq_at": {
-       "ann": "Optional[datetime]",
-       "required": false
       },
       "exception_message": {
        "ann": "Optional[str]",
@@ -31942,7 +31898,7 @@
       "detail": "DLQAnalyticsResponse",
       "file": "ivgs-api/app/schemas/dlq.py",
       "kind": "py-ref",
-      "line": 126,
+      "line": 119,
       "test": false
      },
      {
@@ -31966,7 +31922,7 @@
      },
      "file": "ivgs-api/app/schemas/dlq.py",
      "from_attributes": false,
-     "line": 103,
+     "line": 96,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -40821,21 +40777,21 @@
       "detail": "run_retention_migration_now",
       "file": "ivgs-api/app/api/v1/retention.py",
       "kind": "py-ref",
-      "line": 179,
+      "line": 183,
       "test": false
      },
      {
       "detail": "POST /api/v1/retention/run",
       "file": "ivgs-api/app/api/v1/retention.py",
       "kind": "route-response",
-      "line": 183,
+      "line": 187,
       "test": false
      },
      {
       "detail": "run_retention_migration_now",
       "file": "ivgs-api/app/api/v1/retention.py",
       "kind": "py-ref",
-      "line": 216,
+      "line": 220,
       "test": false
      }
     ],
@@ -40848,7 +40804,7 @@
      },
      "file": "ivgs-api/app/api/v1/retention.py",
      "from_attributes": false,
-     "line": 171,
+     "line": 175,
      "package": "ivgs-api"
     },
     "family": "D2",
@@ -50558,10 +50514,10 @@
    {
     "consumers": [
      {
-      "detail": "",
+      "detail": "run_retention_migration_now shape={'n_args': None, 'kwargs': None, 'opts': ['queue', 'priority']}",
       "file": "ivgs-api/app/api/v1/retention.py",
-      "kind": "literal:Assign",
-      "line": 165,
+      "kind": "send_task",
+      "line": 198,
       "test": false
      },
      {
@@ -55131,7 +55087,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 202,
+       "line": 218,
        "members": [
         "approved",
         "flagged",
@@ -57239,7 +57195,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 418,
+       "line": 434,
        "members": [
         "running",
         "completed",
@@ -57427,7 +57383,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 411,
+       "line": 427,
        "members": [
         "full_database",
         "wal_archive",
@@ -75287,7 +75243,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 255,
+       "line": 271,
        "members": [
         "draft",
         "locked",
@@ -75303,7 +75259,7 @@
       }
      ],
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 255,
+     "line": 271,
      "members": [
       "DRAFT",
       "INVALID",
@@ -88889,7 +88845,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 204,
+       "line": 220,
        "members": [
         "aesthetic",
         "safety",
@@ -88907,7 +88863,7 @@
       }
      ],
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 204,
+     "line": 220,
      "members": [
       "CLIP_SCORE",
       "DURATION_CHECK",
@@ -91190,7 +91146,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 266,
+       "line": 282,
        "members": [
         "pending",
         "rendering",
@@ -91637,7 +91593,7 @@
       {
        "file": "ivgs-api/app/api/v1/retention.py",
        "kind": "const-dict-keys",
-       "line": 168,
+       "line": 172,
        "members": [
         "dry_run",
         "max_transitions"
@@ -91646,7 +91602,7 @@
       }
      ],
      "file": "ivgs-api/app/api/v1/retention.py",
-     "line": 168,
+     "line": 172,
      "members": [
       "dry_run",
       "max_transitions"
@@ -98658,7 +98614,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 335,
+       "line": 351,
        "members": [
         "hot",
         "warm",
@@ -98730,14 +98686,14 @@
       "detail": "grid",
       "file": "ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx",
       "kind": "arg:setViewMode",
-      "line": 557,
+      "line": 568,
       "test": false
      },
      {
       "detail": "timeline",
       "file": "ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx",
       "kind": "arg:setViewMode",
-      "line": 581,
+      "line": 592,
       "test": false
      }
     ],
@@ -99942,7 +99898,7 @@
       {
        "file": "ivgs-frontend/src/types/monitoring.ts",
        "kind": "ts-union",
-       "line": 276,
+       "line": 292,
        "members": [
         "video",
         "audio",
@@ -99959,7 +99915,7 @@
       }
      ],
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 276,
+     "line": 292,
      "members": [
       "AUDIO",
       "BACKGROUND",
@@ -121112,7 +121068,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 296,
@@ -121193,7 +121149,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/library.ts",
       "kind": "field-usage",
       "line": 84,
@@ -121408,7 +121364,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 385,
@@ -121613,70 +121569,70 @@
       "detail": "backup_path: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "backup_type: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "completed_at: 19 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "error_message: 8 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "size_bytes: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "started_at: 21 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "verification_checksum: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      },
      {
       "detail": "verified_at: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 420,
+      "line": 436,
       "test": false
      }
     ],
@@ -121694,7 +121650,7 @@
       "verified_at": "string | null"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 420
+     "line": 436
     },
     "family": "D7",
     "name": "ts:BackupRecord"
@@ -121705,7 +121661,7 @@
       "detail": "backup_type: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 433,
+      "line": 449,
       "test": false
      }
     ],
@@ -121714,7 +121670,7 @@
       "backup_type": "BackupType"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 433
+     "line": 449
     },
     "family": "D7",
     "name": "ts:BackupTriggerPayload"
@@ -121793,7 +121749,7 @@
       "test": false
      },
      {
-      "detail": "retry_count: 11 reference(s) in src (excluding types/)",
+      "detail": "retry_count: 10 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 60,
@@ -121814,7 +121770,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 60,
@@ -121883,7 +121839,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 725,
@@ -121951,7 +121907,7 @@
       "test": false
      },
      {
-      "detail": "detail: 56 reference(s) in src (excluding types/)",
+      "detail": "detail: 58 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 139,
@@ -122007,63 +121963,63 @@
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "locked_at: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "project_id: 18 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "rendered_at: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "scene_count: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "scenes: 32 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "segments: 11 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      },
      {
       "detail": "total_duration_seconds: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 300,
+      "line": 316,
       "test": false
      }
     ],
@@ -122080,7 +122036,7 @@
       "total_duration_seconds": "number"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 300
+     "line": 316
     },
     "family": "D7",
     "name": "ts:CompositionManifest"
@@ -122151,7 +122107,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 663,
@@ -122315,21 +122271,21 @@
       "detail": "category_counts: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 192,
+      "line": 208,
       "test": false
      },
      {
       "detail": "top_tasks: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 192,
+      "line": 208,
       "test": false
      },
      {
       "detail": "trend_data: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 192,
+      "line": 208,
       "test": false
      }
     ],
@@ -122340,7 +122296,7 @@
       "trend_data": "Array<{}>"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 192
+     "line": 208
     },
     "family": "D7",
     "name": "ts:DLQAnalyticsData"
@@ -122355,7 +122311,7 @@
       "test": false
      },
      {
-      "detail": "entered_dlq_at: 2 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 164,
@@ -122369,7 +122325,7 @@
       "test": false
      },
      {
-      "detail": "failure_category: 2 reference(s) in src (excluding types/)",
+      "detail": "failure_category: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 164,
@@ -122383,7 +122339,7 @@
       "test": false
      },
      {
-      "detail": "retry_count_exhausted: 1 reference(s) in src (excluding types/)",
+      "detail": "retry_count_exhausted: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 164,
@@ -122399,7 +122355,7 @@
     ],
     "definition": {
      "fields": {
-      "entered_dlq_at": "string",
+      "created_at": "string",
       "exception_message": "string | null",
       "failure_category": "DLQCategory | null",
       "id": "string",
@@ -122415,75 +122371,123 @@
    {
     "consumers": [
      {
-      "detail": "category: 18 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      },
      {
-      "detail": "entered_dlq_at: 2 reference(s) in src (excluding types/)",
+      "detail": "exception_message: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "exception_type: 0 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "failure_category: 3 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      },
      {
-      "detail": "resolution_history: 3 reference(s) in src (excluding types/)",
+      "detail": "original_queue: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      },
      {
-      "detail": "retry_count: 11 reference(s) in src (excluding types/)",
+      "detail": "resolution: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      },
      {
-      "detail": "task_arguments: 4 reference(s) in src (excluding types/)",
+      "detail": "retry_count_exhausted: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "reviewed_at: 1 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "reviewed_by: 1 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "task_args: 2 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
+      "test": false
+     },
+     {
+      "detail": "task_kwargs: 2 reference(s) in src (excluding types/)",
+      "file": "ivgs-frontend/src/types/monitoring.ts",
+      "kind": "field-usage",
+      "line": 191,
       "test": false
      },
      {
       "detail": "task_name: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      },
      {
       "detail": "traceback: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 181,
+      "line": 191,
       "test": false
      }
     ],
     "definition": {
      "fields": {
-      "category": "DLQCategory",
-      "entered_dlq_at": "string",
+      "created_at": "string",
+      "exception_message": "string | null",
+      "exception_type": "string | null",
+      "failure_category": "DLQCategory | null",
       "id": "string",
-      "resolution_history": "DLQResolutionEntry[]",
-      "retry_count": "number",
-      "task_arguments": "Record<string, unknown>",
-      "task_name": "string",
-      "traceback": "string"
+      "original_queue": "string | null",
+      "resolution": "string | null",
+      "retry_count_exhausted": "number | null",
+      "reviewed_at": "string | null",
+      "reviewed_by": "string | null",
+      "task_args": "unknown",
+      "task_kwargs": "Record<string, unknown> | null",
+      "task_name": "string | null",
+      "traceback": "string | null"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 181
+     "line": 191
     },
     "family": "D7",
     "name": "ts:DLQMessageDetail"
@@ -122491,7 +122495,7 @@
    {
     "consumers": [
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
@@ -122512,7 +122516,7 @@
       "test": false
      },
      {
-      "detail": "failure_category: 2 reference(s) in src (excluding types/)",
+      "detail": "failure_category: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
@@ -122533,42 +122537,42 @@
       "test": false
      },
      {
-      "detail": "resolution: 1 reference(s) in src (excluding types/)",
+      "detail": "resolution: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
       "test": false
      },
      {
-      "detail": "retry_count_exhausted: 1 reference(s) in src (excluding types/)",
+      "detail": "retry_count_exhausted: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
       "test": false
      },
      {
-      "detail": "reviewed_at: 0 reference(s) in src (excluding types/)",
+      "detail": "reviewed_at: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
       "test": false
      },
      {
-      "detail": "reviewed_by: 0 reference(s) in src (excluding types/)",
+      "detail": "reviewed_by: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
       "test": false
      },
      {
-      "detail": "task_args: 0 reference(s) in src (excluding types/)",
+      "detail": "task_args: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
       "test": false
      },
      {
-      "detail": "task_kwargs: 0 reference(s) in src (excluding types/)",
+      "detail": "task_kwargs: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 514,
@@ -122615,38 +122619,38 @@
    {
     "consumers": [
      {
-      "detail": "action: 6 reference(s) in src (excluding types/)",
+      "detail": "action: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 173,
+      "line": 174,
       "test": false
      },
      {
-      "detail": "performed_at: 1 reference(s) in src (excluding types/)",
+      "detail": "performed_at: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 173,
+      "line": 174,
       "test": false
      },
      {
-      "detail": "performed_by: 1 reference(s) in src (excluding types/)",
+      "detail": "performed_by: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 173,
+      "line": 174,
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 173,
+      "line": 174,
       "test": false
      },
      {
-      "detail": "result: 9 reference(s) in src (excluding types/)",
+      "detail": "result: 10 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 173,
+      "line": 174,
       "test": false
      }
     ],
@@ -122659,7 +122663,7 @@
       "result": "string"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 173
+     "line": 174
     },
     "family": "D7",
     "name": "ts:DLQResolutionEntry"
@@ -122695,7 +122699,7 @@
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 149,
@@ -122709,7 +122713,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 149,
@@ -122744,77 +122748,77 @@
       "detail": "asset_id: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "asset_type: 20 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "decision: 9 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "job_id: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "project_id: 18 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "project_name: 11 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "quality_score: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "safety_score: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      },
      {
       "detail": "scoring_details: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 230,
+      "line": 246,
       "test": false
      }
     ],
@@ -122833,7 +122837,7 @@
       "scoring_details": "Record<string, unknown> | null"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 230
+     "line": 246
     },
     "family": "D7",
     "name": "ts:FlaggedAsset"
@@ -123087,7 +123091,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 545,
@@ -123222,7 +123226,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 636,
@@ -123256,7 +123260,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 739,
@@ -123307,7 +123311,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 430,
@@ -123321,7 +123325,7 @@
       "test": false
      },
      {
-      "detail": "failure_category: 2 reference(s) in src (excluding types/)",
+      "detail": "failure_category: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 430,
@@ -123377,7 +123381,7 @@
       "test": false
      },
      {
-      "detail": "retry_count: 11 reference(s) in src (excluding types/)",
+      "detail": "retry_count: 10 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 430,
@@ -123391,7 +123395,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 430,
@@ -123432,7 +123436,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 696,
@@ -123567,7 +123571,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/library.ts",
       "kind": "field-usage",
       "line": 57,
@@ -123873,7 +123877,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 158,
@@ -123968,7 +123972,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 50,
@@ -124026,7 +124030,7 @@
       "test": false
      },
      {
-      "detail": "engine: 12 reference(s) in src (excluding types/)",
+      "detail": "engine: 13 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 202,
@@ -124167,7 +124171,7 @@
    {
     "consumers": [
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 279,
@@ -124372,7 +124376,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 147,
@@ -124409,7 +124413,7 @@
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 154,
@@ -124503,7 +124507,7 @@
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 170,
@@ -124612,7 +124616,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 98,
@@ -124713,7 +124717,7 @@
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 67,
@@ -124746,35 +124750,35 @@
       "detail": "last_modified: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 392,
+      "line": 408,
       "test": false
      },
      {
       "detail": "path: 35 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 392,
+      "line": 408,
       "test": false
      },
      {
-      "detail": "reason: 35 reference(s) in src (excluding types/)",
+      "detail": "reason: 36 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 392,
+      "line": 408,
       "test": false
      },
      {
       "detail": "seaweedfs_fid: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 392,
+      "line": 408,
       "test": false
      },
      {
       "detail": "size_bytes: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 392,
+      "line": 408,
       "test": false
      }
     ],
@@ -124787,7 +124791,7 @@
       "size_bytes": "number"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 392
+     "line": 408
     },
     "family": "D7",
     "name": "ts:OrphanAsset"
@@ -124862,7 +124866,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 71,
@@ -124911,7 +124915,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 71,
@@ -124981,7 +124985,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 83,
@@ -125341,7 +125345,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/library.ts",
       "kind": "field-usage",
       "line": 155,
@@ -125755,7 +125759,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 246,
@@ -126034,7 +126038,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/prompts.ts",
       "kind": "field-usage",
       "line": 328,
@@ -126134,7 +126138,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/prompts.ts",
       "kind": "field-usage",
       "line": 54,
@@ -126271,7 +126275,7 @@
    {
     "consumers": [
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 497,
@@ -126418,7 +126422,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/prompts.ts",
       "kind": "field-usage",
       "line": 95,
@@ -126534,35 +126538,35 @@
       "detail": "has_quota: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 346,
+      "line": 362,
       "test": false
      },
      {
       "detail": "quota_bytes: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 346,
+      "line": 362,
       "test": false
      },
      {
       "detail": "used_bytes: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 346,
+      "line": 362,
       "test": false
      },
      {
       "detail": "user_id: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 346,
+      "line": 362,
       "test": false
      },
      {
       "detail": "username: 45 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 346,
+      "line": 362,
       "test": false
      }
     ],
@@ -126575,7 +126579,7 @@
       "username": "string"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 346
+     "line": 362
     },
     "family": "D7",
     "name": "ts:QuotaEntry"
@@ -126593,84 +126597,84 @@
       "detail": "applies_to: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "archive_days: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "cold_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "delete_after_days: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "description: 119 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "hot_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "is_default: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "name: 139 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "updated_at: 9 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      },
      {
       "detail": "warm_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 468,
+      "line": 484,
       "test": false
      }
     ],
@@ -126690,7 +126694,7 @@
       "warm_days": "number | null"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 468
+     "line": 484
     },
     "family": "D7",
     "name": "ts:RetentionPolicy"
@@ -126708,63 +126712,63 @@
       "detail": "applies_to: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "archive_days: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "cold_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "delete_after_days: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "description: 119 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "hot_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "is_default: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "name: 139 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      },
      {
       "detail": "warm_days: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 484,
+      "line": 500,
       "test": false
      }
     ],
@@ -126781,7 +126785,7 @@
       "warm_days": "number?"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 484
+     "line": 500
     },
     "family": "D7",
     "name": "ts:RetentionPolicyUpdate"
@@ -126792,35 +126796,35 @@
       "detail": "alembic_revision: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 437,
+      "line": 453,
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 437,
+      "line": 453,
       "test": false
      },
      {
       "detail": "docker_image_tags: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 437,
+      "line": 453,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 437,
+      "line": 453,
       "test": false
      },
      {
       "detail": "version_tag: 0 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 437,
+      "line": 453,
       "test": false
      }
     ],
@@ -126833,7 +126837,7 @@
       "version_tag": "string"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 437
+     "line": 453
     },
     "family": "D7",
     "name": "ts:RollbackPoint"
@@ -126855,7 +126859,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/storyboard.ts",
       "kind": "field-usage",
       "line": 104,
@@ -126932,7 +126936,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/storyboard.ts",
       "kind": "field-usage",
       "line": 104,
@@ -127193,7 +127197,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 332,
@@ -127370,7 +127374,7 @@
       "test": false
      },
      {
-      "detail": "engine: 12 reference(s) in src (excluding types/)",
+      "detail": "engine: 13 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 318,
@@ -127589,42 +127593,42 @@
       "detail": "allocated: 10 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      },
      {
       "detail": "asset_count: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      },
      {
       "detail": "tier: 79 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      },
      {
       "detail": "total_bytes: 3 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      },
      {
       "detail": "used: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      },
      {
       "detail": "used_bytes: 7 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 337,
+      "line": 353,
       "test": false
      }
     ],
@@ -127638,7 +127642,7 @@
       "used_bytes": "number"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 337
+     "line": 353
     },
     "family": "D7",
     "name": "ts:StorageTierData"
@@ -127674,7 +127678,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 166,
@@ -127723,7 +127727,7 @@
       "test": false
      },
      {
-      "detail": "engine: 12 reference(s) in src (excluding types/)",
+      "detail": "engine: 13 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 166,
@@ -127925,7 +127929,7 @@
    {
     "consumers": [
      {
-      "detail": "category: 18 reference(s) in src (excluding types/)",
+      "detail": "category: 17 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/prompts.ts",
       "kind": "field-usage",
       "line": 124,
@@ -127972,35 +127976,35 @@
       "detail": "asset_id: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 384,
+      "line": 400,
       "test": false
      },
      {
       "detail": "current_tier: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 384,
+      "line": 400,
       "test": false
      },
      {
       "detail": "days_until_migration: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 384,
+      "line": 400,
       "test": false
      },
      {
       "detail": "file_size_bytes: 13 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 384,
+      "line": 400,
       "test": false
      },
      {
       "detail": "next_tier: 5 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 384,
+      "line": 400,
       "test": false
      }
     ],
@@ -128013,7 +128017,7 @@
       "next_tier": "StorageTier"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 384
+     "line": 400
     },
     "family": "D7",
     "name": "ts:TierMigration"
@@ -128024,63 +128028,63 @@
       "detail": "asset_id: 6 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "duration_seconds: 32 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "id: 617 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "layer: 4 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "progress: 21 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "render_completed_at: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "render_started_at: 2 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
       "detail": "start_seconds: 1 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
-      "line": 288,
+      "line": 304,
       "test": false
      }
     ],
@@ -128097,7 +128101,7 @@
       "status": "RenderSegmentStatus"
      },
      "file": "ivgs-frontend/src/types/monitoring.ts",
-     "line": 288
+     "line": 304
     },
     "family": "D7",
     "name": "ts:TimelineSegment"
@@ -128213,7 +128217,7 @@
    {
     "consumers": [
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 474,
@@ -128332,7 +128336,7 @@
       "test": false
      },
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/monitoring.ts",
       "kind": "field-usage",
       "line": 16,
@@ -128384,7 +128388,7 @@
    {
     "consumers": [
      {
-      "detail": "created_at: 48 reference(s) in src (excluding types/)",
+      "detail": "created_at: 51 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/api.ts",
       "kind": "field-usage",
       "line": 204,
@@ -128578,7 +128582,7 @@
       "test": false
      },
      {
-      "detail": "status: 217 reference(s) in src (excluding types/)",
+      "detail": "status: 218 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 63,
@@ -128639,7 +128643,7 @@
       "test": false
      },
      {
-      "detail": "detail: 56 reference(s) in src (excluding types/)",
+      "detail": "detail: 58 reference(s) in src (excluding types/)",
       "file": "ivgs-frontend/src/types/models.ts",
       "kind": "field-usage",
       "line": 107,

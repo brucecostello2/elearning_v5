@@ -1,16 +1,16 @@
 # WP-69 consumer index
 
-Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touching the audited source; source tree dirty at build: False). Migration chain head in tree: `0054_wp_ivgs_12i_system_corrections.py`; production head assumed `0054` (order §2 D1).
+Built from commit `9f7259da142e638eb0078f0b7872413ebe559958` (last commit touching the audited source; source tree dirty at build: False). Migration chain head in tree: `0054_wp_ivgs_12i_system_corrections.py`; production head assumed `0054` (order §2 D1).
 
 | Family | Definitions | Consumers | definite | suspect | orphan |
 |---|---|---|---|---|---|
 | D1 Database schema | 68 | 329 | 21 | 59 | 2 |
 | D2 API contracts | 420 | 2212 | 30 | 29 | 153 |
-| D3 Task and activity signatures | 99 | 508 | 2 | 35 | 4 |
+| D3 Task and activity signatures | 99 | 508 | 2 | 34 | 4 |
 | D4 Enumerations and name vocabularies | 119 | 6321 | 6 | 211 | 169 |
 | D5 Configuration keys | 450 | 1475 | 0 | 14 | 192 |
 | D6 Cross-service protocols | 124 | 227 | 1 | 24 | 100 |
-| D7 Frontend <-> API types | 109 | 790 | 3 | 5 | 107 |
+| D7 Frontend <-> API types | 109 | 796 | 3 | 4 | 104 |
 
 
 ## D1 — Database schema
@@ -698,7 +698,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | pydantic RegisterResponse (ivgs-scheduler/main.py:215) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ReorderItem (ivgs-api/app/schemas/transcript.py:43) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ReservationReleaseResponse (ivgs-scheduler/main.py:304) | - | no route and no production reference outside its own file |  |
-| orphan | pydantic RetentionRunResponse (ivgs-api/app/api/v1/retention.py:171) | - | no route and no production reference outside its own file |  |
+| orphan | pydantic RetentionRunResponse (ivgs-api/app/api/v1/retention.py:175) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic RollbackToRequest (ivgs-api/app/api/v1/rollback.py:19) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic SceneReorderItem (ivgs-api/app/schemas/storyboard.py:484) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ScheduleRequest (ivgs-scheduler/main.py:144) | - | no route and no production reference outside its own file |  |
@@ -1567,7 +1567,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ivgs-api POST /api/v1/projects/{project_id}/scenes/{scene_id}/adapt-description** — `ivgs-api/app/api/v1/storyboard.py:221` — 1 consumer(s)
     - `ivgs-frontend/src/hooks/useStoryboard.ts:426` frontend-call POST /api/v1/projects/{projectId}/scenes/{sceneId}/adapt-description
 - **ivgs-api POST /api/v1/projects/{project_id}/scenes/{scene_id}/author-motion** — `ivgs-api/app/api/v1/storyboard.py:489` — 1 consumer(s)
-    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:184` frontend-call POST /api/v1/projects/{projectId}/scenes/{sceneId}/author-motion
+    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:195` frontend-call POST /api/v1/projects/{projectId}/scenes/{sceneId}/author-motion
 - **ivgs-api POST /api/v1/projects/{project_id}/scenes/{scene_id}/prompts** — `ivgs-api/app/api/v1/prompts.py:612` — 2 consumer(s)
     - `ivgs-api/tests/test_prompts.py:200` python-http-call [test] POST /api/v1/projects/{}/scenes/{}/prompts
     - `ivgs-frontend/src/hooks/usePrompts.ts:67` frontend-call GET /api/v1/projects/{options_projectId}/scenes/{options_sceneId}/prompts
@@ -1669,7 +1669,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-api/tests/test_retention_api.py:108` python-http-call [test] POST /api/v1/retention/policies
     - `ivgs-api/tests/test_retention_api.py:125` python-http-call [test] POST /api/v1/retention/policies
     - `ivgs-api/tests/test_retention_api.py:140` python-http-call [test] POST /api/v1/retention/policies
-- **ivgs-api POST /api/v1/retention/run** — `ivgs-api/app/api/v1/retention.py:183` — 5 consumer(s)
+- **ivgs-api POST /api/v1/retention/run** — `ivgs-api/app/api/v1/retention.py:187` — 5 consumer(s)
     - `ivgs-api/tests/test_wp70_consumer_fixes.py:114` python-http-call [test] POST /api/v1/retention/run
     - `ivgs-api/tests/test_wp70_consumer_fixes.py:121` python-http-call [test] POST /api/v1/retention/run
     - `ivgs-api/tests/test_wp70_consumer_fixes.py:128` python-http-call [test] POST /api/v1/retention/run
@@ -2165,30 +2165,30 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **pydantic:CreateRollbackRequest** — `ivgs-api/app/api/v1/rollback.py:15` — 2 consumer(s)
     - `ivgs-api/app/api/v1/rollback.py:24` route-body POST /api/v1/rollback/create
     - `ivgs-api/app/api/v1/rollback.py:25` py-ref create_rollback_point
-- **pydantic:DLQAnalyticsResponse** — `ivgs-api/app/schemas/dlq.py:117` — 4 consumer(s)
+- **pydantic:DLQAnalyticsResponse** — `ivgs-api/app/schemas/dlq.py:110` — 4 consumer(s)
     - `ivgs-api/app/api/v1/dlq.py:202` py-ref get_dlq_analytics
     - `ivgs-api/app/api/v1/dlq.py:205` route-response GET /api/v1/dlq/analytics
     - `ivgs-api/app/services/dlq_service.py:334` py-ref DLQService.get_analytics
     - `ivgs-api/app/services/dlq_service.py:407` py-ref DLQService.get_analytics
-- **pydantic:DLQBulkReplayRequest** — `ivgs-api/app/schemas/dlq.py:73` — 6 consumer(s)
+- **pydantic:DLQBulkReplayRequest** — `ivgs-api/app/schemas/dlq.py:66` — 6 consumer(s)
     - `ivgs-api/app/api/v1/dlq.py:219` route-body POST /api/v1/dlq/bulk-replay
     - `ivgs-api/app/api/v1/dlq.py:220` py-ref bulk_replay_dlq
     - `ivgs-api/app/services/dlq_service.py:265` py-ref DLQService.bulk_replay
     - `ivgs-api/tests/test_service_dlq.py:166` py-ref [test] TestBulkReplay.test_bulk_replay_by_category
     - `ivgs-api/tests/test_service_dlq.py:178` py-ref [test] TestBulkReplay.test_bulk_replay_skips_resolved
     - `ivgs-api/tests/test_service_dlq.py:185` py-ref [test] TestBulkReplay.test_bulk_replay_no_matches
-- **pydantic:DLQBulkReplayResponse** — `ivgs-api/app/schemas/dlq.py:130` — 4 consumer(s)
+- **pydantic:DLQBulkReplayResponse** — `ivgs-api/app/schemas/dlq.py:123` — 4 consumer(s)
     - `ivgs-api/app/api/v1/dlq.py:216` py-ref bulk_replay_dlq
     - `ivgs-api/app/api/v1/dlq.py:219` route-response POST /api/v1/dlq/bulk-replay
     - `ivgs-api/app/services/dlq_service.py:267` py-ref DLQService.bulk_replay
     - `ivgs-api/app/services/dlq_service.py:327` py-ref DLQService.bulk_replay
-- **pydantic:DLQCategoryCount** — `ivgs-api/app/schemas/dlq.py:96` — 2 consumer(s)
-    - `ivgs-api/app/schemas/dlq.py:125` py-ref DLQAnalyticsResponse
+- **pydantic:DLQCategoryCount** — `ivgs-api/app/schemas/dlq.py:89` — 2 consumer(s)
+    - `ivgs-api/app/schemas/dlq.py:118` py-ref DLQAnalyticsResponse
     - `ivgs-api/app/services/dlq_service.py:372` py-ref DLQService.get_analytics
-- **pydantic:DLQDailyCount** — `ivgs-api/app/schemas/dlq.py:110` — 2 consumer(s)
-    - `ivgs-api/app/schemas/dlq.py:127` py-ref DLQAnalyticsResponse
+- **pydantic:DLQDailyCount** — `ivgs-api/app/schemas/dlq.py:103` — 2 consumer(s)
+    - `ivgs-api/app/schemas/dlq.py:120` py-ref DLQAnalyticsResponse
     - `ivgs-api/app/services/dlq_service.py:403` py-ref DLQService.get_analytics
-- **pydantic:DLQDetailResponse** — `ivgs-api/app/schemas/dlq.py:42` — 12 consumer(s)
+- **pydantic:DLQDetailResponse** — `ivgs-api/app/schemas/dlq.py:35` — 12 consumer(s)
     - `ivgs-api/app/api/v1/dlq.py:87` py-ref get_dlq_message
     - `ivgs-api/app/api/v1/dlq.py:90` route-response GET /api/v1/dlq/messages/{message_id}
     - `ivgs-api/app/api/v1/dlq.py:113` py-ref replay_dlq_message
@@ -2201,7 +2201,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-api/app/services/dlq_service.py:224` py-ref DLQService.replay_message
     - `ivgs-api/app/services/dlq_service.py:231` py-ref DLQService.discard_message
     - `ivgs-api/app/services/dlq_service.py:261` py-ref DLQService.discard_message
-- **pydantic:DLQDiscardRequest** — `ivgs-api/app/schemas/dlq.py:63` — 2 consumer(s)
+- **pydantic:DLQDiscardRequest** — `ivgs-api/app/schemas/dlq.py:56` — 2 consumer(s)
     - `ivgs-api/app/api/v1/dlq.py:165` route-body POST /api/v1/dlq/messages/{message_id}/discard
     - `ivgs-api/app/api/v1/dlq.py:167` py-ref discard_dlq_message
 - **pydantic:DLQEntry** — `ivgs-workers/services/dlq_service.py:65` — 5 consumer(s)
@@ -2228,8 +2228,8 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-workers/services/dlq_service.py:543` py-ref DLQService.get_statistics
     - `ivgs-workers/services/dlq_service.py:613` py-ref DLQService.get_statistics
     - `ivgs-workers/tests/test_dlq_service.py:382` py-ref [test] TestDLQModels.test_dlq_stats_defaults
-- **pydantic:DLQTaskCount** — `ivgs-api/app/schemas/dlq.py:103` — 2 consumer(s)
-    - `ivgs-api/app/schemas/dlq.py:126` py-ref DLQAnalyticsResponse
+- **pydantic:DLQTaskCount** — `ivgs-api/app/schemas/dlq.py:96` — 2 consumer(s)
+    - `ivgs-api/app/schemas/dlq.py:119` py-ref DLQAnalyticsResponse
     - `ivgs-api/app/services/dlq_service.py:388` py-ref DLQService.get_analytics
 - **pydantic:DedupSavings** — `ivgs-api/app/schemas/retention.py:103` — 2 consumer(s)
     - `ivgs-api/app/schemas/retention.py:144` py-ref RetentionReportResponse
@@ -2946,10 +2946,10 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-api/app/api/v1/retention.py:148` route-response GET /api/v1/retention/report
     - `ivgs-api/app/services/retention_service.py:149` py-ref RetentionService.get_report
     - `ivgs-api/app/services/retention_service.py:262` py-ref RetentionService.get_report
-- **pydantic:RetentionRunResponse** — `ivgs-api/app/api/v1/retention.py:171` — 3 consumer(s)
-    - `ivgs-api/app/api/v1/retention.py:179` py-ref run_retention_migration_now
-    - `ivgs-api/app/api/v1/retention.py:183` route-response POST /api/v1/retention/run
-    - `ivgs-api/app/api/v1/retention.py:216` py-ref run_retention_migration_now
+- **pydantic:RetentionRunResponse** — `ivgs-api/app/api/v1/retention.py:175` — 3 consumer(s)
+    - `ivgs-api/app/api/v1/retention.py:183` py-ref run_retention_migration_now
+    - `ivgs-api/app/api/v1/retention.py:187` route-response POST /api/v1/retention/run
+    - `ivgs-api/app/api/v1/retention.py:220` py-ref run_retention_migration_now
 - **pydantic:RetryAttemptRecord** — `ivgs-workers/services/retry_engine.py:134` — 5 consumer(s)
     - `ivgs-workers/services/retry_engine.py:356` py-ref RetryEngine.record_attempt
     - `ivgs-workers/services/retry_engine.py:375` py-ref RetryEngine.record_attempt
@@ -3391,7 +3391,6 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | suspect | dataclass TranscriptRecord (ivgs-workers/temporal_pipeline/payloads.py:110) | ivgs-api/app/schemas/transcript.py:13 | pydantic twin TranscriptResponse differs: only-in-dataclass=['original_text'], only-in-pydantic=['created_at', 'original_asset_id', 'source_kind', 'source_text', 'updated_at'] |  |
 | suspect | dataclass TranscriptRecord (ivgs-workers/temporal_pipeline/payloads.py:110) | ivgs-api/app/schemas/transcript.py:35 | pydantic twin TranscriptUpdate differs: only-in-dataclass=['id', 'original_text', 'project_id'], only-in-pydantic=[] |  |
 | suspect | task registry | ivgs-api/app/api/v1/backup.py:251 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-api/app/api/v1/retention.py:194 | send_task with dynamic task name RETENTION_BEAT_TASK | not checkable statically |
 | suspect | task registry | ivgs-api/app/services/dlq_service.py:111 | send_task with dynamic task name message.task_name | not checkable statically |
 | suspect | task registry | ivgs-api/app/services/language_service.py:346 | send_task with dynamic task name DISPATCH_PIPELINE_TASK | not checkable statically |
 | suspect | task registry | ivgs-api/app/services/regeneration.py:416 | send_task with dynamic task name DISPATCH_MEDIA_TASK | not checkable statically |
@@ -3864,7 +3863,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-workers/tests/test_wp59_retention.py:487` literal:Compare [test] TestTaskWiring.test_the_orphan_schedule_is_on_weekly_and_never_points_at_the_stub
     - `ivgs-workers/tests/test_wp61_schedules.py:321` literal:Compare [test] TestOrphanScheduleIsOnWeeklyAndCannotDelete.test_the_entry_is_live_and_weekly
 - **task:ivgs_workers.tasks.periodic_tasks.run_retention_migration** — `ivgs-workers/tasks/periodic_tasks.py:580` — 6 consumer(s)
-    - `ivgs-api/app/api/v1/retention.py:165` literal:Assign 
+    - `ivgs-api/app/api/v1/retention.py:198` send_task run_retention_migration_now shape={'n_args': None, 'kwargs': None, 'opts': ['queue', 'priority']}
     - `ivgs-api/tests/test_wp70_consumer_fixes.py:87` literal:Assign [test] 
     - `ivgs-workers/celery_app.py:388` literal:dict-value 
     - `ivgs-workers/tasks/periodic_tasks.py:572` literal:keyword run_retention_migration
@@ -4132,10 +4131,10 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | vocabulary 'kind_to_asset_type' member 'music_bed' (ivgs-api/app/models/library_asset.py:26) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'latent_sync_mode' member 'chroma_key' (ivgs-workers/clients/latentsync_client.py:84) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'latent_sync_mode' member 'pip' (ivgs-workers/clients/latentsync_client.py:84) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'manifest_lock_status' member 'INVALID' (ivgs-frontend/src/types/monitoring.ts:255) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'manifest_lock_status' member 'LOCKED' (ivgs-frontend/src/types/monitoring.ts:255) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'manifest_lock_status' member 'RENDERED' (ivgs-frontend/src/types/monitoring.ts:255) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'manifest_lock_status' member 'UNKNOWN' (ivgs-frontend/src/types/monitoring.ts:255) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'manifest_lock_status' member 'INVALID' (ivgs-frontend/src/types/monitoring.ts:271) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'manifest_lock_status' member 'LOCKED' (ivgs-frontend/src/types/monitoring.ts:271) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'manifest_lock_status' member 'RENDERED' (ivgs-frontend/src/types/monitoring.ts:271) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'manifest_lock_status' member 'UNKNOWN' (ivgs-frontend/src/types/monitoring.ts:271) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'model_engine' member 'animatediff' (ivgs-api/migrations/versions/0026_ad01_model_store.py:60) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'model_engine' member 'humo' (ivgs-api/migrations/versions/0026_ad01_model_store.py:60) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'model_engine' member 'magihuman' (ivgs-api/migrations/versions/0026_ad01_model_store.py:60) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
@@ -4158,17 +4157,17 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | vocabulary 'pipeline_stage' member 'REVIEW' (ivgs-api/migrations/versions/0001_initial_core.py:27) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'pipeline_stage_status' member 'SKIPPED' (ivgs-frontend/src/types/monitoring.ts:46) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'presenter_orientation' member 'portrait' (ivgs-api/app/models/actor.py:21) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'CLIP_SCORE' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'DURATION_CHECK' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'FRAME_CONSISTENCY' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'LIP_SYNC_SCORE' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'RESOLUTION_CHECK' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'SAFETY_SCORE' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'SNR' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'aesthetic' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'consistency' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'safety' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'quality_metric_type' member 'technical' (ivgs-frontend/src/types/monitoring.ts:204) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'CLIP_SCORE' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'DURATION_CHECK' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'FRAME_CONSISTENCY' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'LIP_SYNC_SCORE' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'RESOLUTION_CHECK' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'SAFETY_SCORE' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'SNR' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'aesthetic' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'consistency' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'safety' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'quality_metric_type' member 'technical' (ivgs-frontend/src/types/monitoring.ts:220) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'ref_kind' member 'engine_image' (shared/weights/refs.py:47) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'render_kind' member 'final' (ivgs-frontend/src/lib/media.ts:206) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'sad_talker_mode' member 'lip_only' (ivgs-workers/clients/sadtalker_client.py:87) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
@@ -4199,13 +4198,13 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | vocabulary 'template_variable_category' member 'localization' (ivgs-frontend/src/types/prompts.ts:39) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'template_variable_category' member 'project' (ivgs-frontend/src/types/prompts.ts:39) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'template_variable_category' member 'scene' (ivgs-frontend/src/types/prompts.ts:39) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'AUDIO' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'BACKGROUND' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'CAPTIONS' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'LOWER_THIRD' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'TALKING_HEAD' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'overlay' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
-| orphan | vocabulary 'timeline_layer' member 'subtitle' (ivgs-frontend/src/types/monitoring.ts:276) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'AUDIO' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'BACKGROUND' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'CAPTIONS' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'LOWER_THIRD' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'TALKING_HEAD' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'overlay' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'timeline_layer' member 'subtitle' (ivgs-frontend/src/types/monitoring.ts:292) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'transcript_source_kind' member 'generated' (shared/models/enums.py:387) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'transcript_source_kind' member 'uploaded' (shared/models/enums.py:387) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'transition_type' member 'CROSS_DISSOLVE' (ivgs-frontend/src/types/storyboard.ts:61) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
@@ -4256,7 +4255,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-api/main.py:97 | literal 'operational' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-backup-worker/tasks/backup_tasks.py:515 | literal 'dry_run' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-backup-worker/tasks/backup_tasks.py:783 | literal 'passed' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:111; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:193; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141 | literal 'gated' read in slot 'status' at 9 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:111; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:204; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141 | literal 'gated' read in slot 'status' at 9 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/hooks/useMonitoring.ts:519 | literal 'number' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/lib/jobs.ts:68; ivgs-frontend/src/lib/pipeline-run.ts:164 | literal 'string' read in slot 'status' at 2 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-scheduler/main.py:695 | literal 'registered' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
@@ -4267,7 +4266,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/temporal_pipeline/workflow.py:274; ivgs-workers/temporal_pipeline/workflow.py:275 | literal 'cancelled' read in slot 'status' at 2 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/temporal_pipeline/workflow.py:277 | literal 'storyboard_rejected' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_type' = ['asset_backup', 'config_backup', 'full_database', 'physical_base_backup', 'vm_snapshot', 'wal_archive'] | ivgs-api/app/models/backup_record.py:33 | members ['physical_base_backup'] never appear at call slot PG_ENUM(arg=), where 5 of 6 members do |  |
-| suspect | vocabulary 'backup_type' union=['asset_backup', 'config_backup', 'full_database', 'physical_base_backup', 'vm_snapshot', 'wal_archive'] | ivgs-frontend/src/types/monitoring.ts:411 | ts-union BackupType lacks members ['physical_base_backup'] that other definition(s) carry: ['db-enum backup_type (ivgs-api/migrations/versions/0013_backup_records.py:19)'] |  |
+| suspect | vocabulary 'backup_type' union=['asset_backup', 'config_backup', 'full_database', 'physical_base_backup', 'vm_snapshot', 'wal_archive'] | ivgs-frontend/src/types/monitoring.ts:427 | ts-union BackupType lacks members ['physical_base_backup'] that other definition(s) carry: ['db-enum backup_type (ivgs-api/migrations/versions/0013_backup_records.py:19)'] |  |
 | suspect | vocabulary 'capability_dimension' = ['language', 'motion_profile', 'quality_bias', 'subject_affinity', 'visual_style', 'voice_profile'] | ivgs-api/app/services/library_service.py:448; ivgs-workers/clients/coqui_client.py:258; ivgs-workers/clients/coqui_client.py:260; ivgs-workers/clients/whisperx_client.py:49; ivgs-workers/servers/whisperx/server.py:154; ivgs-workers/tasks/stage3_images.py:207 | members ['motion_profile', 'quality_bias', 'subject_affinity'] never appear at call slot get(arg=), where 3 of 6 members do |  |
 | suspect | vocabulary 'celery_queue' = ['backup', 'composition', 'default', 'gpu_animation', 'gpu_image', 'gpu_llm', 'gpu_talking_head', 'gpu_tts', 'gpu_video'] | ivgs-workers/tasks/animation_generation_task.py:656; ivgs-workers/tasks/motion_graphics_task.py:459; ivgs-workers/tasks/pipeline_orchestrator.py:103; ivgs-workers/tasks/pipeline_orchestrator.py:198; ivgs-workers/tasks/pipeline_orchestrator.py:505; ivgs-workers/tasks/pipeline_orchestrator.py:605 | members ['backup', 'gpu_image', 'gpu_tts'] never appear at call slot task(queue=), where 6 of 9 members do |  |
 | suspect | vocabulary 'celery_queue' = ['backup', 'composition', 'default', 'gpu_animation', 'gpu_image', 'gpu_llm', 'gpu_talking_head', 'gpu_tts', 'gpu_video'] | ivgs-workers/temporal_pipeline/policies.py:122; ivgs-workers/temporal_pipeline/policies.py:205; ivgs-workers/temporal_pipeline/policies.py:232; ivgs-workers/temporal_pipeline/policies.py:254; ivgs-workers/temporal_pipeline/policies.py:267; ivgs-workers/temporal_pipeline/policies.py:284 | members ['backup'] never appear at call slot ActivityPolicy(queue=), where 8 of 9 members do |  |
@@ -4410,7 +4409,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | suspect | vocabulary 'render_segment_status' = ['COMPLETE', 'FAILED', 'PENDING', 'RENDERING', 'complete', 'failed', 'pending', 'rendering'] | ivgs-api/app/models/backup_record.py:41; ivgs-api/app/models/checkpoint.py:46; ivgs-api/app/models/language_variant.py:41; ivgs-api/app/models/project.py:33; ivgs-api/app/models/render_job.py:50; ivgs-api/app/models/render_segment.py:38 | members ['FAILED', 'PENDING', 'RENDERING'] never appear at call slot PG_ENUM(arg=), where 5 of 8 members do |  |
 | suspect | vocabulary 'render_segment_status' member 'FAILED' | ivgs-frontend/src/app/monitoring/pipeline/page.tsx:872; ivgs-frontend/src/app/monitoring/timeline/page.tsx:660; ivgs-frontend/src/app/projects/[id]/jobs/page.tsx:243; ivgs-frontend/src/components/monitoring/TimelineEditor.tsx:319 | 'FAILED' is READ in slot(s) ['status'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'render_segment_status' member 'RENDERING' | ivgs-frontend/src/app/monitoring/timeline/page.tsx:652; ivgs-frontend/src/components/monitoring/TimelineEditor.tsx:304; ivgs-frontend/src/components/monitoring/TimelineEditor.tsx:311 | 'RENDERING' is READ in slot(s) ['status'] but never WRITTEN anywhere in production code (readers can never match) |  |
-| suspect | vocabulary 'render_segment_status' union=['COMPLETE', 'FAILED', 'PENDING', 'RENDERING', 'complete', 'failed', 'pending', 'rendering'] | ivgs-api/migrations/versions/0009_render_segments.py:19 | db-enum segment_status lacks members ['COMPLETE', 'FAILED', 'PENDING', 'RENDERING'] that other definition(s) carry: ['ts-union RenderSegmentStatus (ivgs-frontend/src/types/monitoring.ts:266)'] |  |
+| suspect | vocabulary 'render_segment_status' union=['COMPLETE', 'FAILED', 'PENDING', 'RENDERING', 'complete', 'failed', 'pending', 'rendering'] | ivgs-api/migrations/versions/0009_render_segments.py:19 | db-enum segment_status lacks members ['COMPLETE', 'FAILED', 'PENDING', 'RENDERING'] that other definition(s) carry: ['ts-union RenderSegmentStatus (ivgs-frontend/src/types/monitoring.ts:282)'] |  |
 | suspect | vocabulary 'required_node_types' union=['ADE_AnimateDiffLoaderGen1', 'ADE_EmptyLatentImageLarge', 'OnnxDetectionModelLoader', 'PoseAndFaceDetection', 'VHS_LoadVideo', 'VHS_VideoCombine', 'WanVideoAnimateEmbeds', 'WanVideoModelLoader', 'WanVideoSampler'] | ivgs-workers/clients/animatediff_client.py:136 | const-collection REQUIRED_NODE_TYPES lacks members ['OnnxDetectionModelLoader', 'PoseAndFaceDetection', 'VHS_LoadVideo', 'VHS_VideoCombine', 'WanVideoAnimateEmbeds', 'WanVideoModelLoader', 'WanVideoSampler'] that other definition(s) carry: ['const-collection REQUIRED_NODE_TYPES (ivgs-workers/tasks/animation_generation_task.py:111)'] |  |
 | suspect | vocabulary 'required_node_types' union=['ADE_AnimateDiffLoaderGen1', 'ADE_EmptyLatentImageLarge', 'OnnxDetectionModelLoader', 'PoseAndFaceDetection', 'VHS_LoadVideo', 'VHS_VideoCombine', 'WanVideoAnimateEmbeds', 'WanVideoModelLoader', 'WanVideoSampler'] | ivgs-workers/tasks/animation_generation_task.py:111 | const-collection REQUIRED_NODE_TYPES lacks members ['ADE_AnimateDiffLoaderGen1', 'ADE_EmptyLatentImageLarge'] that other definition(s) carry: ['const-collection REQUIRED_NODE_TYPES (ivgs-workers/clients/animatediff_client.py:136)'] |  |
 | suspect | vocabulary 'scene_effect' slot 'effect' = ['BLUR_BACKGROUND', 'COLOR_GRADE_COOL', 'COLOR_GRADE_WARM', 'DEPTH_OF_FIELD', 'KEN_BURNS', 'LETTERBOX', 'PAN_LEFT', 'PAN_RIGHT', 'PARALLAX', 'VIGNETTE', 'ZOOM_FAST', 'ZOOM_SLOW'] (ivgs-frontend/src/types/storyboard.ts:78) | ivgs-workers/services/motion_graphics.py:274 | literal 'ken_burns' write in slot 'effect' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
@@ -4429,8 +4428,8 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | suspect | vocabulary 'storage_tier' member 'hot' | ivgs-api/app/services/library_service.py:366; ivgs-api/app/services/retention_service.py:210; ivgs-api/app/services/transcript_service.py:123; ivgs-frontend/src/app/admin/retention/page.tsx:51 | 'hot' is WRITTEN in slot(s) ['current_tier', 'storage_tier', 'tier'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'storage_tier' member 'warm' | ivgs-api/app/services/retention_service.py:210; ivgs-frontend/src/app/admin/retention/page.tsx:52 | 'warm' is WRITTEN in slot(s) ['next_tier', 'tier'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-api/migrations/versions/0001_initial_core.py:93 | db-enum storage_tier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
-| suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-frontend/src/types/api.ts:53 | ts-union StorageTier lacks members ['archived', 'deleted'] that other definition(s) carry: ['db-enum storage_tier (ivgs-api/migrations/versions/0001_initial_core.py:93)', 'ts-union StorageTier (ivgs-frontend/src/types/monitoring.ts:335)', 'py-enum StorageTier (ivgs-workers/services/retention_migration.py:46)', 'py-enum StorageTier (shared/models/enums.py:197)'] |  |
-| suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-frontend/src/types/monitoring.ts:335 | ts-union StorageTier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
+| suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-frontend/src/types/api.ts:53 | ts-union StorageTier lacks members ['archived', 'deleted'] that other definition(s) carry: ['db-enum storage_tier (ivgs-api/migrations/versions/0001_initial_core.py:93)', 'ts-union StorageTier (ivgs-frontend/src/types/monitoring.ts:351)', 'py-enum StorageTier (ivgs-workers/services/retention_migration.py:46)', 'py-enum StorageTier (shared/models/enums.py:197)'] |  |
+| suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-frontend/src/types/monitoring.ts:351 | ts-union StorageTier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
 | suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-workers/services/retention_migration.py:46 | py-enum StorageTier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
 | suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | shared/models/enums.py:197 | py-enum StorageTier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
 
@@ -7224,7 +7223,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-workers/tests/test_wpivgs07_release_idempotence.py:65` arg:object [test] logger
 - **vocab:logo_policies** — `ivgs-frontend/src/types/library.ts:39` — 1 consumer(s)
     - `ivgs-api/app/services/rollback_service.py:177` arg:create_subprocess_exec always
-- **vocab:manifest_lock_status** — `ivgs-frontend/src/types/monitoring.ts:255` — 26 consumer(s)
+- **vocab:manifest_lock_status** — `ivgs-frontend/src/types/monitoring.ts:271` — 26 consumer(s)
     - `ivgs-api/app/api/v1/manifests.py:284` write:status draft
     - `ivgs-api/app/api/v1/manifests.py:320` read:status locked
     - `ivgs-api/app/models/composition_manifest.py:45` arg:PG_ENUM draft
@@ -8983,7 +8982,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-workers/tests/test_wp_ivgs_0_job_context.py:193` arg:object [test] error
     - `tests_system/e2e/test_localization.py:101` arg:get [test] error
     - `tests_system/e2e/test_project_lifecycle.py:60` arg:get [test] error
-- **vocab:quality_metric_type** — `ivgs-frontend/src/types/monitoring.ts:204` — 0 consumer(s)
+- **vocab:quality_metric_type** — `ivgs-frontend/src/types/monitoring.ts:220` — 0 consumer(s)
 - **vocab:rate_limits** — `ivgs-api/app/middleware/rate_limit.py:70` — 11 consumer(s)
     - `ivgs-workers/celery_app.py:75` arg:Exchange default
     - `ivgs-workers/celery_app.py:80` arg:Queue default
@@ -9335,7 +9334,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-api/tests/test_service_gpu.py:364` write:status [test] released
     - `ivgs-frontend/src/hooks/useProjectProgress.ts:147` read:status active
     - `ivgs-frontend/src/hooks/useProjectProgress.ts:178` read:status active
-- **vocab:retention_beat_kwargs** — `ivgs-api/app/api/v1/retention.py:168` — 1 consumer(s)
+- **vocab:retention_beat_kwargs** — `ivgs-api/app/api/v1/retention.py:172` — 1 consumer(s)
     - `ivgs-workers/tests/test_wp60_orphan_guard.py:332` arg:get [test] dry_run
 - **vocab:rules** — `scripts/swallow_detector.py:123` — 6 consumer(s)
     - `scripts/swallow_detector.py:416` arg:_add SF001
@@ -10244,8 +10243,8 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `shared/models/asset.py:89` arg:PG_ENUM warm
 - **vocab:storyboard_view_mode** — `ivgs-frontend/src/types/storyboard.ts:96` — 3 consumer(s)
     - `ivgs-frontend/src/app/projects/[id]/assets/page.tsx:293` arg:setViewMode grid
-    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:557` arg:setViewMode grid
-    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:581` arg:setViewMode timeline
+    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:568` arg:setViewMode grid
+    - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:592` arg:setViewMode timeline
 - **vocab:success_status** — `scripts/swallow_detector.py:91` — 47 consumer(s)
     - `ivgs-api/app/models/backup_record.py:41` arg:PG_ENUM completed
     - `ivgs-api/app/models/backup_record.py:41` arg:PG_ENUM verified
@@ -10376,7 +10375,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-workers/temporal_pipeline/conformance.py:218` arg:get visual_description
     - `ivgs-workers/tests/test_wp_ivgs_0_job_context.py:204` arg:get [test] project_description
     - `shared/design/equations.py:244` arg:field narration_text
-- **vocab:timeline_layer** — `ivgs-frontend/src/types/monitoring.ts:276` — 16 consumer(s)
+- **vocab:timeline_layer** — `ivgs-frontend/src/types/monitoring.ts:292` — 16 consumer(s)
     - `ivgs-api/app/api/v1/manifests.py:433` write:audio audio
     - `ivgs-api/tests/test_wp27_manifest_layers.py:64` arg:_asset_type_to_layer [test] audio
     - `ivgs-api/tests/test_wp27_manifest_layers.py:138` arg:_Asset [test] audio
@@ -13323,15 +13322,15 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | TS AssetResponse.superseded_at (ivgs-frontend/src/types/api.ts:385) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS AssetSummary.quality_decision (ivgs-frontend/src/types/api.ts:352) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS AssetSummary.storage_path (ivgs-frontend/src/types/api.ts:352) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS BackupRecord.backup_path (ivgs-frontend/src/types/monitoring.ts:420) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS BackupRecord.verification_checksum (ivgs-frontend/src/types/monitoring.ts:420) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS BackupRecord.backup_path (ivgs-frontend/src/types/monitoring.ts:436) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS BackupRecord.verification_checksum (ivgs-frontend/src/types/monitoring.ts:436) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CapabilityTag.dimension (ivgs-frontend/src/types/models.ts:44) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CheckpointResponse.stage_index (ivgs-frontend/src/types/api.ts:725) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS ClearSelectionResult.cleared (ivgs-frontend/src/types/models.ts:358) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS ClientStatus.client_path (ivgs-frontend/src/types/models.ts:139) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS CompositionManifest.locked_at (ivgs-frontend/src/types/monitoring.ts:300) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS CompositionManifest.rendered_at (ivgs-frontend/src/types/monitoring.ts:300) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS CompositionManifest.total_duration_seconds (ivgs-frontend/src/types/monitoring.ts:300) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS CompositionManifest.locked_at (ivgs-frontend/src/types/monitoring.ts:316) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS CompositionManifest.rendered_at (ivgs-frontend/src/types/monitoring.ts:316) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS CompositionManifest.total_duration_seconds (ivgs-frontend/src/types/monitoring.ts:316) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CompositionManifestResponse.framerate (ivgs-frontend/src/types/api.ts:663) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CompositionManifestResponse.locked_at (ivgs-frontend/src/types/api.ts:663) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CompositionManifestResponse.manifest_version (ivgs-frontend/src/types/api.ts:663) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
@@ -13340,12 +13339,10 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | TS CompositionManifestResponse.resolution_width (ivgs-frontend/src/types/api.ts:663) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CompositionManifestResponse.total_duration_ms (ivgs-frontend/src/types/api.ts:663) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS CreateUserRequest.email (ivgs-frontend/src/types/api.ts:214) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS DLQMessageDetail.exception_type (ivgs-frontend/src/types/monitoring.ts:191) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS DLQMessageDetail.original_queue (ivgs-frontend/src/types/monitoring.ts:191) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS DLQMessageResponse.exception_type (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS DLQMessageResponse.original_queue (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS DLQMessageResponse.reviewed_at (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS DLQMessageResponse.reviewed_by (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS DLQMessageResponse.task_args (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS DLQMessageResponse.task_kwargs (ivgs-frontend/src/types/api.ts:514) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS FetchWeightsResult.placement (ivgs-frontend/src/types/models.ts:149) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS GPUUtilizationHistoryResponse.point_count (ivgs-frontend/src/types/monitoring.ts:128) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS GPUUtilizationPoint.active_job_count (ivgs-frontend/src/types/monitoring.ts:113) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
@@ -13390,9 +13387,9 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | TS PromptResolution.resolution_chain (ivgs-frontend/src/types/prompts.ts:389) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS PromptResolution.resolved_from (ivgs-frontend/src/types/prompts.ts:389) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS PromptResponse.template_text (ivgs-frontend/src/types/api.ts:497) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS RollbackPoint.alembic_revision (ivgs-frontend/src/types/monitoring.ts:437) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS RollbackPoint.docker_image_tags (ivgs-frontend/src/types/monitoring.ts:437) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | TS RollbackPoint.version_tag (ivgs-frontend/src/types/monitoring.ts:437) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS RollbackPoint.alembic_revision (ivgs-frontend/src/types/monitoring.ts:453) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS RollbackPoint.docker_image_tags (ivgs-frontend/src/types/monitoring.ts:453) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
+| orphan | TS RollbackPoint.version_tag (ivgs-frontend/src/types/monitoring.ts:453) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS SceneAdaptationProposal.current_description (ivgs-frontend/src/types/storyboard.ts:272) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS SceneAdaptationProposal.current_media_type (ivgs-frontend/src/types/storyboard.ts:272) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS SceneAdaptationProposal.generated_at (ivgs-frontend/src/types/storyboard.ts:272) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
@@ -13409,12 +13406,11 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | TS WeightPlacement.fetched_at (ivgs-frontend/src/types/models.ts:63) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS WeightPlacement.fetched_by (ivgs-frontend/src/types/models.ts:63) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
 | orphan | TS WeightStatus.verified_nodes (ivgs-frontend/src/types/models.ts:107) | - | field never read by any component/hook (dead TS field, or read only via spread) |  |
-| orphan | pydantic DLQMessageResponse.created_at (ivgs-api/app/schemas/dlq.py:24) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'created_at' but TS DLQMessage does not declare it |  |
 | orphan | pydantic DLQMessageResponse.exception_type (ivgs-api/app/schemas/dlq.py:20) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'exception_type' but TS DLQMessage does not declare it |  |
 | orphan | pydantic DLQMessageResponse.original_queue (ivgs-api/app/schemas/dlq.py:18) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'original_queue' but TS DLQMessage does not declare it |  |
-| orphan | pydantic DLQMessageResponse.resolution (ivgs-api/app/schemas/dlq.py:31) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'resolution' but TS DLQMessage does not declare it |  |
-| orphan | pydantic DLQMessageResponse.reviewed_at (ivgs-api/app/schemas/dlq.py:29) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'reviewed_at' but TS DLQMessage does not declare it |  |
-| orphan | pydantic DLQMessageResponse.reviewed_by (ivgs-api/app/schemas/dlq.py:30) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'reviewed_by' but TS DLQMessage does not declare it |  |
+| orphan | pydantic DLQMessageResponse.resolution (ivgs-api/app/schemas/dlq.py:30) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'resolution' but TS DLQMessage does not declare it |  |
+| orphan | pydantic DLQMessageResponse.reviewed_at (ivgs-api/app/schemas/dlq.py:28) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'reviewed_at' but TS DLQMessage does not declare it |  |
+| orphan | pydantic DLQMessageResponse.reviewed_by (ivgs-api/app/schemas/dlq.py:29) | ivgs-frontend/src/types/monitoring.ts:164 | API sends 'reviewed_by' but TS DLQMessage does not declare it |  |
 | orphan | pydantic SceneResponse.bloom_level (ivgs-api/app/schemas/storyboard.py:454) | ivgs-frontend/src/types/storyboard.ts:104 | API sends 'bloom_level' but TS Scene does not declare it |  |
 | orphan | pydantic SceneResponse.instructional_event (ivgs-api/app/schemas/storyboard.py:450) | ivgs-frontend/src/types/storyboard.ts:104 | API sends 'instructional_event' but TS Scene does not declare it |  |
 | orphan | pydantic SceneResponse.media_rationale (ivgs-api/app/schemas/storyboard.py:434) | ivgs-frontend/src/types/storyboard.ts:104 | API sends 'media_rationale' but TS Scene does not declare it |  |
@@ -13426,9 +13422,8 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 | orphan | pydantic SceneResponse.text_carried_by (ivgs-api/app/schemas/storyboard.py:435) | ivgs-frontend/src/types/storyboard.ts:104 | API sends 'text_carried_by' but TS Scene does not declare it |  |
 | orphan | pydantic UserResponse.is_active (ivgs-api/app/schemas/user.py:92) | ivgs-frontend/src/types/monitoring.ts:16 | API sends 'is_active' but TS User does not declare it |  |
 | suspect | pydantic CapabilityTagOut.weight Optional (ivgs-api/app/schemas/model_store.py:25) | ivgs-frontend/src/types/models.ts:44 | TS CapabilityTag.weight is required but the API may send null |  |
-| suspect | pydantic DLQMessageResponse.entered_dlq_at Optional (ivgs-api/app/schemas/dlq.py:28) | ivgs-frontend/src/types/monitoring.ts:164 | TS DLQMessage.entered_dlq_at is required but the API may send null |  |
 | suspect | pydantic DLQMessageResponse.task_name Optional (ivgs-api/app/schemas/dlq.py:19) | ivgs-frontend/src/types/monitoring.ts:164 | TS DLQMessage.task_name is required but the API may send null |  |
-| suspect | pydantic RetentionPolicyResponse.applies_to Optional (ivgs-api/app/schemas/retention.py:77) | ivgs-frontend/src/types/monitoring.ts:468 | TS RetentionPolicy.applies_to is required but the API may send null |  |
+| suspect | pydantic RetentionPolicyResponse.applies_to Optional (ivgs-api/app/schemas/retention.py:77) | ivgs-frontend/src/types/monitoring.ts:484 | TS RetentionPolicy.applies_to is required but the API may send null |  |
 | suspect | pydantic SceneResponse.narration_text Optional (ivgs-api/app/schemas/storyboard.py:422) | ivgs-frontend/src/types/storyboard.ts:104 | TS Scene.narration_text is required but the API may send null |  |
 
 ### Rows
@@ -13437,7 +13432,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:296` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:296` field-usage job_type: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:296` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:296` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:296` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:ActiveJobSummary** — `ivgs-frontend/src/types/api.ts:626` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:626` field-usage job_id: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:626` field-usage project_name: 11 reference(s) in src (excluding types/)
@@ -13446,7 +13441,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:Actor** — `ivgs-frontend/src/types/library.ts:84` — 15 consumer(s)
     - `ivgs-api/app/schemas/library.py:145` name-link 
     - `ivgs-frontend/src/types/library.ts:84` field-usage certified_model_id: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:84` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:84` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage default_orientation: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage description: 119 reference(s) in src (excluding types/)
@@ -13472,7 +13467,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:AssetResponse** — `ivgs-frontend/src/types/api.ts:385` — 18 consumer(s)
     - `ivgs-frontend/src/types/api.ts:385` field-usage asset_type: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage content_hash: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:385` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:385` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage file_size_bytes: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage generation_prompt_id: 3 reference(s) in src (excluding types/)
@@ -13495,19 +13490,19 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:352` field-usage quality_score: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:352` field-usage storage_path: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:352` field-usage thumbnail_url: 5 reference(s) in src (excluding types/)
-- **ts:BackupRecord** — `ivgs-frontend/src/types/monitoring.ts:420` — 10 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage backup_path: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage backup_type: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage completed_at: 19 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage error_message: 8 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage size_bytes: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage status: 217 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage verification_checksum: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:420` field-usage verified_at: 3 reference(s) in src (excluding types/)
-- **ts:BackupTriggerPayload** — `ivgs-frontend/src/types/monitoring.ts:433` — 1 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:433` field-usage backup_type: 5 reference(s) in src (excluding types/)
+- **ts:BackupRecord** — `ivgs-frontend/src/types/monitoring.ts:436` — 10 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage backup_path: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage backup_type: 5 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage completed_at: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage error_message: 8 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage size_bytes: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage started_at: 21 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage status: 218 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage verification_checksum: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:436` field-usage verified_at: 3 reference(s) in src (excluding types/)
+- **ts:BackupTriggerPayload** — `ivgs-frontend/src/types/monitoring.ts:449` — 1 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:449` field-usage backup_type: 5 reference(s) in src (excluding types/)
 - **ts:CapabilityTag** — `ivgs-frontend/src/types/models.ts:44` — 4 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:28` name-link 
     - `ivgs-frontend/src/types/models.ts:44` field-usage dimension: 0 reference(s) in src (excluding types/)
@@ -13518,10 +13513,10 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:60` field-usage error_message: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:60` field-usage fallback_level: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:60` field-usage node_id: 29 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:60` field-usage retry_count: 11 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:60` field-usage retry_count: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:60` field-usage stage: 91 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:60` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:60` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:60` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:CheckpointResponse** — `ivgs-frontend/src/types/api.ts:725` — 7 consumer(s)
     - `ivgs-frontend/src/types/api.ts:725` field-usage completed_at: 19 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage id: 617 reference(s) in src (excluding types/)
@@ -13529,28 +13524,28 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:725` field-usage stage_index: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage stage_name: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:725` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:725` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:ClearSelectionResult** — `ivgs-frontend/src/types/models.ts:358` — 2 consumer(s)
     - `ivgs-frontend/src/types/models.ts:358` field-usage cleared: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:358` field-usage message: 139 reference(s) in src (excluding types/)
 - **ts:ClientStatus** — `ivgs-frontend/src/types/models.ts:139` — 7 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:324` name-link 
     - `ivgs-frontend/src/types/models.ts:139` field-usage client_path: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:139` field-usage detail: 56 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:139` field-usage detail: 58 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage family: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage requires: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage state: 108 reference(s) in src (excluding types/)
-- **ts:CompositionManifest** — `ivgs-frontend/src/types/monitoring.ts:300` — 9 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage locked_at: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage project_id: 18 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage rendered_at: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage scene_count: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage scenes: 32 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage segments: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage status: 217 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:300` field-usage total_duration_seconds: 0 reference(s) in src (excluding types/)
+- **ts:CompositionManifest** — `ivgs-frontend/src/types/monitoring.ts:316` — 9 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage locked_at: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage project_id: 18 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage rendered_at: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage scene_count: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage scenes: 32 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage segments: 11 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage status: 218 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:316` field-usage total_duration_seconds: 0 reference(s) in src (excluding types/)
 - **ts:CompositionManifestResponse** — `ivgs-frontend/src/types/api.ts:663` — 11 consumer(s)
     - `ivgs-frontend/src/types/api.ts:663` field-usage checksum: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage framerate: 0 reference(s) in src (excluding types/)
@@ -13561,7 +13556,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:663` field-usage rendered_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage resolution_height: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage resolution_width: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:663` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:663` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage total_duration_ms: 0 reference(s) in src (excluding types/)
 - **ts:CreateProjectRequest** — `ivgs-frontend/src/types/api.ts:315` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:315` field-usage description: 119 reference(s) in src (excluding types/)
@@ -13577,69 +13572,75 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:214` field-usage password: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:214` field-usage role: 116 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:214` field-usage username: 45 reference(s) in src (excluding types/)
-- **ts:DLQAnalyticsData** — `ivgs-frontend/src/types/monitoring.ts:192` — 3 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:192` field-usage category_counts: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:192` field-usage top_tasks: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:192` field-usage trend_data: 7 reference(s) in src (excluding types/)
+- **ts:DLQAnalyticsData** — `ivgs-frontend/src/types/monitoring.ts:208` — 3 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:208` field-usage category_counts: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:208` field-usage top_tasks: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:208` field-usage trend_data: 7 reference(s) in src (excluding types/)
 - **ts:DLQMessage** — `ivgs-frontend/src/types/monitoring.ts:164` — 7 consumer(s)
     - `ivgs-api/app/schemas/dlq.py:14` name-link 
-    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage entered_dlq_at: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:164` field-usage exception_message: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage failure_category: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage failure_category: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:164` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage retry_count_exhausted: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:164` field-usage retry_count_exhausted: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:164` field-usage task_name: 3 reference(s) in src (excluding types/)
-- **ts:DLQMessageDetail** — `ivgs-frontend/src/types/monitoring.ts:181` — 8 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage category: 18 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage entered_dlq_at: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage resolution_history: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage retry_count: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage task_arguments: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage task_name: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:181` field-usage traceback: 1 reference(s) in src (excluding types/)
+- **ts:DLQMessageDetail** — `ivgs-frontend/src/types/monitoring.ts:191` — 14 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage created_at: 51 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage exception_message: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage exception_type: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage failure_category: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage original_queue: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage resolution: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage retry_count_exhausted: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage reviewed_at: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage reviewed_by: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage task_args: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage task_kwargs: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage task_name: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:191` field-usage traceback: 1 reference(s) in src (excluding types/)
 - **ts:DLQMessageResponse** — `ivgs-frontend/src/types/api.ts:514` — 14 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage exception_message: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage exception_type: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage failure_category: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage failure_category: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage original_queue: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage resolution: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage retry_count_exhausted: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage reviewed_at: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage reviewed_by: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage task_args: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage task_kwargs: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage resolution: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage retry_count_exhausted: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage reviewed_at: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage reviewed_by: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage task_args: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage task_kwargs: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage task_name: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage traceback: 1 reference(s) in src (excluding types/)
-- **ts:DLQResolutionEntry** — `ivgs-frontend/src/types/monitoring.ts:173` — 5 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:173` field-usage action: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:173` field-usage performed_at: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:173` field-usage performed_by: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:173` field-usage reason: 35 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:173` field-usage result: 9 reference(s) in src (excluding types/)
+- **ts:DLQResolutionEntry** — `ivgs-frontend/src/types/monitoring.ts:174` — 5 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage action: 7 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage performed_at: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage performed_by: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage reason: 36 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage result: 10 reference(s) in src (excluding types/)
 - **ts:FetchWeightsResult** — `ivgs-frontend/src/types/models.ts:149` — 7 consumer(s)
     - `ivgs-frontend/src/hooks/useModels.ts:55` fe-call-link POST /api/v1/models/{id}/fetch-weights -> POST /api/v1/models/{model_id}/fetch-weights
     - `ivgs-frontend/src/types/models.ts:149` field-usage accepted: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage message: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage placement: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:149` field-usage reason: 35 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:149` field-usage reason: 36 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage state: 108 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:149` field-usage status: 217 reference(s) in src (excluding types/)
-- **ts:FlaggedAsset** — `ivgs-frontend/src/types/monitoring.ts:230` — 12 consumer(s)
+    - `ivgs-frontend/src/types/models.ts:149` field-usage status: 218 reference(s) in src (excluding types/)
+- **ts:FlaggedAsset** — `ivgs-frontend/src/types/monitoring.ts:246` — 12 consumer(s)
     - `ivgs-api/app/schemas/quality.py:38` name-link 
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage asset_id: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage asset_type: 20 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage decision: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage job_id: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage project_id: 18 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage project_name: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage quality_score: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage safety_score: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:230` field-usage scoring_details: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage asset_id: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage asset_type: 20 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage created_at: 51 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage decision: 9 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage job_id: 5 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage project_id: 18 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage project_name: 11 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage quality_score: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage safety_score: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:246` field-usage scoring_details: 4 reference(s) in src (excluding types/)
 - **ts:GPUUtilizationHistoryResponse** — `ivgs-frontend/src/types/monitoring.ts:128` — 3 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:128` field-usage history: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:128` field-usage point_count: 0 reference(s) in src (excluding types/)
@@ -13673,7 +13674,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:545` field-usage reservations: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage reserved_vram_mb: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage role: 116 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:545` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:545` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage supports_drain: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage telemetry_reason: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage telemetry_source: 2 reference(s) in src (excluding types/)
@@ -13688,18 +13689,18 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:636` field-usage model_name: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage reserved_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage reserved_vram_mb: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:636` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:636` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:HealthResponse** — `ivgs-frontend/src/types/api.ts:739` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:739` field-usage services: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:739` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:739` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:739` field-usage uptime_seconds: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:739` field-usage version: 18 reference(s) in src (excluding types/)
 - **ts:JobResponse** — `ivgs-frontend/src/types/api.ts:430` — 15 consumer(s)
     - `ivgs-frontend/src/types/api.ts:430` field-usage celery_task_id: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage completed_at: 19 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage error_message: 8 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage failure_category: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage failure_category: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage job_type: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage language_code: 34 reference(s) in src (excluding types/)
@@ -13707,12 +13708,12 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:430` field-usage node_id: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage resume_from_stage: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage retry_count: 11 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage retry_count: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:LanguageVariantResponse** — `ivgs-frontend/src/types/api.ts:696` — 11 consumer(s)
     - `ivgs-frontend/src/types/api.ts:696` field-usage completed_stages: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:696` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:696` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage final_render_1080p_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage final_render_4k_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage id: 617 reference(s) in src (excluding types/)
@@ -13728,7 +13729,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:LibraryAsset** — `ivgs-frontend/src/types/library.ts:57` — 17 consumer(s)
     - `ivgs-frontend/src/hooks/useLibrary.ts:106` fe-call-link POST /api/v1/library/assets/{id}/supersede -> POST /api/v1/library/assets/{asset_id}/supersede
     - `ivgs-frontend/src/types/library.ts:57` field-usage content_hash: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:57` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:57` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
@@ -13762,7 +13763,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:ModelApproval** — `ivgs-frontend/src/types/models.ts:158` — 5 consumer(s)
     - `ivgs-frontend/src/types/models.ts:158` field-usage attested_by: 15 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage checklist: 17 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:158` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:158` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage vetting_reference: 15 reference(s) in src (excluding types/)
 - **ts:ModelApprovePayload** — `ivgs-frontend/src/types/models.ts:229` — 3 consumer(s)
@@ -13773,14 +13774,14 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:50` field-usage last_health_check: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:50` field-usage node_id: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:50` field-usage served: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:50` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:50` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:ModelRegisterPayload** — `ivgs-frontend/src/types/models.ts:202` — 14 consumer(s)
     - `ivgs-frontend/src/types/models.ts:202` field-usage capability_tags: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage default_params: 14 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage display_name: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage dynamically_loadable: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:202` field-usage engine: 12 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:202` field-usage engine: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage license: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:202` field-usage source_url: 15 reference(s) in src (excluding types/)
@@ -13796,7 +13797,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:134` field-usage node_id: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:134` field-usage vram_mb: 4 reference(s) in src (excluding types/)
 - **ts:ModelSelection** — `ivgs-frontend/src/types/models.ts:279` — 13 consumer(s)
-    - `ivgs-frontend/src/types/models.ts:279` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:279` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_display_name: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_engine: 0 reference(s) in src (excluding types/)
@@ -13821,11 +13822,11 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:147` field-usage image: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:147` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:147` field-usage state: 108 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:147` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:147` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:NodeContainersResponse** — `ivgs-frontend/src/types/api.ts:154` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:154` field-usage available: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:154` field-usage containers: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:154` field-usage reason: 35 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:154` field-usage reason: 36 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:154` field-usage source: 16 reference(s) in src (excluding types/)
 - **ts:NodeLogLine** — `ivgs-frontend/src/types/api.ts:164` — 3 consumer(s)
     - `ivgs-frontend/src/types/api.ts:164` field-usage level: 6 reference(s) in src (excluding types/)
@@ -13836,7 +13837,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:170` field-usage available: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage container: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage lines: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:170` field-usage reason: 35 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:170` field-usage reason: 36 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage source: 16 reference(s) in src (excluding types/)
 - **ts:NodeStatus** — `ivgs-frontend/src/types/api.ts:98` — 19 consumer(s)
     - `ivgs-frontend/src/types/api.ts:98` field-usage active_jobs: 4 reference(s) in src (excluding types/)
@@ -13850,7 +13851,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:98` field-usage role: 116 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:98` field-usage runs_pipeline_worker: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:98` field-usage services: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:98` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:98` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:98` field-usage status_basis: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:98` field-usage status_reason: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:98` field-usage telemetry: 4 reference(s) in src (excluding types/)
@@ -13861,14 +13862,14 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:NodeTelemetry** — `ivgs-frontend/src/types/api.ts:67` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:67` field-usage as_of: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:67` field-usage available: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:67` field-usage reason: 35 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:67` field-usage reason: 36 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:67` field-usage source: 16 reference(s) in src (excluding types/)
-- **ts:OrphanAsset** — `ivgs-frontend/src/types/monitoring.ts:392` — 5 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:392` field-usage last_modified: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:392` field-usage path: 35 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:392` field-usage reason: 35 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:392` field-usage seaweedfs_fid: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:392` field-usage size_bytes: 3 reference(s) in src (excluding types/)
+- **ts:OrphanAsset** — `ivgs-frontend/src/types/monitoring.ts:408` — 5 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:408` field-usage last_modified: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:408` field-usage path: 35 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:408` field-usage reason: 36 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:408` field-usage seaweedfs_fid: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:408` field-usage size_bytes: 3 reference(s) in src (excluding types/)
 - **ts:PaginatedResponse** — `ivgs-frontend/src/types/api.ts:765` — 6 consumer(s)
     - `ivgs-frontend/src/types/api.ts:765` field-usage data: 215 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:765` field-usage has_more: 4 reference(s) in src (excluding types/)
@@ -13878,14 +13879,14 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:765` field-usage total: 19 reference(s) in src (excluding types/)
 - **ts:PipelineJob** — `ivgs-frontend/src/types/monitoring.ts:71` — 9 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage completed_at: 19 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:71` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:71` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage estimated_completion: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage fallback_level: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage progress: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage project_name: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:71` field-usage started_at: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:71` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:71` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:PipelineJobDetail** — `ivgs-frontend/src/types/monitoring.ts:83` — 7 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:83` field-usage checkpoints: 40 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:83` field-usage current_stage: 3 reference(s) in src (excluding types/)
@@ -13893,7 +13894,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:83` field-usage error_stage: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:83` field-usage fallback_level: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:83` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:83` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:83` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:PlaygroundHistoryEntry** — `ivgs-frontend/src/types/prompts.ts:276` — 8 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage model_id: 8 reference(s) in src (excluding types/)
@@ -13934,7 +13935,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:Preset** — `ivgs-frontend/src/types/library.ts:155` — 12 consumer(s)
     - `ivgs-frontend/src/hooks/useLibrary.ts:232` fe-call-link POST /api/v1/presets/by-name/{encodeURIComponent_name_}/revise -> POST /api/v1/presets/by-name/{name}/revise
     - `ivgs-frontend/src/hooks/useLibrary.ts:243` fe-call-link GET /api/v1/presets/by-name/{encodeURIComponent_name_}/versions -> GET /api/v1/presets/by-name/{name}/versions
-    - `ivgs-frontend/src/types/library.ts:155` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:155` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage id: 617 reference(s) in src (excluding types/)
@@ -13983,7 +13984,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:832` field-usage target_languages: 13 reference(s) in src (excluding types/)
 - **ts:ProjectResponse** — `ivgs-frontend/src/types/api.ts:246` — 17 consumer(s)
     - `ivgs-frontend/src/types/api.ts:246` field-usage active_job: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:246` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:246` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage hero_image_url: 3 reference(s) in src (excluding types/)
@@ -14016,7 +14017,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:366` field-usage label: 286 reference(s) in src (excluding types/)
 - **ts:PromptLibraryEntry** — `ivgs-frontend/src/types/prompts.ts:328` — 11 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage change_note: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:328` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:328` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage is_active: 9 reference(s) in src (excluding types/)
@@ -14028,7 +14029,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage version: 18 reference(s) in src (excluding types/)
 - **ts:PromptRecord** — `ivgs-frontend/src/types/prompts.ts:54` — 11 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage change_note: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:54` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:54` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage is_active: 9 reference(s) in src (excluding types/)
@@ -14044,7 +14045,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:389` field-usage resolution_chain: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:389` field-usage resolved_from: 0 reference(s) in src (excluding types/)
 - **ts:PromptResponse** — `ivgs-frontend/src/types/api.ts:497` — 10 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:497` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:497` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage is_active: 9 reference(s) in src (excluding types/)
@@ -14061,7 +14062,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:159` field-usage prompt_text: 19 reference(s) in src (excluding types/)
 - **ts:PromptVersion** — `ivgs-frontend/src/types/prompts.ts:95` — 7 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage change_note: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:95` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:95` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage is_active: 9 reference(s) in src (excluding types/)
@@ -14073,47 +14074,47 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:651` field-usage quality_score: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:651` field-usage safety_score: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:651` field-usage scoring_details: 4 reference(s) in src (excluding types/)
-- **ts:QuotaEntry** — `ivgs-frontend/src/types/monitoring.ts:346` — 5 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:346` field-usage has_quota: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:346` field-usage quota_bytes: 7 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:346` field-usage used_bytes: 7 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:346` field-usage user_id: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:346` field-usage username: 45 reference(s) in src (excluding types/)
-- **ts:RetentionPolicy** — `ivgs-frontend/src/types/monitoring.ts:468` — 13 consumer(s)
+- **ts:QuotaEntry** — `ivgs-frontend/src/types/monitoring.ts:362` — 5 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:362` field-usage has_quota: 5 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:362` field-usage quota_bytes: 7 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:362` field-usage used_bytes: 7 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:362` field-usage user_id: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:362` field-usage username: 45 reference(s) in src (excluding types/)
+- **ts:RetentionPolicy** — `ivgs-frontend/src/types/monitoring.ts:484` — 13 consumer(s)
     - `ivgs-api/app/schemas/retention.py:66` name-link 
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage applies_to: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage archive_days: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage cold_days: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage delete_after_days: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage description: 119 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage hot_days: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage is_default: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage name: 139 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage updated_at: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:468` field-usage warm_days: 4 reference(s) in src (excluding types/)
-- **ts:RetentionPolicyUpdate** — `ivgs-frontend/src/types/monitoring.ts:484` — 10 consumer(s)
-    - `ivgs-api/app/schemas/retention.py:52` name-link 
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage applies_to: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage archive_days: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage cold_days: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:484` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage delete_after_days: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage hot_days: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:484` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage name: 139 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:484` field-usage updated_at: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:484` field-usage warm_days: 4 reference(s) in src (excluding types/)
-- **ts:RollbackPoint** — `ivgs-frontend/src/types/monitoring.ts:437` — 5 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:437` field-usage alembic_revision: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:437` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:437` field-usage docker_image_tags: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:437` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:437` field-usage version_tag: 0 reference(s) in src (excluding types/)
+- **ts:RetentionPolicyUpdate** — `ivgs-frontend/src/types/monitoring.ts:500` — 10 consumer(s)
+    - `ivgs-api/app/schemas/retention.py:52` name-link 
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage applies_to: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage archive_days: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage cold_days: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage delete_after_days: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage description: 119 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage hot_days: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage is_default: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage name: 139 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:500` field-usage warm_days: 4 reference(s) in src (excluding types/)
+- **ts:RollbackPoint** — `ivgs-frontend/src/types/monitoring.ts:453` — 5 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:453` field-usage alembic_revision: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:453` field-usage created_at: 51 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:453` field-usage docker_image_tags: 0 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:453` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:453` field-usage version_tag: 0 reference(s) in src (excluding types/)
 - **ts:Scene** — `ivgs-frontend/src/types/storyboard.ts:104` — 18 consumer(s)
     - `ivgs-api/app/schemas/storyboard.py:416` name-link 
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage camera_angle: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage effects: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage error_message: 8 reference(s) in src (excluding types/)
@@ -14124,7 +14125,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage narration_text: 25 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage scene_index: 57 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage timing_offset_ms: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage transition_type: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage updated_at: 9 reference(s) in src (excluding types/)
@@ -14154,7 +14155,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:332` field-usage narration_text: 25 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage scene_index: 57 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:332` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:332` field-usage status: 218 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage visual_description: 16 reference(s) in src (excluding types/)
 - **ts:SceneTiming** — `ivgs-frontend/src/types/storyboard.ts:227` — 4 consumer(s)
     - `ivgs-frontend/src/types/storyboard.ts:227` field-usage endTime: 4 reference(s) in src (excluding types/)
@@ -14174,7 +14175,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
 - **ts:SelectionCandidate** — `ivgs-frontend/src/types/models.ts:318` — 15 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:458` name-link 
     - `ivgs-frontend/src/types/models.ts:318` field-usage display_name: 34 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:318` field-usage engine: 12 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:318` field-usage engine: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage name: 139 reference(s) in src (excluding types/)
@@ -14199,26 +14200,26 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:337` field-usage stage: 91 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:337` field-usage tier: 79 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:337` field-usage warning: 9 reference(s) in src (excluding types/)
-- **ts:StorageTierData** — `ivgs-frontend/src/types/monitoring.ts:337` — 6 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage allocated: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage asset_count: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage tier: 79 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage total_bytes: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage used: 7 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:337` field-usage used_bytes: 7 reference(s) in src (excluding types/)
+- **ts:StorageTierData** — `ivgs-frontend/src/types/monitoring.ts:353` — 6 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage allocated: 10 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage asset_count: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage tier: 79 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage total_bytes: 3 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage used: 7 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:353` field-usage used_bytes: 7 reference(s) in src (excluding types/)
 - **ts:StoreModel** — `ivgs-frontend/src/types/models.ts:166` — 29 consumer(s)
     - `ivgs-frontend/src/hooks/useModels.ts:84` fe-call-link POST /api/v1/models/{id}/approve -> POST /api/v1/models/{model_id}/approve
     - `ivgs-frontend/src/types/models.ts:166` field-usage approvals: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage capability_tags: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage client_status: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:166` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:166` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage default_params: 14 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage display_name: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage dynamically_loadable: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage enabled: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:166` field-usage engine: 12 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:166` field-usage engine: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage license: 8 reference(s) in src (excluding types/)
@@ -14241,26 +14242,26 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/storyboard.ts:213` field-usage scenes: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:213` field-usage total: 19 reference(s) in src (excluding types/)
 - **ts:TemplateVariable** — `ivgs-frontend/src/types/prompts.ts:124` — 4 consumer(s)
-    - `ivgs-frontend/src/types/prompts.ts:124` field-usage category: 18 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:124` field-usage category: 17 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:124` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:124` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:124` field-usage sampleValue: 11 reference(s) in src (excluding types/)
-- **ts:TierMigration** — `ivgs-frontend/src/types/monitoring.ts:384` — 5 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:384` field-usage asset_id: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:384` field-usage current_tier: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:384` field-usage days_until_migration: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:384` field-usage file_size_bytes: 13 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:384` field-usage next_tier: 5 reference(s) in src (excluding types/)
-- **ts:TimelineSegment** — `ivgs-frontend/src/types/monitoring.ts:288` — 9 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage asset_id: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage id: 617 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage layer: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage progress: 21 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage render_completed_at: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage render_started_at: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage start_seconds: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:288` field-usage status: 217 reference(s) in src (excluding types/)
+- **ts:TierMigration** — `ivgs-frontend/src/types/monitoring.ts:400` — 5 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:400` field-usage asset_id: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:400` field-usage current_tier: 5 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:400` field-usage days_until_migration: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:400` field-usage file_size_bytes: 13 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:400` field-usage next_tier: 5 reference(s) in src (excluding types/)
+- **ts:TimelineSegment** — `ivgs-frontend/src/types/monitoring.ts:304` — 9 consumer(s)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage asset_id: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage id: 617 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage layer: 4 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage progress: 21 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage render_completed_at: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage render_started_at: 2 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage start_seconds: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:304` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:TimelineTick** — `ivgs-frontend/src/types/storyboard.ts:241` — 2 consumer(s)
     - `ivgs-frontend/src/types/storyboard.ts:241` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:241` field-usage position: 8 reference(s) in src (excluding types/)
@@ -14274,7 +14275,7 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:241` field-usage prompt_tokens: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:241` field-usage total_tokens: 3 reference(s) in src (excluding types/)
 - **ts:TranscriptResponse** — `ivgs-frontend/src/types/api.ts:474` — 8 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:474` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:474` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage language_code: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage original_asset_id: 1 reference(s) in src (excluding types/)
@@ -14288,13 +14289,13 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:322` field-usage name: 139 reference(s) in src (excluding types/)
 - **ts:User** — `ivgs-frontend/src/types/monitoring.ts:16` — 6 consumer(s)
     - `ivgs-api/app/schemas/user.py:86` name-link 
-    - `ivgs-frontend/src/types/monitoring.ts:16` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:16` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage last_login_at: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage role: 116 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage username: 45 reference(s) in src (excluding types/)
 - **ts:UserResponse** — `ivgs-frontend/src/types/api.ts:204` — 7 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:204` field-usage created_at: 48 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:204` field-usage created_at: 51 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage email: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage id: 617 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage is_active: 9 reference(s) in src (excluding types/)
@@ -14319,13 +14320,13 @@ Built from commit `040593feb5680bc59b4276f901ca961aa089519e` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:63` field-usage last_error_reason: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage node_id: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage signature_verified: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:63` field-usage status: 217 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:63` field-usage status: 218 reference(s) in src (excluding types/)
 - **ts:WeightStatus** — `ivgs-frontend/src/types/models.ts:107` — 11 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:293` name-link 
     - `ivgs-frontend/src/types/models.ts:107` field-usage bytes_on_disk: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage can_fetch: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage credentials_present: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:107` field-usage detail: 56 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:107` field-usage detail: 58 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage state: 108 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage target_container: 1 reference(s) in src (excluding types/)
