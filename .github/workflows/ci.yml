@@ -46,7 +46,17 @@ jobs:
   # Job 1: Python Linting & Type Checking
   # ================================================================
   lint-python:
-    if: false  # Disabled — repo doesn't conform to Black; re-enable after wholesale formatting pass
+    # WP-74 CI BASELINE: re-enabled. This job had `if: false` since the repo
+    # stopped conforming to Black. Measured on 2026-09-05 at 9c406e8
+    # (dev/audit/test_baseline_2026-09-05.md §1.1): black would reformat 438
+    # of 474 files; ruff reports 4644 findings; mypy stops at one duplicate
+    # module name (ivgs-workers/servers/{coqui,cogvideox}/server.py) and checks
+    # nothing after it; bandit reports 3 high / 14 medium / 61 low. A wholesale
+    # formatting pass is out of scope, so every step below runs and REPORTS,
+    # with `continue-on-error` — the annotations and the step summary show the
+    # state on every run — and none of them blocks. ⛔ That is an INHERITED lint
+    # state, not a green lint job. Flip a step's `continue-on-error` to false
+    # when its finding count reaches zero.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,27 +67,61 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install black ruff mypy bandit[toml]
+          pip install black ruff mypy "bandit[toml]"
           pip install -r ivgs-api/requirements.txt
           pip install -r ivgs-workers/requirements.txt
 
-      - name: Black format check
-        run: black --check --line-length 100 ivgs-api/ ivgs-workers/ ivgs-scheduler/ shared/
+      - name: Black format check (inherited — 438 files off Black at 9c406e8)
+        continue-on-error: true
+        run: |
+          black --check --line-length 100 ivgs-api/ ivgs-workers/ ivgs-scheduler/ shared/ 2>&1 | tee black.txt
+          echo "### Black (inherited, non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          tail -1 black.txt >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Ruff lint
-        run: ruff check ivgs-api/ ivgs-workers/ ivgs-scheduler/ shared/
+      - name: Ruff lint (inherited — 4644 findings at 9c406e8)
+        continue-on-error: true
+        run: |
+          ruff check ivgs-api/ ivgs-workers/ ivgs-scheduler/ shared/ --statistics 2>&1 | tee ruff.txt
+          echo "### Ruff (inherited, non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          tail -12 ruff.txt >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Mypy type check
-        run: mypy --ignore-missing-imports ivgs-api/app/ ivgs-workers/ shared/
+      - name: Mypy type check (inherited — blocked by a duplicate module name)
+        continue-on-error: true
+        run: |
+          mypy --ignore-missing-imports ivgs-api/app/ ivgs-workers/ shared/ 2>&1 | tee mypy.txt
+          echo "### Mypy (inherited, non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          tail -1 mypy.txt >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Bandit security scan
-        run: bandit -r ivgs-api/app/ ivgs-workers/ shared/ -c pyproject.toml
+      - name: Bandit security scan (inherited — 3 high / 14 medium / 61 low)
+        continue-on-error: true
+        run: |
+          bandit -r ivgs-api/app/ ivgs-workers/ shared/ -c pyproject.toml 2>&1 | tee bandit.txt
+          echo "### Bandit (inherited, non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          grep -E "Total issues|Severity" bandit.txt | head -8 >> "$GITHUB_STEP_SUMMARY" || true
 
   # ================================================================
   # Job 2: Python Unit Tests
   # ================================================================
   test-python:
-    if: false  # Disabled — CI environment was never configured to match how our tests expect to run (DB credentials, env vars). Local node-01 tests are the authoritative signal.
+    # WP-74 CI BASELINE: re-enabled. This job had `if: false` because "the CI
+    # environment was never configured to match how our tests expect to run".
+    # It is configured now, from dev/audit/test_baseline_2026-09-05.md §1:
+    #   * the API suite expects an ALREADY-MIGRATED database whose name ends
+    #     `_test` (its conftest TRUNCATEs every table and refuses anything
+    #     else), so `alembic upgrade head` runs first against `ivgs_test`;
+    #   * both DATABASE_URL and TEST_DATABASE_URL must be set (conftest reads
+    #     one, app startup the other);
+    #   * the backup-worker suite refuses to import without a sync DSN, a
+    #     broker URL and a result backend (RC-J8);
+    #   * requirements-dev.txt carries Pillow/numpy/onnxruntime the worker
+    #     tests import.
+    # Every suite runs through .github/scripts/inherited_failures_plugin.py
+    # with .github/ci/inherited_failures.txt: the 48 diagnosed, pre-existing
+    # failures in ivgs-workers and ivgs-scheduler are printed in their own
+    # section of the log and the step summary, NOT counted as passes, and the
+    # step fails on any failure that is not on that list — and on any listed
+    # test that starts passing (stale list). The job is green only when every
+    # non-inherited test passes.
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -96,6 +140,19 @@ jobs:
           - 6379:6379
         options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
 
+    env:
+      DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
+      TEST_DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
+      REDIS_URL: redis://localhost:6379/0
+      # backup-worker (RC-J8): sync DSN, broker, result backend — all the CI test database
+      BACKUP_TEST_DSN: postgresql://ivgs:testpassword@localhost:5432/ivgs_test
+      POSTGRES_DSN_SYNC: postgresql://ivgs:testpassword@localhost:5432/ivgs_test
+      IVGS_CELERY_BROKER_URL: redis://localhost:6379/1
+      IVGS_CELERY_RESULT_BACKEND: db+postgresql://ivgs:testpassword@localhost:5432/ivgs_test
+      # the inherited-failures plugin
+      PYTHONPATH: .github/scripts
+      IVGS_INHERITED_ALLOWLIST: .github/ci/inherited_failures.txt
+
     steps:
       - uses: actions/checkout@v7
 
@@ -105,27 +162,32 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install pytest pytest-asyncio pytest-cov httpx
           pip install -r ivgs-api/requirements.txt
           pip install -r ivgs-workers/requirements.txt
+          pip install -r ivgs-scheduler/requirements.txt
           pip install -r shared/requirements.txt
+          pip install -r requirements-dev.txt
 
-      - name: Run API tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
-          REDIS_URL: redis://localhost:6379/0
-        run: pytest ivgs-api/tests/ -v --tb=short
+      - name: Migrate the test database to head
+        working-directory: ivgs-api
+        run: python -m alembic upgrade head
 
-      - name: Run Worker tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
-          REDIS_URL: redis://localhost:6379/0
-        run: pytest ivgs-workers/tests/ -v --tb=short
+      - name: API tests (ivgs-api) — 1870 passed, 0 inherited at 9c406e8
+        run: python -m pytest -p inherited_failures_plugin ivgs-api/tests --tb=short -q
 
-      - name: Run Integration tests
-        env:
-          DATABASE_URL: postgresql+asyncpg://ivgs:testpassword@localhost:5432/ivgs_test
-          REDIS_URL: redis://localhost:6379/0
+      - name: Worker tests (ivgs-workers) — 33 inherited at 9c406e8, listed in the summary
+        run: python -m pytest -p inherited_failures_plugin ivgs-workers/tests --tb=short -q
+
+      - name: Scheduler tests (ivgs-scheduler) — 15 inherited at 9c406e8, listed in the summary
+        run: python -m pytest -p inherited_failures_plugin ivgs-scheduler/tests --tb=short -q
+
+      - name: Motion renderer tests (ivgs-motion-renderer) — 0 inherited
+        run: python -m pytest -p inherited_failures_plugin ivgs-motion-renderer/tests --tb=short -q
+
+      - name: Backup worker tests (ivgs-backup-worker, own inifile) — 0 inherited
+        run: python -m pytest -p inherited_failures_plugin -c ivgs-backup-worker/pytest.ini ivgs-backup-worker/tests --tb=short -q
+
+      - name: System tests, the static subset (tests_system) — 0 inherited
         # WP-54: was `pytest tests/`. That directory has not existed since
         # WP-32.1 renamed it to `tests_system/` to break the module-name
         # collision with `ivgs-api/tests`. `pytest` on a missing path exits 4,
@@ -135,29 +197,18 @@ jobs:
         # WP-55: MEASURED what this runner can actually execute, rather than
         # assuming `tests_system/` as a whole. Most of that tree talks to the
         # live fleet -- the API on 8001, the scheduler on 8002, SeaweedFS,
-        # Prometheus -- none of which exists on a GitHub runner, so pointing the
-        # step at the whole tree would produce 30 connection errors that say
-        # nothing about the commit. Those suites are run on node-01 and their
-        # results live in dev/workpackages/reference/TEST-BASELINE_2026-08-25.md.
-        #
-        # The four paths below need nothing but the checkout. Measured with
-        # every service unreachable: 27 passed, 2 skipped (the alert gate's
-        # live half, which says so), 4 failed.
-        #
-        # THOSE 4 FAILURES ARE REAL AND THIS STEP IS RED UNTIL THEY ARE FIXED.
-        # They are test_scanner_detects_pip_packages: `match_glob` in
-        # scripts/compliance_scanner.py cannot match "requirements*.txt", so
-        # §F.2 Rule 2 has never been enforced and a prohibited pip package
-        # would pass the compliance gate today. Ledger P2.49, raised by WP-52,
-        # one line to fix, blast radius measured as zero. Left red on purpose:
-        # WP-55's brief is explicit that a step going red when pointed at real
-        # tests is a finding, not a reason to point it back at nothing.
+        # Prometheus -- none of which exists on a GitHub runner. Those suites
+        # are run on node-01; their 42 diagnosed failures are in
+        # dev/audit/test_baseline_2026-09-05.md §2.6 and on the allowlist under
+        # a "node-01 only" heading. The four paths below need nothing but the
+        # checkout. (WP-56 closed the compliance-scanner failures WP-55 found.)
         run: |
-          pytest tests_system/providers \
+          python -m pytest -p inherited_failures_plugin \
+                 tests_system/providers \
                  tests_system/spec_compliance \
                  tests_system/test_compliance_scanner.py \
                  tests_system/test_alert_rules_have_metrics.py \
-                 -v --tb=short -rs
+                 --tb=short -q -rs
 
       # ================================================================
       # WP-54: alert rules must reference metrics that exist.
@@ -173,7 +224,7 @@ jobs:
       # Also included in the step above; kept as its own named step so a
       # failure here is legible in the CI summary without reading a combined log.
       - name: Alert rules reference metrics that exist (static half)
-        run: pytest tests_system/test_alert_rules_have_metrics.py -v --tb=short -rs
+        run: python -m pytest tests_system/test_alert_rules_have_metrics.py -v --tb=short -rs
 
   # ================================================================
   # Job 3: Frontend Lint & Build
@@ -195,6 +246,12 @@ jobs:
 
       - name: TypeScript check
         run: npx tsc --noEmit || true
+
+      # WP-74: the frontend's only test runner is `npm run test:logic` (there is
+      # no `npm test` script). 125/125 at the WP-74 head after two test-side
+      # fixes (T7, T2 — dev/audit/test_baseline_2026-09-05.md §2.7); blocking.
+      - name: Frontend logic tests (npm run test:logic)
+        run: npm run test:logic
 
       - name: Build
         run: npm run build || true
