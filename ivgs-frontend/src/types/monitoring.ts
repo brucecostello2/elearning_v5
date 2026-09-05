@@ -18,7 +18,8 @@ export interface User {
   username: string;
   role: UserRole;
   created_at: string;
-  last_login: string | null;
+  /** WP-70 fix S12: `UserResponse.last_login_at` — the page rendered every user as "Never" under the old name `last_login`. */
+  last_login_at: string | null;
 }
 
 export interface CreateUserPayload {

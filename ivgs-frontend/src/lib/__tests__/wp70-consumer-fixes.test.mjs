@@ -82,3 +82,29 @@ test("S11: every field TS DLQMessage declares is one DLQMessageResponse emits", 
   const missing = [...declared].filter((f) => !emitted.has(f));
   assert.deepEqual(missing, [], `declared but never sent: ${missing}`);
 });
+
+/* ── S12: admin Users page "Last login" vs UserResponse ───────────────── */
+
+test("S12: a user with a login timestamp does not render \"Never\"", () => {
+  const emitted = pydanticFields(api("app/schemas/user.py"), "UserResponse");
+  const page = src("app/admin/users/page.tsx");
+
+  // The cell: `{u.<field> ? new Date(u.<field>).toLocaleString() : "Never"}`.
+  const m = page.match(/\{u\.([a-z_]+)\s*\?\s*new Date\(u\.([a-z_]+)\)\.toLocaleString\(\)\s*:\s*"Never"\}/);
+  assert.ok(m, "last-login cell not found");
+  assert.equal(m[1], m[2]);
+  const field = m[1];
+
+  // A user as the API sends one, who HAS logged in.
+  const wire = Object.fromEntries([...emitted].map((f) => [f, null]));
+  wire.last_login_at = "2026-09-05T09:00:00Z";
+  const rendered = wire[field] ? new Date(wire[field]).toLocaleString() : "Never";
+  assert.notEqual(rendered, "Never", `cell reads u.${field}, which the API never sends`);
+});
+
+test("S12: every field TS User declares is one UserResponse emits", () => {
+  const emitted = pydanticFields(api("app/schemas/user.py"), "UserResponse");
+  const declared = tsFields(src("types/monitoring.ts"), "User");
+  const missing = [...declared].filter((f) => !emitted.has(f));
+  assert.deepEqual(missing, [], `declared but never sent: ${missing}`);
+});

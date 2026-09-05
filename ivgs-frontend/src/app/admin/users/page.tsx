@@ -562,8 +562,8 @@ export default function UserManagementPage(): React.ReactElement | null {
                             {new Date(u.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {u.last_login
-                              ? new Date(u.last_login).toLocaleString()
+                            {u.last_login_at
+                              ? new Date(u.last_login_at).toLocaleString()
                               : "Never"}
                           </td>
                           <td className="px-4 py-3 text-right">
