@@ -1,16 +1,16 @@
 # WP-69 consumer index
 
-Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touching the audited source; source tree dirty at build: False). Migration chain head in tree: `0055_wp_ivgs_12j_interview_and_vocabulary.py`; production head assumed `0054` (order §2 D1).
+Built from commit `3c14ff0e55a4933c17f6b7ec65747e01cac8f215` (last commit touching the audited source; source tree dirty at build: False). Migration chain head in tree: `0054_wp_ivgs_12i_system_corrections.py`; production head assumed `0054` (order §2 D1).
 
 | Family | Definitions | Consumers | definite | suspect | orphan |
 |---|---|---|---|---|---|
-| D1 Database schema | 70 | 331 | 21 | 59 | 2 |
-| D2 API contracts | 425 | 2205 | 33 | 31 | 160 |
+| D1 Database schema | 68 | 329 | 21 | 59 | 2 |
+| D2 API contracts | 418 | 2191 | 33 | 30 | 154 |
 | D3 Task and activity signatures | 99 | 506 | 2 | 34 | 4 |
-| D4 Enumerations and name vocabularies | 119 | 6385 | 6 | 212 | 168 |
+| D4 Enumerations and name vocabularies | 118 | 6298 | 6 | 211 | 169 |
 | D5 Configuration keys | 450 | 1475 | 0 | 14 | 192 |
-| D6 Cross-service protocols | 128 | 233 | 1 | 24 | 104 |
-| D7 Frontend <-> API types | 109 | 797 | 8 | 4 | 116 |
+| D6 Cross-service protocols | 125 | 232 | 1 | 24 | 101 |
+| D7 Frontend <-> API types | 109 | 790 | 8 | 4 | 116 |
 
 
 ## D1 — Database schema
@@ -75,12 +75,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | ORM LanguageVariant (ivgs-api/app/models/language_variant.py:19) | ivgs-api/app/schemas/language_variant.py:64 | from_attributes model LanguageVariantResponse.progress_source has no attribute on ORM LanguageVariant (defaults silently) |  |
 | suspect | ORM Model (shared/models/model_store.py:253) | ivgs-api/app/schemas/model_store.py:374 | from_attributes model ModelOut.weight_status has no attribute on ORM Model (defaults silently) |  |
 | suspect | ORM Model (shared/models/model_store.py:253) | ivgs-api/app/schemas/model_store.py:378 | from_attributes model ModelOut.client_status has no attribute on ORM Model (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:183 | from_attributes model ProjectResponse.hero_image_url has no attribute on ORM Project (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:190 | from_attributes model ProjectResponse.thumbnail_asset_id has no attribute on ORM Project (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:195 | from_attributes model ProjectResponse.thumbnail_unavailable_reason has no attribute on ORM Project (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:196 | from_attributes model ProjectResponse.scene_count has no attribute on ORM Project (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:197 | from_attributes model ProjectResponse.total_duration_estimate_seconds has no attribute on ORM Project (defaults silently) |  |
-| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:201 | from_attributes model ProjectResponse.active_job has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:115 | from_attributes model ProjectResponse.hero_image_url has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:122 | from_attributes model ProjectResponse.thumbnail_asset_id has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:127 | from_attributes model ProjectResponse.thumbnail_unavailable_reason has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:128 | from_attributes model ProjectResponse.scene_count has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:129 | from_attributes model ProjectResponse.total_duration_estimate_seconds has no attribute on ORM Project (defaults silently) |  |
+| suspect | ORM Project (ivgs-api/app/models/project.py:19) | ivgs-api/app/schemas/project.py:133 | from_attributes model ProjectResponse.active_job has no attribute on ORM Project (defaults silently) |  |
 | suspect | asset_quality_scores.job_id nullable=True (ivgs-api/migrations/versions/0008_quality_scores.py:28) | ivgs-api/app/models/quality_score.py:32 | model AssetQualityScore.job_id nullable=False (source: explicit) vs migration nullable=True |  |
 | suspect | gpu_nodes.registered_at nullable=True (ivgs-api/migrations/versions/0003_gpu_registry.py:35) | ivgs-api/app/models/gpu_node.py:51 | model GpuNode.registered_at nullable=False (source: Mapped[Optional]) vs migration nullable=True |  |
 | suspect | gpu_reservations.reserved_at nullable=True (ivgs-api/migrations/versions/0003_gpu_registry.py:57) | ivgs-api/app/models/gpu_node.py:126 | model GpuReservation.reserved_at nullable=False (source: Mapped[Optional]) vs migration nullable=True |  |
@@ -302,8 +302,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp45_dispatch.py:425` text() [test] SELECT resolution FROM dead_letter_messages WHERE id = :i
     - `ivgs-api/tests/test_wp45_dispatch.py:453` text() [test] UPDATE dead_letter_messages SET task_name = NULL WHERE id = :i
     - `shared/models/dead_letter_queue.py:37` sqlalchemy-model DeadLetterMessage
-- **table:design_library_versions** — `ivgs-api/migrations/versions/0055_wp_ivgs_12j_interview_and_vocabulary.py:238` — 1 consumer(s)
-    - `ivgs-api/app/models/design_interview.py:98` sqlalchemy-model DesignLibraryVersion
 - **table:fallback_policies** — `ivgs-api/migrations/versions/0014_fallback_policies.py:20` — 6 consumer(s)
     - `ivgs-api/app/models/fallback_policy.py:18` sqlalchemy-model FallbackPolicy
     - `ivgs-api/app/scripts/seed_fallback_policies.py:127` text() SELECT 1 FROM fallback_policies WHERE scene_type = :scene_type
@@ -359,8 +357,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_service_checkpoint.py:62` text() [test] INSERT INTO pipeline_checkpoints (id, job_id, stage_name, stage_index, status) VALUES (:cpid, :jid, :stage, :i
 - **table:presets** — `ivgs-api/migrations/versions/0032_wp56_presets.py:56` — 1 consumer(s)
     - `ivgs-api/app/models/preset.py:23` sqlalchemy-model Preset
-- **table:project_design_interviews** — `ivgs-api/migrations/versions/0055_wp_ivgs_12j_interview_and_vocabulary.py:144` — 1 consumer(s)
-    - `ivgs-api/app/models/design_interview.py:49` sqlalchemy-model ProjectDesignInterview
 - **table:project_gate_decisions** — `ivgs-api/migrations/versions/0035_wp62_gates.py:109` — 6 consumer(s)
     - `ivgs-api/app/models/project_gate.py:66` sqlalchemy-model ProjectGateDecision
     - `ivgs-api/app/services/project_deletion.py:369` sql-string SELECT count(*) FROM project_gate_decisions WHERE project_id = :project_id
@@ -595,12 +591,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | GET /api/v1/nodes/{node_id} (ivgs-api/app/api/v1/nodes.py:140) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/presets (ivgs-api/app/api/v1/library.py:389) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/presets/{preset_id} (ivgs-api/app/api/v1/library.py:444) | - | no frontend call site matches this route (no python client either) |  |
-| orphan | GET /api/v1/projects/deletions/audit (ivgs-api/app/api/v1/projects.py:85) | - | no frontend call site matches this route (python client(s) do) |  |
+| orphan | GET /api/v1/projects/deletions/audit (ivgs-api/app/api/v1/projects.py:84) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/projects/{project_id}/assets (ivgs-api/app/api/v1/assets.py:51) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/projects/{project_id}/design-brief (ivgs-api/app/api/v1/design_brief.py:109) | - | no frontend call site matches this route (no python client either) |  |
-| orphan | GET /api/v1/projects/{project_id}/design-inputs (ivgs-api/app/api/v1/design_interview.py:362) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/projects/{project_id}/design-outcomes (ivgs-api/app/api/v1/design_brief.py:56) | - | no frontend call site matches this route (python client(s) do) |  |
-| orphan | GET /api/v1/projects/{project_id}/gates (ivgs-api/app/api/v1/projects.py:1017) | - | no frontend call site matches this route (python client(s) do) |  |
+| orphan | GET /api/v1/projects/{project_id}/gates (ivgs-api/app/api/v1/projects.py:941) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/projects/{project_id}/languages (ivgs-api/app/api/v1/languages.py:39) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | GET /api/v1/projects/{project_id}/model-selections/panel (ivgs-api/app/api/v1/model_store.py:497) | - | no frontend call site matches this route (no python client either) |  |
 | orphan | GET /api/v1/projects/{project_id}/model-selections/scene/{scene_id} (ivgs-api/app/api/v1/model_store.py:518) | - | no frontend call site matches this route (no python client either) |  |
@@ -616,7 +611,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | PATCH /api/v1/library/assets/{asset_id} (ivgs-api/app/api/v1/library.py:221) | - | no frontend call site matches this route (no python client either) |  |
 | orphan | PATCH /api/v1/models/{model_id} (ivgs-api/app/api/v1/model_store.py:170) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | PATCH /api/v1/projects/{project_id}/scenes/{scene_id} (ivgs-api/app/api/v1/storyboard.py:176) | - | no frontend call site matches this route (python client(s) do) |  |
-| orphan | PATCH /api/v1/projects/{project_id}/state (ivgs-api/app/api/v1/projects.py:457) | - | no frontend call site matches this route (python client(s) do) |  |
+| orphan | PATCH /api/v1/projects/{project_id}/state (ivgs-api/app/api/v1/projects.py:456) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | PATCH /api/v1/users/{user_id} (ivgs-api/app/api/v1/users.py:133) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/actors (ivgs-api/app/api/v1/library.py:326) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/alerts/webhook (ivgs-api/app/api/v1/alerts.py:15) | - | no frontend call site matches this route (no python client either) |  |
@@ -642,9 +637,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | POST /api/v1/projects/{project_id}/assets/upload Form('metadata') (ivgs-api/app/api/v1/assets.py:88) | frontend | route accepts form field 'metadata' but no frontend FormData ever appends it |  |
 | orphan | POST /api/v1/projects/{project_id}/assets/upload Form('scene_id') (ivgs-api/app/api/v1/assets.py:88) | frontend | route accepts form field 'scene_id' but no frontend FormData ever appends it |  |
 | orphan | POST /api/v1/projects/{project_id}/design-brief (ivgs-api/app/api/v1/design_brief.py:91) | - | no frontend call site matches this route (no python client either) |  |
-| orphan | POST /api/v1/projects/{project_id}/design-interview (ivgs-api/app/api/v1/design_interview.py:191) | - | no frontend call site matches this route (no python client either) |  |
-| orphan | POST /api/v1/projects/{project_id}/design-interview/open (ivgs-api/app/api/v1/design_interview.py:285) | - | no frontend call site matches this route (no python client either) |  |
-| orphan | POST /api/v1/projects/{project_id}/design-interview/recommend (ivgs-api/app/api/v1/design_interview.py:240) | - | no frontend call site matches this route (no python client either) |  |
 | orphan | POST /api/v1/projects/{project_id}/languages (ivgs-api/app/api/v1/languages.py:70) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/projects/{project_id}/languages/{variant_id}/retry (ivgs-api/app/api/v1/languages.py:98) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/projects/{project_id}/languages/{variant_id}/translate (ivgs-api/app/api/v1/languages.py:145) | - | no frontend call site matches this route (no python client either) |  |
@@ -656,7 +648,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | POST /api/v1/projects/{project_id}/scenes/reorder (ivgs-api/app/api/v1/storyboard.py:288) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/projects/{project_id}/scenes/{scene_id}/regenerate (ivgs-api/app/api/v1/storyboard.py:312) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/projects/{project_id}/transcripts/reorder (ivgs-api/app/api/v1/transcripts.py:153) | - | no frontend call site matches this route (python client(s) do) |  |
-| orphan | POST /api/v1/projects/{project_id}/upload-talking-head (ivgs-api/app/api/v1/projects.py:541) | - | no frontend call site matches this route (no python client either) |  |
+| orphan | POST /api/v1/projects/{project_id}/upload-talking-head (ivgs-api/app/api/v1/projects.py:540) | - | no frontend call site matches this route (no python client either) |  |
 | orphan | POST /api/v1/prompts (ivgs-api/app/api/v1/prompts.py:132) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/prompts/test (ivgs-api/app/api/v1/prompts.py:198) | - | no frontend call site matches this route (python client(s) do) |  |
 | orphan | POST /api/v1/prompts/{prompt_id}/restore (ivgs-api/app/api/v1/prompts.py:165) | - | no frontend call site matches this route (python client(s) do) |  |
@@ -691,19 +683,17 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | pydantic FleetResponse (ivgs-scheduler/main.py:281) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic HeartbeatRequest (ivgs-scheduler/main.py:222) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic HeartbeatResponse (ivgs-scheduler/main.py:237) | - | no route and no production reference outside its own file |  |
-| orphan | pydantic InterviewAnswers (ivgs-api/app/api/v1/design_interview.py:47) | - | no route and no production reference outside its own file |  |
-| orphan | pydantic InterviewResponse (ivgs-api/app/api/v1/design_interview.py:57) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ManifestGenerateRequest (ivgs-api/app/api/v1/manifests.py:61) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ManifestResponse (ivgs-api/app/api/v1/manifests.py:51) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ManifestTimelineLayer (ivgs-api/app/api/v1/manifests.py:36) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ManifestValidationResult (ivgs-api/app/api/v1/manifests.py:65) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic NodeIPUpdate (ivgs-api/app/schemas/node_config.py:59) | - | no route and no production reference outside its own file |  |
-| orphan | pydantic OutcomeCoverage (ivgs-api/app/schemas/design_brief.py:77) | - | no route and no production reference outside its own file |  |
+| orphan | pydantic OutcomeCoverage (ivgs-api/app/schemas/design_brief.py:68) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic PresetBranding (ivgs-api/app/schemas/library.py:184) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic PresetMediaDefaults (ivgs-api/app/schemas/library.py:176) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic PresetModelSelection (ivgs-api/app/schemas/library.py:160) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic PresetPayload (ivgs-api/app/schemas/library.py:216) | - | no route and no production reference outside its own file |  |
-| orphan | pydantic ProjectStateUpdate (ivgs-api/app/api/v1/projects.py:440) | - | no route and no production reference outside its own file |  |
+| orphan | pydantic ProjectStateUpdate (ivgs-api/app/api/v1/projects.py:439) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic PromptRenderRequest (ivgs-api/app/schemas/prompt.py:160) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic ProvenanceIn (ivgs-api/app/schemas/model_store.py:34) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic QuotaResponse (ivgs-api/app/api/v1/quotas.py:17) | - | no route and no production reference outside its own file |  |
@@ -719,7 +709,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | pydantic ScheduleResponse (ivgs-scheduler/main.py:188) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic SchedulerConfig (ivgs-scheduler/main.py:64) | - | no route and no production reference outside its own file |  |
 | orphan | pydantic WeightPlacementOut (ivgs-api/app/schemas/model_store.py:268) | - | no route and no production reference outside its own file |  |
-| suspect | GET /api/v1/projects (ivgs-api/app/api/v1/projects.py:119) | ivgs-frontend/src/hooks/usePipeline.ts:60 | frontend sends query param 'expand' the route does not declare (ignored) |  |
+| suspect | GET /api/v1/projects (ivgs-api/app/api/v1/projects.py:118) | ivgs-frontend/src/hooks/usePipeline.ts:60 | frontend sends query param 'expand' the route does not declare (ignored) |  |
 | suspect | GpuNodeCreate (ivgs-api/app/schemas/gpu.py:14) | ivgs-api/tests/test_api_rbac.py:110 | client sends 'hostname' which the server request model lacks (ignored) |  |
 | suspect | GpuNodeCreate (ivgs-api/app/schemas/gpu.py:14) | ivgs-api/tests/test_api_rbac.py:110 | client sends 'vram_mb' which the server request model lacks (ignored) |  |
 | suspect | GpuNodeCreate (ivgs-api/app/schemas/gpu.py:14) | ivgs-api/tests/test_api_rbac.py:118 | client sends 'hostname' which the server request model lacks (ignored) |  |
@@ -746,7 +736,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | RetentionPolicyCreate (ivgs-api/app/schemas/retention.py:14) | ivgs-api/tests/test_api_rbac.py:90 | client sends 'retention_days' which the server request model lacks (ignored) |  |
 | suspect | RetentionPolicyCreate (ivgs-api/app/schemas/retention.py:14) | ivgs-api/tests/test_api_rbac.py:98 | client sends 'retention_days' which the server request model lacks (ignored) |  |
 | suspect | SceneUpdate (ivgs-api/app/schemas/storyboard.py:250) | ivgs-workers/tasks/stage5_voiceover.py:277 | client sends 'audio_asset_id' which the server request model lacks (ignored) |  |
-| suspect | route table (ivgs-api) | ivgs-frontend/src/components/project/DesignInterviewPanel.tsx:215 | frontend calls POST /api/v1/projects/{projectId}{path}; route exists only for ['DELETE', 'GET', 'PATCH'] |  |
 | suspect | route table (ivgs-api) | ivgs-frontend/src/hooks/useAssets.ts:50 | frontend calls POST /api/v1/projects/{projectId}/assets; route exists only for ['GET'] |  |
 | suspect | route table (ivgs-api) | ivgs-frontend/src/hooks/useTranscripts.ts:63 | frontend calls PUT /api/v1/projects/{projectId}/transcripts/reorder; route exists only for ['DELETE', 'PATCH', 'POST'] |  |
 | suspect | route tables | ivgs-api/app/core/node_health.py:133 | python client calls GET /api/v1/query matching no indexed route | base URL interpolated; route may belong to an external/engine server not indexed |
@@ -761,7 +750,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_checkpoint_api.py:171` python-http-call [test] DELETE /api/v1/jobs/{}/checkpoints
     - `ivgs-api/tests/test_checkpoint_api.py:182` python-http-call [test] DELETE /api/v1/jobs/{}/checkpoints
     - `ivgs-api/tests/test_wp36_checkpoint_service_auth.py:227` python-http-call [test] DELETE /api/v1/jobs/{}/checkpoints
-- **ivgs-api DELETE /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:268` — 7 consumer(s)
+- **ivgs-api DELETE /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:267` — 7 consumer(s)
     - `ivgs-api/tests/test_projects.py:164` python-http-call [test] DELETE /api/v1/projects/{}
     - `ivgs-api/tests/test_projects.py:194` python-http-call [test] DELETE /api/v1/projects/{}
     - `ivgs-api/tests/test_projects.py:225` python-http-call [test] DELETE /api/v1/projects/{}
@@ -893,7 +882,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ivgs-api GET /api/v1/jobs/{job_id}/manifest** — `ivgs-api/app/api/v1/manifests.py:78` — 3 consumer(s)
     - `ivgs-api/tests/test_bug_003_manifest_field_names.py:63` python-http-call [test] GET /api/v1/jobs/{}/manifest
     - `ivgs-api/tests/test_critical_paths.py:243` python-http-call [test] GET /api/v1/jobs/00000000-0000-0000-0000-000000000000/manifest
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2639` python-http-call GET {}/jobs/{}/manifest
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2429` python-http-call GET {}/jobs/{}/manifest
 - **ivgs-api GET /api/v1/jobs/{job_id}/quality** — `ivgs-api/app/api/v1/quality.py:97` — 3 consumer(s)
     - `ivgs-api/tests/test_quality_api.py:26` python-http-call [test] GET /api/v1/jobs/{}/quality
     - `ivgs-api/tests/test_quality_api.py:43` python-http-call [test] GET /api/v1/jobs/{}/quality
@@ -940,7 +929,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp56_library.py:454` python-http-call [test] GET /api/v1/presets/by-name/Corporate 2026/versions
     - `ivgs-frontend/src/hooks/useLibrary.ts:243` frontend-call GET /api/v1/presets/by-name/{encodeURIComponent_name_}/versions <Preset[]>
 - **ivgs-api GET /api/v1/presets/{preset_id}** — `ivgs-api/app/api/v1/library.py:444` — 0 consumer(s)
-- **ivgs-api GET /api/v1/projects** — `ivgs-api/app/api/v1/projects.py:119` — 23 consumer(s)
+- **ivgs-api GET /api/v1/projects** — `ivgs-api/app/api/v1/projects.py:118` — 23 consumer(s)
     - `ivgs-api/tests/test_api_pagination.py:30` python-http-call [test] GET /api/v1/projects
     - `ivgs-api/tests/test_api_pagination.py:42` python-http-call [test] GET /api/v1/projects
     - `ivgs-api/tests/test_api_pagination.py:49` python-http-call [test] GET /api/v1/projects
@@ -964,10 +953,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `tests_system/integration/test_auth_integration.py:367` python-http-call [test] GET /projects
     - `tests_system/integration/test_projects_integration.py:120` python-http-call [test] GET /projects?page=1&per_page=10
     - `tests_system/integration/test_projects_integration.py:139` python-http-call [test] GET /projects
-- **ivgs-api GET /api/v1/projects/deletions/audit** — `ivgs-api/app/api/v1/projects.py:85` — 2 consumer(s)
+- **ivgs-api GET /api/v1/projects/deletions/audit** — `ivgs-api/app/api/v1/projects.py:84` — 2 consumer(s)
     - `ivgs-api/tests/test_wp62_ledger.py:144` python-http-call [test] GET /api/v1/projects/deletions/audit
     - `ivgs-api/tests/test_wp62_ledger.py:156` python-http-call [test] GET /api/v1/projects/deletions/audit
-- **ivgs-api GET /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:168` — 17 consumer(s)
+- **ivgs-api GET /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:167` — 17 consumer(s)
     - `ivgs-api/tests/test_projects.py:115` python-http-call [test] GET /api/v1/projects/{}
     - `ivgs-api/tests/test_projects.py:124` python-http-call [test] GET /api/v1/projects/{}
     - `ivgs-api/tests/test_projects.py:173` python-http-call [test] GET /api/v1/projects/{}
@@ -994,27 +983,22 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp57_service_token.py:124` python-http-call [test] GET /api/v1/projects/{}/assets
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:95` python-http-call [test] GET /api/v1/projects/{}/assets
     - `ivgs-workers/tasks/animation_generation_task.py:240` python-http-call GET {}/projects/{}/assets
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2501` python-http-call GET {}/projects/{}/assets
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2523` python-http-call GET {}/projects/{}/assets
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2567` python-http-call GET {}/projects/{}/assets
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2599` python-http-call GET {}/projects/{}/assets
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2673` python-http-call GET {}/projects/{}/assets
-- **ivgs-api GET /api/v1/projects/{project_id}/deletion-preview** — `ivgs-api/app/api/v1/projects.py:211` — 3 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2291` python-http-call GET {}/projects/{}/assets
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2313` python-http-call GET {}/projects/{}/assets
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2357` python-http-call GET {}/projects/{}/assets
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2389` python-http-call GET {}/projects/{}/assets
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2463` python-http-call GET {}/projects/{}/assets
+- **ivgs-api GET /api/v1/projects/{project_id}/deletion-preview** — `ivgs-api/app/api/v1/projects.py:210` — 3 consumer(s)
     - `ivgs-api/tests/test_projects.py:254` python-http-call [test] GET /api/v1/projects/{}/deletion-preview
     - `ivgs-api/tests/test_projects.py:264` python-http-call [test] GET /api/v1/projects/{}/deletion-preview
     - `ivgs-frontend/src/hooks/useProjectDeletion.ts:102` frontend-call GET /api/v1/projects/{projectId}/deletion-preview
 - **ivgs-api GET /api/v1/projects/{project_id}/design-brief** — `ivgs-api/app/api/v1/design_brief.py:109` — 0 consumer(s)
-- **ivgs-api GET /api/v1/projects/{project_id}/design-inputs** — `ivgs-api/app/api/v1/design_interview.py:362` — 2 consumer(s)
-    - `ivgs-workers/design_core/capture.py:189` python-http-call GET {}/projects/{}/design-inputs
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1285` python-http-call GET {}/projects/{}/design-inputs
-- **ivgs-api GET /api/v1/projects/{project_id}/design-interview** — `ivgs-api/app/api/v1/design_interview.py:146` — 1 consumer(s)
-    - `ivgs-frontend/src/hooks/useDesignInterview.ts:89` frontend-call GET /api/v1/projects/{projectId}/design-interview
 - **ivgs-api GET /api/v1/projects/{project_id}/design-outcomes** — `ivgs-api/app/api/v1/design_brief.py:56` — 1 consumer(s)
-    - `ivgs-workers/design_core/capture.py:271` python-http-call GET {}/projects/{}/design-outcomes
+    - `ivgs-workers/design_core/capture.py:152` python-http-call GET {}/projects/{}/design-outcomes
 - **ivgs-api GET /api/v1/projects/{project_id}/design-review** — `ivgs-api/app/api/v1/design_brief.py:132` — 2 consumer(s)
-    - `ivgs-frontend/src/hooks/useDesignReview.ts:127` frontend-call GET /api/v1/projects/{projectId}/design-review
+    - `ivgs-frontend/src/hooks/useDesignReview.ts:92` frontend-call GET /api/v1/projects/{projectId}/design-review
     - `ivgs-workers/design_core/headers.py:125` python-http-call GET {}/projects/{}/design-review
-- **ivgs-api GET /api/v1/projects/{project_id}/gates** — `ivgs-api/app/api/v1/projects.py:1017` — 2 consumer(s)
+- **ivgs-api GET /api/v1/projects/{project_id}/gates** — `ivgs-api/app/api/v1/projects.py:941` — 2 consumer(s)
     - `ivgs-api/tests/test_wp62_gates.py:229` python-http-call [test] GET /api/v1/projects/{}/gates
     - `ivgs-api/tests/test_wp62_gates.py:244` python-http-call [test] GET /api/v1/projects/{}/gates
 - **ivgs-api GET /api/v1/projects/{project_id}/jobs** — `ivgs-api/app/api/v1/jobs.py:39` — 7 consumer(s)
@@ -1041,7 +1025,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/hooks/useModelSelections.ts:25` frontend-call GET /api/v1/projects/{projectId}/model-selections
 - **ivgs-api GET /api/v1/projects/{project_id}/model-selections/panel** — `ivgs-api/app/api/v1/model_store.py:497` — 0 consumer(s)
 - **ivgs-api GET /api/v1/projects/{project_id}/model-selections/scene/{scene_id}** — `ivgs-api/app/api/v1/model_store.py:518` — 0 consumer(s)
-- **ivgs-api GET /api/v1/projects/{project_id}/progress** — `ivgs-api/app/api/v1/projects.py:1062` — 9 consumer(s)
+- **ivgs-api GET /api/v1/projects/{project_id}/progress** — `ivgs-api/app/api/v1/projects.py:986` — 9 consumer(s)
     - `ivgs-api/tests/test_wp62_progress.py:168` python-http-call [test] GET /api/v1/projects/{}/progress
     - `ivgs-api/tests/test_wp62_progress.py:205` python-http-call [test] GET /api/v1/projects/{}/progress
     - `ivgs-api/tests/test_wp62_progress.py:218` python-http-call [test] GET /api/v1/projects/{}/progress
@@ -1073,18 +1057,18 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:1110` python-http-call [test] GET /api/v1/projects/{}/scenes
     - `ivgs-api/tests/test_wp64_learning_outcomes.py:179` python-http-call [test] GET /api/v1/projects/{}/scenes
     - `ivgs-frontend/src/hooks/useAssetMedia.ts:202` frontend-call GET /api/v1/projects/{projectId}/scenes
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2480` python-http-call GET {}/projects/{}/scenes
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2270` python-http-call GET {}/projects/{}/scenes
 - **ivgs-api GET /api/v1/projects/{project_id}/transcripts** — `ivgs-api/app/api/v1/transcripts.py:37` — 3 consumer(s)
     - `ivgs-api/tests/test_transcripts.py:50` python-http-call [test] GET /api/v1/projects/{}/transcripts
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:105` python-http-call [test] GET /api/v1/projects/{}/transcripts
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2378` python-http-call GET {}/projects/{}/transcripts
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2168` python-http-call GET {}/projects/{}/transcripts
 - **ivgs-api GET /api/v1/prompts** — `ivgs-api/app/api/v1/prompts.py:68` — 6 consumer(s)
     - `ivgs-api/tests/test_prompts.py:54` python-http-call [test] GET /api/v1/prompts
     - `ivgs-api/tests/test_prompts.py:63` python-http-call [test] GET /api/v1/prompts?prompt_type=image_generation
     - `ivgs-api/tests/test_wp37_prompts_service_auth.py:196` python-http-call [test] GET /api/v1/prompts
     - `ivgs-frontend/src/hooks/usePrompts.ts:73` frontend-call GET /api/v1/prompts
-    - `ivgs-workers/design_core/assessment_call.py:158` python-http-call GET {}/prompts
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1651` python-http-call GET {}/prompts
+    - `ivgs-workers/design_core/assessment_call.py:123` python-http-call GET {}/prompts
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1441` python-http-call GET {}/prompts
 - **ivgs-api GET /api/v1/prompts/library** — `ivgs-api/app/api/v1/prompts.py:383` — 1 consumer(s)
     - `ivgs-frontend/src/hooks/usePrompts.ts:149` frontend-call GET /api/v1/prompts/library
 - **ivgs-api GET /api/v1/prompts/resolve** — `ivgs-api/app/api/v1/prompts.py:237` — 1 consumer(s)
@@ -1149,12 +1133,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:766` python-http-call [test] PATCH /api/v1/jobs/{}
     - `ivgs-api/tests/test_wp62_progress.py:108` python-http-call [test] PATCH /api/v1/jobs/{}
     - `ivgs-api/tests/test_wp62_progress.py:137` python-http-call [test] PATCH /api/v1/jobs/{}
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1805` python-http-call PATCH {}/jobs/{}
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1595` python-http-call PATCH {}/jobs/{}
 - **ivgs-api PATCH /api/v1/library/assets/{asset_id}** — `ivgs-api/app/api/v1/library.py:221` — 0 consumer(s)
 - **ivgs-api PATCH /api/v1/models/{model_id}** — `ivgs-api/app/api/v1/model_store.py:170` — 2 consumer(s)
     - `ivgs-api/tests/test_api_model_store.py:151` python-http-call [test] PATCH /api/v1/models/{}
     - `ivgs-api/tests/test_api_model_store.py:167` python-http-call [test] PATCH /api/v1/models/{}
-- **ivgs-api PATCH /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:189` — 7 consumer(s)
+- **ivgs-api PATCH /api/v1/projects/{project_id}** — `ivgs-api/app/api/v1/projects.py:188` — 7 consumer(s)
     - `ivgs-api/tests/test_projects.py:138` python-http-call [test] PATCH /api/v1/projects/{}
     - `ivgs-api/tests/test_wp64_learning_outcomes.py:123` python-http-call [test] PATCH /api/v1/projects/{}
     - `ivgs-api/tests/test_wp64_learning_outcomes.py:135` python-http-call [test] PATCH /api/v1/projects/{}
@@ -1173,7 +1157,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp63_regeneration.py:301` python-http-call [test] PATCH /api/v1/projects/{}/scenes/{}
     - `ivgs-api/tests/test_wp63_regeneration.py:383` python-http-call [test] PATCH /api/v1/projects/{}/scenes/{}
     - `ivgs-workers/tasks/stage5_voiceover.py:277` python-http-call PATCH {}/projects/{}/scenes/{}
-- **ivgs-api PATCH /api/v1/projects/{project_id}/state** — `ivgs-api/app/api/v1/projects.py:457` — 5 consumer(s)
+- **ivgs-api PATCH /api/v1/projects/{project_id}/state** — `ivgs-api/app/api/v1/projects.py:456` — 5 consumer(s)
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:428` python-http-call [test] PATCH /api/v1/projects/{}/state
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:449` python-http-call [test] PATCH /api/v1/projects/{}/state
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:465` python-http-call [test] PATCH /api/v1/projects/{}/state
@@ -1272,7 +1256,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `tests_system/integration/test_auth_integration.py:266` python-http-call [test] POST /auth/refresh
     - `tests_system/integration/test_auth_integration.py:298` python-http-call [test] POST /auth/refresh
 - **ivgs-api POST /api/v1/backup/trigger** — `ivgs-api/app/api/v1/backup.py:204` — 10 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:371` python-http-call POST /{project_id}/trigger
+    - `ivgs-api/app/api/v1/projects.py:370` python-http-call POST /{project_id}/trigger
     - `ivgs-api/tests/test_api_backup.py:74` python-http-call [test] POST /api/v1/backup/trigger
     - `ivgs-api/tests/test_api_backup.py:91` python-http-call [test] POST /api/v1/backup/trigger
     - `ivgs-api/tests/test_api_backup.py:102` python-http-call [test] POST /api/v1/backup/trigger
@@ -1427,7 +1411,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ivgs-api POST /api/v1/presets/by-name/{name}/revise** — `ivgs-api/app/api/v1/library.py:460` — 2 consumer(s)
     - `ivgs-api/tests/test_wp56_library.py:445` python-http-call [test] POST /api/v1/presets/by-name/Corporate 2026/revise
     - `ivgs-frontend/src/hooks/useLibrary.ts:232` frontend-call POST /api/v1/presets/by-name/{encodeURIComponent_name_}/revise <Preset>
-- **ivgs-api POST /api/v1/projects** — `ivgs-api/app/api/v1/projects.py:153` — 39 consumer(s)
+- **ivgs-api POST /api/v1/projects** — `ivgs-api/app/api/v1/projects.py:152` — 39 consumer(s)
     - `ivgs-api/tests/test_api_languages.py:33` python-http-call [test] POST /api/v1/projects
     - `ivgs-api/tests/test_api_rbac.py:180` python-http-call [test] POST /api/v1/projects
     - `ivgs-api/tests/test_critical_paths.py:74` python-http-call [test] POST /api/v1/projects
@@ -1494,14 +1478,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/talking_head_task.py:204` python-http-call POST {}/projects/{}/assets/upload
     - `ivgs-workers/tasks/video_generation_task.py:212` python-http-call POST {}/projects/{}/assets/upload
 - **ivgs-api POST /api/v1/projects/{project_id}/design-brief** — `ivgs-api/app/api/v1/design_brief.py:91` — 0 consumer(s)
-- **ivgs-api POST /api/v1/projects/{project_id}/design-interview** — `ivgs-api/app/api/v1/design_interview.py:191` — 0 consumer(s)
-- **ivgs-api POST /api/v1/projects/{project_id}/design-interview/open** — `ivgs-api/app/api/v1/design_interview.py:285` — 0 consumer(s)
-- **ivgs-api POST /api/v1/projects/{project_id}/design-interview/recommend** — `ivgs-api/app/api/v1/design_interview.py:240` — 0 consumer(s)
-- **ivgs-api POST /api/v1/projects/{project_id}/gates/draft** — `ivgs-api/app/api/v1/projects.py:994` — 3 consumer(s)
+- **ivgs-api POST /api/v1/projects/{project_id}/gates/draft** — `ivgs-api/app/api/v1/projects.py:918` — 3 consumer(s)
     - `ivgs-api/tests/test_wp62_gates.py:358` python-http-call [test] POST /api/v1/projects/{}/gates/draft
     - `ivgs-api/tests/test_wp63_regeneration.py:544` python-http-call [test] POST /api/v1/projects/{}/gates/draft
     - `ivgs-frontend/src/components/project/GateReviewPanel.tsx:221` frontend-call POST /api/v1/projects/{projectId}/gates/{gate}
-- **ivgs-api POST /api/v1/projects/{project_id}/gates/storyboard** — `ivgs-api/app/api/v1/projects.py:971` — 18 consumer(s)
+- **ivgs-api POST /api/v1/projects/{project_id}/gates/storyboard** — `ivgs-api/app/api/v1/projects.py:895` — 18 consumer(s)
     - `ivgs-api/tests/test_wp62_gates.py:190` python-http-call [test] POST /api/v1/projects/{}/gates/storyboard
     - `ivgs-api/tests/test_wp62_gates.py:204` python-http-call [test] POST /api/v1/projects/{}/gates/storyboard
     - `ivgs-api/tests/test_wp62_gates.py:224` python-http-call [test] POST /api/v1/projects/{}/gates/storyboard
@@ -1570,7 +1551,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12i_auto_repair.py:506` python-http-call [test] POST /api/v1/projects/{}/scenes/approve
     - `ivgs-frontend/src/hooks/useStoryboard.ts:437` frontend-call POST /api/v1/projects/{projectId}/scenes/approve
 - **ivgs-api POST /api/v1/projects/{project_id}/scenes/auto-repair** — `ivgs-api/app/api/v1/storyboard.py:450` — 1 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2441` python-http-call POST {}/projects/{}/scenes/auto-repair
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2231` python-http-call POST {}/projects/{}/scenes/auto-repair
 - **ivgs-api POST /api/v1/projects/{project_id}/scenes/batch-regenerate** — `ivgs-api/app/api/v1/storyboard.py:356` — 3 consumer(s)
     - `ivgs-api/tests/test_wp63_regeneration.py:350` python-http-call [test] POST /api/v1/projects/{}/scenes/batch-regenerate
     - `ivgs-api/tests/test_wp63_regeneration.py:370` python-http-call [test] POST /api/v1/projects/{}/scenes/batch-regenerate
@@ -1613,7 +1594,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:66` python-http-call [test] POST /api/v1/projects/{}/transcripts/upload
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:138` python-http-call [test] POST /api/v1/projects/{}/transcripts/upload
     - `ivgs-frontend/src/hooks/useProjects.ts:189` frontend-call POST /api/v1/projects/{projectId}/transcripts/upload <unknown>
-- **ivgs-api POST /api/v1/projects/{project_id}/trigger** — `ivgs-api/app/api/v1/projects.py:376` — 15 consumer(s)
+- **ivgs-api POST /api/v1/projects/{project_id}/trigger** — `ivgs-api/app/api/v1/projects.py:375` — 15 consumer(s)
     - `ivgs-api/tests/test_critical_paths.py:54` python-http-call [test] POST /api/v1/projects/00000000-0000-0000-0000-000000000000/trigger
     - `ivgs-api/tests/test_critical_paths.py:58` python-http-call [test] POST /api/v1/projects/00000000-0000-0000-0000-000000000000/trigger
     - `ivgs-api/tests/test_projects.py:295` python-http-call [test] POST /api/v1/projects/{}/trigger
@@ -1629,7 +1610,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp64_learning_outcomes.py:268` python-http-call [test] POST /api/v1/projects/{}/trigger
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:144` python-http-call [test] POST /api/v1/projects/{}/trigger
     - `ivgs-frontend/src/hooks/useProjects.ts:262` frontend-call POST /api/v1/projects/{projectId}/trigger <Project>
-- **ivgs-api POST /api/v1/projects/{project_id}/upload-talking-head** — `ivgs-api/app/api/v1/projects.py:541` — 0 consumer(s)
+- **ivgs-api POST /api/v1/projects/{project_id}/upload-talking-head** — `ivgs-api/app/api/v1/projects.py:540` — 0 consumer(s)
 - **ivgs-api POST /api/v1/prompts** — `ivgs-api/app/api/v1/prompts.py:132` — 9 consumer(s)
     - `ivgs-api/tests/test_prompts.py:23` python-http-call [test] POST /api/v1/prompts
     - `ivgs-api/tests/test_prompts.py:41` python-http-call [test] POST /api/v1/prompts
@@ -1721,7 +1702,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-clip-scorer/app.py:249` python-http-call GET /health
     - `ivgs-scheduler/main.py:953` python-http-call GET /health
@@ -1745,7 +1726,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-clip-scorer/app.py:272` python-http-call GET /thresholds
 - **ivgs-clip-scorer POST /score** — `ivgs-clip-scorer/app.py:199` — 4 consumer(s)
@@ -1763,7 +1744,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-motion-renderer/main.py:390` python-http-call GET /healthz
     - `ivgs-motion-renderer/tests/test_wp_ivgs_09_renderer.py:58` python-http-call [test] GET /healthz
@@ -1773,7 +1754,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-motion-renderer/tests/test_wp_ivgs_09_renderer.py:99` python-http-call [test] GET /healthz
     - `ivgs-motion-renderer/tests/test_wp_ivgs_09_renderer.py:222` python-http-call [test] GET /healthz
     - `ivgs-workers/clients/motion_graphics_client.py:138` python-http-call GET {}/healthz
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:715` python-http-call GET {}/healthz
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:671` python-http-call GET {}/healthz
 - **ivgs-motion-renderer GET /templates** — `ivgs-motion-renderer/main.py:423` — 11 consumer(s)
     - `ivgs-api/app/api/v1/assets.py:276` python-http-call GET /{asset_id}
     - `ivgs-api/app/api/v1/jobs.py:129` python-http-call GET /{job_id}
@@ -1782,7 +1763,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-motion-renderer/main.py:422` python-http-call GET /templates
     - `ivgs-motion-renderer/tests/test_wp_ivgs_09_renderer.py:114` python-http-call [test] GET /templates
@@ -1824,7 +1805,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-scheduler/main.py:777` python-http-call GET /fleet
     - `ivgs-workers/tasks/periodic_tasks.py:995` python-http-call GET {}/fleet
@@ -1844,7 +1825,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-clip-scorer/app.py:249` python-http-call GET /health
     - `ivgs-scheduler/main.py:953` python-http-call GET /health
@@ -1869,7 +1850,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/metrics.py:230` python-http-call GET /metrics
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-scheduler/main.py:982` python-http-call GET /metrics
     - `tests_system/integration/test_gpu_integration.py:159` python-http-call [test] GET /metrics
@@ -1913,7 +1894,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-clip-scorer/app.py:249` python-http-call GET /health
     - `ivgs-scheduler/main.py:953` python-http-call GET /health
@@ -1961,7 +1942,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id}
     - `ivgs-clip-scorer/app.py:249` python-http-call GET /health
     - `ivgs-scheduler/main.py:953` python-http-call GET /health
@@ -2015,9 +1996,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ivgs-workers/whisperx POST /transcribe** — `ivgs-workers/servers/whisperx/server.py:136` — 2 consumer(s)
     - `ivgs-workers/clients/whisperx_client.py:63` python-http-call POST {}/transcribe
     - `ivgs-workers/servers/whisperx/server.py:135` python-http-call POST /transcribe
-- **pydantic:ActiveJobInfo** — `ivgs-api/app/schemas/project.py:147` — 2 consumer(s)
-    - `ivgs-api/app/schemas/project.py:201` py-ref ProjectResponse
-    - `ivgs-api/app/services/project_service.py:943` py-ref ProjectService._to_response
+- **pydantic:ActiveJobInfo** — `ivgs-api/app/schemas/project.py:79` — 2 consumer(s)
+    - `ivgs-api/app/schemas/project.py:133` py-ref ProjectResponse
+    - `ivgs-api/app/services/project_service.py:930` py-ref ProjectService._to_response
 - **pydantic:ActiveJobSummary** — `ivgs-api/app/schemas/gpu.py:41` — 4 consumer(s)
     - `ivgs-api/app/schemas/gpu.py:152` py-ref GpuNodeResponse
     - `ivgs-api/app/services/gpu_service.py:265` py-ref GpuService._scheduler_node_response
@@ -2241,33 +2222,33 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/schemas/retention.py:144` py-ref RetentionReportResponse
     - `ivgs-api/app/services/retention_service.py:254` py-ref RetentionService.get_report
 - **pydantic:DeletionCategory** — `ivgs-api/app/schemas/project_deletion.py:15` — 2 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:242` py-ref project_deletion_preview
+    - `ivgs-api/app/api/v1/projects.py:241` py-ref project_deletion_preview
     - `ivgs-api/app/schemas/project_deletion.py:50` py-ref DeletionPreviewResponse
 - **pydantic:DeletionPreviewResponse** — `ivgs-api/app/schemas/project_deletion.py:44` — 3 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:208` py-ref project_deletion_preview
-    - `ivgs-api/app/api/v1/projects.py:211` route-response GET /api/v1/projects/{project_id}/deletion-preview
-    - `ivgs-api/app/api/v1/projects.py:237` py-ref project_deletion_preview
+    - `ivgs-api/app/api/v1/projects.py:207` py-ref project_deletion_preview
+    - `ivgs-api/app/api/v1/projects.py:210` route-response GET /api/v1/projects/{project_id}/deletion-preview
+    - `ivgs-api/app/api/v1/projects.py:236` py-ref project_deletion_preview
 - **pydantic:DeletionResultResponse** — `ivgs-api/app/schemas/project_deletion.py:95` — 3 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:264` py-ref delete_project
-    - `ivgs-api/app/api/v1/projects.py:268` route-response DELETE /api/v1/projects/{project_id}
-    - `ivgs-api/app/api/v1/projects.py:356` py-ref delete_project
+    - `ivgs-api/app/api/v1/projects.py:263` py-ref delete_project
+    - `ivgs-api/app/api/v1/projects.py:267` route-response DELETE /api/v1/projects/{project_id}
+    - `ivgs-api/app/api/v1/projects.py:355` py-ref delete_project
 - **pydantic:DesignBriefIngest** — `ivgs-api/app/schemas/design_brief.py:20` — 2 consumer(s)
     - `ivgs-api/app/api/v1/design_brief.py:91` route-body POST /api/v1/projects/{project_id}/design-brief
     - `ivgs-api/app/api/v1/design_brief.py:93` py-ref ingest_design_brief
-- **pydantic:DesignBriefResponse** — `ivgs-api/app/schemas/design_brief.py:49` — 8 consumer(s)
+- **pydantic:DesignBriefResponse** — `ivgs-api/app/schemas/design_brief.py:45` — 8 consumer(s)
     - `ivgs-api/app/api/v1/design_brief.py:87` py-ref ingest_design_brief
     - `ivgs-api/app/api/v1/design_brief.py:91` route-response POST /api/v1/projects/{project_id}/design-brief
     - `ivgs-api/app/api/v1/design_brief.py:101` py-ref ingest_design_brief
     - `ivgs-api/app/api/v1/design_brief.py:106` py-ref get_design_brief
     - `ivgs-api/app/api/v1/design_brief.py:109` route-response GET /api/v1/projects/{project_id}/design-brief
     - `ivgs-api/app/api/v1/design_brief.py:124` py-ref get_design_brief
-    - `ivgs-api/app/api/v1/design_brief.py:196` py-ref get_design_review
-    - `ivgs-api/app/schemas/design_brief.py:103` py-ref DesignReviewResponse
-- **pydantic:DesignReviewResponse** — `ivgs-api/app/schemas/design_brief.py:93` — 4 consumer(s)
+    - `ivgs-api/app/api/v1/design_brief.py:189` py-ref get_design_review
+    - `ivgs-api/app/schemas/design_brief.py:94` py-ref DesignReviewResponse
+- **pydantic:DesignReviewResponse** — `ivgs-api/app/schemas/design_brief.py:84` — 4 consumer(s)
     - `ivgs-api/app/api/v1/design_brief.py:129` py-ref get_design_review
     - `ivgs-api/app/api/v1/design_brief.py:132` route-response GET /api/v1/projects/{project_id}/design-review
     - `ivgs-api/app/api/v1/design_brief.py:155` py-ref get_design_review
-    - `ivgs-api/app/api/v1/design_brief.py:194` py-ref get_design_review
+    - `ivgs-api/app/api/v1/design_brief.py:187` py-ref get_design_review
 - **pydantic:DrainResponse** — `ivgs-scheduler/main.py:295` — 4 consumer(s)
     - `ivgs-scheduler/main.py:921` py-ref drain_node
     - `ivgs-scheduler/main.py:922` py-ref drain_node
@@ -2328,12 +2309,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-scheduler/main.py:778` py-ref get_fleet_status
     - `ivgs-scheduler/main.py:778` route-response GET /fleet
     - `ivgs-scheduler/main.py:840` py-ref get_fleet_status
-- **pydantic:GateDecisionRequest** — `ivgs-api/app/api/v1/projects.py:612` — 6 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:680` py-ref _gate_decision
-    - `ivgs-api/app/api/v1/projects.py:971` route-body POST /api/v1/projects/{project_id}/gates/storyboard
-    - `ivgs-api/app/api/v1/projects.py:973` py-ref decide_storyboard_gate
-    - `ivgs-api/app/api/v1/projects.py:994` route-body POST /api/v1/projects/{project_id}/gates/draft
-    - `ivgs-api/app/api/v1/projects.py:996` py-ref decide_draft_gate
+- **pydantic:GateDecisionRequest** — `ivgs-api/app/api/v1/projects.py:611` — 6 consumer(s)
+    - `ivgs-api/app/api/v1/projects.py:639` py-ref _gate_decision
+    - `ivgs-api/app/api/v1/projects.py:895` route-body POST /api/v1/projects/{project_id}/gates/storyboard
+    - `ivgs-api/app/api/v1/projects.py:897` py-ref decide_storyboard_gate
+    - `ivgs-api/app/api/v1/projects.py:918` route-body POST /api/v1/projects/{project_id}/gates/draft
+    - `ivgs-api/app/api/v1/projects.py:920` py-ref decide_draft_gate
     - `ivgs-api/app/api/v1/storyboard.py:435` py-ref approve_storyboard
 - **pydantic:GenerateRequest** — `ivgs-workers/servers/cogvideox/server.py:41` — 3 consumer(s)
     - `ivgs-workers/servers/cogvideox/server.py:223` py-ref run_generation
@@ -2409,19 +2390,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-scheduler/main.py:703` py-ref update_heartbeat
     - `ivgs-scheduler/main.py:703` route-response PUT /heartbeat
     - `ivgs-scheduler/main.py:727` py-ref update_heartbeat
-- **pydantic:InterviewAnswers** — `ivgs-api/app/api/v1/design_interview.py:47` — 2 consumer(s)
-    - `ivgs-api/app/api/v1/design_interview.py:191` route-body POST /api/v1/projects/{project_id}/design-interview
-    - `ivgs-api/app/api/v1/design_interview.py:193` py-ref post_design_interview
-- **pydantic:InterviewResponse** — `ivgs-api/app/api/v1/design_interview.py:57` — 9 consumer(s)
-    - `ivgs-api/app/api/v1/design_interview.py:143` py-ref get_design_interview
-    - `ivgs-api/app/api/v1/design_interview.py:146` route-response GET /api/v1/projects/{project_id}/design-interview
-    - `ivgs-api/app/api/v1/design_interview.py:168` py-ref get_design_interview
-    - `ivgs-api/app/api/v1/design_interview.py:188` py-ref post_design_interview
-    - `ivgs-api/app/api/v1/design_interview.py:191` route-response POST /api/v1/projects/{project_id}/design-interview
-    - `ivgs-api/app/api/v1/design_interview.py:216` py-ref post_design_interview
-    - `ivgs-api/app/api/v1/design_interview.py:237` py-ref post_design_interview_recommend
-    - `ivgs-api/app/api/v1/design_interview.py:240` route-response POST /api/v1/projects/{project_id}/design-interview/recommend
-    - `ivgs-api/app/api/v1/design_interview.py:262` py-ref post_design_interview_recommend
 - **pydantic:JobQualityResponse** — `ivgs-api/app/schemas/quality.py:104` — 4 consumer(s)
     - `ivgs-api/app/api/v1/quality.py:94` py-ref get_job_quality
     - `ivgs-api/app/api/v1/quality.py:97` route-response GET /api/v1/jobs/{job_id}/quality
@@ -2469,9 +2437,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/languages.py:142` py-ref translate_variant
     - `ivgs-api/app/api/v1/languages.py:145` route-response POST /api/v1/projects/{project_id}/languages/{variant_id}/translate
     - `ivgs-api/app/api/v1/languages.py:204` py-ref translate_variant
-- **pydantic:LanguageVariantSummary** — `ivgs-api/app/schemas/project.py:158` — 2 consumer(s)
-    - `ivgs-api/app/schemas/project.py:200` py-ref ProjectResponse
-    - `ivgs-api/app/services/project_service.py:954` py-ref ProjectService._to_response
+- **pydantic:LanguageVariantSummary** — `ivgs-api/app/schemas/project.py:90` — 2 consumer(s)
+    - `ivgs-api/app/schemas/project.py:132` py-ref ProjectResponse
+    - `ivgs-api/app/services/project_service.py:941` py-ref ProjectService._to_response
 - **pydantic:LibraryAssetReferenceRequest** — `ivgs-api/app/schemas/library.py:84` — 2 consumer(s)
     - `ivgs-api/app/api/v1/library.py:490` route-body POST /api/v1/projects/{project_id}/library-reference
     - `ivgs-api/app/api/v1/library.py:492` py-ref reference_library_asset
@@ -2615,8 +2583,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **pydantic:NodeIPUpdate** — `ivgs-api/app/schemas/node_config.py:59` — 1 consumer(s)
     - `ivgs-api/app/schemas/node_config.py:88` py-ref NodeConfigUpdate
 - **pydantic:OrphanRecord** — `ivgs-workers/services/orphan_cleanup.py:69` — 0 consumer(s)
-- **pydantic:OutcomeCoverage** — `ivgs-api/app/schemas/design_brief.py:77` — 1 consumer(s)
-    - `ivgs-api/app/schemas/design_brief.py:107` py-ref DesignReviewResponse
+- **pydantic:OutcomeCoverage** — `ivgs-api/app/schemas/design_brief.py:68` — 1 consumer(s)
+    - `ivgs-api/app/schemas/design_brief.py:98` py-ref DesignReviewResponse
 - **pydantic:PaginatedResponse** — `ivgs-api/app/schemas/base.py:17` — 31 consumer(s)
     - `ivgs-api/app/api/v1/assets.py:48` py-ref list_assets
     - `ivgs-api/app/api/v1/assets.py:51` route-response GET /api/v1/projects/{project_id}/assets
@@ -2640,9 +2608,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:307` route-response GET /api/v1/actors
     - `ivgs-api/app/api/v1/library.py:387` py-ref list_presets
     - `ivgs-api/app/api/v1/library.py:389` route-response GET /api/v1/presets
-    - `ivgs-api/app/api/v1/projects.py:116` py-ref list_projects
-    - `ivgs-api/app/api/v1/projects.py:119` route-response GET /api/v1/projects
-    - `ivgs-api/app/api/v1/projects.py:137` py-ref list_projects
+    - `ivgs-api/app/api/v1/projects.py:115` py-ref list_projects
+    - `ivgs-api/app/api/v1/projects.py:118` route-response GET /api/v1/projects
+    - `ivgs-api/app/api/v1/projects.py:136` py-ref list_projects
     - `ivgs-api/app/api/v1/quality.py:120` py-ref list_flagged_assets
     - `ivgs-api/app/api/v1/quality.py:123` route-response GET /api/v1/quality/flagged
     - `ivgs-api/app/api/v1/quality.py:133` py-ref list_flagged_assets
@@ -2654,10 +2622,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/models/task_result.py:366` py-ref StoryboardGenerationInput
     - `ivgs-workers/tasks/pipeline_orchestrator.py:124` py-ref dispatch_pipeline
     - `ivgs-workers/tasks/pipeline_orchestrator.py:325` py-ref _build_stage_input
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:244` py-ref dispatch_pipeline
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:771` py-ref dispatch_media_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:775` py-ref dispatch_media_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1391` py-ref _build_stage_input
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:243` py-ref dispatch_pipeline
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:727` py-ref dispatch_media_generation
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:731` py-ref dispatch_media_generation
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1190` py-ref _build_stage_input
     - `ivgs-workers/tests/test_wp_ivgs_0_job_context.py:32` py-ref [test] _job_context
     - `ivgs-workers/tests/test_wp_ivgs_0_job_context.py:44` py-ref [test] _job_context
     - `ivgs-workers/tests/test_wp_ivgs_0_job_context.py:108` py-ref [test] TestRenderedPrompts.test_negative_control_600_only_when_project_has_no_value
@@ -2710,8 +2678,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:460` route-body POST /api/v1/presets/by-name/{name}/revise
     - `ivgs-api/app/api/v1/library.py:462` py-ref revise_preset
 - **pydantic:ProjectCreate** — `ivgs-api/app/schemas/project.py:13` — 22 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:153` route-body POST /api/v1/projects
-    - `ivgs-api/app/api/v1/projects.py:154` py-ref create_project
+    - `ivgs-api/app/api/v1/projects.py:152` route-body POST /api/v1/projects
+    - `ivgs-api/app/api/v1/projects.py:153` py-ref create_project
     - `ivgs-api/app/services/project_service.py:206` py-ref ProjectService.create_project
     - `ivgs-api/tests/test_service_project.py:36` py-ref [test] TestCreateProject.test_create_project_default_state
     - `ivgs-api/tests/test_service_project.py:44` py-ref [test] TestCreateProject.test_create_project_with_target_languages
@@ -2732,28 +2700,28 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp_ivgs_0_new_project_form.py:229` py-ref [test] TestFrontendMatchesTheServer.test_every_offered_language_is_in_the_server_allow_list
     - `ivgs-api/tests/test_wp_ivgs_0_tier_dispatch.py:32` py-ref [test] _triggerable
     - `ivgs-api/tests/test_wp_ivgs_0_tier_dispatch.py:81` py-ref [test] TestTierDispatch.test_storyboard_approval_carries_the_tier
-- **pydantic:ProjectResponse** — `ivgs-api/app/schemas/project.py:167` — 23 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:116` py-ref list_projects
-    - `ivgs-api/app/api/v1/projects.py:119` route-response GET /api/v1/projects
-    - `ivgs-api/app/api/v1/projects.py:149` py-ref create_project
-    - `ivgs-api/app/api/v1/projects.py:153` route-response POST /api/v1/projects
-    - `ivgs-api/app/api/v1/projects.py:165` py-ref get_project
-    - `ivgs-api/app/api/v1/projects.py:168` route-response GET /api/v1/projects/{project_id}
-    - `ivgs-api/app/api/v1/projects.py:186` py-ref update_project
-    - `ivgs-api/app/api/v1/projects.py:189` route-response PATCH /api/v1/projects/{project_id}
-    - `ivgs-api/app/api/v1/projects.py:373` py-ref trigger_pipeline
-    - `ivgs-api/app/api/v1/projects.py:376` route-response POST /api/v1/projects/{project_id}/trigger
-    - `ivgs-api/app/api/v1/projects.py:454` py-ref transition_project_state
-    - `ivgs-api/app/api/v1/projects.py:457` route-response PATCH /api/v1/projects/{project_id}/state
+- **pydantic:ProjectResponse** — `ivgs-api/app/schemas/project.py:99` — 23 consumer(s)
+    - `ivgs-api/app/api/v1/projects.py:115` py-ref list_projects
+    - `ivgs-api/app/api/v1/projects.py:118` route-response GET /api/v1/projects
+    - `ivgs-api/app/api/v1/projects.py:148` py-ref create_project
+    - `ivgs-api/app/api/v1/projects.py:152` route-response POST /api/v1/projects
+    - `ivgs-api/app/api/v1/projects.py:164` py-ref get_project
+    - `ivgs-api/app/api/v1/projects.py:167` route-response GET /api/v1/projects/{project_id}
+    - `ivgs-api/app/api/v1/projects.py:185` py-ref update_project
+    - `ivgs-api/app/api/v1/projects.py:188` route-response PATCH /api/v1/projects/{project_id}
+    - `ivgs-api/app/api/v1/projects.py:372` py-ref trigger_pipeline
+    - `ivgs-api/app/api/v1/projects.py:375` route-response POST /api/v1/projects/{project_id}/trigger
+    - `ivgs-api/app/api/v1/projects.py:453` py-ref transition_project_state
+    - `ivgs-api/app/api/v1/projects.py:456` route-response PATCH /api/v1/projects/{project_id}/state
     - `ivgs-api/app/services/project_service.py:137` py-ref ProjectService.list_projects
     - `ivgs-api/app/services/project_service.py:189` py-ref ProjectService.get_project
     - `ivgs-api/app/services/project_service.py:208` py-ref ProjectService.create_project
-    - `ivgs-api/app/services/project_service.py:258` py-ref ProjectService.update_project
-    - `ivgs-api/app/services/project_service.py:304` py-ref ProjectService.transition_state
-    - `ivgs-api/app/services/project_service.py:350` py-ref ProjectService.trigger_pipeline
-    - `ivgs-api/app/services/project_service.py:598` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:823` py-ref ProjectService._to_response
-    - `ivgs-api/app/services/project_service.py:961` py-ref ProjectService._to_response
+    - `ivgs-api/app/services/project_service.py:245` py-ref ProjectService.update_project
+    - `ivgs-api/app/services/project_service.py:291` py-ref ProjectService.transition_state
+    - `ivgs-api/app/services/project_service.py:337` py-ref ProjectService.trigger_pipeline
+    - `ivgs-api/app/services/project_service.py:585` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:810` py-ref ProjectService._to_response
+    - `ivgs-api/app/services/project_service.py:948` py-ref ProjectService._to_response
     - `ivgs-api/tests/test_wp60_surfaces.py:172` py-ref [test] TestThumbnailReasonIsPresentWhenThereIsNoThumbnail.test_reason_and_id_are_mutually_exclusive
     - `ivgs-api/tests/test_wp60_surfaces.py:182` py-ref [test] TestThumbnailReasonIsPresentWhenThereIsNoThumbnail.test_reason_and_id_are_mutually_exclusive
 - **pydantic:ProjectSelectionsOut** — `ivgs-api/app/schemas/model_store.py:516` — 5 consumer(s)
@@ -2762,13 +2730,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/model_store.py:502` py-ref selection_panel_read
     - `ivgs-api/app/services/selection_panel.py:356` py-ref project_panel
     - `ivgs-api/app/services/selection_panel.py:383` py-ref project_panel
-- **pydantic:ProjectStateUpdate** — `ivgs-api/app/api/v1/projects.py:440` — 2 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:457` route-body PATCH /api/v1/projects/{project_id}/state
-    - `ivgs-api/app/api/v1/projects.py:459` py-ref transition_project_state
-- **pydantic:ProjectUpdate** — `ivgs-api/app/schemas/project.py:120` — 3 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:189` route-body PATCH /api/v1/projects/{project_id}
-    - `ivgs-api/app/api/v1/projects.py:191` py-ref update_project
-    - `ivgs-api/app/services/project_service.py:256` py-ref ProjectService.update_project
+- **pydantic:ProjectStateUpdate** — `ivgs-api/app/api/v1/projects.py:439` — 2 consumer(s)
+    - `ivgs-api/app/api/v1/projects.py:456` route-body PATCH /api/v1/projects/{project_id}/state
+    - `ivgs-api/app/api/v1/projects.py:458` py-ref transition_project_state
+- **pydantic:ProjectUpdate** — `ivgs-api/app/schemas/project.py:62` — 3 consumer(s)
+    - `ivgs-api/app/api/v1/projects.py:188` route-body PATCH /api/v1/projects/{project_id}
+    - `ivgs-api/app/api/v1/projects.py:190` py-ref update_project
+    - `ivgs-api/app/services/project_service.py:243` py-ref ProjectService.update_project
 - **pydantic:PromptCreate** — `ivgs-api/app/schemas/prompt.py:21` — 8 consumer(s)
     - `ivgs-api/app/api/v1/prompts.py:132` route-body POST /api/v1/prompts
     - `ivgs-api/app/api/v1/prompts.py:133` py-ref create_global_prompt
@@ -3260,12 +3228,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/servers/whisperx/server.py:136` py-ref transcribe
     - `ivgs-workers/servers/whisperx/server.py:136` route-body POST /transcribe
 - **pydantic:TranscriptRefinementInput** — `ivgs-workers/models/task_result.py:230` — 4 consumer(s)
-    - `ivgs-workers/tasks/stage1_transcript.py:102` py-ref _resolve_prompts
-    - `ivgs-workers/tasks/stage1_transcript.py:503` py-ref _run_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:101` py-ref _resolve_prompts
+    - `ivgs-workers/tasks/stage1_transcript.py:473` py-ref _run_refinement
     - `ivgs-workers/tests/test_stage1.py:187` py-ref [test] TestTranscriptRefinementInput.test_valid_input
     - `ivgs-workers/tests/test_stage1.py:196` py-ref [test] TestTranscriptRefinementInput.test_empty_transcripts_rejected
 - **pydantic:TranscriptRefinementOutput** — `ivgs-workers/models/task_result.py:239` — 4 consumer(s)
-    - `ivgs-workers/tasks/stage1_transcript.py:703` py-ref _run_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:673` py-ref _run_refinement
     - `ivgs-workers/tests/test_stage1.py:221` py-ref [test] TestTranscriptRefinementOutput.test_output_creation
     - `ivgs-workers/tests/test_stage1.py:242` py-ref [test] TestTranscriptRefinementOutput.test_checkpoint_data
     - `ivgs-workers/tests/test_stage1.py:255` py-ref [test] TestTranscriptRefinementOutput.test_failed_output
@@ -3396,7 +3364,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 
 | class | definition | consumer | disagreement | note |
 |---|---|---|---|---|
-| definite | workflow signals ['cancel_job', 'draft_approved', 'storyboard_approved', 'storyboard_rejected'] (ivgs-workers/temporal_pipeline/workflow.py) | ivgs-api/app/api/v1/projects.py:961 | emitter builds signal name pattern 'gate_{}' (dict 'signal' -> 'name'); no declared signal matches the pattern |  |
+| definite | workflow signals ['cancel_job', 'draft_approved', 'storyboard_approved', 'storyboard_rejected'] (ivgs-workers/temporal_pipeline/workflow.py) | ivgs-api/app/api/v1/projects.py:885 | emitter builds signal name pattern 'gate_{}' (dict 'signal' -> 'name'); no declared signal matches the pattern |  |
 | definite | workflow signals ['cancel_job', 'draft_approved', 'storyboard_approved', 'storyboard_rejected'] (ivgs-workers/temporal_pipeline/workflow.py) | ivgs-api/app/services/gate_service.py:607 | emitter builds signal name pattern 'gate_{}' (dict 'signal' -> 'name'); no declared signal matches the pattern |  |
 | orphan | signal cancel_job (ivgs-workers/temporal_pipeline/workflow.py:201) | - | no production emitter names this signal |  |
 | orphan | signal draft_approved (ivgs-workers/temporal_pipeline/workflow.py:197) | - | no production emitter names this signal |  |
@@ -3415,11 +3383,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | task registry | ivgs-workers/services/dlq_service.py:324 | send_task with dynamic task name message.task_name | not checkable statically |
 | suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator.py:168 | send_task with dynamic task name task_name | not checkable statically |
 | suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator.py:295 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1191 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:2310 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:364 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:628 | send_task with dynamic task name task_name | not checkable statically |
-| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:915 | send_task with dynamic task name STAGE_TASK_MAP[stage_label] | not checkable statically |
+| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1147 | send_task with dynamic task name task_name | not checkable statically |
+| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:2100 | send_task with dynamic task name task_name | not checkable statically |
+| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:363 | send_task with dynamic task name task_name | not checkable statically |
+| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:584 | send_task with dynamic task name task_name | not checkable statically |
+| suspect | task registry | ivgs-workers/tasks/pipeline_orchestrator_v2.py:871 | send_task with dynamic task name STAGE_TASK_MAP[stage_label] | not checkable statically |
 | suspect | task registry | ivgs-workers/tests/test_wp05_visibility_timeout.py:44 | task name 'tasks.talking_head_task.talking_head' matches no registered task (literal:dict-key) |  |
 | suspect | task registry | ivgs-workers/tests/test_wp05_visibility_timeout.py:45 | task name 'tasks.video_generation_task.generate_video' matches no registered task (literal:dict-key) |  |
 | suspect | task registry | ivgs-workers/tests/test_wp05_visibility_timeout.py:84 | task name 'tasks.talking_head_task.talking_head' matches no registered task (literal:dict-key) |  |
@@ -3595,9 +3563,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **dataclass:RefinedTranscript** — `ivgs-workers/temporal_pipeline/payloads.py:123` — 12 consumer(s)
     - `ivgs-workers/models/task_result.py:245` py-ref TranscriptRefinementOutput
     - `ivgs-workers/models/task_result.py:367` py-ref StoryboardGenerationInput
-    - `ivgs-workers/tasks/stage1_transcript.py:333` py-ref _refine_single_transcript
-    - `ivgs-workers/tasks/stage1_transcript.py:408` py-ref _refine_single_transcript
-    - `ivgs-workers/tasks/stage1_transcript.py:618` py-ref _run_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:317` py-ref _refine_single_transcript
+    - `ivgs-workers/tasks/stage1_transcript.py:378` py-ref _refine_single_transcript
+    - `ivgs-workers/tasks/stage1_transcript.py:588` py-ref _run_refinement
     - `ivgs-workers/tasks/stage2_storyboard.py:116` py-ref _render_user_prompt
     - `ivgs-workers/temporal_pipeline/activities.py:249` py-ref refine_transcript
     - `ivgs-workers/tests/test_stage1.py:226` py-ref [test] TestTranscriptRefinementOutput.test_output_creation
@@ -3696,17 +3664,17 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/design_brief.py:149` py-ref get_design_review
     - `ivgs-api/app/api/v1/design_brief.py:150` py-ref get_design_review
     - `ivgs-api/app/api/v1/design_brief.py:151` py-ref get_design_review
-    - `ivgs-api/app/api/v1/design_brief.py:258` py-ref _arc_row
-    - `ivgs-api/app/api/v1/design_brief.py:285` py-ref _rewrite_row
+    - `ivgs-api/app/api/v1/design_brief.py:200` py-ref _arc_row
+    - `ivgs-api/app/api/v1/design_brief.py:218` py-ref _rewrite_row
     - `ivgs-api/app/api/v1/storyboard.py:526` py-ref author_scene_as_motion
     - `ivgs-api/app/api/v1/storyboard.py:527` py-ref author_scene_as_motion
     - `ivgs-api/app/api/v1/storyboard.py:528` py-ref author_scene_as_motion
     - `ivgs-api/app/services/adaptation_service.py:409` py-ref AdaptationService.adapt_description
     - `ivgs-api/app/services/adaptation_service.py:410` py-ref AdaptationService.adapt_description
     - `ivgs-api/app/services/adaptation_service.py:411` py-ref AdaptationService.adapt_description
-    - `ivgs-api/app/services/design_brief_service.py:253` py-ref DesignBriefService.apply_scene_design
-    - `ivgs-api/app/services/design_brief_service.py:255` py-ref DesignBriefService.apply_scene_design
-    - `ivgs-api/app/services/design_brief_service.py:256` py-ref DesignBriefService.apply_scene_design
+    - `ivgs-api/app/services/design_brief_service.py:242` py-ref DesignBriefService.apply_scene_design
+    - `ivgs-api/app/services/design_brief_service.py:244` py-ref DesignBriefService.apply_scene_design
+    - `ivgs-api/app/services/design_brief_service.py:245` py-ref DesignBriefService.apply_scene_design
     - `ivgs-api/app/services/gate_service.py:189` py-ref GateService.storyboard_version
     - `ivgs-api/app/services/gate_service.py:190` py-ref GateService.storyboard_version
     - `ivgs-api/app/services/gate_service.py:191` py-ref GateService.storyboard_version
@@ -3716,12 +3684,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/gate_service.py:403` py-ref GateService.storyboard_completeness
     - `ivgs-api/app/services/gate_service.py:404` py-ref GateService.storyboard_completeness
     - `ivgs-api/app/services/gate_service.py:405` py-ref GateService.storyboard_completeness
-    - `ivgs-api/app/services/project_service.py:650` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:651` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:652` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:711` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:712` py-ref ProjectService.approve_storyboard
-    - `ivgs-api/app/services/project_service.py:713` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:637` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:638` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:639` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:698` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:699` py-ref ProjectService.approve_storyboard
+    - `ivgs-api/app/services/project_service.py:700` py-ref ProjectService.approve_storyboard
     - `ivgs-api/app/services/regeneration.py:86` py-ref scene_payload
     - `ivgs-api/app/services/regeneration.py:136` py-ref dispatch_scene_media_regeneration
     - `ivgs-api/app/services/regeneration.py:153` py-ref _author_missing_motion_specs
@@ -3845,10 +3813,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/schemas/transcript.py:13` pydantic-twin TranscriptResponse
     - `ivgs-api/app/schemas/transcript.py:35` pydantic-twin TranscriptUpdate
     - `ivgs-workers/models/task_result.py:234` py-ref TranscriptRefinementInput
-    - `ivgs-workers/tasks/stage1_transcript.py:137` py-ref _render_user_prompt
-    - `ivgs-workers/tasks/stage1_transcript.py:179` py-ref _fetch_transcripts
-    - `ivgs-workers/tasks/stage1_transcript.py:205` py-ref _fetch_transcripts
-    - `ivgs-workers/tasks/stage1_transcript.py:326` py-ref _refine_single_transcript
+    - `ivgs-workers/tasks/stage1_transcript.py:136` py-ref _render_user_prompt
+    - `ivgs-workers/tasks/stage1_transcript.py:178` py-ref _fetch_transcripts
+    - `ivgs-workers/tasks/stage1_transcript.py:204` py-ref _fetch_transcripts
+    - `ivgs-workers/tasks/stage1_transcript.py:310` py-ref _refine_single_transcript
     - `ivgs-workers/temporal_pipeline/workflow.py:506` py-ref VideoPipelineWorkflow._stage_call
     - `ivgs-workers/tests/test_stage1.py:203` py-ref [test] TestTranscriptRefinementInput.test_transcript_record_parsing
     - `ivgs-workers/tests/test_stage1.py:278` py-ref [test] TestPromptResolution.test_render_user_prompt
@@ -3887,7 +3855,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/periodic_tasks.py:725` literal:keyword verify_latest_backup
 - **task:tasks.animation_generation_task.generate_scene_animations** — `ivgs-workers/tasks/animation_generation_task.py:668` — 6 consumer(s)
     - `ivgs-workers/tasks/animation_generation_task.py:659` literal:keyword generate_scene_animations
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:114` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:113` literal:dict-value 
     - `ivgs-workers/temporal_pipeline/policies.py:258` literal:keyword 
     - `ivgs-workers/tests/test_wp46_animation.py:54` literal:Compare [test] TestWiring.test_stage_task_map_no_longer_names_the_image_task
     - `ivgs-workers/tests/test_wp46_animation.py:74` literal:Compare [test] TestWiring.test_the_task_is_registered_under_its_own_name
@@ -3917,13 +3885,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-backup-worker/tasks/backup_tasks.py:685` literal:keyword run_verification
     - `ivgs-backup-worker/tests/test_backup_tasks.py:121` apply [test] test_verification_failure_preserves_backup_status_and_completed_at shape={'n_args': 0, 'kwargs': ['args'], 'op
 - **task:tasks.final_render_task.render_final** — `ivgs-workers/tasks/stage8_final_render.py:351` — 4 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:136` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:135` literal:dict-value 
     - `ivgs-workers/tasks/stage8_final_render.py:342` literal:keyword render_final
     - `ivgs-workers/temporal_pipeline/policies.py:347` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:147` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
 - **task:tasks.motion_graphics_task.render_scene_motion_graphics** — `ivgs-workers/tasks/motion_graphics_task.py:474` — 2 consumer(s)
     - `ivgs-workers/tasks/motion_graphics_task.py:462` literal:keyword render_scene_motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:121` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:120` literal:dict-value 
 - **task:tasks.pipeline_orchestrator.collect_gpu_fleet_metrics** — `ivgs-workers/tasks/pipeline_orchestrator.py:702` — 2 consumer(s)
     - `ivgs-workers/celery_app.py:399` literal:dict-value 
     - `ivgs-workers/tasks/pipeline_orchestrator.py:698` literal:keyword collect_gpu_fleet_metrics
@@ -3947,22 +3915,22 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **task:tasks.pipeline_orchestrator.supervise_worker_heartbeats** — `ivgs-workers/tasks/pipeline_orchestrator.py:510` — 2 consumer(s)
     - `ivgs-workers/celery_app.py:224` literal:dict-value 
     - `ivgs-workers/tasks/pipeline_orchestrator.py:506` literal:keyword supervise_worker_heartbeats
-- **task:tasks.pipeline_orchestrator_v2.build_composition_manifest** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:972` — 1 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:967` literal:keyword build_composition_manifest
-- **task:tasks.pipeline_orchestrator_v2.dispatch_media_generation** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:742` — 9 consumer(s)
-    - `ivgs-api/app/services/project_service.py:787` send_task ProjectService.approve_storyboard shape={'n_args': None, 'kwargs': ['dispatch_input'], 'opts': ['queue']}
+- **task:tasks.pipeline_orchestrator_v2.build_composition_manifest** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:928` — 1 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:923` literal:keyword build_composition_manifest
+- **task:tasks.pipeline_orchestrator_v2.dispatch_media_generation** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:698` — 9 consumer(s)
+    - `ivgs-api/app/services/project_service.py:774` send_task ProjectService.approve_storyboard shape={'n_args': None, 'kwargs': ['dispatch_input'], 'opts': ['queue']}
     - `ivgs-api/app/services/regeneration.py:55` literal:Assign 
     - `ivgs-api/tests/test_wp45_dispatch.py:172` literal:Compare [test] TestSite1SceneRegenerate.test_a_broker_message_is_produced
     - `ivgs-api/tests/test_wp45_dispatch.py:247` literal:Compare [test] TestSite2AssetRegenerate.test_a_broker_message_is_produced
     - `ivgs-api/tests/test_wp45_dispatch.py:604` literal:Compare [test] TestSite6QualityRejectRegenerate.test_service_level_reject_dispatches_and_reports_what_happened
     - `ivgs-api/tests/test_wp62_gates.py:198` literal:List [test] TestMediaGenerationRefusesWithoutAnApproval.test_approving_then_releasing_does_dispatch
     - `ivgs-api/tests/test_wp63_regeneration.py:41` literal:Assign [test] 
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:332` send_task dispatch_pipeline shape={'n_args': None, 'kwargs': ['dispatch_input'], 'opts': ['queue']}
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:737` literal:keyword dispatch_media_generation
-- **task:tasks.pipeline_orchestrator_v2.dispatch_pipeline** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:232` — 11 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:331` send_task dispatch_pipeline shape={'n_args': None, 'kwargs': ['dispatch_input'], 'opts': ['queue']}
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:693` literal:keyword dispatch_media_generation
+- **task:tasks.pipeline_orchestrator_v2.dispatch_pipeline** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:231` — 11 consumer(s)
     - `ivgs-api/app/services/checkpoint_service.py:355` send_task CheckpointService.resume_from_checkpoint shape={'n_args': None, 'kwargs': ['job_context_dict'], 'opts': ['queu
     - `ivgs-api/app/services/language_service.py:67` literal:Assign 
-    - `ivgs-api/app/services/project_service.py:510` send_task ProjectService.trigger_pipeline shape={'n_args': None, 'kwargs': ['job_context_dict'], 'opts': ['queue']}
+    - `ivgs-api/app/services/project_service.py:497` send_task ProjectService.trigger_pipeline shape={'n_args': None, 'kwargs': ['job_context_dict'], 'opts': ['queue']}
     - `ivgs-api/app/services/regeneration.py:56` literal:Assign 
     - `ivgs-api/tests/test_wp45_dedup_and_gate.py:548` literal:Compare [test] TestTask2Stage8IsDispatched.test_triggering_from_user_review_produces_a_broker_message
     - `ivgs-api/tests/test_wp45_dispatch.py:522` literal:Compare [test] TestSite5LocalisationRetry.test_it_names_a_task_that_is_actually_registered
@@ -3970,13 +3938,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp61_trigger_guard.py:51` literal:Assign [test] 
     - `ivgs-api/tests/test_wp62_gates.py:375` literal:List [test] TestFinalRenderRefusesWithoutADraftApproval.test_approving_the_draft_releases_the_render
     - `ivgs-api/tests/test_wp63_regeneration.py:42` literal:Assign [test] 
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:227` literal:keyword dispatch_pipeline
-- **task:tasks.pipeline_orchestrator_v2.handle_stage_completion** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:401` — 19 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:226` literal:keyword dispatch_pipeline
+- **task:tasks.pipeline_orchestrator_v2.handle_stage_completion** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:400` — 19 consumer(s)
     - `ivgs-workers/tasks/animation_generation_task.py:898` send_task generate_scene_animations shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
     - `ivgs-workers/tasks/motion_graphics_task.py:642` send_task render_scene_motion_graphics shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:396` literal:keyword handle_stage_completion
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1067` send_task build_composition_manifest shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
-    - `ivgs-workers/tasks/stage1_transcript.py:768` send_task _run_refinement shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:395` literal:keyword handle_stage_completion
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1023` send_task build_composition_manifest shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
+    - `ivgs-workers/tasks/stage1_transcript.py:738` send_task _run_refinement shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
     - `ivgs-workers/tasks/stage2_storyboard.py:857` send_task _run_storyboard_generation shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
     - `ivgs-workers/tasks/stage3_images.py:832` send_task generate_scene_images_task shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
     - `ivgs-workers/tasks/stage4_manifest.py:128` send_task build_composition_manifest shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
@@ -3991,56 +3959,56 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/video_generation_task.py:729` send_task generate_video_clips shape={'n_args': None, 'kwargs': ['stage_output_dict'], 'opts': ['queue']}
     - `ivgs-workers/tests/test_wp39_video_checkpoint.py:149` literal:Tuple [test] TestTerminalCheckpoint.test_the_checkpoint_precedes_the_completion_report
     - `ivgs-workers/tests/test_wp46_animation.py:438` literal:Compare [test] TestCheckpoints.test_the_completion_reports_under_the_animation_label
-- **task:tasks.pipeline_orchestrator_v2.media_join_watchdog** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2175` — 2 consumer(s)
+- **task:tasks.pipeline_orchestrator_v2.media_join_watchdog** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1965` — 2 consumer(s)
     - `ivgs-workers/celery_app.py:410` literal:dict-value 
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2171` literal:keyword media_join_watchdog
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1961` literal:keyword media_join_watchdog
 - **task:tasks.prototype_draft_task.assemble_prototype_draft** — `ivgs-workers/tasks/stage7_prototype_draft.py:337` — 5 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:133` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:132` literal:dict-value 
     - `ivgs-workers/tasks/stage7_prototype_draft.py:328` literal:keyword assemble_prototype_draft
     - `ivgs-workers/temporal_pipeline/policies.py:330` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs09d_scene_scoped_dedup.py:112` literal:keyword [test] TestTheDeadLetterPayloadExists.test_it_carries_every_column_the_table_has
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:146` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
-- **task:tasks.stage1_transcript.refine_transcript_task** — `ivgs-workers/tasks/stage1_transcript.py:468` — 6 consumer(s)
-    - `ivgs-workers/design_core/capture.py:66` literal:Assign 
+- **task:tasks.stage1_transcript.refine_transcript_task** — `ivgs-workers/tasks/stage1_transcript.py:438` — 6 consumer(s)
+    - `ivgs-workers/design_core/capture.py:65` literal:Assign 
     - `ivgs-workers/tasks/pipeline_orchestrator.py:90` literal:dict-value 
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:100` literal:dict-value 
-    - `ivgs-workers/tasks/stage1_transcript.py:460` literal:keyword refine_transcript_task
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:99` literal:dict-value 
+    - `ivgs-workers/tasks/stage1_transcript.py:430` literal:keyword refine_transcript_task
     - `ivgs-workers/temporal_pipeline/policies.py:126` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:140` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
 - **task:tasks.stage2_storyboard.generate_storyboard_task** — `ivgs-workers/tasks/stage2_storyboard.py:554` — 8 consumer(s)
     - `ivgs-api/tests/test_wpivgs12h_two_call.py:565` literal:Compare [test] TestTheRuledTimeoutCoversTheMeasurement._policy
     - `ivgs-workers/config.py:528` literal:Compare WorkerConfig._storyboard_client_timeout
-    - `ivgs-workers/design_core/capture.py:65` literal:Assign 
+    - `ivgs-workers/design_core/capture.py:64` literal:Assign 
     - `ivgs-workers/tasks/pipeline_orchestrator.py:93` literal:dict-value 
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:103` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:102` literal:dict-value 
     - `ivgs-workers/tasks/stage2_storyboard.py:546` literal:keyword generate_storyboard_task
     - `ivgs-workers/temporal_pipeline/policies.py:209` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:52` literal:Subscript [test] test_stage2_carries_its_declared_limit_and_not_the_decorator_literal
 - **task:tasks.stage3_images.generate_scene_images_task** — `ivgs-workers/tasks/stage3_images.py:620` — 5 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:106` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:105` literal:dict-value 
     - `ivgs-workers/tasks/stage3_images.py:612` literal:keyword generate_scene_images_task
     - `ivgs-workers/temporal_pipeline/policies.py:236` literal:keyword 
     - `ivgs-workers/tests/test_wp39_media_join.py:169` literal:Compare [test] TestDispatchLabelsEveryStageDistinctly.test_three_stages_dispatch_with_three_distinct_join_stages
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:141` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
 - **task:tasks.stage4_manifest.build_composition_manifest** — `ivgs-workers/tasks/stage4_manifest.py:91` — 5 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:124` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:123` literal:dict-value 
     - `ivgs-workers/tasks/stage4_manifest.py:83` literal:keyword build_composition_manifest
     - `ivgs-workers/temporal_pipeline/policies.py:288` literal:keyword 
     - `ivgs-workers/tests/test_wp39_media_join.py:273` literal:Compare [test] TestTheJoinNowCloses.test_the_last_report_dispatches_the_composition_manifest
     - `ivgs-workers/tests/test_wp39_media_join.py:366` literal:Compare [test] TestWatchdogIsAudible.test_it_advances_a_join_past_the_deadline
 - **task:tasks.stage4_voiceover.generate_voiceover_task** — `ivgs-workers/tasks/stage5_voiceover.py:579` — 4 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:127` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:126` literal:dict-value 
     - `ivgs-workers/tasks/stage5_voiceover.py:571` literal:keyword generate_voiceover_task
     - `ivgs-workers/temporal_pipeline/policies.py:304` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:142` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
 - **task:tasks.talking_head_task.render_talking_head** — `ivgs-workers/tasks/talking_head_task.py:403` — 5 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:130` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:129` literal:dict-value 
     - `ivgs-workers/tasks/talking_head_task.py:394` literal:keyword render_talking_head
     - `ivgs-workers/temporal_pipeline/policies.py:317` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:144` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
     - `tests_system/providers/test_stage6_wiring.py:170` literal:Compare [test] test_live_stage6_module_has_no_hardcoded_engine
 - **task:tasks.video_generation_task.generate_video_clips** — `ivgs-workers/tasks/video_generation_task.py:549` — 4 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:109` literal:dict-value 
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:108` literal:dict-value 
     - `ivgs-workers/tasks/video_generation_task.py:540` literal:keyword generate_video_clips
     - `ivgs-workers/temporal_pipeline/policies.py:271` literal:keyword 
     - `ivgs-workers/tests/test_wpivgs10_declared_time_limits.py:143` literal:dict-key [test] test_the_widening_did_not_touch_any_other_stage
@@ -4129,6 +4097,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | vocabulary 'gpu_node_status' member 'OFFLINE' (ivgs-api/migrations/versions/0003_gpu_registry.py:19) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'gpu_node_status' member 'ONLINE' (ivgs-api/migrations/versions/0003_gpu_registry.py:19) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'gpu_node_status' member 'UNKNOWN' (ivgs-api/migrations/versions/0003_gpu_registry.py:19) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
+| orphan | vocabulary 'instructional_event' member 'assess' (shared/models/enums.py:278) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'instructional_event' member 'feedback' (shared/models/enums.py:278) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'instructional_event' member 'guide' (shared/models/enums.py:278) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
 | orphan | vocabulary 'instructional_event' member 'hook' (shared/models/enums.py:278) | - | no production consumer (no literal in an owned slot, no positional literal) |  |
@@ -4257,7 +4226,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'asset_type' union=['animation', 'audio', 'caption', 'document', 'draft', 'final_render', 'image', 'reference_clip', 'render', 'talking_head', 'thumbnail', 'video'] | ivgs-workers/services/quality_validator.py:51 | py-enum AssetType lacks members ['animation', 'document', 'draft', 'final_render', 'reference_clip', 'render', 'thumbnail'] that other definition(s) carry: ['const-dict-keys ASSET_TYPE_PATHS (ivgs-api/app/services/asset_service.py:26)', 'const-dict-keys MAX_FILE_SIZES (ivgs-api/app/services/asset_service.py:42)', 'db-enum asset_type (ivgs-api/migrations/versions/0001_initial_core.py:38)', 'ts-union AssetType (ivgs-frontend/src/types/api.ts:36)', 'py-enum AssetType (shared/models/enums.py:186)'] |  |
 | suspect | vocabulary 'asset_type' union=['animation', 'audio', 'caption', 'document', 'draft', 'final_render', 'image', 'reference_clip', 'render', 'talking_head', 'thumbnail', 'video'] | shared/models/enums.py:186 | py-enum AssetType lacks members ['animation', 'caption', 'draft', 'reference_clip', 'render', 'thumbnail'] that other definition(s) carry: ['const-dict-keys ASSET_TYPE_PATHS (ivgs-api/app/services/asset_service.py:26)', 'const-dict-keys MAX_FILE_SIZES (ivgs-api/app/services/asset_service.py:42)', 'db-enum asset_type (ivgs-api/migrations/versions/0001_initial_core.py:38)', 'ts-union AssetType (ivgs-frontend/src/types/api.ts:36)', 'py-enum AssetType (ivgs-workers/services/quality_validator.py:51)'] |  |
 | suspect | vocabulary 'asset_type_media_type' = ['audio', 'image', 'other', 'video'] | shared/models/asset.py:59 | members ['other'] never appear at call slot PG_ENUM(arg=), where 3 of 4 members do |  |
-| suspect | vocabulary 'asset_type_media_type' slot 'kind' = ['audio', 'image', 'other', 'video'] (ivgs-api/app/services/regeneration.py:71) | ivgs-frontend/src/components/project/DesignBriefPanel.tsx:194 | literal 'custom' read in slot 'kind' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'asset_type_media_type' union=['audio', 'image', 'other', 'video'] | ivgs-api/app/services/regeneration.py:71 | const-dict-keys ASSET_TYPE_MEDIA_TYPE lacks members ['audio', 'other'] that other definition(s) carry: ['ts-union MediaKind (ivgs-frontend/src/lib/media.ts:47)'] |  |
 | suspect | vocabulary 'backup_status' = ['completed', 'failed', 'running', 'verified'] | ivgs-workers/tasks/animation_generation_task.py:695; ivgs-workers/tasks/animation_generation_task.py:863; ivgs-workers/tasks/motion_graphics_task.py:495; ivgs-workers/tasks/motion_graphics_task.py:604; ivgs-workers/tasks/pipeline_orchestrator.py:145; ivgs-workers/tasks/pipeline_orchestrator.py:154 | members ['verified'] never appear at call slot update_job_status(arg=), where 3 of 4 members do |  |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-api/app/api/v1/alerts.py:42; ivgs-workers/tasks/periodic_tasks.py:420; ivgs-workers/tasks/periodic_tasks.py:534; ivgs-workers/tasks/periodic_tasks.py:700; ivgs-workers/tasks/pipeline_orchestrator.py:593; ivgs-workers/tasks/pipeline_orchestrator.py:654 | literal 'ok' read/write in slot 'status' at 11 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
@@ -4267,14 +4235,14 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-api/main.py:97 | literal 'operational' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-backup-worker/tasks/backup_tasks.py:515 | literal 'dry_run' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-backup-worker/tasks/backup_tasks.py:783 | literal 'passed' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:112; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:193; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141 | literal 'gated' read in slot 'status' at 9 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/app/projects/[id]/draft/page.tsx:57; ivgs-frontend/src/app/projects/[id]/page.tsx:111; ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:193; ivgs-frontend/src/components/project/ProjectShell.tsx:107; ivgs-frontend/src/components/project/ProjectShell.tsx:119; ivgs-frontend/src/components/project/ProjectShell.tsx:141 | literal 'gated' read in slot 'status' at 9 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/hooks/useMonitoring.ts:519 | literal 'number' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-frontend/src/lib/jobs.ts:68; ivgs-frontend/src/lib/pipeline-run.ts:164 | literal 'string' read in slot 'status' at 2 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-scheduler/main.py:695 | literal 'registered' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/services/quality_gate.py:279 | literal 'approved' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/services/safety_classifier.py:360 | literal 'unhealthy' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/tasks/periodic_tasks.py:780 | literal 'no_backups' write in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/tasks/pipeline_orchestrator.py:190; ivgs-workers/tasks/pipeline_orchestrator_v2.py:349; ivgs-workers/tasks/pipeline_orchestrator_v2.py:385 | literal 'dispatched' write in slot 'status' at 3 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/tasks/pipeline_orchestrator.py:190; ivgs-workers/tasks/pipeline_orchestrator_v2.py:348; ivgs-workers/tasks/pipeline_orchestrator_v2.py:384 | literal 'dispatched' write in slot 'status' at 3 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/temporal_pipeline/workflow.py:274; ivgs-workers/temporal_pipeline/workflow.py:275 | literal 'cancelled' read in slot 'status' at 2 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_status' slot 'status' = ['completed', 'failed', 'running', 'verified'] (ivgs-api/migrations/versions/0013_backup_records.py:28) | ivgs-workers/temporal_pipeline/workflow.py:277 | literal 'storyboard_rejected' read in slot 'status' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'backup_type' = ['asset_backup', 'config_backup', 'full_database', 'physical_base_backup', 'vm_snapshot', 'wal_archive'] | ivgs-api/app/models/backup_record.py:33 | members ['physical_base_backup'] never appear at call slot PG_ENUM(arg=), where 5 of 6 members do |  |
@@ -4363,11 +4331,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'model_engine' union=['animatediff', 'cogvideox', 'comfyui', 'coqui', 'ffmpeg', 'humo', 'kokoro', 'latentsync', 'magihuman', 'motion_graphics', 'ollama', 'remotion', 'sadtalker', 'tts', 'vllm', 'wan21', 'wan22_s2v', '{}'] | ivgs-api/migrations/versions/0026_ad01_model_store.py:60 | db-enum model_engine lacks members ['humo', 'magihuman', 'tts', 'wan22_s2v'] that other definition(s) carry: ['py-enum ModelEngine (shared/models/model_store.py:92)'] |  |
 | suspect | vocabulary 'model_engine' union=['animatediff', 'cogvideox', 'comfyui', 'coqui', 'ffmpeg', 'humo', 'kokoro', 'latentsync', 'magihuman', 'motion_graphics', 'ollama', 'remotion', 'sadtalker', 'tts', 'vllm', 'wan21', 'wan22_s2v', '{}'] | ivgs-frontend/src/types/models.ts:16 | ts-union ModelEngine lacks members ['humo', 'magihuman', 'motion_graphics', 'tts', 'wan22_s2v', '{}'] that other definition(s) carry: ['db-enum model_engine (ivgs-api/migrations/versions/0026_ad01_model_store.py:60)', 'py-enum ModelEngine (shared/models/model_store.py:92)'] |  |
 | suspect | vocabulary 'model_engine' union=['animatediff', 'cogvideox', 'comfyui', 'coqui', 'ffmpeg', 'humo', 'kokoro', 'latentsync', 'magihuman', 'motion_graphics', 'ollama', 'remotion', 'sadtalker', 'tts', 'vllm', 'wan21', 'wan22_s2v', '{}'] | shared/models/model_store.py:92 | py-enum ModelEngine lacks members ['{}'] that other definition(s) carry: ['db-enum model_engine (ivgs-api/migrations/versions/0026_ad01_model_store.py:60)'] |  |
-| suspect | vocabulary 'model_stage' member 'assessment_authoring_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:557 | 'assessment_authoring_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'model_stage' member 'assessment_authoring_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:496 | 'assessment_authoring_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'model_stage' member 'composition' | scripts/seed_data.py:92; shared/providers/client_registry.py:434 | 'composition' is WRITTEN in slot(s) ['prompt_type', 'stage'] but never READ/compared anywhere in production code |  |
-| suspect | vocabulary 'model_stage' member 'storyboard_generation_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:527 | 'storyboard_generation_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'model_stage' member 'storyboard_generation_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:466 | 'storyboard_generation_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'model_stage' member 'talking_head' | scripts/seed_data.py:82; shared/providers/client_registry.py:494; shared/providers/client_registry.py:511 | 'talking_head' is WRITTEN in slot(s) ['prompt_type', 'stage'] but never READ/compared anywhere in production code |  |
-| suspect | vocabulary 'model_stage' member 'transcript_refinement_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:598 | 'transcript_refinement_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'model_stage' member 'transcript_refinement_system' | ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:537 | 'transcript_refinement_system' is READ in slot(s) ['prompt_type'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'model_stage' member 'voiceover_tts' | shared/providers/client_registry.py:530; shared/providers/client_registry.py:577 | 'voiceover_tts' is WRITTEN in slot(s) ['stage'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'model_stage' slot 'prompt_type' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | scripts/seed_data.py:111 | literal 'scene_description' write in slot 'prompt_type' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'model_stage' slot 'prompt_type' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | scripts/seed_data.py:120 | literal 'quality_evaluation' write in slot 'prompt_type' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
@@ -4378,9 +4346,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-frontend/src/components/project/DeleteProjectDialog.tsx:205 | literal 'done' read in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-frontend/src/components/project/DeleteProjectDialog.tsx:69 | literal 'closed' read in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-frontend/src/lib/pipeline-run.ts:162 | literal 'string' read in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/design_core/capture.py:496; ivgs-workers/design_core/capture.py:596; ivgs-workers/design_core/capture.py:612 | literal 'storyboard' read/write in slot 'stage' at 3 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/design_core/capture.py:681 | literal 'transcript' read in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
-| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/tasks/stage1_transcript.py:512 | literal 'stage1' write in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/design_core/capture.py:325; ivgs-workers/design_core/capture.py:404; ivgs-workers/design_core/capture.py:420 | literal 'storyboard' read/write in slot 'stage' at 3 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/design_core/capture.py:460 | literal 'transcript' read in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
+| suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/tasks/stage1_transcript.py:482 | literal 'stage1' write in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'model_stage' slot 'stage' = ['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] (ivgs-api/app/schemas/prompt.py:14) | ivgs-workers/tasks/stage2_storyboard.py:595 | literal 'stage2' write in slot 'stage' at 1 production site(s) is not a member of any vocabulary owning that slot | slot name shared or vocabulary undeclared; see row |
 | suspect | vocabulary 'model_stage' union=['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] | ivgs-api/app/schemas/prompt.py:14 | const-collection VALID_PROMPT_TYPES lacks members ['assessment_authoring_system', 'scene_media_adaptation', 'storyboard_generation_system', 'transcript_refinement_system', 'voiceover_tts', '{}'] that other definition(s) carry: ['const-dict-keys PROMPT_TEMPLATES (ivgs-api/app/scripts/seed_prompts.py:26)', 'db-enum prompt_type (ivgs-api/migrations/versions/0001_initial_core.py:52)', 'db-enum model_stage (ivgs-api/migrations/versions/0026_ad01_model_store.py:60)', 'ts-union ModelStage (ivgs-frontend/src/types/models.ts:5)', 'py-enum PromptType (shared/models/enums.py:126)', 'py-enum ModelStage (shared/models/model_store.py:78)'] |  |
 | suspect | vocabulary 'model_stage' union=['animation_generation', 'assessment_authoring_system', 'composition', 'image_generation', 'master', 'scene_media_adaptation', 'storyboard_generation', 'storyboard_generation_system', 'talking_head', 'transcript_refinement', 'transcript_refinement_system', 'translation', 'tts_voice', 'video_generation', 'voiceover_tts', '{}'] | ivgs-api/app/scripts/seed_prompts.py:26 | const-dict-keys PROMPT_TEMPLATES lacks members ['assessment_authoring_system', 'storyboard_generation_system', 'transcript_refinement_system', 'voiceover_tts', '{}'] that other definition(s) carry: ['db-enum prompt_type (ivgs-api/migrations/versions/0001_initial_core.py:52)', 'db-enum model_stage (ivgs-api/migrations/versions/0026_ad01_model_store.py:60)', 'ts-union ModelStage (ivgs-frontend/src/types/models.ts:5)', 'py-enum PromptType (shared/models/enums.py:126)', 'py-enum ModelStage (shared/models/model_store.py:78)'] |  |
@@ -4405,11 +4373,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'pipeline_stage' member 'PROTOTYPE_DRAFT' | ivgs-frontend/src/lib/project-state.ts:47 | 'PROTOTYPE_DRAFT' is WRITTEN in slot(s) ['state'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'pipeline_stage' member 'STORYBOARD_GENERATION' | ivgs-frontend/src/lib/project-state.ts:42 | 'STORYBOARD_GENERATION' is WRITTEN in slot(s) ['state'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'pipeline_stage' member 'TALKING_HEAD_RENDER' | ivgs-frontend/src/lib/project-state.ts:46 | 'TALKING_HEAD_RENDER' is WRITTEN in slot(s) ['state'] but never READ/compared anywhere in production code |  |
-| suspect | vocabulary 'pipeline_stage' member 'composition_manifest' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1491 | 'composition_manifest' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
-| suspect | vocabulary 'pipeline_stage' member 'final_render' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1524 | 'final_render' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
-| suspect | vocabulary 'pipeline_stage' member 'prototype_draft' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1510 | 'prototype_draft' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
-| suspect | vocabulary 'pipeline_stage' member 'talking_head_render' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1502 | 'talking_head_render' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
-| suspect | vocabulary 'pipeline_stage' member 'tts_audio' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1494 | 'tts_audio' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'pipeline_stage' member 'composition_manifest' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1281 | 'composition_manifest' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'pipeline_stage' member 'final_render' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1314 | 'final_render' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'pipeline_stage' member 'prototype_draft' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1300 | 'prototype_draft' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'pipeline_stage' member 'talking_head_render' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1292 | 'talking_head_render' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'pipeline_stage' member 'tts_audio' | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1284 | 'tts_audio' is READ in slot(s) ['stage'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'pipeline_stage' union=['AUDIO_GENERATION', 'COMPLETE', 'DELETING', 'DRAFT', 'ERROR', 'FINAL_RENDER', 'IN_PROGRESS', 'LOCALISATION', 'MANIFEST_GENERATION', 'MEDIA_GENERATION', 'PROTOTYPE_DRAFT', 'REVIEW', 'STORYBOARD_GENERATION', 'TALKING_HEAD_RENDER', 'TRANSCRIPT_REFINEMENT', 'USER_REVIEW', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] | ivgs-api/migrations/versions/0001_initial_core.py:27 | db-enum project_state lacks members ['IN_PROGRESS', 'REVIEW', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] that other definition(s) carry: ['ts-union ProjectState (ivgs-frontend/src/types/api.ts:17)', 'py-enum PipelineStage (ivgs-workers/models/task_result.py:32)'] |  |
 | suspect | vocabulary 'pipeline_stage' union=['AUDIO_GENERATION', 'COMPLETE', 'DELETING', 'DRAFT', 'ERROR', 'FINAL_RENDER', 'IN_PROGRESS', 'LOCALISATION', 'MANIFEST_GENERATION', 'MEDIA_GENERATION', 'PROTOTYPE_DRAFT', 'REVIEW', 'STORYBOARD_GENERATION', 'TALKING_HEAD_RENDER', 'TRANSCRIPT_REFINEMENT', 'USER_REVIEW', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] | ivgs-frontend/src/types/api.ts:17 | ts-union ProjectState lacks members ['DELETING', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] that other definition(s) carry: ['db-enum project_state (ivgs-api/migrations/versions/0001_initial_core.py:27)', 'py-enum PipelineStage (ivgs-workers/models/task_result.py:32)', 'py-enum ProjectState (shared/models/enums.py:15)'] |  |
 | suspect | vocabulary 'pipeline_stage' union=['AUDIO_GENERATION', 'COMPLETE', 'DELETING', 'DRAFT', 'ERROR', 'FINAL_RENDER', 'IN_PROGRESS', 'LOCALISATION', 'MANIFEST_GENERATION', 'MEDIA_GENERATION', 'PROTOTYPE_DRAFT', 'REVIEW', 'STORYBOARD_GENERATION', 'TALKING_HEAD_RENDER', 'TRANSCRIPT_REFINEMENT', 'USER_REVIEW', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] | ivgs-frontend/src/types/monitoring.ts:34 | ts-union PipelineStage lacks members ['COMPLETE', 'DELETING', 'DRAFT', 'ERROR', 'IN_PROGRESS', 'REVIEW', 'USER_REVIEW', 'animation_generation', 'composition_manifest', 'final_render', 'image_generation', 'motion_graphics', 'prototype_draft', 'storyboard_generation', 'talking_head_render', 'transcript_refinement', 'tts_audio', 'video_generation'] that other definition(s) carry: ['db-enum project_state (ivgs-api/migrations/versions/0001_initial_core.py:27)', 'ts-union ProjectState (ivgs-frontend/src/types/api.ts:17)', 'py-enum PipelineStage (ivgs-workers/models/task_result.py:32)', 'py-enum ProjectState (shared/models/enums.py:15)'] |  |
@@ -4436,7 +4404,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | suspect | vocabulary 'storage_tier' = ['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-api/app/models/storage_quota.py:39; shared/models/asset.py:89 | members ['archive'] never appear at call slot PG_ENUM(arg=), where 5 of 6 members do |  |
 | suspect | vocabulary 'storage_tier' member 'archived' | ivgs-frontend/src/app/admin/retention/page.tsx:54 | 'archived' is WRITTEN in slot(s) ['tier'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'storage_tier' member 'cold' | ivgs-frontend/src/app/admin/retention/page.tsx:53 | 'cold' is WRITTEN in slot(s) ['tier'] but never READ/compared anywhere in production code |  |
-| suspect | vocabulary 'storage_tier' member 'deleted' | ivgs-api/app/services/asset_service.py:161; ivgs-api/app/services/asset_service.py:302; ivgs-api/app/services/library_service.py:360; ivgs-api/app/services/project_service.py:890 | 'deleted' is READ in slot(s) ['next_tier', 'storage_tier'] but never WRITTEN anywhere in production code (readers can never match) |  |
+| suspect | vocabulary 'storage_tier' member 'deleted' | ivgs-api/app/services/asset_service.py:161; ivgs-api/app/services/asset_service.py:302; ivgs-api/app/services/library_service.py:360; ivgs-api/app/services/project_service.py:877 | 'deleted' is READ in slot(s) ['next_tier', 'storage_tier'] but never WRITTEN anywhere in production code (readers can never match) |  |
 | suspect | vocabulary 'storage_tier' member 'hot' | ivgs-api/app/services/library_service.py:366; ivgs-api/app/services/retention_service.py:210; ivgs-api/app/services/transcript_service.py:123; ivgs-frontend/src/app/admin/retention/page.tsx:51 | 'hot' is WRITTEN in slot(s) ['current_tier', 'storage_tier', 'tier'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'storage_tier' member 'warm' | ivgs-api/app/services/retention_service.py:210; ivgs-frontend/src/app/admin/retention/page.tsx:52 | 'warm' is WRITTEN in slot(s) ['next_tier', 'tier'] but never READ/compared anywhere in production code |  |
 | suspect | vocabulary 'storage_tier' union=['archive', 'archived', 'cold', 'deleted', 'hot', 'warm'] | ivgs-api/migrations/versions/0001_initial_core.py:93 | db-enum storage_tier lacks members ['archive'] that other definition(s) carry: ['ts-union StorageTier (ivgs-frontend/src/types/api.ts:53)'] |  |
@@ -4473,10 +4441,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/animation_generation_task.py:803` stage_index=3 generate_scene_animations names=[] doc_stage_for_file=None
     - `ivgs-workers/tasks/animation_generation_task.py:875` stage_index=3 generate_scene_animations names=[] doc_stage_for_file=None
     - `ivgs-workers/tasks/motion_graphics_task.py:619` stage_index=3 render_scene_motion_graphics names=[] doc_stage_for_file=None
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1037` stage_index=4 build_composition_manifest names=[] doc_stage_for_file=None
-    - `ivgs-workers/tasks/stage1_transcript.py:523` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
-    - `ivgs-workers/tasks/stage1_transcript.py:669` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
-    - `ivgs-workers/tasks/stage1_transcript.py:722` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:993` stage_index=4 build_composition_manifest names=[] doc_stage_for_file=None
+    - `ivgs-workers/tasks/stage1_transcript.py:493` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
+    - `ivgs-workers/tasks/stage1_transcript.py:639` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
+    - `ivgs-workers/tasks/stage1_transcript.py:692` stage_index=1 _run_refinement names=[] doc_stage_for_file=1
     - `ivgs-workers/tasks/stage2_storyboard.py:606` stage_index=2 _run_storyboard_generation names=[] doc_stage_for_file=2
     - `ivgs-workers/tasks/stage2_storyboard.py:810` stage_index=2 _run_storyboard_generation names=[] doc_stage_for_file=2
     - `ivgs-workers/tasks/stage3_images.py:754` stage_index=3 generate_scene_images_task names=[] doc_stage_for_file=3
@@ -4503,12 +4471,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp63_failure_attribution.py:34` stage_index=3 [test]  names=['image_generation'] doc_stage_for_file=None
     - `ivgs-workers/tests/test_wp63_failure_attribution.py:36` stage_index=4 [test]  names=['tts_audio'] doc_stage_for_file=None
     - `ivgs-workers/tests/test_wp63_failure_attribution.py:124` stage_index=6 [test] TestTheJobRowNamesTheStageTheCheckpointRecorded.test_the_earliest_failure_wins_not_the_latest names=['talking_
-- **vocab:asset_type** — `ivgs-api/app/services/asset_service.py:26` — 153 consumer(s)
+- **vocab:asset_type** — `ivgs-api/app/services/asset_service.py:26` — 151 consumer(s)
     - `ivgs-api/app/api/ad01_ingest.py:47` write:talking_head talking_head
     - `ivgs-api/app/api/v1/assets.py:357` read:asset_type image
     - `ivgs-api/app/api/v1/manifests.py:433` write:audio audio
     - `ivgs-api/app/api/v1/manifests.py:434` write:talking_head talking_head
-    - `ivgs-api/app/api/v1/projects.py:584` write:asset_type talking_head
+    - `ivgs-api/app/api/v1/projects.py:583` write:asset_type talking_head
     - `ivgs-api/app/models/composition_manifest.py:45` arg:PG_ENUM draft
     - `ivgs-api/app/models/render_job.py:38` arg:PG_ENUM final_render
     - `ivgs-api/app/services/library_service.py:72` write:reference_clip reference_clip
@@ -4516,9 +4484,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/library_service.py:72` write:reference_clip video
     - `ivgs-api/app/services/library_service.py:75` write:document document
     - `ivgs-api/app/services/preset_service.py:219` write:asset_type talking_head
-    - `ivgs-api/app/services/project_service.py:889` read:asset_type image
-    - `ivgs-api/app/services/project_service.py:909` read:asset_type image
-    - `ivgs-api/app/services/project_service.py:914` read:asset_type final_render
+    - `ivgs-api/app/services/project_service.py:876` read:asset_type image
+    - `ivgs-api/app/services/project_service.py:896` read:asset_type image
+    - `ivgs-api/app/services/project_service.py:901` read:asset_type final_render
     - `ivgs-api/app/services/regeneration.py:72` write:image image
     - `ivgs-api/app/services/transcript_service.py:123` write:asset_type document
     - `ivgs-api/tests/conftest.py:610` write:asset_type [test] image
@@ -4611,16 +4579,16 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/animation_generation_task.py:327` read:asset_type image
     - `ivgs-workers/tasks/animation_generation_task.py:342` read:asset_type reference_clip
     - `ivgs-workers/tasks/motion_graphics_task.py:294` write:asset_type video
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:808` arg:get image
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2501` read:asset_type talking_head
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2503` write:asset_type talking_head
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2567` read:asset_type reference_clip
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2569` write:asset_type reference_clip
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2599` read:asset_type audio
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2601` write:asset_type audio
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2673` read:asset_type audio
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2675` write:asset_type audio
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2714` write:asset_type audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:764` arg:get image
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2291` read:asset_type talking_head
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2293` write:asset_type talking_head
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2357` read:asset_type reference_clip
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2359` write:asset_type reference_clip
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2389` read:asset_type audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2391` write:asset_type audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2463` read:asset_type audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2465` write:asset_type audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2504` write:asset_type audio
     - `ivgs-workers/tasks/stage3_images.py:266` write:asset_type image
     - `ivgs-workers/tasks/stage5_voiceover.py:229` write:asset_type audio
     - `ivgs-workers/tasks/stage7_prototype_draft.py:197` write:asset_type final_render
@@ -4648,8 +4616,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp39_media_join.py:183` arg:_scene [test] image
     - `ivgs-workers/tests/test_wp59_retention.py:168` arg:_row [test] image
     - `ivgs-workers/tests/test_wp59_retention.py:170` arg:_row [test] image
-    - `shared/design/question_catalog.py:472` arg:Option image
-    - `shared/design/question_catalog.py:476` arg:Option animation
     - `shared/models/asset.py:59` arg:PG_ENUM audio
     - `shared/models/asset.py:59` arg:PG_ENUM document
     - `shared/models/asset.py:59` arg:PG_ENUM final_render
@@ -4657,7 +4623,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `shared/models/asset.py:59` arg:PG_ENUM reference_clip
     - `shared/models/asset.py:59` arg:PG_ENUM talking_head
     - `shared/models/asset.py:59` arg:PG_ENUM video
-- **vocab:asset_type_media_type** — `ivgs-api/app/services/regeneration.py:71` — 35 consumer(s)
+- **vocab:asset_type_media_type** — `ivgs-api/app/services/regeneration.py:71` — 34 consumer(s)
     - `ivgs-api/app/api/v1/manifests.py:433` write:audio audio
     - `ivgs-api/app/services/regeneration.py:72` write:image image
     - `ivgs-api/tests/test_wp27_manifest_layers.py:64` arg:_asset_type_to_layer [test] audio
@@ -4680,7 +4646,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/lib/scenes.ts:90` write:image image
     - `ivgs-workers/servers/kokoro/server.py:66` arg:getattr audio
     - `ivgs-workers/services/manifest_builder.py:201` arg:get image
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:808` arg:get image
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:764` arg:get image
     - `ivgs-workers/tasks/stage8_final_render.py:311` arg:get audio
     - `ivgs-workers/temporal_pipeline/activities.py:467` arg:get audio
     - `ivgs-workers/tests/test_retention.py:204` arg:get_policy_for_asset_type [test] image
@@ -4689,12 +4655,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp39_media_join.py:183` arg:_scene [test] image
     - `ivgs-workers/tests/test_wp59_retention.py:168` arg:_row [test] image
     - `ivgs-workers/tests/test_wp59_retention.py:170` arg:_row [test] image
-    - `shared/design/question_catalog.py:472` arg:Option image
     - `shared/models/asset.py:59` arg:PG_ENUM audio
     - `shared/models/asset.py:59` arg:PG_ENUM image
     - `shared/models/asset.py:59` arg:PG_ENUM video
 - **vocab:audio_quality_decision** — `ivgs-api/migrations/versions/0008_quality_scores.py:19` — 120 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:733` read:decision approved
+    - `ivgs-api/app/api/v1/projects.py:692` read:decision approved
     - `ivgs-api/app/models/language_variant.py:41` arg:PG_ENUM flagged
     - `ivgs-api/app/models/quality_score.py:47` arg:PG_ENUM approved
     - `ivgs-api/app/models/quality_score.py:47` arg:PG_ENUM flagged
@@ -4846,7 +4811,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/language_service.py:356` write:status failed
     - `ivgs-api/app/services/language_service.py:365` write:status running
     - `ivgs-api/app/services/model_selection.py:355` arg:get failed
-    - `ivgs-api/app/services/project_service.py:516` write:status running
+    - `ivgs-api/app/services/project_service.py:503` write:status running
     - `ivgs-api/app/services/regeneration.py:422` write:status failed
     - `ivgs-api/app/services/regeneration.py:436` write:status running
     - `ivgs-api/app/services/regeneration.py:589` write:status failed
@@ -4969,23 +4934,23 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:160` write:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:235` read:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:260` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:988` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:519` arg:update_job_status running
-    - `ivgs-workers/tasks/stage1_transcript.py:523` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:669` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:259` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:944` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:489` arg:update_job_status running
+    - `ivgs-workers/tasks/stage1_transcript.py:493` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:639` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:602` arg:update_job_status running
     - `ivgs-workers/tasks/stage2_storyboard.py:606` write:status running
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
@@ -5117,7 +5082,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `scripts/config_backup.sh:109` arg:- config_backup
     - `scripts/lib/logfile.sh:48` arg:- wal_archive
 - **vocab:beat_schedule** — `ivgs-backup-worker/celery_app.py:133` — 0 consumer(s)
-- **vocab:bloom_level** — `shared/models/enums.py:349` — 31 consumer(s)
+- **vocab:bloom_level** — `shared/models/enums.py:349` — 28 consumer(s)
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:117` write:bloom_level [test] apply
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:137` write:bloom_level [test] apply
     - `ivgs-api/tests/test_wpivgs12b_outcomes.py:129` write:bloom_level [test] apply
@@ -5145,10 +5110,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/admin/users/page.tsx:122` arg:setActionInProgress create
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:237` write:bloom_level [test] apply
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:240` write:bloom_level [test] apply
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:226` write:bloom_level [test] remember
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:237` write:bloom_level [test] apply
     - `scripts/apply-node-config.sh:7` arg:- apply
-    - `shared/design/question_catalog.py:423` arg:Option apply
 - **vocab:camera_angle** — `ivgs-frontend/src/types/storyboard.ts:45` — 0 consumer(s)
 - **vocab:capability_dimension** — `ivgs-api/migrations/versions/0026_ad01_model_store.py:103` — 9 consumer(s)
     - `ivgs-api/app/services/library_service.py:448` arg:get voice_profile
@@ -5167,8 +5129,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/celery_producer.py:29` write:task_default_queue default
     - `ivgs-api/app/services/checkpoint_service.py:355` write:queue default
     - `ivgs-api/app/services/language_service.py:346` write:queue default
-    - `ivgs-api/app/services/project_service.py:510` write:queue default
-    - `ivgs-api/app/services/project_service.py:787` write:queue default
+    - `ivgs-api/app/services/project_service.py:497` write:queue default
+    - `ivgs-api/app/services/project_service.py:774` write:queue default
     - `ivgs-api/tests/test_service_prompt.py:117` arg:get_version_history [test] composition
     - `ivgs-api/tests/test_wp45_dispatch.py:173` read:queue [test] default
     - `ivgs-api/tests/test_wp65_weight_fetch.py:262` read:queues [test] gpu_animation
@@ -5250,19 +5212,19 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:675` write:queue default
     - `ivgs-workers/tasks/pipeline_orchestrator.py:686` write:queue default
     - `ivgs-workers/tasks/pipeline_orchestrator.py:697` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:224` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:332` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:367` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:393` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:631` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:734` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:964` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1067` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1194` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2170` write:queue default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2313` arg:get default
-    - `ivgs-workers/tasks/stage1_transcript.py:457` write:queue gpu_llm
-    - `ivgs-workers/tasks/stage1_transcript.py:768` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:223` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:331` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:366` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:392` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:587` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:690` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:920` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1023` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1150` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1960` write:queue default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2103` arg:get default
+    - `ivgs-workers/tasks/stage1_transcript.py:427` write:queue gpu_llm
+    - `ivgs-workers/tasks/stage1_transcript.py:738` write:queue default
     - `ivgs-workers/tasks/stage2_storyboard.py:543` write:queue gpu_llm
     - `ivgs-workers/tasks/stage2_storyboard.py:857` write:queue default
     - `ivgs-workers/tasks/stage3_images.py:832` write:queue default
@@ -5381,8 +5343,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/language_service.py:355` write:state failed
     - `ivgs-api/app/services/language_service.py:356` write:status failed
     - `ivgs-api/app/services/model_selection.py:355` arg:get failed
-    - `ivgs-api/app/services/project_service.py:241` write:state pending
-    - `ivgs-api/app/services/project_service.py:443` write:status pending
+    - `ivgs-api/app/services/project_service.py:228` write:state pending
+    - `ivgs-api/app/services/project_service.py:430` write:status pending
     - `ivgs-api/app/services/regeneration.py:397` write:status pending
     - `ivgs-api/app/services/regeneration.py:422` write:status failed
     - `ivgs-api/app/services/regeneration.py:562` write:status pending
@@ -5510,18 +5472,18 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:629` read:status pending
     - `ivgs-workers/tasks/pipeline_orchestrator.py:631` write:status pending
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
     - `ivgs-workers/tasks/stage3_images.py:476` write:status failed
     - `ivgs-workers/tasks/stage3_images.py:596` write:status failed
@@ -5650,7 +5612,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/clients/remotion_client.py:448` write:composition_id LowerThird
     - `ivgs-workers/clients/remotion_client.py:476` write:composition_id TitleCard
     - `ivgs-workers/clients/remotion_client.py:509` write:composition_id KenBurns
-- **vocab:content_events** — `ivgs-api/app/services/visual_redescribe.py:64` — 80 consumer(s)
+- **vocab:content_events** — `ivgs-api/app/services/visual_redescribe.py:64` — 79 consumer(s)
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:164` arg:_designed [test] assess
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:167` arg:_designed [test] practice
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:392` arg:_sourced [test] practice
@@ -5730,7 +5692,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12i2_rcs_batch.py:512` arg:_scene [test] assess
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:236` arg:child_events [test] assess
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:237` arg:child_events [test] guide
-    - `shared/design/question_catalog.py:308` arg:Option assess
 - **vocab:coqui_language** — `ivgs-workers/clients/coqui_client.py:63` — 10 consumer(s)
     - `ivgs-workers/clients/coqui_client.py:91` assign-local:language en
     - `ivgs-workers/servers/coqui/server.py:37` assign-local:language en
@@ -5742,13 +5703,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp42_voice.py:483` read:language [test] en
     - `ivgs-workers/tests/test_wpivgs06_speaker_reference.py:96` write:language [test] en
     - `tests_system/smoke/test_gpu_nodes.py:167` write:language [test] en
-- **vocab:corruption_severity** — `ivgs-workers/validators/corruption_detector.py:38` — 2 consumer(s)
+- **vocab:corruption_severity** — `ivgs-workers/validators/corruption_detector.py:38` — 1 consumer(s)
     - `scripts/basebackup.sh:438` arg:- none
-    - `shared/design/question_catalog.py:452` arg:Option none
 - **vocab:default_roots** — `scripts/swallow_detector.py:53` — 2 consumer(s)
     - `ivgs-workers/celery_app.py:438` arg:Celery ivgs-workers
     - `ivgs-workers/tests/test_wp05_visibility_timeout.py:160` arg:insert [test] ivgs-api
-- **vocab:diffusion_media** — `ivgs-api/app/services/regeneration.py:62` — 196 consumer(s)
+- **vocab:diffusion_media** — `ivgs-api/app/services/regeneration.py:62` — 190 consumer(s)
     - `ivgs-api/app/api/v1/storyboard.py:564` write:media_type motion_graphics
     - `ivgs-api/app/services/regeneration.py:72` write:image image
     - `ivgs-api/tests/conftest.py:637` write:media_type [test] image
@@ -5881,13 +5841,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/services/manifest_builder.py:201` arg:get image
     - `ivgs-workers/tasks/animation_generation_task.py:599` write:media_type animation
     - `ivgs-workers/tasks/motion_graphics_task.py:509` arg:resolve_endpoint motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:705` arg:resolve_endpoint motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:808` arg:get image
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:809` read:media_type image
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:811` read:media_type video_clip
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:813` read:media_type animation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:815` read:media_type motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:831` write:media_type motion_graphics
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:661` arg:resolve_endpoint motion_graphics
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:764` arg:get image
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:765` read:media_type image
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:767` read:media_type video_clip
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:769` read:media_type animation
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:771` read:media_type motion_graphics
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:787` write:media_type motion_graphics
     - `ivgs-workers/tasks/stage3_images.py:92` assign-local:media_type image
     - `ivgs-workers/tasks/stage3_images.py:372` read:media_type video_clip
     - `ivgs-workers/tasks/stage3_images.py:536` write:media_type image
@@ -5938,12 +5898,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py:105` write:media_type [test] motion_graphics
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:237` write:media_type [test] motion_graphics
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:240` write:media_type [test] motion_graphics
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:223` write:media_type [test] image
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:234` write:media_type [test] image
-    - `shared/design/question_catalog.py:469` arg:Option motion_graphics
-    - `shared/design/question_catalog.py:472` arg:Option image
-    - `shared/design/question_catalog.py:474` arg:Option video_clip
-    - `shared/design/question_catalog.py:476` arg:Option animation
     - `shared/models/asset.py:59` arg:PG_ENUM image
 - **vocab:display_job_status** — `ivgs-frontend/src/lib/jobs.ts:33` — 67 consumer(s)
     - `ivgs-api/app/models/project.py:33` arg:PG_ENUM COMPLETE
@@ -6192,7 +6146,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:69` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:87` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:140` arg:setToastType error
-    - `ivgs-frontend/src/app/projects/new/page.tsx:310` arg:setToastType error
+    - `ivgs-frontend/src/app/projects/new/page.tsx:283` arg:setToastType error
     - `ivgs-workers/clients/cogvideox_client.py:185` arg:get error
     - `ivgs-workers/clients/latentsync_client.py:415` arg:get error
     - `ivgs-workers/clients/remotion_client.py:355` arg:get error
@@ -6205,13 +6159,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/motion_graphics_task.py:604` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:154` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
     - `ivgs-workers/tasks/stage7_prototype_draft.py:488` arg:update_job_status failed
     - `ivgs-workers/tasks/stage7_prototype_draft.py:595` arg:update_job_status failed
     - `ivgs-workers/tasks/stage8_final_render.py:588` arg:_update_segment_status failed
@@ -6251,7 +6205,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `scripts/lib/backup_record.sh:108` arg:- failed
     - `tests_system/e2e/test_localization.py:101` arg:get [test] error
     - `tests_system/e2e/test_project_lifecycle.py:60` arg:get [test] error
-- **vocab:fallback_level** — `ivgs-frontend/src/types/monitoring.ts:57` — 20 consumer(s)
+- **vocab:fallback_level** — `ivgs-frontend/src/types/monitoring.ts:57` — 19 consumer(s)
     - `ivgs-api/app/api/v1/clip.py:184` arg:get model
     - `ivgs-api/app/schemas/model_store.py:430` arg:getattr model
     - `ivgs-api/app/services/adaptation_service.py:330` arg:get model
@@ -6267,11 +6221,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/clients/vllm_client.py:638` arg:get model
     - `ivgs-workers/servers/common/base.py:135` arg:getattr model
     - `ivgs-workers/servers/common/base.py:156` arg:getattr model
-    - `ivgs-workers/tasks/stage1_transcript.py:655` arg:get model
+    - `ivgs-workers/tasks/stage1_transcript.py:625` arg:get model
     - `ivgs-workers/tests/test_stage1.py:519` write:model [test] model
     - `ivgs-workers/tests/test_stage1.py:526` write:model [test] model
     - `scripts/basebackup.sh:438` arg:- none
-    - `shared/design/question_catalog.py:452` arg:Option none
 - **vocab:fallback_strategy** — `ivgs-api/app/scripts/seed_fallback_policies.py:36` — 4 consumer(s)
     - `ivgs-workers/configs/composition.yml:359` write:strategy animated_still
     - `ivgs-workers/configs/composition.yml:361` write:strategy static_image
@@ -6294,10 +6247,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/configs/media_generation.yml:42` write:scheduler simple
     - `ivgs-workers/configs/media_generation.yml:59` write:scheduler karras
     - `ivgs-workers/tasks/pipeline_orchestrator.py:300` arg:get normal
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:633` arg:get normal
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:589` arg:get normal
     - `ivgs-workers/tests/test_wpivgs07_dropped_params.py:15` write:scheduler [test] normal
-- **vocab:gate_action** — `ivgs-workers/services/quality_gate.py:57` — 19 consumer(s)
-    - `ivgs-api/app/api/v1/projects.py:883` arg:get pause
+- **vocab:gate_action** — `ivgs-workers/services/quality_gate.py:57` — 16 consumer(s)
     - `ivgs-workers/services/quality_gate.py:173` assign-local:gate_action proceed
     - `ivgs-workers/services/quality_gate.py:178` assign-local:gate_action pause
     - `ivgs-workers/services/quality_gate.py:188` assign-local:gate_action regenerate
@@ -6305,8 +6257,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/services/quality_gate.py:242` assign-local:gate_action proceed
     - `ivgs-workers/services/quality_gate.py:360` assign-local:gate_action human_override
     - `ivgs-workers/services/quality_gate.py:364` assign-local:gate_action escalate_dlq
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:493` arg:get pause
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1367` arg:get pause
     - `ivgs-workers/tests/test_quality_gate.py:114` read:gate_action [test] proceed
     - `ivgs-workers/tests/test_quality_gate.py:146` read:gate_action [test] pause
     - `ivgs-workers/tests/test_quality_gate.py:180` read:gate_action [test] regenerate
@@ -6316,12 +6266,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_quality_gate.py:264` read:gate_action [test] escalate_dlq
     - `scripts/restore.sh:636` arg:- pause
     - `scripts/restore.sh:640` arg:- pause
-- **vocab:gate_regenerate_stage** — `ivgs-api/app/services/regeneration.py:511` — 6 consumer(s)
-    - `ivgs-api/app/api/v1/design_interview.py:128` arg:dispatch_gate_regeneration storyboard
+- **vocab:gate_regenerate_stage** — `ivgs-api/app/services/regeneration.py:511` — 5 consumer(s)
     - `ivgs-api/app/models/composition_manifest.py:45` arg:PG_ENUM draft
     - `ivgs-api/tests/test_wp63_regeneration.py:620` arg:status [test] storyboard
     - `ivgs-api/tests/test_wp63_regeneration.py:634` arg:status [test] storyboard
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1601` arg:startswith storyboard
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1391` arg:startswith storyboard
     - `ivgs-workers/tasks/stage2_storyboard.py:213` arg:get storyboard
 - **vocab:gpu_node_status** — `ivgs-api/migrations/versions/0003_gpu_registry.py:19` — 71 consumer(s)
     - `ivgs-api/app/api/v1/clip.py:184` arg:get unknown
@@ -6441,7 +6390,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/models/worker_heartbeat.py:42` arg:PG_ENUM alive
     - `ivgs-api/app/models/worker_heartbeat.py:42` arg:PG_ENUM confirmed_dead
     - `ivgs-api/app/models/worker_heartbeat.py:42` arg:PG_ENUM suspected_dead
-- **vocab:instructional_event** — `shared/models/enums.py:278` — 148 consumer(s)
+- **vocab:instructional_event** — `shared/models/enums.py:278` — 144 consumer(s)
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:117` write:instructional_event [test] present
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:161` write:instructional_event [test] assess
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:191` write:instructional_event [test] guide
@@ -6586,11 +6535,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:601` write:instructional_event [test] guide
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:236` write:instructional_event [test] present
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:239` write:instructional_event [test] assess
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:225` write:instructional_event [test] hook
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:236` write:instructional_event [test] transfer
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:340` write:instructional_event [test] hook
-    - `shared/design/question_catalog.py:308` arg:Option assess
-- **vocab:job_status** — `ivgs-api/app/schemas/checkpoint.py:30` — 562 consumer(s)
+- **vocab:job_status** — `ivgs-api/app/schemas/checkpoint.py:30` — 561 consumer(s)
     - `ivgs-api/app/api/v1/backup.py:292` write:status running
     - `ivgs-api/app/api/v1/backup.py:346` read:status completed
     - `ivgs-api/app/api/v1/backup.py:388` write:status running
@@ -6636,8 +6581,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/language_service.py:356` write:status failed
     - `ivgs-api/app/services/language_service.py:365` write:status running
     - `ivgs-api/app/services/model_selection.py:355` arg:get failed
-    - `ivgs-api/app/services/project_service.py:443` write:status pending
-    - `ivgs-api/app/services/project_service.py:516` write:status running
+    - `ivgs-api/app/services/project_service.py:430` write:status pending
+    - `ivgs-api/app/services/project_service.py:503` write:status running
     - `ivgs-api/app/services/regeneration.py:397` write:status pending
     - `ivgs-api/app/services/regeneration.py:422` write:status failed
     - `ivgs-api/app/services/regeneration.py:436` write:status running
@@ -6799,7 +6744,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:62` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:80` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:133` arg:setToastType success
-    - `ivgs-frontend/src/app/projects/new/page.tsx:296` arg:setToastType success
+    - `ivgs-frontend/src/app/projects/new/page.tsx:269` arg:setToastType success
     - `ivgs-frontend/src/components/PipelineTracker.tsx:69` read:status complete
     - `ivgs-frontend/src/components/PipelineTracker.tsx:71` read:status running
     - `ivgs-frontend/src/components/PipelineTracker.tsx:73` read:status failed
@@ -6903,25 +6848,24 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:629` read:status pending
     - `ivgs-workers/tasks/pipeline_orchestrator.py:631` write:status pending
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:260` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:499` arg:update_job_status success
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:577` arg:update_job_status success
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:988` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:519` arg:update_job_status running
-    - `ivgs-workers/tasks/stage1_transcript.py:523` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:669` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:259` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:533` arg:update_job_status success
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:944` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:489` arg:update_job_status running
+    - `ivgs-workers/tasks/stage1_transcript.py:493` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:639` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:602` arg:update_job_status running
     - `ivgs-workers/tasks/stage2_storyboard.py:606` write:status running
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
@@ -6991,7 +6935,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/video_generation_task.py:467` write:status failed
     - `ivgs-workers/tasks/video_generation_task.py:526` write:status failed
     - `ivgs-workers/tasks/video_generation_task.py:574` arg:update_job_status running
-    - … 162 more in consumer_index.json
+    - `ivgs-workers/tasks/video_generation_task.py:634` write:status running
+    - … 161 more in consumer_index.json
 - **vocab:job_type** — `ivgs-api/migrations/versions/0001_initial_core.py:74` — 161 consumer(s)
     - `ivgs-api/app/api/ad01_ingest.py:40` write:transcript_refinement transcript_refinement
     - `ivgs-api/app/api/ad01_ingest.py:43` write:image_generation image_generation
@@ -7100,11 +7045,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:340` write:job_type [test] storyboard_generation
     - `ivgs-api/tests/test_wpivgs12i_auto_repair.py:144` write:job_type [test] storyboard_generation
     - `ivgs-motion-renderer/tests/test_wp_ivgs_09_renderer.py:96` arg:contract_for [test] animation_generation
-    - `ivgs-workers/design_core/assessment_call.py:344` arg:get_vllm_config_for_stage storyboard_generation
-    - `ivgs-workers/tasks/stage1_transcript.py:303` arg:_select_prompt_text transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:341` arg:get_vllm_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:534` arg:get_binding transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:733` arg:get_retry_config_for_stage transcript_refinement
+    - `ivgs-workers/design_core/assessment_call.py:294` arg:get_vllm_config_for_stage storyboard_generation
+    - `ivgs-workers/tasks/stage1_transcript.py:302` arg:_select_prompt_text transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:325` arg:get_vllm_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:504` arg:get_binding transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:703` arg:get_retry_config_for_stage transcript_refinement
     - `ivgs-workers/tasks/stage2_storyboard.py:187` arg:_select_prompt_text storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:619` arg:get_binding storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:681` arg:get_vllm_config_for_stage storyboard_generation
@@ -7154,7 +7099,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp_ivgs_0_prompt_type.py:71` arg:_select_prompt_text [test] transcript_refinement
     - `ivgs-workers/tests/test_wp_ivgs_0_tier.py:79` arg:resolve_text_llm_binding [test] transcript_refinement
     - `shared/models/asset.py:59` arg:PG_ENUM final_render
-- **vocab:kind_to_asset_type** — `ivgs-api/app/models/library_asset.py:26` — 36 consumer(s)
+- **vocab:kind_to_asset_type** — `ivgs-api/app/models/library_asset.py:26` — 35 consumer(s)
     - `ivgs-api/app/services/library_service.py:72` write:reference_clip reference_clip
     - `ivgs-api/app/services/library_service.py:74` write:font document
     - `ivgs-api/app/services/library_service.py:75` write:document document
@@ -7188,22 +7133,21 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp64_media.py:113` arg:_write [test] video_clip
     - `ivgs-workers/tests/test_wp64_media.py:142` arg:_write [test] video_clip
     - `ivgs-workers/tests/test_wp64_media.py:176` arg:_write [test] video_clip
-    - `shared/design/question_catalog.py:474` arg:Option video_clip
     - `shared/models/asset.py:59` arg:PG_ENUM document
     - `shared/models/asset.py:59` arg:PG_ENUM reference_clip
 - **vocab:kokoro_supported_languages** — `ivgs-workers/clients/kokoro_client.py:23` — 16 consumer(s)
     - `ivgs-api/app/services/checkpoint_service.py:342` arg:getattr en-US
-    - `ivgs-api/app/services/project_service.py:495` arg:getattr en-US
-    - `ivgs-api/app/services/project_service.py:779` arg:getattr en-US
+    - `ivgs-api/app/services/project_service.py:482` arg:getattr en-US
+    - `ivgs-api/app/services/project_service.py:766` arg:getattr en-US
     - `ivgs-api/app/services/regeneration.py:117` arg:getattr en-US
     - `ivgs-api/tests/test_service_language.py:60` arg:create_variant [test] en-GB
     - `ivgs-api/tests/test_service_language.py:72` arg:create_variant [test] en-US
     - `ivgs-frontend/src/app/admin/backups/page.tsx:85` arg:toLocaleString en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:898` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1007` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1425` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1763` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2552` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:854` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:963` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1224` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1553` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2342` arg:get en-US
     - `ivgs-workers/tasks/stage2_storyboard.py:137` arg:get en-US
     - `ivgs-workers/tests/test_composition.py:325` arg:build_manifest [test] en-US
     - `ivgs-workers/tests/test_composition.py:357` arg:build_manifest [test] en-US
@@ -7358,7 +7302,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_stage3.py:147` arg:_binding [test] video_generation
     - `ivgs-workers/tests/test_wp_ivgs_0_binding_honesty.py:142` arg:_env_config_differs [test] image_generation
     - `ivgs-workers/tests/test_wp_ivgs_0_binding_honesty.py:225` arg:resolve_text_llm_binding [test] image_generation
-- **vocab:model_engine** — `ivgs-api/migrations/versions/0026_ad01_model_store.py:60` — 181 consumer(s)
+- **vocab:model_engine** — `ivgs-api/migrations/versions/0026_ad01_model_store.py:60` — 180 consumer(s)
     - `ivgs-api/app/services/llm_playground.py:122` read:engine vllm
     - `ivgs-api/tests/conftest.py:1468` write:engine [test] latentsync
     - `ivgs-api/tests/conftest.py:1479` write:engine [test] sadtalker
@@ -7495,7 +7439,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/animation_generation_task.py:597` write:engine comfyui
     - `ivgs-workers/tasks/motion_graphics_task.py:406` write:engine motion_graphics
     - `ivgs-workers/tasks/motion_graphics_task.py:509` arg:resolve_endpoint motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:705` arg:resolve_endpoint motion_graphics
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:661` arg:resolve_endpoint motion_graphics
     - `ivgs-workers/tasks/stage3_images.py:538` write:engine comfyui
     - `ivgs-workers/tasks/talking_head_task.py:362` arg:get_model_config sadtalker
     - `ivgs-workers/tests/test_stage1.py:58` write:engine [test] vllm
@@ -7520,7 +7464,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wpivgs04_tts_runtime_builder.py:72` arg:_binding [test] coqui
     - `ivgs-workers/tests/test_wpivgs04_tts_runtime_builder.py:81` arg:_binding [test] tts
     - `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py:42` read:motion_graphics [test] motion_graphics
-    - `shared/design/question_catalog.py:469` arg:Option motion_graphics
     - `shared/providers/client_registry.py:106` write:kokoro kokoro
     - `shared/providers/client_registry.py:267` write:engine comfyui
     - `shared/providers/client_registry.py:306` write:engine comfyui
@@ -7557,9 +7500,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/scripts/wp61_publish_prompt.py:150` read:prompt_type translation
     - `ivgs-api/app/scripts/wp61_publish_prompt.py:182` write:prompt_type translation
     - `ivgs-api/app/scripts/wp61_publish_prompt.py:204` read:prompt_type translation
-    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:527` read:prompt_type storyboard_generation_system
-    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:557` read:prompt_type assessment_authoring_system
-    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:598` read:prompt_type transcript_refinement_system
+    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:466` read:prompt_type storyboard_generation_system
+    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:496` read:prompt_type assessment_authoring_system
+    - `ivgs-api/app/scripts/wpivgs12_publish_design_prompts.py:537` read:prompt_type transcript_refinement_system
     - `ivgs-api/app/services/language_service.py:136` write:prompt_type translation
     - `ivgs-api/app/services/regeneration.py:395` arg:get image_generation
     - `ivgs-api/app/services/translation_service.py:267` read:prompt_type translation
@@ -7752,22 +7695,22 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/config.py:666` read:stage animation_generation
     - `ivgs-workers/config.py:666` read:stage image_generation
     - `ivgs-workers/config.py:666` read:stage video_generation
-    - `ivgs-workers/design_core/assessment_call.py:344` arg:get_vllm_config_for_stage storyboard_generation
+    - `ivgs-workers/design_core/assessment_call.py:294` arg:get_vllm_config_for_stage storyboard_generation
     - `ivgs-workers/providers/image.py:32` read:stage animation_generation
     - `ivgs-workers/tasks/pipeline_orchestrator.py:331` read:stage transcript_refinement
     - `ivgs-workers/tasks/pipeline_orchestrator.py:342` read:stage storyboard_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1439` read:stage transcript_refinement
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1453` arg:_resolve_system_prompt transcript_refinement_system
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1461` read:stage storyboard_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1471` arg:_resolve_system_prompt storyboard_generation_system
-    - `ivgs-workers/tasks/stage1_transcript.py:261` read:prompt_type transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:286` read:prompt_type transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:288` write:prompt_type transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:303` arg:_select_prompt_text transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:341` arg:get_vllm_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:534` arg:get_binding transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:733` arg:get_retry_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:737` write:stage transcript_refinement
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1238` read:stage transcript_refinement
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1252` arg:_resolve_system_prompt transcript_refinement_system
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1260` read:stage storyboard_generation
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1270` arg:_resolve_system_prompt storyboard_generation_system
+    - `ivgs-workers/tasks/stage1_transcript.py:260` read:prompt_type transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:285` read:prompt_type transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:287` write:prompt_type transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:302` arg:_select_prompt_text transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:325` arg:get_vllm_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:504` arg:get_binding transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:703` arg:get_retry_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:707` write:stage transcript_refinement
     - `ivgs-workers/tasks/stage2_storyboard.py:172` read:prompt_type storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:174` write:prompt_type storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:187` arg:_select_prompt_text storyboard_generation
@@ -8009,7 +7952,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/hooks/useStoryboard.ts:435` write:tier prototype
     - `ivgs-workers/models/task_result.py:149` assign-local:tier prototype
     - `ivgs-workers/tasks/animation_generation_task.py:149` assign-local:tier prototype
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1436` arg:get prototype
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1235` arg:get prototype
     - `ivgs-workers/tasks/stage3_images.py:108` assign-local:tier prototype
     - `ivgs-workers/tasks/stage5_voiceover.py:105` assign-local:tier prototype
     - `ivgs-workers/tasks/talking_head_task.py:124` assign-local:tier prototype
@@ -8110,9 +8053,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/animation_generation_task.py:695` arg:update_job_status running
     - `ivgs-workers/tasks/motion_graphics_task.py:495` arg:update_job_status running
     - `ivgs-workers/tasks/pipeline_orchestrator.py:145` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:260` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:988` arg:update_job_status running
-    - `ivgs-workers/tasks/stage1_transcript.py:519` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:259` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:944` arg:update_job_status running
+    - `ivgs-workers/tasks/stage1_transcript.py:489` arg:update_job_status running
     - `ivgs-workers/tasks/stage2_storyboard.py:602` arg:update_job_status running
     - `ivgs-workers/tasks/stage3_images.py:648` arg:update_job_status running
     - `ivgs-workers/tasks/stage5_voiceover.py:601` arg:update_job_status running
@@ -8149,28 +8092,19 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `scripts/wal_archive.sh:195` arg:- ERROR
     - `shared/models/enums.py:38` assign-local:LOCALISATION LOCALISATION
     - `shared/models/enums.py:39` assign-local:ERROR ERROR
-- **vocab:op** — `shared/motion/templates.py:63` — 21 consumer(s)
-    - `ivgs-api/app/api/v1/design_brief.py:241` arg:get text
-    - `ivgs-api/app/api/v1/design_brief.py:242` arg:get text
-    - `ivgs-api/app/services/design_review.py:477` arg:get text
-    - `ivgs-api/app/services/design_review.py:951` arg:get text
-    - `ivgs-api/app/services/design_review.py:953` arg:get text
-    - `ivgs-api/app/services/design_review.py:1037` arg:get text
-    - `ivgs-api/app/services/design_review.py:1038` arg:get text
+- **vocab:op** — `shared/motion/templates.py:63` — 12 consumer(s)
+    - `ivgs-api/app/services/design_review.py:475` arg:get text
+    - `ivgs-api/app/services/design_review.py:936` arg:get text
+    - `ivgs-api/app/services/design_review.py:938` arg:get text
     - `ivgs-workers/clients/vllm_client.py:620` arg:get text
     - `ivgs-workers/clients/whisperx_client.py:47` arg:get text
-    - `ivgs-workers/design_core/assessment_call.py:214` arg:get text
-    - `ivgs-workers/design_core/contract.py:1763` arg:get text
+    - `ivgs-workers/design_core/assessment_call.py:179` arg:get text
     - `ivgs-workers/servers/whisperx/server.py:92` arg:get text
     - `ivgs-workers/servers/whisperx/server.py:109` arg:get text
     - `ivgs-workers/servers/whisperx/server.py:119` arg:get text
     - `ivgs-workers/services/caption_service.py:105` arg:get text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1242` arg:get text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1245` arg:get text
-    - `ivgs-workers/tasks/stage1_transcript.py:393` arg:get text
+    - `ivgs-workers/tasks/stage1_transcript.py:363` arg:get text
     - `ivgs-workers/tasks/stage2_storyboard.py:246` arg:get text
-    - `shared/design/question_catalog.py:98` arg:get text
-    - `shared/design/spans.py:419` arg:get text
 - **vocab:output_format** — `ivgs-workers/clients/remotion_client.py:92` — 9 consumer(s)
     - `ivgs-workers/clients/remotion_client.py:108` assign-local:output_format webm
     - `ivgs-workers/clients/remotion_client.py:448` write:output_format webm
@@ -8218,12 +8152,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/stage8_final_render.py:279` write:bottom_left bottom_left
     - `ivgs-workers/tasks/stage8_final_render.py:280` write:top_right top_right
     - `ivgs-workers/tasks/stage8_final_render.py:281` write:full_screen full_screen
-- **vocab:pipeline_stage** — `ivgs-api/migrations/versions/0001_initial_core.py:27` — 455 consumer(s)
+- **vocab:pipeline_stage** — `ivgs-api/migrations/versions/0001_initial_core.py:27` — 454 consumer(s)
     - `ivgs-api/app/api/ad01_ingest.py:40` write:transcript_refinement transcript_refinement
     - `ivgs-api/app/api/ad01_ingest.py:43` write:image_generation image_generation
     - `ivgs-api/app/api/ad01_ingest.py:44` write:video_generation video_generation
     - `ivgs-api/app/api/ad01_ingest.py:45` write:animation_generation animation_generation
-    - `ivgs-api/app/api/v1/projects.py:127` read:state DRAFT
+    - `ivgs-api/app/api/v1/projects.py:126` read:state DRAFT
     - `ivgs-api/app/api/v1/storyboard.py:158` read:state TRANSCRIPT_REFINEMENT
     - `ivgs-api/app/models/project.py:33` arg:PG_ENUM AUDIO_GENERATION
     - `ivgs-api/app/models/project.py:33` arg:PG_ENUM COMPLETE
@@ -8475,12 +8409,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/admin/models/page.tsx:149` write:stage storyboard_generation
     - `ivgs-frontend/src/app/monitoring/pipeline/page.tsx:288` arg:countOf COMPLETE
     - `ivgs-frontend/src/app/monitoring/pipeline/page.tsx:289` arg:countOf ERROR
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:161` read:state COMPLETE
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:172` read:state USER_REVIEW
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:177` read:state USER_REVIEW
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:182` read:state USER_REVIEW
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:187` read:state USER_REVIEW
-    - `ivgs-frontend/src/app/projects/[id]/page.tsx:206` read:state COMPLETE
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:142` read:state COMPLETE
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:153` read:state USER_REVIEW
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:158` read:state USER_REVIEW
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:163` read:state USER_REVIEW
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:168` read:state USER_REVIEW
+    - `ivgs-frontend/src/app/projects/[id]/page.tsx:187` read:state COMPLETE
     - `ivgs-frontend/src/components/ProjectModal.tsx:165` read:state COMPLETE
     - `ivgs-frontend/src/hooks/useWebSocket.ts:180` arg:setConnectionState ERROR
     - `ivgs-frontend/src/hooks/useWebSocket.ts:227` arg:setConnectionState ERROR
@@ -8518,7 +8452,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/config.py:666` read:stage animation_generation
     - `ivgs-workers/config.py:666` read:stage image_generation
     - `ivgs-workers/config.py:666` read:stage video_generation
-    - `ivgs-workers/design_core/assessment_call.py:344` arg:get_vllm_config_for_stage storyboard_generation
+    - `ivgs-workers/design_core/assessment_call.py:294` arg:get_vllm_config_for_stage storyboard_generation
     - `ivgs-workers/models/task_result.py:39` assign-local:TRANSCRIPT_REFINEMENT transcript_refinement
     - `ivgs-workers/models/task_result.py:40` assign-local:STORYBOARD_GENERATION storyboard_generation
     - `ivgs-workers/models/task_result.py:44` assign-local:TALKING_HEAD_RENDER talking_head_render
@@ -8528,19 +8462,19 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/motion_graphics_task.py:509` arg:resolve_endpoint motion_graphics
     - `ivgs-workers/tasks/pipeline_orchestrator.py:331` read:stage transcript_refinement
     - `ivgs-workers/tasks/pipeline_orchestrator.py:342` read:stage storyboard_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:705` arg:resolve_endpoint motion_graphics
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1439` read:stage transcript_refinement
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1461` read:stage storyboard_generation
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1491` read:stage composition_manifest
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1494` read:stage tts_audio
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1502` read:stage talking_head_render
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1510` read:stage prototype_draft
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1524` read:stage final_render
-    - `ivgs-workers/tasks/stage1_transcript.py:303` arg:_select_prompt_text transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:341` arg:get_vllm_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:534` arg:get_binding transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:733` arg:get_retry_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:737` write:stage transcript_refinement
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:661` arg:resolve_endpoint motion_graphics
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1238` read:stage transcript_refinement
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1260` read:stage storyboard_generation
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1281` read:stage composition_manifest
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1284` read:stage tts_audio
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1292` read:stage talking_head_render
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1300` read:stage prototype_draft
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1314` read:stage final_render
+    - `ivgs-workers/tasks/stage1_transcript.py:302` arg:_select_prompt_text transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:325` arg:get_vllm_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:504` arg:get_binding transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:703` arg:get_retry_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:707` write:stage transcript_refinement
     - `ivgs-workers/tasks/stage2_storyboard.py:187` arg:_select_prompt_text storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:619` arg:get_binding storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:681` arg:get_vllm_config_for_stage storyboard_generation
@@ -8619,7 +8553,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wpivgs09d_scene_scoped_dedup.py:134` write:stage [test] prototype_draft
     - `ivgs-workers/tests/test_wpivgs09d_scene_scoped_dedup.py:136` read:stage [test] prototype_draft
     - `ivgs-workers/tests/test_wpivgs10_media_taxonomy.py:42` read:motion_graphics [test] motion_graphics
-    - … 55 more in consumer_index.json
+    - … 54 more in consumer_index.json
 - **vocab:pipeline_stage_status** — `ivgs-frontend/src/types/monitoring.ts:45` — 362 consumer(s)
     - `ivgs-api/app/api/v1/backup.py:292` write:status running
     - `ivgs-api/app/api/v1/backup.py:388` write:status running
@@ -8661,8 +8595,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/language_service.py:365` write:status running
     - `ivgs-api/app/services/model_selection.py:355` arg:get failed
     - `ivgs-api/app/services/project_progress.py:131` arg:Step COMPLETE
-    - `ivgs-api/app/services/project_service.py:443` write:status pending
-    - `ivgs-api/app/services/project_service.py:516` write:status running
+    - `ivgs-api/app/services/project_service.py:430` write:status pending
+    - `ivgs-api/app/services/project_service.py:503` write:status running
     - `ivgs-api/app/services/regeneration.py:397` write:status pending
     - `ivgs-api/app/services/regeneration.py:422` write:status failed
     - `ivgs-api/app/services/regeneration.py:436` write:status running
@@ -8850,23 +8784,23 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:629` read:status pending
     - `ivgs-workers/tasks/pipeline_orchestrator.py:631` write:status pending
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:260` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:988` arg:update_job_status running
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:519` arg:update_job_status running
-    - `ivgs-workers/tasks/stage1_transcript.py:523` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:669` write:status running
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:259` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:944` arg:update_job_status running
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:489` arg:update_job_status running
+    - `ivgs-workers/tasks/stage1_transcript.py:493` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:639` write:status running
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:602` arg:update_job_status running
     - `ivgs-workers/tasks/stage2_storyboard.py:606` write:status running
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
@@ -8993,7 +8927,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-scheduler/priority_queue.py:312` arg:get normal
     - `ivgs-scheduler/priority_queue.py:313` arg:get batch
     - `ivgs-workers/tasks/pipeline_orchestrator.py:300` arg:get normal
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:633` arg:get normal
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:589` arg:get normal
 - **vocab:problem_log_methods** — `scripts/swallow_detector.py:75` — 15 consumer(s)
     - `ivgs-frontend/src/app/projects/[id]/assets/page.tsx:132` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/assets/page.tsx:157` arg:setToastType error
@@ -9002,7 +8936,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:69` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:87` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:140` arg:setToastType error
-    - `ivgs-frontend/src/app/projects/new/page.tsx:310` arg:setToastType error
+    - `ivgs-frontend/src/app/projects/new/page.tsx:283` arg:setToastType error
     - `ivgs-workers/clients/cogvideox_client.py:185` arg:get error
     - `ivgs-workers/clients/latentsync_client.py:415` arg:get error
     - `ivgs-workers/clients/remotion_client.py:355` arg:get error
@@ -9015,10 +8949,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/celery_app.py:75` arg:Exchange default
     - `ivgs-workers/celery_app.py:80` arg:Queue default
     - `ivgs-workers/tasks/pipeline_orchestrator.py:418` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:367` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:631` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1194` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2313` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:366` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:587` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1150` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2103` arg:get default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:202` arg:DagNode [test] default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:203` arg:DagNode [test] default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:208` arg:DagNode [test] default
@@ -9068,7 +9002,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/language_service.py:356` write:status failed
     - `ivgs-api/app/services/model_selection.py:355` arg:get failed
     - `ivgs-api/app/services/project_progress.py:131` arg:Step COMPLETE
-    - `ivgs-api/app/services/project_service.py:443` write:status pending
+    - `ivgs-api/app/services/project_service.py:430` write:status pending
     - `ivgs-api/app/services/regeneration.py:397` write:status pending
     - `ivgs-api/app/services/regeneration.py:422` write:status failed
     - `ivgs-api/app/services/regeneration.py:562` write:status pending
@@ -9207,18 +9141,18 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:629` read:status pending
     - `ivgs-workers/tasks/pipeline_orchestrator.py:631` write:status pending
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
     - `ivgs-workers/tasks/stage3_images.py:476` write:status failed
     - `ivgs-workers/tasks/stage3_images.py:596` write:status failed
@@ -9317,43 +9251,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `tests_system/e2e/test_localization.py:99` read:status [test] failed
     - `tests_system/e2e/test_project_lifecycle.py:59` read:status [test] failed
     - `tests_system/integration/test_pipeline_integration.py:132` read:status [test] failed
-- **vocab:rendered_keys** — `ivgs-workers/design_core/contract.py:1684` — 30 consumer(s)
-    - `ivgs-api/app/services/design_review.py:341` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:689` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:784` arg:_scene_field narration_text
-    - `ivgs-api/app/services/storyboard_completeness.py:577` arg:getattr narration_text
-    - `ivgs-api/app/services/storyboard_completeness.py:586` arg:getattr visual_description
-    - `ivgs-api/app/services/storyboard_completeness.py:602` arg:getattr narration_text
-    - `ivgs-api/app/services/storyboard_completeness.py:603` arg:getattr visual_description
-    - `ivgs-api/app/services/visual_redescribe.py:202` arg:get visual_description
-    - `ivgs-api/tests/test_wp63_storyboard_prompt.py:287` arg:get [test] visual_description
-    - `ivgs-api/tests/test_wpivgs10_completeness.py:45` arg:get [test] narration_text
-    - `ivgs-api/tests/test_wpivgs10_completeness.py:46` arg:get [test] visual_description
-    - `ivgs-api/tests/test_wpivgs12f_designed_assessments.py:402` arg:get [test] narration_text
-    - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:523` arg:get [test] provenance
-    - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:531` arg:get [test] narration_text
-    - `ivgs-api/tests/test_wpivgs12h_two_call.py:437` arg:get [test] narration_text
-    - `ivgs-api/tests/test_wpivgs12h_two_call.py:438` arg:get [test] narration_text
-    - `ivgs-workers/design_core/assessment_call.py:446` arg:get provenance
-    - `ivgs-workers/design_core/contract.py:1584` arg:get narration_text
-    - `ivgs-workers/design_core/contract.py:1606` arg:get narration_text
-    - `ivgs-workers/design_core/contract.py:1894` arg:get provenance
-    - `ivgs-workers/services/manifest_builder.py:199` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:297` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:298` arg:get visual_description
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2549` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2724` arg:get narration_text
-    - `ivgs-workers/tasks/stage2_storyboard.py:243` arg:get narration_text
-    - `ivgs-workers/tasks/stage2_storyboard.py:250` arg:get visual_description
-    - `ivgs-workers/temporal_pipeline/conformance.py:217` arg:get narration_text
-    - `ivgs-workers/temporal_pipeline/conformance.py:218` arg:get visual_description
-    - `shared/design/equations.py:244` arg:field narration_text
 - **vocab:required_node_types** — `ivgs-workers/clients/animatediff_client.py:136` — 0 consumer(s)
 - **vocab:required_variables** — `ivgs-api/app/scripts/wp64_publish_adaptation_prompt.py:104` — 20 consumer(s)
     - `ivgs-api/app/schemas/storyboard.py:211` arg:field_validator target_media_type
-    - `ivgs-api/app/services/design_review.py:341` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:689` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:784` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:339` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:674` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:769` arg:_scene_field narration_text
     - `ivgs-api/app/services/storyboard_completeness.py:577` arg:getattr narration_text
     - `ivgs-api/app/services/storyboard_completeness.py:602` arg:getattr narration_text
     - `ivgs-api/tests/test_wpivgs10_completeness.py:45` arg:get [test] narration_text
@@ -9361,12 +9264,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:531` arg:get [test] narration_text
     - `ivgs-api/tests/test_wpivgs12h_two_call.py:437` arg:get [test] narration_text
     - `ivgs-api/tests/test_wpivgs12h_two_call.py:438` arg:get [test] narration_text
-    - `ivgs-workers/design_core/contract.py:1584` arg:get narration_text
-    - `ivgs-workers/design_core/contract.py:1606` arg:get narration_text
+    - `ivgs-workers/design_core/contract.py:1080` arg:get narration_text
+    - `ivgs-workers/design_core/contract.py:1102` arg:get narration_text
     - `ivgs-workers/services/manifest_builder.py:199` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:297` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2549` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2724` arg:get narration_text
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:296` arg:get narration_text
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2339` arg:get narration_text
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2514` arg:get narration_text
     - `ivgs-workers/tasks/stage2_storyboard.py:243` arg:get narration_text
     - `ivgs-workers/temporal_pipeline/conformance.py:217` arg:get narration_text
     - `shared/design/equations.py:244` arg:field narration_text
@@ -9407,46 +9310,42 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/services/safety_classifier.py:252` assign-local:decision safe
     - `ivgs-workers/services/safety_classifier.py:254` assign-local:decision unsafe
     - `ivgs-workers/services/safety_classifier.py:256` assign-local:decision review_required
-- **vocab:scene_design_fields** — `ivgs-api/app/services/design_brief_service.py:45` — 49 consumer(s)
-    - `ivgs-api/app/api/v1/design_brief.py:230` arg:getattr narration_spec
-    - `ivgs-api/app/services/design_brief_service.py:224` arg:get bloom_level
-    - `ivgs-api/app/services/design_review.py:335` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:336` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:337` arg:_scene_field scene_origin
-    - `ivgs-api/app/services/design_review.py:338` arg:_scene_field source_refs
-    - `ivgs-api/app/services/design_review.py:452` arg:_scene_field rewrite_of
-    - `ivgs-api/app/services/design_review.py:468` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:480` arg:get bloom_level
-    - `ivgs-api/app/services/design_review.py:505` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:506` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:578` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:580` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:582` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:583` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:692` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:700` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:703` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:707` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:789` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:801` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:802` arg:_scene_field instructional_event
-    - `ivgs-api/app/services/design_review.py:919` arg:_scene_field serves_outcomes
-    - `ivgs-api/app/services/design_review.py:1003` arg:_scene_field narration_spec
-    - `ivgs-api/app/services/design_review.py:1069` arg:_scene_field shot_spec
-    - `ivgs-api/app/services/design_review.py:1120` arg:_scene_field source_refs
-    - `ivgs-api/app/services/design_review.py:1206` arg:_scene_field source_refs
+- **vocab:scene_design_fields** — `ivgs-api/app/services/design_brief_service.py:45` — 45 consumer(s)
+    - `ivgs-api/app/services/design_brief_service.py:213` arg:get bloom_level
+    - `ivgs-api/app/services/design_review.py:333` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:334` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:335` arg:_scene_field scene_origin
+    - `ivgs-api/app/services/design_review.py:336` arg:_scene_field source_refs
+    - `ivgs-api/app/services/design_review.py:450` arg:_scene_field rewrite_of
+    - `ivgs-api/app/services/design_review.py:466` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:478` arg:get bloom_level
+    - `ivgs-api/app/services/design_review.py:503` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:504` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:576` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:578` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:580` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:581` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:677` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:685` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:688` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:692` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:774` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:786` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:787` arg:_scene_field instructional_event
+    - `ivgs-api/app/services/design_review.py:904` arg:_scene_field serves_outcomes
+    - `ivgs-api/app/services/design_review.py:969` arg:_scene_field source_refs
+    - `ivgs-api/app/services/design_review.py:1055` arg:_scene_field source_refs
     - `ivgs-api/tests/test_wpivgs12f_designed_assessments.py:530` arg:hasattr [test] designed_rationale
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:403` arg:get [test] designed_rationale
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:528` arg:get [test] bloom_level
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:530` arg:get [test] source_refs
-    - `ivgs-workers/design_core/contract.py:1740` arg:pop shot_spec
-    - `ivgs-workers/design_core/contract.py:1867` arg:get serves_outcomes
-    - `ivgs-workers/design_core/contract.py:1898` arg:get serves_outcomes
-    - `ivgs-workers/design_core/contract.py:1899` arg:get instructional_event
-    - `ivgs-workers/design_core/contract.py:1900` arg:get bloom_level
-    - `ivgs-workers/design_core/contract.py:1901` arg:get signal_spec
-    - `ivgs-workers/design_core/contract.py:1919` arg:get source_refs
-    - `ivgs-workers/design_core/contract.py:1922` arg:get rewrite_of
+    - `ivgs-workers/design_core/contract.py:1203` arg:get serves_outcomes
+    - `ivgs-workers/design_core/contract.py:1234` arg:get serves_outcomes
+    - `ivgs-workers/design_core/contract.py:1235` arg:get instructional_event
+    - `ivgs-workers/design_core/contract.py:1236` arg:get bloom_level
+    - `ivgs-workers/design_core/contract.py:1237` arg:get signal_spec
+    - `ivgs-workers/design_core/contract.py:1245` arg:get source_refs
+    - `ivgs-workers/design_core/contract.py:1248` arg:get rewrite_of
     - `ivgs-workers/design_core/headers.py:146` arg:get serves_outcomes
     - `ivgs-workers/design_core/headers.py:157` arg:get instructional_event
     - `ivgs-workers/design_core/headers.py:159` arg:get serves_outcomes
@@ -9463,12 +9362,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp27_manifest_layers.py:167` arg:_Asset [test] reference_clip
     - `ivgs-workers/tasks/animation_generation_task.py:389` arg:setdefault prompt
     - `shared/models/asset.py:59` arg:PG_ENUM reference_clip
-- **vocab:scene_origin** — `shared/models/enums.py:369` — 76 consumer(s)
-    - `ivgs-api/app/api/v1/design_brief.py:231` read:origin sourced
-    - `ivgs-api/app/services/design_brief_service.py:336` read:origin sourced
-    - `ivgs-api/app/services/design_brief_service.py:339` read:origin designed
-    - `ivgs-api/app/services/design_review.py:384` read:origin sourced
-    - `ivgs-api/app/services/design_review.py:1004` read:origin sourced
+- **vocab:scene_origin** — `shared/models/enums.py:369` — 64 consumer(s)
+    - `ivgs-api/app/services/design_brief_service.py:325` read:origin sourced
+    - `ivgs-api/app/services/design_brief_service.py:328` read:origin designed
+    - `ivgs-api/app/services/design_review.py:382` read:origin sourced
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:118` write:scene_origin [test] designed
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:201` write:scene_origin [test] sourced
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:214` write:scene_origin [test] sourced
@@ -9525,21 +9422,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:523` write:scene_origin [test] sourced
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:581` write:scene_origin [test] sourced
     - `ivgs-api/tests/test_wpivgs12i3_rct_exits.py:602` write:scene_origin [test] sourced
-    - `ivgs-workers/design_core/contract.py:1744` read:origin sourced
-    - `ivgs-workers/design_core/contract.py:1750` write:origin sourced
-    - `ivgs-workers/design_core/contract.py:1762` read:origin designed
-    - `ivgs-workers/design_core/contract.py:1765` write:origin designed
-    - `ivgs-workers/design_core/contract.py:1913` read:origin designed
-    - `ivgs-workers/design_core/contract.py:1914` write:scene_origin designed
-    - `ivgs-workers/design_core/contract.py:1918` read:origin sourced
-    - `ivgs-workers/design_core/contract.py:1920` write:scene_origin sourced
+    - `ivgs-workers/design_core/contract.py:1239` read:origin designed
+    - `ivgs-workers/design_core/contract.py:1240` write:scene_origin designed
+    - `ivgs-workers/design_core/contract.py:1244` read:origin sourced
+    - `ivgs-workers/design_core/contract.py:1246` write:scene_origin sourced
     - `ivgs-workers/tests/test_wpivgs12_design_core.py:142` write:origin [test] sourced
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:215` write:origin [test] sourced
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:229` write:origin [test] designed
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:256` read:origin [test] sourced
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:268` write:origin [test] designed
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:306` read:scene_origin [test] sourced
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:341` write:origin [test] designed
 - **vocab:scene_status** — `ivgs-frontend/src/types/storyboard.ts:16` — 68 consumer(s)
     - `ivgs-api/app/models/project.py:33` arg:PG_ENUM COMPLETE
     - `ivgs-api/app/models/project.py:33` arg:PG_ENUM ERROR
@@ -9609,7 +9496,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `scripts/wal_archive.sh:195` arg:- ERROR
     - `shared/models/enums.py:37` assign-local:COMPLETE COMPLETE
     - `shared/models/enums.py:39` assign-local:ERROR ERROR
-- **vocab:scene_types** — `ivgs-api/app/scripts/seed_fallback_policies.py:35` — 16 consumer(s)
+- **vocab:scene_types** — `ivgs-api/app/scripts/seed_fallback_policies.py:35` — 15 consumer(s)
     - `ivgs-api/app/api/ad01_ingest.py:47` write:talking_head talking_head
     - `ivgs-api/app/api/v1/manifests.py:434` write:talking_head talking_head
     - `ivgs-api/tests/test_provider_factory.py:76` arg:get_binding [test] talking_head
@@ -9624,9 +9511,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_provider_factory.py:212` arg:get_binding [test] talking_head
     - `ivgs-api/tests/test_wp27_manifest_layers.py:32` write:talking_head [test] talking_head
     - `ivgs-workers/tasks/talking_head_task.py:463` arg:get_binding talking_head
-    - `shared/design/shot_library.py:335` arg:ShotKind title_card
     - `shared/models/asset.py:59` arg:PG_ENUM talking_head
-- **vocab:selection_provenance** — `ivgs-frontend/src/types/models.ts:310` — 21 consumer(s)
+- **vocab:selection_provenance** — `ivgs-frontend/src/types/models.ts:310` — 20 consumer(s)
     - `ivgs-api/tests/test_wp66_selection.py:318` read:provenance [test] default
     - `ivgs-api/tests/test_wp66_selection.py:340` read:provenance [test] selection
     - `ivgs-api/tests/test_wp66_selection.py:353` read:provenance [test] preset
@@ -9638,16 +9524,15 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/celery_app.py:75` arg:Exchange default
     - `ivgs-workers/celery_app.py:80` arg:Queue default
     - `ivgs-workers/tasks/pipeline_orchestrator.py:418` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:367` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:631` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1194` arg:get default
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2313` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:366` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:587` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1150` arg:get default
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2103` arg:get default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:202` arg:DagNode [test] default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:203` arg:DagNode [test] default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:208` arg:DagNode [test] default
     - `ivgs-workers/tests/temporal/test_wp41_dag.py:213` arg:DagNode [test] default
     - `scripts/basebackup.sh:438` arg:- none
-    - `shared/design/question_catalog.py:452` arg:Option none
 - **vocab:selection_source** — `ivgs-api/migrations/versions/0026_ad01_model_store.py:159` — 12 consumer(s)
     - `ivgs-api/app/services/model_selection.py:211` write:selected_by auto
     - `ivgs-api/app/services/model_selection.py:233` write:selected_by auto
@@ -9731,7 +9616,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/services/safety_classifier.py:149` arg:rstrip /
     - `ivgs-workers/tasks/periodic_tasks.py:531` arg:rstrip /
     - `ivgs-workers/tasks/periodic_tasks.py:993` arg:rstrip /
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:715` arg:rstrip /
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:671` arg:rstrip /
     - `ivgs-workers/tasks/talking_head_task.py:844` arg:split /
     - `ivgs-workers/tests/test_wp63_failure_attribution.py:55` arg:rstrip [test] /
     - `ivgs-workers/utils/gpu_utils.py:300` arg:rstrip /
@@ -9774,11 +9659,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wp62_progress.py:216` arg:_checkpoint [test] transcript_refinement
     - `ivgs-api/tests/test_wp62_progress.py:299` arg:_job [test] transcript_refinement
     - `ivgs-api/tests/test_wp62_progress.py:300` arg:_checkpoint [test] transcript_refinement
-    - `ivgs-workers/design_core/assessment_call.py:344` arg:get_vllm_config_for_stage storyboard_generation
-    - `ivgs-workers/tasks/stage1_transcript.py:303` arg:_select_prompt_text transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:341` arg:get_vllm_config_for_stage transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:534` arg:get_binding transcript_refinement
-    - `ivgs-workers/tasks/stage1_transcript.py:733` arg:get_retry_config_for_stage transcript_refinement
+    - `ivgs-workers/design_core/assessment_call.py:294` arg:get_vllm_config_for_stage storyboard_generation
+    - `ivgs-workers/tasks/stage1_transcript.py:302` arg:_select_prompt_text transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:325` arg:get_vllm_config_for_stage transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:504` arg:get_binding transcript_refinement
+    - `ivgs-workers/tasks/stage1_transcript.py:703` arg:get_retry_config_for_stage transcript_refinement
     - `ivgs-workers/tasks/stage2_storyboard.py:187` arg:_select_prompt_text storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:619` arg:get_binding storyboard_generation
     - `ivgs-workers/tasks/stage2_storyboard.py:681` arg:get_vllm_config_for_stage storyboard_generation
@@ -9808,7 +9693,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wp_ivgs_0_prompt_type.py:71` arg:_select_prompt_text [test] transcript_refinement
     - `ivgs-workers/tests/test_wp_ivgs_0_tier.py:79` arg:resolve_text_llm_binding [test] transcript_refinement
     - `shared/models/asset.py:59` arg:PG_ENUM final_render
-- **vocab:stage_status** — `ivgs-workers/models/task_result.py:68` — 328 consumer(s)
+- **vocab:stage_status** — `ivgs-workers/models/task_result.py:68` — 327 consumer(s)
     - `ivgs-api/app/core/node_health.py:152` read:status success
     - `ivgs-api/app/models/backup_record.py:41` arg:PG_ENUM failed
     - `ivgs-api/app/models/checkpoint.py:46` arg:PG_ENUM failed
@@ -9901,7 +9786,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:62` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:80` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:133` arg:setToastType success
-    - `ivgs-frontend/src/app/projects/new/page.tsx:296` arg:setToastType success
+    - `ivgs-frontend/src/app/projects/new/page.tsx:269` arg:setToastType success
     - `ivgs-frontend/src/components/PipelineTracker.tsx:73` read:status failed
     - `ivgs-frontend/src/components/PipelineTracker.tsx:201` read:status failed
     - `ivgs-frontend/src/components/project/ProjectShell.tsx:117` read:status failed
@@ -9952,20 +9837,19 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:160` write:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:235` read:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:499` arg:update_job_status success
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:577` arg:update_job_status success
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:533` arg:update_job_status success
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
     - `ivgs-workers/tasks/stage3_images.py:151` assign-local:status success
     - `ivgs-workers/tasks/stage3_images.py:162` assign-local:status success
@@ -10137,7 +10021,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `tests_system/e2e/test_project_lifecycle.py:59` read:status [test] failed
     - `tests_system/integration/test_pipeline_integration.py:132` read:status [test] failed
     - `tests_system/test_alert_rules_have_metrics.py:163` read:status [test] success
-- **vocab:stage_type** — `ivgs-workers/services/retry_engine.py:47` — 64 consumer(s)
+- **vocab:stage_type** — `ivgs-workers/services/retry_engine.py:47` — 63 consumer(s)
     - `ivgs-api/app/api/ad01_ingest.py:47` write:talking_head talking_head
     - `ivgs-api/app/api/ad01_ingest.py:48` write:composition composition
     - `ivgs-api/app/api/v1/manifests.py:434` write:talking_head talking_head
@@ -10182,7 +10066,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/services/retry_engine.py:109` write:stage_type tts
     - `ivgs-workers/services/retry_engine.py:115` write:stage_type talking_head
     - `ivgs-workers/services/retry_engine.py:121` write:stage_type composition
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:808` arg:get image
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:764` arg:get image
     - `ivgs-workers/tasks/talking_head_task.py:463` arg:get_binding talking_head
     - `ivgs-workers/tests/test_retention.py:204` arg:get_policy_for_asset_type [test] image
     - `ivgs-workers/tests/test_retention.py:207` arg:get_policy_for_asset_type [test] video
@@ -10197,7 +10081,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_wpivgs04_tts_runtime_builder.py:61` arg:_binding [test] tts
     - `ivgs-workers/tests/test_wpivgs04_tts_runtime_builder.py:71` arg:_binding [test] tts
     - `ivgs-workers/tests/test_wpivgs04_tts_runtime_builder.py:81` arg:_binding [test] tts
-    - `shared/design/question_catalog.py:472` arg:Option image
     - `shared/models/asset.py:59` arg:PG_ENUM image
     - `shared/models/asset.py:59` arg:PG_ENUM talking_head
     - `shared/models/asset.py:59` arg:PG_ENUM video
@@ -10220,7 +10103,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:69` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:87` arg:setToastType error
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:140` arg:setToastType error
-    - `ivgs-frontend/src/app/projects/new/page.tsx:310` arg:setToastType error
+    - `ivgs-frontend/src/app/projects/new/page.tsx:283` arg:setToastType error
     - `ivgs-workers/clients/cogvideox_client.py:185` arg:get error
     - `ivgs-workers/clients/latentsync_client.py:415` arg:get error
     - `ivgs-workers/clients/latentsync_client.py:421` arg:get progress
@@ -10274,8 +10157,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/services/asset_service.py:302` read:storage_tier deleted
     - `ivgs-api/app/services/library_service.py:360` read:storage_tier deleted
     - `ivgs-api/app/services/library_service.py:366` write:storage_tier hot
-    - `ivgs-api/app/services/project_service.py:890` read:storage_tier deleted
-    - `ivgs-api/app/services/project_service.py:910` read:storage_tier deleted
+    - `ivgs-api/app/services/project_service.py:877` read:storage_tier deleted
+    - `ivgs-api/app/services/project_service.py:897` read:storage_tier deleted
     - `ivgs-api/app/services/retention_service.py:210` write:current_tier hot
     - `ivgs-api/app/services/retention_service.py:210` write:next_tier warm
     - `ivgs-api/app/services/retention_service.py:240` read:storage_tier deleted
@@ -10318,7 +10201,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/assets/page.tsx:276` arg:setViewMode grid
     - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:557` arg:setViewMode grid
     - `ivgs-frontend/src/app/projects/[id]/storyboard/page.tsx:581` arg:setViewMode timeline
-- **vocab:success_status** — `scripts/swallow_detector.py:91` — 48 consumer(s)
+- **vocab:success_status** — `scripts/swallow_detector.py:91` — 47 consumer(s)
     - `ivgs-api/app/models/backup_record.py:41` arg:PG_ENUM completed
     - `ivgs-api/app/models/backup_record.py:41` arg:PG_ENUM verified
     - `ivgs-api/app/models/checkpoint.py:46` arg:PG_ENUM complete
@@ -10347,15 +10230,14 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/app/projects/[id]/talking-head/page.tsx:62` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:80` arg:setToastType success
     - `ivgs-frontend/src/app/projects/[id]/transcript/page.tsx:133` arg:setToastType success
-    - `ivgs-frontend/src/app/projects/new/page.tsx:296` arg:setToastType success
+    - `ivgs-frontend/src/app/projects/new/page.tsx:269` arg:setToastType success
     - `ivgs-frontend/src/components/project/DeleteProjectDialog.tsx:135` arg:setStage done
     - `ivgs-workers/clients/ollama_client.py:86` arg:get done
     - `ivgs-workers/clients/ollama_client.py:118` arg:get done
     - `ivgs-workers/clients/wan_animate_client.py:447` arg:get completed
     - `ivgs-workers/servers/cogvideox/server.py:56` assign-local:completed completed
     - `ivgs-workers/servers/common/jobs.py:36` assign-local:completed completed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:499` arg:update_job_status success
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:577` arg:update_job_status success
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:533` arg:update_job_status success
     - `ivgs-workers/tasks/stage8_final_render.py:560` arg:_update_segment_status completed
     - `ivgs-workers/tasks/stage8_final_render.py:738` arg:update_job_status completed
     - `ivgs-workers/temporal_pipeline/activities.py:217` arg:record_body complete
@@ -10369,8 +10251,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `scripts/verify_backup.sh:496` arg:- passed
 - **vocab:supported_languages** — `ivgs-api/app/schemas/language_variant.py:11` — 25 consumer(s)
     - `ivgs-api/app/services/checkpoint_service.py:342` arg:getattr en-US
-    - `ivgs-api/app/services/project_service.py:495` arg:getattr en-US
-    - `ivgs-api/app/services/project_service.py:779` arg:getattr en-US
+    - `ivgs-api/app/services/project_service.py:482` arg:getattr en-US
+    - `ivgs-api/app/services/project_service.py:766` arg:getattr en-US
     - `ivgs-api/app/services/regeneration.py:117` arg:getattr en-US
     - `ivgs-api/tests/test_service_language.py:27` arg:create_variant [test] fr-FR
     - `ivgs-api/tests/test_service_language.py:28` arg:create_variant [test] de-DE
@@ -10383,11 +10265,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_service_language.py:72` arg:create_variant [test] en-US
     - `ivgs-api/tests/test_service_language.py:80` arg:create_variant [test] fr-FR
     - `ivgs-frontend/src/app/admin/backups/page.tsx:85` arg:toLocaleString en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:898` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1007` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1425` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1763` arg:get en-US
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2552` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:854` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:963` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1224` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1553` arg:get en-US
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2342` arg:get en-US
     - `ivgs-workers/tasks/stage2_storyboard.py:137` arg:get en-US
     - `ivgs-workers/tests/test_composition.py:325` arg:build_manifest [test] en-US
     - `ivgs-workers/tests/test_composition.py:357` arg:build_manifest [test] en-US
@@ -10399,14 +10281,14 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **vocab:template_variable_category** — `ivgs-frontend/src/types/prompts.ts:39` — 0 consumer(s)
 - **vocab:template_variables** — `ivgs-api/app/services/prompt_service.py:32` — 51 consumer(s)
     - `ivgs-api/app/services/checkpoint_service.py:341` arg:getattr target_audience
-    - `ivgs-api/app/services/design_review.py:341` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:689` arg:_scene_field narration_text
-    - `ivgs-api/app/services/design_review.py:784` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:339` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:674` arg:_scene_field narration_text
+    - `ivgs-api/app/services/design_review.py:769` arg:_scene_field narration_text
     - `ivgs-api/app/services/language_service.py:331` arg:getattr target_audience
     - `ivgs-api/app/services/preset_service.py:202` arg:get target_audience
     - `ivgs-api/app/services/preset_service.py:204` arg:append target_audience
-    - `ivgs-api/app/services/project_service.py:494` arg:getattr target_audience
-    - `ivgs-api/app/services/project_service.py:778` arg:getattr target_audience
+    - `ivgs-api/app/services/project_service.py:481` arg:getattr target_audience
+    - `ivgs-api/app/services/project_service.py:765` arg:getattr target_audience
     - `ivgs-api/app/services/regeneration.py:116` arg:getattr target_audience
     - `ivgs-api/app/services/storyboard_completeness.py:577` arg:getattr narration_text
     - `ivgs-api/app/services/storyboard_completeness.py:586` arg:getattr visual_description
@@ -10420,23 +10302,23 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/tests/test_wpivgs12g_evidence_layer.py:531` arg:get [test] narration_text
     - `ivgs-api/tests/test_wpivgs12h_two_call.py:437` arg:get [test] narration_text
     - `ivgs-api/tests/test_wpivgs12h_two_call.py:438` arg:get [test] narration_text
-    - `ivgs-workers/design_core/contract.py:1584` arg:get narration_text
-    - `ivgs-workers/design_core/contract.py:1606` arg:get narration_text
+    - `ivgs-workers/design_core/contract.py:1080` arg:get narration_text
+    - `ivgs-workers/design_core/contract.py:1102` arg:get narration_text
     - `ivgs-workers/services/manifest_builder.py:176` arg:get scene_title
     - `ivgs-workers/services/manifest_builder.py:181` arg:get scene_title
     - `ivgs-workers/services/manifest_builder.py:198` arg:get scene_title
     - `ivgs-workers/services/manifest_builder.py:199` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:297` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:298` arg:get visual_description
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1430` arg:get project_description
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1431` arg:get target_audience
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2549` arg:get narration_text
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2551` arg:get scene_title
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2724` arg:get narration_text
-    - `ivgs-workers/tasks/stage1_transcript.py:157` arg:get project_description
-    - `ivgs-workers/tasks/stage1_transcript.py:158` arg:get target_audience
-    - `ivgs-workers/tasks/stage1_transcript.py:349` arg:get project_description
-    - `ivgs-workers/tasks/stage1_transcript.py:350` arg:get target_audience
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:296` arg:get narration_text
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:297` arg:get visual_description
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1229` arg:get project_description
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1230` arg:get target_audience
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2339` arg:get narration_text
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2341` arg:get scene_title
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2514` arg:get narration_text
+    - `ivgs-workers/tasks/stage1_transcript.py:156` arg:get project_description
+    - `ivgs-workers/tasks/stage1_transcript.py:157` arg:get target_audience
+    - `ivgs-workers/tasks/stage1_transcript.py:333` arg:get project_description
+    - `ivgs-workers/tasks/stage1_transcript.py:334` arg:get target_audience
     - `ivgs-workers/tasks/stage2_storyboard.py:130` arg:get project_description
     - `ivgs-workers/tasks/stage2_storyboard.py:131` arg:get target_audience
     - `ivgs-workers/tasks/stage2_storyboard.py:243` arg:get narration_text
@@ -10641,18 +10523,18 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tasks/pipeline_orchestrator.py:160` write:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:235` read:status failed
     - `ivgs-workers/tasks/pipeline_orchestrator.py:240` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:314` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:322` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:356` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:360` write:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:431` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:433` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:558` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1077` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1110` read:status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2281` arg:update_job_status failed
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2327` arg:update_job_status failed
-    - `ivgs-workers/tasks/stage1_transcript.py:731` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:313` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:321` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:355` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:359` write:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:430` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:432` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:514` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1033` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1066` read:status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2071` arg:update_job_status failed
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2117` arg:update_job_status failed
+    - `ivgs-workers/tasks/stage1_transcript.py:701` read:status failed
     - `ivgs-workers/tasks/stage2_storyboard.py:819` read:status failed
     - `ivgs-workers/tasks/stage3_images.py:476` write:status failed
     - `ivgs-workers/tasks/stage3_images.py:596` write:status failed
@@ -10821,7 +10703,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | env IVGS_KOKORO_URL (ivgs-infra/docker-compose.node04.yml:145) | - | declared in 1 place(s) but read nowhere (dead config) |  |
 | orphan | env IVGS_LATENTSYNC_TAG (declared nowhere) | ivgs-infra/docker-compose.node04.yml:318 | read in production with silent default(s) ['v5.2.7-h0'] but declared in no compose/.env.example/configs file |  |
 | orphan | env IVGS_MBCP_INGEST_TOKEN (declared nowhere) | shared/config.py:54 | read in production with silent default(s) ["'dev-mbcp-ingest-token'"] but declared in no compose/.env.example/configs file |  |
-| orphan | env IVGS_MEDIA_JOIN_TIMEOUT_SECONDS (declared nowhere) | ivgs-workers/tasks/pipeline_orchestrator_v2.py:2193 | read in production with silent default(s) ['str(MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS)'] but declared in no compose/.env.example/configs file |  |
+| orphan | env IVGS_MEDIA_JOIN_TIMEOUT_SECONDS (declared nowhere) | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1983 | read in production with silent default(s) ['str(MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS)'] but declared in no compose/.env.example/configs file |  |
 | orphan | env IVGS_MOTION_GRAPHICS_URL (declared nowhere) | ivgs-infra/docker-compose.node01.yml:101 | read in production with silent default(s) ['None'] but declared in no compose/.env.example/configs file |  |
 | orphan | env IVGS_NODE_CONFIG_APPLY_REQUEST_PATH (declared nowhere) | ivgs-api/app/core/node_registry.py:190 | read in production with silent default(s) ['DEFAULT_APPLY_REQUEST_PATH'] but declared in no compose/.env.example/configs file |  |
 | orphan | env IVGS_NODE_CONFIG_PENDING_PATH (declared nowhere) | ivgs-api/app/core/node_registry.py:64 | read in production with silent default(s) ['DEFAULT_PENDING_PATH'] but declared in no compose/.env.example/configs file |  |
@@ -11549,7 +11431,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **env:IVGS_MBCP_INGEST_TOKEN** — `-:0` — 1 consumer(s)
     - `shared/config.py:54` read:BaseSettings Settings default='dev-mbcp-ingest-token'
 - **env:IVGS_MEDIA_JOIN_TIMEOUT_SECONDS** — `-:0` — 1 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2193` read:os.environ default=str(MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1983` read:os.environ default=str(MEDIA_JOIN_DEFAULT_TIMEOUT_SECONDS)
 - **env:IVGS_MOTION_GRAPHICS_URL** — `-:0` — 1 consumer(s)
     - `ivgs-infra/docker-compose.node01.yml:101` read:compose-interpolation default=None
 - **env:IVGS_NODE_CONFIG_APPLY_REQUEST_PATH** — `-:0` — 1 consumer(s)
@@ -12911,7 +12793,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | DLQService.escalate_message (ivgs-workers/services/dlq_service.py:415) | ivgs-workers/tests/test_dlq_service.py:270 | called only from tests (1 test reference(s), 0 production references) |  |
 | orphan | DLQService.get_statistics (ivgs-workers/services/dlq_service.py:543) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | DLQService.send_to_dlq (ivgs-workers/services/dlq_service.py:192) | ivgs-workers/tests/test_dlq_service.py:121; ivgs-workers/tests/test_dlq_service.py:142; ivgs-workers/tests/test_dlq_service.py:97 | called only from tests (3 test reference(s), 0 production references) |  |
-| orphan | DesignBriefService.list_briefs (ivgs-api/app/services/design_brief_service.py:84) | ivgs-api/tests/test_wpivgs12_design_contract.py:340; ivgs-api/tests/test_wpivgs12_design_contract.py:355 | called only from tests (2 test reference(s), 0 production references) |  |
+| orphan | DesignBriefService.list_briefs (ivgs-api/app/services/design_brief_service.py:78) | ivgs-api/tests/test_wpivgs12_design_contract.py:340; ivgs-api/tests/test_wpivgs12_design_contract.py:355 | called only from tests (2 test reference(s), 0 production references) |  |
 | orphan | FFmpegClient.extract_audio (ivgs-workers/clients/ffmpeg_client.py:923) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | FFmpegClient.generate_silence (ivgs-workers/clients/ffmpeg_client.py:943) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | FFmpegClient.get_duration (ivgs-workers/clients/ffmpeg_client.py:313) | - | no caller anywhere (0 references outside its own definition) |  |
@@ -12948,6 +12830,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | RemotionClient.render_batch (ivgs-workers/clients/remotion_client.py:522) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | RemotionClient.render_ken_burns (ivgs-workers/clients/remotion_client.py:489) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | RemotionClient.render_title_card (ivgs-workers/clients/remotion_client.py:461) | - | no caller anywhere (0 references outside its own definition) |  |
+| orphan | RetryEngine.evaluate (ivgs-workers/services/retry_engine.py:267) | ivgs-workers/tests/test_retry_engine.py:160; ivgs-workers/tests/test_retry_engine.py:169; ivgs-workers/tests/test_retry_engine.py:177; ivgs-workers/tests/test_retry_engine.py:186 | called only from tests (5 test reference(s), 0 production references) |  |
 | orphan | RetryEngine.get_attempt_history (ivgs-workers/services/retry_engine.py:421) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | RetryEngine.record_attempt (ivgs-workers/services/retry_engine.py:346) | ivgs-workers/tests/test_retry_engine.py:212; ivgs-workers/tests/test_retry_engine.py:231 | called only from tests (2 test reference(s), 0 production references) |  |
 | orphan | SadTalkerClient.provider_name (ivgs-workers/clients/sadtalker_client.py:181) | - | no caller anywhere (0 references outside its own definition) |  |
@@ -12964,7 +12847,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | SchedulerMetrics.set_active_reservations (ivgs-scheduler/metrics.py:170) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | SchedulerMetrics.set_alive_nodes (ivgs-scheduler/metrics.py:182) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | SchedulerMetrics.set_registered_nodes (ivgs-scheduler/metrics.py:178) | - | no caller anywhere (0 references outside its own definition) |  |
-| orphan | ShotKind._article (shared/design/shot_library.py:165) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | StoryboardService.delete_scene (ivgs-api/app/services/storyboard_service.py:270) | ivgs-api/tests/test_service_storyboard.py:77; ivgs-api/tests/test_service_storyboard.py:82 | called only from tests (2 test reference(s), 0 production references) |  |
 | orphan | TemplateRender.digits_at (shared/motion/templates.py:117) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | VideoConverter.extract_frame (ivgs-workers/utils/media_converter.py:445) | - | no caller anywhere (0 references outside its own definition) |  |
@@ -12985,17 +12867,14 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 | orphan | get_timeout (shared/config_loader.py:43) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | highlight_and_hold (shared/motion/templates.py:690) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | init_db (shared/database.py:88) | - | no caller anywhere (0 references outside its own definition) |  |
-| orphan | is_diffusion_legal (shared/design/shot_library.py:478) | ivgs-api/tests/test_wpivgs12j_vocabulary.py:236; ivgs-api/tests/test_wpivgs12j_vocabulary.py:237 | called only from tests (2 test reference(s), 0 production references) |  |
 | orphan | is_near_duplicate (shared/design/duplication.py:200) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | iter_prompt_types (ivgs-workers/utils/prompt_selection.py:86) | - | no caller anywhere (0 references outside its own definition) |  |
-| orphan | legal_media (shared/design/shot_library.py:470) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | lint_scenes (shared/design/equations.py:230) | - | no caller anywhere (0 references outside its own definition) |  |
-| orphan | narratable (shared/design/spans.py:469) | ivgs-api/tests/test_wpivgs12j_vocabulary.py:122; ivgs-api/tests/test_wpivgs12j_vocabulary.py:123; ivgs-api/tests/test_wpivgs12j_vocabulary.py:129; ivgs-workers/tests/test_wpivgs12j_contract8.py:103 | called only from tests (4 test reference(s), 0 production references) |  |
 | orphan | place_value_split (shared/motion/templates.py:300) | - | no caller anywhere (0 references outside its own definition) |  |
 | orphan | redis key gpu:node:{} (ivgs-scheduler/admission_control.py:439) | ivgs-scheduler/admission_control.py:439 | read in production but never written under this pattern |  |
 | orphan | redis key gpu:nodes:all (ivgs-scheduler/admission_control.py:542) | ivgs-scheduler/admission_control.py:542 | read in production but never written under this pattern |  |
 | orphan | redis key ivgs:alerts (ivgs-api/app/api/v1/alerts.py:36) | ivgs-api/app/api/v1/alerts.py:36 | written in production but never read under this pattern |  |
-| orphan | redis key ivgs:media_tasks:{} (ivgs-workers/tasks/pipeline_orchestrator_v2.py:1977) | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1977; ivgs-workers/tasks/pipeline_orchestrator_v2.py:2161 | written in production but never read under this pattern |  |
+| orphan | redis key ivgs:media_tasks:{} (ivgs-workers/tasks/pipeline_orchestrator_v2.py:1767) | ivgs-workers/tasks/pipeline_orchestrator_v2.py:1767; ivgs-workers/tasks/pipeline_orchestrator_v2.py:1951 | written in production but never read under this pattern |  |
 | orphan | redis key job:{}:status (ivgs-api/app/api/v1/ws_logs.py:116) | ivgs-api/app/api/v1/ws_logs.py:116 | read in production but never written under this pattern |  |
 | orphan | redis key sched:node_reservations:{} (ivgs-scheduler/gpu_registry.py:280) | ivgs-scheduler/gpu_registry.py:280 | read in production but never written under this pattern |  |
 | orphan | redis key sched:reservation:{} (ivgs-api/app/services/project_deletion.py:543) | ivgs-api/app/services/project_deletion.py:543; ivgs-api/app/services/project_deletion.py:556 | read in production but never written under this pattern |  |
@@ -13028,7 +12907,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 
 ### Rows
 
-- **def:ivgs-api/app/services/design_brief_service.py:DesignBriefService.list_briefs** — `ivgs-api/app/services/design_brief_service.py:84` — 2 consumer(s)
+- **def:ivgs-api/app/services/design_brief_service.py:DesignBriefService.list_briefs** — `ivgs-api/app/services/design_brief_service.py:78` — 2 consumer(s)
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:340` test-ref [test] TestTheBriefLineage.test_a_second_design_supersedes_the_first_and_both_survive
     - `ivgs-api/tests/test_wpivgs12_design_contract.py:355` test-ref [test] TestTheBriefLineage.test_a_stage1_intent_post_does_not_supersede_a_design
 - **def:ivgs-api/app/services/gpu_service.py:GpuService.get_node** — `ivgs-api/app/services/gpu_service.py:441` — 4 consumer(s)
@@ -13151,6 +13030,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-workers/tests/test_quality_gate.py:337` test-ref [test] TestAssetRegistration.test_register_asset_adds_to_pending
 - **def:ivgs-workers/services/quality_validator.py:QualityValidator.validate_asset** — `ivgs-workers/services/quality_validator.py:196` — 1 consumer(s)
     - `ivgs-workers/tests/test_quality_validator.py:443` test-ref [test] TestValidatorIntegration.test_caption_full_validation
+- **def:ivgs-workers/services/retry_engine.py:RetryEngine.evaluate** — `ivgs-workers/services/retry_engine.py:267` — 5 consumer(s)
+    - `ivgs-workers/tests/test_retry_engine.py:160` test-ref [test] TestRetryEvaluation.test_should_retry_on_first_attempt
+    - `ivgs-workers/tests/test_retry_engine.py:169` test-ref [test] TestRetryEvaluation.test_llm_exhaustion_after_4_retries
+    - `ivgs-workers/tests/test_retry_engine.py:177` test-ref [test] TestRetryEvaluation.test_image_exhaustion_triggers_fallback
+    - `ivgs-workers/tests/test_retry_engine.py:186` test-ref [test] TestRetryEvaluation.test_config_errors_skip_retry
+    - `ivgs-workers/tests/test_retry_engine.py:194` test-ref [test] TestRetryEvaluation.test_retry_decision_includes_correct_metadata
 - **def:ivgs-workers/services/retry_engine.py:RetryEngine.get_attempt_history** — `ivgs-workers/services/retry_engine.py:421` — 0 consumer(s)
 - **def:ivgs-workers/services/retry_engine.py:RetryEngine.record_attempt** — `ivgs-workers/services/retry_engine.py:346` — 2 consumer(s)
     - `ivgs-workers/tests/test_retry_engine.py:212` test-ref [test] TestAttemptRecording.test_record_attempt_creates_entry
@@ -13172,16 +13057,6 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **def:shared/database.py:init_db** — `shared/database.py:88` — 0 consumer(s)
 - **def:shared/design/duplication.py:is_near_duplicate** — `shared/design/duplication.py:200` — 0 consumer(s)
 - **def:shared/design/equations.py:lint_scenes** — `shared/design/equations.py:230` — 0 consumer(s)
-- **def:shared/design/shot_library.py:ShotKind._article** — `shared/design/shot_library.py:165` — 0 consumer(s)
-- **def:shared/design/shot_library.py:is_diffusion_legal** — `shared/design/shot_library.py:478` — 2 consumer(s)
-    - `ivgs-api/tests/test_wpivgs12j_vocabulary.py:236` test-ref [test] TestShotLibraryLaw.test_media_filtering_is_real
-    - `ivgs-api/tests/test_wpivgs12j_vocabulary.py:237` test-ref [test] TestShotLibraryLaw.test_media_filtering_is_real
-- **def:shared/design/shot_library.py:legal_media** — `shared/design/shot_library.py:470` — 0 consumer(s)
-- **def:shared/design/spans.py:narratable** — `shared/design/spans.py:469` — 4 consumer(s)
-    - `ivgs-api/tests/test_wpivgs12j_vocabulary.py:122` test-ref [test] TestSegmentation.test_headings_are_not_narratable_but_are_still_spans
-    - `ivgs-api/tests/test_wpivgs12j_vocabulary.py:123` test-ref [test] TestSegmentation.test_headings_are_not_narratable_but_are_still_spans
-    - `ivgs-api/tests/test_wpivgs12j_vocabulary.py:129` test-ref [test] TestSegmentation.test_coverage_is_total_when_every_narratable_span_is_used
-    - `ivgs-workers/tests/test_wpivgs12j_contract8.py:103` test-ref [test] TestTheModelsSchema.test_headings_are_not_in_the_narration_enum_but_are_droppable
 - **def:shared/motion/raster.py:bank_frames** — `shared/motion/raster.py:125` — 0 consumer(s)
 - **def:shared/motion/templates.py:TemplateRender.digits_at** — `shared/motion/templates.py:117` — 0 consumer(s)
 - **def:shared/motion/templates.py:column_addition_carry** — `shared/motion/templates.py:375` — 0 consumer(s)
@@ -13243,25 +13118,25 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-scheduler/admission_control.py:542` read:smembers AdmissionController.cleanup_expired_reservations
 - **redis:ivgs:alerts** — `ivgs-api/app/api/v1/alerts.py:36` — 1 consumer(s)
     - `ivgs-api/app/api/v1/alerts.py:36` write:publish alertmanager_webhook
-- **redis:ivgs:job_context:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1880` — 2 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1880` write:set _store_job_context
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1897` read:get _get_job_context
-- **redis:ivgs:media_failures:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1978` — 6 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1978` write:delete _store_media_task_count
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2050` write:incr _record_media_failure
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2051` write:expire _record_media_failure
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2073` read:get _get_media_failure_count
+- **redis:ivgs:job_context:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1670` — 2 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1670` write:set _store_job_context
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1687` read:get _get_job_context
+- **redis:ivgs:media_failures:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1768` — 6 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1768` write:delete _store_media_task_count
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1840` write:incr _record_media_failure
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1841` write:expire _record_media_failure
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1863` read:get _get_media_failure_count
     - `ivgs-workers/tests/test_wp06_media_join.py:275` write:set [test] TestStoreFailsLoudly.test_store_clears_the_failure_counter
     - `ivgs-workers/tests/test_wp06_media_join.py:277` read:exists [test] TestStoreFailsLoudly.test_store_clears_the_failure_counter
-- **redis:ivgs:media_join_ctx:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2096` — 3 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2096` write:set _store_media_join_context
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2113` read:get _get_media_join_context
+- **redis:ivgs:media_join_ctx:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1886` — 3 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1886` write:set _store_media_join_context
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1903` read:get _get_media_join_context
     - `ivgs-workers/tests/test_wp39_media_join.py:179` read:get [test] TestDispatchLabelsEveryStageDistinctly.test_join_context_records_what_was_dispatched
-- **redis:ivgs:media_join_seen:{}:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1963` — 1 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1963` helper:key-helper _media_join_seen_key
-- **redis:ivgs:media_tasks:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1977` — 16 consumer(s)
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1977` write:set _store_media_task_count
-    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:2161` write:delete _cleanup_media_join_keys
+- **redis:ivgs:media_join_seen:{}:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1753` — 1 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1753` helper:key-helper _media_join_seen_key
+- **redis:ivgs:media_tasks:{}** — `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1767` — 16 consumer(s)
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1767` write:set _store_media_task_count
+    - `ivgs-workers/tasks/pipeline_orchestrator_v2.py:1951` write:delete _cleanup_media_join_keys
     - `ivgs-workers/tests/test_wp06_media_join.py:175` write:decr [test] TestMissingKeyCannotReadAsComplete.test_pre_fix_arithmetic_would_have_read_it_as_complete
     - `ivgs-workers/tests/test_wp06_media_join.py:177` write:delete [test] TestMissingKeyCannotReadAsComplete.test_pre_fix_arithmetic_would_have_read_it_as_complete
     - `ivgs-workers/tests/test_wp06_media_join.py:186` write:delete [test] TestMissingKeyCannotReadAsComplete.test_watchdog_claim_leaves_unknown_not_complete
@@ -13318,7 +13193,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id} keys={}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id} keys={}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id} keys={}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id} keys={}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id} keys={}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id} keys={}
     - `ivgs-scheduler/main.py:777` python-http-call GET /fleet keys={}
     - `ivgs-workers/tasks/periodic_tasks.py:995` python-http-call GET {}/fleet keys={}
@@ -13338,7 +13213,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/library.py:443` python-http-call GET /{preset_id} keys={}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id} keys={}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id} keys={}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id} keys={}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id} keys={}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id} keys={}
     - `ivgs-clip-scorer/app.py:249` python-http-call GET /health keys={}
     - `ivgs-scheduler/main.py:953` python-http-call GET /health keys={}
@@ -13363,7 +13238,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/api/v1/metrics.py:230` python-http-call GET /metrics keys={}
     - `ivgs-api/app/api/v1/model_store.py:113` python-http-call GET /{model_id} keys={}
     - `ivgs-api/app/api/v1/nodes.py:139` python-http-call GET /{node_id} keys={}
-    - `ivgs-api/app/api/v1/projects.py:163` python-http-call GET /{project_id} keys={}
+    - `ivgs-api/app/api/v1/projects.py:162` python-http-call GET /{project_id} keys={}
     - `ivgs-api/app/api/v1/users.py:94` python-http-call GET /{user_id} keys={}
     - `ivgs-scheduler/main.py:982` python-http-call GET /metrics keys={}
     - `tests_system/integration/test_gpu_integration.py:159` python-http-call [test] GET /metrics keys={}
@@ -13534,7 +13409,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 ### Rows
 
 - **ts:ActiveJobInfo** — `ivgs-frontend/src/types/api.ts:296` — 4 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:296` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:296` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:296` field-usage job_type: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:296` field-usage started_at: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:296` field-usage status: 217 reference(s) in src (excluding types/)
@@ -13551,7 +13426,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/library.ts:84` field-usage default_orientation: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage engine_bindings: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:84` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:84` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage is_active: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:84` field-usage owner_scope: 3 reference(s) in src (excluding types/)
@@ -13576,11 +13451,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:385` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage file_size_bytes: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage generation_prompt_id: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:385` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:385` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage language_code: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage mime_type: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage preserve_flag: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:385` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:385` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage reference_count: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage scene_id: 24 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:385` field-usage seaweedfs_fid: 3 reference(s) in src (excluding types/)
@@ -13590,7 +13465,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:385` field-usage superseded_by: 1 reference(s) in src (excluding types/)
 - **ts:AssetSummary** — `ivgs-frontend/src/types/api.ts:352` — 6 consumer(s)
     - `ivgs-frontend/src/types/api.ts:352` field-usage asset_type: 20 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:352` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:352` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:352` field-usage quality_decision: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:352` field-usage quality_score: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:352` field-usage storage_path: 0 reference(s) in src (excluding types/)
@@ -13600,7 +13475,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage backup_type: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage completed_at: 19 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage error_message: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:413` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:413` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage size_bytes: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage started_at: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:413` field-usage status: 217 reference(s) in src (excluding types/)
@@ -13611,7 +13486,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:CapabilityTag** — `ivgs-frontend/src/types/models.ts:44` — 4 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:28` name-link 
     - `ivgs-frontend/src/types/models.ts:44` field-usage dimension: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:44` field-usage value: 256 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:44` field-usage value: 244 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:44` field-usage weight: 3 reference(s) in src (excluding types/)
 - **ts:CheckpointData** — `ivgs-frontend/src/types/monitoring.ts:59` — 8 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:59` field-usage completed_at: 19 reference(s) in src (excluding types/)
@@ -13624,7 +13499,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:59` field-usage status: 217 reference(s) in src (excluding types/)
 - **ts:CheckpointResponse** — `ivgs-frontend/src/types/api.ts:725` — 7 consumer(s)
     - `ivgs-frontend/src/types/api.ts:725` field-usage completed_at: 19 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:725` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:725` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage job_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage stage_index: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:725` field-usage stage_name: 1 reference(s) in src (excluding types/)
@@ -13636,15 +13511,15 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:ClientStatus** — `ivgs-frontend/src/types/models.ts:139` — 7 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:324` name-link 
     - `ivgs-frontend/src/types/models.ts:139` field-usage client_path: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:139` field-usage detail: 57 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:139` field-usage detail: 56 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage family: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:139` field-usage label: 290 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:139` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage requires: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:139` field-usage state: 108 reference(s) in src (excluding types/)
 - **ts:CompositionManifest** — `ivgs-frontend/src/types/monitoring.ts:293` — 9 consumer(s)
-    - `ivgs-frontend/src/types/monitoring.ts:293` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:293` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:293` field-usage locked_at: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:293` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:293` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:293` field-usage rendered_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:293` field-usage scene_count: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:293` field-usage scenes: 32 reference(s) in src (excluding types/)
@@ -13654,7 +13529,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:CompositionManifestResponse** — `ivgs-frontend/src/types/api.ts:663` — 11 consumer(s)
     - `ivgs-frontend/src/types/api.ts:663` field-usage checksum: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage framerate: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:663` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:663` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage job_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage locked_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:663` field-usage manifest_version: 0 reference(s) in src (excluding types/)
@@ -13686,13 +13561,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:157` field-usage category: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:157` field-usage entered_dlq_at: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:157` field-usage error_message: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:157` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:157` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:157` field-usage retry_count: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:157` field-usage task_name: 3 reference(s) in src (excluding types/)
 - **ts:DLQMessageDetail** — `ivgs-frontend/src/types/monitoring.ts:174` — 8 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:174` field-usage category: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:174` field-usage entered_dlq_at: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:174` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:174` field-usage resolution_history: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:174` field-usage retry_count: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:174` field-usage task_arguments: 4 reference(s) in src (excluding types/)
@@ -13703,7 +13578,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:514` field-usage exception_message: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage exception_type: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage failure_category: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:514` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:514` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage original_queue: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage resolution: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:514` field-usage retry_count_exhausted: 0 reference(s) in src (excluding types/)
@@ -13717,14 +13592,14 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:166` field-usage action: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:166` field-usage performed_at: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:166` field-usage performed_by: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:166` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:166` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:166` field-usage result: 9 reference(s) in src (excluding types/)
 - **ts:FetchWeightsResult** — `ivgs-frontend/src/types/models.ts:149` — 7 consumer(s)
     - `ivgs-frontend/src/hooks/useModels.ts:55` fe-call-link POST /api/v1/models/{id}/fetch-weights -> POST /api/v1/models/{model_id}/fetch-weights
     - `ivgs-frontend/src/types/models.ts:149` field-usage accepted: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage message: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage placement: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:149` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:149` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage state: 108 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:149` field-usage status: 217 reference(s) in src (excluding types/)
 - **ts:FlaggedAsset** — `ivgs-frontend/src/types/monitoring.ts:223` — 12 consumer(s)
@@ -13732,10 +13607,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage asset_id: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage asset_type: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage decision: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage decision: 9 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage job_id: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:223` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage project_name: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage quality_score: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:223` field-usage safety_score: 4 reference(s) in src (excluding types/)
@@ -13763,7 +13638,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:545` field-usage gpu_index: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage gpu_model: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage gpu_utilization_pct: 7 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:545` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:545` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage in_scheduler: 7 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage last_heartbeat_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:545` field-usage node_hostname: 7 reference(s) in src (excluding types/)
@@ -13783,7 +13658,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:GpuReservationResponse** — `ivgs-frontend/src/types/api.ts:636` — 8 consumer(s)
     - `ivgs-frontend/src/types/api.ts:636` field-usage expires_at: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage gpu_node_id: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:636` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:636` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage job_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage model_name: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:636` field-usage reserved_at: 0 reference(s) in src (excluding types/)
@@ -13800,12 +13675,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:430` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage error_message: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage failure_category: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage job_type: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage language_code: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage max_retries: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage node_id: 30 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:430` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:430` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage resume_from_stage: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage retry_count: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:430` field-usage started_at: 21 reference(s) in src (excluding types/)
@@ -13815,11 +13690,11 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:696` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage final_render_1080p_id: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage final_render_4k_id: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:696` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:696` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage language_code: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage progress_percent: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage progress_source: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:696` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:696` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage state: 108 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:696` field-usage total_stages: 0 reference(s) in src (excluding types/)
 - **ts:LanguageVariantSummary** — `ivgs-frontend/src/types/api.ts:310` — 2 consumer(s)
@@ -13833,8 +13708,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/library.ts:57` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage file_size_bytes: 13 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:57` field-usage id: 627 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:57` field-usage kind: 26 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:57` field-usage id: 611 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:57` field-usage kind: 23 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage mime_type: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:57` field-usage owner_scope: 3 reference(s) in src (excluding types/)
@@ -13863,7 +13738,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:158` field-usage attested_by: 15 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage checklist: 17 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:158` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:158` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:158` field-usage vetting_reference: 15 reference(s) in src (excluding types/)
 - **ts:ModelApprovePayload** — `ivgs-frontend/src/types/models.ts:229` — 3 consumer(s)
     - `ivgs-frontend/src/types/models.ts:229` field-usage attested_by: 15 reference(s) in src (excluding types/)
@@ -13897,13 +13772,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:133` field-usage vram_mb: 4 reference(s) in src (excluding types/)
 - **ts:ModelSelection** — `ivgs-frontend/src/types/models.ts:279` — 13 consumer(s)
     - `ivgs-frontend/src/types/models.ts:279` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:279` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:279` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_display_name: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_engine: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_id: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_name: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage model_state: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:279` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:279` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage rationale: 12 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage scene_id: 24 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:279` field-usage selected_by: 0 reference(s) in src (excluding types/)
@@ -13925,7 +13800,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:NodeContainersResponse** — `ivgs-frontend/src/types/api.ts:154` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:154` field-usage available: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:154` field-usage containers: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:154` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:154` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:154` field-usage source: 16 reference(s) in src (excluding types/)
 - **ts:NodeLogLine** — `ivgs-frontend/src/types/api.ts:164` — 3 consumer(s)
     - `ivgs-frontend/src/types/api.ts:164` field-usage level: 6 reference(s) in src (excluding types/)
@@ -13936,7 +13811,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:170` field-usage available: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage container: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage lines: 10 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:170` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:170` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:170` field-usage source: 16 reference(s) in src (excluding types/)
 - **ts:NodeStatus** — `ivgs-frontend/src/types/api.ts:98` — 19 consumer(s)
     - `ivgs-frontend/src/types/api.ts:98` field-usage active_jobs: 4 reference(s) in src (excluding types/)
@@ -13961,16 +13836,16 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:NodeTelemetry** — `ivgs-frontend/src/types/api.ts:67` — 4 consumer(s)
     - `ivgs-frontend/src/types/api.ts:67` field-usage as_of: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:67` field-usage available: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:67` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:67` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:67` field-usage source: 16 reference(s) in src (excluding types/)
 - **ts:OrphanAsset** — `ivgs-frontend/src/types/monitoring.ts:385` — 5 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:385` field-usage last_modified: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:385` field-usage path: 33 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:385` field-usage reason: 37 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:385` field-usage path: 31 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:385` field-usage reason: 35 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:385` field-usage seaweedfs_fid: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:385` field-usage size_bytes: 3 reference(s) in src (excluding types/)
 - **ts:PaginatedResponse** — `ivgs-frontend/src/types/api.ts:765` — 6 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:765` field-usage data: 219 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:765` field-usage data: 215 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:765` field-usage has_more: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:765` field-usage page: 33 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:765` field-usage pages: 5 reference(s) in src (excluding types/)
@@ -13981,7 +13856,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage estimated_completion: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage fallback_level: 12 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:70` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:70` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage progress: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage project_name: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:70` field-usage started_at: 21 reference(s) in src (excluding types/)
@@ -13992,21 +13867,21 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:82` field-usage error_message: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:82` field-usage error_stage: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:82` field-usage fallback_level: 12 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:82` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:82` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:82` field-usage status: 217 reference(s) in src (excluding types/)
 - **ts:PlaygroundHistoryEntry** — `ivgs-frontend/src/types/prompts.ts:276` — 8 consumer(s)
-    - `ivgs-frontend/src/types/prompts.ts:276` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:276` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage model_id: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage model_name: 8 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:276` field-usage parameters: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:276` field-usage parameters: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage prompt: 14 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:276` field-usage response: 21 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:276` field-usage response: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage system_prompt: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:276` field-usage timestamp: 9 reference(s) in src (excluding types/)
 - **ts:PlaygroundModel** — `ivgs-frontend/src/types/prompts.ts:182` — 7 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:182` field-usage context: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:182` field-usage description: 119 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:182` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:182` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:182` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:182` field-usage node: 25 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:182` field-usage provider: 6 reference(s) in src (excluding types/)
@@ -14017,7 +13892,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:209` field-usage top_p: 4 reference(s) in src (excluding types/)
 - **ts:PlaygroundRequest** — `ivgs-frontend/src/types/prompts.ts:224` — 4 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:224` field-usage model_id: 8 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:224` field-usage parameters: 6 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:224` field-usage parameters: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:224` field-usage prompt: 14 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:224` field-usage system_prompt: 5 reference(s) in src (excluding types/)
 - **ts:PlaygroundResponse** — `ivgs-frontend/src/types/prompts.ts:255` — 5 consumer(s)
@@ -14029,7 +13904,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:PlaygroundSavePayload** — `ivgs-frontend/src/types/prompts.ts:306` — 4 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:306` field-usage model_id: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:306` field-usage prompt: 14 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:306` field-usage response: 21 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:306` field-usage response: 20 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:306` field-usage system_prompt: 5 reference(s) in src (excluding types/)
 - **ts:Preset** — `ivgs-frontend/src/types/library.ts:155` — 12 consumer(s)
     - `ivgs-frontend/src/hooks/useLibrary.ts:232` fe-call-link POST /api/v1/presets/by-name/{encodeURIComponent_name_}/revise -> POST /api/v1/presets/by-name/{name}/revise
@@ -14037,7 +13912,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/library.ts:155` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage description: 119 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:155` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:155` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage is_active: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:155` field-usage owner_scope: 3 reference(s) in src (excluding types/)
@@ -14049,7 +13924,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/library.ts:170` field-usage applied: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:170` field-usage preset_id: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:170` field-usage preset_version: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:170` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:170` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:170` field-usage recorded_not_applied: 2 reference(s) in src (excluding types/)
 - **ts:PresetBranding** — `ivgs-frontend/src/types/library.ts:139` — 5 consumer(s)
     - `ivgs-api/app/schemas/library.py:184` name-link 
@@ -14074,19 +13949,12 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/library.ts:146` field-usage max_runtime_seconds: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:146` field-usage media_defaults: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/library.ts:146` field-usage model_selections: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/library.ts:146` field-usage target_audience: 6 reference(s) in src (excluding types/)
-- **ts:ProjectCreatePayload** — `ivgs-frontend/src/types/api.ts:832` — 12 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage assessment_material: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage audience_considerations: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage auto_design: 1 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/library.ts:146` field-usage target_audience: 5 reference(s) in src (excluding types/)
+- **ts:ProjectCreatePayload** — `ivgs-frontend/src/types/api.ts:832` — 5 consumer(s)
     - `ivgs-frontend/src/types/api.ts:832` field-usage description: 119 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage example_material: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:832` field-usage learning_outcomes: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:832` field-usage max_runtime_seconds: 11 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage must_keep: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:832` field-usage name: 139 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage practice_material: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:832` field-usage target_audience: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:832` field-usage target_languages: 13 reference(s) in src (excluding types/)
 - **ts:ProjectResponse** — `ivgs-frontend/src/types/api.ts:246` — 17 consumer(s)
     - `ivgs-frontend/src/types/api.ts:246` field-usage active_job: 2 reference(s) in src (excluding types/)
@@ -14094,7 +13962,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/api.ts:246` field-usage created_by: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage hero_image_url: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:246` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:246` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage language_variants: 5 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage learning_outcomes: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:246` field-usage max_runtime_seconds: 11 reference(s) in src (excluding types/)
@@ -14109,7 +13977,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:ProjectSelections** — `ivgs-frontend/src/types/models.ts:352` — 4 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:516` name-link 
     - `ivgs-frontend/src/types/models.ts:352` field-usage bindings: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:352` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:352` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:352` field-usage tier: 79 reference(s) in src (excluding types/)
 - **ts:PromptCreatePayload** — `ivgs-frontend/src/types/prompts.ts:144` — 3 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:144` field-usage change_note: 10 reference(s) in src (excluding types/)
@@ -14119,15 +13987,15 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:366` field-usage color: 66 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:366` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:366` field-usage icon: 30 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:366` field-usage id: 627 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:366` field-usage label: 290 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:366` field-usage id: 611 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:366` field-usage label: 286 reference(s) in src (excluding types/)
 - **ts:PromptLibraryEntry** — `ivgs-frontend/src/types/prompts.ts:328` — 11 consumer(s)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage change_note: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage created_by: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:328` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:328` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage is_active: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:328` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:328` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage prompt_text: 19 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage prompt_type: 27 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:328` field-usage scene_id: 24 reference(s) in src (excluding types/)
@@ -14137,9 +14005,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage change_note: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage created_by: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:54` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:54` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage is_active: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:54` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:54` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage prompt_text: 19 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage prompt_type: 27 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:54` field-usage scene_id: 24 reference(s) in src (excluding types/)
@@ -14153,9 +14021,9 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:PromptResponse** — `ivgs-frontend/src/types/api.ts:497` — 10 consumer(s)
     - `ivgs-frontend/src/types/api.ts:497` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage created_by: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:497` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:497` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage is_active: 9 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:497` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:497` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage prompt_type: 27 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage scene_id: 24 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:497` field-usage scope: 3 reference(s) in src (excluding types/)
@@ -14170,13 +14038,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage change_note: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage created_by: 5 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/prompts.ts:95` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/prompts.ts:95` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage is_active: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage prompt_text: 19 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/prompts.ts:95` field-usage version: 18 reference(s) in src (excluding types/)
 - **ts:QualityScoreResponse** — `ivgs-frontend/src/types/api.ts:651` — 5 consumer(s)
     - `ivgs-frontend/src/types/api.ts:651` field-usage asset_id: 6 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:651` field-usage decision: 10 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:651` field-usage decision: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:651` field-usage quality_score: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:651` field-usage safety_score: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:651` field-usage scoring_details: 4 reference(s) in src (excluding types/)
@@ -14195,7 +14063,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage delete_after_days: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage description: 119 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage hot_days: 4 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:461` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:461` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:461` field-usage updated_at: 9 reference(s) in src (excluding types/)
@@ -14215,7 +14083,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:430` field-usage alembic_revision: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:430` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:430` field-usage docker_image_tags: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:430` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:430` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:430` field-usage version_tag: 0 reference(s) in src (excluding types/)
 - **ts:Scene** — `ivgs-frontend/src/types/storyboard.ts:104` — 18 consumer(s)
     - `ivgs-api/app/schemas/storyboard.py:416` name-link 
@@ -14226,10 +14094,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage error_message: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage generation_params: 13 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage generation_prompt_id: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage media_type: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage narration_text: 25 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:104` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage scene_index: 57 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage status: 217 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:104` field-usage timing_offset_ms: 10 reference(s) in src (excluding types/)
@@ -14256,10 +14124,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:SceneResponse** — `ivgs-frontend/src/types/api.ts:332` — 9 consumer(s)
     - `ivgs-frontend/src/types/api.ts:332` field-usage assets: 42 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:332` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:332` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage media_type: 29 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage narration_text: 25 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:332` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:332` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage scene_index: 57 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage status: 217 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:332` field-usage visual_description: 16 reference(s) in src (excluding types/)
@@ -14282,7 +14150,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-api/app/schemas/model_store.py:458` name-link 
     - `ivgs-frontend/src/types/models.ts:318` field-usage display_name: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage engine: 12 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:318` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:318` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage name: 139 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:318` field-usage refusal_message: 3 reference(s) in src (excluding types/)
@@ -14305,13 +14173,13 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:337` field-usage selection: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:337` field-usage stage: 91 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:337` field-usage tier: 79 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:337` field-usage warning: 10 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:337` field-usage warning: 9 reference(s) in src (excluding types/)
 - **ts:StorageTierData** — `ivgs-frontend/src/types/monitoring.ts:330` — 6 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:330` field-usage allocated: 10 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:330` field-usage asset_count: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:330` field-usage tier: 79 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:330` field-usage total_bytes: 3 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:330` field-usage used: 8 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:330` field-usage used: 7 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:330` field-usage used_bytes: 7 reference(s) in src (excluding types/)
 - **ts:StoreModel** — `ivgs-frontend/src/types/models.ts:166` — 29 consumer(s)
     - `ivgs-frontend/src/hooks/useModels.ts:84` fe-call-link POST /api/v1/models/{id}/approve -> POST /api/v1/models/{model_id}/approve
@@ -14326,7 +14194,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:166` field-usage dynamically_loadable: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage enabled: 11 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage engine: 12 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:166` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:166` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage is_default: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage license: 8 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage name: 139 reference(s) in src (excluding types/)
@@ -14344,7 +14212,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:166` field-usage weights_checksum: 7 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:166` field-usage weights_ref: 7 reference(s) in src (excluding types/)
 - **ts:StoryboardResponse** — `ivgs-frontend/src/types/storyboard.ts:213` — 3 consumer(s)
-    - `ivgs-frontend/src/types/storyboard.ts:213` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:213` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:213` field-usage scenes: 32 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:213` field-usage total: 19 reference(s) in src (excluding types/)
 - **ts:TemplateVariable** — `ivgs-frontend/src/types/prompts.ts:124` — 4 consumer(s)
@@ -14361,7 +14229,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:TimelineSegment** — `ivgs-frontend/src/types/monitoring.ts:281` — 9 consumer(s)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage asset_id: 6 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage duration_seconds: 32 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:281` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:281` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage layer: 4 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage progress: 21 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage render_completed_at: 2 reference(s) in src (excluding types/)
@@ -14369,7 +14237,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage start_seconds: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:281` field-usage status: 217 reference(s) in src (excluding types/)
 - **ts:TimelineTick** — `ivgs-frontend/src/types/storyboard.ts:241` — 2 consumer(s)
-    - `ivgs-frontend/src/types/storyboard.ts:241` field-usage label: 290 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/storyboard.ts:241` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/storyboard.ts:241` field-usage position: 8 reference(s) in src (excluding types/)
 - **ts:TimelineZoomConfig** — `ivgs-frontend/src/types/storyboard.ts:251` — 4 consumer(s)
     - `ivgs-frontend/src/types/storyboard.ts:251` field-usage level: 6 reference(s) in src (excluding types/)
@@ -14382,10 +14250,10 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/prompts.ts:241` field-usage total_tokens: 3 reference(s) in src (excluding types/)
 - **ts:TranscriptResponse** — `ivgs-frontend/src/types/api.ts:474` — 8 consumer(s)
     - `ivgs-frontend/src/types/api.ts:474` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:474` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:474` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage language_code: 34 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage original_asset_id: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:474` field-usage project_id: 19 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:474` field-usage project_id: 18 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage refined_text: 7 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage sequence_order: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:474` field-usage updated_at: 9 reference(s) in src (excluding types/)
@@ -14396,20 +14264,20 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
 - **ts:User** — `ivgs-frontend/src/types/monitoring.ts:16` — 6 consumer(s)
     - `ivgs-api/app/schemas/user.py:86` name-link 
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage created_at: 48 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/monitoring.ts:16` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/monitoring.ts:16` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage last_login: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage role: 116 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/monitoring.ts:16` field-usage username: 45 reference(s) in src (excluding types/)
 - **ts:UserResponse** — `ivgs-frontend/src/types/api.ts:204` — 7 consumer(s)
     - `ivgs-frontend/src/types/api.ts:204` field-usage created_at: 48 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage email: 0 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/api.ts:204` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:204` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage is_active: 9 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage last_login_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage role: 116 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:204` field-usage username: 45 reference(s) in src (excluding types/)
 - **ts:VideoQuality** — `ivgs-frontend/src/types/api.ts:827` — 2 consumer(s)
-    - `ivgs-frontend/src/types/api.ts:827` field-usage label: 290 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/api.ts:827` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/api.ts:827` field-usage src: 7 reference(s) in src (excluding types/)
 - **ts:WeightPlacement** — `ivgs-frontend/src/types/models.ts:63` — 15 consumer(s)
     - `ivgs-api/app/schemas/model_store.py:268` name-link 
@@ -14421,7 +14289,7 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:63` field-usage fetched_at: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage fetched_by: 0 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage file_count: 1 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:63` field-usage id: 627 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:63` field-usage id: 611 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage last_error: 2 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage last_error_reason: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:63` field-usage node_id: 30 reference(s) in src (excluding types/)
@@ -14432,8 +14300,8 @@ Built from commit `a7f238cb8d50853d2028ed8546a17e2b92b75865` (last commit touchi
     - `ivgs-frontend/src/types/models.ts:107` field-usage bytes_on_disk: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage can_fetch: 3 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage credentials_present: 2 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:107` field-usage detail: 57 reference(s) in src (excluding types/)
-    - `ivgs-frontend/src/types/models.ts:107` field-usage label: 290 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:107` field-usage detail: 56 reference(s) in src (excluding types/)
+    - `ivgs-frontend/src/types/models.ts:107` field-usage label: 286 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage state: 108 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage target_container: 1 reference(s) in src (excluding types/)
     - `ivgs-frontend/src/types/models.ts:107` field-usage target_dir: 3 reference(s) in src (excluding types/)
