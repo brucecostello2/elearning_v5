@@ -149,11 +149,15 @@ export default function PipelineMonitoringPage(): React.ReactElement | null {
   // ── WebSocket for Real-Time Updates ─────────────────────────────────
   /**
    * WebSocket connection for live job status per §8.2.1.
-   * Connects to WS /api/v1/jobs/{id}/status when a job is selected.
+   * Connects to WS /api/v1/ws/jobs/{id}/status when a job is selected.
    * Updates are merged into the SWR cache for seamless UI updates.
+   *
+   * WP-70 fix S5: the route is `/ws/jobs/{job_id}/status` (ws_logs.py) and
+   * useWebSocket concatenates this path verbatim, so without the `/ws`
+   * segment the upgrade answered 404 and the page only ever polled.
    */
   const { lastMessage, connectionState } = useWebSocket(
-    selectedJobId ? `/api/v1/jobs/${selectedJobId}/status` : null
+    selectedJobId ? `/api/v1/ws/jobs/${selectedJobId}/status` : null
   );
 
   /**

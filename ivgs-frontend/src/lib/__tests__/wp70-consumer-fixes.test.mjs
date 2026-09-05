@@ -154,3 +154,19 @@ test("S6: uploadAsset POSTs to a path the API serves for POST", () => {
   );
   assert.ok(call.path.endsWith("/assets/upload"), call.path);
 });
+
+/* ── S5: pipeline monitor socket path lacks /ws ───────────────────────── */
+
+test("S5: the monitoring page's job-status socket path is one the API serves", () => {
+  const page = src("app/monitoring/pipeline/page.tsx");
+  const m = page.match(/useWebSocket\(\s*selectedJobId\s*\?\s*`([^`]*)`\s*:\s*null\s*\)/);
+  assert.ok(m, "useWebSocket(selectedJobId ? `...` : null) not found");
+  const wsPath = m[1];
+  const served = routes("app/api/v1/ws_logs.py").filter(([mth]) => mth === "WEBSOCKET").map(([, p]) => p);
+  assert.ok(served.length > 0, "no websocket routes parsed from ws_logs.py");
+  assert.ok(
+    served.some((p) => pathMatches(wsPath, p)),
+    `WEBSOCKET ${wsPath} matches none of ${served.join(", ")}`
+  );
+  assert.ok(wsPath.includes("/ws/jobs/"), wsPath);
+});
