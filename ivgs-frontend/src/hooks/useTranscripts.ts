@@ -55,11 +55,14 @@ export function useTranscripts(projectId: string): UseTranscriptsReturn {
 
   /**
    * Reorder transcripts by providing a new order mapping.
+   *
+   * WP-70 fix S7: the route is `POST /transcripts/reorder` (transcripts.py);
+   * this used PUT and answered 405. Latent — no component calls it yet.
    */
   const reorderTranscripts = async (
     orderMap: { id: string; order: number }[]
   ): Promise<void> => {
-    await apiClient.put(
+    await apiClient.post(
       `/api/v1/projects/${projectId}/transcripts/reorder`,
       { order: orderMap }
     );

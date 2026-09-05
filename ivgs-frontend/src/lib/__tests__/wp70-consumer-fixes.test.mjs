@@ -185,3 +185,17 @@ test("S4: the Run cleanup button's request matches a POST route in retention.py"
     `POST ${m[1]} matches none of ${served.join(", ")}`
   );
 });
+
+/* ── S7: reorderTranscripts uses PUT; the route is POST ───────────────── */
+
+test("S7: reorderTranscripts uses the method the reorder route serves", () => {
+  const call = hookCall("hooks/useTranscripts.ts", "reorderTranscripts");
+  const served = routes("app/api/v1/transcripts.py")
+    .filter(([, p]) => p.endsWith("/transcripts/reorder"))
+    .map(([m]) => m);
+  assert.ok(served.length > 0, "no /transcripts/reorder route parsed");
+  assert.ok(
+    served.includes(call.method),
+    `${call.method} ${call.path}: route serves only ${served.join(", ")}`
+  );
+});
