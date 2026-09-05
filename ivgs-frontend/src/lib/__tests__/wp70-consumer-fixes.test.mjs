@@ -250,3 +250,24 @@ test("S5+N3: the socket URL for a selected job contains /ws/jobs/ and a non-empt
   // The server's contract is the `token` query parameter (ws_logs.py _authenticate_ws).
   assert.ok(/query_params\.get\("token"\)/.test(api("app/api/v1/ws_logs.py")));
 });
+
+/* ── S7 + N4: the reorder body's keys are the schema's ────────────────── */
+
+test("S7+N4: reorderTranscripts emits items[] with the fields ReorderItem declares", () => {
+  const s = src("hooks/useTranscripts.ts");
+  const at = s.indexOf("const reorderTranscripts =");
+  const fn = s.slice(at, s.indexOf("\n  };", at));
+  const call = fn.match(/apiClient\.(\w+)\(\s*`[^`]*transcripts\/reorder`,\s*(\{[\s\S]*?\})\s*\);/);
+  assert.ok(call, "no apiClient call with a body literal");
+  assert.equal(call[1], "post");
+  const body = call[2];
+  const top = body.match(/^\{\s*(\w+):/)[1];
+  const py = api("app/schemas/transcript.py");
+  const reqFields = pydanticFields(py, "TranscriptReorderRequest");
+  const itemFields = pydanticFields(py, "ReorderItem");
+  assert.ok(reqFields.has(top), `top-level key '${top}' is not a TranscriptReorderRequest field (${[...reqFields]})`);
+  const item = body.match(/=>\s*\(\{([^}]*)\}\)/);
+  assert.ok(item, "items are not built from an object literal");
+  const keys = [...item[1].matchAll(/(\w+):/g)].map((m) => m[1]).sort();
+  assert.deepEqual(keys, [...itemFields].sort());
+});

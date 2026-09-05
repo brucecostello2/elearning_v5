@@ -305,3 +305,41 @@ class TestS5N3JobStatusSocketAuth:
                 with c.websocket_connect(f"/api/v1/ws/jobs/job-42/status?token={expired}"):
                     pass
         assert ei.value.code == 1008
+
+
+# ── S7 + N4: the body reorderTranscripts emits validates against the schema ──
+
+def _reorder_body_from_hook() -> dict:
+    """Build the exact body shape `useTranscripts.reorderTranscripts` emits,
+    read from its source: the top-level keys of the object literal passed to
+    apiClient.post and the per-item keys (from the `.map((o) => ({...}))`
+    literal if present, else from the hook's own parameter type)."""
+    import re
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[2] / "ivgs-frontend/src/hooks/useTranscripts.ts"
+    text = src.read_text()
+    fn = text[text.index("const reorderTranscripts ="):]
+    fn = fn[: fn.index("\n  };")]
+    call = re.search(r"apiClient\.\w+\(\s*`[^`]*transcripts/reorder`,\s*(\{.*?\})\s*\);", fn, re.S)
+    assert call, "no apiClient call with a body literal in reorderTranscripts"
+    body_src = call.group(1)
+    top = re.match(r"\{\s*(\w+):", body_src)
+    assert top, body_src
+    item = re.search(r"=>\s*\(\{([^}]*)\}\)", body_src)
+    if item:
+        item_keys = re.findall(r"(\w+):", item.group(1))
+    else:
+        param = re.search(r"orderMap:\s*\{([^}]*)\}\[\]", fn)
+        assert param, "parameter type not found"
+        item_keys = re.findall(r"(\w+):", param.group(1))
+    sample = {"id": "8d3f1d2e-6a6b-4c8f-9c1e-0f2b9a1c3d4e", "order": 1, "sequence_order": 1}
+    return {top.group(1): [{k: sample[k] for k in item_keys}]}
+
+
+class TestS7N4ReorderBody:
+    def test_the_hooks_literal_body_parses_as_TranscriptReorderRequest(self):
+        from app.schemas.transcript import TranscriptReorderRequest
+        body = _reorder_body_from_hook()
+        parsed = TranscriptReorderRequest.model_validate(body)   # raises ValidationError pre-fix
+        assert len(parsed.items) == 1
+        assert parsed.items[0].sequence_order == 1

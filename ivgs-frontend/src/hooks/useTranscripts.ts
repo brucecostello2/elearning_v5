@@ -58,13 +58,16 @@ export function useTranscripts(projectId: string): UseTranscriptsReturn {
    *
    * WP-70 fix S7: the route is `POST /transcripts/reorder` (transcripts.py);
    * this used PUT and answered 405. Latent — no component calls it yet.
+   * WP-70 fix N4: the body is `TranscriptReorderRequest` — `items[]` of
+   * `ReorderItem {id, sequence_order}` (schemas/transcript.py); it used to
+   * send `{order: [{id, order}]}`, which the schema rejects with 422.
    */
   const reorderTranscripts = async (
     orderMap: { id: string; order: number }[]
   ): Promise<void> => {
     await apiClient.post(
       `/api/v1/projects/${projectId}/transcripts/reorder`,
-      { order: orderMap }
+      { items: orderMap.map((o) => ({ id: o.id, sequence_order: o.order })) }
     );
     mutate();
   };
