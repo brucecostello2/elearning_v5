@@ -1118,3 +1118,7 @@ block) closes with one line in each of three bodies.**
 
 - `dev/workpackages/reports/WP-69-CONSUMER-AUDIT-report_2026-09-05.md` — read-only consumer audit, D1–D7 indexed by `dev/audit/build_consumer_index.py` (deterministic); calibration 6/6 found by the method; **13 definite defects in surviving code**, 3 in replaced stage bodies; operator has ordered WP-70..WP-73 from it (not started). Nothing deployed, no source file changed. Branch `wp-69-consumer-audit-clean` (2 commits off `origin/main`), HELD.
 
+
+## Reports filed this session — WP-70 (2026-09-05, consumer fixes 1)
+
+- `dev/workpackages/reports/WP-70-CONSUMER-FIXES-1-report_2026-09-05.md` — eight of the nine WP-69 §2 one-line defects fixed, one commit each, every fix with a test that failed on the pre-fix tree (S11, S12, S6, S5, S4 as a new `POST /retention/run`, S7, S8, S10); **S13 skipped by the order's own §3 rule** — `storyboard_scenes` has no state column, so `status` needs a migration (Decision D-1). Consumer index rebuilt on the branch head: **8 definite rows removed, 0 added**; the 3 surviving rows are S13's. ivgs-api suite: see the report §4; frontend `test:logic` 117/119 with the same two pre-existing failures. Two follow-ups for the operator: the Assets page still omits the required `asset_type` (D-2), and S13's migration. Branch `wp-70-consumer-fixes-1` off `origin/main`, HELD; nothing deployed.
