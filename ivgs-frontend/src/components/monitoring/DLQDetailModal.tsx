@@ -17,6 +17,30 @@ import type { DLQMessageDetail, DLQResolutionEntry } from "@/types/monitoring";
  * Fetches from GET /api/v1/dlq/messages/{id} for full detail.
  */
 
+/**
+ * WP-70 fix D-8. The API records one resolution per message
+ * (`resolution`, `reviewed_by`, `reviewed_at`); the "history" tab renders it
+ * as a one-entry list so the list rendering below is unchanged.
+ */
+const resolutionHistory = (detail: DLQMessageDetail): DLQResolutionEntry[] =>
+  detail.resolution
+    ? [
+        {
+          action: detail.resolution.toUpperCase(),
+          reason: "",
+          performed_by: detail.reviewed_by ?? "unknown",
+          performed_at: detail.reviewed_at ?? detail.created_at,
+          result: "",
+        },
+      ]
+    : [];
+
+/** The arguments tab: positional and keyword arguments, as the API sends them. */
+const taskArguments = (detail: DLQMessageDetail): Record<string, unknown> | null =>
+  detail.task_args != null || detail.task_kwargs != null
+    ? { args: detail.task_args ?? [], kwargs: detail.task_kwargs ?? {} }
+    : null;
+
 interface DLQDetailModalProps {
   /** ID of the DLQ message to display */
   messageId: string;
@@ -160,19 +184,19 @@ export default function DLQDetailModal({
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Category</p>
                   <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mt-0.5">
-                    {detail.category}
+                    {detail.failure_category ?? "unknown"}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Retry Count</p>
                   <p className="text-sm font-mono font-medium text-gray-900 dark:text-gray-100 mt-0.5">
-                    {detail.retry_count}
+                    {detail.retry_count_exhausted ?? 0}
                   </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">Entered DLQ</p>
                   <p className="text-sm text-gray-900 dark:text-gray-100 mt-0.5">
-                    {formatDate(detail.entered_dlq_at)}
+                    {formatDate(detail.created_at)}
                   </p>
                 </div>
               </div>
@@ -215,12 +239,8 @@ export default function DLQDetailModal({
               {activeTab === "arguments" && (
                 <div className="bg-gray-50 dark:bg-gray-950 rounded-lg p-4 overflow-x-auto">
                   <pre className="text-xs text-gray-800 dark:text-gray-200 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
-                    {detail.task_arguments
-                      ? JSON.stringify(
-                          typeof detail.task_arguments === "string" ? JSON.parse(detail.task_arguments) : detail.task_arguments,
-                          null,
-                          2
-                        )
+                    {taskArguments(detail)
+                      ? JSON.stringify(taskArguments(detail), null, 2)
                       : "No task arguments available."}
                   </pre>
                 </div>
@@ -228,9 +248,8 @@ export default function DLQDetailModal({
 
               {activeTab === "history" && (
                 <div className="space-y-3">
-                  {detail.resolution_history &&
-                  detail.resolution_history.length > 0 ? (
-                    detail.resolution_history.map(
+                  {resolutionHistory(detail).length > 0 ? (
+                    resolutionHistory(detail).map(
                       (entry: DLQResolutionEntry, index: number) => (
                         <div
                           key={index}
@@ -238,7 +257,7 @@ export default function DLQDetailModal({
                         >
                           <div
                             className={`mt-0.5 h-2.5 w-2.5 rounded-full flex-shrink-0 ${
-                              entry.action === "REPLAY"
+                              entry.action.startsWith("REPLAY")
                                 ? "bg-blue-500"
                                 : "bg-red-500"
                             }`}

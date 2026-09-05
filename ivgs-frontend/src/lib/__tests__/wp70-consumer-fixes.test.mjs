@@ -313,3 +313,19 @@ test("D-7: DLQMessageResponse emits created_at only, and TS DLQMessage declares 
   const reads = cellReads(src("components/monitoring/DLQTable.tsx"), "Entered DLQ", "msg");
   assert.deepEqual(reads, ["created_at"], `Entered DLQ cell reads ${reads}`);
 });
+
+/* ── D-8: DLQ detail view vs DLQDetailResponse ────────────────────────── */
+
+test("D-8: every field TS DLQMessageDetail declares is one DLQDetailResponse emits, and the modal reads only those", () => {
+  const emitted = pydanticFields(api("app/schemas/dlq.py"), "DLQDetailResponse");
+  const declared = tsFields(src("types/monitoring.ts"), "DLQMessageDetail");
+  const missing = [...declared].filter((f) => !emitted.has(f));
+  assert.deepEqual(missing, [], `declared but never sent: ${missing}`);
+  const modal = src("components/monitoring/DLQDetailModal.tsx");
+  const reads = [...new Set([...modal.matchAll(/\bdetail\??\.([a-z_][a-z0-9_]*)/g)].map((m) => m[1]))];
+  const bad = reads.filter((f) => !emitted.has(f));
+  assert.deepEqual(bad, [], `modal reads fields the API never sends: ${bad}`);
+  for (const f of ["failure_category", "retry_count_exhausted", "created_at"]) {
+    assert.ok(reads.includes(f), `modal does not read ${f}`);
+  }
+});

@@ -179,15 +179,30 @@ export interface DLQResolutionEntry {
   result: string;
 }
 
+/**
+ * WP-70 fix D-8. The field names are `DLQDetailResponse`'s
+ * (ivgs-api/app/schemas/dlq.py). This used to declare `category`,
+ * `retry_count`, `entered_dlq_at`, `task_arguments` and `resolution_history`,
+ * none of which the API sends: the detail modal rendered an empty category,
+ * an empty retry count, "No task arguments" and "No resolution history" for
+ * every message. The API records ONE resolution (`resolution`, `reviewed_by`,
+ * `reviewed_at`), not a history; the modal builds its single entry from them.
+ */
 export interface DLQMessageDetail {
   id: string;
-  task_name: string;
-  category: DLQCategory;
-  retry_count: number;
-  entered_dlq_at: string;
-  traceback: string;
-  task_arguments: Record<string, unknown>;
-  resolution_history: DLQResolutionEntry[];
+  original_queue: string | null;
+  task_name: string | null;
+  task_args: unknown;
+  task_kwargs: Record<string, unknown> | null;
+  exception_type: string | null;
+  exception_message: string | null;
+  traceback: string | null;
+  failure_category: DLQCategory | null;
+  retry_count_exhausted: number | null;
+  created_at: string;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  resolution: string | null;
 }
 
 export interface DLQAnalyticsData {
