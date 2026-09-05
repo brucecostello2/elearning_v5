@@ -580,8 +580,23 @@ async def test_apply_preset_writes_into_the_project_and_records_provenance(
     assert row.target_audience == "New starters"
     assert row.preset_id is not None
     assert row.preset_version == 1
-    assert row.talking_head_asset_id is not None, (
-        "the actor's reference clip must be bound as the project's talking head"
+    # WP-70 fix S10 re-aimed this assertion. It used to require
+    # `talking_head_asset_id` to be SET — which pinned the defect: the clip was
+    # written as `talking_head` while Stage 6 looks up `reference_clip`, and
+    # that column names the RENDERED head. Same risk, correct target: the
+    # actor's clip is referenced into the project under the member Stage 6
+    # reads, and the rendered-head column is untouched.
+    from app.models.asset import Asset
+    referenced = await db_session.scalar(
+        select(Asset).where(
+            Asset.project_id == uuid.UUID(project_id),
+            Asset.library_asset_id == uuid.UUID(clip["id"]),
+        )
+    )
+    assert referenced is not None, "the actor's reference clip must be referenced into the project"
+    assert referenced.asset_type == "reference_clip", referenced.asset_type
+    assert row.talking_head_asset_id is None, (
+        "talking_head_asset_id names the RENDERED head; preset apply must leave it null"
     )
 
 

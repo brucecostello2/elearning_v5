@@ -15,8 +15,12 @@ have a consuming code path today and are really written:
 
   * model selections -> ``project_model_selections`` via
     ``model_selection.manual_override``, which the pipeline reads.
-  * actor -> the actor's reference clip is REFERENCED into the project and
-    bound as ``projects.talking_head_asset_id``, which Stage 6 reads.
+  * actor -> the actor's reference clip is REFERENCED into the project as an
+    ``assets`` row of ``asset_type="reference_clip"``, which is what Stage 6
+    looks up (``_fetch_reference_clip_id``: ``?asset_type=reference_clip``).
+    WP-70 fix S10: this used to write ``talking_head`` and bind
+    ``projects.talking_head_asset_id`` — Stage 6 never found the clip, and
+    that column names the RENDERED head, so it is left null here.
   * media defaults / runtime / audience -> project columns and the payload the
     scene-creation surface seeds from.
 
@@ -216,14 +220,16 @@ class PresetService:
                 )
             if actor.reference_clip_id:
                 lib_service = LibraryService(self.db)
+                # WP-70 fix S10. Stage 6 reads the member "reference_clip";
+                # "talking_head" is the RENDERED head, and so is the project
+                # column of that name, which apply therefore does not set.
                 asset = await lib_service.reference_into_project(
                     library_asset_id=actor.reference_clip_id,
                     project_id=project_id,
-                    asset_type="talking_head",
+                    asset_type="reference_clip",
                 )
-                project.talking_head_asset_id = asset.id
                 applied.append(
-                    f"actor={actor.name!r} (talking_head_asset_id={asset.id})"
+                    f"actor={actor.name!r} (reference_clip asset_id={asset.id})"
                 )
             else:
                 # An actor with no reference clip is legitimate — which media a

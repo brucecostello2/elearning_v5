@@ -149,3 +149,84 @@ class TestS4RetentionRun:
         monkeypatch.setattr(celery_producer.celery_app, "send_task", _boom)
         r = await client.post("/api/v1/retention/run", headers=_auth(admin_token))
         assert r.status_code == 503, f"{r.status_code} {r.text}"
+
+
+# ── S10: preset apply writes the actor clip under the member Stage 6 reads ──
+
+async def _upload_reference_clip(client: AsyncClient, headers: dict) -> dict:
+    r = await client.post(
+        "/api/v1/library/assets",
+        headers=headers,
+        files={"file": ("sarah.mp4", b"SARAHCLIP", "video/mp4")},
+        data={"kind": "reference_clip", "name": "Sarah plate", "owner_scope": "user"},
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+@pytest.mark.asyncio
+class TestS10PresetActorClip:
+    async def test_after_apply_the_stage6_lookup_finds_the_clip_and_talking_head_is_null(
+        self, client: AsyncClient, operator_user, project_id: str, db_session
+    ):
+        """Stage 6 fetches the actor clip with
+        `GET /projects/{id}/assets?asset_type=reference_clip&limit=1`
+        (pipeline_orchestrator_v2._fetch_reference_clip_id). The preset apply
+        wrote it as `talking_head`, so the lookup was always empty and every
+        preset-driven project skipped its talking head. And
+        `projects.talking_head_asset_id` names the RENDERED head — apply must
+        leave it null.
+
+        The route's page-size parameter is `per_page`, not `limit`; `limit`
+        is ignored by FastAPI. The query below sends both, as the orchestrator
+        sends `limit`, and the assertion is on the FIRST row either way."""
+        import uuid as _uuid
+        from sqlalchemy import select
+        from app.models.asset import Asset
+        from app.models.project import Project
+        from app.services.preset_service import PresetService
+        from tests.conftest import make_auth_header
+
+        user, _ = operator_user
+        headers = make_auth_header(user)
+
+        clip = await _upload_reference_clip(client, headers)
+        actor = await client.post(
+            "/api/v1/actors", headers=headers,
+            json={"name": "Sarah — corporate", "reference_clip_id": clip["id"]},
+        )
+        assert actor.status_code == 201, actor.text
+        preset = await client.post(
+            "/api/v1/presets", headers=headers,
+            json={"name": "Corporate 2026", "payload": {"actor_id": actor.json()["id"]}},
+        )
+        assert preset.status_code == 201, preset.text
+
+        # The service, directly.
+        result = await PresetService(db_session).apply_to_project(
+            preset_id=_uuid.UUID(preset.json()["id"]),
+            project_id=_uuid.UUID(project_id),
+            actor_user_id=user.id,
+        )
+        assert any("Sarah" in a for a in result["applied"]), result
+
+        # The lookup Stage 6 makes.
+        r = await client.get(
+            f"/api/v1/projects/{project_id}/assets?asset_type=reference_clip&limit=1&per_page=1",
+            headers=headers,
+        )
+        assert r.status_code == 200, r.text
+        rows = r.json()["data"]
+        assert len(rows) == 1, f"Stage 6's lookup found {len(rows)} reference_clip rows"
+        assert rows[0]["asset_type"] == "reference_clip"
+
+        # The row it found is the actor's clip, referenced not copied.
+        found = await db_session.scalar(select(Asset).where(Asset.id == _uuid.UUID(rows[0]["id"])))
+        assert str(found.library_asset_id) == clip["id"]
+
+        # The rendered-head column stays null.
+        project = await db_session.scalar(select(Project).where(Project.id == _uuid.UUID(project_id)))
+        await db_session.refresh(project)
+        assert project.talking_head_asset_id is None, (
+            "talking_head_asset_id names the RENDERED head; preset apply must not set it"
+        )
