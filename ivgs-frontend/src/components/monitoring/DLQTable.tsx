@@ -220,7 +220,7 @@ export default function DLQTable({
                       </td>
                       {/* Entered DLQ */}
                       <td className="px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
-                        {formatDate(msg.entered_dlq_at)}
+                        {formatDate(msg.created_at)}
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-3 text-right">

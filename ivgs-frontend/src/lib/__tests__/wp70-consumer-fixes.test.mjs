@@ -295,3 +295,21 @@ test("D-2: the Assets page's FormData contains asset_type, with values the uploa
     assert.ok(allowed.has(v), `'${v}' is not in ASSET_TYPE_PATHS ${[...allowed]}`);
   }
 });
+
+/* ══ WP-70 v3 ═══════════════════════════════════════════════════════════ */
+
+/* ── D-7: one name for the DLQ timestamp ──────────────────────────────── */
+
+test("D-7: DLQMessageResponse emits created_at only, and TS DLQMessage declares nothing the API does not send", () => {
+  const py = api("app/schemas/dlq.py");
+  const emitted = pydanticFields(py, "DLQMessageResponse");
+  assert.ok(emitted.has("created_at"));
+  assert.ok(!emitted.has("entered_dlq_at"), "DLQMessageResponse still declares entered_dlq_at");
+  const declared = tsFields(src("types/monitoring.ts"), "DLQMessage");
+  assert.ok(declared.has("created_at"), `TS DLQMessage declares ${[...declared]}`);
+  const missing = [...declared].filter((f) => !emitted.has(f));
+  assert.deepEqual(missing, [], `declared but never sent: ${missing}`);
+  // The table's timestamp cell reads the same name.
+  const reads = cellReads(src("components/monitoring/DLQTable.tsx"), "Entered DLQ", "msg");
+  assert.deepEqual(reads, ["created_at"], `Entered DLQ cell reads ${reads}`);
+});

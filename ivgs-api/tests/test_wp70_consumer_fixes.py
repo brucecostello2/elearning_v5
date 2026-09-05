@@ -13,23 +13,23 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
-# ── S11: DLQMessageResponse must carry the timestamp the table renders ────
+# ── S11 / D-7: the DLQ timestamp has ONE name on the wire, created_at ──────
 
 @pytest.mark.asyncio
-class TestS11DLQEnteredAt:
-    async def test_every_listed_message_carries_entered_dlq_at(
+class TestS11DLQTimestamp:
+    async def test_every_listed_message_carries_created_at_and_no_alias(
         self, client: AsyncClient, operator_token: str, dlq_messages: list
     ):
-        """The DLQ table's "Entered DLQ" column reads `entered_dlq_at`.
-        The row has a timestamp (`created_at`); the response must expose it
-        under the name the consumer reads, equal to the row's own value."""
+        """v1 (S11) added `entered_dlq_at` to DLQMessageResponse as an alias
+        of `created_at`; v3 (D-7) rules one name: the table reads
+        `created_at` and the response must not carry the alias."""
         r = await client.get("/api/v1/dlq/messages", headers=_auth(operator_token))
         assert r.status_code == 200, r.text
         rows = r.json()["data"]
         assert len(rows) >= len(dlq_messages)
         for row in rows:
-            assert "entered_dlq_at" in row, f"missing on {sorted(row)}"
-            assert row["entered_dlq_at"] == row["created_at"]
+            assert row.get("created_at"), f"no created_at on {sorted(row)}"
+            assert "entered_dlq_at" not in row, f"alias still emitted: {sorted(row)}"
 
 
 # ── S6: the upload call the hook now makes returns 2xx ───────────────────

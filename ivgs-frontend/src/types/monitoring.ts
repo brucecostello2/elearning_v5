@@ -167,7 +167,8 @@ export interface DLQMessage {
   exception_message: string | null;
   failure_category: DLQCategory | null;
   retry_count_exhausted: number | null;
-  entered_dlq_at: string;
+  /** WP-70 fix D-7: the arrival timestamp under the API's one name. */
+  created_at: string;
 }
 
 export interface DLQResolutionEntry {
