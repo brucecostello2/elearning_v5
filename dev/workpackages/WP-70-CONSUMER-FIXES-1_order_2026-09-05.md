@@ -30,7 +30,7 @@
 2. **Before any edit**, run `python3 dev/audit/build_consumer_index.py` and keep its `consumer_index.json` as the baseline (copy to `dev/audit/baseline_wp70.json`, committed).
 3. For each of the nine, in the table's order: write the failing test first, run it and record the failure in the report; apply the fix; run the test; run the affected package's test module. **One commit per defect**, message `WP-70 fix S13: …` etc.
 4. **After the last fix**, rerun the index script and diff `consumer_index.json` against the baseline. The report shows the diff. The nine `definite` rows for S4–S8 and S10–S13 must be **absent** from the new `findings`; **no new `definite` row may appear** in any family. If one does, you have broken a consumer — fix it in the same package and say so, or revert the change that caused it and report which.
-5. Full Python suite at most twice; frontend `npm test` at most twice. A timeout-killed run is an environment note.
+5. Full Python suite at most twice; frontend `npm run test:logic` at most twice (WP-74: there is no `npm test` script; this line said `npm test`). A timeout-killed run is an environment note.
 
 ## 3. Constraints
 
